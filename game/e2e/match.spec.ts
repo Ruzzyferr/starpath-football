@@ -129,6 +129,8 @@ test('live match: play a moment with real input, sim to the end, post-match rati
   await page.goto('/?autostart=1&seed=777')
   await waitForApp(page)
   await sp(page, 'sp.toMatchday()')
+  // Make sure the hero starts (selection is a roll since trials/merit roles; this test needs minutes).
+  await sp(page, "(() => { const s = sp.state(); s.hero.contract.role = 'captain'; s.hero.managerTrust = 100; s.hero.form = 90; s.hero.fatigue = 0; s.hero.sharpness = 100; s.life.flags.promised_start = true })()")
   await page.keyboard.press('Escape')
   const play = page.getByRole('button', { name: 'Play match' })
   await expect(play).toBeVisible()

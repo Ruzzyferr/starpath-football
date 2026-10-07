@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import type { Relationship } from '../../core/types'
 import {
-  buildRelationChanges, buildTrustReasons, expectedMomentsFallback, expectedMomentsFor, heroMapView, ratingLogView, relationValues, topKinds,
+  buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues, topKinds,
 } from './postMatch'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta } from '../screens/match/postFlow'
 
@@ -92,8 +92,8 @@ describe('engine → views', () => {
 
 describe('expected moments', () => {
   const input = { position: 'ST' as const, relationAvg: 0, morale: 1, form: 50, minutes: 90 }
-  it('fallback gives a 4–9 style range and kind shares summing to 1', () => {
-    const e = expectedMomentsFallback(input)
+  it('gives a sane range and kind shares summing to 1', () => {
+    const e = expectedMomentsFor(input)
     expect(e.min).toBeGreaterThanOrEqual(4)
     expect(e.max).toBeLessThanOrEqual(10)
     expect(e.max).toBeGreaterThanOrEqual(e.min)
@@ -101,7 +101,7 @@ describe('expected moments', () => {
     expect(e.kinds[0].share).toBeGreaterThanOrEqual(e.kinds[e.kinds.length - 1].share)
   })
   it('a bench cameo expects fewer moments', () => {
-    expect(expectedMomentsFallback({ ...input, minutes: 25 }).max).toBeLessThan(expectedMomentsFallback(input).min + 1)
+    expect(expectedMomentsFor({ ...input, minutes: 25 }).max).toBeLessThan(expectedMomentsFor(input).min + 1)
   })
   it('expectedMomentsFor always returns a sane preview', () => {
     const e = expectedMomentsFor({ ...input, position: 'CB' })
@@ -141,6 +141,8 @@ describe('post flow', () => {
     expect(signedDelta(0.4)).toBe('+0.4')
     expect(signedDelta(-1.25, 2)).toBe('−1.25')
     expect(signedDelta(0.05)).toBe('+0.05')
+    expect(signedDelta(-0.15)).toBe('−0.15')
+    expect(signedDelta(0.3)).toBe('+0.3')
     expect(signedDelta(0)).toBe('±0.0')
   })
 })

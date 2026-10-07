@@ -164,9 +164,9 @@ function RatingStep({ pm }: { pm: PostMatchView }) {
     <li class={`prb-line ${deltaClass(delta)}`} style={{ ['--i' as string]: String(row++) }}>
       <span class="prb-min num t-lo">{minute !== undefined ? `${minute}'` : ''}</span>
       <Icon name={icon} size={16} class="prb-ico" />
-      <span class="prb-label">{label}{auto && <span class="prb-auto micro">{t('postmatch.rating.auto')}</span>}</span>
+      <span class="prb-label"><span class="prb-text">{label}</span>{auto && <span class="prb-auto micro">{t('postmatch.rating.auto')}</span>}</span>
       <span class="prb-bar" aria-hidden="true"><span style={{ ['--w' as string]: String(Math.min(1, Math.abs(delta) / maxAbs)) }} /></span>
-      <b class="prb-delta num">{signedDelta(delta, Math.abs(delta) < 0.1 ? 2 : 1)}</b>
+      <b class="prb-delta num">{signedDelta(delta)}</b>
     </li>
   )
   return (
@@ -193,7 +193,7 @@ function RatingStep({ pm }: { pm: PostMatchView }) {
             <span>{t(`postmatch.rating.group.${g.source}`)}</span>
             <b class={`num ${deltaClass(g.total)}`}>{signedDelta(g.total, 2)}</b>
           </div>
-          <ul class="prb-list" data-testid={`post-rating-${g.source}`}>
+          <ul class="prb-list" data-testid={`post-rating-group-${g.source}`}>
             {g.lines.map((l, i) => <Line key={i} label={lineLabel(l)} delta={l.delta} icon={lineIcon(l)} minute={l.source === 'final' ? undefined : l.minute} auto={l.auto} />)}
           </ul>
         </div>
@@ -309,8 +309,10 @@ function RelationsStep({ pm }: { pm: PostMatchView }) {
   )
 }
 
-function SummaryStep({ pm }: { pm: PostMatchView }) {
-  const [answer, setAnswer] = useState<{ id: string; deltas: Delta[] } | null>(null)
+type Interview = NonNullable<PostMatchView['interview']>
+type Answer = { id: string; deltas: Delta[] } | null
+
+function SummaryStep({ pm, iv, answer, setAnswer }: { pm: PostMatchView; iv: Interview | null; answer: Answer; setAnswer: (a: Answer) => void }) {
   return (
     <div class="post-grid post-summary">
       <section class="post-card post-summary-head">
@@ -326,19 +328,19 @@ function SummaryStep({ pm }: { pm: PostMatchView }) {
           <DeltaList deltas={pm.deltas} />
         </section>
       )}
-      {pm.interview && (
+      {iv && (
         <section class="post-card post-interview" aria-labelledby="post-iv-q" data-testid="post-interview">
           <h2 class="post-h micro t-mid"><Icon name="megaphone" size={14} /> {t('match.post.interview')}</h2>
-          <p class="post-iv-q" id="post-iv-q">“{lt(pm.interview.question)}”</p>
+          <p class="post-iv-q" id="post-iv-q">“{lt(iv.question)}”</p>
           {answer ? (
             <div class="post-iv-done">
               <div class="row"><Icon name="check" size={18} class="t-pos" /> <span>{t('match.post.interviewDone')}</span></div>
-              <p class="post-iv-chosen">{lt(pm.interview.options.find((o) => o.id === answer.id)?.label)}</p>
+              <p class="post-iv-chosen">{lt(iv.options.find((o) => o.id === answer.id)?.label)}</p>
               <DeltaList deltas={answer.deltas} />
             </div>
           ) : (
             <div class="post-iv-options">
-              {pm.interview.options.map((o) => (
+              {iv.options.map((o) => (
                 <button key={o.id} type="button" class={`post-iv-opt tone-${o.tone}`} onClick={() => setAnswer({ id: o.id, deltas: actions.answerInterview(o.id) })}>
                   <span class="post-iv-tone micro"><Icon name={TONE_ICON[o.tone]} size={14} /> {t(`match.post.tone.${o.tone}`)}</span>
                   <span class="post-iv-label">{lt(o.label)}</span>
@@ -359,6 +361,9 @@ export function PostMatchScreen() {
   const pm = data.postMatch()
   void currentLang.value
   const [idx, setIdx] = useState(0)
+  // The backend drops the interview once answered: keep the question and the answer for this visit.
+  const [iv] = useState<Interview | null>(() => pm?.interview ?? null)
+  const [answer, setAnswer] = useState<Answer>(null)
   const bodyRef = useRef<HTMLDivElement>(null)
   const first = useRef(true)
   const steps = pm ? postSteps(pm) : []
@@ -434,13 +439,13 @@ export function PostMatchScreen() {
         {step === 'map' && <MapStep pm={pm} />}
         {step === 'trust' && <TrustStep pm={pm} />}
         {step === 'relations' && <RelationsStep pm={pm} />}
-        {step === 'interview' && <SummaryStep pm={pm} />}
+        {step === 'interview' && <SummaryStep pm={pm} iv={iv} answer={answer} setAnswer={setAnswer} />}
       </div>
 
       <footer class="post-footer">
         <div class="post-nav">
           {idx > 0 && (
-            <Button variant="ghost" size="lg" icon="arrow-left" onClick={() => go(idx - 1)}>
+            <Button variant="ghost" size="lg" icon="arrow-left" class="post-back" aria-label={t('postmatch.back')} onClick={() => go(idx - 1)}>
               {t('postmatch.back')}
             </Button>
           )}

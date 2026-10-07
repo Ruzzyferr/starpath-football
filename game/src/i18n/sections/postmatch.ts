@@ -46,6 +46,7 @@ export const tr = {
     conceded: 'Gol yenildi',
     foul_won: 'Faul kazanıldı',
     foul_committed: 'Faul yapıldı',
+    shot_conceded: 'Rakip şut buldu',
     timeout: 'Sonuçsuz',
   },
   map: {
@@ -129,6 +130,7 @@ export const en: Shape<typeof tr> = {
     conceded: 'Conceded',
     foul_won: 'Foul won',
     foul_committed: 'Foul committed',
+    shot_conceded: 'Chance conceded',
     timeout: 'No result',
   },
   map: {

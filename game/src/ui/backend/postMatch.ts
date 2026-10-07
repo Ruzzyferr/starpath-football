@@ -10,9 +10,9 @@
  * rest of the performance), the minutes scaling, and the remainder.
  */
 import { clamp } from '../../core/rng'
-import type { LText, Position, RelationKind, Relationship } from '../../core/types'
-import * as simMatch from '../../sim/match'
-import type { ExpectedMoments, HeroMatchMap, HighlightKind, HighlightPlanInput, RatingLogEntry } from '../../sim/match'
+import type { LText, RelationKind, Relationship } from '../../core/types'
+import { expectedMoments } from '../../sim/match'
+import type { ExpectedMoments, HeroMatchMap, HighlightPlanInput, RatingLogEntry } from '../../sim/match'
 import type { HeroMapView, RatingLineView, RelationChangeView, TrustChangeView } from '../store'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
@@ -136,33 +136,9 @@ export function heroMapView(map: HeroMatchMap | undefined): HeroMapView | undefi
 
 // ───────────────────────── Expected moments ─────────────────────────
 
-/** Base open-play moments per 90' by position (mirror of sim/match/highlightGen BASE_COUNT). */
-const BASE_COUNT: Record<Position, number> = { ST: 7, LW: 6.5, RW: 6.5, AM: 6.5, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5 }
-
-/** Local estimate used until/unless the engine exports `expectedMoments`. */
-export function expectedMomentsFallback(input: HighlightPlanInput): ExpectedMoments {
-  let n = BASE_COUNT[input.position] ?? 6
-  n += clamp(input.relationAvg, -100, 100) * 0.015 + (input.morale - 1) * 5 + ((input.form - 50) / 50) * 1
-  const scale = clamp(input.minutes / 90, 0, 1)
-  const lo = Math.max(input.minutes >= 10 ? 1 : 0, Math.round(clamp(n - 1.3, 4, 9) * scale))
-  const hi = Math.max(lo, Math.round(clamp(n + 1.3, 4, 9) * scale) + (input.minutes >= 89 ? 1 : 0))
-  const w = simMatch.kindWeights(input.position)
-  const total = Object.values(w).reduce((a, b) => a + (b ?? 0), 0) || 1
-  const kinds = (Object.entries(w) as [HighlightKind, number][])
-    .map(([kind, v]) => ({ kind, share: v / total }))
-    .sort((a, b) => b.share - a.share)
-  return { min: lo, max: hi, kinds }
-}
-
-/** Engine `expectedMoments` when available, else the local estimate. */
+/** Engine expected-moments preview (sim/match/highlightGen). */
 export function expectedMomentsFor(input: HighlightPlanInput): ExpectedMoments {
-  const fn = (simMatch as unknown as Record<string, unknown>).expectedMoments as ((i: HighlightPlanInput) => ExpectedMoments) | undefined
-  try {
-    if (typeof fn === 'function') return fn(input)
-  } catch {
-    // fall through
-  }
-  return expectedMomentsFallback(input)
+  return expectedMoments(input)
 }
 
 /** Kinds worth a label (≥ 8% share, at most 4). */

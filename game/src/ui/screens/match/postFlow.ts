@@ -50,8 +50,10 @@ export function ratingExtremes(log: readonly RatingLineView[]): { best: RatingLi
   return { best, worst }
 }
 
-/** Formats a signed rating/trust delta: +0.4 / −0.25. */
+/** Formats a signed rating/trust delta: +0.4 / −0.25 (two decimals only when needed, so lines add up visibly). */
 export function signedDelta(v: number, digits = 1): string {
-  const s = Math.abs(v).toFixed(Math.abs(v) < 0.1 && v !== 0 && digits < 2 ? 2 : digits)
+  const a = Math.abs(v)
+  const needs2 = Math.abs(Math.round(a * 100) - Math.round(a * 10) * 10) > 0
+  const s = a.toFixed(needs2 ? Math.max(2, digits) : digits)
   return `${v > 0 ? '+' : v < 0 ? '−' : '±'}${s}`
 }
