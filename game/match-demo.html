@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0b1410" />
+    <title>StarPath — Highlight Demo</title>
+    <style>
+      :root { color-scheme: dark; }
+      html, body { margin: 0; height: 100%; background: #0b1410; color: #e8f0ea; font: 13px/1.3 system-ui, 'Segoe UI', Roboto, Arial, sans-serif; overflow: hidden; overscroll-behavior: none; }
+      #app { display: flex; flex-direction: column; height: 100%; }
+      #bar { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; padding: 6px 8px; background: #0f1a14; border-bottom: 1px solid #1f3328; }
+      #bar button, #bar select { background: #18271f; color: #e8f0ea; border: 1px solid #2c4a39; border-radius: 6px; padding: 5px 9px; font: inherit; cursor: pointer; }
+      #bar button.on { background: #ffd23f; color: #111; border-color: #ffd23f; font-weight: 700; }
+      #bar label { display: inline-flex; gap: 4px; align-items: center; opacity: 0.85; }
+      #kinds { display: flex; flex-wrap: wrap; gap: 4px; }
+      #result { margin-left: auto; font-weight: 700; color: #ffd23f; white-space: nowrap; }
+      #stage { position: relative; flex: 1; min-height: 0; }
+      #help { position: absolute; left: 8px; bottom: 8px; pointer-events: none; opacity: 0.55; font-size: 11px; max-width: 46ch; }
+      @media (max-width: 700px) { #help { display: none; } #bar { gap: 4px; padding: 4px; } #bar button, #bar select { padding: 4px 6px; } }
+    </style>
+  </head>
+  <body>
+    <div id="app">
+      <div id="bar">
+        <div id="kinds"></div>
+        <label>Assist <select id="assist"><option>full</option><option>half</option><option>manual</option></select></label>
+        <label>Diff <select id="diff"><option>easy</option><option selected>normal</option><option>hard</option><option>legend</option></select></label>
+        <label>Weather <select id="weather"><option>clear</option><option>rain</option><option>snow</option><option>wind</option><option>hot</option></select></label>
+        <label>Lang <select id="lang"><option>en</option><option>tr</option></select></label>
+        <label><input type="checkbox" id="slowmo" checked /> Slow-mo aim</label>
+        <label><input type="checkbox" id="sound" checked /> Sound</label>
+        <button id="again">↻ Again</button>
+        <span id="result"></span>
+      </div>
+      <div id="stage">
+        <div id="help">
+          PC: WASD move · Shift sprint · click team-mate = pass · hold LMB &amp; release = shot (drag curve = curl) ·
+          RMB = through ball · Ctrl/E chip · Space skill / tackle / header · F action.<br />
+          Touch: left thumb joystick · swipe right side = shoot/pass (curve = curl, short flick = chip) · tap team-mate = pass · double-tap = skill.<br />
+          Pad: stick · A pass · hold B shoot · Y through · X cross · RT sprint · RB skill · LB chip.
+        </div>
+      </div>
+    </div>
+    <script type="module" src="/src/game/demo.ts"></script>
+  </body>
+</html>

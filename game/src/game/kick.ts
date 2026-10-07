@@ -1,0 +1,567 @@
+/**
+ * Kick model: turns player input (swipes, aim + power bars, taps) into a ball
+ * launch — initial velocity, lift and spin — applying the kicker's attributes
+ * as accuracy noise and the chosen aim-assist level.
+ *
+ * Pure and deterministic given an {@link Rng}. Launch parameters are solved
+ * numerically against the real physics ({@link stepBall}) so curl, drag and
+ * wind are all accounted for: a curled swipe still ends where it was aimed —
+ * the curve only shapes the path. Noise is applied after solving.
+ */
+import type { Attributes } from '../core/types'
+import type { Rng } from '../core/rng'
+import { GOAL_HEIGHT, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import {
+  BALL_RADIUS,
+  GOAL_CENTER_Y,
+  GRAVITY,
+  PHYSICS_DT,
+  POST_Y_HIGH,
+  POST_Y_LOW,
+  createTracker,
+  stepBall,
+  type BallState,
+  type PhysicsEnv,
+  type PhysicsEvent,
+  type Spin,
+} from './physics'
+import {
+  a01,
+  angleDiff,
+  angleOf,
+  clamp01,
+  clampN,
+  dist,
+  dot,
+  fromAngle,
+  len,
+  norm,
+  pointSegment,
+  sub,
+  type Vec2,
+} from './model'
+
+export type AimAssist = 'full' | 'half' | 'manual'
+
+/** A sampled pointer path point. `sx/sy` are screen coords normalised by the viewport's short side; `wx/wy` are pitch meters. */
+export interface GesturePoint {
+  sx: number
+  sy: number
+  wx: number
+  wy: number
+  /** Seconds. */
+  t: number
+}
+
+/** Features extracted from a swipe. */
+export interface SwipeFeatures {
+  /** Unit direction on the pitch (chord of the swipe). */
+  dir: Vec2
+  /** Chord length in normalised screen units (1 = short side of the viewport). */
+  length: number
+  /** Duration in seconds. */
+  duration: number
+  /** Average speed (normalised units / s). */
+  speed: number
+  /** 0..1.15 power; above 1 = overhit. */
+  power: number
+  /** -1..1 curl; positive bends toward +90° of the direction of travel (pitch coords). */
+  curl: number
+  /** Gesture reads as a chip (short flick or two fingers). */
+  chip: boolean
+  /** True when the gesture was too small to be a swipe (treat as tap). */
+  isTap: boolean
+}
+
+/** Minimum normalised length for a gesture to count as a swipe. */
+export const SWIPE_MIN_LENGTH = 0.045
+
+/**
+ * Analyses a pointer path.
+ * @param pts sampled path, oldest first
+ * @param fingers simultaneous touches during the gesture (≥2 → chip)
+ */
+export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFeatures {
+  const first = pts[0]
+  const last = pts[pts.length - 1]
+  if (!first || !last || pts.length < 2) {
+    return { dir: { x: 1, y: 0 }, length: 0, duration: 0, speed: 0, power: 0, curl: 0, chip: false, isTap: true }
+  }
+  const cdx = last.sx - first.sx
+  const cdy = last.sy - first.sy
+  const chord = Math.hypot(cdx, cdy)
+  const duration = Math.max(1e-3, last.t - first.t)
+  // Weight recent motion more for speed: use the last 60% of the path.
+  const k = Math.floor(pts.length * 0.4)
+  const mid = pts[Math.min(k, pts.length - 2)]
+  const tailLen = Math.hypot(last.sx - mid.sx, last.sy - mid.sy)
+  const tailDur = Math.max(1e-3, last.t - mid.t)
+  const speed = Math.max(chord / duration, tailLen / tailDur)
+
+  const wdir = norm({ x: last.wx - first.wx, y: last.wy - first.wy })
+  const dir = len(wdir) > 0 ? wdir : { x: 1, y: 0 }
+
+  // Curvature: max signed deviation from the chord (screen space has the same handedness as pitch space).
+  let dev = 0
+  if (chord > 1e-6) {
+    const nx = -cdy / chord
+    const ny = cdx / chord
+    for (const p of pts) {
+      const d = (p.sx - first.sx) * nx + (p.sy - first.sy) * ny
+      if (Math.abs(d) > Math.abs(dev)) dev = d
+    }
+  }
+  // A path bulging to +normal is drawn like a banana that bends back toward −normal.
+  const curl = chord > 1e-6 ? clampN((-dev / chord) * 3.2, -1, 1) : 0
+  const lenTerm = clamp01(chord / 0.55)
+  const spdTerm = clamp01(speed / 4.2)
+  const power = clampN(0.12 + 0.48 * lenTerm + 0.55 * spdTerm, 0, 1.15)
+  const isTap = chord < SWIPE_MIN_LENGTH
+  const chip = !isTap && (fingers >= 2 || (duration < 0.2 && chord < 0.17))
+  return { dir, length: chord, duration, speed, power, curl: Math.abs(curl) < 0.08 ? 0 : curl, chip, isTap }
+}
+
+// ───────────────────────── Kick requests & plans ─────────────────────────
+
+export type KickKind = 'pass' | 'lofted' | 'through' | 'shot' | 'chip' | 'cross' | 'header' | 'clear' | 'penalty' | 'freekick'
+
+/** Something that can receive a pass. */
+export interface PassCandidate {
+  id: string
+  pos: Vec2
+  vel: Vec2
+}
+
+export interface KickRequest {
+  kind: KickKind
+  /** Ball position at contact. */
+  from: Vec2
+  /** Ball height at contact. */
+  fromZ?: number
+  /** Intended target point (ground point, or goal-line point for shots). */
+  target: Vec2
+  /** Desired height when reaching target (shots: height at goal line). Auto when omitted. */
+  targetZ?: number
+  /** 0..1.15 (above 1 is overhit). */
+  power: number
+  /** -1..1 */
+  curl: number
+  attrs: Attributes
+  /** 0..1 defensive pressure on the kicker. */
+  pressure: number
+  assist: AimAssist
+  env: PhysicsEnv
+  /** Global accuracy multiplier (difficulty, panic…). 1 = normal. */
+  noiseScale?: number
+}
+
+export interface KickPlan {
+  vx: number
+  vy: number
+  vz: number
+  spin: Spin
+  /** Target after assist, before noise. */
+  aim: Vec2
+  aimZ: number
+  /** 0..1 estimate of execution quality (for commentary/feedback). */
+  quality: number
+  /** True when overhit beyond the skill limit (likely skied). */
+  overhit: boolean
+}
+
+/** Skill (0..1) relevant to a kick kind. */
+export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number {
+  switch (kind) {
+    case 'shot':
+    case 'chip': {
+      const close = clamp01((25 - distance) / 15)
+      return a01(at.shooting * (1 - close * 0.5) + at.finishing * close * 0.5 + (kind === 'chip' ? at.composure * 0.15 - at.shooting * 0.15 : 0))
+    }
+    case 'penalty':
+      return a01(at.finishing * 0.45 + at.shooting * 0.2 + at.composure * 0.35)
+    case 'freekick':
+      return a01(at.setPieces * 0.7 + at.shooting * 0.3)
+    case 'cross':
+      return a01(at.crossing * 0.8 + at.passing * 0.2)
+    case 'header':
+      return a01(at.heading * 0.75 + at.jumping * 0.25)
+    case 'through':
+      return a01(at.passing * 0.55 + at.vision * 0.45)
+    case 'lofted':
+      return a01(at.passing * 0.7 + at.vision * 0.3)
+    case 'clear':
+      return a01(at.strength * 0.4 + at.passing * 0.3 + at.heading * 0.3)
+    case 'pass':
+      return a01(at.passing * 0.85 + at.firstTouch * 0.15)
+  }
+}
+
+/** Max side-spin (rad/s) a kicker can impart for a kick kind. */
+export function maxSpin(kind: KickKind, at: Attributes): number {
+  const curve = kind === 'freekick' || kind === 'cross' ? at.setPieces * 0.6 + at.crossing * 0.4 : at.setPieces * 0.4 + at.shooting * 0.3 + at.passing * 0.3
+  return 22 + a01(curve) * 42
+}
+
+/** Shot speed (m/s) at power 1 for a kicker. */
+export function shotSpeed(power: number, at: Attributes, kind: KickKind = 'shot'): number {
+  const p = clampN(power, 0, 1.15)
+  const strength = 26 + a01(at.shooting) * 6 + a01(at.strength) * 3
+  if (kind === 'header') return 9 + p * (6 + a01(at.heading) * 6)
+  return 11 + (strength - 11) * Math.pow(p, 0.85)
+}
+
+/** Result of the internal flight solver. */
+interface FlightProbe {
+  t: number
+  /** Signed lateral error at the target plane (positive = to the +90° side of the heading). */
+  lateral: number
+  z: number
+  /** Horizontal speed when reaching the plane. */
+  arriveSpeed: number
+  reached: boolean
+}
+
+/** Flies a ball until it crosses the plane through `target` perpendicular to `axis`. */
+function probe(b0: BallState, env: PhysicsEnv, target: Vec2, axis: Vec2, maxT: number): FlightProbe {
+  const b: BallState = { ...b0, spin: { ...b0.spin } }
+  const tr = createTracker()
+  const ev: PhysicsEvent[] = []
+  const steps = Math.ceil(maxT / PHYSICS_DT)
+  const nrm = { x: -axis.y, y: axis.x }
+  let prevAlong = (b.x - target.x) * axis.x + (b.y - target.y) * axis.y
+  for (let i = 1; i <= steps; i++) {
+    const px = b.x
+    const py = b.y
+    const pz = b.z
+    stepBall(b, env, tr, ev)
+    ev.length = 0
+    const along = (b.x - target.x) * axis.x + (b.y - target.y) * axis.y
+    if (along >= 0 && prevAlong < 0) {
+      const f = -prevAlong / (along - prevAlong || 1e-9)
+      const cx = px + (b.x - px) * f
+      const cy = py + (b.y - py) * f
+      return {
+        t: (i - 1 + f) * PHYSICS_DT,
+        lateral: (cx - target.x) * nrm.x + (cy - target.y) * nrm.y,
+        z: pz + (b.z - pz) * f,
+        arriveSpeed: Math.hypot(b.vx, b.vy),
+        reached: true,
+      }
+    }
+    prevAlong = along
+    if (b.z === 0 && Math.hypot(b.vx, b.vy) < 0.2) break
+  }
+  return { t: maxT, lateral: 0, z: b.z, arriveSpeed: 0, reached: false }
+}
+
+/** Desired arrival speed of a ground pass over distance d. */
+const passArriveSpeed = (d: number, power: number) => 4.5 + d * 0.12 + power * 4
+
+/**
+ * Solves the launch for a request (no noise). Iterates against the physics so
+ * the ball reaches `target` (and `targetZ` for aerial balls) with the given curl.
+ */
+export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; vy: number; vz: number; spin: Spin; aimZ: number } {
+  const from = req.from
+  const z0 = req.fromZ ?? 0
+  const delta = sub(req.target, from)
+  const d = Math.max(0.5, len(delta))
+  const axis = norm(delta)
+  const base = angleOf(axis)
+  const kind = req.kind
+  const aerial = kind === 'lofted' || kind === 'chip' || kind === 'cross' || kind === 'clear'
+  const ground = kind === 'pass' || kind === 'through'
+  const env = req.env
+
+  let heading = base
+  let vh: number
+  let vz: number
+  let aimZ: number
+  let flightT: number
+
+  if (ground) {
+    aimZ = 0
+    flightT = 0
+    vh = Math.sqrt(passArriveSpeed(d, req.power) ** 2 + 2 * (env.rollDecel + 0.5) * d)
+    vz = 0
+  } else if (aerial) {
+    // Flight time grows with distance; chips hang longest.
+    const hang = kind === 'chip' ? 1.15 : kind === 'cross' ? 0.65 : kind === 'clear' ? 0.9 : 0.8
+    flightT = hang + d * (kind === 'chip' ? 0.032 : 0.036)
+    aimZ = req.targetZ ?? (kind === 'cross' ? 1.7 : kind === 'chip' ? 1.2 : 0.4)
+    vh = d / flightT
+    vz = (aimZ - z0 + 0.5 * GRAVITY * flightT * flightT) / flightT
+  } else {
+    // Shots, headers, penalties, free kicks: speed from power, height from aim.
+    vh = shotSpeed(req.power, req.attrs, kind)
+    aimZ = req.targetZ ?? 0.5
+    flightT = d / vh
+    vz = (aimZ - z0 + 0.5 * GRAVITY * flightT * flightT) / flightT
+  }
+
+  // Pre-aim against the expected Magnus drift (≈ ½·k·ω·d/v); the loop below refines it.
+  heading -= (0.5 * env.magnus * spinSide * d) / Math.max(6, vh)
+  // Free kicks get heavy topspin so they can rise over the wall and dip under the bar.
+  const topspin = kind === 'freekick' ? 30 + a01(req.attrs.setPieces) * 14 : kind === 'chip' ? -18 : kind === 'shot' ? 6 : 0
+  const spin: Spin = { side: spinSide, top: topspin }
+  for (let it = 0; it < 6; it++) {
+    const dir = fromAngle(heading)
+    const b: BallState = { x: from.x, y: from.y, z: z0, vx: dir.x * vh, vy: dir.y * vh, vz, spin: { ...spin } }
+    const pr = probe(b, env, req.target, axis, 4.5)
+    if (!pr.reached) {
+      vh *= 1.25
+      continue
+    }
+    heading -= Math.atan2(pr.lateral, d) * 0.95
+    if (ground) {
+      const want = passArriveSpeed(d, req.power)
+      vh = Math.max(3, vh + (want - pr.arriveSpeed) * 0.8)
+    } else if (aerial) {
+      vh *= clampN(pr.t / flightT, 0.6, 1.6)
+      vz += (aimZ - pr.z) / Math.max(0.3, pr.t)
+    } else {
+      vz += (aimZ - pr.z) / Math.max(0.15, pr.t)
+    }
+  }
+  const dir = fromAngle(heading)
+  return { vx: dir.x * vh, vy: dir.y * vh, vz: Math.max(0, vz), spin, aimZ }
+}
+
+/** Shot height at the goal line as a function of power (overhit → skied). */
+export function shotHeightForPower(power: number, kind: KickKind = 'shot'): number {
+  const p = clampN(power, 0, 1.15)
+  const over = Math.max(0, p - 1)
+  const base = kind === 'penalty' ? 0.25 : kind === 'freekick' ? 0.75 : 0.3
+  return base + 1.5 * p * p + over * 9
+}
+
+/**
+ * Applies aim assist to a shot target on the goal line.
+ * full: snaps inside the frame and caps height under the bar;
+ * half: pulls halfway toward the frame; manual: untouched.
+ */
+export function assistShotTarget(target: Vec2, z: number, assist: AimAssist): { target: Vec2; z: number } {
+  const lo = POST_Y_LOW + 0.55
+  const hi = POST_Y_HIGH - 0.55
+  const ty = clampN(target.y, lo, hi)
+  const tz = clampN(z, 0.25, GOAL_HEIGHT - 0.4)
+  if (assist === 'full') return { target: { x: target.x, y: ty }, z: tz }
+  if (assist === 'half') return { target: { x: target.x, y: (target.y + ty) / 2 }, z: (z + tz) / 2 }
+  return { target, z }
+}
+
+/** Accuracy noise (radians, 1σ) for a kick. */
+export function headingNoise(req: KickRequest, skill: number): number {
+  const baseDeg: Record<KickKind, number> = {
+    pass: 2.6, lofted: 3.4, through: 3.2, shot: 4.2, chip: 4.5, cross: 4.0, header: 7, clear: 8, penalty: 2.4, freekick: 3.4,
+  }
+  const comp = a01(req.attrs.composure)
+  const pressure = 1 + req.pressure * (1.3 - comp)
+  const overhit = 1 + Math.max(0, req.power - 0.88) * 4
+  const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
+  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * (req.noiseScale ?? 1)
+  return (deg * Math.PI) / 180
+}
+
+/**
+ * Plans a kick: assist → solve → noise.
+ * @param req kick request
+ * @param rng deterministic RNG for execution noise (omit for a noiseless preview)
+ */
+export function planKick(req: KickRequest, rng?: Rng): KickPlan {
+  const distance = dist(req.from, req.target)
+  const skill = kickSkill(req.kind, req.attrs, distance)
+  let target = req.target
+  let targetZ = req.targetZ
+  const isShot = req.kind === 'shot' || req.kind === 'penalty' || req.kind === 'freekick' || req.kind === 'header'
+  if (isShot) {
+    const z = targetZ ?? shotHeightForPower(req.power, req.kind)
+    const as = assistShotTarget(target, z, req.kind === 'header' ? req.assist : req.assist)
+    target = as.target
+    targetZ = as.z
+  }
+  const spinSide = clampN(req.curl, -1, 1) * maxSpin(req.kind, req.attrs)
+  const solved = solveLaunch({ ...req, target, targetZ }, spinSide)
+
+  let { vx, vy, vz } = solved
+  const spin = { ...solved.spin }
+  let quality = clamp01(skill * (1 - req.pressure * 0.3) - Math.max(0, req.power - 1) * 2)
+  const overhit = req.power > 1 + skill * 0.08
+
+  if (rng) {
+    const sd = headingNoise(req, skill)
+    const errA = rng.normal(0, sd)
+    const c = Math.cos(errA)
+    const s = Math.sin(errA)
+    const nvx = vx * c - vy * s
+    const nvy = vx * s + vy * c
+    vx = nvx
+    vy = nvy
+    // Height and pace scatter grows with power and lack of skill.
+    const hErr = rng.normal(0, (0.35 + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
+    vz = Math.max(0, vz + hErr)
+    const sErr = 1 + rng.normal(0, 0.04 * (1.3 - skill))
+    vx *= sErr
+    vy *= sErr
+    spin.side *= 1 + rng.normal(0, 0.12 * (1.2 - skill))
+    quality = clamp01(quality - Math.abs(errA) / Math.max(1e-3, sd) * 0.08)
+  }
+  return { vx, vy, vz, spin, aim: target, aimZ: solved.aimZ, quality, overhit }
+}
+
+/** Applies a plan to a ball state (contact). */
+export function applyKick(ball: BallState, plan: KickPlan): void {
+  ball.vx = plan.vx
+  ball.vy = plan.vy
+  ball.vz = plan.vz
+  ball.spin.side = plan.spin.side
+  ball.spin.top = plan.spin.top
+  if (ball.z < BALL_RADIUS * 0.1) ball.z = 0
+}
+
+// ───────────────────────── Targeting ─────────────────────────
+
+/**
+ * Predicts where a moving receiver should get the ball (lead pass).
+ * @param from passer position
+ * @param receiver current receiver position/velocity
+ * @param ballSpeed average ball speed estimate
+ */
+export function leadPosition(from: Vec2, receiver: PassCandidate, ballSpeed: number, maxLead = 9): Vec2 {
+  let p = receiver.pos
+  for (let i = 0; i < 4; i++) {
+    const t = dist(from, p) / Math.max(4, ballSpeed)
+    const lead = { x: receiver.vel.x * t, y: receiver.vel.y * t }
+    const l = len(lead)
+    const k = l > maxLead ? maxLead / l : 1
+    p = { x: receiver.pos.x + lead.x * k, y: receiver.pos.y + lead.y * k }
+  }
+  return {
+    x: clampN(p.x, 1, PITCH_LENGTH - 1),
+    y: clampN(p.y, 1, PITCH_WIDTH - 1),
+  }
+}
+
+/** Snap cone half-angle (radians) per assist level. */
+export function snapCone(assist: AimAssist): number {
+  return assist === 'full' ? (38 * Math.PI) / 180 : assist === 'half' ? (20 * Math.PI) / 180 : 0
+}
+
+/**
+ * Picks the best teammate in the direction of a gesture.
+ * Scores by angular closeness, distance and lane openness.
+ */
+export function pickPassTarget(
+  from: Vec2,
+  dir: Vec2,
+  mates: readonly PassCandidate[],
+  opponents: readonly Vec2[],
+  assist: AimAssist,
+  coneOverride?: number,
+): PassCandidate | null {
+  const cone = coneOverride ?? Math.max(snapCone(assist), (9 * Math.PI) / 180)
+  const da = angleOf(dir)
+  let best: PassCandidate | null = null
+  let bestScore = -Infinity
+  for (const m of mates) {
+    const d = dist(from, m.pos)
+    if (d < 2.5 || d > 55) continue
+    const off = Math.abs(angleDiff(angleOf(sub(m.pos, from)), da))
+    if (off > cone) continue
+    const open = laneOpenness(from, m.pos, opponents)
+    const score = -off * 3 - d * 0.015 + open * 0.8
+    if (score > bestScore) {
+      bestScore = score
+      best = m
+    }
+  }
+  return best
+}
+
+/** 0..1 how open the lane from a to b is (1 = no opponent near the line). */
+export function laneOpenness(a: Vec2, b: Vec2, opponents: readonly Vec2[]): number {
+  let minD = Infinity
+  for (const o of opponents) {
+    const ps = pointSegment(o, a, b)
+    if (ps.t < 0.05) continue
+    minD = Math.min(minD, ps.d)
+  }
+  return clamp01((minD - 0.6) / 3.5)
+}
+
+/** Point where a ray from `from` along `dir` crosses the attacking goal line, or null. */
+export function rayToGoalLine(from: Vec2, dir: Vec2, goalX = PITCH_LENGTH): Vec2 | null {
+  if (Math.abs(dir.x) < 1e-6) return null
+  const t = (goalX - from.x) / dir.x
+  if (t <= 0) return null
+  return { x: goalX, y: from.y + dir.y * t }
+}
+
+/** Contextual interpretation of a swipe by the ball carrier. */
+export type GestureMeaning =
+  | { kind: 'shot'; target: Vec2; chip: boolean }
+  | { kind: 'pass'; to: PassCandidate; lofted: boolean }
+  | { kind: 'through'; point: Vec2; lofted: boolean }
+  | { kind: 'cross'; point: Vec2 }
+
+/**
+ * Decides what a swipe means for the ball carrier: a shot if it points at the
+ * goal from shooting range, a cross from wide areas into the box, a pass if a
+ * teammate is in the cone, otherwise a through ball into space.
+ */
+export function interpretSwipe(
+  sw: SwipeFeatures,
+  ball: Vec2,
+  mates: readonly PassCandidate[],
+  opponents: readonly Vec2[],
+  assist: AimAssist,
+): GestureMeaning {
+  const goalHit = rayToGoalLine(ball, sw.dir)
+  const distGoal = dist(ball, { x: PITCH_LENGTH, y: GOAL_CENTER_Y })
+  const towardGoal = goalHit !== null && Math.abs(goalHit.y - GOAL_CENTER_Y) < 9 + (assist === 'full' ? 4 : 0)
+  const wide = ball.x > 68 && (ball.y < 15 || ball.y > PITCH_WIDTH - 15)
+  if (towardGoal && distGoal < 38 && !wide) {
+    return { kind: 'shot', target: goalHit, chip: sw.chip }
+  }
+  const mate = pickPassTarget(ball, sw.dir, mates, opponents, assist)
+  if (wide && sw.dir.x > -0.2) {
+    // Into the box from the flank → cross toward the best attacker or the penalty spot area.
+    const intoBox = Math.abs(angleDiff(angleOf(sw.dir), angleOf(sub({ x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }, ball)))) < 0.7
+    if (intoBox) {
+      const boxMate = mates
+        .filter((m) => m.pos.x > PITCH_LENGTH - 20 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 14)
+        .sort((a, b) => dist(a.pos, ball) - dist(b.pos, ball))[0]
+      const reach = 10 + sw.power * 26
+      const raw = { x: ball.x + sw.dir.x * reach, y: ball.y + sw.dir.y * reach }
+      const point = assist !== 'manual' && boxMate ? leadPosition(ball, boxMate, 20, 4) : raw
+      return { kind: 'cross', point }
+    }
+  }
+  if (mate) {
+    const lofted = sw.chip || dist(ball, mate.pos) > 28 || laneOpenness(ball, mate.pos, opponents) < 0.15
+    return { kind: 'pass', to: mate, lofted }
+  }
+  const reach = 6 + sw.power * 24
+  const point = {
+    x: clampN(ball.x + sw.dir.x * reach, 1, PITCH_LENGTH - 1),
+    y: clampN(ball.y + sw.dir.y * reach, 1, PITCH_WIDTH - 1),
+  }
+  return { kind: 'through', point, lofted: sw.chip }
+}
+
+/**
+ * Converts a shot gesture into a goal-line target. The swipe direction picks
+ * the y on the goal line; curl shifts the launch while the solver keeps the end point.
+ */
+export function shotTargetFromDir(from: Vec2, dir: Vec2): Vec2 {
+  const hit = rayToGoalLine(from, dir)
+  if (hit) return { x: PITCH_LENGTH + BALL_RADIUS * 2, y: hit.y }
+  // Pointing sideways/backwards: aim at the near post side.
+  return { x: PITCH_LENGTH + BALL_RADIUS * 2, y: dir.y >= 0 ? POST_Y_HIGH + 2 : POST_Y_LOW - 2 }
+}
+
+/** True if a direction from `from` is broadly toward the attacking goal. */
+export function facesGoal(from: Vec2, dir: Vec2): boolean {
+  const toGoal = norm(sub({ x: PITCH_LENGTH, y: GOAL_CENTER_Y }, from))
+  return dot(toGoal, dir) > 0.45
+}
