@@ -303,8 +303,9 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather): voi
     g.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y))
   }
   // Apron (beyond the lines).
+  // Only up to the stands (behind the far goal and along both touchlines) so the crowd stays visible.
   g.fillStyle(colorNum(apron), 1)
-  rect(-16, -16, PITCH_LENGTH + 16, PITCH_WIDTH + 16)
+  rect(-16, -5.5, PITCH_LENGTH + 6.2, PITCH_WIDTH + 5.5)
   // Mowing stripes (along the length) with a faint cross-hatch.
   const n = 18
   const sw = (PITCH_LENGTH + 6) / n
@@ -316,8 +317,8 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather): voi
   for (let j = 0; j < 10; j += 2) rect(-3, -3 + (j * (PITCH_WIDTH + 6)) / 10, PITCH_LENGTH + 3, -3 + ((j + 1) * (PITCH_WIDTH + 6)) / 10)
   // Edge darkening toward the stands.
   g.fillStyle(0x000000, 0.12)
-  rect(-16, -16, PITCH_LENGTH + 16, -4)
-  rect(-16, PITCH_WIDTH + 4, PITCH_LENGTH + 16, PITCH_WIDTH + 16)
+  rect(-16, -5.5, PITCH_LENGTH + 6.2, -4)
+  rect(-16, PITCH_WIDTH + 4, PITCH_LENGTH + 6.2, PITCH_WIDTH + 5.5)
 
   if (weather === 'snow') {
     g.fillStyle(0xffffff, 0.12)

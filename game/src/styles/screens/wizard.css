@@ -57,6 +57,9 @@
 .wiz-stepper-label { white-space: nowrap; }
 @media (max-width: 599px) {
   .wiz-stepper-item:not(.is-current) .wiz-stepper-label { display: none; }
+  /* Fit all seven steps on a 360-390px phone so the current label ("Summary") is never cut off. */
+  .wiz-stepper { gap: 2px; }
+  .wiz-stepper-item:not(.is-current) .wiz-stepper-btn { padding: 0 2px; }
 }
 .wiz-progress {
   height: 3px;

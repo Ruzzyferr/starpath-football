@@ -8,7 +8,8 @@
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "test": "vitest run",
-    "typecheck": "tsc --noEmit -p tsconfig.app.json"
+    "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@preact/signals": "^2.11.3",
@@ -16,6 +17,7 @@
     "preact": "^10.29.8"
   },
   "devDependencies": {
+    "@playwright/test": "^1.63.0",
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.13.3",
     "typescript": "~6.0.2",

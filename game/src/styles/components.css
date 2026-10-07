@@ -211,6 +211,8 @@
   white-space: nowrap;
   line-height: 1;
 }
+/* Icons inside chips never get squeezed away when the chip itself is compressed. */
+.chip > svg { flex-shrink: 0; }
 .chip-pos { color: var(--pos); background: color-mix(in srgb, var(--pos) 12%, transparent); border-color: color-mix(in srgb, var(--pos) 35%, transparent); }
 .chip-neg { color: var(--neg); background: color-mix(in srgb, var(--neg) 12%, transparent); border-color: color-mix(in srgb, var(--neg) 35%, transparent); }
 .chip-gold { color: var(--accent-gold); background: rgba(255, 200, 61, 0.1); border-color: rgba(255, 200, 61, 0.35); }

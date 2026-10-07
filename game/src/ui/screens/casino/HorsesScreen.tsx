@@ -29,7 +29,8 @@ function HorseSvg({ silk }: { silk: string }) {
 
 function interp(timeline: number[][], p: number): number[] {
   if (!timeline.length) return []
-  const f = p * (timeline.length - 1)
+  // rAF timestamps can precede the performance.now() taken at race start: clamp (p < 0 crashed).
+  const f = Math.min(1, Math.max(0, p || 0)) * (timeline.length - 1)
   const i = Math.floor(f)
   const k = f - i
   const a = timeline[i]

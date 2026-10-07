@@ -79,6 +79,8 @@ export function playHighlight(
         },
         (r) => {
           clearWatchdog()
+          // Dev/e2e: expose the last interactive result for inspection.
+          if (import.meta.env.DEV) (globalThis as { __spLastHighlight?: unknown }).__spLastHighlight = r
           if (!stopped) onDone(r)
         },
       )
@@ -92,6 +94,7 @@ export function playHighlight(
     })
     .catch((e: unknown) => {
       console.warn('[StarPath] highlight player unavailable, auto-resolving', e)
+      if (import.meta.env.DEV) (globalThis as { __spHighlightFallback?: unknown }).__spHighlightFallback = String(e)
       if (!stopped) onFallback('load-failed')
     })
   return {

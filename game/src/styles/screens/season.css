@@ -263,7 +263,10 @@
 }
 .se-award-name {
   font-weight: 600;
+  min-width: 0;
 }
+/* The won/missed chip keeps its size when a long award name wraps (its icon was squeezed out). */
+.se-award > .chip { flex-shrink: 0; }
 .se-hl-list {
   display: grid;
   gap: var(--sp-2);

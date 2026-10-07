@@ -189,7 +189,55 @@ export class MemoryStorage implements SaveStorage {
   }
 }
 
-/** IndexedDB-backed storage (browser, Capacitor WebView, Electron). Falls back to localStorage. */
+// ── localStorage fallback ──
+// A career save is ~2 MB of JSON and the manager keeps live + staging + backups,
+// which overflows the ~5 M-char localStorage quota after the second save. The
+// fallback therefore gzips values (CompressionStream, ~10x smaller) and, if the
+// quota is still hit, drops rotating backups before giving up.
+
+const GZ = 'gz1:'
+
+async function gzipB64(text: string): Promise<string | null> {
+  if (typeof CompressionStream === 'undefined') return null
+  const stream = new Blob([text]).stream().pipeThrough(new CompressionStream('gzip'))
+  const bytes = new Uint8Array(await new Response(stream).arrayBuffer())
+  let bin = ''
+  for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000))
+  return GZ + btoa(bin)
+}
+
+async function gunzipB64(packed: string): Promise<string> {
+  const bin = atob(packed.slice(GZ.length))
+  const bytes = new Uint8Array(bin.length)
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i)
+  const stream = new Blob([bytes]).stream().pipeThrough(new DecompressionStream('gzip'))
+  return new Response(stream).text()
+}
+
+async function lsGet(key: string): Promise<string | null> {
+  const v = localStorage.getItem(key)
+  if (v === null || !v.startsWith(GZ)) return v
+  try {
+    return await gunzipB64(v)
+  } catch {
+    return null
+  }
+}
+
+async function lsSet(key: string, value: string): Promise<void> {
+  const v = (await gzipB64(value).catch(() => null)) ?? value
+  try {
+    localStorage.setItem(key, v)
+  } catch (e) {
+    // Quota: sacrifice backups (oldest first), then retry once.
+    const baks = Object.keys(localStorage).filter((k) => /^sp\.save\.\d+\.bak\d+$/.test(k) && k !== key).sort().reverse()
+    if (!baks.length) throw e
+    for (const k of baks) localStorage.removeItem(k)
+    localStorage.setItem(key, v)
+  }
+}
+
+/** IndexedDB-backed storage (browser, Capacitor WebView, Electron). Falls back to (compressed) localStorage. */
 export class IdbStorage implements SaveStorage {
   private dbp: Promise<IDBDatabase> | null = null
 
@@ -224,14 +272,14 @@ export class IdbStorage implements SaveStorage {
     try {
       return ((await this.tx<string | undefined>('readonly', (s) => s.get(key))) ?? null)
     } catch {
-      return localStorage.getItem(key)
+      return lsGet(key)
     }
   }
   async set(key: string, value: string) {
     try {
       await this.tx('readwrite', (s) => s.put(value, key))
     } catch {
-      localStorage.setItem(key, value)
+      await lsSet(key, value)
     }
   }
   async remove(key: string) {

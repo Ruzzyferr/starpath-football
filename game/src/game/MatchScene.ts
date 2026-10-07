@@ -177,6 +177,12 @@ export class MatchScene extends Phaser.Scene {
   private floaters: Floater[] = []
 
   private cam = { x: 0, y: 0, zoom: 1, base: 1, punch: 0 }
+  /** Height (game px) of the HUD band at the top; the play camera renders below it so the HUD never covers play. */
+  private hudTop = 0
+  /** Safe-area inset (notch) at the top of the canvas, game px. */
+  private safeTop = 0
+  /** Timer bar geometry inside the HUD band (game px). */
+  private bar = { x: 0, y: 0, w: 0 }
   private trail: { x: number; y: number }[] = []
   private mode: 'play' | 'replay' | 'done' = 'play'
   private elapsed = 0
@@ -501,23 +507,36 @@ export class MatchScene extends Phaser.Scene {
   private layout(): void {
     const w = this.scale.width
     const h = this.scale.height
-    this.cameras.main.setSize(w, h)
-    this.uiCam.setSize(w, h)
+    const u = this.ui
     const landscape = w >= h
+    this.safeTop = safeAreaTop(this.game.canvas) * u
+    // HUD band: row 1 = score bug + moment timer, row 2 = prompt / focus label.
+    this.promptText.setFontSize(Math.round((landscape ? 16 : 14) * u))
+    this.promptText.setWordWrapWidth(landscape ? Math.min(w * 0.7, 900 * u) : w - 28 * u)
+    const row1 = 40 * u
+    const row2 = Math.max(24 * u, this.promptText.height + 8 * u)
+    this.hudTop = Math.round(this.safeTop + row1 + row2)
+    const vh = Math.max(1, h - this.hudTop)
+    this.cameras.main.setViewport(0, this.hudTop, w, vh)
+    this.uiCam.setSize(w, h)
     const metersAcross = landscape ? 40 : 24
     let z = w / (metersAcross * PPM)
     // Always show enough pitch ahead of the play.
-    z = Math.min(z, h / (24 * PPM * TILT))
+    z = Math.min(z, vh / (24 * PPM * TILT))
     this.cam.base = z
     this.vignette.setDisplaySize(w, h)
     this.flash.setSize(w, h)
-    const u = this.ui
-    this.scoreText.setPosition(14 * u + 10 * u, 14 * u + 13 * u)
-    this.promptText.setPosition(w / 2, 62 * u)
-    this.promptText.setWordWrapWidth(w * 0.86)
-    this.bannerText.setPosition(w / 2, h * 0.36)
-    this.bannerSub.setPosition(w / 2, h * 0.36 + 46 * u)
-    this.focusText.setPosition(w / 2, 46 * u)
+    const top = this.safeTop
+    this.scoreText.setPosition(24 * u, top + 20 * u)
+    const sbRight = 14 * u + this.scoreText.width + 22 * u
+    const bw0 = Math.min(w * 0.42, 380 * u)
+    const bx = Math.max(w / 2 - bw0 / 2, sbRight + 14 * u)
+    const bwMax = w - 16 * u - bx
+    this.bar = { x: bx, y: top + 17 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
+    this.promptText.setPosition(w / 2, top + row1 + row2 / 2 - 2 * u)
+    this.focusText.setPosition(w / 2, top + row1 + row2 / 2)
+    this.bannerText.setPosition(w / 2, this.hudTop + vh * 0.3)
+    this.bannerSub.setPosition(w / 2, this.hudTop + vh * 0.3 + 46 * u)
     this.replayText.setPosition(w - 70 * u, 26 * u)
   }
 
@@ -525,15 +544,15 @@ export class MatchScene extends Phaser.Scene {
 
   private worldToScreen(wx: number, wy: number): { x: number; y: number } {
     const w = this.scale.width
-    const h = this.scale.height
-    return { x: (wx - this.cam.x) * this.cam.zoom + w / 2, y: (wy - this.cam.y) * this.cam.zoom + h / 2 }
+    const vh = this.scale.height - this.hudTop
+    return { x: (wx - this.cam.x) * this.cam.zoom + w / 2, y: (wy - this.cam.y) * this.cam.zoom + this.hudTop + vh / 2 }
   }
 
   private screenToPitch(gx: number, gy: number): { x: number; y: number } {
     const w = this.scale.width
-    const h = this.scale.height
+    const vh = this.scale.height - this.hudTop
     const wx = (gx - w / 2) / this.cam.zoom + this.cam.x
-    const wy = (gy - h / 2) / this.cam.zoom + this.cam.y
+    const wy = (gy - this.hudTop - vh / 2) / this.cam.zoom + this.cam.y
     return unproject(wx, wy)
   }
 
@@ -847,7 +866,7 @@ export class MatchScene extends Phaser.Scene {
     this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * 4))
     // Clamp to the stadium.
     const w = this.scale.width
-    const h = this.scale.height
+    const h = this.scale.height - this.hudTop
     const hw = w / (2 * this.cam.zoom)
     const hh = h / (2 * this.cam.zoom)
     const minX = -13 * PPM
@@ -1069,18 +1088,25 @@ export class MatchScene extends Phaser.Scene {
     const u = this.ui
     g.clear()
 
+    // HUD band (the play camera starts below it).
+    const top = this.safeTop
+    g.fillStyle(0x070b10, 0.92)
+    g.fillRect(0, 0, w, this.hudTop)
+    g.fillStyle(0xffffff, 0.08)
+    g.fillRect(0, this.hudTop - 1 * u, w, 1 * u)
+
     // Score bug.
     const sbW = this.scoreText.width + 22 * u
     g.fillStyle(0x0b0f16, 0.82)
-    g.fillRoundedRect(14 * u, 14 * u, sbW, 26 * u, 6 * u)
+    g.fillRoundedRect(14 * u, top + 7 * u, sbW, 26 * u, 6 * u)
     g.fillStyle(colorNum(this.kits.hero.primary), 1)
-    g.fillRect(14 * u, 14 * u, 5 * u, 26 * u)
+    g.fillRect(14 * u, top + 7 * u, 5 * u, 26 * u)
 
     // Moment timer bar.
-    const frac = rt.timeLeft / rt.timeLimit
-    const bw = Math.min(w * 0.42, 380 * u)
-    const bx = w / 2 - bw / 2
-    const by = 18 * u
+    const frac = clampN(rt.timeLeft / rt.timeLimit, 0, 1)
+    const bw = this.bar.w
+    const bx = this.bar.x
+    const by = this.bar.y
     g.fillStyle(0x000000, 0.45)
     g.fillRoundedRect(bx - 2 * u, by - 2 * u, bw + 4 * u, 10 * u, 5 * u)
     const col = frac > 0.5 ? 0x5dff8a : frac > 0.25 ? 0xffb02e : 0xff4040
@@ -1094,14 +1120,15 @@ export class MatchScene extends Phaser.Scene {
     this.vignette.setAlpha(clampN(slow * 0.75, 0, 0.6) + (this.mode === 'replay' ? 0.35 : 0))
     if (focus > 0) {
       g.fillStyle(0x9fe8ff, 0.9)
-      g.fillRoundedRect(w / 2 - (bw * 0.5 * focus) / 2, by + 12 * u, bw * 0.5 * focus, 3 * u, 1.5 * u)
+      g.fillRoundedRect(bx + bw / 2 - (bw * 0.5 * focus) / 2, by + 9 * u, bw * 0.5 * focus, 3 * u, 1.5 * u)
     }
-    this.focusText.setAlpha(focus > 0 ? 0.9 : 0).setPosition(w / 2, by + 24 * u)
 
     // Prompt: visible for the first seconds.
     this.promptT += dt
     const pa = this.mode === 'play' ? clampN(4.2 - this.promptT, 0, 1) : 0
-    this.promptText.setAlpha(pa).setY(by + 48 * u)
+    this.promptText.setAlpha(pa)
+    // The focus label takes the prompt's place once the prompt has faded.
+    this.focusText.setAlpha(focus > 0 ? 0.9 * (1 - pa) : 0)
 
     // Hero tag (screen space, follows the hero).
     const hero = rt.hero
@@ -1180,6 +1207,17 @@ export class MatchScene extends Phaser.Scene {
   }
 }
 
+/** Top safe-area inset (CSS px) that overlaps the canvas, e.g. a phone notch in full-screen. */
+function safeAreaTop(canvas: HTMLCanvasElement): number {
+  if (typeof document === 'undefined' || !document.body) return 0
+  const el = document.createElement('div')
+  el.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)'
+  document.body.appendChild(el)
+  const inset = parseFloat(getComputedStyle(el).paddingTop) || 0
+  el.remove()
+  return Math.max(0, inset - Math.max(0, canvas.getBoundingClientRect().top))
+}
+
 // ───────────────────────── Factory & API ─────────────────────────
 
 /**
@@ -1192,7 +1230,8 @@ export class MatchScene extends Phaser.Scene {
  * Destroy with `game.destroy(true)`; observers are disconnected automatically.
  */
 export function createMatchGame(parent: HTMLElement): Phaser.Game {
-  const dpr = Math.min(3, Math.max(1, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1))
+  // Capped at 2: a 3x backing store costs ~2.25x the fill rate for no visible gain on phones.
+  const dpr = Math.min(2, Math.max(1, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1))
   const rect = parent.getBoundingClientRect()
   const cssW = Math.max(1, Math.floor(rect.width || parent.clientWidth || 800))
   const cssH = Math.max(1, Math.floor(rect.height || parent.clientHeight || 450))

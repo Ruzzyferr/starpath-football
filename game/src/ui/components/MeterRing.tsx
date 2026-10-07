@@ -24,7 +24,7 @@ export function MeterRing({ value, max = 100, size = 72, stroke = 7, color = 'va
   return (
     <div
       class="meter-ring"
-      style={{ width: size }}
+      style={{ minWidth: size }}
       role="meter"
       aria-valuenow={Math.round(value)}
       aria-valuemin={0}

@@ -12,7 +12,7 @@
  */
 import type { NewGameInput, ScreenId } from '../store'
 import { effect } from '@preact/signals'
-import { activeEvent, gameState, installBackend, match, navigate, pendingNav } from '../store'
+import { activeEvent, gameState, installBackend, match, navigate, pendingNav, screen } from '../store'
 import { realActions } from './realActions'
 import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
@@ -80,8 +80,31 @@ function devJump(id: ScreenId): void {
   navigate(id === 'title' ? 'home' : id, undefined, { tab: true })
 }
 
+/**
+ * Dev-only debug API (`window.__sp`), used by the Playwright e2e suite and
+ * handy in devtools. Never present in production builds.
+ */
+function installDebugApi(): void {
+  ;(globalThis as { __sp?: unknown }).__sp = {
+    state: () => gameState.value,
+    match: () => match.value,
+    screen: () => screen.value,
+    actions: realActions,
+    data: realData,
+    navigate,
+    clearEvents,
+    toMatchday,
+    /** Fast-forward to the end of the season (lands on the season review). */
+    toSeasonEnd: () => devJump('seasonEnd'),
+    jump: (id: ScreenId) => devJump(id),
+    flushAutosave,
+    refreshSlots,
+  }
+}
+
 export function installRealBackend(): void {
   installBackend({ actions: realActions, data: realData })
+  if (import.meta.env.DEV) installDebugApi()
   // &storage=memory: keep saves in memory (headless browsers without a working IndexedDB).
   if (globalThis.location?.search.includes('storage=memory')) useStorage(new MemoryStorage())
   void refreshSlots()

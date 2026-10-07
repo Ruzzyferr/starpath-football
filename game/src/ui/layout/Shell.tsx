@@ -226,9 +226,12 @@ export function ContextPanel() {
         </div>
         <div class="row-between ctx-form">
           <span class="t-sm t-mid">{t('ui.ctx.form')}</span>
-          <FormDots form={results.slice(-5)} />
+          {/* Club results reset in the off-season while the hero's ratings remain: never say "no matches" next to ratings. */}
+          {results.length > 0 || form.length === 0
+            ? <FormDots form={results.slice(-5)} />
+            : <span class="t-xs t-lo num">{form.slice(-5).map((r) => r.toFixed(1)).join('  ')}</span>}
         </div>
-        {form.length > 0 && <div class="t-xs t-lo num">{form.slice(-5).map((r) => r.toFixed(1)).join('  ')}</div>}
+        {results.length > 0 && form.length > 0 && <div class="t-xs t-lo num">{form.slice(-5).map((r) => r.toFixed(1)).join('  ')}</div>}
       </div>
       {pending > 0 && (
         <button type="button" class="ctx-decisions" onClick={() => (activeEvent.value = 0)}>
