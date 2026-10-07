@@ -1,0 +1,11 @@
+{
+  "appId": "app.starpath.football",
+  "appName": "StarPath Football",
+  "webDir": "dist",
+  "backgroundColor": "#0B1220",
+  "android": { "allowMixedContent": false, "captureInput": true },
+  "ios": { "contentInset": "never" },
+  "plugins": {
+    "SplashScreen": { "launchShowDuration": 600, "backgroundColor": "#0B1220", "showSpinner": false }
+  }
+}
