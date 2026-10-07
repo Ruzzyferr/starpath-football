@@ -11,6 +11,7 @@ import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
 import { PurchasesPanel } from './store/PurchasesPanel'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
+import { ASSIST_REWARD } from '../../sim/match/rating'
 
 function Group({ title, icon, children }: { title: string; icon: IconName; children: ComponentChildren }) {
   return (
@@ -82,9 +83,9 @@ export function SettingsScreen() {
               value={s.aimAssist}
               onChange={(aimAssist) => updateSettings({ aimAssist })}
               options={[
-                { id: 'full', label: t('settings.aimFull') },
-                { id: 'half', label: t('settings.aimHalf') },
-                { id: 'manual', label: t('settings.aimManual') },
+                { id: 'full', label: `${t('settings.aimFull')} ×${ASSIST_REWARD.full}` },
+                { id: 'half', label: `${t('settings.aimHalf')} ×${ASSIST_REWARD.half}` },
+                { id: 'manual', label: `${t('settings.aimManual')} ×${ASSIST_REWARD.manual}` },
               ]}
             />
           </Field>
@@ -149,6 +150,52 @@ export function SettingsScreen() {
             format={(v) => `${v}%`}
             id="set-touch"
           />
+          <Field label={t('settings.touchShot')} hint={t('settings.touchShotDesc')}>
+            <Segmented
+              label={t('settings.touchShot')}
+              value={s.touchShot}
+              onChange={(touchShot) => updateSettings({ touchShot })}
+              options={[
+                { id: 'swipe', label: t('settings.shotSwipe') },
+                { id: 'slingshot', label: t('settings.shotSling') },
+                { id: 'meter', label: t('settings.shotMeter') },
+              ]}
+            />
+          </Field>
+          <Field label={t('settings.pcPower')} hint={t('settings.pcPowerDesc')}>
+            <Segmented
+              label={t('settings.pcPower')}
+              value={s.pcPower}
+              onChange={(pcPower) => updateSettings({ pcPower })}
+              options={[
+                { id: 'hold', label: t('settings.powerHold') },
+                { id: 'oscillate', label: t('settings.powerOsc') },
+              ]}
+            />
+          </Field>
+          <Field label={t('settings.padPower')} hint={t('settings.padPowerDesc')}>
+            <Segmented
+              label={t('settings.padPower')}
+              value={s.padPower}
+              onChange={(padPower) => updateSettings({ padPower })}
+              options={[
+                { id: 'hold', label: t('settings.powerHold') },
+                { id: 'oscillate', label: t('settings.powerOsc') },
+                { id: 'analog', label: t('settings.powerAnalog') },
+              ]}
+            />
+          </Field>
+          <Slider
+            label={t('settings.padDeadzone')}
+            value={Math.round(s.padDeadzone * 100)}
+            min={5}
+            max={40}
+            step={1}
+            onChange={(v) => updateSettings({ padDeadzone: v / 100 })}
+            format={(v) => `${v}%`}
+            id="set-deadzone"
+          />
+          <Switch label={t('settings.visionHints')} desc={t('settings.visionHintsDesc')} checked={s.visionHints} onChange={(visionHints) => updateSettings({ visionHints })} />
           <h3 class="h3">{t('settings.ctl.title')}</h3>
           <KeyBindingsPanel />
         </Group>

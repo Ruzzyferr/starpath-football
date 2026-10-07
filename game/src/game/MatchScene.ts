@@ -44,6 +44,8 @@ import type { AimAssist } from './kick'
 import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
+import { applyInput, InputRecorder } from './inputReplay'
+import { ASSIST_REWARD } from '../sim/match/rating'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -119,7 +121,8 @@ const T = {
     foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', paused: 'PAUSED', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
-    offside: 'OFFSIDE', offsideFlag: 'FLAG UP!',
+    offside: 'OFFSIDE', offsideFlag: 'FLAG UP!', oneTwo: 'ONE-TWO!',
+    aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
   },
   tr: {
@@ -128,7 +131,8 @@ const T = {
     foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', paused: 'DURAKLATILDI', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
-    offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!',
+    offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!', oneTwo: 'VER-KAÇ!',
+    aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
   },
 } as const
@@ -253,6 +257,9 @@ export class MatchScene extends Phaser.Scene {
   private replay: { frames: ReplayFrame[]; t: number; t0: number; t1: number; keyT: number; goal: boolean; endX: number } | null = null
   private finished = false
   private lastIntent: FrameIntent | null = null
+  /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
+  private inputRec = new InputRecorder()
+  private assistText: Phaser.GameObjects.Text | null = null
   private paused = false
   private auto: AutopilotState | null = null
   private kits!: { hero: KitColors; opp: KitColors; heroGk: KitColors; oppGk: KitColors }
@@ -278,6 +285,8 @@ export class MatchScene extends Phaser.Scene {
     this.passLineX = null
     this.lastKeyT = -1
     this.windText = null
+    this.assistText = null
+    this.inputRec = new InputRecorder()
     this.ring2 = null
     this.paused = false
   }
@@ -759,6 +768,9 @@ export class MatchScene extends Phaser.Scene {
     }
     this.promptText.setText(this.data0.highlight.scenario.prompt)
     this.promptT = 0
+    // Aim-assist level and its rating/XP multiplier (less assist, more reward).
+    this.assistText = this.text(10, '#c9d6e8', '800').setOrigin(1, 0.5)
+    this.assistText.setText(`${this.s[`aim_${this.rt.assist}`]} · ×${ASSIST_REWARD[this.rt.assist].toFixed(2)} XP`)
 
     const h = this.data0.highlight
     const heroName = opts.teamNames?.hero ?? (h.side === 'home' ? 'HOME' : 'AWAY')
@@ -819,6 +831,7 @@ export class MatchScene extends Phaser.Scene {
     const bwMax = w - 16 * u - bx - reserve
     this.bar = { x: bx, y: top + 17 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
     this.windText?.setPosition(w - 12 * u, top + 20 * u)
+    this.assistText?.setPosition(w - 12 * u, top + row1 + row2 / 2)
     this.promptText.setPosition(w / 2, top + row1 + row2 / 2 - 2 * u)
     this.focusText.setPosition(w / 2, top + row1 + row2 / 2)
     this.bannerText.setPosition(w / 2, this.hudTop + vh * 0.3)
@@ -853,6 +866,7 @@ export class MatchScene extends Phaser.Scene {
       ballPos: { x: rt.ball.x, y: rt.ball.y },
       heroOnBall: rt.heroOnBall,
       heroIsKeeper: rt.heroIsKeeper,
+      mates: this.matePositions(),
     })
     this.lastIntent = intent
     if (intent.any) this.sfx.unlock()
@@ -866,12 +880,11 @@ export class MatchScene extends Phaser.Scene {
     } else if (this.mode === 'play') {
       if (this.auto) {
         autopilotStep(rt, this.auto)
+        rt.update(dt)
       } else {
-        rt.setControl({ move: intent.move, sprint: intent.sprint })
-        for (const a of intent.actions) rt.queueAction(a)
-        rt.aim = intent.aim && rt.heroOnBall ? intent.aim : null
+        // Single entry point shared with the replayer: the recording reproduces the moment exactly.
+        applyInput(rt, intent, dt, this.inputRec)
       }
-      rt.update(dt)
       this.handleEvents(rt.drainEvents())
       this.renderLive(dt)
       if (rt.finished) this.afterPlay()
@@ -884,9 +897,26 @@ export class MatchScene extends Phaser.Scene {
     this.updateHud(dt, intent)
   }
 
+  /** Team-mate positions (meter scheme: tapping a team-mate stays a pass). */
+  private matePositions(): { x: number; y: number }[] {
+    const out: { x: number; y: number }[] = []
+    for (const a of this.rt.agents) if (a.team === 'hero' && !a.isHero) out.push(a.pos)
+    return out
+  }
+
   private afterPlay(): void {
     const rt = this.rt
     this.recordThisMoment()
+    // Dev / bug reports: the deterministic input log of the moment just played.
+    if (import.meta.env.DEV) {
+      ;(globalThis as { __spInputLog?: unknown }).__spInputLog = this.inputRec.toRecording(this.data0.highlight.id, {
+        aimAssist: rt.assist,
+        slowMoAim: rt.slowMoAim,
+        difficulty: this.data0.opts.difficulty,
+        weather: this.data0.opts.weather,
+        importance: this.data0.opts.importance,
+      })
+    }
     const r = rt.result
     if (r?.outcome === 'goal' && (!r.scorerId || r.scorerId === rt.hero.id) && !this.data0.replayOnly) {
       this.startCelebration()
@@ -1220,7 +1250,7 @@ export class MatchScene extends Phaser.Scene {
       g.strokeEllipse(lp.x, lp.y, 0.9 * PPM, 0.9 * PPM * (shot ? 1 : TILT))
       // Power ring around the hero (red beyond 100%).
       const pw = this.lastIntent?.power ?? pv.power
-      this.drawPowerRing(g, hp.x, hp.y, pw)
+      this.drawPowerRing(g, hp.x, hp.y, pw, this.lastIntent?.oscillating ?? false)
     } else if (rt.heroOnBall && rt.setPiece) {
       // Set piece idle: pulsing reticle in the goal + panic tremble.
       const pan = rt.panicOffset()
@@ -1232,6 +1262,33 @@ export class MatchScene extends Phaser.Scene {
       g.lineBetween(gp.x, gp.y - r * 1.4, gp.x, gp.y + r * 1.4)
     }
     if (!pv && (this.lastIntent?.power ?? 0) > 0 && !rt.heroOnBall) this.drawPowerRing(g, hp.x, hp.y, this.lastIntent!.power)
+    // Vision: the best pass options the hero sees (count/range grow with Vision), when not aiming.
+    if (!pv && getControlPrefs().visionHints) {
+      const ids = rt.passOptions()
+      for (let i = 0; i < ids.length; i++) {
+        const a = this.agentById(ids[i])
+        if (!a) continue
+        const bp = project(a.pos.x, a.pos.y)
+        const r = (0.95 - i * 0.12) * PPM
+        g.lineStyle(0.08 * PPM, 0x5dff8a, 0.75 - i * 0.18)
+        g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT)
+      }
+    }
+    // One-two: the receiver who will return the ball (tap again); solid once requested.
+    const ot = rt.oneTwoHint()
+    if (ot) {
+      const a = this.agentById(ot.id)
+      if (a) {
+        const bp = project(a.pos.x, a.pos.y)
+        const pr = (1.15 + (ot.armed || this.rm ? 0 : Math.sin(this.elapsed * 9) * 0.12)) * PPM
+        g.lineStyle(0.11 * PPM, 0x9fe8ff, ot.armed ? 0.95 : 0.7)
+        g.strokeEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT)
+        if (ot.armed) {
+          g.fillStyle(0x9fe8ff, 0.18)
+          g.fillEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT)
+        }
+      }
+    }
 
     // Header timing ring.
     if (rt.headerChance && hero.state !== 'jump') {
@@ -1258,9 +1315,23 @@ export class MatchScene extends Phaser.Scene {
     }
   }
 
-  private drawPowerRing(g: Phaser.GameObjects.Graphics, x: number, y: number, power: number): void {
+  private agentById(id: string): Agent | undefined {
+    for (const a of this.rt.agents) if (a.id === id) return a
+    return undefined
+  }
+
+  private drawPowerRing(g: Phaser.GameObjects.Graphics, x: number, y: number, power: number, oscillating = false): void {
     if (power <= 0.01) return
     const r = 1.25 * PPM
+    if (oscillating) {
+      // Oscillating meter: mark the sweet spot (85–100%) so the timing target is readable.
+      g.lineStyle(0.3 * PPM, 0xffffff, 0.22)
+      for (let i = 0; i < 6; i++) {
+        const a0 = -Math.PI / 2 + ((0.85 + i * 0.025) / 1.15) * Math.PI * 2
+        const a1 = -Math.PI / 2 + ((0.875 + i * 0.025) / 1.15) * Math.PI * 2
+        g.lineBetween(x + Math.cos(a0) * r, y + Math.sin(a0) * r * TILT, x + Math.cos(a1) * r, y + Math.sin(a1) * r * TILT)
+      }
+    }
     const steps = 48
     const frac = Math.min(1.15, power) / 1.15
     g.lineStyle(0.18 * PPM, 0x000000, 0.35)
@@ -1736,6 +1807,12 @@ export class MatchScene extends Phaser.Scene {
         case 'callForBall':
           this.floatText(this.s.call, rt.hero.pos.x, rt.hero.pos.y, '#ffffff', 0.8, 2.8)
           break
+        case 'oneTwo': {
+          const a = this.agentById(e.by)
+          if (a) this.floatText(this.s.oneTwo, a.pos.x, a.pos.y, '#9fe8ff', 0.9, 2.8)
+          this.sfx.tap(0.6)
+          break
+        }
         case 'offside': {
           const ours = e.team === 'hero'
           if (ours) this.sfx.groan()
