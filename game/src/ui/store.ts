@@ -12,6 +12,7 @@
  *  - Query functions in `data` should read `gameState.value` so they are
  *    reactive when called during render.
  */
+import { DEFAULT_AUDIO_SETTINGS, type AudioSettingsFields } from '../audio/settings'
 import { signal, computed, effect } from '@preact/signals'
 import type {
   AssetDef, AttributeGroup, AttributeKey, CrestSpec, Difficulty, Foot, Formation, GameState,
@@ -736,7 +737,8 @@ export const pendingNav = signal<ScreenId | null>(null)
 export const activeEvent = signal<number | null>(null)
 
 // Settings --------------------------------------------------------------------
-export interface UiSettings extends Settings {
+/** Audio mixer fields (WP-3): `sound` = SFX channel, `music` = music channel, the rest below. */
+export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' | 'music'> {
   reducedMotion: boolean
   highContrast: boolean
   lowFx: boolean
@@ -755,6 +757,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   reducedMotion: false,
   highContrast: false,
   lowFx: false,
+  ...DEFAULT_AUDIO_SETTINGS,
 }
 
 const SETTINGS_KEY = 'starpath.settings.v1'

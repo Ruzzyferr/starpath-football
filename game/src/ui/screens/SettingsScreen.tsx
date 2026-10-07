@@ -4,6 +4,7 @@ import '../../styles/screens/settings.css'
 import { t } from '../../i18n'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
+import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
 import { actions, gameState, navigate, settings, updateSettings } from '../store'
 import { HelpSettings } from '../tutorial/HelpSettings'
 
@@ -28,8 +29,6 @@ function Field({ label, children, hint }: { label: string; children: ComponentCh
     </div>
   )
 }
-
-const pct = (v: number) => `${Math.round(v * 100)}`
 
 export function SettingsScreen() {
   const s = settings.value
@@ -68,8 +67,7 @@ export function SettingsScreen() {
         </Group>
 
         <Group title={t('settings.sections.audio')} icon="speaker">
-          <Slider label={t('settings.sound')} value={Math.round(s.sound * 100)} min={0} max={100} step={5} onChange={(v) => updateSettings({ sound: v / 100 })} format={(v) => pct(v / 100)} id="set-sound" />
-          <Slider label={t('settings.music')} value={Math.round(s.music * 100)} min={0} max={100} step={5} onChange={(v) => updateSettings({ music: v / 100 })} format={(v) => pct(v / 100)} id="set-music" />
+          <AudioMixerPanel />
           <Switch label={t('settings.vibration')} desc={t('settings.vibrationDesc')} checked={s.vibration} onChange={(vibration) => updateSettings({ vibration })} />
         </Group>
 

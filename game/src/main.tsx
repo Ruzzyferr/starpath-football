@@ -7,6 +7,7 @@ import { App } from './ui/App'
 import { bindSettingsToDocument } from './ui/store'
 import { installRealBackend } from './ui/backend'
 import { initPlatform } from './platform'
+import { installAudioDirector } from './audio/director'
 
 /**
  * Backend selection: the real simulation by default; the mock backend (UI
@@ -22,6 +23,8 @@ async function boot(): Promise<void> {
   }
   bindSettingsToDocument()
   await initPlatform()
+  // After initPlatform so the AudioContext is tracked for background suspend.
+  installAudioDirector()
   const root = document.getElementById('app')
   if (root) render(<App />, root)
 }

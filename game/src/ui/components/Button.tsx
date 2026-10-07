@@ -1,6 +1,7 @@
 import type { ComponentChildren, JSX } from 'preact'
 import { Icon, type IconName } from '../icons'
 import { haptic, type HapticKind } from '../haptics'
+import { sfx, type UiSound } from '../../audio'
 
 export type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger' | 'gold'
 export type ButtonSize = 'sm' | 'md' | 'lg'
@@ -13,6 +14,8 @@ export interface ButtonProps extends Omit<JSX.HTMLAttributes<HTMLButtonElement>,
   block?: boolean
   loading?: boolean
   haptic?: HapticKind | false
+  /** UI sound on press (default: confirm for primary/gold, tap otherwise). */
+  sound?: UiSound | false
   disabled?: boolean
   type?: 'button' | 'submit' | 'reset'
   children?: ComponentChildren
@@ -23,7 +26,7 @@ export interface ButtonProps extends Omit<JSX.HTMLAttributes<HTMLButtonElement>,
  * Presses translate 3px down and the bevel shrinks (transform only).
  */
 export function Button({
-  variant = 'secondary', size = 'md', icon, iconRight, block, loading, haptic: hk = 'tap',
+  variant = 'secondary', size = 'md', icon, iconRight, block, loading, haptic: hk = 'tap', sound,
   class: cls, children, onClick, type = 'button', disabled, ...rest
 }: ButtonProps) {
   const classes = ['btn', `btn-${variant}`, `btn-${size}`, block ? 'btn-block' : '', loading ? 'is-loading' : '', cls ?? '']
@@ -37,6 +40,8 @@ export function Button({
       aria-busy={loading || undefined}
       onClick={(e) => {
         if (hk) haptic(hk)
+        const snd = sound ?? (variant === 'primary' || variant === 'gold' ? 'confirm' : 'tap')
+        if (snd) sfx(snd)
         onClick?.(e)
       }}
       {...rest}
@@ -66,6 +71,7 @@ export function IconButton({ icon, label, variant = 'ghost', badge, size = 22, c
       title={label}
       onClick={(e) => {
         haptic('tap')
+        sfx(icon === 'arrow-left' || icon === 'close' ? 'back' : 'tap')
         onClick?.(e)
       }}
       {...rest}

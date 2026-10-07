@@ -2,6 +2,7 @@ import { signal } from '@preact/signals'
 import { t } from '../../i18n'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
+import { sfx } from '../../audio'
 
 export type ToastKind = 'info' | 'success' | 'warning' | 'error' | 'reward'
 export interface ToastItem {
@@ -21,6 +22,7 @@ export function toast(text: string, kind: ToastKind = 'info', icon?: IconName, m
   toasts.value = [...toasts.value.slice(-3), { id, kind, text, icon }]
   if (kind === 'success' || kind === 'reward') haptic('success')
   else if (kind === 'error') haptic('error')
+  sfx(kind === 'success' ? 'success' : kind === 'error' ? 'error' : kind === 'reward' ? 'perk' : 'notify')
   setTimeout(() => dismiss(id), ms)
 }
 

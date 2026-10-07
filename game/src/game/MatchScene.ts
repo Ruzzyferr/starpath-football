@@ -950,7 +950,7 @@ export class MatchScene extends Phaser.Scene {
       }
       switch (e.type) {
         case 'kick': {
-          this.sfx.kick(e.power)
+          this.sfx.kick(e.power, e.kick)
           const p = project(e.x, e.y)
           this.grassFx.explode(e.hero ? 10 : 5, p.x, p.y)
           if (e.hero) {
@@ -1254,6 +1254,8 @@ export function createMatchGame(parent: HTMLElement): Phaser.Game {
     backgroundColor: '#0b1410',
     banner: false,
     disableContextMenu: true,
+    // All audio goes through the shared engine (src/audio); no second AudioContext.
+    audio: { noAudio: true },
     input: { keyboard: false, mouse: false, touch: false, gamepad: false },
     render: { antialias: true, roundPixels: false, powerPreference: 'high-performance' },
     scale: hiDpi

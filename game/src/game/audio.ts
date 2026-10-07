@@ -1,214 +1,194 @@
 /**
- * Procedural sound effects (WebAudio, no assets): kick thump, referee
- * whistle, net swish, post clang, bounces, tackles and a crowd bed that swells
- * into a roar. All sounds route through a master gain set from settings.sound.
+ * Match/training sound effects (procedural WebAudio, no assets), routed
+ * through the shared audio engine (src/audio): every one-shot goes to the SFX
+ * bus, and the crowd methods drive the shared stadium crowd, so the crowd bed
+ * of a live match carries on seamlessly into a highlight scene.
  *
- * The AudioContext is created lazily and resumed on the first user gesture
- * (browser autoplay policy). Every method is a safe no-op without WebAudio.
+ * The API is unchanged from the scene's point of view. The constructor's
+ * `volume` is kept for compatibility but the level now comes from the mixer
+ * (Settings → SFX / Crowd / Master). Every method is a safe no-op until the
+ * audio context is unlocked by a user gesture.
  */
+import { engine } from '../audio'
+import type { Crowd, Side } from '../audio/crowd'
+import { VoicePool, adEnv, noiseBuffers } from '../audio/synth'
 
-type Ctx = AudioContext
+export type WhistlePattern = 'start' | 'foul' | 'end' | 'half' | 'full'
+export type KickSound = 'pass' | 'lofted' | 'through' | 'shot' | 'chip' | 'cross' | 'header' | 'clear' | 'penalty' | 'freekick' | 'volley'
+
+let leaseSeq = 0
 
 export class Sfx {
-  private ctx: Ctx | null = null
-  private master: GainNode | null = null
-  private noise: AudioBuffer | null = null
-  private crowdGain: GainNode | null = null
-  private crowdFilter: BiquadFilterNode | null = null
-  private crowdSrc: AudioBufferSourceNode | null = null
-  private cheerGain: GainNode | null = null
-  private volume: number
+  private out: GainNode | null = null
+  private ctx: AudioContext | null = null
+  private trim: number
   private disposed = false
+  private readonly lease = `scene-${++leaseSeq}`
+  private leaseCap: number | undefined
+  private held = false
+  private readonly pool = new VoicePool(28)
 
-  /** @param volume 0..1 master volume (settings.sound) */
-  constructor(volume: number) {
-    this.volume = Math.max(0, Math.min(1, volume))
+  /** @param volume kept for API compatibility; the mixer owns levels now. */
+  constructor(volume = 1) {
+    this.trim = volume > 0 ? 1 : 0
+    // Standalone pages (match demo) have no director: make sure gestures unlock.
+    engine.install()
   }
 
-  /** Creates/resumes the context; call from a user gesture. */
+  /** Creates/resumes the shared context; call from a user gesture. */
   unlock(): void {
-    if (this.disposed || this.volume <= 0) return
-    if (!this.ctx) {
-      const AC: typeof AudioContext | undefined =
-        typeof window !== 'undefined' ? window.AudioContext ?? (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext : undefined
-      if (!AC) return
-      try {
-        this.ctx = new AC()
-      } catch {
-        return
-      }
-      this.master = this.ctx.createGain()
-      this.master.gain.value = this.volume * 0.9
-      // Gentle limiter so roars + kicks never clip.
-      const comp = this.ctx.createDynamicsCompressor()
-      comp.threshold.value = -10
-      comp.ratio.value = 6
-      this.master.connect(comp).connect(this.ctx.destination)
-      this.noise = this.makeNoise(2)
-      this.startCrowd()
+    if (this.disposed) return
+    engine.unlock()
+    const bus = engine.sfxBus()
+    if (bus && !this.out) {
+      this.ctx = bus.ctx
+      this.out = bus.ctx.createGain()
+      this.out.gain.value = this.trim
+      this.out.connect(bus.out)
     }
-    if (this.ctx.state === 'suspended') void this.ctx.resume().catch(() => undefined)
+    if (!this.held) {
+      this.held = true
+      engine.holdCrowd(this.lease, this.leaseCap !== undefined ? { capacity: this.leaseCap } : {})
+    }
   }
 
+  /** Local trim on top of the mixer (0 silences this scene only). */
   setVolume(v: number): void {
-    this.volume = Math.max(0, Math.min(1, v))
-    if (this.master && this.ctx) this.master.gain.setTargetAtTime(this.volume * 0.9, this.ctx.currentTime, 0.05)
+    this.trim = Math.max(0, Math.min(1, v)) > 0 ? 1 : 0
+    if (this.out && this.ctx) this.out.gain.setTargetAtTime(this.trim, this.ctx.currentTime, 0.05)
   }
 
   dispose(): void {
     this.disposed = true
+    if (this.held) engine.releaseCrowd(this.lease)
+    this.held = false
     try {
-      this.crowdSrc?.stop()
+      this.out?.disconnect()
     } catch {
-      /* already stopped */
+      /* already */
     }
-    void this.ctx?.close().catch(() => undefined)
-    this.ctx = null
+    this.out = null
   }
 
   private get ready(): boolean {
-    return !!this.ctx && !!this.master && this.ctx.state === 'running' && this.volume > 0
+    return !this.disposed && !!this.ctx && !!this.out && this.ctx.state === 'running' && this.trim > 0
   }
 
-  private makeNoise(seconds: number): AudioBuffer {
-    const ctx = this.ctx!
-    const buf = ctx.createBuffer(1, Math.floor(ctx.sampleRate * seconds), ctx.sampleRate)
-    const d = buf.getChannelData(0)
-    // Deterministic LCG noise (no Math.random needed).
-    let s = 1234567
-    for (let i = 0; i < d.length; i++) {
-      s = (s * 1664525 + 1013904223) >>> 0
-      d[i] = (s / 4294967296) * 2 - 1
-    }
-    return buf
+  private voice(dur: number): boolean {
+    return this.pool.take(this.ctx!.currentTime, this.ctx!.currentTime + dur)
   }
 
-  private noiseSrc(): AudioBufferSourceNode {
+  private noise(): AudioBufferSourceNode {
     const src = this.ctx!.createBufferSource()
-    src.buffer = this.noise
+    src.buffer = noiseBuffers(this.ctx!).white
     src.loop = true
     return src
   }
 
+  private startNoise(src: AudioBufferSourceNode, t: number, dur: number): void {
+    src.start(t, (t * 0.731) % 1.5)
+    src.stop(t + dur)
+  }
+
   private env(g: GainNode, t: number, peak: number, attack: number, decay: number): void {
-    g.gain.setValueAtTime(0.0001, t)
-    g.gain.exponentialRampToValueAtTime(Math.max(0.0002, peak), t + attack)
-    g.gain.exponentialRampToValueAtTime(0.0001, t + attack + decay)
+    adEnv(g.gain, t, peak, attack, decay)
   }
 
   // ───────────────────────── Crowd ─────────────────────────
 
-  private startCrowd(): void {
-    const ctx = this.ctx!
-    // Brown-ish murmur: noise → lowpass → bandpass formant.
-    const src = this.noiseSrc()
-    const lp = ctx.createBiquadFilter()
-    lp.type = 'lowpass'
-    lp.frequency.value = 700
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.frequency.value = 450
-    bp.Q.value = 0.6
-    const g = ctx.createGain()
-    g.gain.value = 0.13
-    src.connect(lp).connect(bp).connect(g).connect(this.master!)
-    // Cheer layer (brighter), silent until a roar.
-    const src2 = this.noiseSrc()
-    const bp2 = ctx.createBiquadFilter()
-    bp2.type = 'bandpass'
-    bp2.frequency.value = 1300
-    bp2.Q.value = 0.8
-    const g2 = ctx.createGain()
-    g2.gain.value = 0.0001
-    src2.connect(bp2).connect(g2).connect(this.master!)
-    src.start()
-    src2.start(ctx.currentTime + 0.37)
-    this.crowdSrc = src
-    this.crowdGain = g
-    this.crowdFilter = lp
-    this.cheerGain = g2
+  private crowd(fn: (c: Crowd, hero: Side) => void): void {
+    engine.withCrowd((c) => fn(c, c.state.heroSide))
   }
 
   /** Sets the ambient crowd tension 0..1 (e.g. near goal, bullet time). */
   crowdTension(v: number): void {
-    if (!this.ready || !this.crowdGain || !this.crowdFilter) return
-    const t = this.ctx!.currentTime
-    const k = Math.max(0, Math.min(1, v))
-    this.crowdGain.gain.setTargetAtTime(0.1 + k * 0.14, t, 0.4)
-    this.crowdFilter.frequency.setTargetAtTime(600 + k * 900, t, 0.4)
+    engine.setTension(v)
   }
 
-  /** Big swell (goal) or smaller "ooh" (near miss). */
+  /** Big eruption (≥ 0.9: the hero's team scored) or a smaller excited swell. */
   roar(intensity = 1): void {
-    if (!this.ready || !this.cheerGain || !this.crowdGain) return
-    const t = this.ctx!.currentTime
-    const peak = 0.12 + 0.55 * intensity
-    this.cheerGain.gain.cancelScheduledValues(t)
-    this.cheerGain.gain.setValueAtTime(Math.max(0.0001, this.cheerGain.gain.value), t)
-    this.cheerGain.gain.exponentialRampToValueAtTime(peak, t + 0.25)
-    this.cheerGain.gain.exponentialRampToValueAtTime(peak * 0.6, t + 1.6)
-    this.cheerGain.gain.exponentialRampToValueAtTime(0.0001, t + 4.5)
-    this.crowdGain.gain.setTargetAtTime(0.13 + 0.25 * intensity, t, 0.15)
-    this.crowdGain.gain.setTargetAtTime(0.13, t + 2.5, 1)
+    this.crowd((c, hero) => {
+      if (intensity >= 0.9) c.goal(hero)
+      else c.chance(hero, Math.min(1, intensity * 1.6))
+    })
   }
 
-  /** Disappointed groan. */
+  /** Disappointed groan from the hero's fans (the other end cheers a goal). */
   groan(): void {
-    if (!this.ready) return
-    const ctx = this.ctx!
-    const t = ctx.currentTime
-    const src = this.noiseSrc()
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.Q.value = 1.2
-    bp.frequency.setValueAtTime(700, t)
-    bp.frequency.exponentialRampToValueAtTime(260, t + 1.2)
-    const g = ctx.createGain()
-    this.env(g, t, 0.28, 0.12, 1.3)
-    src.connect(bp).connect(g).connect(this.master!)
-    src.start(t)
-    src.stop(t + 1.6)
+    this.crowd((c, hero) => c.groan(hero))
+  }
+
+  /** Explicit, side-aware crowd reactions for the scene (team relative to the hero). */
+  crowdGoal(team: 'hero' | 'opp'): void {
+    this.crowd((c, hero) => c.goal(team === 'hero' ? hero : hero === 'home' ? 'away' : 'home'))
+  }
+
+  crowdOoh(team: 'hero' | 'opp' = 'hero'): void {
+    this.crowd((c, hero) => c.nearMiss(team === 'hero' ? hero : hero === 'home' ? 'away' : 'home'))
+  }
+
+  crowdFoul(team: 'hero' | 'opp', card: 'yellow' | 'red' | null = null): void {
+    this.crowd((c, hero) => c.foul(team === 'hero' ? hero : hero === 'home' ? 'away' : 'home', card))
+  }
+
+  /** Sets the crowd bed directly (0 = silent training ground, 1 = full stadium). */
+  ambience(level: number): void {
+    const k = Math.max(0, Math.min(1, level))
+    // Training ground: a handful of onlookers; full = a big stadium.
+    this.leaseCap = Math.round(40 + Math.pow(k, 2) * 60000)
+    if (this.held) {
+      if (k <= 0.001) engine.releaseCrowd(this.lease)
+      else engine.holdCrowd(this.lease, { capacity: this.leaseCap })
+    }
   }
 
   // ───────────────────────── One-shots ─────────────────────────
 
-  /** Boot on ball: low sine drop + short noise click. */
-  kick(power = 0.7): void {
-    if (!this.ready) return
+  /** Boot on ball; `kind` shapes the contact (driven shot vs. soft pass vs. scooped chip). */
+  kick(power = 0.7, kind: KickSound = 'shot'): void {
+    if (!this.ready || !this.voice(0.25)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
     const p = Math.max(0.15, Math.min(1.2, power))
+    const shot = kind === 'shot' || kind === 'penalty' || kind === 'freekick' || kind === 'volley' || kind === 'clear'
+    const soft = kind === 'pass' || kind === 'through'
+    const chip = kind === 'chip' || kind === 'lofted' || kind === 'cross'
+    // Body: low sine drop (deeper and longer for driven shots).
     const o = ctx.createOscillator()
     o.type = 'sine'
-    o.frequency.setValueAtTime(170 + p * 60, t)
-    o.frequency.exponentialRampToValueAtTime(48, t + 0.13)
+    o.frequency.setValueAtTime((shot ? 150 : chip ? 210 : 190) + p * 60, t)
+    o.frequency.exponentialRampToValueAtTime(shot ? 44 : 60, t + (shot ? 0.14 : 0.09))
     const g = ctx.createGain()
-    this.env(g, t, 0.55 * p + 0.15, 0.004, 0.16)
-    o.connect(g).connect(this.master!)
+    this.env(g, t, (shot ? 0.65 : soft ? 0.38 : 0.45) * p + 0.12, 0.003, shot ? 0.2 : 0.12)
+    o.connect(g).connect(this.out!)
     o.start(t)
-    o.stop(t + 0.2)
-    const n = this.noiseSrc()
-    const hp = ctx.createBiquadFilter()
-    hp.type = 'bandpass'
-    hp.frequency.value = 1800
-    hp.Q.value = 0.7
+    o.stop(t + 0.25)
+    // Leather slap: brighter and sharper on a strike, a soft brush for chips.
+    const n = this.noise()
+    const bp = ctx.createBiquadFilter()
+    bp.type = 'bandpass'
+    bp.frequency.value = shot ? 2300 : chip ? 1100 : 1700
+    bp.Q.value = chip ? 0.9 : 0.7
     const g2 = ctx.createGain()
-    this.env(g2, t, 0.22 * p, 0.002, 0.045)
-    n.connect(hp).connect(g2).connect(this.master!)
-    n.start(t)
-    n.stop(t + 0.08)
-  }
-
-  /** Sets the crowd bed level directly (0 = silent training ground, 1 = full stadium). */
-  ambience(level: number): void {
-    if (!this.ready || !this.crowdGain) return
-    const k = Math.max(0, Math.min(1, level))
-    this.crowdGain.gain.setTargetAtTime(Math.max(0.0001, k * 0.13), this.ctx!.currentTime, 0.2)
+    this.env(g2, t, (shot ? 0.34 : chip ? 0.14 : 0.2) * p, chip ? 0.006 : 0.0015, shot ? 0.05 : chip ? 0.07 : 0.04)
+    n.connect(bp).connect(g2).connect(this.out!)
+    this.startNoise(n, t, 0.12)
+    // A driven shot has a crack of air behind it.
+    if (shot && p > 0.6) {
+      const n2 = this.noise()
+      const hp = ctx.createBiquadFilter()
+      hp.type = 'highpass'
+      hp.frequency.setValueAtTime(5000, t)
+      const g3 = ctx.createGain()
+      this.env(g3, t + 0.01, 0.06 * p, 0.01, 0.18)
+      n2.connect(hp).connect(g3).connect(this.out!)
+      this.startNoise(n2, t, 0.25)
+    }
   }
 
   /** Electronic fitness-test beep (higher pitch on later levels). */
   beep(level = 1): void {
-    if (!this.ready) return
+    if (!this.ready || !this.voice(0.2)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
     const o = ctx.createOscillator()
@@ -219,14 +199,14 @@ export class Sfx {
     lp.frequency.value = 2400
     const g = ctx.createGain()
     this.env(g, t, 0.12, 0.005, 0.16)
-    o.connect(lp).connect(g).connect(this.master!)
+    o.connect(lp).connect(g).connect(this.out!)
     o.start(t)
     o.stop(t + 0.2)
   }
 
   /** Light dribble touch / bounce. */
   tap(strength = 0.3): void {
-    if (!this.ready) return
+    if (!this.ready || !this.voice(0.1)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
     const o = ctx.createOscillator()
@@ -235,26 +215,45 @@ export class Sfx {
     o.frequency.exponentialRampToValueAtTime(60, t + 0.06)
     const g = ctx.createGain()
     this.env(g, t, 0.18 * strength + 0.02, 0.003, 0.07)
-    o.connect(g).connect(this.master!)
+    o.connect(g).connect(this.out!)
     o.start(t)
     o.stop(t + 0.1)
   }
 
-  /** Referee whistle: two detuned square-ish tones with a pea trill. */
+  /** Referee whistle: `long` = end of play. */
   whistle(long = false): void {
-    if (!this.ready) return
+    this.whistlePattern(long ? 'end' : 'start')
+  }
+
+  /**
+   * Referee whistle patterns: start (one pip), foul (sharp double chirp),
+   * end (one long), half (two long), full (short-short-long).
+   */
+  whistlePattern(p: WhistlePattern): void {
+    const blasts: Record<WhistlePattern, readonly (readonly [number, number])[]> = {
+      start: [[0, 0.28]],
+      foul: [[0, 0.12], [0.16, 0.22]],
+      end: [[0, 0.85]],
+      half: [[0, 0.55], [0.7, 0.75]],
+      full: [[0, 0.3], [0.42, 0.3], [0.84, 1.1]],
+    }
+    for (const [at, dur] of blasts[p]) this.blast(at, dur)
+  }
+
+  private blast(at: number, dur: number): void {
+    if (!this.ready || !this.voice(dur + 0.05)) return
     const ctx = this.ctx!
-    const t = ctx.currentTime
-    const dur = long ? 0.85 : 0.28
+    const t = ctx.currentTime + at
     const g = ctx.createGain()
     g.gain.setValueAtTime(0.0001, t)
     g.gain.exponentialRampToValueAtTime(0.16, t + 0.02)
-    g.gain.setValueAtTime(0.16, t + dur - 0.06)
+    g.gain.setValueAtTime(0.16, t + Math.max(0.03, dur - 0.06))
     g.gain.exponentialRampToValueAtTime(0.0001, t + dur)
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.frequency.value = 2900
     bp.Q.value = 4
+    // Pea rattle: a fast frequency wobble.
     const lfo = ctx.createOscillator()
     lfo.frequency.value = 32
     const lfoG = ctx.createGain()
@@ -269,17 +268,17 @@ export class Sfx {
       o.start(t)
       o.stop(t + dur + 0.02)
     }
-    bp.connect(g).connect(this.master!)
+    bp.connect(g).connect(this.out!)
     lfo.start(t)
     lfo.stop(t + dur + 0.02)
   }
 
   /** Net ripple swish. */
   net(speed = 15): void {
-    if (!this.ready) return
+    if (!this.ready || !this.voice(0.5)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
-    const n = this.noiseSrc()
+    const n = this.noise()
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.Q.value = 1.5
@@ -287,69 +286,76 @@ export class Sfx {
     bp.frequency.exponentialRampToValueAtTime(1400, t + 0.35)
     const g = ctx.createGain()
     this.env(g, t, Math.min(0.45, 0.15 + speed * 0.012), 0.01, 0.42)
-    n.connect(bp).connect(g).connect(this.master!)
-    n.start(t)
-    n.stop(t + 0.5)
+    n.connect(bp).connect(g).connect(this.out!)
+    this.startNoise(n, t, 0.5)
   }
 
-  /** Metallic post/bar clang (inharmonic partials). */
+  /**
+   * Post/bar: a glancing touch is a dull "tonk"; a full strike rings the
+   * frame (inharmonic partials, long decay). The crowd goes "ooh".
+   */
   clang(speed = 20): void {
-    if (!this.ready) return
-    const ctx = this.ctx!
-    const t = ctx.currentTime
-    const amp = Math.min(0.35, 0.12 + speed * 0.008)
-    for (const [f, a, d] of [[523, 1, 0.9], [1247, 0.6, 0.6], [2094, 0.4, 0.4], [3301, 0.25, 0.25]] as const) {
-      const o = ctx.createOscillator()
-      o.type = 'sine'
-      o.frequency.value = f
-      const g = ctx.createGain()
-      this.env(g, t, amp * a, 0.002, d)
-      o.connect(g).connect(this.master!)
-      o.start(t)
-      o.stop(t + d + 0.05)
+    if (this.ready && this.voice(1.6)) {
+      const ctx = this.ctx!
+      const t = ctx.currentTime
+      const full = speed >= 16
+      const amp = Math.min(0.35, 0.12 + speed * 0.008)
+      const partials: readonly (readonly [number, number, number])[] = full
+        ? [[523, 1, 1.4], [1247, 0.6, 0.9], [2094, 0.45, 0.6], [3301, 0.3, 0.35], [4410, 0.15, 0.2]]
+        : [[412, 1, 0.35], [1010, 0.4, 0.2], [1880, 0.15, 0.1]]
+      for (const [f, a, d] of partials) {
+        const o = ctx.createOscillator()
+        o.type = 'sine'
+        o.frequency.value = f
+        const g = ctx.createGain()
+        this.env(g, t, amp * a, 0.002, d)
+        o.connect(g).connect(this.out!)
+        o.start(t)
+        o.stop(t + d + 0.05)
+      }
+      this.kick(full ? 0.6 : 0.35, 'pass')
     }
-    this.kick(0.5)
+    this.crowd((c, hero) => c.nearMiss(hero))
   }
 
   /** Slide / body contact scuff. */
   scuff(): void {
-    if (!this.ready) return
+    if (!this.ready || !this.voice(0.4)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
-    const n = this.noiseSrc()
+    const n = this.noise()
     const lp = ctx.createBiquadFilter()
     lp.type = 'lowpass'
     lp.frequency.value = 900
     const g = ctx.createGain()
     this.env(g, t, 0.25, 0.02, 0.3)
-    n.connect(lp).connect(g).connect(this.master!)
-    n.start(t)
-    n.stop(t + 0.4)
+    n.connect(lp).connect(g).connect(this.out!)
+    this.startNoise(n, t, 0.4)
   }
 
   /** Keeper glove catch: soft thud + slap. */
   glove(): void {
     if (!this.ready) return
     this.tap(1)
+    if (!this.voice(0.12)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
-    const n = this.noiseSrc()
+    const n = this.noise()
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.frequency.value = 900
     const g = ctx.createGain()
     this.env(g, t, 0.3, 0.002, 0.09)
-    n.connect(bp).connect(g).connect(this.master!)
-    n.start(t)
-    n.stop(t + 0.12)
+    n.connect(bp).connect(g).connect(this.out!)
+    this.startNoise(n, t, 0.12)
   }
 
-  /** Short UI/bullet-time "whoosh" (pitch sweep). */
+  /** Short bullet-time "whoosh" (pitch sweep). */
   whoosh(down = true): void {
-    if (!this.ready) return
+    if (!this.ready || !this.voice(0.4)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
-    const n = this.noiseSrc()
+    const n = this.noise()
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
     bp.Q.value = 2
@@ -357,8 +363,7 @@ export class Sfx {
     bp.frequency.exponentialRampToValueAtTime(down ? 300 : 1600, t + 0.3)
     const g = ctx.createGain()
     this.env(g, t, 0.12, 0.05, 0.3)
-    n.connect(bp).connect(g).connect(this.master!)
-    n.start(t)
-    n.stop(t + 0.4)
+    n.connect(bp).connect(g).connect(this.out!)
+    this.startNoise(n, t, 0.4)
   }
 }

@@ -3,6 +3,7 @@ import type { ComponentChildren } from 'preact'
 import { t } from '../../i18n'
 import { Icon } from '../icons'
 import { haptic } from '../haptics'
+import { sfx } from '../../audio'
 
 export function Slider({
   label, value, min, max, step = 1, onChange, format, hint, marker, markerLabel, id,
@@ -78,6 +79,7 @@ export function Switch({ checked, onChange, label, desc }: { checked: boolean; o
         aria-checked={checked}
         onChange={(e) => {
           haptic('select')
+          sfx('toggle')
           onChange((e.currentTarget as HTMLInputElement).checked)
         }}
       />
@@ -97,6 +99,7 @@ export function Segmented<K extends string | number>({ options, value, onChange,
           class={`segmented-opt${o.id === value ? ' is-active' : ''}`}
           onClick={() => {
             haptic('select')
+            sfx('select')
             onChange(o.id)
           }}
         >
