@@ -21,14 +21,21 @@ import { LAST_MATCH_FLAG, heroGoalKinds, updateRecordsAfterMatch, type MatchFeat
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
 import { deriveAttributes } from '../world/attributes'
-import { finalRound, isFinalFixture, isKnockoutFixture } from '../world/competitions'
-import { positionFamiliarity } from '../world/formations'
-import { playerDisplayName, rateLineup, selectLineup } from '../world/queries'
+import { addGoalCandidate, describeGoal } from '../world/awards'
+import { aggregateBefore, finalRound, isDecisiveFixture, isFinalFixture, isKnockoutFixture, isNeutralFixture } from '../world/competitions'
+import { positionFamiliarity, selectLineupFromPlayers } from '../world/formations'
+import { teamName } from '../world/national'
+import { penaltyShootout, QUICKSIM_TUNING } from '../world/quickSim'
+import { playerDisplayName, rateLineup, squadPlayers } from '../world/queries'
 import { recordFixtureResult } from '../world/season'
+import type { GoalCandidate } from '../world/worldTypes'
 import { rollEvents } from './eventsAdapter'
 import {
-  GFLAG, heroAvailable, heroClub, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
+  GFLAG, heroAvailableFor, heroClub, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
+import {
+  applyNationalMatchToHero, callupFor, nationalKits, nationalTeamSource, teamReputation, type MatchTeamSource,
+} from './national'
 
 /** Id of the hero inside MatchSetup / scorers. */
 export const HERO_ID = 'hero'
@@ -44,6 +51,8 @@ interface ActiveMatchBlob {
   starts: boolean
   /** MatchSim.serialize() once started. */
   sim?: string
+  /** International: the hero's national team id. */
+  national?: string
 }
 
 /** What the UI needs to start the hero's match. */
@@ -96,10 +105,23 @@ function teamMorale(avgMorale: number): number {
   return clamp(0.85 + (avgMorale / 100) * 0.3, 0.8, 1.2)
 }
 
+/** A club as a match side. */
+function clubSource(state: GameState, club: Club): MatchTeamSource {
+  return {
+    id: club.id, name: club.name, shortName: club.shortName, colors: club.colors, awayColors: club.awayColors, formation: club.formation,
+    style: club.style, players: squadPlayers(state.world, club.id), countryId: club.countryId, reputation: club.reputation, city: club.city,
+  }
+}
+
 /** Build a MatchTeam; for the hero's club the hero takes the best-fitting slot (or a bench seat). Exported for testimonial matches (sim/game/retirement). */
 export function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
+  return buildTeamFrom(state, clubSource(state, club), heroSide, starts, importance)
+}
+
+/** Build a MatchTeam from any side (club or national team, see national.ts). */
+function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
   const w = state.world
-  const lineup = selectLineup(w, club.id, club.formation)
+  const lineup = selectLineupFromPlayers(club.players, club.formation)
   const ids = [...lineup.playerIds]
   const slots = [...lineup.slots]
   const bench = [...lineup.bench]
@@ -132,8 +154,10 @@ export function buildTeam(state: GameState, club: Club, heroSide: boolean, start
     used.add(n)
     return n
   }
-  const xi: MatchPlayer[] = ids.map((id, i) => (id === HERO_ID ? heroPlayer(slots[i]) : npcToMatchPlayer(w.players[id], slots[i], nextNumber(), rel(id))))
-  let benchPlayers: MatchPlayer[] = bench.slice(0, 7).map((id) => npcToMatchPlayer(w.players[id], w.players[id].position, nextNumber(), rel(id)))
+  const byId = new Map(club.players.map((p) => [p.id, p]))
+  const npc = (id: string): NpcPlayer => w.players[id] ?? (byId.get(id) as NpcPlayer)
+  const xi: MatchPlayer[] = ids.map((id, i) => (id === HERO_ID ? heroPlayer(slots[i]) : npcToMatchPlayer(npc(id), slots[i], nextNumber(), rel(id))))
+  let benchPlayers: MatchPlayer[] = bench.slice(0, 7).map((id) => npcToMatchPlayer(npc(id), npc(id).position, nextNumber(), rel(id)))
   if (heroSide && !starts) benchPlayers = [heroPlayer(hero.position), ...benchPlayers.slice(0, 6)]
   return {
     id: club.id, name: club.name, shortName: club.shortName, colors: club.colors, formation: club.formation, style: club.style,
@@ -141,8 +165,13 @@ export function buildTeam(state: GameState, club: Club, heroSide: boolean, start
   }
 }
 
-function importanceOf(comp: Competition, fixture: Fixture, home: Club, away: Club): number {
+function importanceOf(comp: Competition, fixture: Fixture, home: Pick<Club, 'city'>, away: Pick<Club, 'city'>): number {
   if (isFinalFixture(comp, fixture)) return 1
+  if (comp.type === 'international') {
+    const f = comp.meta?.format
+    return f === 'nt_youth' ? 0.45 : f === 'nt_friendly' ? 0.5 : f === 'nt_qual' ? 0.7 : isKnockoutFixture(comp, fixture) ? 0.95 : 0.85
+  }
+  if (comp.meta?.format === 'playoff') return 0.9
   let imp = comp.type === 'league' ? 0.4 : comp.type === 'cup' ? 0.4 + 0.5 * (fixture.round / Math.max(1, finalRound(comp))) : 0.7
   if (home.city === away.city) imp += 0.3 // derby
   return clamp(imp, 0, 1)
@@ -156,40 +185,54 @@ function importanceOf(comp: Competition, fixture: Fixture, home: Club, away: Clu
  */
 export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
   const ref = unplayedHeroFixtureToday(state)
-  if (!ref || !heroAvailable(state)) return null
+  if (!ref || !heroAvailableFor(state, ref)) return null
+  const national = ref.national ? state.world.national?.hero.teamId ?? null : null
   const club = heroClub(state)
-  if (!club) return null
+  if (!national && !club) return null
+  const ownId = national ?? (club as Club).id
   const { competition, fixture } = ref
-  const isHome = fixture.homeId === club.id
+  const isHome = fixture.homeId === ownId
   const existing = readJson<ActiveMatchBlob | null>(state.life, GFLAG.match, null)
   if (existing && existing.fixtureId === fixture.id) {
     state.activeMatchId = fixture.id
     return { setup: existing.setup, opts: existing.opts, fixture, competition, starts: existing.starts, isHome }
   }
   return withRng(state, (rng) => {
-    const sel = rollSelection(rng, state.hero, state.life)
-    for (const l of sel.lines) log(state, [], l, 'career', '🪑')
-    const home = state.world.clubs[fixture.homeId]
-    const away = state.world.clubs[fixture.awayId]
+    let starts: boolean
+    if (national) {
+      // National coach: the higher the call-up meter, the likelier a start.
+      const m = callupFor(state, state.world.national?.hero.level ?? 'A').meter
+      starts = m >= 72 || rng.chance(0.5 + (m - 55) / 50)
+      log(state, [], starts ? lt('Milli takımda ilk 11\'desin.', 'You start for your country.') : lt('Milli maçta yedek kulübesindesin.', 'You are on the bench for your country.'), 'career', '🎽')
+    } else {
+      const roll = rollSelection(rng, state.hero, state.life)
+      for (const l of roll.lines) log(state, [], l, 'career', '🪑')
+      starts = roll.starts
+    }
+    const sel = { starts }
+    const home = national ? nationalTeamSource(state, fixture.homeId) : clubSource(state, state.world.clubs[fixture.homeId])
+    const away = national ? nationalTeamSource(state, fixture.awayId) : clubSource(state, state.world.clubs[fixture.awayId])
+    if (national) away.colors = nationalKits(home, away).away
     const mental = mentalMatchModifier(state.life)
     const base = DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
     const importance = importanceOf(competition, fixture, home, away)
     const setup: MatchSetup = {
-      home: buildTeam(state, home, isHome, sel.starts, importance),
-      away: buildTeam(state, away, !isHome, sel.starts, importance),
+      home: buildTeamFrom(state, home, isHome, sel.starts, importance),
+      away: buildTeamFrom(state, away, !isHome, sel.starts, importance),
       seed: rng.nextUint(),
       competitionName: competition.name.en,
       weather: rollWeather(rng, home.countryId, fixture.week),
       heroSide: isHome ? 'home' : 'away',
       heroOnBench: !sel.starts,
-      knockout: isKnockoutFixture(competition, fixture),
-      neutralVenue: isFinalFixture(competition, fixture),
+      // Two-legged ties are settled on aggregate after the second leg (see finishHeroMatch).
+      knockout: isDecisiveFixture(competition, fixture),
+      neutralVenue: isNeutralFixture(competition, fixture),
       importance,
       difficulty: clamp(base * (1 + (1 - mental) * 0.5), 0.8, 1.4),
       ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
     }
     const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
-    writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts } satisfies ActiveMatchBlob)
+    writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts, ...(national ? { national } : {}) } satisfies ActiveMatchBlob)
     state.activeMatchId = fixture.id
     return { setup, opts, fixture, competition, starts: sel.starts, isHome }
   })
@@ -279,7 +322,22 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       if (p.id === HERO_ID || !p.played || !state.world.players[p.id]) continue
       ratings[p.id] = clamp(6.3 + p.goals * 0.7 + p.assists * 0.4 - (p.red ? 1.5 : 0), 3, 10)
     }
+    const compX = state.world.competitions[blob.compId]
+    const fixtureX = compX?.fixtures.find((f) => f.id === blob.fixtureId)
+    // Assists (Player of the Month / awards) from the goal events, in scorer order.
+    const goalEvs = snap.events.filter((e) => e.type === 'goal')
+    if (goalEvs.length === result.scorers.length && goalEvs.some((e) => e.assistId)) result.assists = goalEvs.map((e) => e.assistId ?? null)
+    // Second leg level on aggregate: extra time and penalties are settled after the live 90'.
+    if (compX && fixtureX?.leg === 2 && settleSecondLeg(rng, compX, fixtureX, result, blob.setup)) {
+      const pf = side === 'home' ? result.penalties?.home ?? 0 : result.penalties?.away ?? 0
+      const pa = side === 'home' ? result.penalties?.away ?? 0 : result.penalties?.home ?? 0
+      const f2 = side === 'home' ? result.home : result.away
+      const a2 = side === 'home' ? result.away : result.home
+      won = f2 > a2 || (f2 === a2 && pf > pa)
+      drew = false
+    }
     recordFixtureResult(state.world, rng, blob.compId, blob.fixtureId, result, ratings)
+    if (compX && fixtureX) nominateHeroGoals(state, compX, fixtureX, snap.events, st.rating)
 
     // ── Hero ──
     const goalEvents = snap.events.filter((e) => e.type === 'goal')
@@ -288,13 +346,36 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
     const injured = snap.events.some((e) => e.type === 'injury' && e.playerId === HERO_ID)
     const opp = side === 'home' ? blob.setup.away : blob.setup.home
     const oppClub = state.world.clubs[opp.id]
+    if (blob.national && compX) {
+      // ── International: caps, goals, national relations (club stats untouched) ──
+      const natLines = applyNationalMatchToHero(state, rng, {
+        teamId: blob.national, oppId: opp.id, comp: compX, rating: st.minutes > 0 ? st.rating : 0, minutes: st.minutes, goals: st.goals,
+        assists: st.assists, won, drew, gf, ga, motm: result.motmId === HERO_ID, injured, importance: blob.setup.importance,
+      })
+      for (const l of natLines) log(state, lines, l, 'match', '🎽')
+      const wkN = weekCounters(state.life)
+      wkN.matches++
+      wkN.minutes += st.minutes
+      if (st.minutes > 0) { wkN.ratingSum += st.rating; wkN.rated++ }
+      wkN.contributions += st.goals + st.assists
+      writeJson(state.life, GFLAG.week, wkN)
+      state.life.flags.last_match_goals = st.goals
+      clearActiveMatch(state)
+      state.calendar.slot = Math.max(state.calendar.slot, 2)
+      const beforeN = state.pendingEvents.length
+      const tagsN = ['post_match', won ? 'match_win' : drew ? 'match_draw' : 'match_loss', 'national_match']
+      if (st.goals > 0) tagsN.push('scored')
+      rollEvents(state, rng, tagsN, 1)
+      if (state.hero.injury && injured) rollEvents(state, rng, ['injury'], 1)
+      return { result, won, drew, goalsFor: gf, goalsAgainst: ga, rating: st.rating, minutes: st.minutes, lines, newEvents: state.pendingEvents.length - beforeN }
+    }
     const input: HeroMatchInput = {
       rating: st.minutes > 0 ? st.rating : 0,
       goals: st.goals, assists: st.assists, minutes: st.minutes, started: blob.starts, won, drew,
       importance: blob.setup.importance, shots: st.shots, shotsOnTarget: st.shotsOnTarget, passes: st.passes,
       passesCompleted: st.passesCompleted, tackles: st.tackles, dribbles: st.dribbles, saves: st.saves,
       cleanSheet: ga === 0, yellow: st.yellow, red: st.red > 0, motm: result.motmId === HERO_ID, injured,
-      isAway: side === 'away', opponentName: opp.name, opponentReputation: oppClub?.reputation ?? 50,
+      isAway: side === 'away', opponentName: opp.name, opponentReputation: oppClub?.reputation ?? teamReputation(state, opp.id),
       assistedBy, assistedTo,
     }
     const applied = applyMatchToHero(state, input, rng)
@@ -343,6 +424,59 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       newEvents: state.pendingEvents.length - before,
     }
   })
+}
+
+/**
+ * Second leg of a two-legged tie that ended level on aggregate after 90':
+ * extra time (a third of the 90-minute goal rate, from both lineups' OVR) and
+ * a penalty shootout. Mutates `result`; returns true when it went beyond 90'.
+ */
+function settleSecondLeg(rng: Rng, comp: Competition, fixture: Fixture, result: MatchResultSummary, setup: MatchSetup): boolean {
+  const agg = aggregateBefore(comp, fixture)
+  if (!agg || result.home + agg.home !== result.away + agg.away || result.penalties) return false
+  const avg = (t: MatchTeam) => t.lineup.reduce((s, p) => s + p.ovr, 0) / Math.max(1, t.lineup.length)
+  const ho = avg(setup.home)
+  const ao = avg(setup.away)
+  const rate = QUICKSIM_TUNING.baseGoals * QUICKSIM_TUNING.extraTimeFraction
+  const eh = rng.poisson(rate * Math.exp(QUICKSIM_TUNING.strengthK * (ho - ao)) * 1.05)
+  const ea = rng.poisson(rate * Math.exp(QUICKSIM_TUNING.strengthK * (ao - ho)) * 0.95)
+  const pick = (t: MatchTeam): string => {
+    const outfield = t.lineup.filter((p) => p.position !== 'GK')
+    return rng.weighted(outfield.length ? outfield : t.lineup, (p) => (['ST', 'LW', 'RW', 'AM'].includes(p.position) ? 3 : 1)).id
+  }
+  for (let i = 0; i < eh; i++) result.scorers.push({ minute: rng.int(91, 120), playerId: pick(setup.home), team: 'home' })
+  for (let i = 0; i < ea; i++) result.scorers.push({ minute: rng.int(91, 120), playerId: pick(setup.away), team: 'away' })
+  if (result.assists) result.assists = [...result.assists, ...Array.from({ length: eh + ea }, () => null)]
+  result.home += eh
+  result.away += ea
+  result.extraTime = true
+  if (result.home + agg.home === result.away + agg.away) result.penalties = penaltyShootout(rng, ho, ao)
+  return true
+}
+
+/** Nominate the hero's goals for Goal of the Season (descriptor from the goal's build-up events). */
+function nominateHeroGoals(state: GameState, comp: Competition, fixture: Fixture, events: readonly { type: string; minute: number; playerId?: string }[], rating: number): void {
+  const h = state.hero
+  const ownId = state.world.national?.hero.teamId && (fixture.homeId === state.world.national.hero.teamId || fixture.awayId === state.world.national.hero.teamId)
+    ? state.world.national.hero.teamId : h.contract?.clubId ?? ''
+  events.forEach((e, i) => {
+    if (e.type !== 'goal' || e.playerId !== HERO_ID) return
+    const before = events.slice(Math.max(0, i - 3), i).filter((x) => x.minute === e.minute).map((x) => x.type)
+    if (before.includes('penalty')) return
+    const kind: GoalCandidate['kind'] | undefined = before.includes('freekick') ? 'free_kick' : before.includes('corner') ? 'header' : undefined
+    const d = describeGoal(fixture.id, e.minute, HERO_ID, { kind, quality: clamp((rating - 6.5) * 0.3, -0.5, 1) + (comp.type === 'league' ? 0 : 0.25) })
+    if (!d) return
+    const teamId = fixture.homeId === ownId ? fixture.homeId : fixture.awayId
+    addGoalCandidate(state.world, {
+      playerId: HERO_ID, name: `${h.firstName} ${h.lastName}`, teamId, oppId: teamId === fixture.homeId ? fixture.awayId : fixture.homeId,
+      compName: { ...comp.name }, season: comp.season, week: fixture.week, minute: e.minute, ...d, isHero: true,
+    })
+  })
+}
+
+/** Display name of any match side (club or national team). */
+export function sideName(state: GameState, id: string): string {
+  return state.world.clubs[id]?.name ?? teamName(id).en
 }
 
 /** Play today's hero match entirely in the sim (auto-resolved highlights). Null if none. */

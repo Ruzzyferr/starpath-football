@@ -15,6 +15,8 @@ import { GFLAG, fixtureSeason, heroClub, isInSeason, isOffSeason, readJson, tran
 import type { SeasonDigest } from './season'
 import { getOffers, getSponsorOffers } from './season'
 import { isHeroMatchday } from './calendar'
+import { nextHeroNationalFixture } from './national'
+import { teamName } from '../world/national'
 
 /** Save-slot card info (matches state/save SaveSummary). */
 export function saveSummary(state: GameState): SaveSummary {
@@ -71,6 +73,24 @@ export interface Dashboard {
 
 /** Next unplayed fixture of the hero's club (today included), across the season boundary. */
 export function nextHeroFixture(state: GameState): NextFixtureInfo | null {
+  const clubNext = nextHeroClubFixture(state)
+  const nat = nextHeroNationalFixture(state)
+  if (!nat) return clubNext
+  const cal = state.calendar
+  const f = nat.fixture
+  const teamId = state.world.national?.hero.teamId ?? ''
+  const daysUntil = (f.week - cal.week) * DAYS_PER_WEEK + (f.day - cal.day)
+  if (clubNext && clubNext.daysUntil <= daysUntil) return clubNext
+  const isHome = f.homeId === teamId
+  const oppId = isHome ? f.awayId : f.homeId
+  return {
+    fixtureId: f.id, compId: nat.competition.id, compName: nat.competition.name, compType: nat.competition.type,
+    opponentId: oppId, opponentName: teamName(oppId).en, isHome, season: cal.season, week: f.week, day: f.day, daysUntil,
+  }
+}
+
+/** Next unplayed fixture of the hero's club only. */
+function nextHeroClubFixture(state: GameState): NextFixtureInfo | null {
   const club = heroClub(state)
   if (!club) return null
   const cal = state.calendar

@@ -495,7 +495,9 @@ export function computeSeasonAwardRecord(world: World, season: number, hero?: He
 /** Store a season's awards (Golden Star + others), keeping the last 10 seasons, and mark the ceremony pending. */
 export function storeSeasonAwards(world: World, star: GoldenStarResult, record: SeasonAwardRecord): void {
   const st = ensureAwards(world)
-  st.goldenStar = [...st.goldenStar.filter((g) => g.season !== star.season), { ...star, ranking: star.ranking.slice(0, GOLDEN_STAR_SHORTLIST) }].slice(-10)
+  // Older votes keep only the podium (+ the hero's place) to keep saves small.
+  const trimmed = st.goldenStar.filter((g) => g.season !== star.season).map((g) => ({ ...g, ranking: g.ranking.filter((c, i) => i < 3 || c.isHero) }))
+  st.goldenStar = [...trimmed, { ...star, ranking: star.ranking.slice(0, GOLDEN_STAR_SHORTLIST) }].slice(-10)
   st.seasons = [...st.seasons.filter((s) => s.season !== record.season), record].slice(-10)
   st.goals = []
   st.ceremonyPending = star.season

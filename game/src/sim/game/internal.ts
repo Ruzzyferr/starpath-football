@@ -14,6 +14,7 @@ import {
 } from '../../core/config'
 import { END_OF_SEASON_WEEK, FIRST_MATCH_WEEK, LAST_MATCH_WEEK, SEASON_WEEKS, WINTER_WINDOW_WEEK } from '../world/fixtures'
 import { clubStrength, seasonCompetitions } from '../world/queries'
+import { nationalCompetitions } from '../world/national'
 import type { ClubContext } from '../career/contract'
 import type { ActivityContext } from '../life/activities'
 
@@ -151,15 +152,31 @@ export function heroClub(state: GameState): Club | null {
 export interface HeroFixture {
   competition: Competition
   fixture: Fixture
+  /** International fixture of the national team the hero is called up to. */
+  national?: boolean
 }
 
-/** The hero club's fixture on (week, day) of the current season, if any. */
+/**
+ * The hero's fixture on (week, day) of the current season, if any: his club's
+ * game, or an international of the squad he is called up to (breaks and the
+ * off-season finals never overlap club games).
+ */
 export function heroFixtureOn(state: GameState, week: number, day: number): HeroFixture | null {
   const club = heroClub(state)
-  if (!club || isOffSeason(week)) return null
-  for (const comp of seasonCompetitions(state.world, state.calendar.season)) {
-    for (const f of comp.fixtures) {
-      if (f.week === week && f.day === day && (f.homeId === club.id || f.awayId === club.id)) return { competition: comp, fixture: f }
+  if (club && !isOffSeason(week)) {
+    for (const comp of seasonCompetitions(state.world, state.calendar.season)) {
+      if (comp.type === 'international') continue
+      for (const f of comp.fixtures) {
+        if (f.week === week && f.day === day && (f.homeId === club.id || f.awayId === club.id)) return { competition: comp, fixture: f }
+      }
+    }
+  }
+  const teamId = state.world.national?.hero.teamId
+  if (teamId && !state.hero.retired) {
+    for (const comp of nationalCompetitions(state.world, state.calendar.season)) {
+      for (const f of comp.fixtures) {
+        if (f.week === week && f.day === day && (f.homeId === teamId || f.awayId === teamId)) return { competition: comp, fixture: f, national: true }
+      }
     }
   }
   return null
@@ -175,6 +192,13 @@ export function unplayedHeroFixtureToday(state: GameState): HeroFixture | null {
 export function heroAvailable(state: GameState): boolean {
   const h = state.hero
   return !h.retired && !!h.contract && !h.injury && h.suspendedMatches <= 0 && !!heroClub(state)
+}
+
+/** Availability for a given fixture: club bans do not apply to internationals (no contract needed either). */
+export function heroAvailableFor(state: GameState, ref: HeroFixture | null): boolean {
+  if (!ref) return false
+  if (ref.national) return !state.hero.retired && !state.hero.injury
+  return heroAvailable(state)
 }
 
 /** Activity context for the current slot. */

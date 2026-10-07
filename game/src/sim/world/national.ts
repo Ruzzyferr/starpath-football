@@ -57,6 +57,8 @@ export const isNationalTeamId = (id: string): boolean => parseTeamId(id) !== nul
 export const youthCompId = (season: number, level: NationalLevel) => `NY-${season}-${level}`
 export const qualifierCompId = (season: number, key: string) => `NQ-${season}-${key}`
 export const finalsCompId = (season: number, key: string) => `NF-${season}-${key}`
+export const friendlyCompId = (season: number) => `NFR-${season}`
+const FRIENDLY_NAME: LText = { tr: 'Hazırlık Maçları', en: 'International Friendlies' }
 
 /** Which senior tournament a season ends with: continental championships in even years, the World Tournament in odd years. */
 export function tournamentKind(season: number): 'continental' | 'world' {
@@ -339,6 +341,7 @@ export function createNationalCompetitions(world: World, rng: Rng, season: numbe
       meta: { format: 'nt_youth', level, key: `nt:youth:${level}` },
     })
   }
+  const hosts: string[] = []
   for (const key of tournamentKeys(season)) {
     const nations = nationsOf(key)
     const prev = lastHost(world, key)
@@ -354,6 +357,31 @@ export function createNationalCompetitions(world: World, rng: Rng, season: numbe
       countryId: null, leagueId: null, participantIds: groups.flat(), fixtures: groupFixtures(id, groups, INTERNATIONAL_DATES, true),
       table: createTable(groups.flat()), alive: null, winnerId: null,
       meta: { format: 'nt_qual', groups, hostId: host, key: `nt:${key}`, level: 'A', slots: finalsSize(key) - 1 },
+    })
+    hosts.push(host)
+  }
+  // Hosts skip qualifying: they play friendlies against teams idle on that date.
+  const fid = friendlyCompId(season)
+  const friendlies: Fixture[] = []
+  INTERNATIONAL_DATES.forEach((d, di) => {
+    const busy = new Set<string>()
+    for (const c of comps) for (const f of c.fixtures) if (f.week === d.week && f.day === d.day) { busy.add(f.homeId); busy.add(f.awayId) }
+    for (const host of hosts) {
+      if (busy.has(host)) continue
+      const idle = NATION_DEFS.map((n) => n.id).filter((id) => id !== host && !busy.has(id) && !hosts.includes(id))
+      if (!idle.length) continue
+      const opp = rng.pick(idle)
+      busy.add(opp)
+      busy.add(host)
+      const [homeId, awayId] = di % 2 === 0 ? [host, opp] : [opp, host]
+      friendlies.push({ id: fixtureId(fid, di, friendlies.length), compId: fid, round: di, week: d.week, day: d.day, homeId, awayId, result: null })
+    }
+  })
+  if (friendlies.length) {
+    comps.push({
+      id: fid, type: 'international', name: { ...FRIENDLY_NAME }, season, countryId: null, leagueId: null,
+      participantIds: [...new Set(friendlies.flatMap((f) => [f.homeId, f.awayId]))], fixtures: friendlies, table: null, alive: null, winnerId: null,
+      meta: { format: 'nt_friendly', level: 'A' },
     })
   }
   for (const c of comps) world.competitions[c.id] = c

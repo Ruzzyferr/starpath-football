@@ -24,20 +24,22 @@ import { weeklySocialTick } from '../life/social'
 import { weeklySponsorTick } from '../life/sponsors'
 import { weeklyWellbeing } from '../life/wellbeing'
 import {
-  END_OF_SEASON_WEEK, INTERNATIONAL_BREAK_WEEKS, SEASON_WEEKS, WINTER_WINDOW_WEEK,
+  END_OF_SEASON_WEEK, INTERNATIONAL_BREAK_WEEKS, SEASON_WEEKS, SQUAD_ANNOUNCE_WEEKS, WINTER_WINDOW_WEEK,
 } from '../world/fixtures'
 import { clubStrength } from '../world/queries'
 import { aiTransferWindow, playFixturesFor, weeklyTick } from '../world/season'
 import { rollEvents } from './eventsAdapter'
 import {
-  GFLAG, activityContext, emptyWeek, recordTransfers, heroAvailable, heroClub, isInSeason, isOffSeason, log, logAll,
+  GFLAG, activityContext, emptyWeek, recordTransfers, heroAvailableFor, heroClub, isInSeason, isOffSeason, log, logAll,
   readJson, transferWindow, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
 import { autoPlayHeroMatch, clearActiveMatch, HERO_ID } from './match'
 import {
   endSeasonForHero, evaluateNationalTeam, generateHeroOffers, generateSponsorOffers, getOffers, newSeasonRollover,
-  playInternationalBreak, syncClubRelations, syncEventFlags,
+  syncClubRelations, syncEventFlags,
 } from './season'
+import { announceHeroSquad, checkNationalTrophies, onSeniorDuty } from './national'
+import { monthlyAwards, isMonthAwardWeek } from './awards'
 
 export type StopReason = 'event' | 'offer' | 'match' | 'season_end' | 'retired' | 'limit'
 
@@ -58,7 +60,7 @@ export interface AdvanceReport {
 const emptyReport = (): AdvanceReport => ({ lines: [], days: 0, newEvents: 0, newOffers: 0, matchday: false, seasonEnded: false, newSeason: false })
 
 /** True when the hero should play a match today (unplayed fixture, available). */
-export const isHeroMatchday = (state: GameState): boolean => !!unplayedHeroFixtureToday(state) && heroAvailable(state)
+export const isHeroMatchday = (state: GameState): boolean => heroAvailableFor(state, unplayedHeroFixtureToday(state))
 
 /** Move one slot forward; after the evening slot the day ends ({@link advanceDay}). */
 export function advanceSlot(state: GameState): AdvanceReport {
@@ -86,14 +88,16 @@ export function advanceDay(state: GameState): AdvanceReport {
     const cal = state.calendar
     // Hero's club plays without him (injured / suspended): serve the ban.
     const missed = unplayedHeroFixtureToday(state)
-    if (missed && state.hero.suspendedMatches > 0) {
+    if (missed && !missed.national && state.hero.suspendedMatches > 0) {
       state.hero.suspendedMatches--
       log(state, r.lines, { tr: 'Cezan nedeniyle maçı tribünden izledin.', en: 'You watched the match from the stands (suspended).' }, 'career', '🚫')
     }
     // 2. AI fixtures of the day.
     // A stale prepared match (hero became unavailable) must not block the fixture.
     if (state.activeMatchId) clearActiveMatch(state)
-    if (!isOffSeason(cal.week)) playFixturesFor(state.world, rng, cal.season, cal.week, cal.day)
+    // Off-season days only hold the national finals tournament.
+    playFixturesFor(state.world, rng, cal.season, cal.week, cal.day)
+    checkNationalTrophies(state, rng, r.lines)
     // 3. Next day / week.
     cal.day++
     if (cal.day >= DAYS_PER_WEEK) {
@@ -157,6 +161,7 @@ function onNewWeek(state: GameState, rng: Rng, r: AdvanceReport): void {
     r.newSeason = true
     tags.push('new_season')
   }
+  if (isMonthAwardWeek(cal.week)) monthlyAwards(state, rng, r.lines)
   if (cal.week === END_OF_SEASON_WEEK) {
     endSeasonForHero(state, rng, r.lines)
     r.seasonEnded = true
@@ -169,11 +174,9 @@ function onNewWeek(state: GameState, rng: Rng, r: AdvanceReport): void {
     }))
     syncClubRelations(state)
   }
-  if (cal.week === 20) evaluateNationalTeam(state, rng, r.lines)
-  if (INTERNATIONAL_BREAK_WEEKS.includes(cal.week) && state.hero.nationalTeam.called) {
-    playInternationalBreak(state, rng, r.lines)
-    tags.push('national_break')
-  }
+  if (SQUAD_ANNOUNCE_WEEKS.includes(cal.week)) announceHeroSquad(state, rng, r.lines)
+  else if (cal.week % 2 === 0) evaluateNationalTeam(state, rng, r.lines)
+  if (onSeniorDuty(state) && (INTERNATIONAL_BREAK_WEEKS.includes(cal.week) || cal.week === END_OF_SEASON_WEEK)) tags.push('national_break')
   if (transferWindow(cal.week)) tags.push('transfer_window')
   if (!state.hero.retired) {
     r.newOffers += generateHeroOffers(state, rng, r.lines)

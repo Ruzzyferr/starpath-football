@@ -5,8 +5,7 @@
  */
 import type { Award, GameState, LText, SeasonRecord, SeasonStats } from '../../core/types'
 import type { Rng } from '../../core/rng'
-import { COUNTRY_BY_ID } from '../../data/world/countries'
-import { NEWS_SOURCES, absWeek, emptyStats, fameGain, fill, fmtMoney, heroAge, lt, meter, pushNews } from '../career/common'
+import { absWeek, emptyStats, fameGain, fill, fmtMoney, lt, meter } from '../career/common'
 import { renewalOffer } from '../career/contract'
 import { heroOvr } from '../career/progression'
 import { endLoan, freeAgentOffers, generateLoanOffers, generateTransferOffers, TRANSFER_REQUEST_FLAG } from '../career/transfers'
@@ -14,8 +13,10 @@ import type { CandidateClub, TransferOffer } from '../career/transfers'
 import { ensureRelation, ensureTeammates } from '../life/relationships'
 import { sponsorOffers, type SponsorOffer } from '../life/sponsors'
 import { clubStrength, leagueTableFor, playerDisplayName, squadPlayers } from '../world/queries'
-import { endOfSeason, playerSeasonScore, pruneCompetitions, seasonAwards, MIN_AWARD_APPS, YOUNG_PLAYER_MAX_AGE } from '../world/season'
+import { endOfSeason, pruneCompetitions, simulateRemainingFixtures } from '../world/season'
 import { GFLAG, clubContextOf, heroClub, log, readJson, recordTransfers, transferWindow, writeJson } from './internal'
+import { checkNationalTrophies, evaluateCallupMeter, nationalThreshold } from './national'
+import { grantSeasonAwards, heroAwardInput, preSeasonAwards } from './awards'
 
 // ───────────────────────── Club relations ─────────────────────────
 
@@ -34,46 +35,16 @@ export function syncClubRelations(state: GameState): void {
 
 // ───────────────────────── National team ─────────────────────────
 
-/** OVR needed for a call-up: 45 + 0.35 × country reputation (TR 74 → 71, EN 92 → 77). */
-export function nationalThreshold(countryId: string): number {
-  return Math.round(45 + (COUNTRY_BY_ID[countryId]?.reputation ?? 60) * 0.35)
+/**
+ * Refresh the national call-up meter (see national.ts). Squads themselves are
+ * picked at the announcement weeks; this only updates what Home/Profile show.
+ */
+export function evaluateNationalTeam(state: GameState, _rng: Rng, _out: LText[]): void {
+  if (state.hero.retired) return
+  evaluateCallupMeter(state)
 }
 
-/** Re-evaluate the call-up from OVR, reputation and form. */
-export function evaluateNationalTeam(state: GameState, _rng: Rng, out: LText[]): void {
-  const h = state.hero
-  if (h.retired) return
-  const need = nationalThreshold(h.nationality)
-  const score = heroOvr(h) + (h.reputation - 30) * 0.1 + (h.form - 50) * 0.05
-  const was = h.nationalTeam.called
-  const called = score >= need && h.reputation >= 20 && !h.injury
-  h.nationalTeam.called = called
-  if (called) state.life.flags.nt_called = true
-  else delete state.life.flags.nt_called
-  state.life.flags[GFLAG.ntSeen] = called
-  const country = COUNTRY_BY_ID[h.nationality]
-  if (called && !was) {
-    log(state, out, fill(lt('🇺🇳 Milli takım kadrosuna çağrıldın: {c}!', '🇺🇳 You have been called up by {c}!'), { c: country?.name ?? lt('?', '?') }), 'career', '🎽')
-  } else if (!called && was) {
-    log(state, out, lt('Milli takım kadrosunda adın yok.', 'You were left out of the national squad.'), 'career', '🎽')
-  }
-}
-
-/** International break: called-up heroes win caps (and maybe score). */
-export function playInternationalBreak(state: GameState, rng: Rng, out: LText[]): void {
-  const h = state.hero
-  if (!h.nationalTeam.called || h.injury || h.retired) return
-  const games = rng.int(1, 2)
-  const ovr = heroOvr(h)
-  const scoring = h.position === 'ST' ? 0.35 : ['LW', 'RW', 'AM'].includes(h.position) ? 0.2 : h.position === 'GK' ? 0 : 0.07
-  let goals = 0
-  for (let i = 0; i < games; i++) if (rng.chance(scoring * (0.6 + ovr / 100))) goals++
-  h.nationalTeam.caps += games
-  h.nationalTeam.goals += goals
-  h.reputation = meter(h.reputation + fameGain(h.reputation, 0.5 * games + goals))
-  h.fatigue = meter(h.fatigue + 8 * games)
-  log(state, out, fill(lt('Milli takımla {n} maç oynadın ({g} gol). Toplam: {c} maç.', 'You played {n} international(s) ({g} goals). Caps: {c}.'), { n: games, g: goals, c: h.nationalTeam.caps }), 'career', '🎽')
-}
+export { nationalThreshold }
 
 // ───────────────────────── Offers ─────────────────────────
 
@@ -209,19 +180,13 @@ export interface SeasonDigest {
   awardWinners: { topScorer: string | null; bestPlayer: string | null; youngPlayer: string | null }
 }
 
-const AWARD_NAMES: Record<string, LText> = {
-  golden_star: lt('Altın Yıldız', 'Golden Star'),
-  player_of_season: lt('Ligin En İyi Oyuncusu', 'League Player of the Season'),
-  top_scorer: lt('Gol Kralı', 'Golden Boot'),
-  league_top_scorer: lt('Lig Gol Kralı', 'League Top Scorer'),
-  young_player: lt('Yılın Genç Oyuncusu', 'Young Player of the Year'),
-}
-
 /**
  * Close the season for the hero (call when entering END_OF_SEASON_WEEK):
- * hero awards vs NPC award winners, trophies, SeasonRecord history, then the
- * world's endOfSeason (honours, promotion, ageing, transfers, next season's
- * competitions), call-ups and relationship sync.
+ * hero awards (moved to awards.ts: scoring titles vs. NPC stats, then the
+ * world's Golden Star vote / Golden Glove / Young Player / Goal and Team of
+ * the Season with the hero as a candidate), trophies, SeasonRecord history,
+ * the world's endOfSeason (honours, promotion, ageing, transfers, next
+ * season's competitions), call-up meter and relationship sync.
  */
 export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): SeasonDigest {
   const w = state.world
@@ -230,46 +195,16 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
   const club = heroClub(state)
   const league = club ? w.leagues[club.leagueId] : null
   const table = club ? leagueTableFor(w, club.id, season) : null
-  const ovr = heroOvr(h)
   const s = h.seasonStats
 
-  // ── Awards (NPC stats are reset by endOfSeason, so compare first) ──
-  const awards = seasonAwards(w, season)
-  const heroAwards: Award[] = []
-  const give = (key: string): void => {
-    heroAwards.push({ season, key, name: AWARD_NAMES[key] })
-  }
-  const score = playerSeasonScore(s, ovr, h.position)
-  const weighted = score === null ? null : Math.round((score + (club?.reputation ?? 30) * 0.1) * 100) / 100
-  if (weighted !== null) {
-    if (!awards.bestPlayer || weighted > awards.bestPlayer.value) give('golden_star')
-    if (league) {
-      let bestInLeague = 0
-      for (const cid of league.clubIds) {
-        for (const p of squadPlayers(w, cid)) {
-          const sc = playerSeasonScore(p.stats, p.ovr, p.position)
-          if (sc !== null) bestInLeague = Math.max(bestInLeague, sc + (w.clubs[cid]?.reputation ?? 30) * 0.1)
-        }
-      }
-      if (weighted > bestInLeague) give('player_of_season')
-    }
-    if (heroAge(h, season) <= YOUNG_PLAYER_MAX_AGE && (!awards.youngPlayer || weighted > awards.youngPlayer.value)) give('young_player')
-  }
-  if (s.goals > 0 && s.apps >= MIN_AWARD_APPS / 2) {
-    if (!awards.topScorer || s.goals > awards.topScorer.value) give('top_scorer')
-    const lts = league ? awards.leagueTopScorers[league.id] : undefined
-    if (league && (!lts || s.goals > lts.value)) give('league_top_scorer')
-  }
-  for (const a of heroAwards) {
-    h.awards.push(a)
-    h.reputation = meter(h.reputation + fameGain(h.reputation, a.key === 'golden_star' ? 8 : 3))
-    log(state, out, fill(lt('🏆 Ödül: {a}!', '🏆 Award: {a}!'), { a: a.name }), 'award', '🏆')
-    pushNews(state.life, rng, state.calendar, fill(lt('{n} {a} ödülünü kazandı', '{n} wins the {a}'), { n: `${h.firstName} ${h.lastName}`, a: a.name }), 1, rng.pick(NEWS_SOURCES))
-  }
+  // ── Awards that need NPC stats (endOfSeason resets them) ──
+  const pre = preSeasonAwards(state)
+  const heroInput = heroAwardInput(state)
 
   // ── World rollover ──
   const leagueBefore = club?.leagueId ?? null
-  const { summary } = endOfSeason(w, rng, season)
+  const { summary } = endOfSeason(w, rng, season, { hero: h.retired ? undefined : heroInput, totsLeagueId: leagueBefore })
+  const heroAwards: Award[] = h.retired ? [] : grantSeasonAwards(state, rng, out, season, pre, summary)
   recordTransfers(state, summary.transfers)
   const trophies: LText[] = []
   if (club) {
@@ -318,6 +253,9 @@ export function newSeasonRollover(state: GameState, _rng: Rng, out: LText[]): vo
   const cal = state.calendar
   cal.season += 1
   cal.week = 0
+  // Finish anything left of last season (the national finals normally end in week 43).
+  simulateRemainingFixtures(state.world, _rng, cal.season - 1)
+  checkNationalTrophies({ ...state, calendar: { ...cal, season: cal.season - 1 } }, _rng, out)
   // Last season's fixtures/tables are no longer needed (honours + hero history keep the record).
   pruneCompetitions(state.world, cal.season)
   const h = state.hero

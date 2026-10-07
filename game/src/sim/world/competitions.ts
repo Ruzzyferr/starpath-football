@@ -67,9 +67,10 @@ export function honourKey(comp: Competition): string {
   return comp.type
 }
 
-/** Competitions that crown nobody (qualifying rounds, qualifying groups). */
+/** Competitions that crown nobody (qualifying rounds, qualifying groups, friendlies). */
 export function isQualifyingComp(comp: Competition): boolean {
-  return comp.meta?.format === 'continental_q' || comp.meta?.format === 'nt_qual'
+  const f = comp.meta?.format
+  return f === 'continental_q' || f === 'nt_qual' || f === 'nt_friendly'
 }
 
 // ───────────────────────── Helpers ─────────────────────────

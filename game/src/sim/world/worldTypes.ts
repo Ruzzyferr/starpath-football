@@ -18,7 +18,7 @@ export type NationalStatus = 'certain' | 'likely' | 'borderline' | 'out'
  *  - nt_finals      national-team finals tournament (groups → knockout)
  *  - nt_youth       U19/U21 development league (type 'international')
  */
-export type CompFormat = 'playoff' | 'continental_q' | 'nt_qual' | 'nt_finals' | 'nt_youth'
+export type CompFormat = 'playoff' | 'continental_q' | 'nt_qual' | 'nt_finals' | 'nt_youth' | 'nt_friendly'
 
 /** One knockout draw, kept for the draw screen. */
 export interface DrawRecord {
