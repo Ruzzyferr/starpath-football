@@ -231,7 +231,7 @@ export const healthEvents: EventDef[] = [
       },
       {
         label: t('Takım arkadaşlarıyla akşam turnuvası yap', 'Make it an early-evening squad tournament'),
-        effects: () => fx(t('Saat 22.00\'de bitiyor, kaybeden kahvaltı ısmarlıyor. Takım ruhu sağlam.', 'Lights out at 10 p.m., loser buys breakfast. Team spirit sorted.'), happy(4), fatigue(-3), rel('teammate', 3)),
+        effects: () => fx(t('Saat 22.00\'de bitiyor, kaybeden kahvaltı ısmarlıyor. Takım ruhu sağlam.', 'Lights out at 10 p.m., loser buys breakfast. Team spirit sorted.'), happy(4), fatigue(2), rel('teammate', 3)),
       },
     ],
   },

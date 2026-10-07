@@ -190,7 +190,7 @@ export const pressEvents: EventDef[] = [
     choices: [
       {
         label: t('"Sahada görüşürüz."', '"See you on the pitch."'),
-        effects: () => fx(t('Kısa, net, havalı. Derbi biletleri bir saatte tükendi.', 'Short, sharp, cool. Tickets sold out within the hour.'), fans(5), morale(5), press(2), flags({ nemesis_heat: true })),
+        effects: () => fx(t('Kısa, net, havalı. Derbi biletleri bir saatte tükendi.', 'Short, sharp, cool. Tickets sold out within the hour.'), fans(5), morale(5), press(2), stress(3), flags({ nemesis_heat: true })),
       },
       {
         label: t('Esprili bir gönderme yap', 'Fire back with a joke'),

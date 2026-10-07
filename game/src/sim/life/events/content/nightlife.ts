@@ -371,7 +371,7 @@ export const nightlifeEvents: EventDef[] = [
       },
       {
         label: t('Kapıyı kapat, uyu', 'Close the door, go to sleep'),
-        effects: () => fx(t('Sekiz saat uyku. Sabah kahvaltıda kimin gözü kızarık, hemen anladın.', 'Eight hours of sleep. At breakfast you could tell exactly who had gone out.'), sharp(3), energy(5)),
+        effects: (ctx) => fx(t('Sekiz saat uyku. Sabah kahvaltıda kimin gözü kızarık, hemen anladın.', 'Eight hours of sleep. At breakfast you could tell exactly who had gone out.'), sharp(3), energy(5), relNpc(ctx.vars.mateId, ctx.vars.mate, -3)),
       },
     ],
   },

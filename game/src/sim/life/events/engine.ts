@@ -82,6 +82,12 @@ export const eventRepGain = (rep: number, amount: number): number =>
 
 /** Each extra card in the same roll is this much less likely than the previous. */
 export const EXTRA_CARD_FACTOR = 0.5
+/**
+ * Novelty decay (playtest: the same card came back up to 12 times in 6 seasons
+ * while other cards never showed): weight × 0.7^(times seen this career), floor 0.2.
+ */
+export const NOVELTY_DECAY = 0.7
+export const NOVELTY_FLOOR = 0.2
 export const CURRENCY_SYMBOL = '€'
 
 export const FLAG_FOLLOWUPS = 'ev:followups'
@@ -89,7 +95,7 @@ export const FLAG_WEEK = 'ev:week'
 export const FLAG_WEEK_COUNT = 'ev:weekCount'
 export const FLAG_WEEK_REGULAR = 'ev:weekRegular'
 export const FLAG_RECENT_CATS = 'ev:recentCats'
-/** JSON map eventId → times fired this career (for `maxPerCareer`). */
+/** JSON map eventId → times fired this career (`maxPerCareer` and the novelty decay). */
 export const FLAG_COUNTS = 'ev:counts'
 
 /** Times an event fired this career. */
@@ -417,7 +423,7 @@ function fire(state: GameState, rng: Rng, def: EventDef, tags: readonly string[]
   const pending: PendingEvent = { defId: def.id, vars, firedAt: { ...state.calendar } }
   state.pendingEvents.push(pending)
   state.life.eventHistory[def.id] = abs
-  if (def.maxPerCareer !== undefined) {
+  {
     const counts = readJson<Record<string, number>>(state, FLAG_COUNTS, {})
     counts[def.id] = (counts[def.id] ?? 0) + 1
     state.life.flags[FLAG_COUNTS] = JSON.stringify(counts)
@@ -477,6 +483,7 @@ export function rollEvents(state: GameState, rng: Rng, tags: string[], maxCount 
   // 2) Spontaneous events.
   const baseChance = opts.fireChance ?? Math.max(0, ...tags.map((tg) => TAG_FIRE_CHANCE[tg] ?? 0.4))
   const recent = readJson<string[]>(state, FLAG_RECENT_CATS, [])
+  const seenCounts = readJson<Record<string, number>>(state, FLAG_COUNTS, {})
   let slot = 0
   while (room() && regular < MAX_REGULAR_PER_WEEK) {
     const chance = baseChance * Math.pow(EXTRA_CARD_FACTOR, slot)
@@ -492,6 +499,7 @@ export function rollEvents(state: GameState, rng: Rng, tags: string[], maxCount 
       if (def.triggers?.some((tg) => tg !== 'weekly' && tags.includes(tg))) w *= 2
       w *= categoryAffinity(state, def.category)
       if (state.life.eventHistory[def.id] === undefined) w *= 1.3
+      else w *= Math.max(NOVELTY_FLOOR, Math.pow(NOVELTY_DECAY, seenCounts[def.id] ?? 1))
       const seen = recent.filter((c) => c === def.category).length
       w *= Math.pow(CATEGORY_REPEAT_PENALTY, seen)
       if (w > 0 && Number.isFinite(w)) cands.push({ def, w })

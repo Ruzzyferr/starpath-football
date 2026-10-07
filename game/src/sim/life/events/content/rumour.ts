@@ -9,7 +9,7 @@
  */
 import {
   boss, chain, chairman, fans, flagNum, flags, follow, fx, happy, hasClub, hasFlag, hasRel, money, news, press, rel, relNpc, rep, stress,
-  t, trust, wageX, folPct, morale, disc,
+  t, trust, wageX, folPct, morale, disc, fatigue,
 } from '../dsl'
 import type { EventDef } from '../types'
 
@@ -239,7 +239,7 @@ export const rumourEvents: EventDef[] = [
     choices: [
       {
         label: t('{mate} ile ortak antrenman videosu çek', 'Film a joint training video with {mate}'),
-        effects: (ctx) => fx(t('Rondoda birbirinize bacak arası attınız. Video "küslük bu mu?" başlığıyla yayıldı.', 'You nutmegged each other in a rondo. The video spread as "is THIS the feud?"'), relNpc(ctx.vars.mateId, ctx.vars.mate, 8), folPct(ctx, 2), press(2)),
+        effects: (ctx) => fx(t('Rondoda birbirinize bacak arası attınız. Video "küslük bu mu?" başlığıyla yayıldı.', 'You nutmegged each other in a rondo. The video spread as "is THIS the feud?"'), relNpc(ctx.vars.mateId, ctx.vars.mate, 8), folPct(ctx, 2), press(2), fatigue(3)),
       },
       {
         label: t('Programı arayıp canlı yayına bağlan', 'Phone in to the show live'),

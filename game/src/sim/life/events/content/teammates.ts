@@ -111,7 +111,7 @@ export const teammatesEvents: EventDef[] = [
       {
         label: t('{mate} atsın, sen ikinci ol', 'Let {mate} have it, be second'),
         effects: (ctx) =>
-          fx(t('Soyunma odası bu jesti not etti.', 'The dressing room clocked the gesture.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 12), rel('teammate', 2), flags({ penalty_taker: null })),
+          fx(t('Soyunma odası bu jesti not etti.', 'The dressing room clocked the gesture.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 12), rel('teammate', 2), morale(-3), flags({ penalty_taker: null })),
       },
       {
         label: t('Antrenmanda penaltı düellosu öner', 'Propose a shoot-out in training'),

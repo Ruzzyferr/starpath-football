@@ -115,6 +115,80 @@ function train(type: TrainingType, icon: string, name: LText, injuredOk = false)
   }
 }
 
+/**
+ * Extra completion lines (playtest: "Dinlendin, enerjin yerine geldi." was 17 % of
+ * every log line). The activity's own `done` text is variant 0; the day picks one.
+ */
+export const DONE_VARIANTS: Readonly<Record<string, readonly LText[]>> = {
+  rest: [
+    T('Kanepe, battaniye, bir dizi bölümü. Pil doldu.', 'Sofa, blanket, one episode. Batteries recharged.'),
+    T('Telefonu kapattın, iki saat deliksiz uyudun.', 'Phone off, two hours of deep sleep.'),
+    T('Evde sessiz bir gün. Vücudun teşekkür etti.', 'A quiet day at home. Your body said thanks.'),
+    T('Ayaklar havada, bir kase meyve. Toparlandın.', 'Feet up, a bowl of fruit. You bounced back.'),
+  ],
+  video: [
+    T('Rakibin son üç maçını kare kare izledin.', 'You went through the opponen’ last three games frame by frame.'),
+    T('Kendi kaçırdığın pozisyonları tekrar tekrar izledin. Acıttı ama öğretti.', 'You rewatched your own misses. It hurt, but it taught.'),
+    T('Analist sana on iki dakikalık bir kurgu hazırlamış. Not defterin doldu.', 'The analyst cut you a twelve-minute reel. Your notebook is full.'),
+  ],
+  physio: [
+    T('Fizyoterapist düğümleri tek tek çözdü.', 'The physio worked the knots out one by one.'),
+    T('Buz, masaj, esneme. Bacakların yeniden senin.', 'Ice, massage, stretching. Your legs are yours again.'),
+  ],
+  family_visit: [
+    T('Annen en sevdiğin yemeği yapmış; ikinci tabağı reddedemedin.', 'Mum cooked your favourite; you could’ refuse seconds.'),
+    T('Babanla eski maçlarını konuştunuz. Gözleri parlıyordu.', 'You and your dad talked about your old games. His eyes lit up.'),
+    T('Kardeşinle bahçede top sektirdiniz, tıpkı eskisi gibi.', 'Keepy-ups in the garden with your sibling, just like old times.'),
+  ],
+  friend_hangout: [
+    T('Kankanla eski mahalleyi turladınız, her köşede bir anı.', 'You toured the old neighbourhood with your best friend; a memory on every corner.'),
+    T('Dürümcüde sabaha kadar futbol tartıştınız.', 'You argued about football at the kebab shop until late.'),
+    T('Kankan seni konsolda yendi ve bunu kimseye söylemeyeceğine yemin etti. Etmeyecek.', 'Your best friend beat you on the console and swore not to tell anyone. They will.'),
+  ],
+  team_dinner: [
+    T('Masada kaptanın komik hikâyeleri vardı; herkes güldü.', 'The captai’ stories ruled the table; everyone laughed.'),
+    T('Hesabı kimin ödeyeceği için kâğıt-makas-taş. Kaybetmedin.', 'Rock-paper-scissors for the bill. You did’ lose.'),
+    T('Yeni transferi masaya davet ettiniz, buzlar eridi.', 'You invited the new signing; the ice broke.'),
+  ],
+  date_night: [
+    T('Sahil yürüyüşü, sıcak çikolata ve uzun bir sohbet.', 'A seaside walk, hot chocolate and a long talk.'),
+    T('Telefonlar masada ters çevrili. Sadece ikiniz.', 'Phones face down on the table. Just the two of you.'),
+  ],
+  party: [
+    T('Müzik iyiydi, gece uzundu.', 'Good music, long night.'),
+    T('VIP bölümünde fotoğraf isteyenler sıraya girdi.', 'People queued for photos in the VIP area.'),
+    T('Dans pistinde kimse seni tutamadı.', 'Nobody could stop you on the dance floor.'),
+  ],
+  shopping: [
+    T('Yeni bir ceket, iki tişört ve ihtiyacın olmayan bir şapka.', 'A new jacket, two T-shirts and a hat you do’ need.'),
+    T('Mağaza çalışanları seni tanıdı; indirim teklif ettiler.', 'The staff recognised you and offered a discount.'),
+  ],
+  hobby_gaming: [
+    T('Çevrim içi maçta rakibin seni tanıdı ve yine de yendi.', 'An online opponent recognised you and beat you anyway.'),
+    T('Üç saatlik turnuva, bir kupa, sıfır pişmanlık.', 'Three-hour tournament, one trophy, zero regrets.'),
+  ],
+  hobby_music: [
+    T('Gitarda yeni bir akor öğrendin.', 'You learned a new chord on the guitar.'),
+    T('Bir şarkı yazmaya başladın; ilk dize "Doksanıncı dakika…"', 'You started writing a song; the first line is "Ninetieth minute…"'),
+  ],
+  gym: [
+    T('Bacak günü. Merdivenler artık düşmanın.', 'Leg day. Stairs are now your enemy.'),
+    T('Kişisel rekorunu iki kilo geçtin.', 'You beat your personal best by two kilos.'),
+  ],
+  charity: [
+    T('Bir çocuk sana çizdiği resmi verdi. Dolabına astın.', 'A kid gave you a drawing. I’ on your locker now.'),
+    T('İmza, fotoğraf, bolca kahkaha. Günün en iyi saatleri.', 'Autographs, photos, plenty of laughs. Best hours of the day.'),
+  ],
+  interview: [
+    T('Sunucu zor sorular sordu; sen sakin kaldın.', 'The host asked tough questions; you stayed calm.'),
+    T('Programın reytingleri yükseldi; yapımcı seni yeniden çağıracak.', 'The sho’ ratings rose; the producer wants you back.'),
+  ],
+  sponsor_shoot: [
+    T('Aynı pozu kırk kez verdin. Sonuncusu mükemmeldi.', 'You held the same pose forty times. The last one was perfect.'),
+    T('Reklam yönetmeni "doğal ol" dedi. Denedin.', 'The director said "be natural". You tried.'),
+  ],
+}
+
 export const ACTIVITIES: readonly ActivityDef[] = [
   // ── Rest ──────────────────────────────────────────────
   { id: 'rest', icon: '🛋️', category: 'rest', slots: 1, allowedSlots: ALL, energy: -25, fatigue: -8, stress: -4,
@@ -160,7 +234,7 @@ export const ACTIVITIES: readonly ActivityDef[] = [
   { id: 'team_dinner', icon: '🍝', category: 'social', slots: 1, allowedSlots: [2], energy: 10, happiness: 4, stress: -3, moneyFormula: 'dinner',
     relations: [{ target: 'teammates', delta: 3 }],
     name: T('Takım Yemeği', 'Team Dinner'), desc: T('Takım arkadaşlarına yemek ısmarla, soyunma odası ısınsın.', 'Treat your teammates; warm up the dressing room.'),
-    conditions: { injuredOk: true, inSeasonOnly: true }, triggerTags: ['teammates'], eventChance: 0.12, done: T('Takımla keyifli bir akşam yemeği.', 'A fun dinner with the lads.') },
+    conditions: { injuredOk: true, inSeasonOnly: true }, triggerTags: ['teammates'], eventChance: 0.12, done: T('Takımla keyifli bir akşam yemeği.', 'A fun dinner with the squad.') },
   { id: 'date_night', icon: '🌹', category: 'romance', slots: 1, allowedSlots: [2], energy: 12, happiness: 7, stress: -4, moneyFormula: 'date',
     relations: [{ target: 'partner', delta: 7 }], memory: T('Romantik akşam', 'Romantic evening'),
     name: T('Romantik Akşam', 'Date Night'), desc: T('Sevgilinle şık bir restoranda akşam yemeği.', 'Dinner with your partner at a fancy restaurant.'),

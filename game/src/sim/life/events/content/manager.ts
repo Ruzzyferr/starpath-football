@@ -371,7 +371,7 @@ export const managerEvents: EventDef[] = [
       },
       {
         label: t('Yedekte başlamayı öner', 'Offer to start on the bench'),
-        effects: () => fx(t('Akıllıca orta yol. 30 dakika oynadın.', 'A sensible middle ground. You got thirty minutes.'), fatigue(-4), sharp(2), trust(2)),
+        effects: () => fx(t('Akıllıca orta yol. 30 dakika oynadın.', 'A sensible middle ground. You got thirty minutes.'), fatigue(-4), sharp(1), trust(1), morale(-2)),
       },
     ],
   },

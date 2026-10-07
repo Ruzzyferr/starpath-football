@@ -218,7 +218,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   if (followersDelta !== 0) lines.push(fill(lt('Takipçi {d} ({t})', 'Followers {d} ({t})'), { d: followersDelta > 0 ? `+${fmtNum(followersDelta).tr}` : `-${fmtNum(-followersDelta).tr}`, t: fmtNum(life.followers) }))
 
   // ── Headlines ──
-  const h = pickHeadline(rng, hero, m, rating, goals, assists)
+  const h = pickHeadline(rng, hero, m, rating, goals, assists, life.news.slice(-12).map((n) => n.headline.tr))
   if (h) {
     headlines.push(pushNews(life, rng, cal, h.text, h.sentiment, rng.pick(NEWS_SOURCES)))
   }
@@ -234,13 +234,20 @@ interface Headline { text: LText; sentiment: -1 | 0 | 1 }
  * Only "newsworthy" games produce a headline: goals ≥ 2, rating ≥ 8 or ≤ 4.5,
  * a red card, a big-game winner, or a missed penalty.
  */
-function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, goals: number, assists: number): Headline | null {
+function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, goals: number, assists: number, recent: readonly string[] = []): Headline | null {
   const vars = { name: heroName(hero), his: hero.gender === 'female' ? 'her' : 'his', opp: m.opponentName ?? lt('rakip', 'the opposition'), g: goals, a: assists }
-  const T = (variants: LText[], sentiment: Headline['sentiment']): Headline => ({ text: fill(rng.pick(variants), vars), sentiment })
+  // Variety: skip templates printed in the last few headlines (fall back to all when every one was used).
+  const T = (variants: LText[], sentiment: Headline['sentiment']): Headline => {
+    const filled = variants.map((v) => fill(v, vars))
+    const fresh = filled.filter((f) => !recent.includes(f.tr))
+    return { text: rng.pick(fresh.length ? fresh : filled), sentiment }
+  }
   if (m.red) {
     return T([
       lt('{name} kırmızı kartla takımını yaktı!', '{name} sees red and lets {his} team down!'),
       lt('Kontrolsüz {name}: erken duş!', 'Hot-headed {name} sent for an early bath!'),
+      lt('{opp} maçında sinirler koptu: {name} oyundan atıldı', 'Tempers snap against {opp}: {name} sent off'),
+      lt('Hakem affetmedi: {name} kırmızıyı gördü', 'No mercy from the referee: red for {name}'),
     ], -1)
   }
   if (goals >= 3) {
@@ -248,48 +255,73 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
       lt('{name} hat-trick yaptı! {opp} darmadağın', '{name} hat-trick demolishes {opp}!'),
       lt('Topu eve götürdü: {name} {g} golle şov yaptı', '{name} takes the match ball home after {g}-goal show'),
       lt('{name} durdurulamıyor: {g} gol!', 'Unstoppable {name} bags {g}!'),
+      lt('{opp} savunması {name} karşısında çaresiz: {g} gol', '{opp} defence helpless as {name} scores {g}'),
+      lt('Gecenin tek konusu {name}: {g} gol, bir maç topu', 'All about {name}: {g} goals and a match ball'),
     ], 1)
   }
   if (m.ownGoal) {
     return T([
       lt('{name} kendi kalesine attı, gece kabusa döndü', '{name} own goal turns the night into a nightmare'),
+      lt('Talihsiz an: {name} topu kendi ağlarına gönderdi', 'Cruel moment as {name} turns the ball into {his} own net'),
     ], -1)
   }
   if (m.missedPenalty && !m.won) {
     return T([
       lt('{name} penaltıyı kaçırdı, taraftar hayal kırıklığında', '{name} penalty miss leaves fans deflated'),
       lt('Beyaz noktada büyük şok: {name}', 'Spot-kick agony for {name}'),
+      lt('{opp} maçının kırılma anı: {name} penaltıdan atamadı', 'The turning point against {opp}: {name} misses from the spot'),
     ], -1)
   }
   if (goals >= 2) {
     return T([
       lt('{name} iki golle {opp} karşısında parladı', '{name} brace sinks {opp}'),
       lt('Çifte darbe: {name} yine sahnede', 'Double trouble: {name} strikes twice'),
+      lt('{opp} ağlarını iki kez sarstı: {name}', '{name} rattles the {opp} net twice'),
+      lt('İki gol, tek isim: {name}', 'Two goals, one name: {name}'),
+      lt('{name} fileleri iki kez havalandırdı', '{name} finds the net twice'),
     ], 1)
   }
   if (goals >= 1 && m.won && m.importance >= 0.7) {
     return T([
-      lt('Büyük maçın adamı: {name} galibiyeti getirdi', 'Big-game player {name} delivers the win'),
+      lt('Büyük maçın yıldızı: {name} galibiyeti getirdi', 'Big-game player {name} delivers the win'),
       lt('{name} kritik maçta sahneye çıktı', '{name} steps up when it matters most'),
+      lt('Kilidi {name} açtı, {opp} yıkıldı', '{name} unlocks {opp} in the big one'),
+      lt('Baskı altında soğukkanlı: {name} farkı yarattı', 'Ice-cool {name} makes the difference under pressure'),
     ], 1)
   }
   if (assists >= 2) {
     return T([
       lt('Asist kralı {name}: {a} gol pası', 'Provider-in-chief {name} lays on {a}'),
       lt('{name} oyunu kurdu, arkadaşları bitirdi', '{name} pulls the strings as teammates feast'),
+      lt('{opp} karşısında orkestra şefi {name}', '{name} conducts the orchestra against {opp}'),
+      lt('Gollerin mimarı {name}: {a} asist', 'Architect {name}: {a} assists'),
     ], 1)
   }
   if (m.cleanSheet && (hero.position === 'GK' || hero.position === 'CB') && rating >= 7.5) {
-    return T([
-      lt('{name} geçit vermedi: kalesini gole kapattı', '{name} stands firm as clean sheet secured'),
-      lt('Duvar gibi {name}: {opp} çaresiz kaldı', 'Brick wall {name} frustrates {opp}'),
-    ], 1)
+    return T(hero.position === 'GK'
+      ? [
+        lt('{name} geçit vermedi: kalesini gole kapattı', '{name} stands firm as clean sheet secured'),
+        lt('Duvar gibi {name}: {opp} çaresiz kaldı', 'Brick wall {name} frustrates {opp}'),
+        lt('{opp} forvetleri {name} engeline takıldı', '{opp} forwards hit the {name} wall'),
+        lt('Kale kapısında kilit: {name}', 'Lock on the goal: {name}'),
+        lt('{name} kurtarışlarıyla sıfırı korudu', '{name} saves keep the clean sheet'),
+        lt('Gol yok, geçit yok: {name} yine iş başında', 'No goals, no way through: {name} at it again'),
+      ]
+      : [
+        lt('{name} geçit vermedi: savunma kale gibi', '{name} stands firm at the back'),
+        lt('Duvar gibi {name}: {opp} çaresiz kaldı', 'Brick wall {name} frustrates {opp}'),
+        lt('{opp} hücumu {name} barajını aşamadı', '{opp} attack cannot get past {name}'),
+        lt('Savunmanın patronu {name}: gol yok', 'Defensive boss {name}: nothing gets through'),
+      ], 1)
   }
   if (rating >= 8) {
     return T([
       lt('{name} sahada döktürdü: maçın en iyisi', '{name} the star of the show'),
       lt('Göz kamaştıran performans: {name}', 'Dazzling display from {name}'),
       lt('{name} yükselişini sürdürüyor', 'The rise of {name} continues'),
+      lt('{opp} maçının en parlak ismi {name}', '{name} shines brightest against {opp}'),
+      lt('Reytinglerin zirvesinde {name}', '{name} tops the ratings'),
+      lt('{name} imzalı bir gece', 'A night signed by {name}'),
     ], 1)
   }
   if (rating <= 4.5) {
@@ -297,10 +329,15 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
       lt('{name} için unutulacak bir gece', 'A night to forget for {name}'),
       lt('Eleştirilerin hedefinde {name} var', '{name} under fire after woeful display'),
       lt('{name} formdan düştü mü?', 'Has {name} lost {his} touch?'),
+      lt('{opp} karşısında silik {name}', 'Anonymous {name} against {opp}'),
     ], -1)
   }
   if (goals >= 1 && !m.won && !m.drew) {
-    return T([lt('{name} attı ama yetmedi', '{name} scores in vain')], 0)
+    return T([
+      lt('{name} attı ama yetmedi', '{name} scores in vain'),
+      lt('{name} golüne rağmen {opp} kazandı', '{opp} win despite {name} goal'),
+      lt('Tek teselli {name} golü', '{name} goal the only consolation'),
+    ], 0)
   }
   return null
 }

@@ -8,7 +8,7 @@
  */
 import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
 import type { Rng } from '../../core/rng'
-import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
+import { ACTIVITIES, ACTIVITY_BY_ID, DONE_VARIANTS, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
 import { absWeek, clamp, fill, heroAge, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
 import { addFatigue, recoverFatigue } from '../career/condition'
 import { perkValue } from '../career/perks'
@@ -298,6 +298,9 @@ export function performActivity(
   life.money += activityMoney(def, hero, life)
   let happy = def.happiness ?? 0
   if (def.category === 'family') happy *= 1 + perkValue(hero, 'family_bond')
+  // Soft ceiling: fun gets less fun when life is already great (playtest: happiness sat at 90-100
+  // in 80 % of weeks, so the meter never mattered).
+  if (happy > 0) happy *= clamp((100 - life.happiness) / 25, 0.2, 1)
   if (happy) addHappiness(life, happy)
   if (def.stress) addStress(life, hero, def.stress)
   if (def.health) addHealth(life, def.health)
@@ -305,7 +308,17 @@ export function performActivity(
     if (def.fatigue > 0) addFatigue(hero, def.fatigue)
     else recoverFatigue(hero, life, -def.fatigue)
   }
-  if (def.reputation) hero.reputation = meter(hero.reputation + def.reputation)
+  if (def.reputation) {
+    // PR is no fame farm (playtest: daily interviews + charity were half of all reputation):
+    // each repeat in the same week halves the gain, and fame makes it harder to add.
+    const wk = Math.floor(today / 7)
+    const key = `actrep_${def.id}`
+    const prev = life.flags[key]
+    const n = typeof prev === 'number' && Math.floor(prev / 10) === wk ? prev % 10 : 0
+    const gain = def.reputation * Math.pow(0.5, n) * Math.max(0.15, 1 - hero.reputation / 110)
+    hero.reputation = meter(hero.reputation + gain)
+    life.flags[key] = wk * 10 + Math.min(9, n + 1)
+  }
   if (def.followersPct) life.followers = Math.round(life.followers * (1 + def.followersPct) + 2)
   let disc = def.discipline ?? 0
   if (ctx.inSeason) disc += def.disciplineInSeason ?? 0
@@ -322,7 +335,12 @@ export function performActivity(
   if (def.conditions.cooldownDays) life.flags[`act_${def.id}`] = today
   if (ctx.matchTomorrow && def.triggerTags.includes('nightlife')) tags.push('pre_match_night')
 
-  if (def.special !== 'train' && def.special !== 'post') lines.unshift({ tr: `${def.icon} ${def.done.tr}`, en: `${def.icon} ${def.done.en}` })
+  if (def.special !== 'train' && def.special !== 'post') {
+    // Variety without touching the RNG stream: the day and slot pick the completion line.
+    const pool = [def.done, ...(DONE_VARIANTS[def.id] ?? [])]
+    const done = pool[(today * 3 + ctx.calendar.slot) % pool.length]
+    lines.unshift({ tr: `${def.icon} ${done.tr}`, en: `${def.icon} ${done.en}` })
+  }
   const summary = deltaLine([
     { label: lt('Enerji', 'Energy'), v: life.energy - e0 },
     { label: lt('Mutluluk', 'Happiness'), v: life.happiness - h0 },

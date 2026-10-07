@@ -22,7 +22,7 @@ export const communityEvents: EventDef[] = [
       {
         label: t('Dürüst cevap ver: "Çok kez."', 'Answer honestly: "Loads of times."'),
         effects: (ctx) =>
-          fx(t('Reddedildiğin akademiyi, annenle otobüste ağladığın günü anlattın. Öğretmen bile mendil aradı.', 'You told them about the academy that rejected you and crying on the bus with your mum. Even the teacher reached for a tissue.'), rep(2), happy(5), rel('mother', 3), press(2), { addFlags: { community_good: 1 } }, ctx.state.hero.reputation > 50 ? news(t('{heroName} çocuklara gözyaşını anlattı', '{heroName} opens up to schoolkids'), 1) : {}),
+          fx(t('Reddedildiğin akademiyi, annenle otobüste ağladığın günü anlattın. Öğretmen bile mendil aradı.', 'You told them about the academy that rejected you and crying on the bus with your mum. Even the teacher reached for a tissue.'), rep(2), happy(5), rel('mother', 3), press(2), stress(2), energy(-4), { addFlags: { community_good: 1 } }, ctx.state.hero.reputation > 50 ? news(t('{heroName} çocuklara gözyaşını anlattı', '{heroName} opens up to schoolkids'), 1) : {}),
       },
       {
         label: t('Bahçede maç yap', 'Play a match in the yard'),

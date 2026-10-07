@@ -9,7 +9,7 @@
  * - Betting addiction: betting_app → chasing_losses → family_notices → recovery_checkin
  */
 import {
-  addiction, ban, canAfford, chairman, disc, energy, fans, flags, folPct, follow, form, fx, happy, hasClub, hasFlag,
+  addiction, ban, canAfford, fatigue, chairman, disc, energy, fans, flags, folPct, follow, form, fx, happy, hasClub, hasFlag,
   money, news, num, pickFull, press, rel, relNpc, rep, stress, t, chain, trust, wageX,
 } from '../dsl'
 import type { EventCtx, EventDef } from '../types'
@@ -572,7 +572,7 @@ export const casinoEvents: EventDef[] = [
       },
       {
         label: t('Çekirdekle oynayalım', 'Play for sunflower seeds'),
-        effects: () => fx(t('Para yok, çekirdek var. Otobüs kahkahadan sallandı; sezonun en iyi yolculuğu.', 'No money, just seeds. The bus shook with laughter; best trip of the season.'), rel('teammate', 3), happy(4)),
+        effects: () => fx(t('Para yok, çekirdek var. Otobüs kahkahadan sallandı; sezonun en iyi yolculuğu.', 'No money, just seeds. The bus shook with laughter; best trip of the season.'), rel('teammate', 3), happy(4), fatigue(3)),
       },
       {
         label: t('Kulaklığı tak, rakibi izle', 'Headphones on, study the next opponent'),
