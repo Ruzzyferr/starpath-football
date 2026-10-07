@@ -4,17 +4,30 @@ import { useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { Icon, type IconName } from '../icons'
 
-export function EmptyState({ icon = 'ball', title, text, action }: { icon?: IconName; title?: string; text?: ComponentChildren; action?: ComponentChildren }) {
+export function EmptyState({ icon = 'ball', title, text, action, compact }: { icon?: IconName; title?: string; text?: ComponentChildren; action?: ComponentChildren; compact?: boolean }) {
+  // Compact: an inline row for "nothing here yet" inside a section.
+  if (compact) {
+    return (
+      <div class="empty-inline">
+        <span class="empty-inline-icon" aria-hidden="true"><Icon name={icon} size={20} /></span>
+        <div class="empty-inline-body">
+          {title && <span class="empty-inline-title">{title}</span>}
+          {text && <span class="t-sm t-mid">{text}</span>}
+        </div>
+        {action}
+      </div>
+    )
+  }
   return (
     <div class="empty-state">
       <div class="empty-state-art" aria-hidden="true">
-        <svg viewBox="0 0 120 70" class="empty-state-pitch">
-          <rect x="2" y="2" width="116" height="66" rx="6" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M60 2v66" stroke="currentColor" stroke-width="1.5" />
-          <circle cx="60" cy="35" r="11" fill="none" stroke="currentColor" stroke-width="1.5" />
-          <path d="M2 20h14v30H2M118 20h-14v30h14" fill="none" stroke="currentColor" stroke-width="1.5" />
+        <span class="empty-state-beam" />
+        <svg viewBox="0 0 160 84" class="empty-state-pitch">
+          <path d="M22 70 44 22h72l22 48Z" class="empty-state-grass" />
+          <path d="M22 70 44 22h72l22 48Z M80 22v48 M33 46h94" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round" />
+          <ellipse cx="80" cy="46" rx="14" ry="6" fill="none" stroke="currentColor" stroke-width="1.4" />
         </svg>
-        <span class="empty-state-icon"><Icon name={icon} size={30} /></span>
+        <span class="empty-state-icon"><Icon name={icon} size={28} /></span>
       </div>
       <h3 class="h3">{title ?? t('common.emptyTitle')}</h3>
       {text && <p class="t-mid t-sm">{text}</p>}

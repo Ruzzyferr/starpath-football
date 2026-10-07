@@ -176,8 +176,9 @@ export function LiveMatchScreen() {
             <CompareBar label={t('match.live.onTarget')} home={m.shotsOnTarget[0]} away={m.shotsOnTarget[1]} />
           </div>
           <div class="lm-hero" aria-label={t('match.live.heroStats')}>
-            <MeterRing value={hs.rating} max={10} size={64} stroke={6} color={ratingColor(hs.rating)} label={t('match.live.rating')}>
-              <span class="score-font lm-hero-rating" style={{ color: ratingColor(hs.rating) }}>{formatRating(hs.rating)}</span>
+            {/* No rating yet (still on the bench): a calm dash, not a red "0,0". */}
+            <MeterRing value={hs.rating} max={10} size={64} stroke={6} color={hs.rating > 0 ? ratingColor(hs.rating) : 'var(--surface-3)'} label={t('match.live.rating')}>
+              <span class="score-font lm-hero-rating" style={{ color: hs.rating > 0 ? ratingColor(hs.rating) : 'var(--text-lo)' }}>{hs.rating > 0 ? formatRating(hs.rating) : '–'}</span>
             </MeterRing>
             <div class="lm-hero-stats">
               {!m.heroOnPitch && <span class="lm-bench-chip micro">{t('match.live.onBench')}</span>}

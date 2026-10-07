@@ -107,7 +107,13 @@ function BlackjackMain() {
               <div class="bj-stake"><span class="cas-chip cas-chip-3" aria-hidden="true" /> <span class="num">{formatMoney(view.bet)}</span></div>
             </>
           ) : (
-            <p class="bj-empty">{t('casino.bj.placeBet')}</p>
+            <div class="bj-idle">
+              {/* Dealt-card outlines + the betting spot: the table reads as a table before the first deal. */}
+              <div class="bj-slots" aria-hidden="true"><span class="bj-slot" /><span class="bj-slot" /></div>
+              <div class="bj-slots" aria-hidden="true"><span class="bj-slot" /><span class="bj-slot" /></div>
+              <span class="bj-spot" aria-hidden="true" />
+              <p class="bj-empty">{t('casino.bj.placeBet')}</p>
+            </div>
           )}
         </div>
 

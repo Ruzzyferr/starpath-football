@@ -69,7 +69,7 @@ export function Sponsors() {
         <SectionTitle action={active.length ? <span class="t-sm t-mid">{t('life.sponsors.total')}: <span class="money num">{formatMoney(total)}{t('common.perWeek')}</span></span> : undefined}>
           {t('life.sponsors.active')}
         </SectionTitle>
-        {active.length === 0 ? <p class="t-sm t-lo">{t('life.sponsors.noActive')}</p> : (
+        {active.length === 0 ? <EmptyState compact icon="handshake" text={t('life.sponsors.noActive')} /> : (
           <div class="life-deals">{active.map((d) => <Deal key={d.id} d={d} rep={s.hero.reputation} />)}</div>
         )}
       </section>

@@ -3,7 +3,7 @@ import '../../../styles/screens/casino.css'
 import { Button, Card, Money, Page, StatBar } from '../../components'
 import { Icon } from '../../icons'
 import { data, gameState, navigate, type ScreenId } from '../../store'
-import { PlayingCard, SlotSymbol, CasinoAgeLock } from './shared'
+import { HorseSvg, PlayingCard, SlotSymbol, CasinoAgeLock } from './shared'
 import { ExclusionLock, HelplineNote, ResponsiblePanel } from './ResponsiblePanel'
 import { casinoExclusion } from '../../../sim/life/casino'
 
@@ -49,7 +49,8 @@ function TileArt({ game }: { game: Game }) {
     default:
       return (
         <div class="cas-tile-art cas-art-horses" aria-hidden="true">
-          {[0, 1, 2].map((i) => <span key={i} class="cas-art-lane" style={{ ['--x' as string]: `${30 + i * 18}%` }}><Icon name="horse" size={26} /></span>)}
+          <span class="cas-art-finish" />
+          {['#ff4d5e', '#ffc83d', '#3da5ff'].map((silk, i) => <span key={i} class="cas-art-lane"><HorseSvg silk={silk} /></span>)}
         </div>
       )
   }

@@ -173,6 +173,9 @@ h3,
   box-shadow: var(--focus-ring);
   border-radius: var(--r-btn);
 }
+/* Headings/regions focused programmatically (tabindex=-1) for screen readers
+   don't need a ring for pointer users; keyboard/pad users keep theirs below. */
+[tabindex='-1']:focus-visible { box-shadow: none; }
 input:focus-visible,
 select:focus-visible,
 textarea:focus-visible {

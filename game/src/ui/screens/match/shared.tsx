@@ -93,8 +93,10 @@ export function PitchLinesHorizontal() {
 
 /** Two-sided comparison bar (home left, away right). */
 export function CompareBar({ label, home, away, suffix = '' }: { label: string; home: number; away: number; suffix?: string }) {
-  const total = home + away || 1
-  const hp = (home / total) * 100
+  const total = home + away
+  // TV-style split bar: one track, the home share from the left in the home
+  // kit colour, the rest in the away colour. 0–0 stays a neutral 50/50.
+  const hp = total ? Math.min(94, Math.max(6, (home / total) * 100)) : 50
   return (
     <div class="cmp-bar">
       <div class="cmp-bar-top">
@@ -102,9 +104,9 @@ export function CompareBar({ label, home, away, suffix = '' }: { label: string; 
         <span class="cmp-label">{label}</span>
         <span class="num cmp-v">{Math.round(away)}{suffix}</span>
       </div>
-      <div class="cmp-track" aria-hidden="true">
-        <span class={`cmp-home${home >= away ? ' is-lead' : ''}`} style={{ transform: `scaleX(${hp / 100})` }} />
-        <span class={`cmp-away${away >= home ? ' is-lead' : ''}`} style={{ transform: `scaleX(${(100 - hp) / 100})` }} />
+      <div class={`cmp-track${total ? '' : ' is-empty'}`} aria-hidden="true" style={{ gridTemplateColumns: `${hp}fr ${100 - hp}fr` }}>
+        <span class={`cmp-home${home > away ? ' is-lead' : ''}`} />
+        <span class={`cmp-away${away > home ? ' is-lead' : ''}`} />
       </div>
     </div>
   )

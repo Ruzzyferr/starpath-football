@@ -50,22 +50,49 @@
   border-color: var(--accent-gold-deep);
   background: linear-gradient(150deg, rgba(255, 200, 61, 0.12), var(--surface-1) 60%);
 }
-.ach-icon {
-  flex: 0 0 44px;
-  height: 44px;
+/* Procedural medal: a faceted hexagon (CSS only, no ids, cheap on low-end). */
+.ach-medal {
+  position: relative;
+  flex: 0 0 48px;
+  height: 52px;
   display: grid;
   place-items: center;
-  font-size: 1.5rem;
-  border-radius: 12px;
-  background: var(--surface-3);
-  filter: grayscale(1);
-  opacity: 0.6;
+  color: var(--text-lo);
+  background: linear-gradient(160deg, #2c3c60, #172238 70%);
+  clip-path: polygon(50% 0, 100% 25%, 100% 75%, 50% 100%, 0 75%, 0 25%);
 }
-.ach-card.is-unlocked .ach-icon {
-  filter: none;
-  opacity: 1;
-  background: var(--surface-2);
+.ach-medal::before {
+  content: '';
+  position: absolute;
+  inset: 3px;
+  clip-path: inherit;
+  background: linear-gradient(160deg, #1f2d4a, #121a2c);
 }
+.ach-medal > .icon { position: relative; }
+.ach-lock {
+  position: absolute;
+  bottom: 9px;
+  right: 9px;
+  display: grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: var(--bg-1);
+  color: var(--text-lo);
+}
+.ach-medal.is-secret { color: var(--accent-violet); }
+.ach-card.is-unlocked .ach-medal {
+  color: var(--text-on-gold);
+  background: linear-gradient(160deg, var(--accent-gold-hi), var(--accent-gold-deep));
+}
+.ach-card.is-unlocked .ach-medal::before {
+  background: radial-gradient(circle at 40% 30%, #ffe9a8, var(--accent-gold) 55%, var(--accent-gold-deep));
+}
+.ach-summary { gap: var(--sp-4); }
+.ach-pct { font-size: 1.75rem; line-height: 1; color: var(--accent-gold); }
+.ach-pct small { font-size: 0.55em; margin-left: 1px; }
+.ach-count-line { display: flex; align-items: baseline; gap: 6px; }
 .ach-body {
   min-width: 0;
   flex: 1;
@@ -237,3 +264,26 @@
   justify-content: space-between;
   gap: 8px;
 }
+
+/* Hall of Fame: empty podium */
+.hof-empty { display: grid; gap: var(--sp-6); max-width: 520px; margin: var(--sp-6) auto 0; }
+.hof-podium {
+  position: relative; display: flex; align-items: flex-end; justify-content: center; gap: 6px; height: 230px; padding-top: 24px;
+  background: radial-gradient(60% 70% at 50% 100%, rgba(255, 200, 61, 0.16), rgba(255, 200, 61, 0) 70%);
+}
+.hof-podium::before {
+  content: ''; position: absolute; left: 50%; top: -10px; width: 220px; height: 240px; transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(255, 236, 170, 0.14), rgba(255, 236, 170, 0));
+  clip-path: polygon(44% 0, 56% 0, 100% 100%, 0 100%);
+}
+.hof-plinth { position: relative; display: flex; flex-direction: column; align-items: center; width: 92px; }
+.hof-ghost { width: 54px; fill: rgba(140, 170, 220, 0.16); stroke: rgba(140, 170, 220, 0.35); stroke-dasharray: 3 3; margin-bottom: 6px; }
+.hof-step {
+  display: grid; place-items: center; width: 100%; color: var(--text-lo); font-size: 2rem;
+  border-radius: 10px 10px 0 0; border: 1px solid var(--border-strong); border-bottom: none;
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+}
+.hof-plinth-1 .hof-step { height: 96px; color: var(--accent-gold); border-color: rgba(255, 200, 61, 0.5); background: linear-gradient(180deg, rgba(255, 200, 61, 0.18), var(--surface-1)); }
+.hof-plinth-2 .hof-step { height: 70px; color: var(--tier-silver); }
+.hof-plinth-3 .hof-step { height: 52px; color: var(--tier-bronze); }
+.hof-plinth-1 .hof-ghost { width: 64px; stroke: rgba(255, 200, 61, 0.5); fill: rgba(255, 200, 61, 0.1); }

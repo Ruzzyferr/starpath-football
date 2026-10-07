@@ -340,3 +340,9 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
 .trn-perf-bar > i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-mid); opacity: 0.7; }
 .trn-attr-xp { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
 .trn-attr-xp-item { display: inline-flex; gap: 4px; align-items: baseline; }
+
+/* Drill briefing: coach's-board diagram */
+.trn-diagram {
+  display: block; width: 100%; height: auto; aspect-ratio: 220 / 124; border-radius: 10px;
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 20px rgba(0, 0, 0, 0.35);
+}

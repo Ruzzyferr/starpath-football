@@ -5,6 +5,8 @@ import { Button, Card, Page, toast } from '../../components'
 import { actions, data, navigate } from '../../store'
 import { FULL_CAREER, hasEntitlement, loadProducts, purchase, restorePurchases, storeAvailable } from '../../../store-iap'
 import { seasonLabel } from '../../format'
+import { Icon } from '../../icons'
+import { Trophy } from '../season/TrophyArt'
 
 /** Friendly end-of-trial screen. Save, trophies and Hall of Fame stay reachable ("Not now" = read-only mode). */
 export function PaywallScreen() {
@@ -44,6 +46,10 @@ export function PaywallScreen() {
 
   return (
     <Page title={t('iap.paywall.title')} sub={t('iap.paywall.sub')} showBack={false} class="pw-page">
+      <div class="pw-hero" aria-hidden="true">
+        <span class="pw-hero-glow" />
+        <Trophy name="full-career" season={s?.season ?? 2026} size={112} metal="gold" />
+      </div>
       {s && (
         <Card class="pw-recap">
           <h2 class="h3">{t('iap.paywall.recap', { season: seasonLabel(s.season) })}</h2>
@@ -53,11 +59,10 @@ export function PaywallScreen() {
       )}
       <Card class="pw-list">
         <h2 class="h3">{t('iap.paywall.continues')}</h2>
-        <ul>
-          <li>{t('iap.paywall.b1')}</li>
-          <li>{t('iap.paywall.b2')}</li>
-          <li>{t('iap.paywall.b3')}</li>
-          <li>{t('iap.paywall.b4')}</li>
+        <ul class="pw-checks">
+          {(['b1', 'b2', 'b3', 'b4'] as const).map((k) => (
+            <li key={k}><span class="pw-check" aria-hidden="true"><Icon name="check" size={14} weight={3} /></span><span>{t(`iap.paywall.${k}`)}</span></li>
+          ))}
         </ul>
       </Card>
       <div class="pw-actions">

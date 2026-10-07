@@ -158,7 +158,7 @@ export function PlannerScreen() {
           <span class="row"><Icon name="energy" size={18} class="t-gold" /><span class="label">{t('planner.energyBudget')}</span></span>
           <span class={`t-sm num ${low ? 't-neg' : 't-mid'}`}>{t('planner.energyAfter', { n: Math.round(plan.projectedEnergy) })}</span>
         </div>
-        <StatBar value={plan.energyBudget} preview={Math.round(plan.projectedEnergy - plan.energyBudget)} color="var(--accent-gold)" showValue={false} size="lg" label={t('planner.energyBudget')} />
+        <StatBar value={plan.energyBudget} preview={Math.round(plan.projectedEnergy - plan.energyBudget)} color="var(--accent-gold)" showValue={false} size="lg" label={t('planner.energyBudget')} hideLabel />
         {low && <p class="t-xs t-neg plan-energy-warn"><Icon name="warning" size={14} /> {t('planner.energyLow')}</p>}
       </Card>
 

@@ -9,8 +9,12 @@ import { avatarSvg, type AvatarOpts } from '../art/avatar'
 import { crestSvg } from '../art/crest'
 import { flagSvg } from '../art/flag'
 import { kitSvg } from '../art/kit'
+import { scopeSvgIds } from '../art/svg'
 
-function SvgBox({ html, size, class: cls, label, ratio = 1 }: { html: string; size: number | string; class: string; label?: string; ratio?: number }) {
+let instance = 0
+function SvgBox({ html: raw, size, class: cls, label, ratio = 1 }: { html: string; size: number | string; class: string; label?: string; ratio?: number }) {
+  const suffix = useMemo(() => (instance++).toString(36), [])
+  const html = useMemo(() => scopeSvgIds(raw, suffix), [raw, suffix])
   const w = typeof size === 'number' ? `${size}px` : size
   const h = typeof size === 'number' ? `${size * ratio}px` : undefined
   return (

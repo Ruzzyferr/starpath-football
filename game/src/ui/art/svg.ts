@@ -97,3 +97,19 @@ export function svgWrap(viewBox: string, body: string, opts: { title?: string; c
   const cls = opts.className ? ` class="${opts.className}"` : ''
   return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="${viewBox}"${cls} ${role} focusable="false">${title}${body}</svg>`
 }
+
+/**
+ * The generators emit deterministic <defs> ids (same input → same id). Two
+ * identical SVGs on one page then share ids, and when the first copy sits in a
+ * hidden subtree (display:none sidebar on mobile) every later `url(#id)` paints
+ * nothing — the avatar face turns black. Suffix the ids per mounted instance.
+ */
+export function scopeSvgIds(html: string, suffix: string): string {
+  const ids = new Set<string>()
+  for (const m of html.matchAll(/\sid="([^"]+)"/g)) ids.add(m[1])
+  if (!ids.size) return html
+  return html.replace(/(?<=\s)id="([^"]+)"|#([A-Za-z][\w-]*)/g, (all, def: string | undefined, ref: string | undefined) => {
+    if (def) return ids.has(def) ? `id="${def}-${suffix}"` : all
+    return ref && ids.has(ref) ? `#${ref}-${suffix}` : all
+  })
+}

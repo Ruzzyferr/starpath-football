@@ -9,14 +9,14 @@ export function TieRow({ r }: { r: ResultLine }) {
     <li class={`cup-tie${r.heroTeam ? ' is-hero' : ''}`} data-testid="tie">
       <span class="cup-team">
         <Crest crest={r.home.crest} size={24} compact />
-        <span class="truncate">{r.home.name}</span>
+        <span class="cup-name">{r.home.name}</span>
       </span>
       <span class="stack" style={{ alignItems: 'center', gap: 0 }}>
         <span class="cup-score">{r.score ?? 'v'}</span>
         {(r.note || r.leg) && <span class="cup-note">{r.leg ? t('intl.cups.leg', { n: r.leg }) : ''}{r.note ? ` ${r.note}` : ''}</span>}
       </span>
       <span class="cup-team is-away">
-        <span class="truncate">{r.away.name}</span>
+        <span class="cup-name">{r.away.name}</span>
         <Crest crest={r.away.crest} size={24} compact />
       </span>
     </li>

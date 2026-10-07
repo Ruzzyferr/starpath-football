@@ -74,12 +74,16 @@
 .cas-art-wheel { width: 104px; height: 104px; animation: spin 18s linear infinite; filter: drop-shadow(0 6px 12px rgba(0, 0, 0, 0.5)); }
 .cas-art-slots { display: flex; gap: 6px; padding: 8px; border-radius: 12px; background: var(--bg-0); border: 3px solid var(--accent-gold-deep); }
 .cas-art-reel { display: grid; place-items: center; width: 46px; height: 58px; border-radius: 6px; background: linear-gradient(180deg, #d9dde6, #fff 50%, #d9dde6); }
-.cas-art-horses { position: relative; width: 100%; display: flex; flex-direction: column; gap: 4px; }
-.cas-art-lane { display: block; height: 28px; border-bottom: 1px dashed rgba(255, 255, 255, 0.25); color: var(--text-hi); }
-.cas-art-lane .icon { transform: translateX(var(--x)); }
-.cas-art-lane:nth-child(1) .icon { margin-left: 8%; }
-.cas-art-lane:nth-child(2) .icon { margin-left: 30%; }
-.cas-art-lane:nth-child(3) .icon { margin-left: 18%; }
+.cas-art-horses { position: relative; width: 100%; display: flex; flex-direction: column; gap: 2px; padding: 0 6px; }
+.cas-art-lane { position: relative; display: block; width: 100%; height: 30px; border-bottom: 1px dashed rgba(255, 255, 255, 0.22); }
+.cas-art-lane .hr-horse-svg { position: absolute; bottom: 1px; width: 52px; height: 33px; filter: drop-shadow(0 2px 2px rgba(0, 0, 0, 0.4)); }
+.cas-art-lane:nth-of-type(2) .hr-horse-svg { left: 34%; }
+.cas-art-lane:nth-of-type(3) .hr-horse-svg { left: 50%; }
+.cas-art-lane:nth-of-type(4) .hr-horse-svg { left: 22%; }
+.cas-art-finish {
+  position: absolute; top: 0; bottom: 0; right: 12px; width: 8px;
+  background: repeating-conic-gradient(#fff 0 25%, #111 0 50%) 0 0 / 8px 8px;
+}
 
 .cas-side { gap: var(--sp-4); }
 .cas-rg { display: flex; flex-direction: column; gap: var(--sp-3); border-left: 4px solid var(--brand-pitch); }
@@ -553,3 +557,18 @@
 .cas-helpline { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--text-hi); }
 .cas-rg-controls { gap: var(--sp-3); }
 .cas-excluded { gap: var(--sp-3); max-width: 560px; }
+
+/* Blackjack: idle table layout */
+.bj-idle { position: relative; z-index: 1; flex: 1; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: flex-start; gap: var(--sp-3); padding-top: var(--sp-6); }
+.bj-idle .bj-empty { margin: 0; font-size: var(--fs-md); color: rgba(255, 255, 255, 0.82); }
+.bj-idle .bj-slots:nth-child(2) { margin-top: auto; }
+.bj-slots { display: flex; gap: 10px; }
+.bj-slot { width: 62px; height: 88px; border-radius: 8px; border: 2px dashed rgba(255, 255, 255, 0.22); background: rgba(0, 0, 0, 0.08); }
+.bj-spot {
+  width: 64px; height: 64px; border-radius: 50%; border: 2px solid rgba(255, 220, 140, 0.55);
+  box-shadow: inset 0 0 0 6px rgba(0, 0, 0, 0.12), inset 0 0 0 8px rgba(255, 220, 140, 0.25);
+}
+.bj-shoe::after {
+  content: ''; position: absolute; left: 7px; right: 7px; top: -9px; height: 14px; border-radius: 3px;
+  background: repeating-linear-gradient(45deg, #b3122a 0 3px, #d42a40 3px 6px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
+}

@@ -114,3 +114,16 @@ describe('colour helpers', () => {
     expect(contrastRatio('#f2f5fa', '#131c2e')).toBeGreaterThan(4.5)
   })
 })
+
+describe('scopeSvgIds', () => {
+  it('suffixes every def id and its references, leaving hex colours alone', async () => {
+    const { scopeSvgIds } = await import('./svg')
+    const html = avatarSvg({ skin: 2, hairStyle: 3, hairColor: 1, beard: 0, eyeColor: 1, face: 1, accessory: 0 }, { background: '#24345a' })
+    const out = scopeSvgIds(html, 'z9')
+    const ids = [...out.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
+    expect(ids.length).toBeGreaterThan(0)
+    for (const id of ids) expect(id.endsWith('-z9')).toBe(true)
+    for (const m of out.matchAll(/url\(#([^)]+)\)/g)) expect(ids).toContain(m[1])
+    expect(out.includes('#fff')).toBe(html.includes('#fff'))
+  })
+})

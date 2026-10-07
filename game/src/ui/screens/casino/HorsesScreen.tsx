@@ -7,25 +7,9 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type HorseRaceResult, type HorseView } from '../../store'
-import { BetPicker, casinoMoney, CasinoAgeLock } from './shared'
+import { BetPicker, casinoMoney, CasinoAgeLock, HorseSvg } from './shared'
 
 const RACE_MS = 6500
-
-function HorseSvg({ silk }: { silk: string }) {
-  return (
-    <svg viewBox="0 0 44 28" class="hr-horse-svg" aria-hidden="true">
-      <path d="M8 13Q3 13 2 19" stroke="#3a2618" stroke-width="2.5" fill="none" stroke-linecap="round" />
-      <ellipse cx="19" cy="15" rx="12" ry="5.5" fill="#6b4226" />
-      <path d="M28 12L35 5L40 6.5L38.5 10L33 15Z" fill="#6b4226" />
-      <path d="M35 5l1-3 1.5 3" fill="#6b4226" />
-      <g stroke="#4a2e1a" stroke-width="2.2" stroke-linecap="round" class="hr-legs">
-        <path d="M11 19L8 26" /><path d="M15 19L17 26" /><path d="M24 19L22 26" /><path d="M28 18L31 26" />
-      </g>
-      <path d="M17 10L22 3.5L26 5.5L22 11Z" fill={silk} stroke="#0b1220" stroke-width=".8" />
-      <circle cx="24.5" cy="3.2" r="2.4" fill={silk} stroke="#0b1220" stroke-width=".8" />
-    </svg>
-  )
-}
 
 function interp(timeline: number[][], p: number): number[] {
   if (!timeline.length) return []

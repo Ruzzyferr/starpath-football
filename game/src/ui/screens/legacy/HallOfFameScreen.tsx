@@ -12,7 +12,20 @@ export function HallOfFameScreen() {
   const list = hallOfFame()
   return (
     <Page title={t('meta.hof.title')} sub={t('meta.hof.sub')} class="hof-page">
-      {list.length === 0 && <EmptyState icon="crown" title={t('meta.hof.title')} text={t('meta.hof.empty')} />}
+      {list.length === 0 && (
+        <div class="hof-empty">
+          {/* Ghost podium: three unclaimed plinths waiting for retired careers. */}
+          <div class="hof-podium" aria-hidden="true">
+            {[2, 1, 3].map((n) => (
+              <div key={n} class={`hof-plinth hof-plinth-${n}`}>
+                <svg viewBox="0 0 60 64" class="hof-ghost"><circle cx="30" cy="20" r="12" /><path d="M6 64c0-16 10-26 24-26s24 10 24 26Z" /></svg>
+                <span class="hof-step score-font">{n}</span>
+              </div>
+            ))}
+          </div>
+          <EmptyState icon="crown" title={t('meta.hof.title')} text={t('meta.hof.empty')} compact />
+        </div>
+      )}
       <ol class="stack" aria-label={t('meta.hof.title')} style={{ listStyle: 'none', margin: 0, padding: 0 }}>
         {list.map((e, i) => {
           const leg = legacyFor(e.careerId)

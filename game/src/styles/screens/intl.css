@@ -25,7 +25,13 @@
 .nt-row.is-hero, .cup-tie.is-hero { border-color: var(--brand-pitch); background: linear-gradient(90deg, rgba(31, 212, 122, 0.14), var(--surface-1)); }
 .cup-tie .cup-team { display: flex; align-items: center; gap: var(--sp-2); flex: 1; min-width: 0; }
 .cup-tie .cup-team.is-away { justify-content: flex-end; text-align: right; }
-.cup-score { font-family: var(--font-score); min-width: 48px; text-align: center; color: var(--text-hi); }
+.cup-tie { padding-inline: var(--sp-2); }
+/* Two lines before clipping: "İstanbul Gençlerbirliği" must stay readable at 390px. */
+.cup-name {
+  display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; line-clamp: 2; overflow: hidden;
+  font-size: var(--fs-sm); font-weight: 600; line-height: 1.15; overflow-wrap: anywhere;
+}
+.cup-score { font-family: var(--font-score); font-size: var(--fs-lg); min-width: 32px; text-align: center; color: var(--text-hi); }
 .cup-note { font-size: var(--fs-xs); color: var(--text-lo); }
 .cup-round { margin-top: var(--sp-3); }
 .nt-pos { width: 34px; flex: none; font-size: var(--fs-xs); color: var(--text-lo); }

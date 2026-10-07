@@ -1,7 +1,9 @@
 import '../../../styles/screens/legacy.css'
 import { useState } from 'preact/hooks'
 import { currentLang, lt, t } from '../../../i18n'
-import { Page, Tabs } from '../../components'
+import { MeterRing, Page, Tabs } from '../../components'
+import { Icon } from '../../icons'
+import { achIcon } from './achIcons'
 import { formatNumber, formatTimestamp } from '../../format'
 import { achievementsView } from '../../backend/meta'
 import type { AchCategory } from '../../../sim/game/achievements'
@@ -18,10 +20,12 @@ export function AchievementsScreen() {
   const pct = v.total ? Math.round((v.unlocked / v.total) * 100) : 0
   return (
     <Page title={t('meta.ach.title')} sub={t('meta.ach.sub', { u: v.unlocked, n: v.total })} class="ach-page" wide>
-      <div class="lg-summary">
-        <div class="lg-big num" data-testid="ach-count">{v.unlocked}</div>
-        <div class="grow stack">
-          <div class="lg-bar is-gold" role="meter" aria-label={t('meta.ach.title')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></div>
+      <div class="lg-summary ach-summary">
+        <MeterRing value={pct} max={100} size={84} stroke={8} color="var(--accent-gold)" ariaLabel={t('meta.ach.title')}>
+          <span class="score-font ach-pct num">{pct}<small>%</small></span>
+        </MeterRing>
+        <div class="grow stack" style={{ gap: 'var(--sp-1)' }}>
+          <div class="ach-count-line"><span class="lg-big num" data-testid="ach-count">{v.unlocked}</span><span class="t-mid num">/ {v.total}</span></div>
           <div class="t-xs t-lo">{t('meta.ach.steam')}</div>
         </div>
       </div>
@@ -31,7 +35,10 @@ export function AchievementsScreen() {
           const hidden = r.def.secret && !r.unlocked
           return (
             <li key={r.def.id} class={`ach-card ${r.unlocked ? 'is-unlocked' : ''}`} data-ach={r.def.id} data-unlocked={r.unlocked ? '1' : '0'}>
-              <span class="ach-icon" aria-hidden="true">{hidden ? '❔' : r.def.icon}</span>
+              <span class={`ach-icon ach-medal${hidden ? ' is-secret' : ''}`} aria-hidden="true">
+                <Icon name={hidden ? 'question' : achIcon(r.def.id, r.def.category)} size={22} weight={2.2} />
+                {!r.unlocked && !hidden && <span class="ach-lock"><Icon name="lock" size={11} weight={2.6} /></span>}
+              </span>
               <div class="ach-body">
                 <span class="ach-name">{hidden ? t('meta.ach.secret') : lt(r.def.name)}</span>
                 <span class="t-xs t-mid">{hidden ? t('meta.ach.secretDesc') : lt(r.def.desc)}</span>

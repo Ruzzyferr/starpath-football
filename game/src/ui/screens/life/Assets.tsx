@@ -84,7 +84,7 @@ export function Assets() {
       <section class="stack">
         <SectionTitle>{t('life.assets.collection')}</SectionTitle>
         {s.life.assets.length === 0 ? (
-          <p class="t-sm t-lo">{t('life.assets.emptyCollection')}</p>
+          <EmptyState compact icon="house" text={t('life.assets.emptyCollection')} />
         ) : (
           <div class="life-shelf" role="list">
             {s.life.assets.map((o, i) => {

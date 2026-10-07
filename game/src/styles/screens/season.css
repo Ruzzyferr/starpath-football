@@ -488,3 +488,13 @@
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
+
+/* Cabinet: national career tile */
+.cab-nat {
+  display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card); background: var(--surface-1); border: 1px solid var(--border);
+}
+.cab-nat-badge {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px; border-radius: 12px;
+  background: rgba(255, 200, 61, 0.12); color: var(--accent-gold);
+}

@@ -18,18 +18,20 @@ export interface StatBarProps {
   suffix?: string
   /** Trailing element after the label (e.g. an info tooltip). */
   info?: ComponentChildren
+  /** Keep the label for assistive tech only (a card header already shows it). */
+  hideLabel?: boolean
 }
 
-export function StatBar({ label, value, max = 100, progress, preview, color, scale, showValue = true, size = 'md', suffix, info }: StatBarProps) {
+export function StatBar({ label, value, max = 100, progress, preview, color, scale, showValue = true, size = 'md', suffix, info, hideLabel }: StatBarProps) {
   const mounted = useMounted()
   const p = clamp01(value / max)
   const fill = color ?? (scale ? attrColor((value / max) * 100) : 'var(--brand-pitch)')
   const pv = preview ? clamp01((value + preview) / max) : null
   return (
     <div class={`statbar statbar-${size}`}>
-      {(label || showValue) && (
+      {((label && !hideLabel) || showValue) && (
         <div class="statbar-top">
-          {label && (info ? <span class="label-with-tip"><span class="statbar-label truncate">{label}</span>{info}</span> : <span class="statbar-label truncate">{label}</span>)}
+          {label && !hideLabel && (info ? <span class="label-with-tip"><span class="statbar-label truncate">{label}</span>{info}</span> : <span class="statbar-label truncate">{label}</span>)}
           {showValue && (
             <span class="statbar-value num" style={{ color: scale ? fill : undefined }}>
               {Math.round(value)}

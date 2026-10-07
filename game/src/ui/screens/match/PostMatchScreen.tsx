@@ -250,15 +250,18 @@ function TrustStep({ pm }: { pm: PostMatchView }) {
   const tr = pm.trust
   if (!tr) return null
   const d = Math.round((tr.after - tr.before) * 10) / 10
+  // A −0.4 change between "50" and "50" reads as a bug: show tenths whenever rounding would hide the move.
+  const fine = d !== 0 && Math.round(tr.before) === Math.round(tr.after)
+  const fmtT = (v: number): string => (fine ? v.toFixed(1) : String(Math.round(v)))
   const lo = Math.min(tr.before, tr.after)
   const hi = Math.max(tr.before, tr.after)
   return (
     <section class="post-card post-step-card ptrust" aria-labelledby="post-step-h">
       <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="handshake" size={14} /> {t('postmatch.trust.title')}</h2>
       <div class="ptrust-nums">
-        <div><span class="micro t-lo">{t('postmatch.trust.before')}</span><b class="score-font num">{Math.round(tr.before)}</b></div>
+        <div><span class="micro t-lo">{t('postmatch.trust.before')}</span><b class="score-font num">{fmtT(tr.before)}</b></div>
         <b class={`ptrust-delta score-font num ${deltaClass(d)}`} data-testid="post-trust-delta">{signedDelta(d)}</b>
-        <div><span class="micro t-lo">{t('postmatch.trust.after')}</span><b class="score-font num">{Math.round(tr.after)}</b></div>
+        <div><span class="micro t-lo">{t('postmatch.trust.after')}</span><b class="score-font num">{fmtT(tr.after)}</b></div>
       </div>
       <div class="ptrust-bar" role="img" aria-label={`${t('postmatch.trust.title')}: ${Math.round(tr.before)} → ${Math.round(tr.after)}`}>
         <span class="ptrust-fill" style={{ ['--w' as string]: `${lo}%` }} />

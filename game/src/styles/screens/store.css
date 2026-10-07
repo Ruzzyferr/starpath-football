@@ -1,9 +1,52 @@
 .pw-page .pw-recap, .pw-page .pw-list { margin-bottom: 12px; }
 .pw-list ul { margin: 8px 0 0; padding-left: 1.2em; display: grid; gap: 6px; }
+.pw-hero { position: relative; display: grid; place-items: center; height: 150px; margin: 0 0 var(--sp-3); }
+.pw-hero-glow {
+  position: absolute; inset: 0; margin: auto; width: 220px; height: 150px; border-radius: 50%;
+  background: radial-gradient(closest-side, rgba(255, 200, 61, 0.35), rgba(255, 200, 61, 0));
+}
+.pw-hero > :not(.pw-hero-glow) { position: relative; filter: drop-shadow(0 10px 18px rgba(0, 0, 0, 0.5)); }
+.pw-list ul.pw-checks { list-style: none; padding: 0; gap: var(--sp-3); margin-top: var(--sp-3); }
+.pw-checks li { display: flex; gap: var(--sp-3); align-items: flex-start; line-height: 1.4; }
+.pw-check {
+  flex: none; display: grid; place-items: center; width: 22px; height: 22px; margin-top: 1px; border-radius: 50%;
+  background: color-mix(in srgb, var(--pos) 18%, transparent); color: var(--pos);
+}
 .pw-actions { display: grid; gap: 10px; max-width: 520px; margin: 16px auto 0; }
 .st-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .st-card { display: grid; gap: 8px; align-content: start; }
-.st-icon { font-size: 2.25rem; }
+.st-card { overflow: hidden; }
+.st-art {
+  position: relative; display: flex; align-items: center; justify-content: center; gap: 0;
+  height: 128px; margin: calc(-1 * var(--sp-4)) calc(-1 * var(--sp-4)) var(--sp-2);
+  border-bottom: 1px solid var(--border);
+}
+.st-art-avatar { background: radial-gradient(120% 90% at 50% 0%, #6a4fd6 0%, #2a1d63 55%, #161033 100%); }
+.st-art-face { display: grid; filter: drop-shadow(0 6px 10px rgba(0, 0, 0, 0.45)); }
+.st-art-face-0, .st-art-face-2 { opacity: 0.85; }
+.st-art-face-0 { margin-right: -12px; }
+.st-art-face-2 { margin-left: -12px; }
+.st-art-face-1 { position: relative; z-index: 1; }
+.st-art-party {
+  background:
+    radial-gradient(circle at 18% 30%, #ffc83d 0 3px, transparent 4px),
+    radial-gradient(circle at 82% 26%, #3da5ff 0 3px, transparent 4px),
+    radial-gradient(circle at 72% 74%, #ff4d5e 0 3px, transparent 4px),
+    radial-gradient(circle at 28% 76%, #8e5cff 0 3px, transparent 4px),
+    radial-gradient(circle at 60% 18%, #1fd47a 0 2px, transparent 3px),
+    radial-gradient(circle at 40% 84%, #ffe38a 0 2px, transparent 3px),
+    radial-gradient(120% 90% at 50% 0%, #0f7a47 0%, #0b3f2a 60%, #0a1f19 100%);
+}
+.st-art-burst {
+  position: absolute; inset: 0; margin: auto; width: 120px; height: 120px; border-radius: 50%;
+  background: repeating-conic-gradient(rgba(255, 255, 255, 0.1) 0 8deg, transparent 8deg 22deg);
+  mask: radial-gradient(closest-side, #000 60%, transparent);
+}
+.st-art-badge {
+  position: relative; display: grid; place-items: center; width: 76px; height: 76px; border-radius: 50%;
+  color: var(--text-on-gold); background: radial-gradient(circle at 40% 30%, #ffe9a8, var(--accent-gold) 55%, var(--accent-gold-deep));
+  box-shadow: 0 0 0 4px rgba(255, 255, 255, 0.12), 0 10px 24px rgba(0, 0, 0, 0.45);
+}
 .st-owned { font-weight: 700; color: var(--pitch, #1fd47a); }
 .pp-panel { display: grid; gap: 10px; }
 .pp-list { margin: 0; padding-left: 1.2em; }

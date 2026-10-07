@@ -15,6 +15,7 @@ import { lt, t, tx } from '../../../i18n'
 import { Button, Chip, DeltaList, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
+import { DrillDiagram } from './DrillDiagram'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
 import { drillFinished } from '../../backend/meta'
 import { DrillHints } from '../../tutorial/ControlHint'
@@ -141,6 +142,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
       )}
       {phase === 'intro' && (
         <div class="trn-drill-card stack">
+          <DrillDiagram kind={drill?.kind ?? 'finishing'} setPiece={drill?.variant === 'setPiece'} />
           <div class="micro t-lo">{lt(session.name)}</div>
           <h2 class="h2">{title}</h2>
           <p class="t-mid">{tx(`training.drill.goal.${key}`)}</p>

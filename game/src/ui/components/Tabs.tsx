@@ -1,5 +1,5 @@
 import type { ComponentChildren } from 'preact'
-import { useRef } from 'preact/hooks'
+import { useEffect, useRef } from 'preact/hooks'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 
@@ -28,6 +28,16 @@ export function Tabs<K extends string>({
   idPrefix?: string
 }) {
   const ref = useRef<HTMLDivElement>(null)
+  // Keep the active tab visible in a scrolling strip (deep links open e.g.
+  // Life → Sponsors, which sits off-screen on a phone). Scrolls the strip only.
+  useEffect(() => {
+    const el = ref.current
+    const btn = el?.querySelector<HTMLElement>('[aria-selected=true]')
+    if (!el || !btn || el.scrollWidth <= el.clientWidth + 1) return
+    const a = el.getBoundingClientRect()
+    const b = btn.getBoundingClientRect()
+    el.scrollLeft += b.left - a.left - (a.width - b.width) / 2
+  }, [value])
   const onKey = (e: KeyboardEvent) => {
     const idx = items.findIndex((i) => i.id === value)
     let next = idx

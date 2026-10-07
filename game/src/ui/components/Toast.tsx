@@ -17,9 +17,16 @@ let nextId = 1
 
 const ICONS: Record<ToastKind, IconName> = { info: 'info', success: 'check', warning: 'warning', error: 'warning', reward: 'trophy' }
 
+/** "Match simmed: 2-1" and "Match simmed: 1-3" are one family: the newer replaces the older. */
+const family = (kind: ToastKind, text: string): string => `${kind}|${text.split(/[:：]/)[0]}`
+
 export function toast(text: string, kind: ToastKind = 'info', icon?: IconName, ms = 3200): void {
   const id = nextId++
-  toasts.value = [...toasts.value.slice(-3), { id, kind, text, icon }]
+  const fam = family(kind, text)
+  // At most three on screen; a same-family toast replaces its older sibling
+  // so fast-forwards don't stack a wall of near-identical cards.
+  const rest = toasts.value.filter((x) => family(x.kind, x.text) !== fam)
+  toasts.value = [...rest.slice(-2), { id, kind, text, icon }]
   if (kind === 'success' || kind === 'reward') haptic('success')
   else if (kind === 'error') haptic('error')
   sfx(kind === 'success' ? 'success' : kind === 'error' ? 'error' : kind === 'reward' ? 'perk' : 'notify')

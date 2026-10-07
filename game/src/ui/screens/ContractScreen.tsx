@@ -43,9 +43,24 @@ function CurrentContract() {
               <span class="label-with-tip"><Chip tone="gold" icon="star">{t(`data.role.${c.role}`)}</Chip><InfoTip term="squadRole" /></span>
             </div>
           </div>
+          {/* Hero numbers: the weekly wage, then the remaining seasons as a strip. */}
+          <div class="ctr-hero">
+            <div class="ctr-wage">
+              <span class="micro t-mid label-with-tip">{t('contract.terms.wage')}<InfoTip term="wage" /></span>
+              <span class="ctr-wage-num score-font num">{formatMoney(c.wage)}<small>{t('common.perWeek')}</small></span>
+            </div>
+            <div class="ctr-term">
+              <span class="micro t-mid">{t('profile.contract.until')}</span>
+              <span class="ctr-term-val">{t('profile.contract.untilSeason', { s: seasonLabel(c.untilSeason) })}</span>
+              <div class="ctr-seasons" aria-hidden="true">
+                {Array.from({ length: Math.max(1, Math.min(6, c.untilSeason - s.calendar.season + 1)) }, (_, i) => (
+                  <span key={i} class={i === 0 ? 'is-now' : ''} />
+                ))}
+              </div>
+              <span class="t-xs t-lo">{t('home.tileSub.contract', { n: Math.max(0, c.untilSeason - s.calendar.season + 1) })}</span>
+            </div>
+          </div>
           <dl class="ctr-dl">
-            <div><dt class="label-with-tip">{t('contract.terms.wage')}<InfoTip term="wage" /></dt><dd class="num">{formatMoney(c.wage)}{t('common.perWeek')}</dd></div>
-            <div><dt>{t('profile.contract.until')}</dt><dd>{t('profile.contract.untilSeason', { s: seasonLabel(c.untilSeason) })}</dd></div>
             <div><dt class="label-with-tip">{t('contract.terms.goalBonus')}<InfoTip term="goalBonus" /></dt><dd class="num">{formatMoney(c.goalBonus)}</dd></div>
             <div><dt>{t('profile.contract.assistBonus')}</dt><dd class="num">{formatMoney(c.assistBonus)}</dd></div>
             <div><dt class="label-with-tip">{t('contract.terms.releaseClause')}<InfoTip term="releaseClause" /></dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('contract.terms.none')}</dd></div>

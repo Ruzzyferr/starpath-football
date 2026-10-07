@@ -7,9 +7,12 @@ import { onColor } from '../../art/svg'
 import { back, data, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 
-function Disc({ p, team, side }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away' }) {
+function Disc({ p, team, side, depth }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; depth: number }) {
   // Home occupies the bottom half (own goal at the bottom), away the top half.
-  const top = side === 'home' ? 95 - p.x * 43 : 5 + p.x * 43
+  // x is normalised by the deepest-pushed player so the two front lines never
+  // meet on the halfway line (discs + names need ~8% of clear grass).
+  const xn = Math.min(1, p.x / depth)
+  const top = side === 'home' ? 94 - xn * 39 : 6 + xn * 39
   const left = side === 'home' ? 8 + p.y * 84 : 92 - p.y * 84
   const bg = team.kit.primary
   return (
@@ -23,6 +26,8 @@ function Disc({ p, team, side }: { p: LineupPlayer; team: TeamView; side: 'home'
     </div>
   )
 }
+
+const lineDepth = (l: LineupPlayer[]): number => Math.max(1, ...l.map((p) => p.x))
 
 /** "Expected moments" preview: how many interactive moments and which kinds to expect. */
 function ExpectedMomentsCard({ em, starting }: { em: NonNullable<PreMatchView['expectedMoments']>; starting: boolean }) {
@@ -145,8 +150,8 @@ export function PreMatchScreen() {
           <div class="pm-pitch">
             <div class="pm-stripes" aria-hidden="true" />
             <PitchLinesVertical />
-            {pm.awayLineup.map((p) => <Disc key={p.id} p={p} team={fx.away} side="away" />)}
-            {pm.homeLineup.map((p) => <Disc key={p.id} p={p} team={fx.home} side="home" />)}
+            {pm.awayLineup.map((p) => <Disc key={p.id} p={p} team={fx.away} side="away" depth={lineDepth(pm.awayLineup)} />)}
+            {pm.homeLineup.map((p) => <Disc key={p.id} p={p} team={fx.home} side="home" depth={lineDepth(pm.homeLineup)} />)}
           </div>
           <div class="pm-formation pm-formation-home"><Crest crest={fx.home.crest} size={20} compact /> <span class="num">{pm.homeFormation}</span></div>
         </section>
