@@ -94,7 +94,7 @@
 }
 .control-hint-card {
   display: grid;
-  grid-template-columns: 96px 1fr;
+  grid-template-columns: minmax(72px, auto) 1fr;
   grid-template-areas: 'art text' 'art btn';
   align-items: center;
   column-gap: var(--sp-3);
@@ -107,7 +107,7 @@
   backdrop-filter: blur(6px);
   color: var(--text-hi);
 }
-.control-hint-art { grid-area: art; display: grid; place-items: center; min-height: 56px; }
+.control-hint-art { grid-area: art; display: grid; place-items: center; min-height: 56px; padding-right: 6px; }
 .control-hint-text { grid-area: text; min-width: 0; }
 .control-hint-text p { margin: 2px 0 0; font-size: var(--fs-sm); line-height: 1.35; }
 .control-hint-eyebrow { color: var(--accent-gold); }
@@ -183,7 +183,7 @@
 .hint-mouse rect:first-child, .hint-mouse path { fill: none; stroke: #fff; stroke-width: 2.4; }
 .hint-mouse-btn { fill: var(--accent-gold); animation: hint-blink 1.4s ease-in-out infinite; }
 @keyframes hint-blink { 0%, 100% { opacity: 0.25; } 35% { opacity: 1; } }
-.hint-keys { display: flex; gap: 5px; align-items: center; justify-content: center; width: 96px; flex-wrap: wrap; }
+.hint-keys { display: flex; gap: 4px; align-items: center; justify-content: center; min-width: 72px; }
 .hint-key {
   display: grid;
   place-items: center;
@@ -212,8 +212,11 @@
 :root[data-motion='reduced'] .hint-arrow { stroke-dashoffset: 0; }
 :root[data-motion='reduced'] .hint-hand-swipe { offset-distance: 60%; }
 @media (max-width: 380px) {
-  .control-hint-card { grid-template-columns: 72px 1fr; }
-  .hint-gesture, .hint-keys { width: 72px; }
+  .hint-gesture { width: 72px; }
+}
+/* Phones: keep the scene's HUD band (score, timer, prompt) visible; sit above SKILL/SPRINT. */
+@media (max-width: 700px) {
+  .control-hint { top: auto; bottom: calc(var(--safe-bottom) + 168px); }
 }
 
 /* ───────────── Info tips ───────────── */
