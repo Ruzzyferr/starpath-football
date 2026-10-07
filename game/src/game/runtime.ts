@@ -76,6 +76,7 @@ import {
 } from './physics'
 import { offsideSnapshot } from './offside'
 import { ASSIST_REWARD } from '../sim/match/rating'
+import { refHighlightFoulMult } from '../sim/match/referee'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
 import { buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import {
@@ -123,6 +124,12 @@ export const ONE_TWO_ARMED_MAX = 3
 
 /** Difficulty label → opponent sharpness multiplier. */
 export const DIFFICULTY_SCALE: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
+/** Advantage: game seconds the referee waits for the fouled team to profit before calling it back. */
+export const ADVANTAGE_WINDOW = 2.5
+/** Advantage: meters of forward progress in possession that count as a benefit. */
+export const ADVANTAGE_GAIN_M = 7
+/** Advantage tendency when the highlight carries no referee (demo / tests). */
+export const DEFAULT_ADVANTAGE = 0.5
 
 export interface RuntimeOptions {
   aimAssist?: AimAssist
@@ -176,7 +183,9 @@ export type RuntimeEvent =
   | { type: 'save'; by: string; held: boolean; x: number; y: number; z: number }
   | { type: 'block'; by: string; x: number; y: number }
   | { type: 'tackle'; by: string; won: boolean; slide: boolean; x: number; y: number }
-  | { type: 'foul'; by: string; on: string; card?: 'yellow' | 'red' }
+  | { type: 'foul'; by: string; on: string; card?: 'yellow' | 'red'; advantage?: boolean }
+  /** Referee plays advantage ('on'), it paid off ('played') or nothing came of it ('called_back'). */
+  | { type: 'advantage'; state: 'on' | 'played' | 'called_back'; x: number; y: number }
   | { type: 'whistle'; long: boolean }
   | { type: 'skill'; by: string; success: boolean }
   | { type: 'jump'; by: string }
@@ -278,6 +287,13 @@ export class HighlightRuntime {
   private readonly frames: ReplayFrame[] = []
   private readonly stats = { passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 }
   private card: 'yellow' | 'red' | undefined
+  private redReason: HighlightResult['redReason']
+  /** Referee strictness (1..5) / advantage tendency for this moment (WP-14). */
+  readonly refStrictness: number | undefined
+  readonly refAdvantage: number
+  /** Advantage being played: since `t`, from ball x `x0`. */
+  private advantage: { t: number; x0: number } | null = null
+  private advantageResult: HighlightResult['advantage']
   private injured = false
   private acc = 0
   private introLeft: number
@@ -345,6 +361,8 @@ export class HighlightRuntime {
     this.timeLimit = Math.max(3, highlight.scenario.timeLimit || 10)
     this.importance = clamp01(opts.importance ?? 0.5)
     this.timingMult = clampN(opts.timingMult ?? 1, 1, 2)
+    this.refStrictness = highlight.referee?.strictness
+    this.refAdvantage = clamp01(highlight.referee?.advantage ?? DEFAULT_ADVANTAGE)
     this.introLeft = this.setPiece ? 0.7 : 0.35
     this.events.push({ type: 'whistle', long: false })
     // Stagger AI thinking so they don't all decide on the same frame.
@@ -499,6 +517,8 @@ export class HighlightRuntime {
       r.shotLog = this.shotLog.map((x) => ({ ...x, outcome: x.outcome ?? 'missed' }))
     }
     if (this.card) r.card = this.card
+    if (this.card === 'red' && this.redReason) r.redReason = this.redReason
+    if (this.advantageResult) r.advantage = this.advantageResult
     if (this.injured) r.injured = true
     return r
   }
@@ -541,6 +561,7 @@ export class HighlightRuntime {
       if (!this.owner && !this.tracker.inGoal && !this.tracker.out) this.contacts()
       this.duels()
       this.keeperLogic()
+      this.checkAdvantage()
       this.checkEnd()
     }
     this.record()
@@ -928,7 +949,7 @@ export class HighlightRuntime {
     const odds = tackleOdds(hero, carrier, timing, behind, false, this.difficulty)
     if (this.rng.chance(odds.win)) {
       this.winBall(hero, carrier, false)
-    } else if (this.rng.chance(odds.foul)) {
+    } else if (this.rng.chance(odds.foul * refHighlightFoulMult(this.refStrictness))) {
       this.heroFoul(carrier, false, behind)
     } else {
       hero.state = 'down'
@@ -967,7 +988,9 @@ export class HighlightRuntime {
 
   private heroFoul(on: Agent, slide: boolean, behind: boolean): void {
     const lastMan = !this.agents.some((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x < on.pos.x)
-    this.card = cardForFoul(this.rng, slide, behind, lastMan)
+    this.card = cardForFoul(this.rng, slide, behind, lastMan, this.refStrictness)
+    // Ban length: denying an obvious chance as last man is one match, a reckless lunge from behind more.
+    if (this.card === 'red') this.redReason = lastMan ? 'dogso' : 'serious'
     this.events.push({ type: 'foul', by: this.hero.id, on: on.id, card: this.card })
     this.finish('foul_committed', 'hero foul')
   }
@@ -2047,7 +2070,7 @@ export class HighlightRuntime {
         if (this.rng.chance(odds.win)) {
           this.winBall(hero, o, true)
           this.finish('defended', 'slide tackle')
-        } else if (this.rng.chance(odds.foul)) {
+        } else if (this.rng.chance(odds.foul * refHighlightFoulMult(this.refStrictness))) {
           this.heroFoul(o, true, behind)
         } else {
           // Carrier skips over it.
@@ -2077,9 +2100,11 @@ export class HighlightRuntime {
       if (this.rng.chance(odds.win)) {
         this.winBall(a, o, false)
         if (o.isHero) o.noTouch = 0.7
-      } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3)) {
-        this.events.push({ type: 'foul', by: a.id, on: o.id })
+      } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3 * refHighlightFoulMult(this.refStrictness))) {
         if (o.isHero && this.rng.chance(0.03)) this.injured = true
+        const card = cardForFoul(this.rng, false, behind, false, this.refStrictness)
+        if (!this.injured && this.tryAdvantage(a, o, card)) return
+        this.events.push({ type: 'foul', by: a.id, on: o.id, card })
         this.finish(this.defending ? 'defended' : 'foul_won', 'fouled')
         return
       } else {
@@ -2089,6 +2114,54 @@ export class HighlightRuntime {
         if (o.isHero) this.stats.dribbles++
         this.events.push({ type: 'tackle', by: a.id, won: false, slide: false, x: a.pos.x, y: a.pos.y })
       }
+    }
+  }
+
+  // ───────────────────────── Advantage (WP-14) ─────────────────────────
+
+  /**
+   * An opponent fouled our carrier in the opposition half and he stayed on
+   * his feet: the referee may wave play on (his advantage tendency). Returns
+   * true when advantage is played.
+   */
+  private tryAdvantage(fouler: Agent, on: Agent, card: 'yellow' | 'red' | undefined): boolean {
+    if (this.defending || on.team !== 'hero' || this.advantage || this.advantageResult) return false
+    if (this.ball.x < PITCH_LENGTH * 0.45) return false
+    if (!this.rng.chance(this.refAdvantage)) return false
+    // The carrier rides the challenge (slowed, still on the ball); the fouler is left behind.
+    on.vel = scale(on.vel, 0.6)
+    fouler.state = 'down'
+    fouler.stateT = 0
+    fouler.noTouch = 1.2
+    this.advantage = { t: this.time, x0: this.ball.x }
+    this.events.push({ type: 'foul', by: fouler.id, on: on.id, card, advantage: true })
+    this.events.push({ type: 'advantage', state: 'on', x: this.ball.x, y: this.ball.y })
+    return true
+  }
+
+  /**
+   * While advantage runs: a shot, or real progress in possession, means it
+   * paid off; losing the ball or nothing happening within the window brings
+   * play back for the free kick.
+   */
+  private checkAdvantage(): void {
+    const adv = this.advantage
+    if (!adv || this.result) return
+    const o = this.owner
+    const shotSince = !!this.shot && this.shot.by.team === 'hero' && this.shot.t >= adv.t
+    const progressed = o?.team === 'hero' && this.ball.x - adv.x0 >= ADVANTAGE_GAIN_M
+    if (shotSince || progressed) {
+      this.advantage = null
+      this.advantageResult = 'played'
+      this.events.push({ type: 'advantage', state: 'played', x: this.ball.x, y: this.ball.y })
+      return
+    }
+    const lost = (!!o && o.team === 'opp') || (!o && this.lastTouch?.team === 'opp')
+    if (lost || this.time - adv.t > ADVANTAGE_WINDOW) {
+      this.advantage = null
+      this.advantageResult = 'called_back'
+      this.events.push({ type: 'advantage', state: 'called_back', x: adv.x0, y: this.ball.y })
+      this.finish('foul_won', 'advantage called back')
     }
   }
 

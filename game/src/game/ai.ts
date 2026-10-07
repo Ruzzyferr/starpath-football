@@ -10,6 +10,7 @@ import type { Rng } from '../core/rng'
 import type { HighlightKind } from '../sim/match/types'
 import { PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import { laneOpenness } from './kick'
+import { refCardMult } from '../sim/match/referee'
 import { GOAL_CENTER_Y, cloneBall, createTracker, stepBall, type BallState, type PhysicsEnv } from './physics'
 import {
   a01,
@@ -289,11 +290,15 @@ export function skillBeatChance(carrier: Agent, defender: Agent | null, difficul
   return clampN(0.5 + (c - d) * 0.8 + diffAdj, 0.12, 0.92)
 }
 
-/** Card for a foul: red for a cynical last-man/from-behind slide, yellow for reckless ones. */
-export function cardForFoul(rng: Rng, slide: boolean, fromBehind: boolean, lastMan: boolean): 'yellow' | 'red' | undefined {
-  if (lastMan && (slide || fromBehind) && rng.chance(0.55)) return 'red'
-  if (fromBehind && slide && rng.chance(0.35)) return 'red'
-  const p = (slide ? 0.45 : 0.18) + (fromBehind ? 0.35 : 0) + (lastMan ? 0.3 : 0)
+/**
+ * Card for a foul: red for a cynical last-man/from-behind slide, yellow for
+ * reckless ones. The referee's strictness (1..5, 3 neutral) scales every card.
+ */
+export function cardForFoul(rng: Rng, slide: boolean, fromBehind: boolean, lastMan: boolean, strictness?: number): 'yellow' | 'red' | undefined {
+  const m = refCardMult(strictness)
+  if (lastMan && (slide || fromBehind) && rng.chance(Math.min(0.9, 0.55 * m))) return 'red'
+  if (fromBehind && slide && rng.chance(Math.min(0.8, 0.35 * m))) return 'red'
+  const p = ((slide ? 0.45 : 0.18) + (fromBehind ? 0.35 : 0) + (lastMan ? 0.3 : 0)) * m
   return rng.chance(Math.min(0.95, p)) ? 'yellow' : undefined
 }
 

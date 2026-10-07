@@ -122,6 +122,7 @@ const T = {
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
     offside: 'OFFSIDE', offsideFlag: 'FLAG UP!', oneTwo: 'ONE-TWO!',
+    advantage: 'ADVANTAGE!', advantagePlayed: 'PLAY ON', advantageBack: 'BACK FOR THE FOUL',
     aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
   },
@@ -132,6 +133,7 @@ const T = {
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
     offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!', oneTwo: 'VER-KAÇ!',
+    advantage: 'AVANTAJ!', advantagePlayed: 'DEVAM', advantageBack: 'FAUL ÇALINDI',
     aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
   },
@@ -1790,8 +1792,19 @@ export class MatchScene extends Phaser.Scene {
           if (e.won && e.by === rt.hero.id) this.vibrate(60)
           break
         }
-        case 'foul':
-          if (e.card) this.floatText(e.card === 'red' ? this.s.red : this.s.yellow, rt.hero.pos.x, rt.hero.pos.y, e.card === 'red' ? '#ff4040' : '#ffd23f', 1.6, 3.2)
+        case 'foul': {
+          // The card goes to the fouler (the hero, or the opponent who chopped our man down).
+          const by = this.agentById(e.by) ?? rt.hero
+          if (e.card) this.floatText(e.card === 'red' ? this.s.red : this.s.yellow, by.pos.x, by.pos.y, e.card === 'red' ? '#ff4040' : '#ffd23f', 1.6, 3.2)
+          break
+        }
+        case 'advantage':
+          // Referee's arms out: play on; called back = whistle for the free kick.
+          if (e.state === 'on') {
+            this.floatText(`⇢ ${this.s.advantage}`, e.x, e.y, '#7dffb0', 1.5, 3.6)
+            this.sfx.roar(0.3)
+          } else if (e.state === 'played') this.floatText(this.s.advantagePlayed, e.x, e.y, '#7dffb0', 0.9, 3.2)
+          else this.floatText(this.s.advantageBack, e.x, e.y, '#ffd23f', 1.3, 3.4)
           break
         case 'whistle':
           this.sfx.whistle(e.long)
