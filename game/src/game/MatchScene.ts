@@ -903,10 +903,12 @@ export class MatchScene extends Phaser.Scene {
 
   /** Team-mate positions (meter scheme: tapping a team-mate stays a pass). */
   private matePositions(): { x: number; y: number }[] {
-    const out: { x: number; y: number }[] = []
+    const out = this.matesBuf
+    out.length = 0
     for (const a of this.rt.agents) if (a.team === 'hero' && !a.isHero) out.push(a.pos)
     return out
   }
+  private readonly matesBuf: { x: number; y: number }[] = []
 
   private afterPlay(): void {
     const rt = this.rt
@@ -1276,7 +1278,7 @@ export class MatchScene extends Phaser.Scene {
         const bp = project(a.pos.x, a.pos.y)
         const r = (0.95 - i * 0.12) * PPM
         g.lineStyle(0.08 * PPM, 0x5dff8a, 0.75 - i * 0.18)
-        g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT)
+        g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT, 20)
       }
     }
     // One-two: the receiver who will return the ball (tap again); solid once requested.
@@ -1287,10 +1289,10 @@ export class MatchScene extends Phaser.Scene {
         const bp = project(a.pos.x, a.pos.y)
         const pr = (1.15 + (ot.armed || this.rm ? 0 : Math.sin(this.elapsed * 9) * 0.12)) * PPM
         g.lineStyle(0.11 * PPM, 0x9fe8ff, ot.armed ? 0.95 : 0.7)
-        g.strokeEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT)
+        g.strokeEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT, 20)
         if (ot.armed) {
           g.fillStyle(0x9fe8ff, 0.18)
-          g.fillEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT)
+          g.fillEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT, 20)
         }
       }
     }

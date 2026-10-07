@@ -57,7 +57,8 @@ export class InputRecorder {
     if (!l || l.sprint !== input.sprint) f.sprint = input.sprint
     this.last = { mx: input.move.x, my: input.move.y, sprint: input.sprint }
     if (input.actions.length) f.actions = input.actions.map((a) => structuredCloneSafe(a))
-    const aimKey = JSON.stringify(input.aim)
+    // Cheap path for the common no-aim frame; serialise only while aiming.
+    const aimKey = input.aim ? JSON.stringify(input.aim) : 'null'
     if (aimKey !== this.lastAim) {
       f.aim = input.aim ? structuredCloneSafe(input.aim) : null
       this.lastAim = aimKey
