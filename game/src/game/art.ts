@@ -7,6 +7,7 @@ import Phaser from 'phaser'
 import type { KitColors } from '../core/types'
 import type { Weather } from '../sim/match/types'
 import { GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { PITCH_COLORS } from '../core/pitchColors'
 import { NET_DEPTH } from './physics'
 import { PPM, TILT, ZS, project } from './view'
 
@@ -366,19 +367,9 @@ export function utilTextures(scene: Phaser.Scene): void {
   })
 }
 
-/**
- * Grass palette of the match scene: [light stripe, dark stripe, apron] per
- * weather, day and night. Exported so UI surfaces that show a pitch (live hub,
- * line-ups) can use the same greens — `PITCH_COLORS.clear` is the default turf.
- */
-export const PITCH_COLORS: Readonly<Record<Weather | 'night', readonly [string, string, string]>> = {
-  clear: ['#3f9140', '#358236', '#2c6d2e'],
-  wind: ['#3f9140', '#358236', '#2c6d2e'],
-  hot: ['#5f9a3b', '#538b33', '#4a7d2e'],
-  rain: ['#2f7a37', '#286c30', '#21592a'],
-  snow: ['#86ab8f', '#7a9f84', '#6c917a'],
-  night: ['#23602f', '#1d5229', '#163f20'],
-}
+
+/** Re-exported so existing importers keep working (the data lives in core, Phaser-free). */
+export { PITCH_COLORS }
 
 /** Grass palette per weather (night darkens and cools it). */
 function grass(weather: Weather, night = false): readonly [string, string, string] {

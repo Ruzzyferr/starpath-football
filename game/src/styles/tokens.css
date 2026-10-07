@@ -63,8 +63,8 @@
   --tier-legend-grad: conic-gradient(from 200deg, #ff4d5e, #ffc83d, #1fd47a, #3da5ff, #8e5cff, #ff4d5e);
 
   /* ── Pitch ── */
-  --pitch-a: #2f8f45;
-  --pitch-b: #37a050;
+  --pitch-a: #3f9140; /* = PITCH_COLORS.clear[0] (src/core/pitchColors.ts) */
+  --pitch-b: #358236; /* = PITCH_COLORS.clear[1] */
   --pitch-line: rgba(234, 245, 234, 0.85);
   --pitch-shadow: rgba(11, 61, 26, 0.35);
 
