@@ -11,6 +11,7 @@ import type {
   Club, Competition, LText, MatchResultSummary, NpcPlayer, Position, SeasonStats, World,
 } from '../../core/types'
 import { POSITIONS } from '../../core/types'
+import { worldGender } from '../../core/gender'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { positionGroup } from './attributes'
@@ -639,7 +640,7 @@ function youthIntake(world: World, rng: Rng, nextSeason: number): string[] {
         nationality: rng.chance(0.9) ? club.countryId : rng.pick(Object.keys(world.countries)),
         position: neediestPosition(world, club), age, season: nextSeason, ovr,
         potential: rollPotential(rng, ovr, age, (club.reputation - 50) / 10),
-        clubId: club.id, clubReputation: club.reputation, contractYears: 3,
+        clubId: club.id, clubReputation: club.reputation, contractYears: 3, gender: worldGender(world),
       })
       world.players[p.id] = p
       club.squad.push(p.id)
@@ -669,7 +670,7 @@ function balanceSquads(world: World, rng: Rng, season: number): { signed: Transf
           const age = rng.int(20, 30)
           const p = createNpcPlayer(rng, {
             id: `g${season}_${n++}`, nationality: club.countryId, position: pos, age, season,
-            ovr: level - 6 + rng.normal(0, 3), clubId: club.id, clubReputation: club.reputation,
+            ovr: level - 6 + rng.normal(0, 3), clubId: club.id, clubReputation: club.reputation, gender: worldGender(world),
           })
           world.players[p.id] = p
           club.squad.push(p.id)

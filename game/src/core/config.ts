@@ -1,6 +1,7 @@
 export const GAME_NAME = 'StarPath Football'
 export const GAME_NAME_TR = 'Yıldız Yolu Futbol'
-export const SAVE_VERSION = 1
+/** Bump with a MIGRATIONS entry in state/save.ts. v2: hero.gender. */
+export const SAVE_VERSION = 2
 
 /** Days per week in the calendar; slots per day. */
 export const DAYS_PER_WEEK = 7

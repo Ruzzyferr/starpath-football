@@ -6,8 +6,18 @@ describe('name data', () => {
     const pool = NAME_POOLS[style]
     expect(new Set(pool.first).size).toBeGreaterThanOrEqual(60)
     expect(new Set(pool.last).size).toBeGreaterThanOrEqual(80)
+    expect(new Set(pool.firstFemale).size).toBeGreaterThanOrEqual(60)
     expect(CLUB_PATTERNS[style].length).toBeGreaterThanOrEqual(8)
     expect(STADIUM_PATTERNS[style].length).toBeGreaterThanOrEqual(3)
+  })
+
+  it('female and male first-name pools are distinct sets', () => {
+    for (const style of NAME_STYLES) {
+      const male = new Set(NAME_POOLS[style].first)
+      const overlap = NAME_POOLS[style].firstFemale.filter((n) => male.has(n))
+      // A few unisex names (Deniz, Alex, Jordan…) are fine; the pools must still read as different.
+      expect(overlap.length, `${style}: ${overlap.join(', ')}`).toBeLessThanOrEqual(4)
+    }
   })
 
   it('every country has ≥20 cities, a known name style and 3 league names', () => {

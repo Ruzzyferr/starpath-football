@@ -3,7 +3,7 @@
  * + background, hidden potential, and the starting Life (family, money).
  */
 import type {
-  Appearance, Archetype, AttributeKey, Attributes, Background, Foot, Hero, Life, Position, Relationship,
+  Appearance, Archetype, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship,
 } from '../../core/types'
 import { ATTRIBUTE_KEYS } from '../../core/types'
 import type { Rng } from '../../core/rng'
@@ -23,6 +23,8 @@ export interface HeroInput {
   archetype: Archetype
   background: Background
   birthYear: number
+  /** Default 'male'. A female hero plays in the (fictional) women's game. */
+  gender?: Gender
 }
 
 /**
@@ -130,15 +132,17 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     attrs[key] = clamp(Math.round(v), 5, 75)
   }
 
+  const gender: Gender = input.gender === 'female' ? 'female' : 'male'
   const hero: Hero = {
     firstName: input.firstName,
     lastName: input.lastName,
+    gender,
     nickname: input.nickname || input.lastName,
     nationality: input.nationality,
     birthYear: input.birthYear,
     position: input.position,
     foot: input.foot,
-    appearance: { ...input.appearance },
+    appearance: { ...input.appearance, gender },
     archetype: input.archetype,
     background: input.background,
     attrs,
@@ -210,7 +214,7 @@ export function createLife(rng: Rng, hero: Hero, background: Background, names: 
     mother: makeRelation('mother', 'mother', names.mother ?? rng.pick(pool.f), bg.relations.mother + jitter()),
     father: makeRelation('father', 'father', names.father ?? rng.pick(pool.m), bg.relations.father + jitter()),
     sibling: makeRelation('sibling', 'sibling', sibName, bg.relations.sibling + jitter()),
-    bestFriend: makeRelation('bestFriend', 'bestFriend', names.bestFriend ?? rng.pick(pool.m), bg.relations.bestFriend + jitter()),
+    bestFriend: makeRelation('bestFriend', 'bestFriend', names.bestFriend ?? rng.pick(hero.gender === 'female' ? pool.f : pool.m), bg.relations.bestFriend + jitter()),
     fans: makeRelation('fans', 'fans', 'Taraftarlar / Fans', 0),
     press: makeRelation('press', 'press', 'Basın / Press', 0),
   }

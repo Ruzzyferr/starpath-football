@@ -81,7 +81,13 @@ export function openEnvelope(raw: string | null): { env: SaveEnvelope; state: Ga
 
 type Migration = (s: any) => any
 /** MIGRATIONS[v] upgrades a save from version v to v+1. */
-const MIGRATIONS: Record<number, Migration> = {}
+const MIGRATIONS: Record<number, Migration> = {
+  /** v1 → v2: hero gender (old careers are male heroes in men's leagues). */
+  1: (s) => {
+    if (s.hero && typeof s.hero === 'object' && s.hero.gender !== 'female' && s.hero.gender !== 'male') s.hero.gender = 'male'
+    return s
+  },
+}
 
 export function migrate(raw: any, fromVersion: number): GameState | null {
   if (!raw || typeof raw !== 'object') return null

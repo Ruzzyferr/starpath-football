@@ -7,8 +7,9 @@
  * (see season.ts).
  */
 import type {
-  Club, CrestSpec, Formation, League, NpcPlayer, Position, TacticStyle, World,
+  Club, CrestSpec, Formation, Gender, League, NpcPlayer, Position, TacticStyle, World,
 } from '../../core/types'
+import { worldGender } from '../../core/gender'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID, COUNTRY_DEFS, toCountry } from '../../data/world/countries'
@@ -30,6 +31,8 @@ export interface GenerateWorldOptions {
   heroCountryId: string
   /** Restrict the world to these countries (default: all). Must include the hero country. */
   countryIds?: readonly string[]
+  /** Players' gender (follows the hero). Default 'male'. */
+  gender?: Gender
 }
 
 export const FREE_AGENT_COUNT = 150
@@ -197,7 +200,7 @@ function generateSquad(rng: Rng, ctx: GenContext, club: Club, level: number, tie
       nationality: rng.chance(foreignChance) ? pickForeignNationality(rng, club.countryId) : club.countryId,
       position, age, season: ctx.season, ovr,
       potential: rollPotential(rng, ovr, age, talent),
-      clubId: club.id, clubReputation: club.reputation,
+      clubId: club.id, clubReputation: club.reputation, gender: worldGender(ctx.world),
     })
     ctx.world.players[p.id] = p
     club.squad.push(p.id)
@@ -262,7 +265,7 @@ export function generateFreeAgents(rng: Rng, world: World, season: number, count
     const nationality = rng.chance(0.5) ? rng.pick(ids) : pickForeignNationality(rng, null)
     const p = createNpcPlayer(rng, {
       id: `${idPrefix}${i}`, nationality, position: randomPosition(rng), age, season,
-      ovr: clamp(Math.round(rng.normal(57, 7)), 40, 76), clubId: null,
+      ovr: clamp(Math.round(rng.normal(57, 7)), 40, 76), clubId: null, gender: worldGender(world),
     })
     world.players[p.id] = p
     out.push(p)
@@ -280,6 +283,7 @@ export function generateWorld(rng: Rng, opts: GenerateWorldOptions): World {
   if (!defs.some((d) => d.id === opts.heroCountryId)) throw new Error(`Unknown hero country "${opts.heroCountryId}"`)
 
   const world: World = { countries: {}, leagues: {}, clubs: {}, players: {}, competitions: {}, honours: [] }
+  if (opts.gender === 'female') world.gender = 'female'
   const ctx: GenContext = { season: opts.season, world, playerCounter: { n: 0 } }
 
   for (const def of defs) {

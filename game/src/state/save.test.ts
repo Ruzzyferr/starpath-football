@@ -61,3 +61,28 @@ describe('SaveManager', () => {
     expect(r.ok && (r.state as any).marker).toBe(7)
   })
 })
+
+describe('save migrations', () => {
+  it('v1 saves get a male hero (gender added in v2)', async () => {
+    const { migrate } = await import('./save')
+    const { SAVE_VERSION } = await import('../core/config')
+    const old = { version: 1, hero: { firstName: 'Ali' }, life: {}, world: {}, calendar: {}, meta: {} }
+    const s = migrate(JSON.parse(JSON.stringify(old)), 1) as unknown as { version: number; hero: { gender: string } }
+    expect(s.version).toBe(SAVE_VERSION)
+    expect(s.hero.gender).toBe('male')
+  })
+
+  it('keeps a female hero through save → load', async () => {
+    const m = new SaveManager(new MemoryStorage())
+    const st = { version: 2, hero: { firstName: 'Ece', gender: 'female' } } as unknown as GameState
+    await m.save(0, st, summary)
+    const r = await m.load(0)
+    expect(r.ok && r.state.hero.gender).toBe('female')
+  })
+
+  it('an old envelope (v1) loads and migrates', () => {
+    const data = JSON.stringify({ version: 1, hero: { firstName: 'Ali' } })
+    const r = openEnvelope(JSON.stringify({ version: 1, savedAt: 0, summary, data, checksum: checksum(data) }))
+    expect(r?.state.hero.gender).toBe('male')
+  })
+})

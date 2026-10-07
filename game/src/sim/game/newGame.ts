@@ -2,7 +2,7 @@
  * New career: world generation (save-size aware), hero creation, first club,
  * relationships, calendar, opening log/news and the first decision card.
  */
-import type { Appearance, Archetype, Background, Difficulty, Foot, GameState, Position } from '../../core/types'
+import type { Appearance, Archetype, Background, Difficulty, Foot, GameState, Gender, Position } from '../../core/types'
 import { Rng } from '../../core/rng'
 import { SAVE_VERSION, START_YEAR } from '../../core/config'
 import { COUNTRY_BY_ID, COUNTRY_DEFS } from '../../data/world/countries'
@@ -33,6 +33,8 @@ export interface NewGameInput {
   archetype: Archetype
   background: Background
   appearance: Appearance
+  /** Hero gender (default 'male'); the generated world's players follow it. */
+  gender?: Gender
   difficulty?: Difficulty
   /** Optional family names. */
   family?: FamilyNames
@@ -79,12 +81,13 @@ export function newGame(input: NewGameInput, seed: number = Date.now() >>> 0): G
   const rng = new Rng(seed)
   const season = START_YEAR
   const countryIds = input.countryIds ? [...new Set([input.nationality, ...input.countryIds])] : defaultCountryIds(input.nationality)
-  const world = generateWorld(rng.fork('world'), { season, heroCountryId: input.nationality, countryIds })
+  const gender: Gender = input.gender === 'female' ? 'female' : 'male'
+  const world = generateWorld(rng.fork('world'), { season, heroCountryId: input.nationality, countryIds, gender })
 
   const hero = createHero(rng, {
     firstName: input.firstName, lastName: input.lastName, nickname: input.nickname, nationality: input.nationality,
     position: input.position, foot: input.foot, appearance: input.appearance, archetype: input.archetype,
-    background: input.background, birthYear: input.birthYear,
+    background: input.background, birthYear: input.birthYear, gender,
   })
   const life = createLife(rng, hero, input.background, input.family)
   const now = Date.now()

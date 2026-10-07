@@ -16,7 +16,7 @@ import { signal, computed, effect } from '@preact/signals'
 import type {
   AssetDef, AttributeGroup, AttributeKey, CrestSpec, Difficulty, Foot, Formation, GameState,
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
-  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow,
+  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender,
 } from '../core/types'
 import { currentLang } from '../i18n'
 
@@ -443,6 +443,8 @@ export interface NewGameInput {
   archetype: Archetype
   background: Background
   appearance: Appearance
+  /** Default 'male'. A female hero plays in the women's game of the same leagues. */
+  gender?: Gender
   difficulty: Difficulty
   seed?: number
 }

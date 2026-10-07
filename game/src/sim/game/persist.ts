@@ -12,7 +12,8 @@ import { saveSummary } from './summary'
 /** Marker key placed in `world.players` of a packed state. */
 export const PACK_KEY = '__packed_v1'
 
-const APPEARANCE_KEYS: readonly (keyof Appearance)[] = ['skin', 'hairStyle', 'hairColor', 'beard', 'eyeColor', 'face', 'accessory']
+/** Numeric appearance fields; `gender` is not packed (it is the world's gender, restored on unpack). */
+const APPEARANCE_KEYS: readonly Exclude<keyof Appearance, 'gender'>[] = ['skin', 'hairStyle', 'hairColor', 'beard', 'eyeColor', 'face', 'accessory']
 const STAT_KEYS: readonly (keyof SeasonStats)[] = [
   'apps', 'starts', 'minutes', 'goals', 'assists', 'shots', 'shotsOnTarget', 'passes', 'passesCompleted',
   'tackles', 'dribbles', 'yellow', 'red', 'cleanSheets', 'saves', 'ratingSum', 'motm',
@@ -32,9 +33,10 @@ function packPlayer(p: NpcPlayer): PackedPlayer {
   ]
 }
 
-function unpackPlayer(a: PackedPlayer): NpcPlayer {
+function unpackPlayer(a: PackedPlayer, female: boolean): NpcPlayer {
   const app = {} as Appearance
   APPEARANCE_KEYS.forEach((k, i) => { app[k] = a[17][i] ?? 0 })
+  if (female) app.gender = 'female'
   const stats = {} as SeasonStats
   const sa = a[19]
   STAT_KEYS.forEach((k, i) => { stats[k] = sa === 0 ? 0 : sa[i] ?? 0 })
@@ -60,7 +62,8 @@ export function unpackState(state: GameState): GameState {
   if (!isPacked(state)) return state
   const rows = (state.world.players as unknown as Record<string, PackedPlayer[]>)[PACK_KEY]
   const players: Record<string, NpcPlayer> = {}
-  for (const r of rows) players[r[0]] = unpackPlayer(r)
+  const female = state.world.gender === 'female'
+  for (const r of rows) players[r[0]] = unpackPlayer(r, female)
   state.world.players = players
   return state
 }

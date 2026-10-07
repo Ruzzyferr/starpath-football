@@ -11,7 +11,7 @@
 import { signal } from '@preact/signals'
 import type { GameState } from '../../core/types'
 import { loadGame, saveGame, unpackState } from '../../sim/game'
-import { MemoryStorage, SaveManager, defaultStorage, openEnvelope, type SaveStorage } from '../../state/save'
+import { MemoryStorage, SaveManager, defaultStorage, migrate, openEnvelope, type SaveStorage } from '../../state/save'
 import type { SaveSlotInfo } from '../store'
 import { current } from './session'
 
@@ -141,8 +141,10 @@ export async function importSlot(json: string, uiSlot: number): Promise<boolean>
   try {
     const parsed: unknown = JSON.parse(json)
     if (!looksLikeState(parsed)) return false
-    unpackState(parsed)
-    await saveState(parsed, uiSlot)
+    const st = migrate(parsed, parsed.version)
+    if (!st) return false
+    unpackState(st)
+    await saveState(st, uiSlot)
     return true
   } catch {
     return false

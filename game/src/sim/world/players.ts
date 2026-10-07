@@ -2,7 +2,7 @@
  * NPC player factory and the economic formulas (value, wage, budgets) shared
  * by world generation, transfers and the career layer.
  */
-import type { Appearance, Foot, NpcPlayer, Personality, Position, SeasonStats } from '../../core/types'
+import type { Appearance, Foot, Gender, NpcPlayer, Personality, Position, SeasonStats } from '../../core/types'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID, COUNTRY_DEFS } from '../../data/world/countries'
@@ -43,9 +43,11 @@ export function budgetForReputation(rep: number): number {
 // ───────────────────────── Appearance ─────────────────────────
 
 /** Number of options per appearance field (indices are 0 … n-1). The avatar renderer must match. */
-export const APPEARANCE_RANGES: Readonly<Record<keyof Appearance, number>> = {
+export const APPEARANCE_RANGES: Readonly<Record<Exclude<keyof Appearance, 'gender'>, number>> = {
   skin: 6, hairStyle: 12, hairColor: 8, beard: 6, eyeColor: 5, face: 6, accessory: 4,
 }
+/** Female hair styles used for generated players (avatar FEMALE_HAIR_STYLE_COUNT ≥ this). */
+export const FEMALE_HAIR_STYLES = 10
 
 /** Skin tone weights (0 = lightest … 5 = darkest) per name style. */
 const SKIN_WEIGHTS: Readonly<Record<NameStyle, readonly number[]>> = {
@@ -69,7 +71,20 @@ function weightedIndex(rng: Rng, weights: readonly number[]): number {
 }
 
 /** Random appearance biased by the player's name style. */
-export function randomAppearance(rng: Rng, style: NameStyle, age: number): Appearance {
+export function randomAppearance(rng: Rng, style: NameStyle, age: number, gender: Gender = 'male'): Appearance {
+  if (gender === 'female') {
+    const hairColor = age >= 36 && rng.chance(0.15) ? 6 : weightedIndex(rng, HAIR_WEIGHTS[style])
+    return {
+      skin: weightedIndex(rng, SKIN_WEIGHTS[style]),
+      hairStyle: rng.int(0, FEMALE_HAIR_STYLES - 1),
+      hairColor,
+      beard: 0,
+      eyeColor: rng.int(0, APPEARANCE_RANGES.eyeColor - 1),
+      face: rng.int(0, APPEARANCE_RANGES.face - 1),
+      accessory: rng.chance(0.75) ? 0 : rng.int(1, APPEARANCE_RANGES.accessory - 1),
+      gender: 'female',
+    }
+  }
   const hairColor = age >= 33 && rng.chance(0.25) ? 6 : weightedIndex(rng, HAIR_WEIGHTS[style])
   return {
     skin: weightedIndex(rng, SKIN_WEIGHTS[style]),
@@ -101,9 +116,9 @@ export function nameStyleOf(countryId: string): NameStyle {
 }
 
 /** Random "First Last" pair for a name style. */
-export function randomName(rng: Rng, style: NameStyle): { firstName: string; lastName: string } {
+export function randomName(rng: Rng, style: NameStyle, gender: Gender = 'male'): { firstName: string; lastName: string } {
   const pool = NAME_POOLS[style]
-  return { firstName: rng.pick(pool.first), lastName: rng.pick(pool.last) }
+  return { firstName: rng.pick(gender === 'female' ? pool.firstFemale : pool.first), lastName: rng.pick(pool.last) }
 }
 
 /**
@@ -147,6 +162,8 @@ export interface CreatePlayerOptions {
   clubReputation?: number
   /** Contract runs until season + contractYears (default 0–4; 0 = expires this season). Ignored for free agents. */
   contractYears?: number
+  /** Player gender (the world's gender; default 'male'). */
+  gender?: Gender
 }
 
 /** Create a fully-populated NpcPlayer. */
@@ -154,7 +171,8 @@ export function createNpcPlayer(rng: Rng, o: CreatePlayerOptions): NpcPlayer {
   const style = nameStyleOf(o.nationality)
   const ovr = clamp(Math.round(o.ovr), 25, 95)
   const potential = o.potential ?? rollPotential(rng, ovr, o.age)
-  const { firstName, lastName } = randomName(rng, style)
+  const gender = o.gender ?? 'male'
+  const { firstName, lastName } = randomName(rng, style, gender)
   return {
     id: o.id,
     firstName,
@@ -173,7 +191,7 @@ export function createNpcPlayer(rng: Rng, o: CreatePlayerOptions): NpcPlayer {
     morale: rng.int(55, 80),
     form: rng.int(45, 60),
     personality: rng.weighted(PERSONALITIES, (p) => p.w).v,
-    appearance: randomAppearance(rng, style, o.age),
+    appearance: randomAppearance(rng, style, o.age, gender),
     injuredWeeks: 0,
     stats: emptySeasonStats(),
   }

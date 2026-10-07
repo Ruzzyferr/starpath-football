@@ -18,6 +18,8 @@ export type Lang = 'tr' | 'en'
 export type Position = 'GK' | 'CB' | 'LB' | 'RB' | 'DM' | 'CM' | 'AM' | 'LW' | 'RW' | 'ST'
 export const POSITIONS: readonly Position[] = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST']
 export type Foot = 'L' | 'R' | 'B'
+/** Hero (and, by extension, the generated world's players) gender. Missing = 'male' (old saves). */
+export type Gender = 'male' | 'female'
 
 export const ATTRIBUTE_KEYS = [
   // physical
@@ -41,6 +43,11 @@ export interface Appearance {
   eyeColor: number
   face: number
   accessory: number
+  /**
+   * Which feature set the avatar uses (hair styles, beard, brows). Missing =
+   * 'male', so appearances from older saves render unchanged.
+   */
+  gender?: Gender
 }
 
 export interface KitColors {
@@ -212,6 +219,11 @@ export interface World {
   competitions: Record<string, Competition>
   /** Past champions by competition key (league id, cup key) per season. */
   honours: { season: number; compKey: string; name: LText; winnerId: string }[]
+  /**
+   * Gender of the generated players (follows the hero, so a female hero plays
+   * in women's leagues). Missing = 'male'.
+   */
+  gender?: Gender
   /** Free agents are NpcPlayers with clubId null. */
 }
 
@@ -258,6 +270,8 @@ export interface Award {
 export interface Hero {
   firstName: string
   lastName: string
+  /** Optional for old saves; read through `heroGender()` (core/gender.ts). */
+  gender?: Gender
   nickname: string
   nationality: string
   birthYear: number
