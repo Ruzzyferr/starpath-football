@@ -23,7 +23,7 @@ import { weeksUntilDecay } from '../../sim/career/decay'
 import {
   ACHIEVEMENT_BY_ID, achievementProgress, processAchievementEvent, type AchEvent, type AchievementDef, type AchievementProgress,
 } from '../../sim/game/achievements'
-import type { HallOfFameEntry, CareerSummary } from '../../sim/game/hallOfFame'
+import type { HallOfFameEntry, CareerSummary, PostCareerPath } from '../../sim/game/hallOfFame'
 import { legacyStartFrom, type LegacyStart } from '../../sim/game/legacy'
 import {
   CLUB_RECORD_NAMES, PERSONAL_RECORD_NAMES, allClubRecords, clubRecordsFor, lastMatchFeats, personalRecords,
@@ -202,10 +202,10 @@ export function continueCareer(): void {
 }
 
 /** Retire the hero: documentary + Hall of Fame entry (global) + achievements. */
-export function retireNow(opts: { testimonial?: boolean } = {}): CareerSummary | null {
+export function retireNow(opts: { testimonial?: boolean; postCareer?: PostCareerPath } = {}): CareerSummary | null {
   const s = get()
   const peak = Math.max(heroOvr(s.hero), ...readHistory(s).ovr)
-  const r = retireHero(s, { testimonial: opts.testimonial, peakOvr: peak, retiredAt: Date.now() })
+  const r = retireHero(s, { testimonial: opts.testimonial, postCareer: opts.postCareer, peakOvr: peak, retiredAt: Date.now() })
   if (!r.ok || !r.summary) {
     notify(r.lines[0])
     return null

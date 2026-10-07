@@ -49,6 +49,15 @@ export interface ContractTerms {
   role: SquadRole
   /** Form-based playing-time guarantee clause (see career/squadRole startProbability). */
   formGuarantee?: boolean
+  /** Injury insurance clause. */
+  insurance?: boolean
+  /** Playing-time (minutes) guarantee clause. */
+  minutesGuarantee?: boolean
+  /** Image-rights clause (player keeps the rights → sponsor income bonus). */
+  imageRights?: boolean
+  appearanceBonus?: number
+  promotionBonus?: number
+  loyaltyBonus?: number
 }
 
 export type OfferKind = 'new' | 'renewal' | 'transfer' | 'loan' | 'freeAgent'
@@ -175,6 +184,12 @@ export function toContract(offer: ContractOffer): Contract {
     role: t.role,
     ...(offer.loan ? { loan: true } : {}),
     ...(t.formGuarantee ? { formGuarantee: true } : {}),
+    ...(t.insurance ? { insurance: true } : {}),
+    ...(t.minutesGuarantee ? { minutesGuarantee: true } : {}),
+    ...(t.imageRights ? { imageRights: true } : {}),
+    ...(t.appearanceBonus ? { appearanceBonus: t.appearanceBonus } : {}),
+    ...(t.promotionBonus ? { promotionBonus: t.promotionBonus } : {}),
+    ...(t.loyaltyBonus ? { loyaltyBonus: t.loyaltyBonus } : {}),
   }
 }
 
@@ -354,6 +369,17 @@ const MONEY_KEYS: readonly MoneyKey[] = ['wage', 'signingBonus', 'goalBonus', 'a
 const maxKey = (k: MoneyKey): keyof HiddenLimits =>
   k === 'wage' ? 'maxWage' : k === 'signingBonus' ? 'maxSigningBonus' : k === 'goalBonus' ? 'maxGoalBonus' : 'maxAssistBonus'
 
+type ClauseKey = 'insurance' | 'minutesGuarantee' | 'imageRights'
+const CLAUSE_KEYS: readonly ClauseKey[] = ['insurance', 'minutesGuarantee', 'imageRights']
+type ExtraBonusKey = 'appearanceBonus' | 'promotionBonus' | 'loyaltyBonus'
+const EXTRA_BONUS_KEYS: readonly ExtraBonusKey[] = ['appearanceBonus', 'promotionBonus', 'loyaltyBonus']
+
+/** Hidden ceilings for the extra bonuses (derived from the wage headroom, so no save migration is needed). */
+export function extraBonusLimits(s: Pick<NegotiationState, 'hidden' | 'offer'>): Record<ExtraBonusKey, number> {
+  const w = Math.max(s.hidden.maxWage, s.offer.terms.wage)
+  return { appearanceBonus: roundNice(w * 0.2), promotionBonus: roundNice(w * 6), loyaltyBonus: roundNice(w * 8) }
+}
+
 /** Result of a negotiation step. */
 export interface NegotiationStep {
   state: NegotiationState
@@ -423,6 +449,28 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
     else excess += 0.35
   }
 
+  // Extra clauses: insurance is cheap, minutes/image rights need a club that rates you.
+  const okClauses: Partial<Record<ClauseKey, boolean>> = {}
+  for (const k of CLAUSE_KEYS) {
+    if (ask[k] !== true || cur[k]) continue
+    wantsMore = true
+    const ok = k === 'insurance' || h.maxRoleRank >= roleRank('starter')
+    okClauses[k] = ok
+    if (ok) fraction = Math.max(fraction, k === 'insurance' ? 0.2 : 0.5)
+    else excess += k === 'minutesGuarantee' ? 0.45 : 0.3
+  }
+  // Extra bonuses (appearance / promotion / loyalty) against hidden caps.
+  const extraLimits = extraBonusLimits(s)
+  for (const k of EXTRA_BONUS_KEYS) {
+    const a = ask[k]
+    const c0 = cur[k] ?? 0
+    if (a === undefined || !Number.isFinite(a) || a <= c0) continue
+    wantsMore = true
+    const max = extraLimits[k]
+    if (a <= max) fraction = Math.max(fraction, (a - c0) / Math.max(1, max - c0))
+    else { fraction = 1; excess += a / Math.max(1, max) - 1 }
+  }
+
   const lines: Lines = []
   const record = (response: NegotiationRound['response']) =>
     s.history.push({ round: s.round, ask: { ...ask }, response, patienceAfter: s.patience })
@@ -467,6 +515,13 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
     cur.releaseClause = roundNice(Math.max(h.minReleaseClause, (ask.releaseClause + cur.releaseClause) / 2))
   }
   if (guaranteeOk) cur.formGuarantee = true
+  for (const k of CLAUSE_KEYS) if (okClauses[k]) cur[k] = true
+  for (const k of EXTRA_BONUS_KEYS) {
+    const a = ask[k]
+    if (a === undefined || !Number.isFinite(a) || a <= (cur[k] ?? 0)) continue
+    const max = extraLimits[k]
+    cur[k] = roundNice(a <= max ? (cur[k] ?? 0) + (a - (cur[k] ?? 0)) * 0.6 : (cur[k] ?? 0) + (max - (cur[k] ?? 0)) * 0.5)
+  }
 
   if (s.round >= s.maxRounds) {
     s.status = 'expired'
@@ -491,6 +546,11 @@ function applyAsk(s: NegotiationState, ask: Partial<ContractTerms>): void {
   if (ask.role !== undefined) t.role = ask.role
   if (ask.releaseClause !== undefined) t.releaseClause = ask.releaseClause
   if (ask.formGuarantee !== undefined) t.formGuarantee = ask.formGuarantee
+  for (const k of CLAUSE_KEYS) if (ask[k] !== undefined) t[k] = ask[k]
+  for (const k of EXTRA_BONUS_KEYS) {
+    const v = ask[k]
+    if (v !== undefined && Number.isFinite(v) && v >= 0) t[k] = roundNice(v) || 0
+  }
 }
 
 /** Accept the club's current offer (valid while open or after it became final). */

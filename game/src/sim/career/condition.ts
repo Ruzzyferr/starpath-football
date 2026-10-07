@@ -5,7 +5,7 @@
  */
 import type { Hero, Injury, LText, Life } from '../../core/types'
 import type { Rng } from '../../core/rng'
-import { clamp, fill, lt, meter, type Lines } from './common'
+import { clamp, fill, fmtMoney, lt, meter, type Lines } from './common'
 import { perkValue } from './perks'
 import { assetEffectTotal } from '../life/assetEffects'
 import { weeklySkillDecay } from './decay'
@@ -76,13 +76,25 @@ export function rollInjury(rng: Rng, hero: Hero, life: Life, severityWeights: [n
   return { name: t.name, severity: t.severity, weeksLeft: Math.max(1, Math.round(base * (1 - reduce))) }
 }
 
+/** Injury-insurance clause payout: wage × (severity + 1) weeks, 0 without the clause. */
+export function injuryInsurancePayout(hero: Pick<Hero, 'contract'>, injury: Pick<Injury, 'severity'>): number {
+  const c = hero.contract
+  return c?.insurance ? Math.round(c.wage * (injury.severity + 1)) : 0
+}
+
 /** Put an injury on the hero (keeps the worse one if already injured). */
 export function applyInjury(hero: Hero, life: Life, injury: Injury): Lines {
   if (hero.injury && hero.injury.weeksLeft >= injury.weeksLeft) return []
   hero.injury = injury
   hero.morale = meter(hero.morale - 4 * injury.severity)
   life.health = meter(life.health - 8 * injury.severity)
-  return [fill(lt('🚑 Sakatlandın: {n} ({w} hafta)', '🚑 Injured: {n} ({w} weeks)'), { n: injury.name, w: injury.weeksLeft })]
+  const lines: Lines = [fill(lt('🚑 Sakatlandın: {n} ({w} hafta)', '🚑 Injured: {n} ({w} weeks)'), { n: injury.name, w: injury.weeksLeft })]
+  const pay = injuryInsurancePayout(hero, injury)
+  if (pay > 0) {
+    life.money += pay
+    lines.push(fill(lt('🛡️ Sözleşmendeki sigorta {m} ödedi.', '🛡️ Your contract insurance paid out {m}.'), { m: fmtMoney(pay) }))
+  }
+  return lines
 }
 
 /**

@@ -33,6 +33,24 @@ export interface ScoreLine {
   value: number
 }
 
+/** What the retired hero does next (GDD 2.6): feeds the legacy score and the documentary/Hall of Fame text. */
+export type PostCareerPath = 'coach' | 'pundit' | 'ambassador'
+
+export const POST_CAREER: Readonly<Record<PostCareerPath, { score: number; label: LText; text: LText }>> = {
+  coach: {
+    score: 40, label: lt('Antrenör', 'Coach'),
+    text: lt('Kramponları astı ve kulüp akademisinde antrenör oldu; yeni nesli yetiştiriyor.', 'He hung up his boots and became a coach at the club academy, raising the next generation.'),
+  },
+  pundit: {
+    score: 20, label: lt('Yorumcu', 'Pundit'),
+    text: lt('Stüdyoya geçti: haftalık yorumcu olarak sahadaki sezgisini ekrana taşıyor.', 'He moved into the studio, a weekly pundit bringing his pitch-side instinct to the screen.'),
+  },
+  ambassador: {
+    score: 30, label: lt('Kulüp elçisi', 'Club ambassador'),
+    text: lt('Kulübün resmi elçisi oldu; tribünlerin ve vakfın yüzü olarak anılıyor.', 'He became the club’s official ambassador, remembered as the face of the stands and the foundation.'),
+  },
+}
+
 export interface CareerSummary {
   careerId: string
   name: string
@@ -69,6 +87,8 @@ export interface CareerSummary {
   /** Parent's career id when this was a Legacy (New Game+) career. */
   parentCareerId?: string
   difficulty: string
+  /** Post-retirement path chosen on the retirement card. */
+  postCareer?: PostCareerPath
 }
 
 /** A Hall of Fame row = the career summary. */
@@ -77,7 +97,7 @@ export type HallOfFameEntry = CareerSummary
 const r1 = (n: number): number => Math.round(n * 10) / 10
 
 /** Legacy score + its breakdown. */
-export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'>): { total: number; breakdown: ScoreLine[] } {
+export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'> & { postCareer?: PostCareerPath }): { total: number; breakdown: ScoreLine[] } {
   const lines: ScoreLine[] = [
     { key: 'goals', label: lt('Goller', 'Goals'), value: s.totals.goals * 2 },
     { key: 'assists', label: lt('Asistler', 'Assists'), value: s.totals.assists },
@@ -89,6 +109,7 @@ export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awar
     { key: 'fame', label: lt('Şöhret', 'Fame'), value: Math.round(s.reputation * 2) },
     { key: 'wealth', label: lt('Servet', 'Wealth'), value: r1(10 * Math.log10(1 + Math.max(0, s.netWorth) / 10_000)) },
   ]
+  if (s.postCareer) lines.push({ key: 'postCareer', label: POST_CAREER[s.postCareer].label, value: POST_CAREER[s.postCareer].score })
   return { total: Math.round(lines.reduce((a, b) => a + b.value, 0)), breakdown: lines }
 }
 
@@ -105,7 +126,7 @@ export function legacyTier(score: number): LText {
  * Build the documentary summary of a (finishing) career.
  * `peakOvr` comes from the UI's weekly history when available.
  */
-export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; testimonial?: CareerSummary['testimonial']; forced?: CareerSummary['forced']; retiredAt?: number } = {}): CareerSummary {
+export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; testimonial?: CareerSummary['testimonial']; forced?: CareerSummary['forced']; retiredAt?: number; postCareer?: PostCareerPath } = {}): CareerSummary {
   const h = state.hero
   const season = state.calendar.season
   const timeline: TimelineSeason[] = h.history.map((r) => ({
@@ -132,7 +153,7 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     reputation: h.reputation,
     netWorth: nw,
   }
-  const score = legacyScore(base)
+  const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}) })
   const ovr = heroOvr(h)
   return {
     careerId: state.meta.id,
@@ -161,6 +182,7 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     retiredAt: opts.retiredAt ?? 0,
     ...(typeof state.life.flags['c:legacyParentId'] === 'string' ? { parentCareerId: state.life.flags['c:legacyParentId'] } : {}),
     difficulty: state.meta.difficulty,
+    ...(opts.postCareer ? { postCareer: opts.postCareer } : {}),
   }
 }
 

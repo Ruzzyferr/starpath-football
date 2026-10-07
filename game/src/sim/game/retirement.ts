@@ -21,7 +21,7 @@ import { MatchSim } from '../match'
 import type { MatchSetup } from '../match'
 import { END_OF_SEASON_WEEK } from '../world/fixtures'
 import { retire } from './actions'
-import { buildCareerSummary, type CareerSummary } from './hallOfFame'
+import { buildCareerSummary, type CareerSummary, type PostCareerPath } from './hallOfFame'
 import { heroClub, log, readJson, withRng, writeJson } from './internal'
 import { buildTeam, HERO_ID } from './match'
 
@@ -98,7 +98,7 @@ export function playTestimonial(state: GameState): CareerSummary['testimonial'] 
  * Retire now. Returns the documentary summary (null if not allowed). With
  * `testimonial` a farewell match is simulated first.
  */
-export function retireHero(state: GameState, opts: { testimonial?: boolean; peakOvr?: number; retiredAt?: number } = {}): { ok: boolean; summary: CareerSummary | null; lines: LText[] } {
+export function retireHero(state: GameState, opts: { testimonial?: boolean; peakOvr?: number; retiredAt?: number; postCareer?: PostCareerPath } = {}): { ok: boolean; summary: CareerSummary | null; lines: LText[] } {
   const st = retirementStatus(state)
   if (!st.canRetire && !st.forced) return { ok: false, summary: null, lines: [lt('Emeklilik için henüz çok gençsin (33+).', 'You are too young to retire (33+).')] }
   const lines: LText[] = []
@@ -107,7 +107,7 @@ export function retireHero(state: GameState, opts: { testimonial?: boolean; peak
     log(state, lines, fill(lt('Jübile maçı: {h}-{a}. Tribünler ayakta, {g} golle veda ettin.', 'Testimonial: {h}-{a}. A standing ovation, you said goodbye with {g} goal(s).'), { h: testimonial.score[0], a: testimonial.score[1], g: testimonial.goals }), 'career', '🎉')
   }
   // Summary first: retire() clears the contract (the current club is part of the story).
-  const summary = buildCareerSummary(state, { peakOvr: opts.peakOvr, testimonial, forced: st.forced, retiredAt: opts.retiredAt ?? 0 })
+  const summary = buildCareerSummary(state, { peakOvr: opts.peakOvr, testimonial, forced: st.forced, retiredAt: opts.retiredAt ?? 0, postCareer: opts.postCareer })
   const r = retire(state, { force: true })
   if (!r.ok) return { ok: false, summary: null, lines: r.lines }
   lines.push(...r.lines)

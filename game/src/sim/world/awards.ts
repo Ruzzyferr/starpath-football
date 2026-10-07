@@ -388,14 +388,24 @@ export function goldenStarVote(shortlist: readonly StarCandidate[], season: numb
 
 const TIER_FACTOR = (tier: number) => (tier <= 1 ? 1 : tier === 2 ? 0.75 : 0.55)
 
-/** Golden Glove: keeper clean sheets weighted by league tier (≥ 12 apps). */
+/**
+ * Keeper rating formula for the Golden Glove (2.3#2): clean sheets lead, saves
+ * (1 per 30) and the rating above a 6.0 baseline spread over the games played
+ * (apps/8 per rating point) separate keepers with equal shutouts.
+ */
+export function goalkeeperAwardScore(stats: Pick<SeasonStats, 'apps' | 'cleanSheets' | 'saves' | 'ratingSum'>): number {
+  const avg = stats.apps > 0 ? stats.ratingSum / stats.apps : 0
+  return stats.cleanSheets + stats.saves / 30 + Math.max(0, avg - 6) * (stats.apps / 8)
+}
+
+/** Golden Glove: keeper score (see {@link goalkeeperAwardScore}) weighted by league tier (≥ 12 apps). */
 export function goldenGlove(world: World, hero?: HeroAwardInput): SeasonAwardRecord['goldenGlove'] {
   let best: SeasonAwardRecord['goldenGlove'] = null
   let bestV = 0
   const consider = (id: string, name: string, clubId: string | null, stats: SeasonStats) => {
     if (stats.apps < MIN_AWARD_APPS || stats.cleanSheets <= 0) return
     const tier = clubId ? world.leagues[world.clubs[clubId]?.leagueId ?? '']?.tier ?? 3 : 3
-    const v = stats.cleanSheets * TIER_FACTOR(tier) + (stats.ratingSum / stats.apps) * 0.1
+    const v = goalkeeperAwardScore(stats) * TIER_FACTOR(tier)
     if (v > bestV || (v === bestV && best && id < best.playerId)) {
       bestV = v
       best = { playerId: id, name, clubId, value: stats.cleanSheets, ...(id === HERO_ID ? { isHero: true } : {}) }

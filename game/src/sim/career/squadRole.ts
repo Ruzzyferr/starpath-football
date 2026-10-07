@@ -189,6 +189,7 @@ export function startProbability(hero: Hero, life: Life): number {
   if (hero.sharpness < 40) p -= 0.1
   if (life.flags.promised_start === true) p += 0.15
   if (formGuaranteeActive(hero, life)) p = Math.max(p, FORM_GUARANTEE_START)
+  if (hero.contract.minutesGuarantee) p = Math.max(p, MINUTES_GUARANTEE_START)
   return clamp(p, 0, 0.99)
 }
 
@@ -200,6 +201,8 @@ export const RECENT_RATINGS_FLAG = 'c:recentRatings'
 export const FORM_GUARANTEE_RATING = 7.5
 /** Start probability while the guarantee is active. */
 export const FORM_GUARANTEE_START = 0.99
+/** Playing-time guarantee clause: start-probability floor while fit (clamped after fatigue/form modifiers). */
+export const MINUTES_GUARANTEE_START = 0.8
 
 /** Last match ratings (oldest first). */
 export function recentRatings(life: Life): number[] {

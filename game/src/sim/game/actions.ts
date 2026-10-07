@@ -134,6 +134,9 @@ export const sellAsset = (state: GameState, which: number | string): ActionResul
 
 export const bankDeposit = (state: GameState, amount: number): ActionResult => moneyAction(state, () => eco.deposit(state.life, amount))
 export const bankWithdraw = (state: GameState, amount: number): ActionResult => moneyAction(state, () => eco.withdraw(state.life, amount))
+export const bankTermDeposit = (state: GameState, amount: number, weeks: number): ActionResult =>
+  moneyAction(state, () => eco.openTermDeposit(state.life, amount, weeks, state.calendar))
+export const bankBreakTerm = (state: GameState, id: string): ActionResult => moneyAction(state, () => eco.breakTermDeposit(state.life, id))
 export const bankLoan = (state: GameState, amount: number, weeks: number): ActionResult =>
   moneyAction(state, () => eco.takeLoan(state.life, state.hero, amount, weeks, state.calendar))
 export const bankRepay = (state: GameState, amount?: number): ActionResult => moneyAction(state, () => eco.repayLoan(state.life, amount))

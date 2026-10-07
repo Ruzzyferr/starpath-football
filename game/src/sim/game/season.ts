@@ -181,6 +181,24 @@ export interface SeasonDigest {
 }
 
 /**
+ * Season-end contract money (2.5#5): team bonus for each trophy (4 weeks of wage,
+ * league title 6), promotion bonus clause, and the loyalty bonus when the
+ * contract has run its full course at the club.
+ */
+function paySeasonEndBonuses(state: GameState, out: LText[], season: number, trophyCount: number, promoted: boolean): void {
+  const c = state.hero.contract
+  if (!c || state.hero.retired || c.loan) return
+  const pay = (amount: number, text: LText): void => {
+    if (amount <= 0) return
+    state.life.money += amount
+    log(state, out, fill(text, { m: fmtMoney(amount) }), 'money', '💰')
+  }
+  if (trophyCount > 0) pay(Math.round(c.wage * 4 * trophyCount), lt('Sezon sonu takım primi: {m}', 'End-of-season team bonus: {m}'))
+  if (promoted && c.promotionBonus) pay(c.promotionBonus, lt('Yükselme primi: {m}', 'Promotion bonus: {m}'))
+  if (c.untilSeason === season && c.loyaltyBonus) pay(c.loyaltyBonus, lt('Sadakat primi: {m}', 'Loyalty bonus: {m}'))
+}
+
+/**
  * Close the season for the hero (call when entering END_OF_SEASON_WEEK):
  * hero awards (moved to awards.ts: scoring titles vs. NPC stats, then the
  * world's Golden Star vote / Golden Glove / Young Player / Goal and Team of
@@ -217,6 +235,7 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
     }
   }
   const mv = club ? summary.movements.find((m) => m.clubId === club.id) : undefined
+  paySeasonEndBonuses(state, out, season, trophies.length, mv?.kind === 'promoted')
   if (mv) {
     log(state, out, mv.kind === 'promoted'
       ? fill(lt('⬆️ {c} bir üst lige yükseldi!', '⬆️ {c} won promotion!'), { c: club?.name ?? '' })

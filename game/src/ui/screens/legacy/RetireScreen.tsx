@@ -1,8 +1,9 @@
 import '../../../styles/screens/legacy.css'
 import { useState } from 'preact/hooks'
 import { currentLang, t } from '../../../i18n'
-import { Avatar, Button, Modal, Page, Switch } from '../../components'
+import { Avatar, Button, Modal, Page, Segmented, Switch } from '../../components'
 import { gameState, navigate } from '../../store'
+import type { PostCareerPath } from '../../../sim/game/hallOfFame'
 import { continueCareer, retireNow, retirementView } from '../../backend/meta'
 
 /**
@@ -15,6 +16,7 @@ export function RetireScreen() {
   const s = gameState.value
   const st = retirementView()
   const [testimonial, setTestimonial] = useState(true)
+  const [path, setPath] = useState<PostCareerPath | 'none'>('none')
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   if (!s || !st) return null
@@ -32,7 +34,7 @@ export function RetireScreen() {
   const lead = st.forced === 'age' ? t('meta.retire.forcedAge', { a: st.age }) : st.forced === 'injury' ? t('meta.retire.forcedInjury') : t('meta.retire.sub', { a: st.age })
   const doRetire = () => {
     setBusy(true)
-    const sum = retireNow({ testimonial })
+    const sum = retireNow({ testimonial, ...(path !== 'none' ? { postCareer: path } : {}) })
     setBusy(false)
     setConfirm(false)
     if (sum) navigate('documentary', undefined, { tab: true })
@@ -58,6 +60,21 @@ export function RetireScreen() {
         {(st.canRetire || st.forced) && (
           <div class="ret-choice">
             <Switch checked={testimonial} onChange={setTestimonial} label={t('meta.retire.testimonial')} desc={t('meta.retire.testimonialHint')} />
+            <div class="stack" style={{ gap: '6px' }} data-testid="retire-path">
+              <span class="t-sm">{t('meta.retire.pathTitle')}</span>
+              <Segmented
+                label={t('meta.retire.pathTitle')}
+                value={path}
+                onChange={setPath}
+                options={[
+                  { id: 'none', label: t('meta.retire.pathNone') },
+                  { id: 'coach', label: t('meta.retire.pathCoach') },
+                  { id: 'pundit', label: t('meta.retire.pathPundit') },
+                  { id: 'ambassador', label: t('meta.retire.pathAmbassador') },
+                ]}
+              />
+              <span class="t-xs t-lo">{t('meta.retire.pathHint')}</span>
+            </div>
             <Button variant="gold" block icon="crown" onClick={() => setConfirm(true)} data-testid="retire-go">{t('meta.retire.go')}</Button>
             <span class="t-xs t-lo">{t('meta.retire.goHint')}</span>
           </div>

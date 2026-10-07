@@ -245,6 +245,18 @@ export interface Contract {
   loan?: boolean
   /** Form clause: avg rating ≥ 7.5 over the last 3 matches guarantees a start (career/squadRole). */
   formGuarantee?: boolean
+  /** Injury insurance: a lump-sum payout when injured (career/condition applyInjury). */
+  insurance?: boolean
+  /** Playing-time guarantee: start probability floor while fit (career/squadRole). */
+  minutesGuarantee?: boolean
+  /** Image rights kept by the player: sponsor income +15% (life/economy). */
+  imageRights?: boolean
+  /** Paid per match played. */
+  appearanceBonus?: number
+  /** Paid once when the club wins promotion. */
+  promotionBonus?: number
+  /** Paid when the contract runs its full course at the club. */
+  loyaltyBonus?: number
 }
 
 export interface Injury {
@@ -373,6 +385,17 @@ export interface OwnedAsset {
   pricePaid: number
 }
 
+/** Fixed-term deposit: locked until `maturesAt` (absolute week), pays a higher rate than savings. */
+export interface TermDeposit {
+  id: string
+  amount: number
+  /** Annual rate locked at opening. */
+  rate: number
+  weeks: number
+  /** Absolute week (see career/common absWeek) when it pays out. */
+  maturesAt: number
+}
+
 export interface Loan {
   principal: number
   remaining: number
@@ -424,7 +447,7 @@ export interface NewsItem {
 
 export interface Life {
   money: number
-  bank: { savings: number; loan: Loan | null; investments: Investment[]; creditScore: number }
+  bank: { savings: number; loan: Loan | null; investments: Investment[]; creditScore: number; termDeposits?: TermDeposit[] }
   assets: OwnedAsset[]
   energy: number // 0..100, daily
   happiness: number // 0..100

@@ -6,7 +6,7 @@
  * Every function is pure-ish: it mutates the passed Life/Hero and returns
  * localized feedback lines; randomness comes only from the passed Rng.
  */
-import type { AssetDef, Calendar, Hero, Investment, Life, OwnedAsset } from '../../core/types'
+import type { AssetDef, Calendar, Hero, Investment, Life, OwnedAsset, TermDeposit } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, finite, fmtMoney, lt, type Lines } from '../career/common'
 import { ASSET_BY_ID } from '../../data/assets'
@@ -188,6 +188,63 @@ export function withdraw(life: Life, amount: number): Lines {
   return [fill(lt('Mevduattan {p} çektin.', 'Withdrew {p} from savings.'), { p: fmtMoney(a) })]
 }
 
+/** Image-rights clause: the player keeps the rights, sponsor income +15%. */
+export const IMAGE_RIGHTS_BONUS = 1.15
+
+// ───────────────────────── Term deposits (GDD 4.4) ─────────────────────────
+
+/** Annual rate by term length: 13 weeks 3.5%, 26 weeks 4.5%, 52 weeks 6% (savings: 2.5%). */
+export const TERM_OPTIONS: readonly { weeks: number; rate: number }[] = [
+  { weeks: 13, rate: 0.035 }, { weeks: 26, rate: 0.045 }, { weeks: 52, rate: 0.06 },
+]
+/** Breaking a term deposit early forfeits all interest plus this share of the principal. */
+export const TERM_BREAK_FEE = 0.01
+
+export const termInterest = (d: Pick<TermDeposit, 'amount' | 'rate' | 'weeks'>): number => d.amount * d.rate * (d.weeks / WEEKS_PER_YEAR)
+
+/** Lock cash in a term deposit. */
+export function openTermDeposit(life: Life, amount: number, weeks: number, cal: Pick<Calendar, 'season' | 'week'>): Lines {
+  const opt = TERM_OPTIONS.find((o) => o.weeks === weeks)
+  const a = Math.min(Math.floor(Math.max(0, finite(amount))), Math.floor(Math.max(0, life.money)))
+  if (!opt) return [lt('Geçersiz vade.', 'Invalid term.')]
+  if (a < 1000) return [lt('Vadeli mevduat için en az 1.000 gerekir.', 'A term deposit needs at least 1,000.')]
+  life.money -= a
+  const list = (life.bank.termDeposits ??= [])
+  list.push({ id: `td${absWeek(cal)}_${list.length}_${Math.round(a)}`, amount: a, rate: opt.rate, weeks, maturesAt: absWeek(cal) + weeks })
+  return [fill(lt('{p} vadeli mevduata kilitlendi: {w} hafta, %{r}.', 'Locked {p} in a term deposit: {w} weeks at {r}%.'), { p: fmtMoney(a), w: weeks, r: +(opt.rate * 100).toFixed(1) })]
+}
+
+/** Break a term deposit early: principal back minus the fee, no interest. */
+export function breakTermDeposit(life: Life, id: string): Lines {
+  const list = life.bank.termDeposits ?? []
+  const i = list.findIndex((d) => d.id === id)
+  if (i < 0) return [lt('Vadeli mevduat bulunamadı.', 'Term deposit not found.')]
+  const d = list[i]
+  list.splice(i, 1)
+  const back = Math.round(d.amount * (1 - TERM_BREAK_FEE))
+  life.money += back
+  return [fill(lt('Vadeli mevduat erken bozuldu: {p} geri geldi (faiz yok, %1 ceza).', 'Term deposit broken early: {p} back (no interest, 1% fee).'), { p: fmtMoney(back) })]
+}
+
+/** Total locked principal (net worth / UI). */
+export const termDepositsValue = (life: Life): number => (life.bank.termDeposits ?? []).reduce((s, d) => s + d.amount, 0)
+
+/** Pay out matured term deposits into cash. */
+function matureTermDeposits(life: Life, cal: Pick<Calendar, 'season' | 'week'>): Lines {
+  const list = life.bank.termDeposits
+  if (!list?.length) return []
+  const now = absWeek(cal)
+  const lines: Lines = []
+  life.bank.termDeposits = list.filter((d) => {
+    if (d.maturesAt > now) return true
+    const pay = Math.round(d.amount + termInterest(d))
+    life.money += pay
+    lines.push(fill(lt('🏦 Vadeli mevduat vadesi doldu: {p} (faiz {i}).', '🏦 Term deposit matured: {p} (interest {i}).'), { p: fmtMoney(pay), i: fmtMoney(Math.round(termInterest(d))) }))
+    return false
+  })
+  return lines
+}
+
 /** Gross weekly income the bank counts for affordability (wage + sponsors). */
 export function weeklyIncome(life: Life, hero: Pick<Hero, 'contract' | 'retired'>): number {
   const wage = !hero.retired && hero.contract ? hero.contract.wage : 0
@@ -296,7 +353,7 @@ export function netWorth(life: Life, cal: Pick<Calendar, 'season' | 'week'>): nu
     const d = ASSET_BY_ID[o.defId]
     if (d) w += resaleValue(o, d, cal)
   }
-  w += businessesValue(life)
+  w += businessesValue(life) + termDepositsValue(life)
   if (life.bank.loan) w -= life.bank.loan.remaining
   return finite(w)
 }
@@ -359,6 +416,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
     for (const s of expired) lines.push(fill(lt('{b} sponsorluğu sona erdi.', 'Your {b} sponsorship has ended.'), { b: s.brand }))
   }
   b.sponsors = life.sponsors.reduce((s, d) => s + Math.max(0, finite(d.weekly)), 0)
+  if (hero.contract?.imageRights && !hero.retired) b.sponsors = Math.round(b.sponsors * IMAGE_RIGHTS_BONUS)
   b.tax = -(b.wage + b.sponsors) * INCOME_TAX
   b.agentFee = life.agent ? -b.wage * clamp(finite(life.agent.commission), 0, 0.3) : 0
 
@@ -428,6 +486,8 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   // 4. Savings interest.
   b.savingsInterest = finite(life.bank.savings * (SAVINGS_RATE / WEEKS_PER_YEAR))
   life.bank.savings = finite(life.bank.savings + b.savingsInterest)
+
+  lines.push(...matureTermDeposits(life, cal))
 
   // 5. Credit drift with no loan: clean history slowly builds toward 700.
   if (!life.bank.loan) {

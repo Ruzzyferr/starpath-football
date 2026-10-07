@@ -182,10 +182,17 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
 
   // ── Contract bonuses ──
   let bonusPaid = 0
-  if (hero.contract) bonusPaid = goals * hero.contract.goalBonus + assists * hero.contract.assistBonus
+  if (hero.contract) bonusPaid = goals * hero.contract.goalBonus + assists * hero.contract.assistBonus + (minutes > 0 ? hero.contract.appearanceBonus ?? 0 : 0)
   if (bonusPaid > 0) {
     life.money += bonusPaid
     lines.push(fill(lt('💰 Gol/asist primi: {m}', '💰 Goal/assist bonus: {m}'), { m: fmtMoney(bonusPaid) }))
+  }
+  // Goalkeeper clean-sheet bonus (2.5#4): keepers earn the goal bonus (min 10% of the weekly wage) per shutout.
+  if (hero.contract && hero.position === 'GK' && m.cleanSheet && minutes >= 60) {
+    const keeperBonus = Math.max(hero.contract.goalBonus, Math.round(hero.contract.wage * 0.1))
+    life.money += keeperBonus
+    bonusPaid += keeperBonus
+    lines.push(fill(lt('🧤 Kaleci primi (gol yemedin): {m}', '🧤 Clean-sheet bonus: {m}'), { m: fmtMoney(keeperBonus) }))
   }
 
   // ── Experience XP ──

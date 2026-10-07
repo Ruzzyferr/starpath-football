@@ -4,7 +4,7 @@ import { Button, Card, CardHeader, EmptyState, Page } from '../../components'
 import { formatCompact, formatMoney, formatNumber, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate, screen } from '../../store'
 import { legacyFor, summaryView } from '../../backend/meta'
-import { legacyTier } from '../../../sim/game/hallOfFame'
+import { legacyTier, POST_CAREER } from '../../../sim/game/hallOfFame'
 
 /** Career summary "documentary": timeline, stats, trophies, best moments, net worth, legacy score. */
 export function DocumentaryScreen() {
@@ -31,6 +31,7 @@ export function DocumentaryScreen() {
         <div class="grow stack" style={{ gap: '4px', minWidth: 0 }}>
           <div class="h2">{sum.name}{sum.nickname && sum.nickname !== sum.lastName ? ` “${sum.nickname}”` : ''}</div>
           <div class="t-sm t-mid">{sum.position} · {sum.nationality} · {sum.clubs.join(' → ') || '—'}</div>
+          {sum.postCareer && <div class="t-sm" data-testid="doc-post-career">{lt(POST_CAREER[sum.postCareer].text)}</div>}
           {sum.forced && <div class="t-xs t-lo">{t(`meta.doc.forced.${sum.forced}`)}</div>}
           {sum.testimonial && <div class="t-sm">🎉 {t('meta.doc.testimonial', { h: sum.testimonial.score[0], a: sum.testimonial.score[1], o: sum.testimonial.opponent, g: sum.testimonial.goals })}</div>}
         </div>
