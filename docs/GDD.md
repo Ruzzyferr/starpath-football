@@ -190,7 +190,7 @@ Takım içi (kaptanlık, soyunma odası kavgası, penaltıyı kim atacak, TD tak
 - Düzenlenebilir veritabanı (mod desteği: JSON ile gerçek isimler yüklenebilir) [v2].
 
 ### 6.2 Turnuvalar [v1/v2]
-- Lig (yükselme/düşme), Yerel Kupa (eleme), Kıtasal Kupa (grup + eleme) [v1 basit], Dünya Kupası/Kıta Şampiyonası (milli takım, 2 yılda bir) [v1 basit].
+- Lig (yükselme/düşme), Yerel Kupa (eleme), Kıtasal Kupa (grup + eleme) [v1 basit], Dünya Turnuvası/Kıta Şampiyonası (milli takım, 2 yılda bir) [v1 basit].
 - Ödüller: Ayın Oyuncusu, Sezonun Oyuncusu, Gol Kralı, Altın Top eşdeğeri ("Altın Yıldız"), Genç Oyuncu, Yılın Golü (oylamalı).
 
 ### 6.3 Diğer Oyuncular [v1]
