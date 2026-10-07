@@ -404,8 +404,8 @@ export class HeadingDrill extends DrillBase {
     const onSpot = dist(this.hero.pos, this.spot) < 0.8
     const near = this.state === 'incoming' && Math.abs(this.arriveAt - this.clock - JUMP_PEAK) < 0.12
     return {
-      focus: { x: PITCH_LENGTH - 9, y: (GOAL_CENTER_Y * 2 + this.machine.pos.y) / 3 },
-      span: 30,
+      focus: { x: PITCH_LENGTH - 9, y: (GOAL_CENTER_Y + this.machine.pos.y) / 2 },
+      span: 34,
       goals: ['east'],
       hero: actorView(this.hero, 'hero'),
       actors: [actorView(this.keeper, 'keeper'), actorView(this.machine, 'dummy')],

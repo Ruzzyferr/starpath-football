@@ -131,7 +131,7 @@ export interface LineView {
 }
 
 export interface MeterView {
-  kind: 'stamina' | 'beat' | 'power'
+  kind: 'stamina' | 'beat' | 'power' | 'timing'
   value: number // 0..1
   tone: Tone
 }

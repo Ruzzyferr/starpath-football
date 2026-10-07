@@ -351,7 +351,7 @@ export class CrossingDrill extends DrillBase {
         timeLeft: this.timeLeft,
         duration: this.duration,
         prompt: this.phase === 'countdown' ? 'ready' : this.phase === 'post' || this.finished ? 'done' : window ? 'crossNow' : 'crossing',
-        meters: this.state === 'ready' && this.live ? [{ kind: 'beat', value: lead, tone: window ? 'green' : rel < -0.3 ? 'red' : 'gold' }] : [],
+        meters: this.state === 'ready' && this.live ? [{ kind: 'timing', value: lead, tone: window ? 'green' : rel < -0.3 ? 'red' : 'gold' }] : [],
         level: this.round,
         countdown: this.countdown,
       },

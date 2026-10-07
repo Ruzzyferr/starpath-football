@@ -55,6 +55,7 @@ const HIDDEN_ACTIVITIES = new Set(['hire_trainer', 'fire_trainer'])
 const ACT_ICON: Record<string, string> = {
   rest: 'bed', sleep_in: 'bed', train_shooting: 'target', train_passing: 'link', train_dribbling: 'run', train_physical: 'barbell',
   train_tactical: 'tactics', train_setPiece: 'flag', train_goalkeeping: 'shield-check', train_recovery: 'heartbeat', gym: 'barbell',
+  train_crossing: 'crosshair', train_heading: 'goal', train_tackling: 'shield',
   video: 'eye', physio: 'first-aid', family_visit: 'house', friend_hangout: 'users', team_dinner: 'fork-knife', date_night: 'heart',
   party: 'party', casino: 'cards', charity: 'hand-heart', sponsor_shoot: 'camera', interview: 'megaphone', social_post: 'instagram',
   business_meeting: 'handshake', shopping: 'shopping-bag', hobby_gaming: 'laptop', hobby_golf: 'flag', hobby_music: 'music', travel: 'airplane',
@@ -178,6 +179,7 @@ const EVENT_CAT: Record<SimEventCategory, EventCategory> = {
   teammates: 'team', manager: 'team', club: 'team', family: 'family', romance: 'love', friends: 'social', press: 'press',
   social: 'social', fans: 'fans', nightlife: 'nightlife', money: 'business', casino: 'nightlife', health: 'health',
   national: 'national', awards: 'awards', rivals: 'rival', community: 'charity', transfer: 'transfer', milestone: 'awards', weird: 'scam',
+  legal: 'legal', scam: 'scam', rumour: 'transfer', business: 'business', charity: 'charity', mentor: 'team',
 }
 
 const fillVars = (text: LText, vars: Record<string, string | number>): LText => {
@@ -269,6 +271,7 @@ function formHistory(s: GameState): number[] {
 const TRAINING_GROUP: Record<TrainingType, TrainingSessionView['group']> = {
   shooting: 'technical', passing: 'technical', dribbling: 'technical', physical: 'physical', tactical: 'tactical',
   setPiece: 'technical', goalkeeping: 'goalkeeping', recovery: 'recovery',
+  crossing: 'technical', heading: 'technical', tackling: 'technical',
 }
 const TRAINING_DESC: Record<TrainingType, LText> = {
   shooting: L('Bitiricilik ve şut tekniği. Kaleye yüzlerce vuruş.', 'Finishing and shooting technique. Hundreds of strikes on goal.'),
@@ -279,6 +282,9 @@ const TRAINING_DESC: Record<TrainingType, LText> = {
   setPiece: L('Serbest vuruş, korner ve penaltı çalışması.', 'Free kicks, corners and penalties.'),
   goalkeeping: L('Refleks, top tutma ve çıkışlar.', 'Reflexes, handling and coming off the line.'),
   recovery: L('Yoga ve esneme: yorgunluğu atar, stresi azaltır.', 'Yoga and stretching: clears fatigue and stress.'),
+  crossing: L('Kanattan ceza sahasındaki hedef bölgelere ve koşan arkadaşına orta.', 'Wing crosses into target zones in the box, timed for a runner.'),
+  heading: L('Makine topu yollar: doğru anda zıpla, kafayla kaleciyi geç.', 'The machine fires balls in: time your jump and head past the keeper.'),
+  tackling: L('Bire bir gelen driplingcilerden faul yapmadan topu kap.', 'One-on-one dribblers come at you: win the ball without fouling.'),
 }
 
 function trainingSessions(s: GameState): TrainingSessionView[] {

@@ -51,7 +51,7 @@ const SCENE_KEY = 'starpath-training'
 type Strings = {
   prompt: Record<DrillPrompt, string>
   label: Record<DrillLabel, string>
-  hud: { combo: string; level: string; stamina: string; beat: string; power: string; go: string; grade: string; points: string }
+  hud: { combo: string; level: string; stamina: string; beat: string; power: string; timing: string; go: string; grade: string; points: string }
   buttons: { sprint: string; skill: string; loft: string; go: string; dive: string; cross: string; head: string; tackle: string }
 }
 
@@ -85,7 +85,7 @@ const T: Record<Lang, Strings> = {
       save: 'KURTARIŞ!', held: 'YAKALADI!', conceded: 'GOL YEDİN', wide: 'DIŞARI',
       delivery: 'İYİ ORTA', won: 'KAPTIN!', foul: 'FAUL', beaten: 'GEÇİLDİN', whiff: 'BOŞA',
     },
-    hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN' },
+    hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', timing: 'ZAMANLAMA', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN' },
     buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
   },
   en: {
@@ -117,7 +117,7 @@ const T: Record<Lang, Strings> = {
       save: 'SAVE!', held: 'HELD!', conceded: 'CONCEDED', wide: 'WIDE',
       delivery: 'GOOD BALL', won: 'WON IT!', foul: 'FOUL', beaten: 'BEATEN', whiff: 'MISSED',
     },
-    hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', go: 'GO!', grade: 'GRADE', points: 'PTS' },
+    hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', timing: 'TIMING', go: 'GO!', grade: 'GRADE', points: 'PTS' },
     buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
   },
 }
@@ -837,7 +837,7 @@ export class TrainingScene extends Phaser.Scene {
       g.fillStyle(TONE[m.tone], m.kind === 'beat' && m.value > 0.85 ? 0.6 + Math.sin(this.elapsed * 20) * 0.4 : 0.95)
       g.fillRoundedRect(x, y, Math.max(2 * u, mw * clampN(m.value, 0, 1)), 8 * u, 4 * u)
       const t = this.meterTexts[i]
-      if (t) t.setText(m.kind === 'stamina' ? this.s.hud.stamina : m.kind === 'beat' ? this.s.hud.beat : this.s.hud.power).setPosition(x + mw + 10 * u, y + 4 * u).setAlpha(0.85)
+      if (t) t.setText(this.s.hud[m.kind]).setPosition(x + mw + 10 * u, y + 4 * u).setAlpha(0.85)
     })
     for (let i = hud.meters.length; i < this.meterTexts.length; i++) this.meterTexts[i].setAlpha(0)
 

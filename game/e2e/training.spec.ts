@@ -77,6 +77,39 @@ test('play the finishing drill to the end and get a graded result', async ({ pag
   await expect(overlay).toHaveCount(0)
 })
 
+test('crossing, heading and tackling sessions are listed with their drills', async ({ page }) => {
+  await openTraining(page)
+  for (const [session, drill] of [['Cross Station', 'Cross Station'], ['Header Machine', 'Header Machine'], ['Tackle Duel', 'Tackle Duel']]) {
+    const card = page.locator('.trn-session', { hasText: session })
+    await card.getByRole('button', { name: 'Play drill' }).click()
+    const overlay = page.locator('.trn-drill')
+    await expect(overlay.locator('.trn-drill-card h2')).toHaveText(drill)
+    await assertCleanText(page)
+    await overlay.getByRole('button', { name: 'Cancel' }).click()
+    await expect(overlay).toHaveCount(0)
+  }
+})
+
+test('play the cross station with the keyboard and get a graded result', async ({ page }) => {
+  await openTraining(page)
+  await page.locator('.trn-session', { hasText: 'Cross Station' }).getByRole('button', { name: 'Play drill' }).click()
+  const overlay = page.locator('.trn-drill')
+  await overlay.getByRole('button', { name: 'Start' }).click()
+  await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(3000) // countdown
+  const result = overlay.locator('.trn-drill-result')
+  // Space crosses to the lit zone; keep delivering until the session ends.
+  for (let i = 0; i < 40 && !(await result.isVisible()); i++) {
+    await page.keyboard.press('Space')
+    await page.waitForTimeout(1200)
+  }
+  await expect(result).toBeVisible({ timeout: 30_000 })
+  await expect(result.locator('.trn-grade')).toHaveText(/^[SABCD]$/)
+  await expect(result).toContainText(/\+\d+ XP/)
+  await result.getByRole('button', { name: 'Done' }).click()
+  await expect(overlay).toHaveCount(0)
+})
+
 test('quitting a drill cancels the session', async ({ page }) => {
   await openTraining(page)
   await page.locator('.trn-session', { hasText: 'Dribbling Course' }).getByRole('button', { name: 'Play drill' }).click()
