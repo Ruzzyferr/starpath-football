@@ -240,6 +240,13 @@ export function buildCast(h: Highlight, rng: Rng, names?: Record<string, string>
       }
       break
     }
+    case 'rebound': {
+      // The keeper has just parried a team-mate's shot: he is on the ground.
+      oppKeeper.state = 'down'
+      oppKeeper.stateT = -0.35
+      ownerId = null
+      break
+    }
     case 'gk_save': {
       setPos(hero, { x: Math.max(0.6, Math.min(hero.pos.x, 4)), y: clampY(hero.pos.y, GOAL_CENTER_Y - 3, GOAL_CENTER_Y + 3) })
       const owner = agents.find((a) => a.id === ownerId)

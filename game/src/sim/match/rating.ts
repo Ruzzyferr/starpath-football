@@ -35,6 +35,7 @@ const OUTCOME_DELTA: Record<HighlightResult['outcome'], number> = {
   lost_ball: -0.25,
   defended: 0.25,
   conceded: -0.45,
+  shot_conceded: -0.12,
   foul_won: 0.1,
   foul_committed: -0.2,
   timeout: -0.15,

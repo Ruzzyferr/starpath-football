@@ -43,18 +43,18 @@ const BASE: Record<HighlightKind, Weights> = {
   freekick: { goal: 0.08, saved: 0.3, missed: 0.36, blocked: 0.2, woodwork: 0.05 },
   penalty: { goal: 0.76, saved: 0.16, missed: 0.06, woodwork: 0.02 },
   corner: { goal: 0.09, saved: 0.25, missed: 0.38, blocked: 0.1, lost_ball: 0.13, woodwork: 0.03 },
-  defend: { defended: 0.58, lost_ball: 0.08, conceded: 0.12, foul_committed: 0.14, pass_complete: 0.08 },
+  defend: { defended: 0.5, shot_conceded: 0.16, lost_ball: 0.06, conceded: 0.11, foul_committed: 0.11, pass_complete: 0.06 },
   gk_save: { defended: 0.76, conceded: 0.24 },
   gk_penalty: { defended: 0.22, conceded: 0.78 },
   counter_2v1: { goal: 0.2, assist: 0.14, saved: 0.16, missed: 0.14, blocked: 0.06, lost_ball: 0.2, foul_won: 0.06, woodwork: 0.02 },
   long_ball_control: { goal: 0.04, assist: 0.05, pass_complete: 0.42, lost_ball: 0.26, missed: 0.06, saved: 0.05, blocked: 0.03, foul_won: 0.09 },
   rebound: { goal: 0.3, saved: 0.17, missed: 0.2, blocked: 0.12, woodwork: 0.02, lost_ball: 0.19 },
-  interception: { defended: 0.56, conceded: 0.09, foul_committed: 0.07, lost_ball: 0.1, timeout: 0.18 },
+  interception: { defended: 0.5, shot_conceded: 0.12, conceded: 0.08, foul_committed: 0.06, lost_ball: 0.09, timeout: 0.15 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
 const GOOD: ReadonlySet<Outcome> = new Set<Outcome>(['goal', 'assist', 'pass_complete', 'defended', 'foul_won', 'woodwork'])
-const BAD: ReadonlySet<Outcome> = new Set<Outcome>(['lost_ball', 'missed', 'conceded', 'foul_committed', 'blocked', 'timeout'])
+const BAD: ReadonlySet<Outcome> = new Set<Outcome>(['lost_ball', 'missed', 'conceded', 'shot_conceded', 'foul_committed', 'blocked', 'timeout'])
 
 /** Weighted hero skill for a kind, 0..100. */
 export function skillFor(kind: HighlightKind, attrs: Attributes): number {

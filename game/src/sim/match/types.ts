@@ -144,6 +144,7 @@ export type HighlightOutcome =
   | 'lost_ball'
   | 'defended' // successful defensive action / GK save
   | 'conceded' // defensive moment failed → goal against
+  | 'shot_conceded' // defensive moment: the opponent got a shot away (saved / wide), no goal
   | 'foul_won' | 'foul_committed'
   | 'timeout'
 

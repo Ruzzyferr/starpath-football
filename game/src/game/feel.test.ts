@@ -8,16 +8,23 @@ import type { Difficulty } from '../core/types'
 import { BOT_LEVELS } from './humanBot'
 import { FEEL_KINDS, feelRate, playFeel, type FeelKind } from './feelHarness'
 
-/** Normal difficulty, average bot: [min, max] success rate. */
+/**
+ * Normal difficulty, average bot: [min, max] success rate. Targets (docs/BALANCE.md):
+ * defend ~55–65%, cross 15–25%, corner 20–30%, 1v1 ~40%. Bands allow for N=60 sampling noise.
+ */
 const BANDS: Record<FeelKind, [number, number]> = {
-  one_on_one: [0.3, 0.55],
+  one_on_one: [0.25, 0.55],
   penalty: [0.62, 0.88],
-  freekick: [0.07, 0.28],
-  edge_of_box: [0.05, 0.22],
-  cross: [0.02, 0.25],
-  corner: [0.15, 0.45],
-  defend: [0.6, 0.98],
+  freekick: [0.06, 0.28],
+  edge_of_box: [0.05, 0.25],
+  cross: [0.1, 0.3],
+  corner: [0.15, 0.38],
+  defend: [0.48, 0.75],
   gk_save: [0.5, 0.85],
+  counter_2v1: [0.12, 0.45],
+  long_ball_control: [0.06, 0.4],
+  rebound: [0.06, 0.4],
+  interception: [0.42, 0.8],
 }
 
 const N = 60
@@ -41,6 +48,12 @@ describe('match feel (average human, normal)', () => {
     expect(e).toBeGreaterThan(n)
     expect(n).toBeGreaterThan(l)
   }, 120_000)
+
+  it('defending is a skill: an expert defender clearly beats a novice (defend + interception)', () => {
+    const n = 100
+    const rate = (lv: 'novice' | 'expert') => feelRate('defend', lv, 'normal', n) + feelRate('interception', lv, 'normal', n)
+    expect(rate('expert') - rate('novice')).toBeGreaterThan(0.12)
+  }, 180_000)
 
   it('is deterministic', () => {
     expect(playFeel('edge_of_box', 3, 'average', 'normal')).toBe(playFeel('edge_of_box', 3, 'average', 'normal'))

@@ -96,14 +96,22 @@ describe('kick planning', () => {
     expect(shotHeightForPower(0.8)).toBeLessThan(2.0)
   })
 
-  it('full assist keeps wide aims on target; manual does not', () => {
-    const wide = { x: PITCH_LENGTH, y: POST_Y_HIGH + 1.5 }
-    const full = planKick(shotReq({ target: wide, assist: 'full' }))
-    const man = planKick(shotReq({ target: wide, assist: 'manual' }))
-    const cf = predictPlaneCrossing(landing(full, shotReq().from), DEFAULT_ENV, PITCH_LENGTH)!
-    const cm = predictPlaneCrossing(landing(man, shotReq().from), DEFAULT_ENV, PITCH_LENGTH)!
-    expect(isOnTarget(cf.y, cf.z)).toBe(true)
-    expect(isOnTarget(cm.y, cm.z)).toBe(false)
+  it('full assist shrinks an off-frame miss by a share (no snapping); manual does not', () => {
+    const cross = (target: { x: number; y: number }, assist: 'full' | 'half' | 'manual', assistPull?: number) =>
+      predictPlaneCrossing(landing(planKick(shotReq({ target, assist, assistPull })), shotReq().from), DEFAULT_ENV, PITCH_LENGTH)!
+    // Just wide: pulled back on target with full assist, still wide manually.
+    const slightly = { x: PITCH_LENGTH, y: POST_Y_HIGH + 0.4 }
+    expect(isOnTarget(cross(slightly, 'full').y, cross(slightly, 'full').z)).toBe(true)
+    expect(isOnTarget(cross(slightly, 'manual').y, cross(slightly, 'manual').z)).toBe(false)
+    // Well wide: full assist cuts the error but a wild aim still misses (skill matters)…
+    const wide = { x: PITCH_LENGTH, y: POST_Y_HIGH + 3 }
+    const f = cross(wide, 'full')
+    const m = cross(wide, 'manual')
+    expect(Math.abs(f.y - POST_Y_HIGH)).toBeLessThan(Math.abs(m.y - POST_Y_HIGH))
+    expect(isOnTarget(f.y, f.z)).toBe(false)
+    // …unless easy mode's generous pull is used.
+    const e = cross(wide, 'full', 0.95)
+    expect(isOnTarget(e.y, e.z)).toBe(true)
   })
 
   it('skilled kickers are more accurate than poor ones (noise)', () => {

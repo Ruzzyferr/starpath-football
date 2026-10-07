@@ -153,6 +153,8 @@ export interface KickRequest {
   env: PhysicsEnv
   /** Global accuracy multiplier (difficulty, panic…). 1 = normal. */
   noiseScale?: number
+  /** Override of the aim-assist pull (see {@link assistShotTarget}). */
+  assistPull?: number
 }
 
 export interface KickPlan {
@@ -335,19 +337,23 @@ export function shotHeightForPower(power: number, kind: KickKind = 'shot'): numb
   return base + 1.5 * p * p + over * 9
 }
 
+/** Share of an off-frame aim error that each assist level removes. */
+export const ASSIST_PULL: Record<AimAssist, number> = { full: 0.6, half: 0.35, manual: 0 }
+
 /**
- * Applies aim assist to a shot target on the goal line.
- * full: snaps inside the frame and caps height under the bar;
- * half: pulls halfway toward the frame; manual: untouched.
+ * Applies aim assist to a shot target on the goal line: the part of the aim
+ * that lies outside the frame (wide or over) is reduced by a share of its
+ * size — it is never snapped inside the posts, so a wild swipe still misses
+ * and aiming skill still matters. `pull` overrides the level's share (easy
+ * mode is more generous).
  */
-export function assistShotTarget(target: Vec2, z: number, assist: AimAssist): { target: Vec2; z: number } {
+export function assistShotTarget(target: Vec2, z: number, assist: AimAssist, pull = ASSIST_PULL[assist]): { target: Vec2; z: number } {
+  if (pull <= 0) return { target, z }
   const lo = POST_Y_LOW + 0.55
   const hi = POST_Y_HIGH - 0.55
   const ty = clampN(target.y, lo, hi)
   const tz = clampN(z, 0.25, GOAL_HEIGHT - 0.4)
-  if (assist === 'full') return { target: { x: target.x, y: ty }, z: tz }
-  if (assist === 'half') return { target: { x: target.x, y: (target.y + ty) / 2 }, z: (z + tz) / 2 }
-  return { target, z }
+  return { target: { x: target.x, y: target.y + (ty - target.y) * pull }, z: z + (tz - z) * pull }
 }
 
 /** Accuracy noise (radians, 1σ) for a kick. */
@@ -376,7 +382,7 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
   const isShot = req.kind === 'shot' || req.kind === 'penalty' || req.kind === 'freekick' || req.kind === 'header'
   if (isShot) {
     const z = targetZ ?? shotHeightForPower(req.power, req.kind)
-    const as = assistShotTarget(target, z, req.kind === 'header' ? req.assist : req.assist)
+    const as = assistShotTarget(target, z, req.assist, req.assistPull)
     target = as.target
     targetZ = as.z
   }
@@ -497,12 +503,51 @@ export function rayToGoalLine(from: Vec2, dir: Vec2, goalX = PITCH_LENGTH): Vec2
   return { x: goalX, y: from.y + dir.y * t }
 }
 
+/** A cross delivery zone. `ground` zones are pulled back along the floor (cut-back). */
+export interface CrossZone {
+  name: 'near_post' | 'far_post' | 'penalty_spot' | 'cut_back'
+  point: Vec2
+  /** Desired ball height on arrival (header height for aerial zones). */
+  z: number
+  ground: boolean
+}
+
+/**
+ * The four classic delivery zones for a cross from the flank at `fromY`
+ * (attacking +x): near post, far post, penalty spot and the cut-back to the
+ * edge of the six-yard/penalty area on the near side.
+ */
+export function crossZones(fromY: number, goalX = PITCH_LENGTH): CrossZone[] {
+  const side = fromY < GOAL_CENTER_Y ? -1 : 1
+  const dir = goalX > PITCH_LENGTH / 2 ? -1 : 1
+  return [
+    { name: 'near_post', point: { x: goalX + dir * 5, y: GOAL_CENTER_Y + side * 2.6 }, z: 1.8, ground: false },
+    { name: 'far_post', point: { x: goalX + dir * 6, y: GOAL_CENTER_Y - side * 3.8 }, z: 1.9, ground: false },
+    { name: 'penalty_spot', point: { x: goalX + dir * 11, y: GOAL_CENTER_Y - side * 0.5 }, z: 1.8, ground: false },
+    { name: 'cut_back', point: { x: goalX + dir * 13.5, y: GOAL_CENTER_Y + side * 5 }, z: 0, ground: true },
+  ]
+}
+
+/** Zone closest to a raw delivery point (assisted crossing snaps to it). */
+export function nearestZone(zones: readonly CrossZone[], p: Vec2): CrossZone {
+  let best = zones[0]
+  let bd = Infinity
+  for (const z of zones) {
+    const d = dist(z.point, p)
+    if (d < bd) {
+      bd = d
+      best = z
+    }
+  }
+  return best
+}
+
 /** Contextual interpretation of a swipe by the ball carrier. */
 export type GestureMeaning =
   | { kind: 'shot'; target: Vec2; chip: boolean }
   | { kind: 'pass'; to: PassCandidate; lofted: boolean }
   | { kind: 'through'; point: Vec2; lofted: boolean }
-  | { kind: 'cross'; point: Vec2 }
+  | { kind: 'cross'; point: Vec2; zone?: CrossZone }
 
 /**
  * Decides what a swipe means for the ball carrier: a shot if it points at the
@@ -528,13 +573,13 @@ export function interpretSwipe(
     // Into the box from the flank → cross toward the best attacker or the penalty spot area.
     const intoBox = Math.abs(angleDiff(angleOf(sw.dir), angleOf(sub({ x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }, ball)))) < 0.7
     if (intoBox) {
-      const boxMate = mates
-        .filter((m) => m.pos.x > PITCH_LENGTH - 20 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 14)
-        .sort((a, b) => dist(a.pos, ball) - dist(b.pos, ball))[0]
       const reach = 10 + sw.power * 26
       const raw = { x: ball.x + sw.dir.x * reach, y: ball.y + sw.dir.y * reach }
-      const point = assist !== 'manual' && boxMate ? leadPosition(ball, boxMate, 20, 4) : raw
-      return { kind: 'cross', point }
+      if (assist === 'manual') return { kind: 'cross', point: raw }
+      // Assisted: snap to the delivery zone the swipe points at (full) or halfway toward it (half).
+      const zone = nearestZone(crossZones(ball.y), raw)
+      const point = assist === 'full' ? zone.point : { x: (raw.x + zone.point.x) / 2, y: (raw.y + zone.point.y) / 2 }
+      return { kind: 'cross', point, zone }
     }
   }
   if (mate) {

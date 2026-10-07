@@ -357,13 +357,25 @@ function oppAttacker(l: Layout): SlotPlayer | undefined {
 const placeDefend: Placer = (l) => {
   const rng = l.input.rng
   const att = oppAttacker(l)
-  const ap = { x: rng.range(24, 36), y: rng.range(14, 54) }
+  const ap = { x: rng.range(26, 38), y: rng.range(14, 54) }
   set(l, att?.player.id, ap)
-  set(l, l.input.heroId, { x: ap.x - rng.range(4, 7), y: ap.y + (34 - ap.y) * 0.3 })
+  const hp = { x: ap.x - rng.range(4, 7), y: ap.y + (34 - ap.y) * 0.3 }
+  set(l, l.input.heroId, hp)
   const keeper = mateKeeper(l)
   set(l, keeper?.player.id, { x: 3, y: 34 + (ap.y - 34) * 0.15 })
+  // A break: the opponents' runners join the carrier...
   const support = l.opps.filter((o) => o !== att && ATTACKERS.has(roleOf(o))).slice(0, 2)
-  support.forEach((s, i) => set(l, s.player.id, { x: ap.x - 6 + i * 3, y: ap.y > 34 ? ap.y - 14 - i * 8 : ap.y + 14 + i * 8 }))
+  support.forEach((s, i) => set(l, s.player.id, { x: ap.x - 4 + i * 4, y: ap.y > 34 ? ap.y - 12 - i * 9 : ap.y + 12 + i * 9 }))
+  // ...while one team-mate is back with the hero; the rest are recovering from upfield.
+  const skip = new Set([l.input.heroId, keeper?.player.id ?? ''])
+  const backs = nearest(l, l.mates, { x: 12, y: 34 }, 0, skip)
+  backs.forEach((b, i) => set(l, b.player.id, { x: rng.range(10, 16), y: 34 + (i ? 1 : -1) * rng.range(6, 12) }))
+  for (const b of backs) skip.add(b.player.id)
+  for (const m of l.mates) {
+    if (skip.has(m.player.id) || roleOf(m) === 'GK') continue
+    const p = l.pos.get(m.player.id)
+    if (p) set(l, m.player.id, { x: Math.max(p.x, ap.x + rng.range(8, 22)), y: p.y })
+  }
   return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
 }
 
@@ -442,8 +454,11 @@ const placeRebound: Placer = (l) => {
   set(l, l.input.heroId, hp)
   // Defenders scrambling in the box (some closer to the ball than the hero, some behind).
   const skip = new Set([gk?.player.id ?? ''])
+  // Defenders were tracking the shot: one goal-side near the post, the others caught a few meters off.
   nearest(l, l.opps, bp, 3, skip).forEach((d, i) => {
-    set(l, d.player.id, { x: rng.range(94, 100), y: bp.y + (i % 2 ? 1 : -1) * rng.range(3, 7) - side * i })
+    const r = i === 0 ? rng.range(4.5, 7) : rng.range(6, 10)
+    const ang = Math.PI + (i % 2 ? 1 : -1) * rng.range(0.5, 1.2)
+    set(l, d.player.id, { x: clamp(bp.x + Math.cos(ang) * r, 88, 103.5), y: bp.y + Math.sin(ang) * r })
   })
   const other = l.mates.find((m) => m !== shooter && ATTACKERS.has(roleOf(m)) && m.player.id !== l.input.heroId)
   if (other) set(l, other.player.id, { x: rng.range(90, 96), y: 34 - (hp.y - 34) + rng.range(-2, 2) })

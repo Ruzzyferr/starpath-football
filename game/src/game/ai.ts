@@ -162,9 +162,19 @@ export function defendTargets(w: AiWorld, team: Team, ballX0: number): Map<strin
   const ballP = { x: w.ball.x, y: w.ball.y }
   const byTime = [...mine].sort((p, q) => dist(p.pos, ballP) / topSpeed(p) - dist(q.pos, ballP) / topSpeed(q))
   const pressers = new Set<string>()
-  if (byTime[0]) pressers.add(byTime[0].id)
-  // Second presser when the ball is in our half and close.
-  if (byTime[1] && dist(byTime[1].pos, ballP) < 9) pressers.add(byTime[1].id)
+  // When the hero is already engaging the carrier, AI team-mates don't swarm
+  // him: one drops in behind as cover, the rest mark. Otherwise one presser
+  // (two for the opponents when the ball is close).
+  const hero = mine.find((d) => d.isHero)
+  const heroEngaged = !!(hero && w.owner && w.owner.team !== team && dist(hero.pos, w.owner.pos) < 7)
+  let coverId: string | null = null
+  if (heroEngaged) {
+    coverId = byTime.find((d) => !d.isHero)?.id ?? null
+  } else {
+    if (byTime[0]) pressers.add(byTime[0].id)
+    const second = byTime[1]
+    if (second && dist(second.pos, ballP) < 9 && (team === 'opp' || !hero)) pressers.add(second.id)
+  }
 
   const marked = new Set<string>()
   const dirOwn = -attackDir(team)
@@ -173,6 +183,13 @@ export function defendTargets(w: AiWorld, team: Team, ballX0: number): Map<strin
   for (const d of mine) {
     if (pressers.has(d.id) && !d.isHero) {
       res.set(d.id, { kind: 'press' })
+      continue
+    }
+    if (d.id === coverId && w.owner) {
+      // Second line: 5–6 m goal-side of the carrier, slightly inside.
+      const c = w.owner.pos
+      const toGoal = norm(sub(goal, c))
+      res.set(d.id, { kind: 'cover', target: inField(add(c, scale(toGoal, 5.5))) })
       continue
     }
     // Mark the most dangerous unmarked attacker near our anchor.
@@ -254,7 +271,8 @@ export function tackleOdds(tackler: Agent, carrier: Agent, timing: number, fromB
   const t = a01(tackler.attrs.tackling) * 0.75 + a01(tackler.attrs.strength) * 0.15 + a01(tackler.attrs.positioning) * 0.1
   const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.3 + a01(carrier.attrs.strength) * 0.1
   const diffAdj = tackler.isHero ? (1 - difficulty) * 0.25 : (difficulty - 1) * 0.3
-  let win = 0.42 + (t - c) * 0.7 + (timing - 0.5) * 0.5 + diffAdj + (slide ? 0.06 : 0)
+  // Timing dominates: a tackle as the ball leaves the carrier's foot is usually clean, a lunge at his feet rarely.
+  let win = 0.4 + (t - c) * 0.7 + (timing - 0.55) * 1.3 + diffAdj + (slide ? 0.06 : 0)
   if (fromBehind) win -= 0.22
   win = clampN(win, 0.05, 0.94)
   let foul = (slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2
@@ -407,7 +425,8 @@ export function keeperTarget(gk: Agent, w: AiWorld): { pos: Vec2; rushing: boole
 /** Reaction delay (s) before a keeper starts moving for a shot. */
 export function keeperReaction(gk: Agent, difficulty: number): number {
   const base = 0.34 - a01(gk.attrs.reflexes) * 0.22
-  return gk.isHero ? base : clampN(base / Math.max(0.6, difficulty), 0.08, 0.4)
+  // Difficulty sharpens the opponents' keeper only (never the hero's own team-mate).
+  return gk.isHero || gk.team === 'hero' ? clampN(base, 0.08, 0.4) : clampN(base / Math.max(0.6, difficulty), 0.08, 0.4)
 }
 
 /** Lateral speed of a keeper dive (m/s). */
@@ -470,14 +489,14 @@ export function planSave(gk: Agent, w: AiWorld, reaction: number): SavePlan | nu
 /** Probability a keeper holds (catches) rather than parries a shot of given speed. */
 export function catchChance(gk: Agent, ballSpeed: number, stretch: number, difficulty = 1): number {
   const h = a01(gk.attrs.handling)
-  const diffAdj = gk.isHero ? 0 : (difficulty - 1) * 0.15
+  const diffAdj = gk.team === 'opp' ? (difficulty - 1) * 0.15 : 0
   return clampN(0.25 + h * 0.65 - Math.max(0, ballSpeed - 15) * 0.02 - stretch * 0.35 + diffAdj, 0.05, 0.95)
 }
 
 /** Probability a keeper gets a hand to a ball inside reach (fingertips at the edge). */
 export function saveChance(gk: Agent, stretch: number, ballSpeed: number, difficulty = 1): number {
   const r = a01(gk.attrs.reflexes) * 0.6 + a01(gk.attrs.agility) * 0.25 + a01(gk.attrs.positioning) * 0.15
-  const diffAdj = gk.isHero ? 0.06 : (difficulty - 1) * 0.3
+  const diffAdj = gk.isHero ? 0.06 : gk.team === 'opp' ? (difficulty - 1) * 0.3 : 0
   // Balls into the body/hands are nearly always stopped; fingertip stretches are a coin flip.
   const edge = Math.pow(clamp01(stretch), 1.6) * (0.75 - r * 0.35)
   return clampN(0.97 - edge - Math.max(0, ballSpeed - 24) * 0.012 + diffAdj, 0.05, 0.98)

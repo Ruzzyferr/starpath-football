@@ -90,7 +90,7 @@ const SCENE_KEY = 'starpath-match'
 const T = {
   en: {
     goal: 'GOAL!', assist: 'ASSIST!', saved: 'SAVED', missed: 'MISSED', blocked: 'BLOCKED', woodwork: 'OFF THE WOODWORK!',
-    pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', foul_won: 'FOUL WON',
+    pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', shot_conceded: 'CHANCE CONCEDED', foul_won: 'FOUL WON',
     foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
@@ -98,7 +98,7 @@ const T = {
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
-    pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', foul_won: 'FAUL ALDIN',
+    pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', shot_conceded: 'RAKİP ŞUT BULDU', foul_won: 'FAUL ALDIN',
     foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',

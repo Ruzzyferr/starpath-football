@@ -10,11 +10,15 @@ import type { Highlight, HighlightKind, HighlightOutcome } from '../sim/match/ty
 import { createHumanBot, humanBotStep, type BotLevel } from './humanBot'
 import { HighlightRuntime } from './runtime'
 
-export const FEEL_KINDS = ['one_on_one', 'penalty', 'freekick', 'edge_of_box', 'cross', 'corner', 'defend', 'gk_save'] as const
+export const FEEL_KINDS = [
+  'one_on_one', 'penalty', 'freekick', 'edge_of_box', 'cross', 'corner', 'defend', 'gk_save',
+  'counter_2v1', 'long_ball_control', 'rebound', 'interception',
+] as const
 export type FeelKind = (typeof FEEL_KINDS)[number]
 
 const HERO_POS: Record<FeelKind, Position> = {
   one_on_one: 'ST', penalty: 'ST', freekick: 'AM', edge_of_box: 'AM', cross: 'LW', corner: 'CB', defend: 'CB', gk_save: 'GK',
+  counter_2v1: 'ST', long_ball_control: 'ST', rebound: 'ST', interception: 'CB',
 }
 
 /** What counts as a "success" for the hero in each kind. */
@@ -23,7 +27,12 @@ export function isSuccess(kind: HighlightKind, o: HighlightOutcome): boolean {
     case 'cross':
     case 'corner':
       return o === 'goal' || o === 'assist'
+    case 'counter_2v1':
+      return o === 'goal' || o === 'assist'
+    case 'long_ball_control':
+      return o === 'goal' || o === 'assist' || o === 'pass_complete' || o === 'foul_won'
     case 'defend':
+    case 'interception':
       return o === 'defended' || o === 'foul_won'
     case 'gk_save':
     case 'gk_penalty':

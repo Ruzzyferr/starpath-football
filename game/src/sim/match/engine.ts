@@ -1405,6 +1405,17 @@ export class MatchSim {
           this.applyGoal(opp, attacker.id, assist, { penalty: kind === 'gk_penalty' })
         }
         return
+      case 'shot_conceded': {
+        // The attacker got a shot away; our keeper or the woodwork/wide kept it out.
+        oppTeam.shots++
+        const gk = this.keeper(side)
+        if (this.rng.chance(0.55) && gk) {
+          oppTeam.onTarget++
+          this.recordSave(side, gk.id)
+          return this.emit('save', opp, this.say('save', { ...this.teamVars(opp), player: attacker?.name ?? '', gk: gk.name }), { playerId: attacker?.id })
+        }
+        return this.emit('miss', opp, this.say('miss', { ...this.teamVars(opp), player: attacker?.name ?? '', gk: gk?.name ?? '' }), { playerId: attacker?.id })
+      }
       case 'foul_committed':
         this.s.teams[side].fouls++
         this.emit('freekick', opp, this.say('foulCommitted', vars), { playerId: heroId })
