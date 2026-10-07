@@ -48,10 +48,23 @@ export function changeTrust(hero: Hero, delta: number): number {
  * The neutral point 6.3 sits slightly below the average rating (≈6.5) so a
  * merely average player slowly gains trust by being reliable.
  */
-export function updateTrustFromMatch(hero: Hero, rating: number, minutes: number): number {
+export function updateTrustFromMatch(hero: Hero, rating: number, minutes: number, goals = 0, assists = 0, won = false): number {
   if (minutes <= 0) return 0
+  return changeTrust(hero, trustRawFromMatch(rating, minutes, goals, assists, won))
+}
+
+/**
+ * Fair-blame shield for a poor rating: goal contributions (+0.5 for scoring in
+ * a win, i.e. possibly the winner) cover up to 100% of the negative part at 2+.
+ */
+export const trustBlameShield = (goals: number, assists: number, won: boolean): number =>
+  clamp((Math.max(0, goals) + Math.max(0, assists) + (won && goals > 0 ? 0.5 : 0)) / 2, 0, 1)
+
+/** Raw (pre-`changeTrust`) trust change of a match; mirrored by ui/backend/postMatch.ts. */
+export function trustRawFromMatch(rating: number, minutes: number, goals = 0, assists = 0, won = false): number {
   const weight = clamp(minutes / 90, 0.3, 1.2)
-  return changeTrust(hero, (rating - 6.3) * 3 * weight)
+  const raw = (rating - 6.3) * 3 * weight
+  return raw < 0 ? raw * (1 - trustBlameShield(goals, assists, won)) : raw
 }
 
 /**

@@ -32,6 +32,17 @@ describe('manager trust', () => {
     const cameo = updateTrustFromMatch(setup().hero, 8, 10)
     expect(cameo).toBeLessThan(full)
   })
+  it('a poor rating is not punished when the hero decided the match', () => {
+    const lone = updateTrustFromMatch(setup().hero, 5, 90)
+    const one = updateTrustFromMatch(setup().hero, 5, 90, 1, 0, true)
+    const two = updateTrustFromMatch(setup().hero, 5, 90, 1, 1, false)
+    expect(lone).toBeLessThan(0)
+    expect(one).toBeLessThan(0)
+    expect(one).toBeGreaterThan(lone)
+    expect(two).toBeGreaterThanOrEqual(0)
+    // good ratings are never scaled
+    expect(updateTrustFromMatch(setup().hero, 8, 90, 2, 0, true)).toBe(updateTrustFromMatch(setup().hero, 8, 90))
+  })
   it('gains shrink near 100 and trust stays bounded', () => {
     const { hero } = setup()
     hero.managerTrust = 95

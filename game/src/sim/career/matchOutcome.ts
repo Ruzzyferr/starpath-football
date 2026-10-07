@@ -165,7 +165,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   // ── Relationships ──
   // Fans, manager, assist partners, dressing room — with fair loss blame and a ledger (life/relationships).
   applyMatchRelations(life, hero, { rating, goals, assists, won: m.won, drew: m.drew, red: m.red, motm: m.motm, assistedBy: m.assistedBy, assistedTo: m.assistedTo }, week)
-  const trustD = updateTrustFromMatch(hero, rating, minutes)
+  const trustD = updateTrustFromMatch(hero, rating, minutes, goals, assists, m.won)
   if (minutes > 0) pushRecentRating(life, rating) // form-guarantee clause (squadRole)
   if (Math.abs(trustD) >= 1) lines.push(fill(lt('Teknik direktör güveni {d}', 'Manager trust {d}'), { d: signed(trustD) }))
 

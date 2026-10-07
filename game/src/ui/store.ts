@@ -491,7 +491,7 @@ export interface HeroMapView {
 export interface TrustChangeView {
   before: number
   after: number
-  reasons: { key: 'rating' | 'minutes' | 'result' | 'card' | 'goals' | 'other'; value: number; label: LText }[]
+  reasons: { key: 'rating' | 'minutes' | 'result' | 'card' | 'goals' | 'fair' | 'other'; value: number; label: LText }[]
 }
 export interface RelationChangeView {
   id: string
