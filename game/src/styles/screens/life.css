@@ -254,3 +254,56 @@
   .soc-layout { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; }
   .soc-profile { position: sticky; top: 0; }
 }
+
+/* ── WP-10: relationship "why" panel ───────────────────────────── */
+.life-person-sub { gap: var(--sp-2); }
+.life-why-btn { margin-inline-end: calc(-1 * var(--sp-2)); }
+.life-why-totals { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.life-why-total { display: inline-flex; align-items: center; gap: var(--sp-1); padding: 2px var(--sp-2); border-radius: var(--r-pill); background: var(--surface-2); font-size: var(--fs-sm); }
+.life-why-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.life-why-row { display: flex; align-items: center; gap: var(--sp-3); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-btn); background: var(--surface-1); border: 1px solid var(--hairline); }
+.life-why-icon { color: var(--text-mid); flex: none; }
+.life-why-main { display: flex; flex-direction: column; min-width: 0; }
+.life-why-text { color: var(--text-hi); }
+.life-why-num { display: flex; flex-direction: column; align-items: flex-end; flex: none; }
+.life-why-d { font-family: var(--font-score); font-size: 1.05rem; }
+
+/* ── Business ───────────────────────────── */
+.biz-grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.biz-card, .biz-shop { display: flex; flex-direction: column; gap: var(--sp-3); }
+.biz-icon { font-size: 1.8rem; line-height: 1; }
+.biz-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin: 0; }
+.biz-stats dt { font-size: var(--fs-sm); color: var(--text-mid); }
+.biz-stats dd { margin: 0; color: var(--text-hi); }
+.biz-pnl-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.biz-pnl-table th { text-align: start; font-weight: 400; color: var(--text-mid); padding: 2px 0; }
+.biz-pnl-table td { text-align: end; padding: 2px 0; }
+.biz-pnl-net th, .biz-pnl-net td { border-top: 1px solid var(--hairline); font-weight: 700; color: var(--text-hi); padding-top: var(--sp-1); }
+.biz-note { color: var(--accent-gold); display: flex; gap: var(--sp-1); align-items: flex-start; }
+.biz-spark { display: flex; flex-direction: column; gap: var(--sp-1); }
+.biz-actions { gap: var(--sp-2); }
+
+/* ── Press room & fan feed ───────────────────────────── */
+.press-question { font-size: 1.05rem; color: var(--text-hi); margin: 0; }
+.press-trap { color: var(--state-warning); display: inline-flex; gap: var(--sp-1); align-items: center; }
+.press-option { display: flex; align-items: flex-start; gap: var(--sp-2); text-align: start; padding: var(--sp-2) var(--sp-3); border-radius: var(--r-btn); border: 1px solid var(--border); background: var(--surface-1); color: var(--text-hi); cursor: pointer; transition: background var(--dur-micro) var(--ease-out); }
+.press-option:hover, .press-option:focus-visible { background: var(--surface-2); }
+.press-headline { display: flex; flex-direction: column; gap: var(--sp-2); }
+.press-headline-text { font-family: var(--font-score); font-size: 1.2rem; color: var(--text-hi); margin: 0; }
+.fan-tags { list-style: none; margin: 0 0 var(--sp-3); padding: 0; display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.fan-tag { padding: 2px var(--sp-2); border-radius: var(--r-pill); background: var(--surface-2); }
+.fan-tag-name { color: var(--accent-blue); font-weight: 600; }
+.fan-tag.mood-hater .fan-tag-name, .fan-tag.mood-critic .fan-tag-name { color: var(--state-danger); }
+.fan-audience { display: flex; height: 10px; border-radius: var(--r-pill); overflow: hidden; margin: var(--sp-1) 0; }
+.fan-aud { display: block; min-width: 2px; }
+.fan-aud-local { background: var(--brand-pitch); }
+.fan-aud-national { background: var(--accent-blue); }
+.fan-aud-global { background: var(--accent-violet); }
+.fan-aud-critics { background: var(--state-danger); }
+.fan-aud-legend { display: flex; flex-wrap: wrap; gap: var(--sp-3); color: var(--text-mid); }
+.fan-aud-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; }
+.fan-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-3); }
+.fan-c-head { display: flex; justify-content: space-between; gap: var(--sp-2); font-size: var(--fs-sm); }
+.fan-c-text { margin: var(--sp-1) 0 0; }
+.fan-comment.mood-hater .fan-c-text { color: var(--text-mid); }
+.fan-replies { list-style: none; margin: var(--sp-1) 0 0; padding-inline-start: var(--sp-3); border-inline-start: 2px solid var(--hairline); display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); }

@@ -548,3 +548,8 @@
 
 [data-fx='low'] .cas-art-wheel { animation: none; }
 [data-fx='low'] .rl-wheel-static, [data-fx='low'] .cas-art-wheel { filter: none; }
+
+/* ── WP-10: responsible gaming controls ───────────────────────────── */
+.cas-helpline { display: flex; gap: var(--sp-2); align-items: flex-start; color: var(--text-hi); }
+.cas-rg-controls { gap: var(--sp-3); }
+.cas-excluded { gap: var(--sp-3); max-width: 560px; }

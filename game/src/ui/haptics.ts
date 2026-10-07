@@ -19,7 +19,10 @@ const PATTERNS: Record<HapticKind, number | number[]> = {
 type Driver = (kind: HapticKind) => void
 let driver: Driver = (kind) => {
   try {
-    globalThis.navigator?.vibrate?.(PATTERNS[kind])
+    // Browsers log an error for vibrate() before the first user gesture: skip until then.
+    const nav = globalThis.navigator as (Navigator & { userActivation?: { hasBeenActive: boolean } }) | undefined
+    if (nav?.userActivation && !nav.userActivation.hasBeenActive) return
+    nav?.vibrate?.(PATTERNS[kind])
   } catch {
     /* unsupported */
   }

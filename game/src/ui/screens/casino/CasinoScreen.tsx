@@ -4,6 +4,8 @@ import { Button, Card, Money, Page, StatBar } from '../../components'
 import { Icon } from '../../icons'
 import { data, gameState, navigate, type ScreenId } from '../../store'
 import { PlayingCard, SlotSymbol, CasinoAgeLock } from './shared'
+import { ExclusionLock, HelplineNote, ResponsiblePanel } from './ResponsiblePanel'
+import { casinoExclusion } from '../../../sim/life/casino'
 
 type Game = 'blackjack' | 'roulette' | 'slots' | 'horses'
 const GAMES: { id: Game; screen: ScreenId }[] = [
@@ -65,7 +67,7 @@ function CasinoMain() {
   return (
     <Page title={t('casino.title')} sub={t('casino.sub')} backTo="life" wide actions={s && <span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={s.life.money} compact /></span>}>
       <div class="cas-lobby">
-        <div class="cas-tiles">
+        {s && casinoExclusion(s.life) > 0 ? <ExclusionLock /> : <div class="cas-tiles">
           {GAMES.map((g) => (
             <button key={g.id} type="button" class={`cas-tile cas-tile-${g.id}`} onClick={() => navigate(g.screen)}>
               <TileArt game={g.id} />
@@ -76,7 +78,7 @@ function CasinoMain() {
               <span class="cas-tile-cta"><Icon name="play" size={16} /> {t('casino.play')}</span>
             </button>
           ))}
-        </div>
+        </div>}
 
         <aside class="cas-side stack">
           <Card class={`cas-rg cas-rg-${level}`} variant="raised">
@@ -96,8 +98,10 @@ function CasinoMain() {
               <Button variant={level === 'low' ? 'ghost' : 'secondary'} icon="sign-out" onClick={() => navigate('life', undefined, { tab: true })}>{t('casino.responsible.leave')}</Button>
               <Button variant="ghost" icon="home" onClick={() => navigate('home', undefined, { tab: true })}>{t('casino.responsible.stop')}</Button>
             </div>
+            <HelplineNote />
             <p class="t-xs t-lo">{t('casino.responsible.note')}</p>
           </Card>
+          <ResponsiblePanel />
           <Card>
             <dl class="cas-stats">
               <div><dt>{t('casino.status.won')}</dt><dd class="num t-pos"><Money value={st.won} compact animate={false} /></dd></div>

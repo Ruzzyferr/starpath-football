@@ -5,6 +5,7 @@ import { Avatar, Button, Card, EmptyState, Sparkline, toast } from '../../compon
 import { formatCompact } from '../../format'
 import { Icon, type IconName } from '../../icons'
 import { actions, data, gameState, heroClub, type PostKind, type SocialPostView } from '../../store'
+import { FanPanel, PressRoom } from './SocialExtras'
 
 const KINDS: PostKind[] = ['training', 'family', 'fans', 'charity', 'luxury', 'provocative']
 const KIND_ICON: Record<PostKind, IconName> = {
@@ -104,6 +105,9 @@ export function Social() {
           <p class={`soc-risk t-xs risk-${KIND_RISK[kind]}`}><Icon name={KIND_RISK[kind] === 'high' ? 'warning' : 'info'} size={14} /> {t(`life.social.risk.${kind}`)}</p>
           <Button variant="primary" icon="camera" onClick={publish} block>{t('life.social.post')}</Button>
         </Card>
+
+        <PressRoom />
+        <FanPanel />
 
         <section class="soc-feed" aria-label={t('life.social.feed')}>
           {all.length === 0 ? <EmptyState icon="instagram" text={t('life.social.empty')} /> : all.map((p) => <Post key={p.id} p={p} />)}
