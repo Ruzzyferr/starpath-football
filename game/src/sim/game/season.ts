@@ -110,7 +110,7 @@ export function generateHeroOffers(state: GameState, rng: Rng, out: LText[]): nu
   }
   setOffers(state, offers)
   const added = offers.length - before
-  if (added > 0) log(state, out, fill(lt('📨 {n} yeni teklif masanda.', '📨 {n} new offer(s) on your desk.'), { n: added }), 'career', '📨')
+  if (added > 0) log(state, out, fill(lt('{n} yeni teklif masanda.', '{n} new offer(s) on your desk.'), { n: added }), 'career', '📨')
   return Math.max(0, added)
 }
 

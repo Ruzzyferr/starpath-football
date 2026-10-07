@@ -89,7 +89,7 @@ export function monthlyAwards(state: GameState, rng: Rng, out: LText[]): void {
   const mine = list.find((a) => a.leagueId === leagueId)
   if (!mine || !leagueId) return
   const lname = w.leagues[leagueId]?.name ?? ''
-  const label = fill(lt('{l} · {m} Ayın Oyuncusu', '{l} · {m} Player of the Month'), { l: lname, m: monthName(month) })
+  const label = fill(lt('{l} · {m} Ayının Oyuncusu', '{l} · {m} Player of the Month'), { l: lname, m: monthName(month) })
   if (mine.isHero) {
     grant(state, rng, out, cal.season, 'player_of_month', fill(lt('Ayın Oyuncusu ({m})', 'Player of the Month ({m})'), { m: monthName(month) }))
   } else {

@@ -5,6 +5,7 @@
  * import it without creating cycles. Nothing here touches the RNG except
  * {@link pushNews} (which needs an id).
  */
+import { replaceWithSuffix } from './trSuffix'
 import type { Calendar, Hero, LText, Life, LogEntry, NewsItem, SeasonStats } from '../../core/types'
 import { START_YEAR } from '../../core/config'
 import type { Rng } from '../../core/rng'
@@ -26,7 +27,13 @@ export function fill(t: LText, vars: Record<string, string | number | LText>): L
       if (v === undefined) return m
       return typeof v === 'object' ? v[lang] : String(v)
     })
-  return { tr: rep(t.tr, 'tr'), en: rep(t.en, 'en') }
+  // Turkish: a case suffix after a name placeholder is re-inflected ({n}'ın → Efe'nin).
+  const trText = replaceWithSuffix(t.tr, (k, spec) => {
+    const v = vars[k]
+    if (v === undefined || spec !== undefined) return undefined
+    return typeof v === 'object' ? { text: v.tr, isName: true } : { text: String(v), isName: typeof v === 'string' }
+  })
+  return { tr: trText, en: rep(t.en, 'en') }
 }
 
 /** Currency symbol used in generated text. Change here to rebrand the economy. */

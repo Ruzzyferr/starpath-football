@@ -202,6 +202,7 @@ export type AnswerTone = InterviewTone | 'joke'
 export type QuestionTopic =
   | 'result' | 'hero' | 'teammates_blame' | 'form_hot' | 'form_cold' | 'rival' | 'transfer' | 'manager_dispute'
   | 'bench' | 'casino' | 'national' | 'contract' | 'pre_opponent' | 'pre_pressure' | 'season_goals' | 'private_life'
+  | 'ambition' | 'off_pitch'
 
 export interface Journalist {
   id: string
@@ -308,7 +309,15 @@ interface OptionTpl {
   label: LText
   quote: LText
   fx: (c: Ctx) => InterviewEffectV2[]
+  /** Alternative [label, quote] pairs for the context (mood, position); one is picked per question so headlines vary. */
+  alts?: (c: Ctx) => [LText, LText][]
 }
+
+/** Quote pair helper: the label is the quote in quotation marks. */
+const q2 = (tr: string, en: string, qtr = tr, qen = en): [LText, LText] => [lt(`"${tr}"`, `"${en}"`), lt(qtr, qen)]
+const isKeeper = (c: Ctx): boolean => c.state.hero.position === 'GK'
+const isDefender = (c: Ctx): boolean => ['CB', 'LB', 'RB', 'LWB', 'RWB'].includes(c.state.hero.position)
+const isForward = (c: Ctx): boolean => ['ST', 'CF', 'LW', 'RW'].includes(c.state.hero.position)
 
 interface TopicDef {
   questions: LText[]
@@ -323,6 +332,12 @@ const DEFLECT: OptionTpl = {
   label: lt('"Sıradaki maça odaklanıyoruz."', '"We\'re focused on the next game."'),
   quote: lt('Sıradaki maça bakıyoruz', 'We look to the next game'),
   fx: () => [fx2('press', -1), fx2('stress', -2), fx2('discipline', 1)],
+  alts: () => [
+    q2('Sıradaki maça odaklanıyoruz.', "We're focused on the next game.", 'Sıradaki maça bakıyoruz', 'We look to the next game'),
+    q2('Şu an tek istediğim bir buz banyosu.', 'Right now all I want is an ice bath.', 'Tek istediğim buz banyosu', 'All I want is an ice bath'),
+    q2('Bunu hocaya sormanız lazım.', "You'll have to ask the coach.", 'Hocaya sorun', 'Ask the coach'),
+    q2('Yorum yok. Sahada konuşuruz.', 'No comment. We talk on the pitch.', 'Sahada konuşuruz', 'We talk on the pitch'),
+  ],
 }
 
 export const INTERVIEW_TOPICS: Readonly<Record<QuestionTopic, TopicDef>> = {
@@ -333,9 +348,24 @@ export const INTERVIEW_TOPICS: Readonly<Record<QuestionTopic, TopicDef>> = {
       lt('Bugünkü sonuç takım için ne anlama geliyor?', 'What does today\'s result mean for the team?'),
     ],
     options: [
-      { tone: 'humble', label: lt('"Sonuç da emek de takımın."', '"The result and the work belong to the team."'), quote: lt('Bu sonuç takımın', 'This result belongs to the team'), fx: (c) => [fx2('teammates', 2), fx2('press', 1), fx2('fans', c.mood === 'loss' ? 1 : 2)] },
-      { tone: 'bold', label: lt('"Daha iyisini yapacağız, bu daha başlangıç."', '"We\'ll do better. This is only the start."'), quote: lt('Bu daha başlangıç', 'This is only the start'), fx: (c) => c.mood === 'win' ? [fx2('fans', 3), fx2('followers', 1)] : [fx2('fans', 1), fx2('managerTrust', -1, 0.5)] },
-      { tone: 'critical', label: lt('"Planımız sahaya yansımadı, konuşmamız lazım."', '"Our plan didn\'t show on the pitch. We need to talk."'), quote: lt('Planımız sahaya yansımadı', 'Our plan didn\'t show on the pitch'), fx: () => [fx2('manager', -5), fx2('managerTrust', -4), fx2('press', 3)] },
+      { tone: 'humble', label: lt('"Sonuç da emek de takımın."', '"The result and the work belong to the team."'), quote: lt('Bu sonuç takımın', 'This result belongs to the team'), fx: (c) => [fx2('teammates', 2), fx2('press', 1), fx2('fans', c.mood === 'loss' ? 1 : 2)],
+        alts: (c) => c.mood === 'win'
+          ? [q2('Sonuç da emek de takımın.', 'The result and the work belong to the team.', 'Bu sonuç takımın', 'This result belongs to the team'), q2('Bugün herkes birbiri için koştu.', 'Today everyone ran for each other.', 'Herkes birbiri için koştu', 'Everyone ran for each other'), q2('Galibiyet soyunma odasının, ben sadece bir parçasıyım.', "The win belongs to the dressing room; I'm just part of it.", 'Galibiyet soyunma odasının', 'The win belongs to the dressing room')]
+          : c.mood === 'draw'
+            ? [q2('Bir puan da emektir, saygı duyuyoruz.', 'A point is hard work too. We respect it.', 'Bir puan da emektir', 'A point is hard work too'), q2('Sonuç da emek de takımın.', 'The result and the work belong to the team.', 'Bu sonuç takımın', 'This result belongs to the team')]
+            : [q2('Kaybettiysek hep birlikte kaybettik.', 'If we lost, we lost together.', 'Hep birlikte kaybettik', 'We lost together'), q2('Bu yenilgiyi sırtımızda birlikte taşıyacağız.', "We'll carry this defeat together.", 'Yenilgiyi birlikte taşıyacağız', "We'll carry this defeat together")] },
+      { tone: 'bold', label: lt('"Daha iyisini yapacağız, bu daha başlangıç."', '"We\'ll do better. This is only the start."'), quote: lt('Bu daha başlangıç', 'This is only the start'), fx: (c) => c.mood === 'win' ? [fx2('fans', 3), fx2('followers', 1)] : [fx2('fans', 1), fx2('managerTrust', -1, 0.5)],
+        alts: (c) => c.mood === 'win'
+          ? [q2('Bu daha başlangıç.', 'This is only the start.', 'Bu daha başlangıç', 'This is only the start'), q2('Bu takım durmayacak. Ligin geri kalanı not alsın.', "This team won't stop. The rest of the league should take note.", 'Lig not alsın', 'The league should take note'), q2('Böyle oynarsak bizi kimse tutamaz.', 'Play like this and nobody can stop us.', 'Bizi kimse tutamaz', 'Nobody can stop us')]
+          : c.mood === 'draw'
+            ? [q2('Bu puanı haftaya üçe çevireceğiz.', "We'll turn this point into three next week.", 'Haftaya üç puan bizim', 'Three points next week')]
+            : [q2('Düştüğümüz yerden daha güçlü kalkacağız.', "We'll get up stronger than we fell.", 'Daha güçlü kalkacağız', "We'll come back stronger"), q2('Bu yenilgi bizi bileyecek.', 'This defeat will sharpen us.', 'Bu yenilgi bizi bileyecek', 'This defeat will sharpen us')] },
+      { tone: 'critical', label: lt('"Planımız sahaya yansımadı, konuşmamız lazım."', '"Our plan didn\'t show on the pitch. We need to talk."'), quote: lt('Planımız sahaya yansımadı', 'Our plan didn\'t show on the pitch'), fx: () => [fx2('manager', -5), fx2('managerTrust', -4), fx2('press', 3)],
+        alts: (c) => c.mood === 'win'
+          ? [q2('Kazandık ama ikinci yarı kabul edilemezdi.', 'We won, but the second half was unacceptable.', 'İkinci yarı kabul edilemezdi', 'The second half was unacceptable'), q2('Skor iyi, oyun değil. Kendimizi kandırmayalım.', "Good score, bad game. Let's not kid ourselves.", 'Skor iyi, oyun değil', 'Good score, bad game')]
+          : c.mood === 'draw'
+            ? [q2('Bu kadroyla beraberlik yetmez.', "With this squad a draw isn't enough.", 'Beraberlik bize yetmez', "A draw isn't enough"), q2('Planımız sahaya yansımadı, konuşmamız lazım.', "Our plan didn't show on the pitch. We need to talk.", 'Planımız sahaya yansımadı', "Our plan didn't show on the pitch")]
+            : [q2('Planımız sahaya yansımadı, konuşmamız lazım.', "Our plan didn't show on the pitch. We need to talk.", 'Planımız sahaya yansımadı', "Our plan didn't show on the pitch"), q2('Bazıları bugün bu formayı terletmedi.', "Some people didn't sweat for this shirt today.", 'Bazıları formayı terletmedi', "Some didn't sweat for the shirt")] },
       DEFLECT,
     ],
   },
@@ -348,7 +378,12 @@ export const INTERVIEW_TOPICS: Readonly<Record<QuestionTopic, TopicDef>> = {
     options: [
       { tone: 'humble', label: lt('"Pasları atanlar olmasa gol de olmaz."', '"No goals without the people passing the ball."'), quote: lt('Pasları atanlar olmasa gol olmaz', 'No goals without the passers'), fx: () => [fx2('teammates', 3), fx2('press', 2), fx2('reputation', 1)] },
       { tone: 'bold', label: lt('"Bu ligin en iyisi olacağım."', '"I\'ll be the best in this league."'), quote: lt('Bu ligin en iyisi olacağım', 'I\'ll be the best in this league'), fx: () => [fx2('followers', 1), fx2('fans', 3), fx2('teammates', -1, 0.5), fx2('managerTrust', -1, 0.5)] },
-      { tone: 'joke', label: lt('"Annem kahvaltıda iki yumurta verdi, ondan."', '"Mum gave me two eggs for breakfast. That\'s it."'), quote: lt('Sır annemin kahvaltısında', 'The secret is mum\'s breakfast'), fx: () => [fx2('followers', 0.6), fx2('fans', 2), fx2('press', 2, 0.7)] },
+      { tone: 'joke', label: lt('"Annem kahvaltıda iki yumurta verdi, ondan."', '"Mum gave me two eggs for breakfast. That\'s it."'), quote: lt('Sır annemin kahvaltısında', 'The secret is mum\'s breakfast'), fx: () => [fx2('followers', 0.6), fx2('fans', 2), fx2('press', 2, 0.7)],
+        alts: () => [
+          q2('Annem kahvaltıda iki yumurta verdi, ondan.', "Mum gave me two eggs for breakfast. That's it.", 'Sır annemin kahvaltısında', "The secret is mum's breakfast"),
+          q2('Maçtan önce aynı şarkıyı on bir kez dinledim.', 'I listened to the same song eleven times before kick-off.', 'Sır on bir kez dinlenen şarkı', 'The secret is one song, eleven times'),
+          q2('Sol çorabı önce giydim. Bilim bu.', "Left sock first. It's science.", 'Sır sol çorapta', 'The secret is the left sock'),
+        ] },
       DEFLECT,
     ],
   },
@@ -374,7 +409,11 @@ export const INTERVIEW_TOPICS: Readonly<Record<QuestionTopic, TopicDef>> = {
     ],
     options: [
       { tone: 'humble', label: lt('"Antrenmanda ne ekersen onu biçiyorsun."', '"You reap what you sow in training."'), quote: lt('Antrenmanda ne ekersen onu biçersin', 'You reap what you sow in training'), fx: () => [fx2('managerTrust', 2), fx2('press', 1), fx2('teammates', 1)] },
-      { tone: 'bold', label: lt('"Daha zirveyi görmediniz."', '"You haven\'t seen my peak yet."'), quote: lt('Daha zirvemi görmediniz', 'You haven\'t seen my peak yet'), fx: () => [fx2('followers', 1), fx2('fans', 2), fx2('stress', 2)] },
+      { tone: 'bold', label: lt('"Daha zirveyi görmediniz."', '"You haven\'t seen my peak yet."'), quote: lt('Daha zirvemi görmediniz', 'You haven\'t seen my peak yet'), fx: () => [fx2('followers', 1), fx2('fans', 2), fx2('stress', 2)],
+        alts: () => [
+          q2('Daha zirvemi görmediniz.', "You haven't seen my peak yet.", 'Daha zirvemi görmediniz', "You haven't seen my peak yet"),
+          q2('Bu daha ısınma turu.', 'This is just the warm-up lap.', 'Bu daha ısınma turu', 'Just the warm-up lap'),
+        ] },
       { tone: 'joke', label: lt('"Yeni kramponlar. Sponsorum çok sevinecek."', '"New boots. My sponsor will be thrilled."'), quote: lt('Hepsi yeni kramponlar sayesinde', 'It\'s all the new boots'), fx: () => [fx2('followers', 0.6), fx2('press', 2)] },
       DEFLECT,
     ],
@@ -501,10 +540,61 @@ export const INTERVIEW_TOPICS: Readonly<Record<QuestionTopic, TopicDef>> = {
     styles: ['veteran', 'analyst', 'friendly'],
     questions: [lt('Bu sezon için kişisel hedefin ne?', 'What\'s your personal target this season?')],
     options: [
-      { tone: 'humble', label: lt('"Takıma faydalı olmak, gerisi gelir."', '"Be useful to the team. The rest follows."'), quote: lt('Takıma faydalı olmak', 'Be useful to the team'), fx: () => [fx2('teammates', 2), fx2('managerTrust', 2)] },
-      { tone: 'bold', label: lt('"Gol krallığı. Yazın bir kenara."', '"Top scorer. Write it down."'), quote: lt('Gol krallığı, yazın bir kenara', 'Top scorer, write it down'), fx: () => [fx2('fans', 3), fx2('followers', 1), fx2('stress', 3)] },
-      { tone: 'joke', label: lt('"Saç modelimi bütün sezon korumak. Gerisi kolay."', '"Keep the same haircut all season. The rest is easy."'), quote: lt('Saç modelimi korumak', 'Keep the haircut'), fx: () => [fx2('followers', 0.6), fx2('press', 1)] },
+      { tone: 'humble', label: lt('"Takıma faydalı olmak, gerisi gelir."', '"Be useful to the team. The rest follows."'), quote: lt('Takıma faydalı olmak', 'Be useful to the team'), fx: () => [fx2('teammates', 2), fx2('managerTrust', 2)],
+        alts: () => [
+          q2('Takıma faydalı olmak, gerisi gelir.', 'Be useful to the team. The rest follows.', 'Takıma faydalı olmak', 'Be useful to the team'),
+          q2('Her hafta biraz daha iyi olmak.', 'Get a little better every week.', 'Her hafta biraz daha iyi', 'A little better every week'),
+          q2('Sakatlanmadan, her maçta hazır olmak.', 'Stay fit and be ready for every game.', 'Her maçta hazır olmak', 'Ready for every game'),
+        ] },
+      { tone: 'bold', label: lt('"Gol krallığı. Yazın bir kenara."', '"Top scorer. Write it down."'), quote: lt('Gol krallığı, yazın bir kenara', 'Top scorer, write it down'), fx: () => [fx2('fans', 3), fx2('followers', 1), fx2('stress', 3)],
+        alts: (c) => [
+          isKeeper(c) ? q2('Ligde en az gol yiyen kaleci ben olacağım.', "I'll be the keeper who concedes the fewest in this league.", 'En az gol yiyen kaleci ben olacağım', 'Fewest goals conceded: me')
+            : isDefender(c) ? q2('Ligin en sağlam savunması bizde olacak.', "We'll have the meanest defence in the league.", 'En sağlam savunma bizde', 'The meanest defence is ours')
+              : isForward(c) ? q2('Gol krallığı. Yazın bir kenara.', 'Top scorer. Write it down.', 'Gol krallığı, yazın bir kenara', 'Top scorer, write it down')
+                : q2('Asist krallığı. Yazın bir kenara.', 'Most assists. Write it down.', 'Asist krallığı, yazın bir kenara', 'Most assists, write it down'),
+          q2('Bu sezon bir kupa kaldıracağız.', "We're lifting a trophy this season.", 'Bu sezon kupa kaldıracağız', "We're lifting a trophy this season"),
+        ] },
+      { tone: 'joke', label: lt('"Saç modelimi bütün sezon korumak. Gerisi kolay."', '"Keep the same haircut all season. The rest is easy."'), quote: lt('Saç modelimi korumak', 'Keep the haircut'), fx: () => [fx2('followers', 0.6), fx2('press', 1)],
+        alts: () => [
+          q2('Saç modelimi bütün sezon korumak. Gerisi kolay.', 'Keep the same haircut all season. The rest is easy.', 'Saç modelimi korumak', 'Keep the haircut'),
+          q2('Soyunma odasında müzik seçme hakkını kapmak.', 'Win control of the dressing-room playlist.', 'Hedefim müzik listesi', 'The target: the playlist'),
+          q2('Annemin maç günü yemeğini bir kez bile kaçırmamak.', "Never miss mum's matchday dinner.", 'Annemin yemeğini kaçırmamak', "Never miss mum's dinner"),
+        ] },
       DEFLECT,
+    ],
+  },
+  ambition: {
+    styles: ['veteran', 'analyst', 'friendly'],
+    questions: [
+      lt('Beş yıl sonra kendini nerede görüyorsun?', 'Where do you see yourself in five years?'),
+      lt('Kariyerinde seni en çok ne motive ediyor?', 'What drives you most in your career?'),
+    ],
+    options: [
+      { tone: 'humble', label: lt('"Bugünü iyi oynarsam yarın kendiliğinden gelir."', '"If I play today well, tomorrow takes care of itself."'), quote: lt('Bugünü iyi oynarsam yarın gelir', 'Play today well and tomorrow comes'), fx: () => [fx2('managerTrust', 2), fx2('press', 1)] },
+      { tone: 'bold', label: lt('"Avrupa\'nın en büyük sahnelerinde."', '"On Europe\'s biggest stages."'), quote: lt('Hedefim en büyük sahneler', 'My target: the biggest stages'), fx: () => [fx2('fans', 2), fx2('followers', 1), fx2('chairman', -1, 0.5), fx2('buzz', 1, 0.5)],
+        alts: () => [
+          q2('Avrupa\'nın en büyük sahnelerinde.', 'On Europe\'s biggest stages.', 'Hedefim en büyük sahneler', 'My target: the biggest stages'),
+          q2('Altın Yıldız ödülünü kaldırırken.', 'Lifting the Golden Star.', 'Altın Yıldız\'ı istiyorum', 'I want the Golden Star'),
+        ] },
+      { tone: 'joke', label: lt('"Muhtemelen yine bu mikrofonun önünde."', '"Probably in front of this microphone again."'), quote: lt('Yine bu mikrofonun önünde', 'In front of this microphone again'), fx: () => [fx2('press', 2), fx2('followers', 0.5)] },
+      DEFLECT,
+    ],
+  },
+  off_pitch: {
+    styles: ['friendly', 'tabloid'],
+    questions: [
+      lt('Sahadan uzakta nasıl birisin? Boş zamanlarında ne yapıyorsun?', 'What are you like off the pitch? What do you do in your free time?'),
+      lt('Taraftarlar seni biraz daha tanımak istiyor. Bir sırrını verir misin?', 'The fans want to know you a little better. Share a secret?'),
+    ],
+    options: [
+      { tone: 'humble', label: lt('"Ailemle vakit geçirmek her şeyden önce gelir."', '"Time with my family comes first."'), quote: lt('Ailem her şeyden önce gelir', 'Family comes first'), fx: () => [fx2('fans', 2), fx2('press', 1)] },
+      { tone: 'joke', label: lt('"Konsolda takım arkadaşlarımı yeniyorum. Sahada değilse orada."', '"I beat my teammates on the console. If not on the pitch, there."'), quote: lt('Konsolda kimse beni yenemez', 'Nobody beats me on the console'), fx: () => [fx2('followers', 0.8), fx2('teammates', 1)],
+        alts: () => [
+          q2('Konsolda takım arkadaşlarımı yeniyorum. Sahada değilse orada.', 'I beat my teammates on the console. If not on the pitch, there.', 'Konsolda kimse beni yenemez', 'Nobody beats me on the console'),
+          q2('Gizli yeteneğim: mükemmel menemen.', 'Secret talent: a perfect menemen.', 'Gizli yeteneğim menemen', 'Secret talent: menemen'),
+          q2('Bitkilerimle konuşuyorum. Hepsi iyi.', "I talk to my plants. They're all fine.", 'Bitkilerimle konuşuyorum', 'I talk to my plants'),
+        ] },
+      { tone: 'bold', label: lt('"Özel hayatım özel kalır."', '"My private life stays private."'), quote: lt('Özel hayatım özel kalır', 'My private life stays private'), fx: () => [fx2('press', -1), fx2('discipline', 1), fx2('stress', -1)] },
     ],
   },
   private_life: {
@@ -589,12 +679,19 @@ function candidateTopics(c: Ctx): { topic: QuestionTopic; w: number }[] {
   }
   if (h.form >= 70) add('form_hot', 4)
   if (h.form <= 35) add('form_cold', 4)
+  if (kind === 'post' && r && r.minutes > 0) add('result', 2)
   if (rumours) add('transfer', 6)
   if (dispute) add('manager_dispute', 6)
   if (casinoRecent) add('casino', 5)
   if (h.nationalTeam.called) add('national', 2)
   if (contractEnding) add('contract', 3)
-  for (const t of ['season_goals', 'pre_pressure', 'form_hot', 'form_cold'] as QuestionTopic[]) if (out.length < 3) add(t, 1)
+  // Fillers must fit the moment: no pre-match pressure question after the whistle and no
+  // "you're unstoppable" unless the form is actually good (a shorter session beats a wrong one).
+  const fillers: QuestionTopic[] = ['season_goals', 'ambition', 'off_pitch']
+  if (kind === 'pre') fillers.push('pre_pressure')
+  if (h.form >= 60) fillers.splice(1, 0, 'form_hot')
+  if (h.form <= 42) fillers.splice(1, 0, 'form_cold')
+  for (const t of fillers) if (out.length < 3) add(t, 1)
   return out
 }
 
@@ -602,13 +699,17 @@ function buildQuestion(c: Ctx, rng: Rng, topic: QuestionTopic, idx: number, vars
   const def = INTERVIEW_TOPICS[topic]
   const pool = JOURNALISTS.filter((j) => def.styles.includes(j.style))
   const journalist = rng.pick(pool.length ? pool : JOURNALISTS)
-  const options = def.options.map((o, i): QuestionOption => ({
-    id: `${topic}_${i}_${o.tone}`,
-    tone: o.tone,
-    label: fill(o.label, vars),
-    quote: fill(o.quote, vars),
-    effects: o.fx(c).map((x) => styleAdjust(journalist.style, x)),
-  }))
+  const options = def.options.map((o, i): QuestionOption => {
+    const alts = o.alts?.(c) ?? []
+    const [label, quote] = alts.length ? rng.pick(alts) : [o.label, o.quote]
+    return {
+      id: `${topic}_${i}_${o.tone}`,
+      tone: o.tone,
+      label: fill(label, vars),
+      quote: fill(quote, vars),
+      effects: o.fx(c).map((x) => styleAdjust(journalist.style, x)),
+    }
+  })
   return { id: `q${idx}_${topic}`, topic, journalist, text: fill(rng.pick(def.questions), vars), trap: !!def.trap, options }
 }
 

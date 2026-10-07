@@ -76,6 +76,12 @@ export function heroGoalKinds(events: readonly FeatEvent[], side: 'home' | 'away
   return { freeKick, header }
 }
 export const RECORDS_FLAG = 'c:records'
+/** JSON {@link ClubSeasonBase}: hero goals/assists before the first match for the current club this season. */
+export const CLUB_BASE_FLAG = 'c:clubBase'
+/** JSON string[]: `season|clubId|key` club records already celebrated with a headline. */
+export const CLUB_NEWS_FLAG = 'c:clubRecNews'
+
+interface ClubSeasonBase { clubId: string; season: number; goals: number; assists: number }
 export const CLUB_RECORDS_FLAG = 'c:clubRecords'
 
 export interface RecordValue {
@@ -177,8 +183,16 @@ export function updateRecordsAfterMatch(state: GameState, feats: MatchFeats): Br
     const all = allClubRecords(state)
     const cr = clubRecordsFor(state, club.id)
     const heroName = `${h.firstName} ${h.lastName}`
+    // Only goals for THIS club count toward its records (a mid-season signing brings no goals with them).
+    let base = readJson<ClubSeasonBase | null>(state.life, CLUB_BASE_FLAG, null)
+    if (!base || base.clubId !== club.id || base.season !== season) {
+      base = { clubId: club.id, season, goals: Math.max(0, h.seasonStats.goals - feats.goals), assists: Math.max(0, h.seasonStats.assists - feats.assists) }
+      writeJson(state.life, CLUB_BASE_FLAG, base)
+    }
+    const clubGoals = Math.max(0, h.seasonStats.goals - base.goals)
+    const clubAssists = Math.max(0, h.seasonStats.assists - base.assists)
     const contenders: { name: string; goals: number; assists: number; age: number; isHero: boolean }[] = [
-      { name: heroName, goals: h.seasonStats.goals, assists: h.seasonStats.assists, age: heroAge(h, season), isHero: true },
+      { name: heroName, goals: clubGoals, assists: clubAssists, age: heroAge(h, season), isHero: true },
       ...squadPlayers(state.world, club.id).map((p) => ({ name: `${p.firstName} ${p.lastName}`, goals: p.stats.goals, assists: p.stats.assists, age: season - p.birthYear, isHero: false })),
     ]
     const setC = (key: ClubRecordKey, value: number, name: string, isHero: boolean): void => {
@@ -197,9 +211,18 @@ export function updateRecordsAfterMatch(state: GameState, feats: MatchFeats): Br
     all[club.id] = cr
     writeJson(state.life, CLUB_RECORDS_FLAG, all)
 
+    const celebrated = readJson<string[]>(state.life, CLUB_NEWS_FLAG, [])
     for (const b of broken.filter((x) => x.scope === 'club')) {
       const name = CLUB_RECORD_NAMES[b.key as ClubRecordKey]
-      log(state, [], fill(lt('📈 Kulüp rekoru! {r}: {v} ({c})', '📈 Club record! {r}: {v} ({c})'), { r: name, v: b.value, c: club.name }), 'award', '📈')
+      // Extending a record you already broke this season is a quiet log line, not a new headline every week.
+      const tag = `${season}|${club.id}|${b.key}`
+      if (celebrated.includes(tag)) {
+        log(state, [], fill(lt('📈 Rekorunu geliştirdin: {r} artık {v} ({c})', '📈 You extended your record: {r} is now {v} ({c})'), { r: name, v: b.value, c: club.name }), 'award', '📈')
+        continue
+      }
+      celebrated.push(tag)
+      writeJson(state.life, CLUB_NEWS_FLAG, celebrated.slice(-40))
+      log(state, [], fill(lt('Kulüp rekoru! {r}: {v} ({c})', 'Club record! {r}: {v} ({c})'), { r: name, v: b.value, c: club.name }), 'award', '📈')
       // Own RNG (seeded from the record) so records never shift the career's main RNG stream.
       const rng = new Rng(hashString(`${state.meta.id}|${season}|${state.calendar.week}|${b.key}|${b.value}`))
       pushNews(state.life, rng, state.calendar, fill(lt('{n} {c} tarihine geçti: {r}', '{n} makes {c} history: {r}'), { n: heroName, c: club.name, r: name }), 1, 'StarPath Sports')

@@ -16,6 +16,7 @@
  * Absolute week = career/common `absWeek` ((season − START_YEAR)·52 + week, see {@link absoluteWeek}); monotonic
  * across seasons because a season never exceeds 52 weeks.
  */
+import { replaceWithSuffix } from '../../career/trSuffix'
 import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, RelationKind, Relationship } from '../../../core/types'
 import { clamp, type Rng } from '../../../core/rng'
 import { heroGender } from '../../../core/gender'
@@ -207,7 +208,17 @@ export function resolveGender(text: string, gender: unknown): string {
  * are left untouched (tests guard against them).
  */
 export function formatText(text: LText, vars: EventVars, lang: Lang): string {
-  return resolveGender(text[lang], vars['heroGender']).replace(PLACEHOLDER, (whole, key: string, spec: string | undefined) => {
+  const base = resolveGender(text[lang], vars['heroGender'])
+  if (lang === 'tr') {
+    // Turkish: re-inflect a case suffix written after a name placeholder ({city}'de → İstanbul'da).
+    return replaceWithSuffix(base, (key, spec) => {
+      const v = vars[key]
+      if (v === undefined) return undefined
+      if (typeof v === 'number') return { text: spec === 'money' ? formatMoney(v, lang) : formatNumber(v, lang), isName: false }
+      return { text: v, isName: true }
+    })
+  }
+  return base.replace(PLACEHOLDER, (whole, key: string, spec: string | undefined) => {
     const v = vars[key]
     if (v === undefined) return whole
     if (typeof v === 'number') return spec === 'money' ? formatMoney(v, lang) : formatNumber(v, lang)

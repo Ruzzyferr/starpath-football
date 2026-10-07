@@ -176,7 +176,9 @@ export const rumourEvents: EventDef[] = [
         label: t('Bir şey söyleme, gizem iyidir', 'Say nothing; mystery sells'),
         risk: 'medium',
         effects: (ctx) =>
-          fx(t('Takipçilerin uçtu. {partnerName} ise "gizem" kelimesinden hiç hoşlanmadı.', 'Followers soared. {partnerName} did not enjoy the word "mystery".'), folPct(ctx, 5), ...(hasRel(ctx.state, 'partner') ? [rel('partner', -8)] : []), follow(chain('rumour.romance_photo', 1))),
+          hasRel(ctx.state, 'partner')
+            ? fx(t('Takipçilerin uçtu. {partnerName} ise "gizem" kelimesinden hiç hoşlanmadı.', 'Followers soared. {partnerName} did not enjoy the word "mystery".'), folPct(ctx, 5), rel('partner', -8), follow(chain('rumour.romance_photo', 1)))
+            : fx(t('Takipçilerin uçtu. Annen aradı: "O kim? Neden en son ben duyuyorum?"', 'Followers soared. Your mum called: "Who is this, and why am I the last to know?"'), folPct(ctx, 5), rel('mother', -2), follow(chain('rumour.romance_photo', 1))),
       },
       {
         label: t('Avukatla düzeltme iste', 'Demand a correction via lawyer'),
@@ -203,7 +205,7 @@ export const rumourEvents: EventDef[] = [
         effects: (ctx) => fx(t('"Biz sadece otopark arkadaşıyız 🚗." İnternet bayıldı, dedikodu bitti.', '"We\'re just car-park friends 🚗." The internet loved it, gossip over.'), folPct(ctx, 6), press(3), rep(1), happy(3)),
       },
       {
-        label: t('{partnerName} ile yüzleş, her şeyi anlat', 'Sit down with {partnerName} and explain'),
+        label: t('Sevdiklerine her şeyi anlat', 'Sit down with your loved ones and explain'),
         effects: (ctx) =>
           hasRel(ctx.state, 'partner')
             ? fx(t('Uzun bir akşam. Sonunda {partnerName} güldü: "Otopark mı? Cidden mi?"', 'A long evening. In the end {partnerName} laughed: "A car park? Really?"'), rel('partner', 8), stress(-3))
