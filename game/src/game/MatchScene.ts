@@ -240,6 +240,8 @@ export class MatchScene extends Phaser.Scene {
   private netG: Record<'east' | 'west', Phaser.GameObjects.Graphics> = {} as Record<'east' | 'west', Phaser.GameObjects.Graphics>
   private ripple: Record<'east' | 'west', NetRipple | null> = { east: null, west: null }
   private grassFx!: Phaser.GameObjects.Particles.ParticleEmitter
+  /** Soft turf / spray puff for slides, dives and wet bounces. */
+  private puffFx!: Phaser.GameObjects.Particles.ParticleEmitter
   private confetti!: Phaser.GameObjects.Particles.ParticleEmitter
 
   private hudG!: Phaser.GameObjects.Graphics
@@ -828,18 +830,32 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private buildFx(): void {
+    // Grass blades and clods kicked up by strikes and tackles.
     this.grassFx = this.addW(
-      this.add.particles(0, 0, 'fx_sq', {
+      this.add.particles(0, 0, 'fx_blade', {
         emitting: false,
-        speed: { min: 30, max: 120 },
+        speed: { min: 40, max: 140 },
         angle: { min: 200, max: 340 },
-        gravityY: 260,
-        lifespan: { min: 300, max: 650 },
-        scale: { start: 0.55, end: 0.1 },
-        alpha: { start: 0.9, end: 0 },
-        tint: [0x3c8a3a, 0x58a84b, 0x6e5a32, 0x2f6d2c],
+        gravityY: 300,
+        lifespan: { min: 320, max: 700 },
+        scale: { start: 0.9, end: 0.35 },
+        rotate: { min: 0, max: 360 },
+        alpha: { start: 0.95, end: 0 },
+        tint: this.data0.opts.weather === 'snow' ? [0xffffff, 0xe8f0ff, 0x9fbfa6] : [0x3c8a3a, 0x58a84b, 0x7cc35e, 0x6e5a32, 0x2f6d2c],
       }),
     ).setDepth(4_000_000)
+    const wet = this.data0.opts.weather === 'rain'
+    this.puffFx = this.addW(
+      this.add.particles(0, 0, 'fx_dot', {
+        emitting: false,
+        speed: { min: 12, max: 55 },
+        angle: { min: 180, max: 360 },
+        lifespan: { min: 380, max: 760 },
+        scale: { start: 0.5, end: 1.6 },
+        alpha: { start: wet ? 0.5 : 0.35, end: 0 },
+        tint: wet ? [0xdfeaff, 0xbcd0e8] : this.data0.opts.weather === 'snow' ? [0xffffff] : [0x9d8a5a, 0x7f9a5a, 0xb9a77a],
+      }),
+    ).setDepth(3_999_000)
     this.confetti = this.addW(
       this.add.particles(0, 0, 'fx_sq', {
         emitting: false,
@@ -2068,7 +2084,8 @@ export class MatchScene extends Phaser.Scene {
       }
       const wp = { x: v.c.x, y: v.c.y - zpx(HEAD_Z + 0.65) }
       const sp = this.worldToScreen(wp.x, wp.y)
-      l.setVisible(true).setPosition(sp.x, sp.y).setAlpha(0.92)
+      const lb = this.mode === 'replay' ? this.scale.height * 0.08 : this.hudTop
+      l.setVisible(sp.y > lb + 6 && sp.y < this.scale.height - (this.mode === 'replay' ? lb : 0) - 4).setPosition(sp.x, sp.y).setAlpha(0.92)
     }
   }
 
@@ -2163,6 +2180,11 @@ export class MatchScene extends Phaser.Scene {
           break
         case 'bounce':
           this.sfx.tap(Math.min(1, e.speed / 9))
+          // Spray off a wet pitch.
+          if (this.data0.opts.weather === 'rain' && e.speed > 4) {
+            const p = project(e.x, e.y)
+            this.burst(this.puffFx, this.fxN(4, 760), p.x, p.y)
+          }
           break
         case 'post':
         case 'bar':
@@ -2212,7 +2234,10 @@ export class MatchScene extends Phaser.Scene {
         case 'tackle': {
           if (e.slide || e.won) this.sfx.scuff()
           const p = project(e.x, e.y)
-          if (e.slide) this.burst(this.grassFx, this.fxN(14), p.x, p.y)
+          if (e.slide) {
+            this.burst(this.grassFx, this.fxN(14), p.x, p.y)
+            this.burst(this.puffFx, this.fxN(6, 760), p.x, p.y)
+          }
           if (e.won && e.by === rt.hero.id) this.vibrate(60)
           break
         }
@@ -2242,9 +2267,15 @@ export class MatchScene extends Phaser.Scene {
           this.floatText(e.success ? this.s.skillOk : this.s.skillBad, rt.hero.pos.x, rt.hero.pos.y, e.success ? '#5dff8a' : '#ff7a7a', 0.9, 2.8)
           if (e.success) this.vibrate(30)
           break
-        case 'dive':
+        case 'dive': {
           this.sfx.scuff()
+          const dv = this.views.find((w) => w.agent.id === e.by)
+          if (dv) {
+            const p = project(dv.agent.pos.x, dv.agent.pos.y)
+            this.burst(this.puffFx, this.fxN(5, 760), p.x, p.y)
+          }
           break
+        }
         case 'header':
           this.sfx.tap(0.8)
           break
@@ -2336,10 +2367,14 @@ export class MatchScene extends Phaser.Scene {
     g.fillStyle(0x1fd47a, 0.35)
     g.fillRect(0, this.hudTop - 1 * u, w, 1 * u)
 
-    // Score bug: gold minute block, team colour ticks, white score block.
+    // Score bug: gold minute block, team colour ticks, white score block (hidden under the replay letterbox).
+    const showBug = this.mode !== 'replay'
+    for (const t of [this.sb.min, this.sb.home, this.sb.score, this.sb.away]) t.setVisible(showBug)
+    this.assistText?.setVisible(showBug)
     const sx = this.sb.x
     const bugY = top + 7 * u
     const bugH = 26 * u
+    if (showBug) {
     g.fillStyle(0x000000, 0.35)
     g.fillRoundedRect(sx.min + 1 * u, bugY + 2 * u, sx.end - sx.min, bugH, 6 * u)
     g.fillStyle(0x131c2e, 1)
@@ -2354,6 +2389,7 @@ export class MatchScene extends Phaser.Scene {
     g.fillRect(sx.score, bugY + 3 * u, sx.scoreW, bugH - 6 * u)
     g.fillStyle(this.sbColors[1], 1)
     g.fillRoundedRect(sx.end - 4 * u, bugY, 4 * u, bugH, { tl: 0, bl: 0, tr: 4 * u, br: 4 * u })
+    }
 
     // Moment timer bar.
     const frac = clampN(rt.timeLeft / rt.timeLimit, 0, 1)

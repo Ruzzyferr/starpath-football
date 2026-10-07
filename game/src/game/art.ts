@@ -312,6 +312,16 @@ export function utilTextures(scene: Phaser.Scene): void {
     c.strokeStyle = 'rgba(10,12,16,0.75)'
     c.stroke()
   })
+  // Grass blade particle.
+  canvasTexture(scene, 'fx_blade', 4, 10, (c, w, h) => {
+    const g = c.createLinearGradient(0, 0, 0, h)
+    g.addColorStop(0, 'rgba(255,255,255,1)')
+    g.addColorStop(1, 'rgba(200,200,200,0.8)')
+    c.fillStyle = g
+    c.beginPath()
+    c.ellipse(w / 2, h / 2, w / 2, h / 2, 0, 0, Math.PI * 2)
+    c.fill()
+  })
   // Facing chevron (points right; rotated per player).
   canvasTexture(scene, 'fx_chev', 32, 32, (c) => {
     c.fillStyle = '#ffffff'
@@ -367,12 +377,12 @@ export const PITCH_COLORS: Readonly<Record<Weather | 'night', readonly [string, 
   hot: ['#5f9a3b', '#538b33', '#4a7d2e'],
   rain: ['#2f7a37', '#286c30', '#21592a'],
   snow: ['#86ab8f', '#7a9f84', '#6c917a'],
-  night: ['#2c7436', '#25652f', '#1c5027'],
+  night: ['#23602f', '#1d5229', '#163f20'],
 }
 
 /** Grass palette per weather (night darkens and cools it). */
 function grass(weather: Weather, night = false): readonly [string, string, string] {
-  if (night && weather !== 'snow') return weather === 'rain' ? ['#25683a', '#1f5a33', '#184a2a'] : PITCH_COLORS.night
+  if (night && weather !== 'snow') return weather === 'rain' ? ['#1f5833', '#1a4b2d', '#143c24'] : PITCH_COLORS.night
   return PITCH_COLORS[weather] ?? PITCH_COLORS.clear
 }
 
@@ -509,7 +519,7 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather, o: P
       const p = P(x, y)
       for (let k = 0; k < 7; k++) {
         const rr = r * (1 - k / 8) * PPM
-        g.fillStyle(0xfff1cf, 0.022)
+        g.fillStyle(0xfff1cf, 0.03)
         g.fillEllipse(p.x, p.y, rr * 2, rr * 2 * TILT)
       }
     }
@@ -621,9 +631,26 @@ export function drawGoal(g: Phaser.GameObjects.Graphics, end: 'east' | 'west', p
       g.fillPoints(pts.map((p) => new Phaser.Math.Vector2(p.x, p.y)), true)
     }
     const bx = gx + out * NET_DEPTH
-    quad([project(bx, y0, 0), project(bx, y1, 0), project(bx, y1, backTop), project(bx, y0, backTop)], 0.07)
-    quad([project(gx, y0, H), project(gx, y1, H), project(bx, y1, backTop), project(bx, y0, backTop)], 0.06)
-    for (const y of [y0, y1]) quad([project(gx, y, 0), project(gx, y, H), project(bx, y, backTop), project(bx, y, 0)], 0.05)
+    quad([project(bx, y0, 0), project(bx, y1, 0), project(bx, y1, backTop), project(bx, y0, backTop)], 0.11)
+    quad([project(gx, y0, H), project(gx, y1, H), project(bx, y1, backTop), project(bx, y0, backTop)], 0.09)
+    for (const y of [y0, y1]) quad([project(gx, y, 0), project(gx, y, H), project(bx, y, backTop), project(bx, y, 0)], 0.08)
+    // Net supports: the back stanchions and the top-back bar, so the box reads from behind and in front.
+    g.lineStyle(2.2, 0xd8dde6, 0.85)
+    for (const y of [y0, y1]) {
+      const a = project(bx, y, 0)
+      const b = project(bx, y, backTop)
+      const c = project(gx, y, H)
+      g.lineBetween(a.x, a.y, b.x, b.y)
+      g.lineBetween(b.x, b.y, c.x, c.y)
+    }
+    {
+      const a = project(bx, y0, backTop)
+      const b = project(bx, y1, backTop)
+      g.lineBetween(a.x, a.y, b.x, b.y)
+      const c = project(bx, y0, 0)
+      const d = project(bx, y1, 0)
+      g.lineBetween(c.x, c.y, d.x, d.y)
+    }
     // Back panel and roof mesh.
     g.lineStyle(1.2, 0xffffff, 0.38)
     const backX = (y: number, z: number) => gx + out * (NET_DEPTH + disp(y, z))

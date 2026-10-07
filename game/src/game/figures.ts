@@ -443,7 +443,7 @@ function buildFrame(pose: FigPose, dir: number, S: number): FrameGeo {
       const n0 = pr(add(J.C, J.T, 0.03))
       c.fillStyle = k.trim
       c.beginPath()
-      c.ellipse(n0.x, n0.y, W(0.1), W(0.06), 0, 0, Math.PI * 2)
+      c.ellipse(n0.x, n0.y, W(0.075), W(0.04), 0, 0, Math.PI * 2)
       c.fill()
       // Shading: light from the upper left, darker toward the waist and the right.
       const [x0, y0, x1, y1] = bbox(torso, round)
