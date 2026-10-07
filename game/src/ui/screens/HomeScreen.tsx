@@ -193,7 +193,7 @@ export function HomeScreen() {
                   <button key={tile.id} type="button" class={`home-tile home-tile-${tile.id}${locked ? ' is-feature-locked' : ''}`} onClick={() => navigate(tile.screen)} data-tour={`tile-${tile.id}`}>
                     <span class="home-tile-icon"><Icon name={locked ? 'lock' : tile.icon} size={22} /></span>
                     <span class="home-tile-label">{t(`home.tiles.${tile.id}`)}{tile.id === 'casino' && <> <NewTag feature="casino" /></>}</span>
-                    {locked ? <LockChip feature="casino" /> : <span class="home-tile-sub truncate">{tileSub(tile.id)}</span>}
+                    {locked ? <LockChip feature="casino" /> : <span class="home-tile-sub">{tileSub(tile.id)}</span>}
                   </button>
                 )
               })}

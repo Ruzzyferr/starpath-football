@@ -182,7 +182,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
               <div><span class="micro t-lo">{t('training.result.score')}</span> <span class="score-font trn-result-score">{result.points}</span></div>
               <div class="trn-perf">
                 <span class="micro t-lo">{t('training.result.performance')}</span>
-                <div class="trn-perf-bar" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(result.performance * 100)}>
+                <div class="trn-perf-bar" role="meter" aria-label={t('training.result.performance')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(result.performance * 100)}>
                   <span style={{ width: `${Math.round(result.performance * 100)}%` }} />
                   <i style={{ left: '60%' }} title={t('training.session.auto')} />
                 </div>

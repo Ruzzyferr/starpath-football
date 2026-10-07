@@ -314,6 +314,7 @@
   font-size: var(--fs-xs);
   color: var(--text-lo);
   max-width: 100%;
+  overflow-wrap: anywhere; /* long translations / 200% text wrap instead of truncating */
 }
 
 /* ── Headlines ── */

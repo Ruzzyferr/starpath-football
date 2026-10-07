@@ -21,7 +21,7 @@ export function AchievementsScreen() {
       <div class="lg-summary">
         <div class="lg-big num" data-testid="ach-count">{v.unlocked}</div>
         <div class="grow stack">
-          <div class="lg-bar is-gold" role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></div>
+          <div class="lg-bar is-gold" role="meter" aria-label={t('meta.ach.title')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={pct}><span style={{ width: `${pct}%` }} /></div>
           <div class="t-xs t-lo">{t('meta.ach.steam')}</div>
         </div>
       </div>
@@ -40,7 +40,7 @@ export function AchievementsScreen() {
                 ) : (
                   !hidden && r.def.target > 1 && (
                     <>
-                      <div class="lg-bar" role="meter" aria-valuemin={0} aria-valuemax={r.def.target} aria-valuenow={r.progress}><span style={{ width: `${Math.round(r.ratio * 100)}%` }} /></div>
+                      <div class="lg-bar" role="meter" aria-label={lt(r.def.name)} aria-valuemin={0} aria-valuemax={r.def.target} aria-valuenow={r.progress}><span style={{ width: `${Math.round(r.ratio * 100)}%` }} /></div>
                       <span class="t-xs t-lo num">{t('meta.ach.progress', { p: formatNumber(Math.floor(r.progress)), t: formatNumber(r.def.target) })}</span>
                     </>
                   )
