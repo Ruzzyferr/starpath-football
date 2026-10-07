@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks'
 import { currentLang, lt, t } from '../../i18n'
 import type { CareerSummary } from '../../sim/game/hallOfFame'
 import { careerCardData, careerCsv } from '../../sim/game/localMeta'
-import { Button, toast } from '../components'
+import { Button, IconButton, toast } from '../components'
 import { formatNumber, formatRating, seasonLabel } from '../format'
 import { gameState, type PostMatchView } from '../store'
 import { downloadText, shareCard, type CardSpec } from './cards'
@@ -53,9 +53,11 @@ async function run(spec: CardSpec, file: string, text: string, setBusy: (b: bool
   }
 }
 
-export function ShareCareerButton({ sum, size = 'sm' }: { sum: CareerSummary; size?: 'sm' | 'md' }) {
+export function ShareCareerButton({ sum, size = 'sm', compact }: { sum: CareerSummary; size?: 'sm' | 'md'; compact?: boolean }) {
   void currentLang.value
   const [busy, setBusy] = useState(false)
+  const go = () => void run(careerSpec(sum), `starpath-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)
+  if (compact) return <IconButton icon="upload" label={t('board.share.card')} onClick={go} data-testid="share-career" />
   return (
     <Button size={size} variant="secondary" icon="upload" disabled={busy} data-testid="share-career"
       onClick={() => void run(careerSpec(sum), `starpath-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)}>
@@ -77,8 +79,13 @@ export function ShareMatchButton({ pm }: { pm: PostMatchView }) {
   )
 }
 
-export function ExportCsvButton({ sum, size = 'sm' }: { sum: CareerSummary; size?: 'sm' | 'md' }) {
+export function ExportCsvButton({ sum, size = 'sm', compact }: { sum: CareerSummary; size?: 'sm' | 'md'; compact?: boolean }) {
   void currentLang.value
+  const go = () => {
+    downloadText(careerCsv(sum, currentLang.value === 'en' ? 'en' : 'tr'), `starpath-${slug(sum.name)}.csv`)
+    toast(t('board.share.saved'), 'success', 'download')
+  }
+  if (compact) return <IconButton icon="download" label={t('board.share.csv')} onClick={go} data-testid="export-csv" />
   return (
     <Button size={size} variant="ghost" icon="download" data-testid="export-csv"
       onClick={() => {

@@ -142,3 +142,21 @@
 .bd-actions {
   align-items: center;
 }
+.bd-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+}
+.bd-tile {
+  padding: 16px;
+  gap: 6px;
+}
+.bd-tile b {
+  font-size: 2.6rem;
+}
+.bd-tile-ic {
+  color: var(--accent-gold);
+}
+@media (max-width: 480px) {
+  .bd-tiles {
+    grid-template-columns: 1fr 1fr;
+  }
+}

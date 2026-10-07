@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks'
 import { currentLang, lt, t } from '../../../i18n'
 import { Avatar, IconButton, Card, CardHeader, Chip, EmptyState, Page, Segmented, TabPanel, Tabs } from '../../components'
 import { formatNumber, formatRating, seasonLabel } from '../../format'
-import { Icon } from '../../icons'
+import { Icon, type IconName } from '../../icons'
 import { gameState, navigate } from '../../store'
 import { hallOfFame, metaData, weeklyChallengeView } from '../../backend/meta'
 import { CHALLENGES, boardValue, localBoard, type BoardMetric, type PersonalBests } from '../../../sim/game/localMeta'
@@ -11,12 +11,12 @@ import { ExportCsvButton, ShareCareerButton } from '../../share/ShareButtons'
 
 type Tab = 'challenge' | 'careers' | 'bests'
 const METRICS: BoardMetric[] = ['legacy', 'goals', 'assists', 'apps', 'trophies']
-const BEST_ROWS: { key: keyof PersonalBests; fmt: (v: number) => string }[] = [
-  { key: 'bestRating', fmt: (v) => formatRating(v) },
-  { key: 'goalsMatch', fmt: String },
-  { key: 'assistsMatch', fmt: String },
-  { key: 'biggestWin', fmt: (v) => `+${v}` },
-  { key: 'matches', fmt: (v) => formatNumber(v) },
+const BEST_ROWS: { key: keyof PersonalBests; icon: IconName; fmt: (v: number) => string }[] = [
+  { key: 'bestRating', icon: 'star', fmt: (v) => formatRating(v) },
+  { key: 'goalsMatch', icon: 'ball', fmt: String },
+  { key: 'assistsMatch', icon: 'boot', fmt: String },
+  { key: 'biggestWin', icon: 'trophy', fmt: (v) => `+${v}` },
+  { key: 'matches', icon: 'pitch', fmt: (v) => formatNumber(v) },
 ]
 
 function Challenge() {
@@ -86,11 +86,12 @@ function Careers() {
             <Avatar appearance={{ skin: 2, hairStyle: 1, hairColor: 1, beard: 0, eyeColor: 1, face: 1, accessory: 0, gender: e.gender }} size={40} />
             <div class="grow stack" style={{ gap: '1px', minWidth: 0 }}>
               <span class="h3 truncate">{e.name}</span>
-              <span class="t-xs t-mid truncate">{e.position} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })} · {t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })}</span>
+              <span class="t-xs t-mid truncate">{e.position} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })}</span>
+              <span class="t-xs t-lo truncate">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })}</span>
               <span class="bd-actions">
                 <IconButton icon="play" label={t('meta.hof.view')} onClick={() => navigate('documentary', { id: e.careerId })} />
-                <ShareCareerButton sum={e} />
-                <ExportCsvButton sum={e} />
+                <ShareCareerButton sum={e} compact />
+                <ExportCsvButton sum={e} compact />
               </span>
             </div>
             <b class="bd-val score-font num">{metric === 'rating' ? formatRating(boardValue(e, metric)) : formatNumber(boardValue(e, metric))}</b>
@@ -109,6 +110,7 @@ function Bests() {
       <div class="bd-tiles" data-testid="personal-bests">
         {BEST_ROWS.map((r) => (
           <div key={r.key} class="bd-tile">
+            <span class="bd-tile-ic" aria-hidden="true"><Icon name={r.icon} size={20} /></span>
             <span class="micro t-lo">{t(`board.bests.${r.key}`)}</span>
             <b class="score-font num">{r.fmt(b[r.key])}</b>
           </div>
