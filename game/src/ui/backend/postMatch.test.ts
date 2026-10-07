@@ -3,6 +3,7 @@ import type { Relationship } from '../../core/types'
 import {
   buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues, topKinds,
 } from './postMatch'
+import { trustRawFromMatch } from '../../sim/career/squadRole'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta } from '../screens/match/postFlow'
 
 const sum = (xs: { value: number }[]) => Math.round(xs.reduce((a, x) => a + x.value, 0) * 10) / 10
@@ -21,6 +22,13 @@ describe('buildTrustReasons', () => {
       const r = buildTrustReasons({ ...base, ...c })
       expect(sum(r.reasons)).toBeCloseTo(Math.round((r.after - r.before) * 10) / 10, 5)
     }
+  })
+
+  it('reasons still sum when goal contributions soften a poor rating', () => {
+    const raw = trustRawFromMatch(5, 90, 1, 0, true)
+    const r = buildTrustReasons({ ...base, before: 50, after: 50 + raw, rating: 5, minutes: 90, goals: 1, won: true, drew: false })
+    expect(r.reasons.find((x) => x.key === 'fair')?.value).toBeGreaterThan(0)
+    expect(sum(r.reasons)).toBeCloseTo(Math.round((r.after - r.before) * 10) / 10, 5)
   })
 
   it('explains a goal + win with positive goal and result lines', () => {

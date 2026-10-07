@@ -11,9 +11,9 @@
 import { signal } from '@preact/signals'
 import type { GameState } from '../../core/types'
 import { loadGame, saveGame, unpackState } from '../../sim/game'
-import { MemoryStorage, SaveManager, defaultStorage, migrate, openEnvelope, type SaveStorage } from '../../state/save'
+import { MemoryStorage, SaveManager, defaultStorage, migrate, openEnvelope, type SaveNotice, type SaveStorage } from '../../state/save'
 import type { SaveSlotInfo } from '../store'
-import { current } from './session'
+import { current, notify } from './session'
 
 export const UI_SLOTS = [1, 2, 3] as const
 
@@ -24,6 +24,23 @@ let storage: SaveStorage | null = null
 export function useStorage(s: SaveStorage): void {
   storage = s
   mgr = new SaveManager(s)
+  mgr.onNotice = onSaveNotice
+}
+
+/** Player-facing messages for SaveManager notices (backup skipped, migrated, integrity problems). */
+function onSaveNotice(n: SaveNotice): void {
+  if (n.kind === 'backups-skipped') {
+    notify({ tr: 'Depolama alanı dolu: yedekler atlandı. Eski kayıtlarını dışa aktarıp yer aç.', en: 'Storage is full: backups were skipped. Export old saves and free some space.' }, 'warning')
+  } else if (n.kind === 'integrity') {
+    if (n.problem === 'newer-version') notify({ tr: `Slot ${n.slot + 1}: kayıt daha yeni bir sürümden. Oyunu güncelleyin.`, en: `Slot ${n.slot + 1}: save is from a newer version. Please update the game.` }, 'warning')
+    else if (n.problem === 'live-invalid-recovered') notify({ tr: `Slot ${n.slot + 1}: kayıt hasarlı; yedekten yüklenebilir.`, en: `Slot ${n.slot + 1}: save is damaged; a backup is available.` }, 'warning')
+    else notify({ tr: `Slot ${n.slot + 1}: kayıt hasarlı ve yedek bulunamadı.`, en: `Slot ${n.slot + 1}: save is damaged and no backup was found.` }, 'error')
+  }
+}
+
+/** Integrity check of every slot; run once per launch. */
+export async function checkSaveIntegrity(): Promise<void> {
+  try { await manager().checkIntegrity() } catch (e) { console.warn('[StarPath] integrity check failed', e) }
 }
 
 function manager(): SaveManager {
@@ -92,12 +109,14 @@ export function saveState(state: GameState, uiSlot = state.meta.slot || 1): Prom
 export interface LoadOutcome {
   state: GameState | null
   recoveredFromBackup: number | null
+  /** Set when the slot could not be loaded because it was written by a newer build. */
+  newerVersion?: boolean
 }
 
 export async function loadState(uiSlot: number): Promise<LoadOutcome> {
   await chain
   const r = await loadGame(manager(), toMgr(uiSlot))
-  if (!r.ok) return { state: null, recoveredFromBackup: null }
+  if (!r.ok) return { state: null, recoveredFromBackup: null, newerVersion: r.reason === 'newer' }
   r.state.meta.slot = uiSlot
   return { state: r.state, recoveredFromBackup: r.recoveredFromBackup }
 }

@@ -29,6 +29,7 @@ import {
 import { Sfx } from './audio'
 import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot'
 import { InputController, type FrameIntent } from './input'
+import { effectiveAimAssist } from '../input/prefs'
 import type { AimAssist } from './kick'
 import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y } from './physics'
@@ -91,7 +92,7 @@ const T = {
   en: {
     goal: 'GOAL!', assist: 'ASSIST!', saved: 'SAVED', missed: 'MISSED', blocked: 'BLOCKED', woodwork: 'OFF THE WOODWORK!',
     pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', shot_conceded: 'CHANCE CONCEDED', foul_won: 'FOUL WON',
-    foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', focus: 'FOCUS', sprint: 'SPRINT',
+    foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', paused: 'PAUSED', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
     offside: 'OFFSIDE', offsideFlag: 'FLAG UP!',
@@ -99,7 +100,7 @@ const T = {
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
     pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', shot_conceded: 'RAKİP ŞUT BULDU', foul_won: 'FAUL ALDIN',
-    foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', focus: 'ODAK', sprint: 'DEPAR',
+    foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', paused: 'DURAKLATILDI', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
     offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!',
@@ -194,6 +195,7 @@ export class MatchScene extends Phaser.Scene {
   private replay: { frames: ReplayFrame[]; t: number; t0: number; t1: number } | null = null
   private finished = false
   private lastIntent: FrameIntent | null = null
+  private paused = false
   private auto: AutopilotState | null = null
   private kits!: { hero: KitColors; opp: KitColors; heroGk: KitColors; oppGk: KitColors }
 
@@ -220,7 +222,7 @@ export class MatchScene extends Phaser.Scene {
     const heroP = highlight.scenario.players.find((p) => p.isHero)
     if (heroP) names[heroP.id] = opts.heroName ?? this.s.you
     this.rt = new HighlightRuntime(highlight, {
-      aimAssist: opts.settings.aimAssist,
+      aimAssist: effectiveAimAssist(opts.settings.aimAssist),
       slowMoAim: opts.settings.slowMoAim,
       difficulty: opts.difficulty,
       weather: opts.weather,
@@ -575,7 +577,13 @@ export class MatchScene extends Phaser.Scene {
     this.lastIntent = intent
     if (intent.any) this.sfx.unlock()
 
-    if (this.mode === 'play') {
+    if (intent.pause && this.mode === 'play') {
+      this.paused = !this.paused
+      this.promptText.setText(this.paused ? this.s.paused : this.data0.highlight.scenario.prompt)
+    }
+    if (this.mode === 'play' && this.paused) {
+      this.renderLive(0)
+    } else if (this.mode === 'play') {
       if (this.auto) {
         autopilotStep(rt, this.auto)
       } else {

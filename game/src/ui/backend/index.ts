@@ -17,7 +17,7 @@ import { ADULT_AGE, isAdult } from '../../sim/career/common'
 import { realActions } from './realActions'
 import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
-import { flushAutosave, refreshSlots, useStorage } from './persistence'
+import { checkSaveIntegrity, flushAutosave, refreshSlots, useStorage } from './persistence'
 import { persistNow } from './liveMatch'
 import * as meta from './meta'
 
@@ -115,7 +115,7 @@ export function installRealBackend(): void {
   if (import.meta.env.DEV) installDebugApi()
   // &storage=memory: keep saves in memory (headless browsers without a working IndexedDB).
   if (globalThis.location?.search.includes('storage=memory')) useStorage(new MemoryStorage())
-  void refreshSlots()
+  void refreshSlots().then(() => checkSaveIntegrity())
   if (typeof document !== 'undefined') {
     document.addEventListener('visibilitychange', () => {
       if (document.visibilityState === 'hidden' && gameState.value) {

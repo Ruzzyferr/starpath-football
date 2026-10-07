@@ -336,7 +336,10 @@ export const realActions: GameActions = {
   async load(slot) {
     await flushAutosave().catch(() => {})
     const r = await loadState(slot)
-    if (!r.state) return false
+    if (!r.state) {
+      if (r.newerVersion) notify(L('Bu kayıt daha yeni bir sürümden. Lütfen oyunu güncelleyin.', 'This save is from a newer version. Please update the game.'), 'error')
+      return false
+    }
     resetTransient()
     replaceState(r.state)
     live.resumeAfterLoad(r.state)

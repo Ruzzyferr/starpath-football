@@ -18,7 +18,7 @@ export function assertKey(key: string): string {
 export function knownSaveKeys(slots = 3, backups = 3): string[] {
   const out: string[] = []
   for (let s = 0; s < slots; s++) {
-    out.push(`sp.save.${s}`, `sp.save.${s}.staging`)
+    out.push(`sp.save.${s}`, `sp.save.${s}.staging`, `sp.save.${s}.premigrate`)
     for (let b = 0; b < backups; b++) out.push(`sp.save.${s}.bak${b}`)
   }
   return out

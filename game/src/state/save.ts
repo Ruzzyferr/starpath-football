@@ -45,11 +45,30 @@ export interface SaveSummary {
 
 export type LoadResult =
   | { ok: true; state: GameState; recoveredFromBackup: number | null }
-  | { ok: false; reason: 'empty' | 'corrupt' }
+  | { ok: false; reason: 'empty' | 'corrupt' | 'newer' }
+
+/** Non-fatal conditions the UI should tell the player about. */
+export type SaveNotice =
+  | { kind: 'backups-skipped'; slot: number }
+  | { kind: 'premigrate-backup'; slot: number; fromVersion: number }
+  | { kind: 'integrity'; slot: number; problem: 'live-invalid-recovered' | 'live-invalid' | 'newer-version' }
 
 const liveKey = (slot: number) => `sp.save.${slot}`
 const stagingKey = (slot: number) => `sp.save.${slot}.staging`
 const backupKey = (slot: number, i: number) => `sp.save.${slot}.bak${i}`
+/** Verbatim copy of the envelope as it was before an older-schema save was migrated. */
+const premigrateKey = (slot: number) => `sp.save.${slot}.premigrate`
+
+/** Envelope whose checksum is valid but which was written by a newer build (cannot be read here). */
+export function isNewerEnvelope(raw: string | null): boolean {
+  if (!raw) return false
+  try {
+    const env = JSON.parse(raw) as SaveEnvelope
+    return typeof env.data === 'string' && checksum(env.data) === env.checksum && env.version > SAVE_VERSION
+  } catch {
+    return false
+  }
+}
 
 /** FNV-1a 32-bit over the UTF-16 code units, hex encoded. Detects truncation / bit rot. */
 export function checksum(text: string): string {
@@ -104,9 +123,17 @@ export function migrate(raw: any, fromVersion: number): GameState | null {
 
 export class SaveManager {
   private readonly storage: SaveStorage
+  /** Set by the UI layer to surface notices (toasts). */
+  onNotice: ((n: SaveNotice) => void) | null = null
+  /** True after a save had to skip backup rotation because storage is full. */
+  degraded = false
 
   constructor(storage: SaveStorage) {
     this.storage = storage
+  }
+
+  private notice(n: SaveNotice): void {
+    try { this.onNotice?.(n) } catch { /* ignore */ }
   }
 
   /** Atomically write a slot, rotating the previous live save into backups. */
@@ -117,33 +144,92 @@ export class SaveManager {
     const verify = await this.storage.get(stagingKey(slot))
     if (verify !== raw || !openEnvelope(verify)) throw new Error('Save verification failed')
 
+    // Backup rotation is best-effort: when storage is full we skip it (never deleting
+    // existing backups) and keep going, so the newest data still reaches the live key.
     const previous = await this.storage.get(liveKey(slot))
+    let skipped = false
     if (previous && openEnvelope(previous)) {
-      for (let i = BACKUP_COUNT - 1; i > 0; i--) {
-        const older = await this.storage.get(backupKey(slot, i - 1))
-        if (older) await this.storage.set(backupKey(slot, i), older)
+      try {
+        // Rotate oldest-first; a failure part-way leaves a duplicate, never a hole.
+        for (let i = BACKUP_COUNT - 1; i > 0; i--) {
+          const older = await this.storage.get(backupKey(slot, i - 1))
+          if (older) await this.storage.set(backupKey(slot, i), older)
+        }
+        await this.storage.set(backupKey(slot, 0), previous)
+      } catch {
+        skipped = true
       }
-      await this.storage.set(backupKey(slot, 0), previous)
     }
+    // If this throws, the verified staging copy (newer than live) remains and load() prefers it.
     await this.storage.set(liveKey(slot), raw)
-    await this.storage.remove(stagingKey(slot))
+    await this.storage.remove(stagingKey(slot)).catch(() => {})
+    if (skipped && !this.degraded) this.notice({ kind: 'backups-skipped', slot })
+    this.degraded = skipped
   }
 
   /** Load a slot, falling back through backups (and an interrupted staging write) if needed. */
   async load(slot: number): Promise<LoadResult> {
     const live = await this.storage.get(liveKey(slot))
+    if (isNewerEnvelope(live)) return { ok: false, reason: 'newer' }
     const opened = openEnvelope(live)
-    if (opened) return { ok: true, state: opened.state, recoveredFromBackup: null }
-
-    // A crash between staging and promotion leaves a valid staging copy.
+    // A crash (or full storage) between staging and promotion leaves a valid, newer staging copy.
     const staged = openEnvelope(await this.storage.get(stagingKey(slot)))
-    if (staged) return { ok: true, state: staged.state, recoveredFromBackup: -1 }
+    if (staged && (!opened || staged.env.savedAt >= opened.env.savedAt)) {
+      return { ok: true, state: staged.state, recoveredFromBackup: -1 }
+    }
+    if (opened) {
+      if (opened.env.version < SAVE_VERSION) await this.backupBeforeMigration(slot, live as string, opened.env.version)
+      return { ok: true, state: opened.state, recoveredFromBackup: null }
+    }
 
     for (let i = 0; i < BACKUP_COUNT; i++) {
       const b = openEnvelope(await this.storage.get(backupKey(slot, i)))
       if (b) return { ok: true, state: b.state, recoveredFromBackup: i }
     }
     return { ok: false, reason: live ? 'corrupt' : 'empty' }
+  }
+
+  /** Keep the untouched pre-migration envelope under its own key (first one per version wins). Best-effort. */
+  private async backupBeforeMigration(slot: number, raw: string, fromVersion: number): Promise<void> {
+    try {
+      const existing = await this.storage.get(premigrateKey(slot))
+      if (existing) {
+        const e = JSON.parse(existing) as SaveEnvelope
+        if (e.version <= fromVersion && checksum(e.data) === e.checksum) return
+      }
+      await this.storage.set(premigrateKey(slot), raw)
+      this.notice({ kind: 'premigrate-backup', slot, fromVersion })
+    } catch { /* storage full: the original live envelope is untouched anyway */ }
+  }
+
+  /** Restore the pre-migration backup into the live slot (returns false when none). */
+  async restorePremigrate(slot: number): Promise<boolean> {
+    const raw = await this.storage.get(premigrateKey(slot))
+    if (!raw || !openEnvelope(raw)) return false
+    await this.storage.set(liveKey(slot), raw)
+    return true
+  }
+
+  /**
+   * Check every slot: live must verify, or a backup must. Emits notices for problems and returns them.
+   * Meant to run once per launch (and occasionally while idle).
+   */
+  async checkIntegrity(): Promise<Extract<SaveNotice, { kind: 'integrity' }>[]> {
+    const out: Extract<SaveNotice, { kind: 'integrity' }>[] = []
+    for (let slot = 0; slot < SLOT_COUNT; slot++) {
+      const live = await this.storage.get(liveKey(slot))
+      if (!live || openEnvelope(live)) continue
+      let problem: 'live-invalid-recovered' | 'live-invalid' | 'newer-version' = 'live-invalid'
+      if (isNewerEnvelope(live)) problem = 'newer-version'
+      else {
+        for (let i = 0; i < BACKUP_COUNT && problem === 'live-invalid'; i++) {
+          if (openEnvelope(await this.storage.get(backupKey(slot, i)))) problem = 'live-invalid-recovered'
+        }
+      }
+      out.push({ kind: 'integrity', slot, problem })
+    }
+    for (const n of out) this.notice(n)
+    return out
   }
 
   async summaries(): Promise<(SaveSummary & { savedAt: number } | null)[]> {
@@ -158,6 +244,7 @@ export class SaveManager {
   async remove(slot: number): Promise<void> {
     await this.storage.remove(liveKey(slot))
     await this.storage.remove(stagingKey(slot))
+    await this.storage.remove(premigrateKey(slot))
     for (let i = 0; i < BACKUP_COUNT; i++) await this.storage.remove(backupKey(slot, i))
   }
 
@@ -193,7 +280,7 @@ export class MemoryStorage implements SaveStorage {
 // A career save is ~2 MB of JSON and the manager keeps live + staging + backups,
 // which overflows the ~5 M-char localStorage quota after the second save. The
 // fallback therefore gzips values (CompressionStream, ~10x smaller) and, if the
-// quota is still hit, drops rotating backups before giving up.
+// quota is still hit the write fails and SaveManager skips extra backups (it never deletes them).
 
 const GZ = 'gz1:'
 
@@ -226,15 +313,8 @@ async function lsGet(key: string): Promise<string | null> {
 
 async function lsSet(key: string, value: string): Promise<void> {
   const v = (await gzipB64(value).catch(() => null)) ?? value
-  try {
-    localStorage.setItem(key, v)
-  } catch (e) {
-    // Quota: sacrifice backups (oldest first), then retry once.
-    const baks = Object.keys(localStorage).filter((k) => /^sp\.save\.\d+\.bak\d+$/.test(k) && k !== key).sort().reverse()
-    if (!baks.length) throw e
-    for (const k of baks) localStorage.removeItem(k)
-    localStorage.setItem(key, v)
-  }
+  // Quota errors propagate: SaveManager degrades (skips backup rotation) but never deletes existing backups.
+  localStorage.setItem(key, v)
 }
 
 /** IndexedDB-backed storage (browser, Capacitor WebView, Electron). Falls back to (compressed) localStorage. */

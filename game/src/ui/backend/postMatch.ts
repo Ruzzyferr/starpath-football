@@ -5,12 +5,14 @@
  *
  * Trust mirrors sim/career/squadRole.ts `updateTrustFromMatch`:
  *   raw = (rating − 6.3) × 3 × clamp(minutes / 90, 0.3, 1.2)
+ *   (a negative raw is scaled by 1 − trustBlameShield(goals, assists, won): goal contributions soften blame)
  * then `changeTrust` shrinks gains near 100 (and perks scale them). The raw
  * term is split into what moved the rating (goals/assists, result, cards, the
  * rest of the performance), the minutes scaling, and the remainder.
  */
 import { clamp } from '../../core/rng'
 import type { LText, RelationKind, Relationship } from '../../core/types'
+import { trustBlameShield } from '../../sim/career/squadRole'
 import { expectedMoments } from '../../sim/match'
 import type { ExpectedMoments, HeroMatchMap, HighlightPlanInput, RatingLogEntry } from '../../sim/match'
 import type { HeroMapView, RatingLineView, RelationChangeView, TrustChangeView } from '../store'
@@ -56,8 +58,10 @@ export function buildTrustReasons(m: TrustReasonInput): TrustChangeView {
   const card = -(m.yellow * YELLOW_PTS + m.red * RED_PTS) * k
   const full = (m.rating - TRUST_NEUTRAL_RATING) * k
   const perf = full - goals - result - card
-  const raw = full * w
-  const minutes = raw - full
+  const weighted = full * w
+  const fair = weighted < 0 ? -weighted * trustBlameShield(m.goals, m.assists, m.won) : 0
+  const raw = weighted + fair
+  const minutes = weighted - full
   const other = total - raw
 
   const push = (key: TrustChangeView['reasons'][number]['key'], v: number, label: LText) => {
@@ -67,6 +71,7 @@ export function buildTrustReasons(m: TrustReasonInput): TrustChangeView {
   if (m.goals + m.assists > 0) push('goals', goals, L(`${m.goals} gol, ${m.assists} asist`, `${m.goals} goals, ${m.assists} assists`))
   push('result', result, m.won ? L('Galibiyet', 'Win') : m.drew ? L('Beraberlik', 'Draw') : L('Mağlubiyet', 'Defeat'))
   if (m.yellow + m.red > 0) push('card', card, m.red ? L('Kırmızı kart', 'Red card') : L('Sarı kart', 'Yellow card'))
+  push('fair', fair, L('Gol/asist katkın suçu azalttı', 'Your goal contributions softened the blame'))
   push('minutes', minutes, L(`${m.minutes} dakika oynadın`, `Played ${m.minutes} minutes`))
   push('other', other, other < 0 ? L('Hocanın güven sınırı', 'Trust is slow to earn') : L('Perk / kariyer etkisi', 'Perk / career bonus'))
   // Rounding: make the shown reasons add up exactly to the shown change.

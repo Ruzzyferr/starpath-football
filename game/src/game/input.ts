@@ -18,6 +18,8 @@
 import { analyzeSwipe, facesGoal, shotTargetFromDir, type GesturePoint, type SwipeFeatures } from './kick'
 import { len, norm, sub, type Vec2 } from './model'
 import type { AimState, HeroAction } from './runtime'
+import { getBindings, isBound, type BindAction } from '../input/bindings'
+import { getControlPrefs } from '../input/prefs'
 
 /** Maps between canvas pixels and pitch meters. */
 export interface InputMapper {
@@ -58,6 +60,8 @@ export interface FrameIntent {
   power: number
   /** A skip request (replay / banners). */
   skip: boolean
+  /** Pause key pressed this frame (toggle). */
+  pause: boolean
   /** Any user input this frame (for unlocking audio). */
   any: boolean
 }
@@ -91,6 +95,9 @@ export class InputController {
   private pad = { buttons: [] as boolean[], holdB: -1, lastSeen: 0 }
   private touchMode = false
   private skipFlag = false
+  private pauseFlag = false
+  private keyShoot: { t0: number } | null = null
+  private oneTap: { id: number; t: number; x: number; y: number } | null = null
   private anyFlag = false
   private readonly off: (() => void)[] = []
 
@@ -113,6 +120,8 @@ export class InputController {
     on(window, 'keyup', (e) => this.onKey(e as KeyboardEvent, false))
     on(window, 'blur', () => {
       this.keys.clear()
+      this.keyShoot = null
+      this.oneTap = null
       this.joy = null
       this.gesture = null
       this.mouseHold = null
@@ -153,10 +162,12 @@ export class InputController {
   touchUi(): TouchUi {
     const { w, h } = this.map.size()
     const u = this.map.ui()
-    const r = Math.min(w, h) * 0.075 + 6 * u
+    const prefs = getControlPrefs()
+    const r = (Math.min(w, h) * 0.075 + 6 * u) * prefs.touchScale
     const pad = r * 0.6
-    const sprint = { x: w - pad - r, y: h - pad - r, r, down: this.sprintTouch !== null }
-    const skill = { x: w - pad - r * 3.4, y: h - pad - r * 0.7, r: r * 0.8, down: this.skillTouch !== null }
+    const m = (x: number) => (prefs.leftHanded ? w - x : x)
+    const sprint = { x: m(w - pad - r), y: h - pad - r, r, down: this.sprintTouch !== null }
+    const skill = { x: m(w - pad - r * 3.4), y: h - pad - r * 0.7, r: r * 0.8, down: this.skillTouch !== null }
     const joy = this.joy ? { baseX: this.joy.bx, baseY: this.joy.by, knobX: this.joy.x, knobY: this.joy.y, r: r * 1.25 } : null
     return { enabled: this.touchMode, joystick: joy, sprint, skill }
   }
@@ -187,7 +198,17 @@ export class InputController {
         return
       }
       const { w } = this.map.size()
-      if (p.x < w * 0.42 && !this.joy) {
+      const prefs = getControlPrefs()
+      if (prefs.oneHand) {
+        // One thumb: hold = joystick, quick tap = contextual pass / shot / tackle.
+        if (!this.joy) {
+          this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y }
+          this.oneTap = { id: e.pointerId, t, x: p.x, y: p.y }
+        }
+        return
+      }
+      const inJoyZone = prefs.leftHanded ? p.x > w * 0.58 : p.x < w * 0.42
+      if (inJoyZone && !this.joy) {
         this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y }
         return
       }
@@ -251,6 +272,22 @@ export class InputController {
     if (this.sprintTouch === e.pointerId) this.sprintTouch = null
     if (this.skillTouch === e.pointerId) this.skillTouch = null
     if (this.joy && this.joy.id === e.pointerId) this.joy = null
+    if (this.oneTap && this.oneTap.id === e.pointerId) {
+      const ot = this.oneTap
+      this.oneTap = null
+      const { w, h } = this.map.size()
+      const still = Math.hypot(p.x - ot.x, p.y - ot.y) < Math.min(w, h) * 0.04
+      if (!cancel && still && t - ot.t < TAP_MAX_TIME) {
+        if (t - this.lastTap.t < DOUBLE_TAP_TIME) {
+          this.queued.push({ kind: 'skill' })
+          this.lastTap.t = -1
+        } else {
+          this.queued.push({ kind: 'tapAt', at: this.map.toWorld(p.x, p.y) })
+          this.lastTap = { t, x: p.x, y: p.y }
+        }
+        this.skipFlag = true
+      }
+    }
     this.rightTouches.delete(e.pointerId)
     const g = this.gesture
     if (g && g.id === e.pointerId) {
@@ -278,7 +315,7 @@ export class InputController {
   }
 
   private chipMod(): boolean {
-    return this.keys.has('ControlLeft') || this.keys.has('ControlRight') || this.keys.has('KeyE')
+    return this.keys.has('ControlLeft') || this.keys.has('ControlRight') || this.keys.has(getBindings().chip)
   }
 
   private releaseMouse(p: { x: number; y: number }, t: number): void {
@@ -317,13 +354,25 @@ export class InputController {
     if (down) {
       this.anyFlag = true
       if (!this.keys.has(code)) {
-        if (code === 'Space') this.queued.push(this.lastCtx?.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
+        const act = isBound(code, 'skill') ? 'skill' : isBound(code, 'action') ? 'action' : isBound(code, 'pass') ? 'pass' : isBound(code, 'through') ? 'through' : isBound(code, 'shoot') ? 'shoot' : isBound(code, 'pause') ? 'pause' : null
+        if (act === 'skill') this.queued.push(this.lastCtx?.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
+        else if (act === 'action') this.queued.push({ kind: 'action' })
+        else if (act === 'pass' || act === 'through') {
+          this.queued.push({ kind: 'pass', target: this.map.toWorld(this.mouse.x, this.mouse.y), through: act === 'through', lofted: this.chipMod() })
+        } else if (act === 'shoot') this.keyShoot = { t0: this.now() }
+        else if (act === 'pause') this.pauseFlag = true
         if (code === 'Enter' || code === 'Escape') this.skipFlag = true
-        if (code === 'KeyF') this.queued.push({ kind: 'action' })
       }
       this.keys.add(code)
     } else {
       this.keys.delete(code)
+      if (this.keyShoot && isBound(code, 'shoot')) {
+        const held = this.now() - this.keyShoot.t0
+        this.keyShoot = null
+        const power = Math.max(0.35, Math.min(1.15, held / CHARGE_TIME))
+        this.queued.push(this.holdShotAction(this.map.toWorld(this.mouse.x, this.mouse.y), power, null))
+        this.skipFlag = true
+      }
     }
   }
 
@@ -345,10 +394,12 @@ export class InputController {
 
     // Keyboard.
     const k = this.keys
-    const kx = (k.has('KeyD') || k.has('ArrowRight') ? 1 : 0) - (k.has('KeyA') || k.has('ArrowLeft') ? 1 : 0)
-    const ky = (k.has('KeyS') || k.has('ArrowDown') ? 1 : 0) - (k.has('KeyW') || k.has('ArrowUp') ? 1 : 0)
+    const bd = getBindings()
+    const down = (a: BindAction, arrow: string) => k.has(bd[a]) || (k.has(arrow) && isBound(arrow, a, bd))
+    const kx = (down('right', 'ArrowRight') ? 1 : 0) - (down('left', 'ArrowLeft') ? 1 : 0)
+    const ky = (down('down', 'ArrowDown') ? 1 : 0) - (down('up', 'ArrowUp') ? 1 : 0)
     if (kx || ky) move = this.map.screenDirToWorld(kx, ky)
-    if (k.has('ShiftLeft') || k.has('ShiftRight')) sprint = true
+    if (k.has(bd.sprint) || (bd.sprint === 'ShiftLeft' && k.has('ShiftRight'))) sprint = true
 
     // Touch joystick.
     if (this.joy) {
@@ -386,6 +437,13 @@ export class InputController {
       }
     }
 
+    if (this.keyShoot) {
+      const held = t - this.keyShoot.t0
+      power = Math.min(1.15, held / CHARGE_TIME)
+      const act = this.holdShotAction(this.map.toWorld(this.mouse.x, this.mouse.y), power, null)
+      if (act.kind === 'shoot') aim = { kind: 'target', target: act.target, power, curl: act.curl, chip: act.chip }
+    }
+
     // Gamepad.
     const padRes = this.pollPad(ctx, t)
     if (padRes) {
@@ -400,9 +458,11 @@ export class InputController {
     const actions = this.queued.splice(0, this.queued.length)
     const skip = this.skipFlag
     this.skipFlag = false
+    const pause = this.pauseFlag
+    this.pauseFlag = false
     const any = this.anyFlag
     this.anyFlag = false
-    return { move, sprint, actions, aim, power, skip, any }
+    return { move, sprint, actions, aim, power, skip, pause, any }
   }
 
   private pollPad(ctx: InputContext, t: number): { move: Vec2; sprint: boolean; aim: AimState | null; power: number } | null {

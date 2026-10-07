@@ -86,3 +86,77 @@ describe('save migrations', () => {
     expect(r?.state.hero.gender).toBe('male')
   })
 })
+
+describe('SaveManager hardening', () => {
+  const legacyEnvelope = (version: number, state: object) => {
+    const data = JSON.stringify(state)
+    return JSON.stringify({ version, savedAt: 1, checksum: checksum(data), summary, data })
+  }
+
+  it('keeps the original envelope under a premigrate key when migrating an old save', async () => {
+    const st = new MemoryStorage()
+    const raw = legacyEnvelope(1, { version: 1, hero: { name: 'x' } })
+    st.map.set('sp.save.0', raw)
+    const notices: string[] = []
+    const m = new SaveManager(st)
+    m.onNotice = (n) => notices.push(n.kind)
+    const r = await m.load(0)
+    expect(r.ok).toBe(true)
+    expect(st.map.get('sp.save.0.premigrate')).toBe(raw)
+    expect(notices).toContain('premigrate-backup')
+    expect(await m.restorePremigrate(0)).toBe(true)
+  })
+
+  it('reports a save from a newer version instead of loading an older backup', async () => {
+    const st = new MemoryStorage()
+    st.map.set('sp.save.1', legacyEnvelope(999, { version: 999 }))
+    const m = new SaveManager(st)
+    expect(await m.load(1)).toEqual({ ok: false, reason: 'newer' })
+    const issues = await m.checkIntegrity()
+    expect(issues).toEqual([{ kind: 'integrity', slot: 1, problem: 'newer-version' }])
+  })
+
+  it('never deletes backups and keeps a valid copy when storage is full', async () => {
+    const st = new MemoryStorage()
+    const m = new SaveManager(st)
+    await m.save(0, fakeState(1), summary)
+    await m.save(0, fakeState(2), summary)
+    const bak0 = st.map.get('sp.save.0.bak0')
+    expect(bak0).toBeTruthy()
+    const realSet = st.set.bind(st)
+    st.set = async (key, value) => {
+      if (/\.bak\d$/.test(key)) throw new DOMException('full', 'QuotaExceededError')
+      return realSet(key, value)
+    }
+    const notices: string[] = []
+    m.onNotice = (n) => notices.push(n.kind)
+    await m.save(0, fakeState(3), summary)
+    expect(st.map.get('sp.save.0.bak0')).toBe(bak0)
+    expect(notices).toEqual(['backups-skipped'])
+    const r = await m.load(0)
+    expect(r.ok && (r.state as any).marker).toBe(3)
+  })
+
+  it('falls back to the verified staging copy when the live write hits the quota', async () => {
+    const st = new MemoryStorage()
+    const m = new SaveManager(st)
+    await m.save(0, fakeState(1), summary)
+    const realSet = st.set.bind(st)
+    st.set = async (key, value) => {
+      if (key === 'sp.save.0') throw new DOMException('full', 'QuotaExceededError')
+      return realSet(key, value)
+    }
+    await expect(m.save(0, fakeState(2), summary)).rejects.toThrow()
+    const r = await m.load(0)
+    expect(r.ok && (r.state as any).marker).toBe(2)
+  })
+
+  it('integrity check flags a damaged live save and notes the backup', async () => {
+    const st = new MemoryStorage()
+    const m = new SaveManager(st)
+    await m.save(0, fakeState(1), summary)
+    await m.save(0, fakeState(2), summary)
+    st.map.set('sp.save.0', 'garbage')
+    expect(await m.checkIntegrity()).toEqual([{ kind: 'integrity', slot: 0, problem: 'live-invalid-recovered' }])
+  })
+})
