@@ -13,7 +13,7 @@
  */
 import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
-import { join, relative, sep } from 'node:path'
+import { join, relative, resolve, sep } from 'node:path'
 import type { Plugin, ResolvedConfig } from 'vite'
 
 const SKIP = [/^sw\.js$/, /\.map$/, /^match-demo\.html$/]
@@ -83,7 +83,7 @@ export function starpathServiceWorker(): Plugin {
       config = c
     },
     closeBundle() {
-      const outDir = join(config.root, config.build.outDir)
+      const outDir = resolve(config.root, config.build.outDir)
       const hash = createHash('sha256')
       const files: string[] = []
       for (const abs of walk(outDir).sort()) {
