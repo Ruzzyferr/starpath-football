@@ -5,7 +5,7 @@
  * cache version and writes a small hand-written worker:
  *  - install: precache the whole app shell (≈3 MB) into `starpath-<hash>`,
  *  - activate: delete every other `starpath-*` cache, claim clients,
- *  - fetch: same-origin → cache first (hashed assets never change), navigations
+ *  - fetch: same-origin → cache first (hashed assets never change; ignoreVary because hosts send `Vary: Origin` and module scripts are CORS requests), navigations
  *    → network first with the cached index.html as offline fallback, Google
  *    Fonts → stale-while-revalidate in a separate runtime cache.
  * Dev server and e2e never see a worker (build-only plugin, registration is
@@ -53,7 +53,7 @@ self.addEventListener('fetch', (event) => {
 
   if (url.hostname === 'fonts.googleapis.com' || url.hostname === 'fonts.gstatic.com') {
     event.respondWith(caches.open(FONTS).then(async (c) => {
-      const hit = await c.match(req)
+      const hit = await c.match(req, { ignoreVary: true })
       const net = fetch(req).then((res) => { if (res.ok || res.type === 'opaque') c.put(req, res.clone()); return res }).catch(() => hit)
       return hit || net
     }))
@@ -65,11 +65,11 @@ self.addEventListener('fetch', (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => { if (res.ok) { const copy = res.clone(); caches.open(CACHE).then((c) => c.put('./', copy)) } return res })
-        .catch(() => caches.match('./', { cacheName: CACHE }).then((r) => r || caches.match('index.html'))),
+        .catch(() => caches.match('./', { cacheName: CACHE, ignoreVary: true }).then((r) => r || caches.match('index.html', { ignoreVary: true }))),
     )
     return
   }
-  event.respondWith(caches.match(req, { ignoreSearch: true }).then((hit) => hit || fetch(req)))
+  event.respondWith(caches.match(req, { ignoreSearch: true, ignoreVary: true }).then((hit) => hit || fetch(req)))
 })
 `
 }
