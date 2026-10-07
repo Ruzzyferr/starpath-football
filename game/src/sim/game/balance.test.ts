@@ -76,6 +76,10 @@ export function report(traces: CareerTrace[]): string {
   out.push(`| 3. sezon sonu net servet (medyan / max) | ${money(med(s3.map((r) => r.netWorth)))} / ${money(Math.max(...s3.map((r) => r.netWorth)))} |`)
   const broke = traces.filter((t) => t.bankrupt)
   out.push(`| İflas eden kariyer | ${pct(broke.length / traces.length)}${broke.length ? ` (${broke.map((t) => t.cfg.persona).join(', ')})` : ''} |`)
+  for (const t of broke) {
+    const b = t.bankruptAt
+    if (b) out.push(`<!-- iflas: ${t.cfg.persona} yaş ${b.age} hafta ${b.week} nakit ${b.money} mevduat ${b.savings} varlık ${b.assets} işletme ${b.businesses} kredi ${b.loan} sponsor ${b.sponsors} maaş ${b.wage} -->`)
+  }
   out.push(`| Sezon başına kulüp değişikliği (ort.) | ${f1(mean(all.map((r) => r.moves)))} |`)
   out.push(`| Nakdin eksiye düştüğü hafta (kariyer başına) | ${f1(all.reduce((a, r) => a + r.negativeWeeks, 0) / traces.length)} |`)
   out.push(`| Haftalık olay kartı (ort.) | ${f1(all.reduce((a, r) => a + r.events, 0) / Math.max(1, weeks))} |`)
@@ -116,5 +120,9 @@ describe('balance simulator', () => {
     const traces = standardMix(n, seasons, Number(env.BALANCE_SEED) || 1000).map((c) => runCareer(c))
     console.log(`\n<!-- balance: ${n} careers × ${seasons} seasons in ${((performance.now() - t0) / 1000).toFixed(0)} s -->\n${report(traces)}\n`)
     expect(traces.length).toBe(n)
+    // Economy guard-rail: ≤ 5% bankruptcies, and only reckless profiles may go under.
+    const broke = traces.filter((c) => c.bankrupt)
+    expect(broke.length / n).toBeLessThanOrEqual(0.05)
+    for (const c of broke) expect(['gambler', 'spender', 'party']).toContain(c.cfg.persona)
   }, 3_600_000)
 })

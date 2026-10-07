@@ -658,7 +658,10 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
   const num = (v: number): number => (Number.isFinite(v) ? v : 0)
   switch (d.kind) {
     case 'money': {
-      const a = Math.round(num(d.amount))
+      let a = Math.round(num(d.amount))
+      // Safety net: an event can't spend more than cash + savings (scam / fine / chain
+      // losses stop at what the hero actually has); only deliberate play (casino, shopping) can go further.
+      if (a < 0) a = -Math.min(-a, Math.max(0, Math.round(l.money + l.bank.savings)))
       if (a === 0) return null
       l.money += a
       return { kind: 'money', amount: a }

@@ -237,3 +237,29 @@ describe('age gate', () => {
     for (const e of adult) expect(isEligible(s, e, ['weekly', 'casino', 'nightlife', 'big_money'])).toBe(false)
   })
 })
+
+describe('event money safety net', () => {
+  const costly: EventDef = mk('test.costly', 'money', {
+    choices: [{ label: t('Öde', 'Pay'), effects: () => fx(t('Gitti', 'Gone'), money(-50_000)) }],
+  })
+  const run = (cash: number, savings: number): GameState => {
+    const s = makeTestState()
+    s.life.money = cash
+    s.life.bank.savings = savings
+    const rng = new Rng(3)
+    s.pendingEvents = [{ id: 'p1', defId: costly.id, vars: {}, createdWeek: 0 } as never]
+    resolveEvent(s, rng, s.pendingEvents[0], 0, [costly])
+    return s
+  }
+  it('never takes more than cash + savings', () => {
+    const s = run(1_000, 2_000)
+    expect(s.life.money + s.life.bank.savings).toBeGreaterThanOrEqual(0)
+    expect(s.life.money).toBe(-2_000)
+  })
+  it('a broke hero loses nothing extra', () => {
+    expect(run(0, 0).life.money).toBe(0)
+  })
+  it('normal losses are untouched', () => {
+    expect(run(80_000, 0).life.money).toBe(30_000)
+  })
+})

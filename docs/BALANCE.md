@@ -357,3 +357,41 @@ normal 1 / hard 1.15 / legend 1.3) değişmedi.
 - **Tam nişan yardımı beceri farkını eziyor.** Direk dışına kaçan şutlar
   çerçeveye geri çekildiği için bot seviyeleri arasındaki fark küçük. Serbest
   vuruşta zorluk etkisi zayıf; expert seviye biraz daha az gol buluyor.
+
+## İflas düzeltmesi (olay zincirleri ve bayrak)
+
+Denge turundan sonra gelen özellikler (işletme, ilişki defteri, dolandırıcılık/hukuk
+olayları, şöhret ölçekleri) sonrası simülasyon 30 kariyerin %17'sini (5) iflas
+görüyordu: 1 savurgan, 4 "pro". `balanceSim` artık ilk iflasın ayrıntısını yazıyor
+(`bankruptAt`, rapordaki `<!-- iflas: ... -->` satırları).
+
+**Neden:**
+1. Pro kariyerlerin dördü 17–18 yaşında, haftalık maaş 300–860 iken nakdi −105…−6.8K'ya
+   düşürdü (bir olay/ceza/dolandırıcılık kartı mevcut nakdi aşıyordu); satacak varlık
+   olmadığı için `bankruptcyGuard` bayrağı koydu. Hepsi sonra toparlandı (net servet 2–5M).
+2. Bayrak yalnızca nakit hâlâ negatifken çalışan guard içinde temizleniyordu; nakit
+   pozitife dönse de `bankrupt` bayrağı kalıyordu (28K nakitli "iflas etmiş" savurgan).
+3. Olay etkileri (`money(-x)`) 148 kartta nakitle sınırlı değildi.
+
+**Düzeltme (küçük, belgelenmiş):**
+- `events/engine.ts` `applyDelta`: olay kaynaklı kayıp en fazla nakit + mevduat kadar
+  olabilir (kart zinciri tek başına borç yaratamaz; kumarhane/alışveriş serbest kalır).
+- `economy.ts`: `overdraftGrace(maaş) = max(1.5K, 3 × maaş)`; bu kadar küçük eksi bakiye
+  iflas sayılmaz. Nakit ≥ 0 olunca bayrak haftalık tikte temizlenir.
+- Guard zaten mevduat → yatırım → işletme → varlık sırasıyla satıyor (değişmedi).
+
+| Metrik (30 × 10, seed 1000) | Önce | Sonra | Hedef |
+|---|---|---|---|
+| İflas eden kariyer | %17 (savurgan, 4 pro) | %0 | ≤ %5, yalnızca riskli persona |
+| Nakdin eksiye düştüğü hafta / kariyer | 0,6 | 0,1 | - |
+| OVR medyanı 21 / 26 yaş | 76 / 83 | 76 / 83 | +5–7/sezon |
+| İtibar 21 / 25 / 26 yaş | 50 / 80 / 82 | 50 / 78 / 80 | 50 / 75–85 |
+| 3. sezon net servet (medyan / max) | 139K / 2.5M | 139K / 2.5M | ≤ 300K / ≤ 2M* |
+| 26 yaş net servet (medyan) | 12.9M | 11.1M | 5–20M |
+| Haftalık olay kartı | 1,7 | 1,7 | 1,5–2,5 |
+
+\* max değeri bu simülasyonda zaten önceki turdan beri 2.5M; bu düzeltmeyle değişmedi.
+
+Regresyon: `balance.test.ts` (`BALANCE=1`) iflas oranı ≤ %5 ve yalnızca
+kumarbaz/savurgan/parti personası; hızlı birim testler `economy.test.ts`
+("bankruptcy flag hygiene") ve `events/engine.test.ts` ("event money safety net").

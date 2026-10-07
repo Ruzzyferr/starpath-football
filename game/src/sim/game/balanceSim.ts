@@ -80,6 +80,8 @@ export interface CareerTrace {
   cfg: CareerConfig
   samples: SeasonSample[]
   bankrupt: boolean
+  /** Diagnostics at the first bankruptcy flag (null = never). */
+  bankruptAt: { age: number; season: number; week: number; money: number; savings: number; assets: number; businesses: number; loan: number; sponsors: number; wage: number } | null
   /** Age when first playing in a tier-1 league (null = never). */
   firstTopTierAge: number | null
   /** Age when first at a club with reputation ≥ 80 (elite). */
@@ -262,7 +264,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   const s = newGame(careerInput(cfg), cfg.seed)
   const rng = new Rng(cfg.seed ^ 0x5eed)
   const trace: CareerTrace = {
-    cfg, samples: [], bankrupt: false, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, casinoNet: 0, clubs: [],
+    cfg, samples: [], bankrupt: false, bankruptAt: null, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, casinoNet: 0, clubs: [],
   }
   const startSeason = s.calendar.season
   const spent = { assets: 0 }
@@ -327,7 +329,13 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
       const income = eNow >= lastEarned ? eNow - lastEarned : eNow
       lastEarned = eNow
       acc.income += income
-      if (s.life.flags.bankrupt === true) trace.bankrupt = true
+      if (s.life.flags.bankrupt === true) {
+        trace.bankrupt = true
+        trace.bankruptAt ??= {
+          age: heroAge(s.hero, s.calendar.season), season: s.calendar.season, week: s.calendar.week, money: Math.round(s.life.money), savings: Math.round(s.life.bank.savings),
+          assets: s.life.assets.length, businesses: s.life.businesses?.length ?? 0, loan: Math.round(s.life.bank.loan?.remaining ?? 0), sponsors: s.life.sponsors.length, wage: s.hero.contract?.wage ?? 0,
+        }
+      }
       if (s.life.money < 0) acc.negativeWeeks++
       const repShop = s.hero.reputation
       weeklyManagement(s, cfg, rng, spent, () => {

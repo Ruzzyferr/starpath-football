@@ -437,10 +437,12 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
 
   // 6. Bankruptcy guard.
   if (life.money < 0) {
-    const g = bankruptcyGuard(life, cal)
+    const g = bankruptcyGuard(life, cal, b.wage)
     b.forcedSales = g.raised
     lines.push(...g.lines)
   }
+  // Recovered cash clears a stale bankruptcy flag (the guard only runs while cash is negative).
+  if (life.money >= 0 && life.flags.bankrupt) life.flags.bankrupt = false
   life.bank.creditScore = clamp(Math.round(finite(life.bank.creditScore, 600) * 10) / 10, CREDIT_MIN, CREDIT_MAX)
   life.money = Math.round(finite(life.money) * 100) / 100
 
@@ -458,7 +460,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
  * asset sale costs 15 credit points; if everything is gone and cash is still
  * negative, the hero is flagged bankrupt (events system hook).
  */
-export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week'>): { raised: number; lines: Lines } {
+export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week'>, wage = 0): { raised: number; lines: Lines } {
   const lines: Lines = []
   let raised = 0
   if (life.money >= 0) return { raised, lines }
@@ -507,7 +509,7 @@ export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week
       lines.push(fill(lt('⚠️ Alacaklılar yüzünden elden çıkardın: {l}', '⚠️ Creditors forced a sale: {l}'), { l: s.lines[0] }))
     }
   }
-  if (life.money < 0) {
+  if (life.money < -overdraftGrace(wage)) {
     life.flags.bankrupt = true
     life.bank.creditScore -= 30
     lines.push(lt('💸 İflasın eşiğindesin! Satacak bir şeyin kalmadı.', '💸 You are on the brink of bankruptcy! Nothing left to sell.'))
@@ -516,3 +518,6 @@ export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week
   }
   return { raised, lines }
 }
+
+/** Small overdraft the bank tolerates (a rookie's first-week overspend is not bankruptcy). */
+export const overdraftGrace = (wage = 0): number => Math.max(1_500, Math.max(0, wage) * 3)

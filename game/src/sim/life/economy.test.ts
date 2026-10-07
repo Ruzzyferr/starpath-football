@@ -301,3 +301,30 @@ describe('weekly economy over 10 seasons', () => {
     expect(life.money).toBeGreaterThanOrEqual(0)
   })
 })
+
+describe('bankruptcy flag hygiene', () => {
+  it('a rookie overdraft inside the grace is not bankruptcy', () => {
+    const { life } = setup()
+    life.assets = []
+    life.bank.savings = 0
+    life.money = -600
+    bankruptcyGuard(life, cal(2026, 3), 300)
+    expect(life.flags.bankrupt).not.toBe(true)
+  })
+  it('a big hole with nothing to sell is bankruptcy', () => {
+    const { life } = setup()
+    life.assets = []
+    life.bank.savings = 0
+    life.money = -50_000
+    bankruptcyGuard(life, cal(2026, 3), 300)
+    expect(life.flags.bankrupt).toBe(true)
+  })
+  it('recovered cash clears a stale flag on the next weekly tick', () => {
+    const { rng, hero, life } = setup()
+    contract(hero, 5_000)
+    life.flags.bankrupt = true
+    life.money = 20_000
+    weeklyEconomy(rng, life, hero, { calendar: cal(2026, 5) } as never)
+    expect(life.flags.bankrupt).toBe(false)
+  })
+})
