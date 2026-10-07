@@ -208,3 +208,13 @@ describe('activities', () => {
     expect(hero.fatigue).toBeLessThan(80)
   })
 })
+
+describe('energy drink (2.5#16)', () => {
+  it('is a cheap rest-slot boost with a fatigue cost', () => {
+    const d = ACTIVITIES.find((a) => a.id === 'energy_drink')
+    expect(d).toBeDefined()
+    expect(d!.energy).toBeLessThan(0)
+    expect(d!.fatigue).toBeGreaterThan(0)
+    expect(d!.money).toBeLessThan(0)
+  })
+})

@@ -328,3 +328,29 @@ describe('bankruptcy flag hygiene', () => {
     expect(life.flags.bankrupt).toBe(false)
   })
 })
+
+describe('low-cash warning (2.5#109)', () => {
+  it('warns once before forced sales, then rate-limits', () => {
+    const { rng, hero, life } = setup(3)
+    hero.contract = null
+    life.sponsors = []
+    life.assets = [{ defId: ASSETS[0].id, boughtSeason: 2026, boughtWeek: 0, pricePaid: ASSETS[0].price }]
+    life.money = 1500
+    life.trainer = { name: 'T', group: 'technical', weeklyFee: 1000 }
+    const warn = (w: number) =>
+      weeklyEconomy(rng, life, hero, { calendar: cal(2026, w) }).lines.some((l) => l.en.includes('Cash is draining'))
+    expect(warn(1)).toBe(true)
+    life.money = 1500
+    expect(warn(2)).toBe(false)
+    life.money = 1500
+    expect(warn(6)).toBe(true)
+  })
+  it('does not warn when there is nothing to sell or flow is positive', () => {
+    const { rng, hero, life } = setup(4)
+    life.assets = []
+    life.bank.investments = []
+    life.businesses = []
+    life.money = 10
+    expect(weeklyEconomy(rng, life, hero, { calendar: cal(2026, 1) }).lines.some((l) => l.en.includes('Cash is draining'))).toBe(false)
+  })
+})

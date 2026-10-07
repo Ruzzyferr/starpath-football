@@ -501,6 +501,10 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
     b.forcedSales = g.raised
     lines.push(...g.lines)
   }
+  // Early warning (2.5#109): cash is running out and there are holdings the guard would sell.
+  if (lowCashWarning(life, flow, cal)) {
+    lines.push(lt('⚠️ Nakit hızla eriyor: birkaç hafta içinde alacaklılar varlıklarını zorla sattırabilir. Harcamayı kıs ya da gelir bul.', '⚠️ Cash is draining fast: within a few weeks creditors may force a sale of your holdings. Cut spending or raise income.'))
+  }
   // Recovered cash clears a stale bankruptcy flag (the guard only runs while cash is negative).
   if (life.money >= 0 && life.flags.bankrupt) life.flags.bankrupt = false
   life.bank.creditScore = clamp(Math.round(finite(life.bank.creditScore, 600) * 10) / 10, CREDIT_MIN, CREDIT_MAX)
@@ -511,6 +515,26 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
     lines.unshift(fill(lt('Haftalık bakiye: {n}', 'Weekly balance: {n}'), { n: fmtMoney(net) }))
   }
   return { lines, net, breakdown: b }
+}
+
+/** life.flags key: season*100+week of the last low-cash warning (so it does not repeat every week). */
+export const LOW_CASH_WARN_FLAG = 'low_cash_warn_week'
+
+/** True when weekly cash flow is negative and cash covers fewer than 4 weeks of it, with sellable holdings. */
+export function lowCashRisk(life: Life, flow: number): boolean {
+  if (life.money < 0 || flow >= 0) return false
+  const sellable = life.assets.length > 0 || life.bank.investments.length > 0 || (life.businesses?.length ?? 0) > 0
+  return sellable && life.money < -flow * 4
+}
+
+/** Rate-limited (once per 4 weeks) low-cash warning check; records the week when it fires. */
+function lowCashWarning(life: Life, flow: number, cal: Pick<Calendar, 'season' | 'week'>): boolean {
+  if (!lowCashRisk(life, flow)) return false
+  const wk = cal.season * 100 + cal.week
+  const last = life.flags[LOW_CASH_WARN_FLAG]
+  if (typeof last === 'number' && wk - last < 4 && wk >= last) return false
+  life.flags[LOW_CASH_WARN_FLAG] = wk
+  return true
 }
 
 /**

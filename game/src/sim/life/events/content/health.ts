@@ -150,8 +150,8 @@ export const healthEvents: EventDef[] = [
     conditions: ({ state }) => state.life.stress >= 55,
     title: t('Boş Bakışlar', 'Thousand-Yard Stare'),
     text: t(
-      'Son günlerde sabahları yataktan çıkmak maç kazanmaktan zor. Top artık eskisi gibi heyecan vermiyor. Kulüp psikoloğunun kapısı hep açık, biliyorsun.',
-      'Lately getting out of bed feels harder than winning a match. The ball does not light you up like it used to. The club psychologist\'s door is always open, you know that.',
+      'Son günlerde sabahları yataktan çıkmak maç kazanmaktan zor. Top artık eskisi gibi heyecan vermiyor. Kulüp psikoloğunun kapısı hep açık, biliyorsun. (Gerçek hayatta da böyle hissedersen yalnız değilsin: yerel destek hatları gizlilikle dinler.)',
+      'Lately getting out of bed feels harder than winning a match. The ball does not light you up like it used to. The club psychologist\'s door is always open, you know that. (If you ever feel this way in real life, you are not alone: local support lines listen in confidence.)',
     ),
     icon: '🌧️',
     choices: [
