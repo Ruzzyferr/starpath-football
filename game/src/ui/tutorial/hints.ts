@@ -6,7 +6,7 @@
  */
 import { signal } from '@preact/signals'
 
-export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness'
+export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness' | 'cross' | 'headMachine' | 'tackleDuel'
 export type InputPlatform = 'touch' | 'mouse' | 'pad'
 export type HintContext = 'match' | 'drill'
 
@@ -36,9 +36,9 @@ const DRILL_GROUPS: Record<string, HintGroup> = {
   dribbling: 'move',
   fitness: 'fitness',
   goalkeeping: 'keeper',
-  crossing: 'pass',
-  heading: 'header',
-  tackling: 'defend',
+  crossing: 'cross',
+  heading: 'headMachine',
+  tackling: 'tackleDuel',
 }
 
 export const hintId = (ctx: HintContext, g: HintGroup) => `${ctx}:${g}`
@@ -90,6 +90,12 @@ export function isHintSuccess(g: HintGroup, e: HintEvent, heroId?: string | null
       return e.type === 'tackle' && byHero
     case 'keeper':
       return (e.type === 'dive' && (byHero || e.by === undefined)) || (e.type === 'save' && byHero)
+    case 'cross':
+      return heroKick
+    case 'headMachine':
+      return heroKick || (e.type === 'header' && byHero)
+    case 'tackleDuel':
+      return (e.type === 'tackle' && byHero) || (e.type === 'skill' && e.ok === true)
     case 'fitness':
       return e.type === 'score' && e.good === true
     default:
@@ -100,7 +106,7 @@ export function isHintSuccess(g: HintGroup, e: HintEvent, heroId?: string | null
 /** Which gesture illustration fits a hint on a platform. */
 export function gestureFor(g: HintGroup, p: InputPlatform): 'swipe' | 'tap' | 'click' | 'keys' {
   if (p === 'pad') return 'keys'
-  if (p === 'mouse') return g === 'move' || g === 'defend' || g === 'fitness' ? 'keys' : 'click'
+  if (p === 'mouse') return g === 'move' || g === 'defend' || g === 'fitness' || g === 'tackleDuel' ? 'keys' : 'click'
   return g === 'shoot' || g === 'setPiece' || g === 'keeper' ? 'swipe' : g === 'move' ? 'swipe' : 'tap'
 }
 

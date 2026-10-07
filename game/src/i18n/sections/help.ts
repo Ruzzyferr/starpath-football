@@ -60,6 +60,9 @@ export const tr = {
       keeper: 'Topun gittiği yöne kaydır ya da dokun: o tarafa uzanırsın.',
       setPiece: 'Kaleye doğru kaydır; kavisli bir kaydırma topu barajın üstünden döndürür.',
       fitness: 'Bip sesinde ekrana dokun; DEPAR’a basılı tutarak hızlan.',
+      cross: 'Bölgeye dokun ya da kaydır: orta. Top, koşucu varırken bölgeye insin.',
+      headMachine: 'Sahaya çık, sonra kale hedefine dokun: zıpla ve kafa vur. Zamanlama topu havada yakalar.',
+      tackleDuel: 'Rakibe yaklaş ve dokun: top kapma. Topa doğru kaydırırsan kayarak girersin. Top açıkken gir.',
     },
     mouse: {
       shoot: 'Fareyi kaleye tut, sol tuşu basılı tut ve bırak: şut. Basılı tutma süresi gücü belirler.',
@@ -70,6 +73,9 @@ export const tr = {
       keeper: 'Topun gideceği yere tıkla: o tarafa uzanırsın. Boşluk: otomatik uzan.',
       setPiece: 'Hedefe nişan al, basılı tut-bırak. Bırakırken fareyi kaydırırsan falso verirsin.',
       fitness: 'Bipte Boşluk ya da F’ye bas; Shift’i basılı tutarak hızlan.',
+      cross: 'Işıklı bölgeye tıkla ya da ORTA/Boşluk: orta. Koşucu varırken bırak.',
+      headMachine: 'WASD ile noktaya çık, sonra kalede hedefe tıkla ya da Boşluk: zıpla ve kafa vur.',
+      tackleDuel: 'WASD ile rakibin önünde kal, Boşluk ile top kap. Top açılınca (halka yeşil) gir.',
     },
     pad: {
       shoot: 'B’yi basılı tut ve bırak: şut. Sol analog nişanı belirler; LB ile aşırtma.',
@@ -80,6 +86,9 @@ export const tr = {
       keeper: 'Sol analogla yönü seç, B: o tarafa uzan.',
       setPiece: 'Sol analogla nişan al, B’yi basılı tut ve bırak.',
       fitness: 'Bipte A’ya bas; RT ile hızlan.',
+      cross: 'Sol analogla bölgeyi seç, A ile ortala. Koşucu varırken bas.',
+      headMachine: 'Sol analogla noktaya çık, B ile zıpla ve kafa vur.',
+      tackleDuel: 'Sol analogla rakibin önünde kal, A ile top kap. Halka yeşilken gir.',
     },
     gesture: {
       swipe: 'Kaydırma hareketi',
@@ -253,6 +262,9 @@ export const en: Shape<typeof tr> = {
       keeper: 'Swipe or tap toward where the ball is going to dive that way.',
       setPiece: 'Swipe toward goal; a curved swipe bends the ball over the wall.',
       fitness: 'Tap on the beep; hold SPRINT to speed up.',
+      cross: 'Tap or swipe to the lit zone to cross. Drop it in as the runner arrives.',
+      headMachine: 'Move onto the spot, then tap the target in goal: jump and head it. Time the jump to meet the ball in the air.',
+      tackleDuel: 'Get close to the dribbler and tap to tackle. Swipe toward the ball to slide. Go in when the ball is exposed.',
     },
     mouse: {
       shoot: 'Point at the goal, hold the left button and release to shoot. Hold longer for more power.',
@@ -263,6 +275,9 @@ export const en: Shape<typeof tr> = {
       keeper: 'Click where the ball is going to dive that way. Space dives automatically.',
       setPiece: 'Aim at the target, hold and release. Flick the mouse as you release to add curl.',
       fitness: 'Press Space or F on the beep; hold Shift to speed up.',
+      cross: 'Click the lit zone or press Space to cross. Release as the runner arrives.',
+      headMachine: 'Use WASD to reach the spot, then click a target in goal or press Space: jump and head it.',
+      tackleDuel: 'Stay goal-side with WASD and press Space to tackle. Go in when the ring turns green.',
     },
     pad: {
       shoot: 'Hold B and release to shoot. The left stick aims; LB chips.',
@@ -273,6 +288,9 @@ export const en: Shape<typeof tr> = {
       keeper: 'Pick a direction with the left stick and press B to dive.',
       setPiece: 'Aim with the left stick, hold B and release.',
       fitness: 'Press A on the beep; hold RT to speed up.',
+      cross: 'Aim with the left stick and press A to cross. Time it with the runner.',
+      headMachine: 'Reach the spot with the left stick, then press B to jump and head it.',
+      tackleDuel: 'Stay goal-side with the left stick and press A to tackle. Go in when the ring is green.',
     },
     gesture: {
       swipe: 'Swipe gesture',

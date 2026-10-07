@@ -150,6 +150,12 @@ describe('control hints', () => {
     expect(pickDrillHint('finishing', 'standard', has)).toBeNull()
   })
 
+  it('new drills get their own control hints', () => {
+    for (const [d, g] of [['crossing', 'cross'], ['heading', 'headMachine'], ['tackling', 'tackleDuel']] as const) {
+      expect(pickDrillHint(d, undefined, () => false)).toBe(g)
+    }
+  })
+
   it('a hint is learned only by the matching successful hero action', () => {
     expect(isHintSuccess('shoot', { type: 'kick', hero: true, kick: 'shot' })).toBe(true)
     expect(isHintSuccess('shoot', { type: 'kick', hero: false, kick: 'shot' })).toBe(false)
@@ -161,6 +167,11 @@ describe('control hints', () => {
     expect(isHintSuccess('keeper', { type: 'save', by: 'h1' }, 'h1')).toBe(true)
     expect(isHintSuccess('header', { type: 'kick', hero: true, kick: 'header' })).toBe(true)
     expect(isHintSuccess('fitness', { type: 'score', good: true })).toBe(true)
+    expect(isHintSuccess('cross', { type: 'kick', hero: true })).toBe(true)
+    expect(isHintSuccess('headMachine', { type: 'kick', hero: true })).toBe(true)
+    expect(isHintSuccess('headMachine', { type: 'kick', hero: false })).toBe(false)
+    expect(isHintSuccess('tackleDuel', { type: 'skill', ok: true })).toBe(true)
+    expect(isHintSuccess('tackleDuel', { type: 'skill', ok: false })).toBe(false)
   })
 
   it('picks a platform-appropriate gesture', () => {
@@ -174,7 +185,7 @@ describe('control hints', () => {
   it('has hint copy for every group on every platform in both languages', () => {
     for (const dict of [tr, en]) {
       for (const p of ['touch', 'mouse', 'pad'] as const) {
-        for (const g of ['shoot', 'pass', 'move', 'header', 'defend', 'keeper', 'setPiece', 'fitness'] as const) {
+        for (const g of ['shoot', 'pass', 'move', 'header', 'defend', 'keeper', 'setPiece', 'fitness', 'cross', 'headMachine', 'tackleDuel'] as const) {
           expect(dict.help.hints[p][g].length, `${p}.${g}`).toBeGreaterThan(10)
         }
       }
