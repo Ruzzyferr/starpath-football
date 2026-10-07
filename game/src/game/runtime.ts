@@ -137,6 +137,8 @@ export interface RuntimeOptions {
   names?: Record<string, string>
   /** 0..1 match importance — raises penalty panic. */
   importance?: number
+  /** Accessibility: multiplies timing windows (bullet time, one-two). 1 = off. */
+  timingMult?: number
 }
 
 /** Continuous hero input, in pitch space. */
@@ -248,6 +250,7 @@ export class HighlightRuntime {
   readonly defending: boolean
   readonly timeLimit: number
   readonly importance: number
+  readonly timingMult: number
 
   owner: Agent | null = null
   setPiece: SetPiece | null
@@ -341,6 +344,7 @@ export class HighlightRuntime {
     this.difficulty = typeof d === 'number' ? clampN(d, 0.6, 1.5) : DIFFICULTY_SCALE[d]
     this.timeLimit = Math.max(3, highlight.scenario.timeLimit || 10)
     this.importance = clamp01(opts.importance ?? 0.5)
+    this.timingMult = clampN(opts.timingMult ?? 1, 1, 2)
     this.introLeft = this.setPiece ? 0.7 : 0.35
     this.events.push({ type: 'whistle', long: false })
     // Stagger AI thinking so they don't all decide on the same frame.
@@ -418,7 +422,7 @@ export class HighlightRuntime {
   oneTwoHint(): { id: string; armed: boolean } | null {
     const o = this.oneTwo
     if (!o || this.phase !== 'live' || this.owner === this.hero) return null
-    if (!o.armed && this.time - o.t > ONE_TWO_WINDOW) return null
+    if (!o.armed && this.time - o.t > ONE_TWO_WINDOW * this.timingMult) return null
     return { id: o.id, armed: o.armed }
   }
 
@@ -520,7 +524,7 @@ export class HighlightRuntime {
       if (this.introLeft <= 0) this.goLive()
     }
 
-    if (this.oneTwo && (this.oneTwo.armed ? this.time - this.oneTwo.armedAt > ONE_TWO_ARMED_MAX : this.time - this.oneTwo.t > ONE_TWO_WINDOW)) this.oneTwo = null
+    if (this.oneTwo && (this.oneTwo.armed ? this.time - this.oneTwo.armedAt > ONE_TWO_ARMED_MAX : this.time - this.oneTwo.t > ONE_TWO_WINDOW * this.timingMult)) this.oneTwo = null
     if (this.phase === 'live') {
       while (this.actions.length) this.handleAction(this.actions.shift()!)
       this.setPieceAI()
@@ -577,6 +581,7 @@ export class HighlightRuntime {
 
   private startBullet(scale: number, seconds: number): void {
     if (!this.slowMoAim) return
+    seconds *= this.timingMult
     this.bulletScale = scale
     this.bulletLeft = seconds
     this.bulletWindow = seconds
@@ -829,7 +834,7 @@ export class HighlightRuntime {
   /** Arms the one-two if the action is a tap/press within the window. */
   private tryArmOneTwo(act: HeroAction): boolean {
     const o = this.oneTwo
-    if (!o || o.armed || this.time - o.t > ONE_TWO_WINDOW) return false
+    if (!o || o.armed || this.time - o.t > ONE_TWO_WINDOW * this.timingMult) return false
     const tap = act.kind === 'action' || act.kind === 'tapAt' || act.kind === 'pass' || act.kind === 'skill' || (act.kind === 'swipe' && act.swipe.isTap)
     if (!tap) return false
     const mate = this.agents.find((a) => a.id === o.id)

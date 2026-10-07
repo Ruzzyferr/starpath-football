@@ -28,7 +28,7 @@ import {
   type GesturePoint,
 } from './kick'
 import { GOAL_CENTER_Y, POST_Y_HIGH, POST_Y_LOW } from './physics'
-import { HighlightRuntime, type RuntimeEvent } from './runtime'
+import { HighlightRuntime, ONE_TWO_WINDOW, type RuntimeEvent } from './runtime'
 import { makeDemoHighlight } from './demoHighlights'
 import { setControlPrefs } from '../input/prefs'
 
@@ -286,4 +286,37 @@ describe('deterministic input replay', () => {
       }
     }
   }, 60_000)
+})
+
+describe('timing assist (a11y)', () => {
+  it('widens the one-two window and the possession slow-mo', () => {
+    const mk = (timingMult: number) => {
+      const rt = new HighlightRuntime(makeDemoHighlight('counter_2v1', 3), { aimAssist: 'full', slowMoAim: true, seed: 3, timingMult })
+      runUntil(rt, () => rt.phase === 'live' && rt.heroOnBall, 3)
+      return rt
+    }
+    const a = mk(1)
+    const b = mk(1.5)
+    // Same real time elapsed, the assisted window has more left.
+    for (const rt of [a, b]) for (let i = 0; i < 30; i++) rt.update(1 / 60)
+    expect(b.bulletFrac).toBeGreaterThan(0)
+    expect(b.bulletFrac).toBeGreaterThan(a.bulletFrac)
+    // One-two window, measured in game time from the pass (no slow-mo).
+    const hint = (timingMult: number, seed: number) => {
+      const rt = new HighlightRuntime(makeDemoHighlight('counter_2v1', seed), { aimAssist: 'full', slowMoAim: false, seed, timingMult })
+      runUntil(rt, () => rt.phase === 'live' && rt.heroOnBall, 3)
+      const mate = rt.agents.filter((x) => x.team === 'hero' && !x.isHero && !x.isKeeper)[0]
+      rt.queueAction({ kind: 'pass', target: { ...mate.pos } })
+      const t0 = rt.time
+      runUntil(rt, () => rt.time - t0 > ONE_TWO_WINDOW + 0.15, 4)
+      return rt.oneTwoHint()
+    }
+    // The window ends earlier if the receiver moves the ball on; some seeds keep it open longer.
+    let wider = 0
+    for (let seed = 1; seed <= 12; seed++) {
+      expect(hint(1, seed)).toBeNull()
+      if (hint(1.5, seed)) wider++
+    }
+    expect(wider).toBeGreaterThan(0)
+  })
 })

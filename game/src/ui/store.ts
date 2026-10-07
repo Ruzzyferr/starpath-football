@@ -776,6 +776,8 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   padDeadzone: number
   /** Vision-based pass option rings. */
   visionHints: boolean
+  /** Accessibility: wider match timing windows (slow-mo, one-two, slower power meter). */
+  timingAssist: boolean
   hideCasino: boolean
   /** Never flash the screen (goal/celebration/offside flashes); stricter than reduced motion for photosensitivity. */
   reduceFlashes: boolean
@@ -807,6 +809,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   padPower: 'hold',
   padDeadzone: 0.18,
   visionHints: true,
+  timingAssist: false,
   hideCasino: false,
   reduceFlashes: false,
   soundCaptions: false,
@@ -859,6 +862,8 @@ export function bindSettingsToDocument(): () => void {
       padPower: s.padPower,
       padDeadzone: s.padDeadzone,
       visionHints: s.visionHints,
+      noFlash: s.reduceFlashes || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
+      timingAssist: s.timingAssist,
     })
     contentFlags.hideCasino = s.hideCasino
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'

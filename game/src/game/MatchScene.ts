@@ -31,7 +31,7 @@ import {
 import { Sfx } from './audio'
 import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot'
 import { InputController, type FrameIntent } from './input'
-import { effectiveAimAssist, getControlPrefs } from '../input/prefs'
+import { effectiveAimAssist, getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
 import { KIT_MIN_DISTANCE, cvdDistance, distinctOpponentKit } from '../core/colorVision'
 import { audio } from '../audio'
 import { secondLastOpponentDepth } from './offside'
@@ -222,6 +222,8 @@ export class MatchScene extends Phaser.Scene {
   private mode: 'play' | 'celebrate' | 'replay' | 'done' = 'play'
   /** Reduced motion / low effects (scene-local copies of the settings). */
   private rm = false
+  /** No screen flashes (Disable flashes setting / reduced motion). */
+  private noFlash = false
   private lowFx = false
   private look!: StadiumLook
   private night = false
@@ -305,11 +307,13 @@ export class MatchScene extends Phaser.Scene {
       weather: opts.weather,
       names,
       importance: opts.importance,
+      timingMult: getControlPrefs().timingAssist ? TIMING_ASSIST_MULT : 1,
     })
     this.sfx = new Sfx(opts.settings.sound)
     const replayOnly = this.data0.replayOnly
     this.auto = opts.autopilot && !replayOnly ? createAutopilot(highlight.id.length) : null
     this.rm = !!opts.settings.reducedMotion
+    this.noFlash = this.rm || getControlPrefs().noFlash
     this.lowFx = !!opts.settings.lowFx
     this.replayAngle = opts.replayAngle ?? 'auto'
     const capacity = opts.stadium?.capacity ?? 18_000
@@ -915,6 +919,7 @@ export class MatchScene extends Phaser.Scene {
         difficulty: this.data0.opts.difficulty,
         weather: this.data0.opts.weather,
         importance: this.data0.opts.importance,
+        timingMult: rt.timingMult,
       })
     }
     const r = rt.result
@@ -953,7 +958,7 @@ export class MatchScene extends Phaser.Scene {
     this.trail.length = 0
     this.ripple.east = null
     this.ripple.west = null
-    if (flash && !this.rm) this.cameras.main.flash(200, 255, 255, 255)
+    if (flash && !this.noFlash) this.cameras.main.flash(200, 255, 255, 255)
     return true
   }
 
@@ -1752,7 +1757,7 @@ export class MatchScene extends Phaser.Scene {
             const gp = project(e.end === 'east' ? PITCH_LENGTH : 0, GOAL_CENTER_Y, 1.5)
             this.confetti.explode(this.fxN(90), gp.x, gp.y)
             this.time.delayedCall(250, () => this.confetti.explode(this.fxN(70), gp.x, gp.y - 2 * PPM))
-            if (!this.rm) this.flash.setAlpha(0.55)
+            if (!this.noFlash) this.flash.setAlpha(0.55)
             this.tweens.add({ targets: this.flash, alpha: 0, duration: 450, ease: 'Quad.Out' })
             if (!this.rm) for (const s of this.stands) this.tweens.add({ targets: s, y: s.y - 6, duration: 160, yoyo: true, repeat: 6, ease: 'Sine.InOut' })
           } else {
@@ -1823,7 +1828,7 @@ export class MatchScene extends Phaser.Scene {
           const fallback = secondLastOpponentDepth(rt.agents.filter((a) => a.team !== e.team).map((a) => a.pos.x), dir)
           const lineX = this.passLineX ?? (fallback === null ? null : dir === 1 ? fallback : PITCH_LENGTH - fallback)
           if (lineX !== null) this.offsideFx = { lineX, playerX: e.x, t: 0 }
-          if (!this.rm) {
+          if (!this.noFlash) {
             this.flash.setFillStyle(0xffd23f, 1).setAlpha(0.28)
             this.tweens.add({ targets: this.flash, alpha: 0, duration: 380, ease: 'Quad.Out', onComplete: () => this.flash.setFillStyle(0xffffff, 1) })
           }

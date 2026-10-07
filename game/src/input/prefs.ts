@@ -22,7 +22,14 @@ export interface ControlPrefs {
   padDeadzone: number
   /** Highlight the best pass options (count/range scale with the hero's Vision). */
   visionHints: boolean
+  /** No screen flashes in the match (Disable flashes setting or OS reduced motion). */
+  noFlash: boolean
+  /** Accessibility: wider timing windows (slow-mo, one-two, slower power meter). */
+  timingAssist: boolean
 }
+
+/** Timing-assist multiplier on timing windows (slow-mo, one-two) and the meter period. */
+export const TIMING_ASSIST_MULT = 1.5
 
 const state: ControlPrefs = {
   leftHanded: false,
@@ -34,6 +41,8 @@ const state: ControlPrefs = {
   padPower: 'hold',
   padDeadzone: 0.18,
   visionHints: true,
+  noFlash: false,
+  timingAssist: false,
 }
 
 export function getControlPrefs(): Readonly<ControlPrefs> {

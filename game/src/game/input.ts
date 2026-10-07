@@ -28,6 +28,7 @@ import {
   axisDeadzone,
   chargePower,
   facesGoal,
+  OSC_PERIOD,
   oscillatingPower,
   radialDeadzone,
   shotTargetFromDir,
@@ -39,7 +40,7 @@ import {
 import { clampN, dist, len, norm, sub, type Vec2 } from './model'
 import type { AimState, HeroAction } from './runtime'
 import { getBindings, isBound, type BindAction } from '../input/bindings'
-import { getControlPrefs } from '../input/prefs'
+import { getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
 
 /** Maps between canvas pixels and pitch meters. */
 export interface InputMapper {
@@ -104,6 +105,11 @@ const DOUBLE_TAP_TIME = 0.32
 const HOLD_SHOT_MIN = 0.16
 /** Tap-meter: an armed meter that is never fired is dropped after this long. */
 const METER_TIMEOUT = 4
+
+/** Oscillating meter power; timing assist slows the bar. */
+function oscPower(t: number): number {
+  return oscillatingPower(t, getControlPrefs().timingAssist ? OSC_PERIOD * TIMING_ASSIST_MULT : OSC_PERIOD)
+}
 
 /** Converts device input into a per-frame intent stream. Call {@link dispose} when done. */
 export class InputController {
@@ -380,7 +386,7 @@ export class InputController {
     if (this.meter) {
       const m = this.meter
       this.meter = null
-      this.queued.push(this.holdShotAction(m.at, oscillatingPower(t - m.t0), null))
+      this.queued.push(this.holdShotAction(m.at, oscPower(t - m.t0), null))
       this.lastTap.t = -1
       return true
     }
@@ -393,7 +399,7 @@ export class InputController {
 
   /** Power for a hold of `held` seconds under a power scheme. */
   private schemePower(held: number, scheme: 'hold' | 'oscillate'): number {
-    return scheme === 'oscillate' ? oscillatingPower(held) : chargePower(held)
+    return scheme === 'oscillate' ? oscPower(held) : chargePower(held)
   }
 
   private chipMod(): boolean {
@@ -453,7 +459,7 @@ export class InputController {
         const held = this.now() - this.keyShoot.t0
         this.keyShoot = null
         const scheme = getControlPrefs().pcPower
-        const power = scheme === 'oscillate' ? oscillatingPower(held) : Math.max(0.35, chargePower(held))
+        const power = scheme === 'oscillate' ? oscPower(held) : Math.max(0.35, chargePower(held))
         this.queued.push(this.holdShotAction(this.map.toWorld(this.mouse.x, this.mouse.y), power, null))
         this.wheel = 0
         this.skipFlag = true
@@ -517,7 +523,7 @@ export class InputController {
     if (this.meter) {
       if (!ctx.heroOnBall || t - this.meter.t0 > METER_TIMEOUT || prefs.touchShot !== 'meter') this.meter = null
       else {
-        power = oscillatingPower(t - this.meter.t0)
+        power = oscPower(t - this.meter.t0)
         oscillating = true
         const act = this.holdShotAction(this.meter.at, power, null)
         if (act.kind === 'shoot') aim = { kind: 'target', target: act.target, power, curl: act.curl, chip: act.chip }
@@ -587,7 +593,7 @@ export class InputController {
     const padPower = (): number => {
       const held = t - this.pad.holdB
       if (prefs.padPower === 'analog') return analogPower(gp.buttons[6]?.value ?? 0)
-      return prefs.padPower === 'oscillate' ? oscillatingPower(held) : chargePower(held)
+      return prefs.padPower === 'oscillate' ? oscPower(held) : chargePower(held)
     }
     let aim: AimState | null = null
     let power = 0

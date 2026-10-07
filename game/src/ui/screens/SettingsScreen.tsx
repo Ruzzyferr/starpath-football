@@ -196,6 +196,7 @@ export function SettingsScreen() {
             id="set-deadzone"
           />
           <Switch label={t('settings.visionHints')} desc={t('settings.visionHintsDesc')} checked={s.visionHints} onChange={(visionHints) => updateSettings({ visionHints })} />
+          <Switch label={t('settings.timingAssist')} desc={t('settings.timingAssistDesc')} checked={s.timingAssist} onChange={(timingAssist) => updateSettings({ timingAssist })} />
           <h3 class="h3">{t('settings.ctl.title')}</h3>
           <KeyBindingsPanel />
         </Group>
