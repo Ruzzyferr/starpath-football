@@ -18,7 +18,7 @@ export const COUNTRY_DEFS: readonly CountryDef[] = [
   {
     id: 'TR', name: { tr: 'Türkiye', en: 'Türkiye' }, adjective: { tr: 'Türk', en: 'Turkish' },
     flag: ['#E30A17', '#FFFFFF', '#E30A17'], reputation: 74, nameStyle: 'turkish',
-    leagueNames: ['Anadolu Süper Ligi', 'Anadolu Birinci Ligi', 'Anadolu İkinci Ligi'],
+    leagueNames: ['Yıldız Ligi', 'Anadolu Ligi', 'Bölgesel Lig'],
     cupName: { tr: 'Hilal Kupası', en: 'Crescent Cup' },
   },
   {
