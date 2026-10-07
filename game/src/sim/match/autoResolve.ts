@@ -46,9 +46,9 @@ const BASE: Record<HighlightKind, Weights> = {
   defend: { defended: 0.5, shot_conceded: 0.16, lost_ball: 0.06, conceded: 0.11, foul_committed: 0.11, pass_complete: 0.06 },
   gk_save: { defended: 0.76, conceded: 0.24 },
   gk_penalty: { defended: 0.22, conceded: 0.78 },
-  counter_2v1: { goal: 0.2, assist: 0.14, saved: 0.16, missed: 0.14, blocked: 0.06, lost_ball: 0.2, foul_won: 0.06, woodwork: 0.02 },
-  long_ball_control: { goal: 0.04, assist: 0.05, pass_complete: 0.42, lost_ball: 0.26, missed: 0.06, saved: 0.05, blocked: 0.03, foul_won: 0.09 },
-  rebound: { goal: 0.3, saved: 0.17, missed: 0.2, blocked: 0.12, woodwork: 0.02, lost_ball: 0.19 },
+  counter_2v1: { goal: 0.18, assist: 0.08, saved: 0.16, missed: 0.14, blocked: 0.06, lost_ball: 0.2, foul_won: 0.06, woodwork: 0.02 },
+  long_ball_control: { goal: 0.02, assist: 0.02, pass_complete: 0.2, lost_ball: 0.6, missed: 0.04, saved: 0.03, blocked: 0.02, foul_won: 0.05, foul_committed: 0.02 },
+  rebound: { goal: 0.2, saved: 0.16, missed: 0.12, blocked: 0.08, woodwork: 0.02, lost_ball: 0.36, foul_committed: 0.06 },
   interception: { defended: 0.5, shot_conceded: 0.12, conceded: 0.08, foul_committed: 0.06, lost_ball: 0.09, timeout: 0.15 },
 }
 
