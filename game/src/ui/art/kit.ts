@@ -1,6 +1,6 @@
 /** Procedural football shirt from KitColors (viewBox 0 0 100 100). */
 import type { KitColors } from '../../core/types'
-import { onColor, shade, svgWrap, uid } from './svg'
+import { contrastRatio, onColor, shade, svgWrap, uid } from './svg'
 
 const SHIRT =
   'M34 8L22 12L4 26L12 44L22 38L22 94Q50 98 78 94L78 38L88 44L96 26L78 12L66 8Q60 16 50 16Q40 16 34 8Z'
@@ -31,9 +31,15 @@ export interface KitOpts {
 export function kitSvg(kit: KitColors, opts: KitOpts = {}): string {
   const id = uid('kit', kit.primary, kit.secondary, kit.pattern, opts.number ?? '', opts.name ?? '')
   const trim = kit.pattern === 'plain' ? kit.secondary : shade(kit.secondary, -0.05)
-  const numColor = kit.pattern === 'plain' ? onColor(kit.primary, '#0b1220', '#ffffff') : onColor(kit.primary, '#0b1220', '#ffffff')
+  // Patterned shirts: the number sits on both colours, so pick the ink that
+  // survives the worse of the two and give it a solid opposite outline.
+  const plain = kit.pattern === 'plain'
+  const inks = ['#ffffff', '#0b1220', '#ffc83d']
+  const worst = (c: string): number => Math.min(contrastRatio(c, kit.primary), plain ? 99 : contrastRatio(c, kit.secondary))
+  const numColor = plain ? onColor(kit.primary, '#0b1220', '#ffffff') : inks.reduce((a, b) => (worst(b) > worst(a) ? b : a))
+  const outline = numColor === '#0b1220' ? '#ffffff' : '#0b1220'
   const num = opts.number !== undefined
-    ? `<text x="50" y="${opts.name ? 74 : 66}" text-anchor="middle" font-family="Teko, Barlow Condensed, sans-serif" font-weight="600" font-size="${opts.name ? 30 : 36}" fill="${numColor}" stroke="${kit.pattern === 'plain' ? 'none' : shade(kit.primary, -0.4)}" stroke-width="${kit.pattern === 'plain' ? 0 : 1.2}" paint-order="stroke">${opts.number}</text>`
+    ? `<text x="50" y="${opts.name ? 74 : 66}" text-anchor="middle" font-family="Teko, Barlow Condensed, sans-serif" font-weight="600" font-size="${opts.name ? 30 : 36}" fill="${numColor}" stroke="${plain ? 'none' : outline}" stroke-opacity=".85" stroke-width="${plain ? 0 : 2.6}" stroke-linejoin="round" paint-order="stroke">${opts.number}</text>`
     : ''
   const name = opts.name
     ? `<text x="50" y="40" text-anchor="middle" font-family="Barlow Condensed, sans-serif" font-weight="700" font-size="9" letter-spacing="1" fill="${numColor}">${opts.name.slice(0, 12).replace(/[<&>]/g, '')}</text>`

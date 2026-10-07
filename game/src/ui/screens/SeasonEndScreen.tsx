@@ -128,7 +128,7 @@ export function SeasonEndScreen() {
                 ))}
               </div>
             ) : (
-              <p class="t-sm t-mid">{t('season.noTrophies')}</p>
+              <EmptyState compact icon="trophy" text={t('season.noTrophies')} />
             )}
           </section>
         )}
