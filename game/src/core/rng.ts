@@ -13,7 +13,7 @@ export interface RngState {
 export class Rng {
   private s: RngState
 
-  constructor(seed: number | string | RngState = Date.now()) {
+  constructor(seed: number | string | RngState) {
     if (typeof seed === 'object') {
       this.s = { ...seed }
       return

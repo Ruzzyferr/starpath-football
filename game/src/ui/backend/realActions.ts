@@ -336,7 +336,7 @@ export const realActions: GameActions = {
     resetTransient()
     const slot = pickSlotForNewCareer()
     const seed = input.seed ?? (hashString(`${input.firstName}|${input.lastName}|${Date.now()}`) >>> 0)
-    const s = G.newGame({ ...input, slot }, seed)
+    const s = G.newGame({ ...input, slot }, seed, Date.now())
     s.meta.slot = slot
     recordWeek(s)
     replaceState(s)

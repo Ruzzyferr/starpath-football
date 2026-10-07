@@ -121,11 +121,14 @@ export function signFirstClub(state: GameState, rng: Rng, clubId: string, terms:
   pushNews(life, rng, state.calendar, fill(lt('{c} genç yetenek {n}\'i kadrosuna kattı', '{c} sign young talent {n}'), { c: club.name, n: `${hero.firstName} ${hero.lastName}` }), 1, rng.pick(NEWS_SOURCES))
 }
 
+/** Seed-derived stand-in timestamp (2026-01-01 + seed seconds) so `newGame` never reads the wall clock. */
+export const deterministicNow = (seed: number): number => Date.UTC(2026, 0, 1) + (seed >>> 0) * 1000
+
 /**
- * Create a complete GameState. Deterministic for (input, seed) except
- * `meta.createdAt/updatedAt`.
+ * Create a complete GameState. Fully deterministic for (input, seed, now);
+ * `now` (meta.createdAt/updatedAt) is injected by the caller, defaulting to a seed-derived value.
  */
-export function newGame(input: NewGameInput, seed: number = Date.now() >>> 0): GameState {
+export function newGame(input: NewGameInput, seed: number, now: number = deterministicNow(seed)): GameState {
   if (!COUNTRY_BY_ID[input.nationality]) throw new Error(`Unknown nationality "${input.nationality}"`)
   const rng = new Rng(seed)
   const season = START_YEAR
@@ -139,7 +142,6 @@ export function newGame(input: NewGameInput, seed: number = Date.now() >>> 0): G
     background: input.background, birthYear: input.birthYear, gender,
   })
   const life = createLife(rng, hero, input.background, input.family)
-  const now = Date.now()
   const state: GameState = {
     version: SAVE_VERSION,
     meta: { id: rng.id('car'), slot: input.slot ?? 0, createdAt: now, updatedAt: now, playTimeSec: 0, seed, difficulty: input.difficulty ?? 'normal' },

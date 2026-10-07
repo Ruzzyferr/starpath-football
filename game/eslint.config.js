@@ -41,7 +41,7 @@ export default tseslint.config(
         { group: ['phaser', 'phaser/*'], message: 'sim/core must not depend on Phaser.' },
         { group: ['**/ui/**', '**/game/*Scene*', '**/platform/**'], message: 'sim/core must not depend on UI or platform layers.' },
       ] }],
-      'no-restricted-properties': ['warn',
+      'no-restricted-properties': ['error',
         { object: 'Date', property: 'now', message: 'Pass time in explicitly (determinism).' },
         { object: 'Math', property: 'random', message: 'Use the seeded RNG.' },
       ],

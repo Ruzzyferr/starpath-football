@@ -8,8 +8,7 @@
  * fixture id while a match is prepared or in progress.
  */
 import type { Club, Competition, Fixture, GameState, Lang, LText, MatchResultSummary, NpcPlayer, Position } from '../../core/types'
-import { clamp } from '../../core/rng'
-import type { Rng } from '../../core/rng'
+import { clamp, Rng } from '../../core/rng'
 import { MatchSim } from '../match'
 import type { EngineState, MatchSimOptions, MatchPlayer, MatchSetup, MatchTeam, Side, Weather } from '../match'
 import { fmtMoney, fill, lt } from '../career/common'
@@ -74,6 +73,11 @@ const CLIMATE: Readonly<Record<string, Climate>> = {
 }
 
 /** Weather by venue country climate and season week (week 0 ≈ August, winter ≈ weeks 15–30). */
+/** Seed of a match's private RNG: `fork('match:'+id)` semantics without consuming the career stream. */
+export function matchSeed(careerSeed: number, fixtureId: string): number {
+  return new Rng(careerSeed).fork(`match:${fixtureId}`).nextUint()
+}
+
 export function rollWeather(rng: Rng, countryId: string, week: number): Weather {
   const c = CLIMATE[countryId] ?? 'med'
   const winter = week >= 15 && week <= 30
@@ -219,9 +223,10 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
     const setup: MatchSetup = {
       home: buildTeamFrom(state, home, isHome, sel.starts, importance),
       away: buildTeamFrom(state, away, !isHome, sel.starts, importance),
-      seed: rng.nextUint(),
+      // Per-match stream: depends only on the career seed and the fixture, never on unrelated RNG consumption.
+      seed: matchSeed(state.meta.seed, fixture.id),
       competitionName: competition.name.en,
-      weather: rollWeather(rng, home.countryId, fixture.week),
+      weather: rollWeather(new Rng(state.meta.seed).fork(`weather:${fixture.id}`), home.countryId, fixture.week),
       heroSide: isHome ? 'home' : 'away',
       heroOnBench: !sel.starts,
       // Two-legged ties are settled on aggregate after the second leg (see finishHeroMatch).

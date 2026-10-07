@@ -72,7 +72,7 @@ export function unpackState(state: GameState): GameState {
 export const packedSize = (state: GameState): number => JSON.stringify(packState(state)).length
 
 /** Save through SaveManager with the compact codec. */
-export async function saveGame(mgr: SaveManager, slot: number, state: GameState, now = Date.now()): Promise<void> {
+export async function saveGame(mgr: SaveManager, slot: number, state: GameState, now: number): Promise<void> {
   state.meta.updatedAt = now
   state.meta.slot = slot
   await mgr.save(slot, packState(state), saveSummary(state))

@@ -99,7 +99,7 @@ export function saveState(state: GameState, uiSlot = state.meta.slot || 1): Prom
   const slot = Math.min(3, Math.max(1, Math.round(uiSlot)))
   return queue(async () => {
     // saveGame serializes synchronously (and stamps meta.slot with the manager index): restore the UI slot at once.
-    const p = saveGame(manager(), toMgr(slot), state)
+    const p = saveGame(manager(), toMgr(slot), state, Date.now())
     state.meta.slot = slot
     await p
     await refreshSlots()
