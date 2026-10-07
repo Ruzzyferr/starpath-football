@@ -10,6 +10,24 @@ const suspendedByUs = new WeakSet<AudioContext>()
 let installed = false
 let backgrounded = false
 
+type AudioSessionType = 'auto' | 'playback' | 'transient' | 'transient-solo' | 'ambient' | 'play-and-record'
+
+/**
+ * iOS/WebKit audio session (2.8#2, #3, #70): 'ambient' makes game audio obey the hardware silent
+ * switch and mix with the user's own music, which is what players expect from a football sim.
+ * No-op where `navigator.audioSession` does not exist. Returns whether it was applied.
+ */
+export function applyAudioSession(type: AudioSessionType = 'ambient', nav: unknown = typeof navigator === 'undefined' ? undefined : navigator): boolean {
+  const session = (nav as { audioSession?: { type: string } } | undefined)?.audioSession
+  if (!session) return false
+  try {
+    session.type = type
+    return true
+  } catch {
+    return false
+  }
+}
+
 /** Wrap window.AudioContext so instances are tracked (Phaser's sound manager and src/game/audio.ts included). */
 export function trackAudioContexts(): void {
   if (installed || typeof window === 'undefined') return
@@ -22,6 +40,7 @@ export function trackAudioContexts(): void {
       constructor(...args: any[]) {
         super(...args)
         contexts.add(this)
+        applyAudioSession()
         // A context created while hidden starts suspended too.
         if (backgrounded) void suspendOne(this)
       }

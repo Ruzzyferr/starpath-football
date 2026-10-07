@@ -1004,6 +1004,7 @@ Kalan hissiyat boşlukları: sapan şut, salınan güç çubuğu, PC tekerlek fa
   6. Önceki birim test kırmızısı (feel, backend) yeşil ve CI'da bloklayan.
 
 ### WP-18 · Dünya ve Ses Kalan Maddeleri
+> **Durum (yapıldı):** 2.6#34 anahtar oyuncu form/mevki skoruyla (`pickKeyPlayer`), 2.6#33/#71 maç öncesi ceza/sözleşme kartı, 2.8#2/#3/#70 `navigator.audioSession='ambient'` (`applyAudioSession`), 2.8#56/#57 `assets/LICENSES.csv` + `audio/licenses.test.ts`. Zaten vardı: 2.8#35 hub müziği, #45 UI sesleri, #52 altyazı/görsel ipuçları. **Ertelendi (gerekçeli):** 2.8#4 askıda fade (context.suspend öncesi gecikme maç döngüsünü bozar), 2.8#13/#14/#23-#26 ses inceltmesi (cila, gerçek örnek gerektirir), 2.8#36 maç müziği ayarı (WP-16 ayarlar ekranı).
 - **Dokunduğu dosyalar:** `game/src/sim/world/**`, `game/src/ui/screens/WorldScreen.tsx`, `game/src/ui/screens/match/PreMatchScreen.tsx`, `game/src/audio/**`, `game/src/game/audio.ts`.
 - **Kabul kriterleri:**
   1. 2.6 kalan satırlar: rakip kilit oyuncu forma/mevkiye göre seçiliyor (2.6#34), maç öncesi ceza ve sözleşme bilgisi (2.6#71), kalan 6 EKSİK karara bağlanıyor.

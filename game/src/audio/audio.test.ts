@@ -282,3 +282,13 @@ describe('rig', () => {
     expect(Math.min(...duck.gain.events.map((x) => x.value))).toBeLessThan(0.5)
   })
 })
+
+import { applyAudioSession } from '../platform/lifecycle'
+describe('audio session', () => {
+  it('sets ambient where supported and no-ops elsewhere', () => {
+    const nav = { audioSession: { type: 'auto' } }
+    expect(applyAudioSession('ambient', nav)).toBe(true)
+    expect(nav.audioSession.type).toBe('ambient')
+    expect(applyAudioSession('ambient', {})).toBe(false)
+  })
+})

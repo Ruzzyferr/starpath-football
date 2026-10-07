@@ -1,0 +1,2 @@
+path,kind,source,license,author,notes
+(procedural),audio,src/audio/** WebAudio synthesis,Original work (project license),StarPath Football team,"All music, SFX, crowd and voice cues are generated at runtime; no sample files are shipped."
