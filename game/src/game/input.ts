@@ -10,13 +10,33 @@
  *   right click = through ball, Shift = sprint, Space = skill (or contextual
  *   action off the ball), Ctrl/E = chip modifier.
  * - Gamepad (standard mapping): left stick move, A pass, B hold = shot,
- *   Y through ball, X cross/lofted, RT sprint, RB skill, LB chip.
+ *   Y through ball, X cross/lofted, RT sprint, RB skill, LB chip, right stick
+ *   X = curl. Analog scheme: LT depth = power, left stick picks the goal spot.
+ *
+ * Control schemes (settings, WP-13, see {@link getControlPrefs}): touch
+ * shooting = swipe / sling-shot (pull back) / tap + oscillating meter; PC and
+ * gamepad power = hold-charge / oscillating bar (gamepad also analog); mouse
+ * wheel adds curl while aiming; adjustable stick dead zone.
  *
  * Coordinates: raw events are in canvas (game) pixels; a {@link InputMapper}
  * supplied by the scene maps them to pitch meters.
  */
-import { analyzeSwipe, facesGoal, shotTargetFromDir, type GesturePoint, type SwipeFeatures } from './kick'
-import { len, norm, sub, type Vec2 } from './model'
+import {
+  analogPower,
+  analogShotTarget,
+  analyzeSwipe,
+  axisDeadzone,
+  chargePower,
+  facesGoal,
+  oscillatingPower,
+  radialDeadzone,
+  shotTargetFromDir,
+  slingshotSwipe,
+  wheelCurl,
+  type GesturePoint,
+  type SwipeFeatures,
+} from './kick'
+import { clampN, dist, len, norm, sub, type Vec2 } from './model'
 import type { AimState, HeroAction } from './runtime'
 import { getBindings, isBound, type BindAction } from '../input/bindings'
 import { getControlPrefs } from '../input/prefs'
@@ -39,6 +59,8 @@ export interface InputContext {
   ballPos: Vec2
   heroOnBall: boolean
   heroIsKeeper: boolean
+  /** Team-mate positions (meter scheme: a tap on a team-mate stays a pass). */
+  mates?: readonly Vec2[]
 }
 
 /** Touch UI geometry for rendering. */
@@ -64,6 +86,10 @@ export interface FrameIntent {
   pause: boolean
   /** Any user input this frame (for unlocking audio). */
   any: boolean
+  /** The live power is an oscillating meter (draw it as such). */
+  oscillating: boolean
+  /** Extra curl dialled in with the mouse wheel (-1..1). */
+  wheelCurl: number
 }
 
 interface TouchGesture {
@@ -76,7 +102,8 @@ interface TouchGesture {
 const TAP_MAX_TIME = 0.28
 const DOUBLE_TAP_TIME = 0.32
 const HOLD_SHOT_MIN = 0.16
-const CHARGE_TIME = 0.95
+/** Tap-meter: an armed meter that is never fired is dropped after this long. */
+const METER_TIMEOUT = 4
 
 /** Converts device input into a per-frame intent stream. Call {@link dispose} when done. */
 export class InputController {
@@ -98,6 +125,10 @@ export class InputController {
   private pauseFlag = false
   private keyShoot: { t0: number } | null = null
   private oneTap: { id: number; t: number; x: number; y: number } | null = null
+  /** Tap + oscillating meter scheme: armed toward `at` since `t0`. */
+  private meter: { t0: number; at: Vec2 } | null = null
+  /** Curl dialled in with the mouse wheel for the next shot. */
+  private wheel = 0
   private anyFlag = false
   private readonly off: (() => void)[] = []
 
@@ -116,6 +147,16 @@ export class InputController {
     on(canvas, 'pointercancel', (e) => this.onUp(e, true))
     on(canvas, 'pointerleave', () => (this.mouse.inside = false))
     on(canvas, 'contextmenu', (e) => e.preventDefault())
+    on(
+      canvas,
+      'wheel',
+      (e) => {
+        e.preventDefault()
+        this.anyFlag = true
+        this.wheel = wheelCurl(this.wheel, (e as WheelEvent).deltaY)
+      },
+      { passive: false },
+    )
     on(window, 'keydown', (e) => this.onKey(e as KeyboardEvent, true))
     on(window, 'keyup', (e) => this.onKey(e as KeyboardEvent, false))
     on(window, 'blur', () => {
@@ -125,6 +166,7 @@ export class InputController {
       this.joy = null
       this.gesture = null
       this.mouseHold = null
+      this.meter = null
     })
   }
 
@@ -278,7 +320,9 @@ export class InputController {
       const { w, h } = this.map.size()
       const still = Math.hypot(p.x - ot.x, p.y - ot.y) < Math.min(w, h) * 0.04
       if (!cancel && still && t - ot.t < TAP_MAX_TIME) {
-        if (t - this.lastTap.t < DOUBLE_TAP_TIME) {
+        if (this.meterTap(p, t)) {
+          // Meter scheme consumed the tap (armed or fired).
+        } else if (t - this.lastTap.t < DOUBLE_TAP_TIME) {
           this.queued.push({ kind: 'skill' })
           this.lastTap.t = -1
         } else {
@@ -294,13 +338,15 @@ export class InputController {
       this.gesture = null
       if (cancel) return
       g.pts.push(this.point(p, t))
-      const sw = analyzeSwipe(g.pts, g.fingers)
+      const sw = this.swipeOf(g)
       const dur = t - g.start
       if (sw.isTap && dur < TAP_MAX_TIME) {
         const at = this.map.toWorld(p.x, p.y)
         const { w, h } = this.map.size()
         const near = Math.hypot(p.x - this.lastTap.x, p.y - this.lastTap.y) < Math.min(w, h) * 0.08
-        if (t - this.lastTap.t < DOUBLE_TAP_TIME && near) {
+        if (this.meterTap(p, t)) {
+          // Meter scheme consumed the tap (armed or fired).
+        } else if (t - this.lastTap.t < DOUBLE_TAP_TIME && near) {
           this.queued.push({ kind: 'skill' })
           this.lastTap.t = -1
         } else {
@@ -312,6 +358,42 @@ export class InputController {
         this.queued.push({ kind: 'swipe', swipe: sw })
       }
     }
+  }
+
+  /** Swipe features under the active touch scheme (sling-shot reverses the drag). */
+  private swipeOf(g: TouchGesture): SwipeFeatures {
+    const sw = analyzeSwipe(g.pts, g.fingers)
+    return getControlPrefs().touchShot === 'slingshot' && this.lastCtx?.heroOnBall ? slingshotSwipe(sw, g.fingers) : sw
+  }
+
+  /**
+   * Tap + oscillating meter scheme. First tap toward goal (not on a team-mate)
+   * arms the meter; the next tap fires with the meter's current power.
+   * @returns true when the tap was consumed
+   */
+  private meterTap(p: { x: number; y: number }, t: number): boolean {
+    const ctx = this.lastCtx
+    if (getControlPrefs().touchShot !== 'meter' || !ctx || !ctx.heroOnBall || ctx.heroIsKeeper) {
+      this.meter = null
+      return false
+    }
+    if (this.meter) {
+      const m = this.meter
+      this.meter = null
+      this.queued.push(this.holdShotAction(m.at, oscillatingPower(t - m.t0), null))
+      this.lastTap.t = -1
+      return true
+    }
+    const at = this.map.toWorld(p.x, p.y)
+    const onMate = (ctx.mates ?? []).some((m) => dist(m, at) < 3.2)
+    if (onMate || !facesGoal(ctx.ballPos, norm(sub(at, ctx.ballPos)))) return false
+    this.meter = { t0: t, at }
+    return true
+  }
+
+  /** Power for a hold of `held` seconds under a power scheme. */
+  private schemePower(held: number, scheme: 'hold' | 'oscillate'): number {
+    return scheme === 'oscillate' ? oscillatingPower(held) : chargePower(held)
   }
 
   private chipMod(): boolean {
@@ -328,8 +410,9 @@ export class InputController {
       this.queued.push({ kind: 'tapAt', at })
       return
     }
-    const power = Math.min(1.15, held / CHARGE_TIME)
+    const power = this.schemePower(held, getControlPrefs().pcPower)
     this.queued.push(this.holdShotAction(at, power, hold.path))
+    this.wheel = 0
   }
 
   /** Hold-release toward a point: shot if toward goal, else lofted/driven pass. */
@@ -337,7 +420,7 @@ export class InputController {
     const ctx = this.lastCtx
     const from = ctx ? ctx.ballPos : at
     const dir = norm(sub(at, from))
-    const curl = path && path.length > 3 ? analyzeSwipe(path).curl * 0.8 : 0
+    const curl = clampN((path && path.length > 3 ? analyzeSwipe(path).curl * 0.8 : 0) + this.wheel, -1, 1)
     if (ctx?.heroIsKeeper) return { kind: 'dive', dir: len(dir) > 0 ? dir : { x: 0, y: 1 } }
     if (!ctx || !ctx.heroOnBall || facesGoal(from, dir)) {
       const target = at.x > 99 ? { x: 105, y: at.y } : shotTargetFromDir(from, dir)
@@ -369,8 +452,10 @@ export class InputController {
       if (this.keyShoot && isBound(code, 'shoot')) {
         const held = this.now() - this.keyShoot.t0
         this.keyShoot = null
-        const power = Math.max(0.35, Math.min(1.15, held / CHARGE_TIME))
+        const scheme = getControlPrefs().pcPower
+        const power = scheme === 'oscillate' ? oscillatingPower(held) : Math.max(0.35, chargePower(held))
         this.queued.push(this.holdShotAction(this.map.toWorld(this.mouse.x, this.mouse.y), power, null))
+        this.wheel = 0
         this.skipFlag = true
       }
     }
@@ -391,6 +476,8 @@ export class InputController {
     let sprint = false
     let aim: AimState | null = null
     let power = 0
+    let oscillating = false
+    const prefs = getControlPrefs()
 
     // Keyboard.
     const k = this.keys
@@ -419,10 +506,21 @@ export class InputController {
 
     // Touch aim (live swipe).
     if (this.gesture && this.gesture.pts.length > 2) {
-      const sw: SwipeFeatures = analyzeSwipe(this.gesture.pts, this.gesture.fingers)
+      const sw: SwipeFeatures = this.swipeOf(this.gesture)
       if (!sw.isTap) {
         aim = { kind: 'swipe', swipe: sw }
         power = sw.power
+      }
+    }
+
+    // Tap meter (touch): oscillates until the second tap.
+    if (this.meter) {
+      if (!ctx.heroOnBall || t - this.meter.t0 > METER_TIMEOUT || prefs.touchShot !== 'meter') this.meter = null
+      else {
+        power = oscillatingPower(t - this.meter.t0)
+        oscillating = true
+        const act = this.holdShotAction(this.meter.at, power, null)
+        if (act.kind === 'shoot') aim = { kind: 'target', target: act.target, power, curl: act.curl, chip: act.chip }
       }
     }
 
@@ -430,7 +528,8 @@ export class InputController {
     if (this.mouseHold) {
       const held = t - this.mouseHold.t0
       if (held >= HOLD_SHOT_MIN) {
-        power = Math.min(1.15, held / CHARGE_TIME)
+        power = this.schemePower(held, prefs.pcPower)
+        oscillating = prefs.pcPower === 'oscillate'
         const at = this.map.toWorld(this.mouse.x, this.mouse.y)
         const act = this.holdShotAction(at, power, this.mouseHold.path)
         if (act.kind === 'shoot') aim = { kind: 'target', target: act.target, power, curl: act.curl, chip: act.chip }
@@ -439,7 +538,8 @@ export class InputController {
 
     if (this.keyShoot) {
       const held = t - this.keyShoot.t0
-      power = Math.min(1.15, held / CHARGE_TIME)
+      power = this.schemePower(held, prefs.pcPower)
+      oscillating = prefs.pcPower === 'oscillate'
       const act = this.holdShotAction(this.map.toWorld(this.mouse.x, this.mouse.y), power, null)
       if (act.kind === 'shoot') aim = { kind: 'target', target: act.target, power, curl: act.curl, chip: act.chip }
     }
@@ -452,6 +552,7 @@ export class InputController {
       if (padRes.aim) {
         aim = padRes.aim
         power = padRes.power
+        oscillating = prefs.padPower === 'oscillate'
       }
     }
 
@@ -462,7 +563,7 @@ export class InputController {
     this.pauseFlag = false
     const any = this.anyFlag
     this.anyFlag = false
-    return { move, sprint, actions, aim, power, skip, pause, any }
+    return { move, sprint, actions, aim, power, skip, pause, any, oscillating, wheelCurl: this.wheel }
   }
 
   private pollPad(ctx: InputContext, t: number): { move: Vec2; sprint: boolean; aim: AimState | null; power: number } | null {
@@ -474,14 +575,20 @@ export class InputController {
     const prev = this.pad.buttons
     const pressed = (i: number) => b(i) && !prev[i]
     const released = (i: number) => !b(i) && !!prev[i]
-    const ax = gp.axes[0] ?? 0
-    const ay = gp.axes[1] ?? 0
-    const dead = Math.hypot(ax, ay) < 0.18
-    const move = dead ? { x: 0, y: 0 } : this.map.screenDirToWorld(ax, ay)
-    const mag = dead ? 0 : Math.min(1, (Math.hypot(ax, ay) - 0.18) / 0.75)
+    const prefs = getControlPrefs()
+    const ls = radialDeadzone(gp.axes[0] ?? 0, gp.axes[1] ?? 0, prefs.padDeadzone)
+    const mag = ls.mag
+    const dead = mag <= 0
+    const move = dead ? { x: 0, y: 0 } : this.map.screenDirToWorld(ls.x, ls.y)
     const mv = { x: move.x * mag, y: move.y * mag }
     const stickDir = dead ? null : norm(move)
     const chip = b(4)
+    const curl = -axisDeadzone(gp.axes[2] ?? 0, prefs.padDeadzone) * 0.8
+    const padPower = (): number => {
+      const held = t - this.pad.holdB
+      if (prefs.padPower === 'analog') return analogPower(gp.buttons[6]?.value ?? 0)
+      return prefs.padPower === 'oscillate' ? oscillatingPower(held) : chargePower(held)
+    }
     let aim: AimState | null = null
     let power = 0
     if (b(0) || b(1) || b(2) || b(3) || mag > 0) this.anyFlag = true
@@ -497,16 +604,17 @@ export class InputController {
     if (pressed(5)) this.queued.push(ctx.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
     if (pressed(1)) this.pad.holdB = t
     const shotTarget = () => {
+      if (prefs.padPower === 'analog') return analogShotTarget(mv.y)
       const dir = stickDir && stickDir.x > 0.1 ? stickDir : norm(sub({ x: 105, y: 34 }, ctx.ballPos))
       return shotTargetFromDir(ctx.ballPos, dir)
     }
     if (b(1) && this.pad.holdB >= 0) {
-      power = Math.min(1.15, (t - this.pad.holdB) / CHARGE_TIME)
-      if (ctx.heroOnBall) aim = { kind: 'target', target: shotTarget(), power, curl: -(gp.axes[2] ?? 0) * 0.8, chip }
+      power = padPower()
+      if (ctx.heroOnBall) aim = { kind: 'target', target: shotTarget(), power, curl, chip }
     }
     if (released(1) && this.pad.holdB >= 0) {
-      power = Math.min(1.15, (t - this.pad.holdB) / CHARGE_TIME)
-      if (ctx.heroOnBall) this.queued.push({ kind: 'shoot', target: shotTarget(), power, curl: -(gp.axes[2] ?? 0) * 0.8, chip })
+      power = padPower()
+      if (ctx.heroOnBall) this.queued.push({ kind: 'shoot', target: shotTarget(), power, curl, chip })
       else if (ctx.heroIsKeeper) this.queued.push(stickDir ? { kind: 'dive', dir: stickDir } : { kind: 'action' })
       else this.queued.push({ kind: 'action' })
       this.pad.holdB = -1

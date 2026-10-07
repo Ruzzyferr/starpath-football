@@ -12,9 +12,29 @@ export interface ControlPrefs {
   touchScale: number
   /** Colour-blind palette in effect (for in-match kit contrast). */
   cbMode: 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia'
+  /** Touch shooting scheme (WP-13): free swipe, pull-back sling-shot, or tap + oscillating meter. */
+  touchShot: 'swipe' | 'slingshot' | 'meter'
+  /** Mouse/keyboard power: charge while held, or oscillating bar locked on release. */
+  pcPower: 'hold' | 'oscillate'
+  /** Gamepad power: hold-charge, oscillating bar, or analog (LT depth + analog aim). */
+  padPower: 'hold' | 'oscillate' | 'analog'
+  /** Gamepad stick dead zone 0.05..0.4. */
+  padDeadzone: number
+  /** Highlight the best pass options (count/range scale with the hero's Vision). */
+  visionHints: boolean
 }
 
-const state: ControlPrefs = { leftHanded: false, oneHand: false, touchScale: 1, cbMode: 'off' }
+const state: ControlPrefs = {
+  leftHanded: false,
+  oneHand: false,
+  touchScale: 1,
+  cbMode: 'off',
+  touchShot: 'swipe',
+  pcPower: 'hold',
+  padPower: 'hold',
+  padDeadzone: 0.18,
+  visionHints: true,
+}
 
 export function getControlPrefs(): Readonly<ControlPrefs> {
   return state

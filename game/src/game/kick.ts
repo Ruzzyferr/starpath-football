@@ -613,3 +613,115 @@ export function facesGoal(from: Vec2, dir: Vec2): boolean {
   const toGoal = norm(sub({ x: PITCH_LENGTH, y: GOAL_CENTER_Y }, from))
   return dot(toGoal, dir) > 0.45
 }
+
+// ───────────────────────── Control schemes (WP-13) ─────────────────────────
+
+/** Touch shooting scheme: free swipe (default), pull-back sling-shot, or tap + oscillating power meter. */
+export type TouchShotScheme = 'swipe' | 'slingshot' | 'meter'
+/** PC power: charge while held (default) or an oscillating bar locked on release. */
+export type PowerScheme = 'hold' | 'oscillate'
+/** Gamepad power: hold-charge, oscillating bar, or analog (left-trigger depth) power. */
+export type PadPowerScheme = 'hold' | 'oscillate' | 'analog'
+
+/** Pull length (fraction of the short screen side) that gives 100% sling-shot power. */
+export const SLING_FULL = 0.4
+
+/**
+ * Sling-shot (pull-back) interpretation of a drag: the ball goes the opposite
+ * way, power follows the pull length (not the flick speed). A point reflection
+ * keeps the curl's handedness, so the curl value is unchanged.
+ * @param fingers simultaneous touches (≥2 → chip)
+ */
+export function slingshotSwipe(sw: SwipeFeatures, fingers = 1): SwipeFeatures {
+  if (sw.isTap) return sw
+  const pull = sw.length / SLING_FULL
+  const power = clampN(0.12 + pull * 0.88, 0, 1.15)
+  return { ...sw, dir: { x: -sw.dir.x, y: -sw.dir.y }, power, chip: fingers >= 2 }
+}
+
+/** Seconds for one full oscillation (min → max → min) of the power meter. */
+export const OSC_PERIOD = 1.1
+export const OSC_MIN = 0.15
+export const OSC_MAX = 1.15
+
+/** Triangle-wave power meter: OSC_MIN at t=0, OSC_MAX at half a period. */
+export function oscillatingPower(t: number, period = OSC_PERIOD): number {
+  const ph = (((t / period) % 1) + 1) % 1
+  const tri = ph < 0.5 ? ph * 2 : 2 - ph * 2
+  return OSC_MIN + (OSC_MAX - OSC_MIN) * tri
+}
+
+/** Charge-while-held power (the default scheme). */
+export const CHARGE_TIME = 0.95
+export function chargePower(held: number): number {
+  return Math.min(1.15, Math.max(0, held) / CHARGE_TIME)
+}
+
+/** Mouse-wheel curl step per notch. */
+export const WHEEL_CURL_STEP = 0.2
+
+/** Mouse wheel → curl: wheel up bends one way, down the other, clamped to ±1. */
+export function wheelCurl(curl: number, deltaY: number): number {
+  if (!deltaY) return curl
+  return clampN(Math.round((curl + (deltaY < 0 ? WHEEL_CURL_STEP : -WHEEL_CURL_STEP)) * 10) / 10, -1, 1)
+}
+
+/** Default stick dead zone. */
+export const PAD_DEADZONE = 0.18
+
+/**
+ * Radial dead zone with rescale: |v| ≤ dz → 0, full deflection (≈0.93, real
+ * sticks rarely hit 1) → 1, linear in between, direction preserved.
+ */
+export function radialDeadzone(x: number, y: number, dz = PAD_DEADZONE): { x: number; y: number; mag: number } {
+  const m = Math.hypot(x, y)
+  if (m <= dz) return { x: 0, y: 0, mag: 0 }
+  const mag = Math.min(1, (m - dz) / Math.max(0.05, 0.93 - dz))
+  return { x: (x / m) * mag, y: (y / m) * mag, mag }
+}
+
+/** Single-axis dead zone with rescale (curl stick). */
+export function axisDeadzone(v: number, dz = PAD_DEADZONE): number {
+  const a = Math.abs(v)
+  if (a <= dz) return 0
+  return Math.sign(v) * Math.min(1, (a - dz) / Math.max(0.05, 0.93 - dz))
+}
+
+/** Analog power from a trigger depth 0..1 → 0.3..1.15 (fully pressed = overhit). */
+export function analogPower(trigger: number): number {
+  return 0.3 + 0.85 * clamp01(trigger)
+}
+
+/**
+ * Analog aim: the stick's lateral (pitch-y) deflection picks the spot on the
+ * goal line directly, independent of where the shooter stands. Centre stick =
+ * centre of goal; full deflection = just outside the post.
+ */
+export function analogShotTarget(stickY: number): Vec2 {
+  const half = (POST_Y_HIGH - POST_Y_LOW) / 2 + 0.45
+  return { x: PITCH_LENGTH + BALL_RADIUS * 2, y: GOAL_CENTER_Y + clampN(stickY, -1, 1) * half }
+}
+
+/**
+ * Vision-based pass options: team-mates the hero "sees" as good outlets, best
+ * first. Vision widens the scanned range (22 m → 52 m) and how many options
+ * are shown (1 / 2 / 3). Scores lane openness, forward progress and a
+ * comfortable distance. Deterministic.
+ * @param vision hero vision attribute 0..100
+ */
+export function rankPassOptions(from: Vec2, vision: number, mates: readonly PassCandidate[], opponents: readonly Vec2[], attackX = 1): string[] {
+  const v = clampN(vision, 0, 100)
+  const range = 22 + v * 0.3
+  const count = v < 45 ? 1 : v < 70 ? 2 : 3
+  const scored: { id: string; s: number }[] = []
+  for (const m of mates) {
+    const d = dist(from, m.pos)
+    if (d < 4 || d > range) continue
+    const open = laneOpenness(from, m.pos, opponents)
+    if (open < 0.2) continue
+    const fwd = ((m.pos.x - from.x) * attackX) / 30
+    scored.push({ id: m.id, s: open * 1.2 + clampN(fwd, -0.6, 1) - Math.abs(d - 16) / 40 })
+  }
+  scored.sort((a, b) => b.s - a.s || (a.id < b.id ? -1 : 1))
+  return scored.slice(0, count).map((x) => x.id)
+}

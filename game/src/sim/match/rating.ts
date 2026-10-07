@@ -53,6 +53,13 @@ function kindAdjustment(kind: HighlightKind, outcome: HighlightResult['outcome']
 }
 
 /**
+ * Aim-assist reward multipliers (GDD 3.3, WP-13): full assist earns less,
+ * manual aiming more. Applied to the positive part of a played moment's
+ * rating delta; mistakes are never amplified.
+ */
+export const ASSIST_REWARD: Readonly<Record<'full' | 'half' | 'manual', number>> = { full: 0.8, half: 1, manual: 1.25 }
+
+/**
  * Rating change for one resolved highlight: outcome, micro-stats and cards.
  */
 export function highlightRatingDelta(kind: HighlightKind, r: HighlightResult): number {
@@ -67,6 +74,7 @@ export function highlightRatingDelta(kind: HighlightKind, r: HighlightResult): n
   d += Math.min(r.shotsOnTarget, r.shots) * 0.03
   if (r.card === 'yellow') d -= 0.3
   if (r.card === 'red') d -= 1.5
+  if (d > 0 && r.assistMult !== undefined) d *= r.assistMult
   return d
 }
 

@@ -46,6 +46,8 @@ import {
   applyKick,
   crossZones,
   interpretSwipe,
+  laneOpenness,
+  rankPassOptions,
   type CrossZone,
   leadPosition,
   pickPassTarget,
@@ -73,6 +75,7 @@ import {
   type TrajectoryPoint,
 } from './physics'
 import { offsideSnapshot } from './offside'
+import { ASSIST_REWARD } from '../sim/match/rating'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
 import { buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import {
@@ -113,6 +116,10 @@ export const OPP_KEEPER_REACH = 0.75
 const keeperReach = (k: Pick<Agent, 'team'>): number => (k.team === 'opp' ? OPP_KEEPER_REACH : KEEPER_REACH)
 /** Balls within 0.55 m of the keeper below this height are taken standing (was 1.7: keepers flung themselves past head-high shots). */
 export const KEEPER_STAND_MAX_Z = 2.2
+/** One-two: after a hero pass, a second tap within this many seconds asks the receiver to return it. */
+export const ONE_TWO_WINDOW = 2.2
+/** An armed one-two the receiver could not play is dropped after this long. */
+export const ONE_TWO_ARMED_MAX = 3
 
 /** Difficulty label → opponent sharpness multiplier. */
 export const DIFFICULTY_SCALE: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
@@ -176,6 +183,8 @@ export type RuntimeEvent =
   | { type: 'bullet'; on: boolean }
   | { type: 'out'; x: number; y: number }
   | { type: 'callForBall'; by: string }
+  /** One-two armed: `by` (the receiver of the hero's pass) will return it into the hero's run. */
+  | { type: 'oneTwo'; by: string }
   /** Assistant referee's flag: `by` touched the ball from an offside position. */
   | { type: 'offside'; by: string; team: Team; x: number; y: number }
   | { type: 'end'; result: HighlightResult; reason: string }
@@ -303,6 +312,10 @@ export class HighlightRuntime {
   private readonly shotLog: NonNullable<HighlightResult['shotLog']> = []
   /** Team-mates of the last passer who were offside when the ball was played. */
   private offsideSnap: { team: Team; ids: Set<string> } | null = null
+  /** One-two: the hero just passed to `id`; `armed` once the hero tapped again (return into his run). */
+  private oneTwo: { id: string; t: number; armed: boolean; armedAt: number } | null = null
+  /** Vision pass options cache (ids, best first). */
+  private passOpts: { t: number; ids: string[] } = { t: -1, ids: [] }
 
   constructor(highlight: Highlight, opts: RuntimeOptions = {}) {
     this.highlight = highlight
@@ -399,6 +412,31 @@ export class HighlightRuntime {
   }
 
   /**
+   * One-two prompt for the renderer: the team-mate who would return the ball
+   * (`armed` once requested). Null when no one-two is available.
+   */
+  oneTwoHint(): { id: string; armed: boolean } | null {
+    const o = this.oneTwo
+    if (!o || this.phase !== 'live' || this.owner === this.hero) return null
+    if (!o.armed && this.time - o.t > ONE_TWO_WINDOW) return null
+    return { id: o.id, armed: o.armed }
+  }
+
+  /**
+   * Best pass options the hero "sees" (ids, best first), refreshed every
+   * 0.15 s of game time. Count and scan range grow with Vision. Empty when the
+   * hero is not on the ball.
+   */
+  passOptions(): readonly string[] {
+    if (!this.heroOnBall || this.hero.isKeeper || this.phase !== 'live' || this.setPiece?.kind === 'penalty') return []
+    if (this.passOpts.t >= 0 && this.time - this.passOpts.t < 0.15) return this.passOpts.ids
+    const opp = this.agents.filter((a) => a.team === 'opp').map((a) => a.pos)
+    const ids = rankPassOptions({ x: this.ball.x, y: this.ball.y }, this.hero.attrs.vision ?? 50, this.passCandidates(), opp)
+    this.passOpts = { t: this.time, ids }
+    return ids
+  }
+
+  /**
    * Predicted trajectory for the current aim (noiseless), for the dotted preview line.
    * Returns null when the hero cannot kick.
    */
@@ -449,6 +487,7 @@ export class HighlightRuntime {
   /** Builds the HighlightResult for an outcome with current micro-stats. */
   buildResult(outcome: HighlightOutcome, extra: Partial<HighlightResult> = {}): HighlightResult {
     const r: HighlightResult = { outcome, ...this.stats, ...extra }
+    r.assistMult = ASSIST_REWARD[this.assist]
     if (this.track.length) r.track = this.track.map((p) => ({ ...p }))
     if (this.shotLog.length) {
       const last = this.shotLog[this.shotLog.length - 1]
@@ -481,6 +520,7 @@ export class HighlightRuntime {
       if (this.introLeft <= 0) this.goLive()
     }
 
+    if (this.oneTwo && (this.oneTwo.armed ? this.time - this.oneTwo.armedAt > ONE_TWO_ARMED_MAX : this.time - this.oneTwo.t > ONE_TWO_WINDOW)) this.oneTwo = null
     if (this.phase === 'live') {
       while (this.actions.length) this.handleAction(this.actions.shift()!)
       this.setPieceAI()
@@ -754,6 +794,8 @@ export class HighlightRuntime {
       }
       return
     }
+    // One-two: a second tap shortly after passing asks the receiver to return it into the run.
+    if (this.tryArmOneTwo(act)) return
     // Loose/aerial ball near: header or volley.
     const incoming = this.ballIncomingToHero()
     if (act.kind === 'swipe' && !act.swipe.isTap) this.heroHeaderAim = this.headerAimFromDir(act.swipe.dir)
@@ -782,6 +824,42 @@ export class HighlightRuntime {
       this.heroRequest = { at, t: this.time }
       this.events.push({ type: 'callForBall', by: hero.id })
     }
+  }
+
+  /** Arms the one-two if the action is a tap/press within the window. */
+  private tryArmOneTwo(act: HeroAction): boolean {
+    const o = this.oneTwo
+    if (!o || o.armed || this.time - o.t > ONE_TWO_WINDOW) return false
+    const tap = act.kind === 'action' || act.kind === 'tapAt' || act.kind === 'pass' || act.kind === 'skill' || (act.kind === 'swipe' && act.swipe.isTap)
+    if (!tap) return false
+    const mate = this.agents.find((a) => a.id === o.id)
+    if (!mate) return false
+    // The ball must be with the receiver or still on its way to him.
+    if (this.owner && this.owner !== mate) return false
+    if (!this.owner) {
+      // Still travelling from the hero's boot toward the receiver (moving away from the hero).
+      const away = this.ball.vx * (this.ball.x - this.hero.pos.x) + this.ball.vy * (this.ball.y - this.hero.pos.y) > 0
+      if (this.lastTouch !== this.hero || !away) return false
+    }
+    o.armed = true
+    o.armedAt = this.time
+    mate.think = Math.min(mate.think, 0.05)
+    this.events.push({ type: 'oneTwo', by: mate.id })
+    return true
+  }
+
+  /** The receiver plays the return pass first time into the hero's run. */
+  private playOneTwo(a: Agent): void {
+    this.oneTwo = null
+    const heroC = { id: this.hero.id, pos: this.hero.pos, vel: this.hero.vel }
+    const from = { x: this.ball.x, y: this.ball.y }
+    const target = inField(add(leadPosition(from, heroC, 15, 10), { x: attackDir('hero') * 1.5, y: 0 }), 1)
+    const opp = this.agents.filter((q) => q.team === 'opp').map((q) => q.pos)
+    const lofted = dist(from, target) > 26 || laneOpenness(from, target, opp) < 0.1
+    const kind: KickKind = lofted ? 'lofted' : 'pass'
+    const noiseScale = clampN(1.15 - a01(a.attrs.vision) * 0.5, 0.6, 1.15)
+    const plan = planKick({ kind, from, target, power: 0.65, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale }, this.rng)
+    this.kickBall(a, plan, kind, 0.65, this.hero.id)
   }
 
   private headerAimFromDir(dir: Vec2): Vec2 {
@@ -933,6 +1011,7 @@ export class HighlightRuntime {
       if (SHOT_KINDS.has(kind)) this.stats.shots++
       else this.stats.passes++
       this.heroPassTo = passTo ? { id: passTo, t: this.time } : SHOT_KINDS.has(kind) ? null : { id: '*', t: this.time }
+      this.oneTwo = passTo && (kind === 'pass' || kind === 'lofted') ? { id: passTo, t: this.time, armed: false, armedAt: -1 } : null
       this.heroDeliveryAt = SHOT_KINDS.has(kind) ? -1 : this.time
       this.heroHeaderAim = null
     }
@@ -1009,6 +1088,8 @@ export class HighlightRuntime {
     if (a.isHero && this.defending && !a.isKeeper && prevOwner === null && this.lastTouchBefore?.team === 'opp') this.stats.tackles++
     this.heroPassTo = null
     if (a.team !== 'hero') this.heroRequest = null
+    if (this.oneTwo && a.id !== this.oneTwo.id) this.oneTwo = null
+    else if (this.oneTwo?.armed) a.think = Math.min(a.think, 0.02)
 
     // Shot ends when someone controls the ball (unless keeper hold handled elsewhere).
     if (!a.isKeeper) this.shot = null
@@ -1224,6 +1305,8 @@ export class HighlightRuntime {
   private carrierAct(a: Agent): void {
     const w = this.aiWorld()
     const heldFor = this.time - this.ownerSince
+    // One-two requested: first-time return into the hero's run.
+    if (a.team === 'hero' && this.oneTwo?.armed && this.oneTwo.id === a.id) return this.playOneTwo(a)
     // Hero called for the ball.
     if (a.team === 'hero' && this.heroRequest && this.time - this.heroRequest.t < 1.6 && heldFor > 0.2) {
       const p = 0.4 + (a.relationToHero / 100) * 0.35 + a01(a.attrs.vision) * 0.25

@@ -175,6 +175,12 @@ export interface HighlightResult {
   track?: Vec2[]
   /** Hero shots taken during the moment (pitch meters, hero attacks +x). */
   shotLog?: { x: number; y: number; header?: boolean; outcome?: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork' }[]
+  /**
+   * Aim-assist reward multiplier for the interactive moment (WP-13): less
+   * assist, more reward. Scales the positive part of the moment's rating
+   * delta (and so match XP). Absent = 1 (auto-resolved moments).
+   */
+  assistMult?: number
 }
 
 /** One line of the hero's rating breakdown (sums, with the base, to the final rating before clamping). */
