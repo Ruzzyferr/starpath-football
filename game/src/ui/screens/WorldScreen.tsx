@@ -109,7 +109,7 @@ export function WorldScreen() {
     if (lg) setLeagueId(lg.id)
   }
   const league = s.world.leagues[leagueId]
-  const comp = Object.values(s.world.competitions).find((c) => c.type === 'league' && c.leagueId === leagueId)
+  const table = data.leagueTable(leagueId)
   const picker = <LeaguePicker countryId={countryId} leagueId={leagueId} onCountry={onCountry} onLeague={setLeagueId} />
 
   let body = null
@@ -118,9 +118,9 @@ export function WorldScreen() {
       <div class="stack">
         {picker}
         {league && <h2 class="h2 world-league-name">{league.name} <span class="t-lo t-sm">{t('world.tier', { n: league.tier })}</span></h2>}
-        {comp?.table ? (
+        {table ? (
           <LeagueTable
-            rows={comp.table}
+            rows={table}
             team={(id) => data.team(id)}
             highlightId={own?.id}
             zones={zonesForLeague(league)}

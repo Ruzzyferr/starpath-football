@@ -19,6 +19,7 @@ import { isHeroMatchday } from './calendar'
 /** Save-slot card info (matches state/save SaveSummary). */
 export function saveSummary(state: GameState): SaveSummary {
   const h = state.hero
+  const crest = heroClub(state)?.crest
   return {
     heroName: `${h.firstName} ${h.lastName}`,
     clubName: heroClub(state)?.name ?? (h.retired ? 'Retired' : 'Free agent'),
@@ -27,6 +28,7 @@ export function saveSummary(state: GameState): SaveSummary {
     ovr: heroOvr(h),
     money: Math.round(state.life.money),
     playTimeSec: state.meta.playTimeSec,
+    ...(crest ? { crest } : {}),
   }
 }
 

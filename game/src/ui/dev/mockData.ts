@@ -416,5 +416,10 @@ export const mockData: GameData = {
     const s = getState()
     return s ? teamView(s, id) : null
   },
+  leagueTable(leagueId) {
+    const s = getState()
+    const comp = s ? Object.values(s.world.competitions).find((c) => c.type === 'league' && c.leagueId === leagueId) : undefined
+    return comp?.table ?? null
+  },
 }
 

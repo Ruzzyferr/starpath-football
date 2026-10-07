@@ -16,7 +16,7 @@ export function InboxScreen() {
   const [filter, setFilter] = useState<Filter>('all')
   if (!s) return <Page title={t('inbox.title')}><EmptyState /></Page>
   const club = heroClub.value
-  const all = [...s.life.news].sort((a, b) => b.season - a.season || b.week - a.week)
+  const all = [...s.life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week)
   const list = filter === 'all' ? all : all.filter((n) => sentKey(n) === filter)
   const [front, ...rest] = list
   const c1 = club?.colors.primary ?? '#1fd47a'

@@ -194,15 +194,18 @@ export function ContextPanel() {
   const form = data.formHistory()
   const club = heroClub.value
   const pending = s.pendingEvents.length
-  const results = (club && s.world.competitions
-    ? Object.values(s.world.competitions).find((c) => c.type === 'league' && c.participantIds.includes(club.id))?.table?.find((r) => r.clubId === club.id)?.form
-    : undefined) ?? []
+  const results = (club ? data.leagueTable(club.leagueId)?.find((r) => r.clubId === club.id)?.form : undefined) ?? []
   return (
     <aside class="context-panel" aria-label={t('nav.context')}>
       <div class="ctx-block">
         <h2 class="micro t-mid">{t('ui.ctx.nextMatch')}</h2>
         {fx ? (
-          <button type="button" class="ctx-fixture" onClick={() => navigate(fx.daysUntil === 0 ? 'preMatch' : 'club', fx.daysUntil === 0 ? undefined : { tab: 'fixtures' })}>
+          <button type="button" class="ctx-fixture" onClick={() => {
+            if (fx.daysUntil === 0) {
+              actions.playMatch()
+              navigate('preMatch')
+            } else navigate('club', { tab: 'fixtures' })
+          }}>
             <span class="ctx-team"><Crest crest={fx.home.crest} size={40} /><span class="truncate">{fx.home.shortName}</span></span>
             <span class="ctx-vs">
               <span class="score-font ctx-when">{fx.daysUntil === 0 ? t('common.today') : t('common.inDays', { n: fx.daysUntil })}</span>

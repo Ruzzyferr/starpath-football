@@ -43,7 +43,33 @@ export const GFLAG = {
   ntSeen: 'g:ntSeen',
   /** Absolute week of the last AI winter window run. */
   winterDone: 'g:winterDone',
+  /** JSON {@link NotableTransfer}[]: biggest recent AI transfers (newest window first). */
+  transfers: 'g:transfers',
+  /** JSON {season, total}: after-tax income earned this season (weekly economy). */
+  earned: 'g:earned',
 } as const
+
+/** A transfer worth a headline (stored for the UI's transfer news). */
+export interface NotableTransfer {
+  playerId: string
+  name: string
+  fromClubId: string | null
+  toClubId: string
+  fee: number
+  season: number
+  week: number
+}
+
+/** Keep the biggest transfers of an AI window (max 12 per window, 24 overall). */
+export function recordTransfers(state: GameState, records: readonly { playerId: string; fromClubId: string | null; toClubId: string; fee: number; season: number }[]): void {
+  const top = [...records].sort((a, b) => b.fee - a.fee).slice(0, 12).map((r): NotableTransfer => {
+    const p = state.world.players[r.playerId]
+    return { ...r, name: p ? `${p.firstName} ${p.lastName}` : r.playerId, week: state.calendar.week }
+  })
+  if (top.length === 0) return
+  const prev = readJson<NotableTransfer[]>(state.life, GFLAG.transfers, [])
+  writeJson(state.life, GFLAG.transfers, [...top, ...prev].slice(0, 24))
+}
 
 export function readJson<T>(life: Life, key: string, fallback: T): T {
   const raw = life.flags[key]

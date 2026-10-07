@@ -209,13 +209,13 @@ function Fixtures() {
 function Table() {
   const s = gameState.value!
   const club = heroClub.value!
-  const comp = Object.values(s.world.competitions).find((c) => c.type === 'league' && c.leagueId === club.leagueId)
+  const table = data.leagueTable(club.leagueId)
   const lg = s.world.leagues[club.leagueId]
-  if (!comp?.table) return <EmptyState icon="list" title={t('club.table.empty')} />
+  if (!table) return <EmptyState icon="list" title={t('club.table.empty')} />
   return (
     <div class="stack">
       {lg && <p class="t-sm t-mid">{t('club.table.league', { name: lg.name, tier: lg.tier })}</p>}
-      <LeagueTable rows={comp.table} team={(id) => data.team(id)} highlightId={club.id} zones={zonesFor(club, s.world.leagues)} caption={t('ui.table.caption', { league: lg?.name ?? '' })} />
+      <LeagueTable rows={table} team={(id) => data.team(id)} highlightId={club.id} zones={zonesFor(club, s.world.leagues)} caption={t('ui.table.caption', { league: lg?.name ?? '' })} />
     </div>
   )
 }

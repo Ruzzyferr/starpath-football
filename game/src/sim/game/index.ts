@@ -19,3 +19,7 @@ export {
 export { activityContext, heroClub, transferWindow, GFLAG, type WindowKind } from './internal'
 export { describeEvent, type EventView, type ResolvedEffect } from './eventsAdapter'
 export { saveGame, loadGame, packState, unpackState, packedSize, isPacked } from './persist'
+export {
+  interviewFor, answerInterview, boldFollowers, INTERVIEW_TONES,
+  type InterviewContext, type InterviewDef, type InterviewOptionDef, type InterviewEffect, type InterviewEffectKey, type InterviewTone, type InterviewAnswer,
+} from './interview'

@@ -16,7 +16,7 @@ import { signal, computed, effect } from '@preact/signals'
 import type {
   AssetDef, AttributeGroup, AttributeKey, CrestSpec, Difficulty, Foot, Formation, GameState,
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
-  SquadRole, Appearance, Archetype, Background, Investment, Country,
+  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow,
 } from '../core/types'
 import { currentLang } from '../i18n'
 
@@ -541,6 +541,8 @@ export interface GameData {
   seasonSummary(): SeasonSummaryView | null
   saveSlots(): SaveSlotInfo[]
   team(clubId: string): TeamView | null
+  /** Sorted league table of the current (or upcoming) season, null if none. */
+  leagueTable(leagueId: string): TableRow[] | null
 }
 
 // ───────────────────────── Signals ─────────────────────────
@@ -597,6 +599,12 @@ export function back(fallback: ScreenId = 'home'): void {
 export function canGoBack(): boolean {
   return history.length > 0
 }
+
+/**
+ * Screen the backend asks the UI to show (e.g. the season review after the
+ * last matchday). Actions never navigate themselves; App consumes this.
+ */
+export const pendingNav = signal<ScreenId | null>(null)
 
 /** Index of the event currently shown in the decision modal (null = closed). */
 export const activeEvent = signal<number | null>(null)

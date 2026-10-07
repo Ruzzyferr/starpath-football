@@ -15,7 +15,7 @@ import { ensureRelation, ensureTeammates } from '../life/relationships'
 import { sponsorOffers, type SponsorOffer } from '../life/sponsors'
 import { clubStrength, leagueTableFor, playerDisplayName, squadPlayers } from '../world/queries'
 import { endOfSeason, playerSeasonScore, pruneCompetitions, seasonAwards, MIN_AWARD_APPS, YOUNG_PLAYER_MAX_AGE } from '../world/season'
-import { GFLAG, clubContextOf, heroClub, log, readJson, transferWindow, writeJson } from './internal'
+import { GFLAG, clubContextOf, heroClub, log, readJson, recordTransfers, transferWindow, writeJson } from './internal'
 
 // ───────────────────────── Club relations ─────────────────────────
 
@@ -270,6 +270,7 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
   // ── World rollover ──
   const leagueBefore = club?.leagueId ?? null
   const { summary } = endOfSeason(w, rng, season)
+  recordTransfers(state, summary.transfers)
   const trophies: LText[] = []
   if (club) {
     for (const c of summary.champions) {

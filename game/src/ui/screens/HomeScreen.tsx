@@ -50,7 +50,8 @@ export function HomeScreen() {
   const c1 = club?.colors.primary ?? '#1fd47a'
   const c2 = club?.colors.secondary ?? '#3da5ff'
   const greet = GREETING[Math.max(0, Math.min(2, cal.slot))]
-  const news = life.news.slice(0, 3)
+  // Newest first (the sim appends; reverse before the stable sort by date).
+  const news = [...life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week).slice(0, 3)
   const matchToday = fx?.daysUntil === 0
   const yearsLeft = h.contract ? Math.max(0, h.contract.untilSeason - cal.season) : 0
 

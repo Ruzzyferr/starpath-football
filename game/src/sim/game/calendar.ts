@@ -30,8 +30,8 @@ import { clubStrength } from '../world/queries'
 import { aiTransferWindow, playFixturesFor, weeklyTick } from '../world/season'
 import { rollEvents } from './eventsAdapter'
 import {
-  GFLAG, activityContext, emptyWeek, heroAvailable, heroClub, isInSeason, isOffSeason, log, logAll,
-  transferWindow, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
+  GFLAG, activityContext, emptyWeek, recordTransfers, heroAvailable, heroClub, isInSeason, isOffSeason, log, logAll,
+  readJson, transferWindow, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
 import { autoPlayHeroMatch, clearActiveMatch, HERO_ID } from './match'
 import {
@@ -121,6 +121,10 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
   if (!hero.retired) {
     const eco = weeklyEconomy(rng, life, hero, { calendar: cal })
     logAll(state, out, eco.lines, 'money', '💶')
+    const b = eco.breakdown
+    const income = b.wage + b.sponsors + b.rent + b.business + b.investmentYield + b.tax + b.agentFee
+    const earned = readJson<{ season: number; total: number }>(life, GFLAG.earned, { season: cal.season, total: 0 })
+    writeJson(life, GFLAG.earned, { season: cal.season, total: Math.round((earned.season === cal.season ? earned.total : 0) + Math.max(0, income)) })
     logAll(state, out, weeklySponsorTick(hero, life, cal), 'money')
     logAll(state, out, weeklySocialTick(rng, hero, life, {
       calendar: cal, avgRating: wk.rated > 0 ? wk.ratingSum / wk.rated : undefined, goalContributions: wk.contributions,
@@ -160,9 +164,9 @@ function onNewWeek(state: GameState, rng: Rng, r: AdvanceReport): void {
   }
   if (cal.week === WINTER_WINDOW_WEEK) {
     const club = heroClub(state)
-    aiTransferWindow(state.world, rng, cal.season, {
+    recordTransfers(state, aiTransferWindow(state.world, rng, cal.season, {
       maxPerClub: 1, intensity: 0.5, protectedClubIds: club ? new Set([club.id]) : undefined,
-    })
+    }))
     syncClubRelations(state)
   }
   if (cal.week === 20) evaluateNationalTeam(state, rng, r.lines)

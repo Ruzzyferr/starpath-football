@@ -1,4 +1,5 @@
 import type { RelationKind, Relationship } from '../../../core/types'
+import { START_YEAR } from '../../../core/config'
 import { lt, t } from '../../../i18n'
 import { Avatar, Button, EmptyState, Hearts, SectionTitle, toast } from '../../components'
 import type { IconName } from '../../icons'
@@ -83,7 +84,7 @@ export function Relations() {
           <section key={g} class="stack">
             <SectionTitle>{t(`life.rel.groups.${g}`)}</SectionTitle>
             <div class="life-people">
-              {list.map((r) => <PersonCard key={r.id} rel={r} week={s.calendar.week} />)}
+              {list.map((r) => <PersonCard key={r.id} rel={r} week={(s.calendar.season - START_YEAR) * 52 + s.calendar.week} />)}
             </div>
           </section>
         )

@@ -10,7 +10,7 @@
  * Envelopes carry a schema version and run through `migrate()` on load.
  */
 import { SAVE_VERSION } from '../core/config'
-import type { GameState } from '../core/types'
+import type { CrestSpec, GameState } from '../core/types'
 
 export const SLOT_COUNT = 3
 export const BACKUP_COUNT = 3
@@ -39,6 +39,8 @@ export interface SaveSummary {
   ovr: number
   money: number
   playTimeSec: number
+  /** Club crest for the slot card (optional, newer saves). */
+  crest?: CrestSpec
 }
 
 export type LoadResult =
@@ -186,11 +188,17 @@ export class IdbStorage implements SaveStorage {
   private dbp: Promise<IDBDatabase> | null = null
 
   private db(): Promise<IDBDatabase> {
-    this.dbp ??= new Promise((resolve, reject) => {
+    this.dbp ??= new Promise<IDBDatabase>((resolve, reject) => {
+      // Some WebViews / headless shells never answer the open request: give up after 4 s
+      // so callers fall back to localStorage instead of hanging forever.
+      const timer = setTimeout(() => {
+        this.dbp = null // retry on the next call
+        reject(new Error('IndexedDB open timed out'))
+      }, 4000)
       const req = indexedDB.open('starpath', 1)
       req.onupgradeneeded = () => req.result.createObjectStore('kv')
-      req.onsuccess = () => resolve(req.result)
-      req.onerror = () => reject(req.error)
+      req.onsuccess = () => { clearTimeout(timer); resolve(req.result) }
+      req.onerror = () => { clearTimeout(timer); reject(req.error) }
     })
     return this.dbp
   }

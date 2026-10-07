@@ -122,6 +122,7 @@ export function PlannerScreen() {
 
   const doNow = (a: ActivityView) => {
     const deltas = actions.doActivity(a.id)
+    if (deltas.length === 0) return // the backend already explained why it failed
     const parts = deltas.slice(0, 3).map((d) => `${d.value > 0 ? '+' : ''}${d.key === 'money' ? formatMoney(d.value) : d.value} ${tx(`data.stat.${d.key}`, undefined, tx(`data.attr.${d.key}`, undefined, d.key))}`)
     toast(`${t('planner.done', { name: lt(a.name) })}${parts.length ? ' — ' + parts.join(', ') : ''}`, 'success', actIcon(a))
   }

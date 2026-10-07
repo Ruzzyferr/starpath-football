@@ -5,7 +5,7 @@
  */
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
-import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, screen, type ScreenId } from './store'
+import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
 import { EventModalHost } from './screens/EventModal'
@@ -130,7 +130,20 @@ function useClubTint() {
   }, [c?.primary, c?.secondary])
 }
 
+/** Show screens the backend requested (e.g. the season review), once we are back in the shell. */
+function usePendingNav() {
+  const want = pendingNav.value
+  const id = screen.value.id
+  useEffect(() => {
+    if (!want || !gameState.value) return
+    if (id === 'liveMatch' || id === 'preMatch' || id === 'postMatch' || id === want) return
+    pendingNav.value = null
+    navigate(want, undefined, { tab: true })
+  }, [want, id])
+}
+
 export function App() {
+  usePendingNav()
   useKeyboardShortcuts()
   useEventAutoOpen()
   useClubTint()
