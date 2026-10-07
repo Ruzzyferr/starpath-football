@@ -66,6 +66,8 @@ export interface StartHighlightOptions {
   autopilot?: boolean
   /** Players' gender (the world follows the hero): female heads get ponytails/buns. */
   gender?: 'male' | 'female'
+  /** Observer for runtime events (UI control hints). Never affects play. */
+  onEvent?: (e: RuntimeEvent) => void
 }
 
 /** Handle returned by {@link startHighlight}. */
@@ -937,7 +939,15 @@ export class MatchScene extends Phaser.Scene {
   private handleEvents(evs: RuntimeEvent[]): void {
     const rt = this.rt
     const cam = this.cameras.main
+    const observe = this.data0.opts.onEvent
     for (const e of evs) {
+      if (observe) {
+        try {
+          observe(e)
+        } catch {
+          /* UI observer errors never break play */
+        }
+      }
       switch (e.type) {
         case 'kick': {
           this.sfx.kick(e.power)

@@ -22,6 +22,7 @@ import { en as season } from './sections/season'
 import { en as inbox } from './sections/inbox'
 import { en as settings } from './sections/settings'
 import { en as saves } from './sections/saves'
+import { en as help } from './sections/help'
 
 export const en: Shape<typeof tr> = {
   common,
@@ -45,4 +46,5 @@ export const en: Shape<typeof tr> = {
   inbox,
   settings,
   saves,
+  help,
 }

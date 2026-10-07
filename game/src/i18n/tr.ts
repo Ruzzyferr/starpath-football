@@ -20,6 +20,7 @@ import { tr as season } from './sections/season'
 import { tr as inbox } from './sections/inbox'
 import { tr as settings } from './sections/settings'
 import { tr as saves } from './sections/saves'
+import { tr as help } from './sections/help'
 
 export const tr = {
   common,
@@ -43,4 +44,5 @@ export const tr = {
   inbox,
   settings,
   saves,
+  help,
 }
