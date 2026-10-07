@@ -29,7 +29,14 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run lint:i18n
-      - run: npm test
+      # Unit tests with v8 coverage; thresholds for src/sim/** live in vite.config.ts (blocking).
+      - run: npm run test:coverage
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage
+          path: game/coverage
+          if-no-files-found: ignore
       - run: npm run build
       - uses: actions/upload-artifact@v4
         with:

@@ -26,5 +26,17 @@ export default defineConfig({
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
   // The e2e suite (playwright.config.ts) runs without HMR so edits made while it runs cannot reload pages mid-test.
   server: process.env.E2E_NO_HMR ? { hmr: false, watch: { ignored: ['**/*'] } } : undefined,
-  test: { globals: true, environment: 'node', include: ['src/**/*.test.ts'] },
+  test: {
+    globals: true,
+    environment: 'node',
+    include: ['src/**/*.test.ts'],
+    coverage: {
+      provider: 'v8',
+      reporter: ['text-summary', 'lcov', 'json-summary'],
+      include: ['src/sim/**/*.ts'],
+      exclude: ['src/**/*.test.ts', 'src/sim/**/testFixtures.ts', 'src/sim/**/testHelpers.ts', 'src/sim/game/balanceSim.ts'],
+      // Floors for sim/** = measured level minus a small margin; raise them as coverage grows.
+      thresholds: { lines: 94, functions: 93, branches: 81, statements: 91 },
+    },
+  },
 })
