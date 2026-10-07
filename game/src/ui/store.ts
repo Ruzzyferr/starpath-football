@@ -613,6 +613,9 @@ export interface GameActions {
   buy(assetId: string): boolean
   sell(assetIndex: number): number
   bankDeposit(amount: number): void
+  /** Lock cash in a fixed-term deposit (13/26/52 weeks). */
+  bankTermDeposit(amount: number, weeks: number): void
+  bankBreakTerm(id: string): void
   bankWithdraw(amount: number): void
   takeLoan(amount: number, weeks: number): boolean
   repayLoan(amount: number): void

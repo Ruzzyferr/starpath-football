@@ -10,7 +10,7 @@ import type { AttributeGroup, AttributeKey, GameState, LText, RelationKind } fro
 import { Rng, clamp, hashString } from '../../core/rng'
 import { ADULT_AGE, absWeek, isAdult } from '../../sim/career/common'
 import type { ContractTerms, NegotiationState } from '../../sim/career/contract'
-import { renewalOffer } from '../../sim/career/contract'
+import { extraBonusLimits, renewalOffer } from '../../sim/career/contract'
 import { heroOvr } from '../../sim/career/progression'
 import type { TrainingType } from '../../sim/career/training'
 import { TRAINING_TYPES } from '../../sim/career/training'
@@ -284,6 +284,18 @@ const POST_TEXT: Record<PostKind, LText> = {
 
 let nego: { offerId: string; kind: NegotiationView['kind']; clubId: string } | null = null
 
+/** The extra clauses / bonuses of a terms record as an OfferTerms patch. */
+function extraOf(t: ContractTerms): Partial<OfferTerms> {
+  return {
+    ...(t.insurance ? { insurance: true } : {}),
+    ...(t.minutesGuarantee ? { minutesGuarantee: true } : {}),
+    ...(t.imageRights ? { imageRights: true } : {}),
+    ...(t.appearanceBonus ? { appearanceBonus: t.appearanceBonus } : {}),
+    ...(t.promotionBonus ? { promotionBonus: t.promotionBonus } : {}),
+    ...(t.loyaltyBonus ? { loyaltyBonus: t.loyaltyBonus } : {}),
+  }
+}
+
 function negoView(s: GameState, st: NegotiationState, lines: LText[]): NegotiationView {
   const t = st.offer.terms
   const q = s.life.agent?.quality ?? 0
@@ -300,16 +312,20 @@ function negoView(s: GameState, st: NegotiationState, lines: LText[]): Negotiati
           : L('İmza parası konusunda biraz daha zorlayabiliriz.', 'We can push a little more on the signing bonus.')
   const club = teamViewOr(s, st.offer.clubId)
   const rc = t.releaseClause ?? st.hidden.minReleaseClause
+  const xl = extraBonusLimits(st)
   return {
     club,
     kind: nego?.kind ?? (st.offer.kind === 'renewal' ? 'renewal' : st.offer.loan ? 'loan' : 'transfer'),
-    clubOffer: { wage: t.wage, years: t.years, signingBonus: t.signingBonus, goalBonus: t.goalBonus, releaseClause: t.releaseClause, role: t.role, ...(t.formGuarantee ? { formGuarantee: true } : {}) },
+    clubOffer: { wage: t.wage, years: t.years, signingBonus: t.signingBonus, goalBonus: t.goalBonus, releaseClause: t.releaseClause, role: t.role, ...(t.formGuarantee ? { formGuarantee: true } : {}), ...extraOf(t) },
     ranges: {
       wage: [Math.round(t.wage * 0.5), Math.max(Math.round(t.wage * 2.2), st.hidden.maxWage)],
       years: [1, 5],
       signingBonus: [0, Math.max(Math.round(t.wage * 30), st.hidden.maxSigningBonus * 2)],
       goalBonus: [0, Math.max(Math.round(t.wage * 0.6), st.hidden.maxGoalBonus * 2, 100)],
       releaseClause: [Math.round(rc * 0.4), Math.round(Math.max(rc * 2.5, 100_000))],
+      appearanceBonus: [0, Math.round(xl.appearanceBonus * 1.5)],
+      promotionBonus: [0, Math.round(xl.promotionBonus * 1.5)],
+      loyaltyBonus: [0, Math.round(xl.loyaltyBonus * 1.5)],
     },
     patience: Math.round(st.patience),
     round: st.round + 1,
@@ -493,6 +509,18 @@ export const realActions: GameActions = {
     if (!r.ok) notify(r.error)
     commit(s)
   },
+  bankTermDeposit(amount, weeks) {
+    const s = get()
+    const r = G.bankTermDeposit(s, Math.round(amount), weeks)
+    if (!r.ok) notify(r.error)
+    commit(s)
+  },
+  bankBreakTerm(id) {
+    const s = get()
+    const r = G.bankBreakTerm(s, id)
+    if (!r.ok) notify(r.error)
+    commit(s)
+  },
   bankWithdraw(amount) {
     const s = get()
     const r = G.bankWithdraw(s, Math.round(amount))
@@ -672,6 +700,12 @@ export const realActions: GameActions = {
       wage: Math.round(terms.wage), years: terms.years, signingBonus: Math.round(terms.signingBonus), goalBonus: Math.round(terms.goalBonus),
       releaseClause: terms.releaseClause === null ? null : Math.round(terms.releaseClause), role: terms.role,
       ...(terms.formGuarantee !== undefined ? { formGuarantee: terms.formGuarantee } : {}),
+      ...(terms.insurance !== undefined ? { insurance: terms.insurance } : {}),
+      ...(terms.minutesGuarantee !== undefined ? { minutesGuarantee: terms.minutesGuarantee } : {}),
+      ...(terms.imageRights !== undefined ? { imageRights: terms.imageRights } : {}),
+      ...(terms.appearanceBonus !== undefined ? { appearanceBonus: Math.round(terms.appearanceBonus) } : {}),
+      ...(terms.promotionBonus !== undefined ? { promotionBonus: Math.round(terms.promotionBonus) } : {}),
+      ...(terms.loyaltyBonus !== undefined ? { loyaltyBonus: Math.round(terms.loyaltyBonus) } : {}),
     }
     const r = G.counterNegotiation(s, ask)
     if (r.value) negotiation.value = negoView(s, r.value, r.lines)

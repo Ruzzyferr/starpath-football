@@ -7,11 +7,11 @@
 import '../../../styles/screens/legacy.css'
 import { lt, t } from '../../../i18n'
 import type { SquadRole } from '../../../core/types'
-import { Button, Card, CardHeader, Switch } from '../../components'
+import { Button, Card, CardHeader, Switch, toast } from '../../components'
 import { formatMoney, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate } from '../../store'
 import {
-  clubRecordRows, decayWarning, expectedMinutes, formClause, market, personalRecordRows, potential, retirementView, type RecordRow,
+  benchComplaintAvailable, complainBench, clubRecordRows, decayWarning, expectedMinutes, formClause, market, personalRecordRows, potential, retirementView, type RecordRow,
 } from '../../backend/meta'
 
 const starsText = (n: number): string => '★'.repeat(Math.floor(n)) + (n % 1 >= 0.5 ? '½' : '')
@@ -46,6 +46,31 @@ function Records({ rows, title, club }: { rows: RecordRow[]; title: string; club
   )
 }
 
+/** Bench-complaint decision (polite / demand / public) after a bench streak. */
+export function BenchComplaintCard() {
+  const s = gameState.value
+  if (!s || !benchComplaintAvailable()) return null
+  const go = (a: 'polite' | 'demand' | 'public') => {
+    const r = complainBench(a)
+    if (r.ok) toast(r.text, r.outcome === 'promised' ? 'success' : 'info')
+  }
+  return (
+    <Card pad="md" data-testid="bench-complaint">
+      <CardHeader title={t('meta.complaint.title')} icon="bell" sub={t('meta.complaint.hint')} />
+      <div class="stack" style={{ gap: '8px' }}>
+        {(['polite', 'demand', 'public'] as const).map((a) => (
+          <div class="stack" style={{ gap: '2px' }} key={a}>
+            <Button variant={a === 'public' ? 'danger' : a === 'demand' ? 'secondary' : 'primary'} block onClick={() => go(a)} data-testid={`complain-${a}`}>
+              {t(`meta.complaint.${a}`)}
+            </Button>
+            <span class="t-xs t-lo">{t(`meta.complaint.${a}Hint`)}</span>
+          </div>
+        ))}
+      </div>
+    </Card>
+  )
+}
+
 /** Profile block: decay warning, potential, form clause, personal records, retirement. */
 export function ProfileCareerExtras() {
   const s = gameState.value
@@ -62,6 +87,8 @@ export function ProfileCareerExtras() {
       {decay !== null && !h.retired && (
         <p class="lg-warn t-sm" role="status">{decay > 0 ? t('meta.decay.warn', { n: decay }) : t('meta.decay.now')}</p>
       )}
+      <BenchComplaintCard />
+      {s.life.flags.promised_start === true && <p class="t-xs t-pos" role="status">{t('meta.complaint.promised')}</p>}
       <Card pad="md">
         <CardHeader title={t('meta.potential.title')} icon="star" />
         {pot && (

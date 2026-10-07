@@ -5,6 +5,8 @@ import { Button, Card, CardHeader, Chip, LineChart, MeterRing, Money, Segmented,
 import { formatMoney, formatPercent } from '../../format'
 import { actions, data, gameState, type InvestKind } from '../../store'
 import { UnlockGate } from '../../tutorial/UnlockGate'
+import { absWeek } from '../../../sim/career/common'
+import { TERM_OPTIONS, termInterest } from '../../../sim/life/economy'
 
 const KINDS: InvestKind[] = ['index', 'bonds', 'property', 'startup', 'crypto']
 const step = (max: number) => (max > 1_000_000 ? 10_000 : max > 100_000 ? 1_000 : 100)
@@ -47,6 +49,8 @@ export function Bank() {
   const [repayAmt, setRepayAmt] = useState(0)
   const [kind, setKind] = useState<InvestKind>('index')
   const [invAmt, setInvAmt] = useState(0)
+  const [termWeeks, setTermWeeks] = useState(26)
+  const [termAmt, setTermAmt] = useState(0)
   if (!s) return null
   const { money, bank } = s.life
   const maxMove = Math.max(0, Math.floor(mode === 'deposit' ? money : bank.savings))
@@ -117,6 +121,47 @@ export function Bank() {
           >
             {mode === 'deposit' ? t('life.bank.deposit') : t('life.bank.withdraw')}
           </Button>
+        </div>
+      </Card>
+
+      <Card data-testid="bank-term">
+        <CardHeader title={t('life.bank.term.title')} icon="lock" sub={t('life.bank.term.hint')} />
+        <div class="stack">
+          <Segmented
+            label={t('life.bank.term.title')}
+            value={termWeeks}
+            onChange={setTermWeeks}
+            options={TERM_OPTIONS.map((o) => ({ id: o.weeks, label: t('life.bank.term.weeks', { w: o.weeks, r: +(o.rate * 100).toFixed(1) }) }))}
+          />
+          <Slider label={t('life.bank.amount')} value={Math.min(termAmt, Math.floor(money))} min={0} max={Math.max(1, Math.floor(money))} step={step(money)} onChange={setTermAmt} format={(v) => formatMoney(v)} />
+          <Button
+            variant="secondary"
+            block
+            icon="lock"
+            data-testid="bank-term-open"
+            disabled={Math.min(termAmt, Math.floor(money)) < 1000}
+            onClick={() => {
+              const a = Math.min(termAmt, Math.floor(money))
+              actions.bankTermDeposit(a, termWeeks)
+              toast(t('life.bank.term.opened', { amount: formatMoney(a) }), 'success', 'piggy')
+              setTermAmt(0)
+            }}
+          >
+            {t('life.bank.term.open')}
+          </Button>
+          {(bank.termDeposits ?? []).length === 0 ? (
+            <p class="t-sm t-lo">{t('life.bank.term.empty')}</p>
+          ) : (
+            (bank.termDeposits ?? []).map((d) => (
+              <div class="bank-inv" key={d.id} data-testid="bank-term-row">
+                <div class="grow">
+                  <div class="num">{formatMoney(d.amount)} · {formatPercent(d.rate)}</div>
+                  <div class="t-xs t-lo">{t('life.bank.term.matures', { n: Math.max(0, d.maturesAt - absWeek(s.calendar)), i: formatMoney(Math.round(termInterest(d))) })}</div>
+                </div>
+                <Button size="sm" variant="ghost" onClick={() => { actions.bankBreakTerm(d.id); toast(t('life.bank.term.broken'), 'info', 'coins') }}>{t('life.bank.term.break')}</Button>
+              </div>
+            ))
+          )}
         </div>
       </Card>
 

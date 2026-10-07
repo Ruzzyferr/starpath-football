@@ -50,6 +50,16 @@ function CurrentContract() {
             <div><dt>{t('profile.contract.assistBonus')}</dt><dd class="num">{formatMoney(c.assistBonus)}</dd></div>
             <div><dt class="label-with-tip">{t('contract.terms.releaseClause')}<InfoTip term="releaseClause" /></dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('contract.terms.none')}</dd></div>
           </dl>
+          {(c.insurance || c.minutesGuarantee || c.imageRights || c.appearanceBonus || c.promotionBonus || c.loyaltyBonus) && (
+            <div class="row" style={{ gap: '6px', flexWrap: 'wrap' }} data-testid="ctr-active-clauses" aria-label={t('contract.clauses.active')}>
+              {c.insurance && <Chip tone="info">{t('contract.clauses.insurance')}</Chip>}
+              {c.minutesGuarantee && <Chip tone="info">{t('contract.clauses.minutes')}</Chip>}
+              {c.imageRights && <Chip tone="info">{t('contract.clauses.imageRights')}</Chip>}
+              {c.appearanceBonus ? <Chip>{t('contract.clauses.appearanceBonus')} {formatMoney(c.appearanceBonus)}</Chip> : null}
+              {c.promotionBonus ? <Chip>{t('contract.clauses.promotionBonus')} {formatMoney(c.promotionBonus)}</Chip> : null}
+              {c.loyaltyBonus ? <Chip>{t('contract.clauses.loyaltyBonus')} {formatMoney(c.loyaltyBonus)}</Chip> : null}
+            </div>
+          )}
           <div class="ctr-current-actions">
             <Button variant="primary" icon="handshake" onClick={() => actions.openNegotiation(club.id)}>{t('contract.renew')}</Button>
             <Button variant="secondary" icon="eye" onClick={() => navigate('world', { tab: 'interest' })}>{t('contract.explore')}</Button>
@@ -170,6 +180,15 @@ function Negotiation({ n }: { n: NegotiationView }) {
                 <Segmented label={t('contract.terms.role')} options={ROLES.map((x) => ({ id: x, label: t(`data.role.${x}`) }))} value={terms.role} onChange={(v) => set({ role: v })} />
               </div>
               <FormClauseSwitch value={!!terms.formGuarantee} onChange={(v) => set({ formGuarantee: v })} role={terms.role} />
+              <div class="stack" style={{ gap: '10px' }} data-testid="ctr-clauses">
+                <span class="slider-label">{t('contract.clauses.title')}</span>
+                <Switch label={t('contract.clauses.insurance')} desc={t('contract.clauses.insuranceHint')} checked={!!terms.insurance} onChange={(v) => set({ insurance: v })} />
+                <Switch label={t('contract.clauses.minutes')} desc={t('contract.clauses.minutesHint')} checked={!!terms.minutesGuarantee} onChange={(v) => set({ minutesGuarantee: v })} />
+                <Switch label={t('contract.clauses.imageRights')} desc={t('contract.clauses.imageRightsHint')} checked={!!terms.imageRights} onChange={(v) => set({ imageRights: v })} />
+                {r.appearanceBonus && <Slider id="ctr-app" label={t('contract.clauses.appearanceBonus')} value={terms.appearanceBonus ?? 0} min={0} max={r.appearanceBonus[1]} step={moneyStep(r.appearanceBonus[1])} format={fm} onChange={(v) => set({ appearanceBonus: v })} />}
+                {r.promotionBonus && <Slider id="ctr-promo" label={t('contract.clauses.promotionBonus')} value={terms.promotionBonus ?? 0} min={0} max={r.promotionBonus[1]} step={moneyStep(r.promotionBonus[1])} format={fm} onChange={(v) => set({ promotionBonus: v })} />}
+                {r.loyaltyBonus && <Slider id="ctr-loyal" label={t('contract.clauses.loyaltyBonus')} value={terms.loyaltyBonus ?? 0} min={0} max={r.loyaltyBonus[1]} step={moneyStep(r.loyaltyBonus[1])} format={fm} onChange={(v) => set({ loyaltyBonus: v })} />}
+              </div>
             </div>
           </Card>
         </div>

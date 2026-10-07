@@ -18,7 +18,8 @@ import { absDayOf, GFLAG } from '../../sim/game/internal'
 import { heroOvr } from '../../sim/career/progression'
 import { potentialView, type PotentialView } from '../../sim/career/scouting'
 import { marketReference, type MarketReference } from '../../sim/career/market'
-import { ROLE_EXPECTED_MINUTES, formGuaranteeActive, recentRatings } from '../../sim/career/squadRole'
+import { ROLE_EXPECTED_MINUTES, formGuaranteeActive, recentRatings, type ComplaintApproach } from '../../sim/career/squadRole'
+import { complainAboutBench } from '../../sim/game/actions'
 import { weeksUntilDecay } from '../../sim/career/decay'
 import {
   ACHIEVEMENT_BY_ID, achievementProgress, processAchievementEvent, type AchEvent, type AchievementDef, type AchievementProgress,
@@ -315,6 +316,23 @@ export function formClause(): { has: boolean; active: boolean; last: number[] } 
   const s = current()
   if (!s) return { has: false, active: false, last: [] }
   return { has: !!s.hero.contract?.formGuarantee, active: formGuaranteeActive(s.hero, s.life), last: recentRatings(s.life).slice(-3) }
+}
+
+/** Bench-complaint decision is on offer (after a bench streak, see career/squadRole trackSelection). */
+export function benchComplaintAvailable(): boolean {
+  const s = current()
+  return !!s && !s.hero.retired && s.life.flags.can_complain === true
+}
+
+/** Complain about playing time (polite / demand / public). Returns the outcome and the manager's reply. */
+export function complainBench(approach: ComplaintApproach): { ok: boolean; outcome: string | null; text: string } {
+  const s = get()
+  const r = complainAboutBench(s, approach)
+  commit(s)
+  if (!r.ok) return { ok: false, outcome: null, text: r.error ? render(r.error) : '' }
+  if (r.lines[0]) notify(r.lines[0], 'info')
+  scheduleAutosave()
+  return { ok: true, outcome: r.value ?? null, text: r.lines[0] ? render(r.lines[0]) : '' }
 }
 
 export const expectedMinutes = (role: keyof typeof ROLE_EXPECTED_MINUTES): [number, number] => ROLE_EXPECTED_MINUTES[role]

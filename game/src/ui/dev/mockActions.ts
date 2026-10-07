@@ -6,6 +6,7 @@
  * Dev shortcut: `?dev=<ScreenId>` (e.g. ?dev=home, ?dev=liveMatch) loads the
  * mock career and jumps straight to that screen.
  */
+import * as eco from '../../sim/life/economy'
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { GameState, Investment, MatchResultSummary, SeasonStats } from '../../core/types'
 import {
@@ -578,6 +579,16 @@ export const mockActions: GameActions = {
     if (a <= 0) return
     s.life.money -= a
     s.life.bank.savings += a
+    commit(s)
+  },
+  bankTermDeposit(amount, weeks) {
+    const s = get()
+    eco.openTermDeposit(s.life, amount, weeks, s.calendar)
+    commit(s)
+  },
+  bankBreakTerm(id) {
+    const s = get()
+    eco.breakTermDeposit(s.life, id)
     commit(s)
   },
   bankWithdraw(amount) {
