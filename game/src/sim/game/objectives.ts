@@ -357,7 +357,7 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
       cands.push({ w: ATTACK.includes(pos) ? 3 : 1, make: () => mk(state, st, 'manager', 'goals',
         fill(lt('Önümüzdeki 3 haftada {n} gol at', 'Score {n} goal(s) in the next 3 weeks'), { n: target }),
         lt('Hoca: "Senden gol bekliyorum. Kendini göster."', 'The manager: "I need goals from you. Show me."'),
-        target, 3, { trust: 4, rel: { manager: 5 }, money: Math.round(wage * 0.5) }, { trust: -2 }) })
+        target, 3, { trust: 4, rel: { manager: 5 }, money: Math.round(wage * 0.3) }, { trust: -2 }) })
     }
     if ((ASSIST_RATE[pos] ?? 0) >= 0.2) {
       const rate = apps >= 6 ? Math.max(0.1, h.seasonStats.assists / apps) : ASSIST_RATE[pos] ?? 0.2
@@ -365,13 +365,13 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
       cands.push({ w: 2, make: () => mk(state, st, 'manager', 'assists',
         fill(lt('4 hafta içinde {n} asist yap', 'Make {n} assist(s) within 4 weeks'), { n: target }),
         lt('Hoca: "Oyunu kur, arkadaşlarını gole sok."', 'The manager: "Create. Put your teammates through."'),
-        target, 4, { trust: 4, rel: { manager: 4 }, money: Math.round(wage * 0.4) }, { trust: -2 }) })
+        target, 4, { trust: 4, rel: { manager: 4 }, money: Math.round(wage * 0.25) }, { trust: -2 }) })
     }
     if (isGk(pos) || isDef(pos)) {
       cands.push({ w: 3, make: () => mk(state, st, 'manager', 'cleanSheets',
         lt('4 hafta içinde bir maçta kaleni gole kapat', 'Keep a clean sheet within 4 weeks'),
         lt('Hoca: "Arkayı kilitle. Gerisini biz hallederiz."', 'The manager: "Lock the back door. We\'ll do the rest."'),
-        1, 4, { trust: 4, rel: { manager: 5 }, money: Math.round(wage * 0.5) }, { trust: -2 }) })
+        1, 4, { trust: 4, rel: { manager: 5 }, money: Math.round(wage * 0.3) }, { trust: -2 }) })
     }
     if (!benched) {
       const goal = h.form >= 65 ? 6.8 : 6.5
@@ -407,7 +407,7 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
     cands.push({ w: 1.5, make: () => mk(state, st, 'sponsor', 'followers',
       fill(lt('{b} kampanyası: 3 haftada {n} yeni takipçi', '{b} campaign: {n} new followers in 3 weeks'), { b: brand, n: gain }),
       lt('Sponsorun kampanya dönemine girdi. Görünür ol: paylaşım, röportaj, iyi maç.', 'Your sponsor is running a campaign. Be visible: posts, interviews, big games.'),
-      gain, 3, { money: Math.round(Math.max(life.sponsors[0].weekly * 2, wage * 0.3)) }, undefined, { base: life.followers }) })
+      gain, 3, { money: Math.round(Math.max(life.sponsors[0].weekly * 1.5, wage * 0.2)) }, undefined, { base: life.followers }) })
   }
   if (fresh('family', 8) && (life.relationships.mother || life.relationships.father)) {
     // A birthday happens once a year: each family reason is used at most once per season.
@@ -457,7 +457,7 @@ function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
         : fill(lt('Yönetim hedefi: ligi ilk {n} içinde bitir', 'Board target: finish in the top {n}'), { n: target })
     const o = mk(state, st, 'board', 'leaguePos', title,
       fill(lt('{c} yönetimi sezon başında çıtayı koydu. Başarırsan prim ve başkanın güveni seninle.', 'The {c} board set the bar. Hit it for a bonus and the chairman\'s backing.'), { c: club.name }),
-      target, 60, { money: Math.round(wage * 2), reputation: 1, rel: { chairman: 8, fans: 4 } })
+      target, 60, { money: Math.round(wage * 1.2), reputation: 1, rel: { chairman: 8, fans: 4 } })
     st.active.push(o)
     log(state, out, fill(lt('Sezon hedefi ({s}): {t}', 'Season objective ({s}): {t}'), { s: SOURCE_NAME.board, t: title }), 'career', '🎯')
   }
@@ -473,13 +473,13 @@ function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
     const prev = last && last.stats.apps >= 10 ? last.stats.cleanSheets : 6
     const target = clamp(Math.round(prev * 1.1) + 1, 5, 20)
     o = mk(state, st, 'self', 'seasonCleanSheets', fill(lt('Kişisel hedef: {n} kez gol yememek', 'Personal goal: {n} clean sheets'), { n: target }),
-      lt('Geçen sezonu geride bırak.', 'Beat last season.'), target, 60, { morale: 6, reputation: 2, money: Math.round(wage * 1.5) })
+      lt('Geçen sezonu geride bırak.', 'Beat last season.'), target, 60, { morale: 6, reputation: 2, money: Math.round(wage * 0.8) })
   } else {
     const base = Math.round((GOAL_RATE[h.position] ?? 0.1) * 28)
     const prev = last && last.stats.apps >= 10 ? last.stats.goals : base
     const target = clamp(Math.round(prev * 1.1) + 1, 2, 45)
     o = mk(state, st, 'self', 'seasonGoals', fill(lt('Kişisel hedef: sezonu {n} golle bitir', 'Personal goal: finish the season on {n} goals'), { n: target }),
-      lt('Geçen sezonu geride bırak.', 'Beat last season.'), target, 60, { morale: 6, reputation: 2, money: Math.round(wage * 1.5) })
+      lt('Geçen sezonu geride bırak.', 'Beat last season.'), target, 60, { morale: 6, reputation: 2, money: Math.round(wage * 0.8) })
   }
   st.active.push(o)
   log(state, out, fill(lt('Sezon hedefi ({s}): {t}', 'Season objective ({s}): {t}'), { s: SOURCE_NAME.self, t: o.title }), 'career', '🎯')
