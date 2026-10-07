@@ -108,6 +108,9 @@ export const KEEPER_SAVE_BONUS = 0.08
 export const PENALTY_READ_BASE = 0.22
 /** A diving keeper's body extends this far (m) behind his centre, opposite the dive (legs/torso): an over-dive no longer lets the ball through the body. */
 export const DIVE_BODY_BACK = 0.7
+/** Dive reach of opposition keepers facing the hero (m): a touch under {@link KEEPER_REACH} so 1v1 finishing lands ~38–40% (docs/BALANCE.md). */
+export const OPP_KEEPER_REACH = 0.75
+const keeperReach = (k: Pick<Agent, 'team'>): number => (k.team === 'opp' ? OPP_KEEPER_REACH : KEEPER_REACH)
 /** Balls within 0.55 m of the keeper below this height are taken standing (was 1.7: keepers flung themselves past head-high shots). */
 export const KEEPER_STAND_MAX_Z = 2.2
 
@@ -1648,7 +1651,7 @@ export class HighlightRuntime {
         let reachZ = spread ? 1.9 : 2.45 + a.z
         if (a.state === 'dive') {
           // The diving body is a line from trailing legs to fingertips: a ball behind the body (over-dive) still hits it.
-          const seg = pointSegment(bp, add(a.pos, scale(a.actionDir, -DIVE_BODY_BACK)), add(a.pos, scale(a.actionDir, KEEPER_REACH)))
+          const seg = pointSegment(bp, add(a.pos, scale(a.actionDir, -DIVE_BODY_BACK)), add(a.pos, scale(a.actionDir, keeperReach(a))))
           reachD = seg.d
           reachR = 0.32
           reachZ = 2.4 + a.z
@@ -1874,7 +1877,7 @@ export class HighlightRuntime {
     const b = this.ball
     const bp = { x: b.x, y: b.y }
     let stretch = 0.15
-    if (k.state === 'dive') stretch = clamp01(pointSegment(bp, k.pos, add(k.pos, scale(k.actionDir, KEEPER_REACH))).t)
+    if (k.state === 'dive') stretch = clamp01(pointSegment(bp, k.pos, add(k.pos, scale(k.actionDir, keeperReach(k)))).t)
     let p = saveChance(k, stretch, speed, this.difficulty)
     if (this.shot && this.shot.by.team !== k.team) p += KEEPER_SAVE_BONUS
     if (speed < 11) p = 1

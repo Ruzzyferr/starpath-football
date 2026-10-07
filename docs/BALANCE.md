@@ -344,16 +344,45 @@ normal 1 / hard 1.15 / legend 1.3) değişmedi.
 | `KEEPER_SAVE_BONUS` | 0 | +0.08 | Her şut temasında küçük bir kurtarış katkısı. |
 | `PENALTY_READ_BASE` | 0.20 | 0.22 | Kalecinin penaltıda tarafı okuma olasılığı; penaltıyı ~%75'e çeker. |
 
+### Güncel ölçüm (Ekim 2026; normal zorluk, N=120; novice / average / good / expert)
+
+Taktik hücumcular, insan hızında savunmacılar, orta bölgeleri ve hava
+mücadeleleri eklendikten sonra yeniden ölçüldü. Yeni türler: counter_2v1,
+long_ball_control, rebound, interception.
+
+| Tür | novice | average | good | expert | Bant (average) |
+|---|---|---|---|---|---|
+| one_on_one | 35% | 34% | 41% | 56% | %25–55 (N=200: 35 / **39** / 44 / 51) |
+| penalty | 57% | 73% | 82% | 83% | %62–88 |
+| freekick | 17% | 18% | 13% | 12% | %6–28 |
+| edge_of_box | 17% | 15% | 19% | 18% | %5–25 |
+| cross | 19% | 12% | 18% | 23% | %10–30 (N=200 testte ~%16) |
+| corner | 18% | 28% | 27% | 28% | %15–38 |
+| defend | 53% | 64% | 75% | 73% | %48–75 |
+| gk_save | 50% | 63% | 65% | 68% | %50–85 |
+| counter_2v1 | 31% | 25% | 28% | 31% | %12–45 |
+| long_ball_control | 37% | 38% | 46% | 48% | %15–60 |
+| rebound | 19% | 15% | 21% | 23% | %6–40 |
+| interception | 63% | 76% | 77% | 75% | %42–80 |
+
+Ayar öncesi bu ölçümde 1v1 average %31 (N=120) / %35 (N=200) idi. Hedef ~%40.
+
+| Sabit | Eski | Yeni | Neden |
+|---|---|---|---|
+| `OPP_KEEPER_REACH` (`src/game/runtime.ts`) | `KEEPER_REACH` (0.9 m) | 0.75 m | Yalnızca kahramana karşı oynayan rakip kalecinin plonjon temas uzunluğu. 1v1 average %35 → %39 (N=200). Kahraman kaleci (gk_save) ve antrenman kaleci drilleri `KEEPER_REACH`'i kullanmaya devam ediyor. Penaltı, serbest vuruş, ceza sahası önü ve korner bantları içinde kaldı. |
+
+Denenip bırakılanlar: `ASSIST_PULL.full` 0.6 → 0.72 (1v1'de etkisiz, %31 → %31);
+global `KEEPER_REACH` 0.8/0.75 (kaleci drillerinin "beceri > özensiz oyun"
+testini bozuyor).
+
 ### Bilinen açıklar
 
-- **Savunma (defend) ~%93, zorluktan bağımsız.** Sonucu çoğunlukla yapay zekâ
-  takım arkadaşlarının rakip pasını kesmesi belirliyor; kahramanın müdahalesi
-  az fark yaratıyor. Rakip taşıyıcının ve pas kararlarının yeniden ele alınması
-  gerekiyor.
-- **Orta ~%8.** Markajcılar topun yolunda duruyor ve ortaların ~%96'sını ilk
-  onlar karşılıyor. Hücumcuların topun ineceği noktaya koşması gerekiyor.
-- **Korner ~%32.** Hedefin (%20–25) biraz üstünde.
-- **1v1 ~%45.** Hedef %40'ın biraz üstünde.
+- **Savunma artık beceriye bağlı** (53 / 64 / 75 / 73). Eski ~%93 sorunu çözüldü;
+  expert'in good'un biraz altında kalması örneklem gürültüsü sınırında.
+- **Orta ~%12–19.** Hedef bandın (%15–25) alt ucunda; average bot ortaları
+  yine çoğunlukla ilk markajcıya çarpıyor.
+- **Korner ~%28.** Hedef (%20–30) içinde.
+- **1v1 ~%39 (N=200).** N=120'de örneklem gürültüsü ±5 puan.
 - **Tam nişan yardımı beceri farkını eziyor.** Direk dışına kaçan şutlar
   çerçeveye geri çekildiği için bot seviyeleri arasındaki fark küçük. Serbest
   vuruşta zorluk etkisi zayıf; expert seviye biraz daha az gol buluyor.
