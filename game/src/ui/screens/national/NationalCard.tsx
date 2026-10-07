@@ -52,7 +52,7 @@ export function NationalCard({ detailed }: { detailed?: boolean }) {
         <>
           <div class="nt-parts">
             {(['ovr', 'form', 'reputation', 'minutes', 'coach'] as const).map((k) => (
-              <StatBar key={k} label={t(`intl.national.parts.${k}`)} value={c.parts[k]} size="sm" color="var(--accent-blue)" />
+              <StatBar key={k} label={t(`intl.national.parts.${k}`)} value={c.parts[k]} size="sm" scale />
             ))}
           </div>
           <p class="nt-criteria">{t('intl.national.criteria')}</p>

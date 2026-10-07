@@ -10,6 +10,7 @@ import { actions, back, data, navigate, screen, type NewGameInput } from '../sto
 import { legacyFor, summaryView } from '../backend/meta'
 import { CITIES } from '../../data/world/names'
 import { PitchPicker } from './newcareer/PitchPicker'
+import { StoryArt } from './newcareer/StoryArt'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 import { beginNewCareer } from '../tutorial/tour'
 
@@ -338,7 +339,7 @@ export function NewCareerScreen() {
                       set('background', b)
                     }}
                   >
-                    <span class="wiz-story-art" aria-hidden="true"><Icon name={BG_ICON[b]} size={40} weight={1.6} /></span>
+                    <span class="wiz-story-art" aria-hidden="true"><StoryArt kind={b} /><span class="wiz-story-badge"><Icon name={BG_ICON[b]} size={20} /></span></span>
                     <span class="wiz-card-text">
                       <span class="wiz-card-title">{t(`data.background.${b}`)}</span>
                       <span class="wiz-card-desc">{t(`data.backgroundDesc.${b}`)}</span>

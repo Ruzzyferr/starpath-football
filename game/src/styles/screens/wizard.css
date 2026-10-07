@@ -295,11 +295,20 @@
   position: relative;
 }
 .wiz-story-art::after {
+  /* bottom fade so the scene melts into the card body */
   content: '';
   position: absolute;
   inset: 0;
-  background: repeating-linear-gradient(90deg, transparent 0 22px, rgba(255, 255, 255, 0.04) 22px 44px);
+  background: linear-gradient(180deg, transparent 55%, rgba(19, 28, 46, 0.85));
 }
+.wiz-story-scene { position: absolute; inset: 0; width: 100%; height: 100%; }
+.wiz-story-badge {
+  position: absolute; z-index: 1; left: var(--sp-3); bottom: var(--sp-2); display: grid; place-items: center;
+  width: 36px; height: 36px; border-radius: 10px; background: var(--surface-2); color: var(--text-hi);
+  box-shadow: 0 0 0 1px var(--border-strong), 0 6px 14px rgba(0, 0, 0, 0.4);
+}
+.wiz-story.is-active .wiz-story-badge { background: var(--brand-pitch); color: var(--text-on-pitch); }
+.wiz-story .wiz-story-art { overflow: hidden; }
 .wiz-story-street .wiz-story-art { background: linear-gradient(135deg, #3a2a1c, #1b1f2c); }
 .wiz-story-academy .wiz-story-art { background: linear-gradient(135deg, var(--brand-pitch-deep), var(--bg-1)); }
 .wiz-story-footballFamily .wiz-story-art { background: linear-gradient(135deg, var(--accent-blue-deep), var(--bg-1)); }
