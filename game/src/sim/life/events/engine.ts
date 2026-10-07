@@ -13,12 +13,14 @@
  *   (cooldowns and `once`).
  * - Content flags (chains) use plain keys such as `romance_stage`.
  *
- * Absolute week = `season * 52 + week` (see {@link absoluteWeek}); monotonic
+ * Absolute week = career/common `absWeek` ((season − START_YEAR)·52 + week, see {@link absoluteWeek}); monotonic
  * across seasons because a season never exceeds 52 weeks.
  */
 import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, RelationKind, Relationship } from '../../../core/types'
 import { clamp, type Rng } from '../../../core/rng'
 import { ALL_EVENTS } from './content'
+import { absWeek } from '../../career/common'
+import { teammateId } from '../relationships'
 import type {
   AppliedDelta,
   Delta,
@@ -110,9 +112,13 @@ export function getEventDef(id: string, events: readonly EventDef[] = ALL_EVENTS
 
 // ───────────────────────── Helpers ─────────────────────────
 
-/** Monotonic week index across seasons. */
+/**
+ * Monotonic week index across seasons. Delegates to career/common `absWeek`
+ * so event cooldowns, relationship `lastContactWeek` and career timestamps
+ * share one scheme.
+ */
 export function absoluteWeek(cal: Calendar): number {
-  return cal.season * 52 + cal.week
+  return absWeek(cal)
 }
 
 function readJson<T>(state: GameState, key: string, fallback: T): T {
@@ -566,9 +572,10 @@ function findRel(state: GameState, kind: RelationKind, npcId?: string): Relation
 }
 
 function createRel(state: GameState, kind: RelationKind, name: string, abs: number, npcId?: string): Relationship {
-  let id: string = npcId ? `npc_${npcId}` : kind
+  // Teammate ids must match life/relationships.ts (`tm_<npcId>`).
+  let id: string = npcId ? teammateId(npcId) : kind
   let n = 2
-  while (state.life.relationships[id]) id = `${npcId ? `npc_${npcId}` : kind}_${n++}`
+  while (state.life.relationships[id]) id = `${npcId ? teammateId(npcId) : kind}_${n++}`
   const r: Relationship = { id, kind, name, value: 0, memory: [], lastContactWeek: abs, ...(npcId ? { npcId } : {}) }
   state.life.relationships[id] = r
   return r
