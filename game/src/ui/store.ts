@@ -785,7 +785,9 @@ function loadSettings(): UiSettings {
   } catch {
     /* storage unavailable */
   }
-  return { ...DEFAULT_SETTINGS }
+  // First run: honour the OS "reduce motion" preference.
+  const osReduce = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
+  return { ...DEFAULT_SETTINGS, reducedMotion: osReduce }
 }
 export const settings = signal<UiSettings>(loadSettings())
 currentLang.value = settings.value.lang

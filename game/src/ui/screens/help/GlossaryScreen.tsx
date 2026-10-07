@@ -6,6 +6,7 @@ import { Page, Tabs } from '../../components'
 import { Icon } from '../../icons'
 import { gameState, screen } from '../../store'
 import { GLOSSARY, GLOSSARY_CATS, matchesQuery, type GlossaryCat, type GlossaryTerm } from '../../tutorial/glossary'
+import { compareText } from '../../a11y/collate'
 
 export function GlossaryScreen() {
   const focus = screen.value.params?.term as GlossaryTerm | undefined
@@ -21,7 +22,7 @@ export function GlossaryScreen() {
   const items = GLOSSARY.filter((g) => cat === 'all' || g.cat === cat)
     .map((g) => ({ ...g, name: t(`help.glossary.terms.${g.id}.name`), def: t(`help.glossary.terms.${g.id}.def`) }))
     .filter((g) => matchesQuery(q, g.name, g.def, lang))
-    .sort((a, b) => a.name.localeCompare(b.name, lang === 'tr' ? 'tr' : 'en'))
+    .sort((a, b) => compareText(a.name, b.name, lang))
 
   return (
     <Page title={t('help.glossary.title')} sub={t('help.glossary.sub')} backTo={gameState.value ? 'menu' : 'settings'} showBack>

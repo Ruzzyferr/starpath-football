@@ -265,6 +265,17 @@ export class MatchScene extends Phaser.Scene {
     this.cam.x = b.x
     this.cam.y = b.y
     this.cam.zoom = this.cam.base * 0.82
+    // App backgrounded (platform/lifecycle): hold the highlight paused; the player resumes with the pause key / tap.
+    const onAppPause = () => {
+      if (this.mode === 'play' && !this.paused) {
+        this.paused = true
+        this.promptText.setText(this.s.paused)
+      }
+    }
+    window.addEventListener('sp:app-pause', onAppPause)
+    const offAppPause = () => window.removeEventListener('sp:app-pause', onAppPause)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offAppPause)
+    this.events.once(Phaser.Scenes.Events.DESTROY, offAppPause)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanup())
     // Dev/e2e: expose the live scene (debugInfo / FPS probes). Stripped from production builds.

@@ -972,7 +972,7 @@
 }
 .post-loss .post-result-strip {
   background: var(--state-danger);
-  color: var(--text-hi);
+  color: #1a0408;
 }
 .post-score {
   display: grid;

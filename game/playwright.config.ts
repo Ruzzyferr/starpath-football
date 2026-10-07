@@ -13,7 +13,7 @@ import { defineConfig } from '@playwright/test'
  *
  * Screenshots of every step go to $E2E_SHOTS (default test-results/shots).
  */
-const PORT = 5287
+const PORT = Number(process.env.PW_PORT ?? 5287)
 
 function chromeInstalled(): boolean {
   const paths = [
