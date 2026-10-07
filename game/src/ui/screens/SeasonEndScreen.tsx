@@ -166,8 +166,8 @@ export function SeasonEndScreen() {
         )}
       </div>
 
+      {stage >= total && <div class="se-ceremony"><CeremonyBanner /></div>}
       <footer class="se-footer">
-        {stage >= total && <CeremonyBanner />}
         <Button variant="gold" size="lg" block iconRight="arrow-right" onClick={finish} disabled={stage < total}>
           {t('season.continue')}
         </Button>
