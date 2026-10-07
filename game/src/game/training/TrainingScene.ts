@@ -18,7 +18,7 @@ import type { AimAssist } from '../kick'
 import { clampN } from '../model'
 import { createMatchGame } from '../MatchScene'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from '../view'
-import type { ActorView, Drill, DrillEvent, DrillLabel, DrillPrompt, DrillResult, DrillView, Grade, Tone } from './types'
+import type { ActorView, Drill, DrillEvent, DrillKind, DrillLabel, DrillPrompt, DrillResult, DrillView, Grade, Tone } from './types'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -52,7 +52,7 @@ type Strings = {
   prompt: Record<DrillPrompt, string>
   label: Record<DrillLabel, string>
   hud: { combo: string; level: string; stamina: string; beat: string; power: string; go: string; grade: string; points: string }
-  buttons: { sprint: string; skill: string; loft: string; go: string; dive: string }
+  buttons: { sprint: string; skill: string; loft: string; go: string; dive: string; cross: string; head: string; tackle: string }
 }
 
 const T: Record<Lang, Strings> = {
@@ -68,6 +68,12 @@ const T: Record<Lang, Strings> = {
       fitnessWait: 'Bip sesini bekle…',
       fitnessGo: 'Bip\'te çık: dokun / Boşluk!',
       keeper: 'Kaydır / tıkla: o yöne uzan. Joystick: adım at',
+      crossing: 'Koşucu bölgeye varırken top da orada olsun: bölgeye dokun / kaydır',
+      crossNow: 'ŞİMDİ! Ortayı aç (ORTA / Boşluk / bölgeye dokun)',
+      heading: 'İşarete geç. Top gelince zıpla: kaleye dokun / kaydır',
+      headNow: 'ZIPLA! (KAFA / Boşluk / kaleye dokun)',
+      tackling: 'Önünde kal, top açılınca kap. Kaydır: kayarak müdahale',
+      tackleNow: 'ŞİMDİ! Topu kap (KAP / Boşluk / dokun)',
       ready: 'Hazır ol…',
       done: 'Antrenman bitti',
     },
@@ -77,9 +83,10 @@ const T: Record<Lang, Strings> = {
       cone: 'KON!', perfect: 'MÜKEMMEL!', good: 'İYİ', early: 'ERKEN', late: 'GEÇ', tackled: 'KAPTIRDIN', lap: 'TUR!',
       shuttle: 'TAMAM', perfectStart: 'TAM ZAMANINDA!', goodStart: 'İYİ ÇIKIŞ', lateArrival: 'GEÇ KALDIN', gassed: 'NEFESSİZ!', out: 'AUT',
       save: 'KURTARIŞ!', held: 'YAKALADI!', conceded: 'GOL YEDİN', wide: 'DIŞARI',
+      delivery: 'İYİ ORTA', won: 'KAPTIN!', foul: 'FAUL', beaten: 'GEÇİLDİN', whiff: 'BOŞA',
     },
     hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN' },
-    buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN' },
+    buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
   },
   en: {
     prompt: {
@@ -93,6 +100,12 @@ const T: Record<Lang, Strings> = {
       fitnessWait: 'Wait for the beep…',
       fitnessGo: 'Go on the beep: tap / Space!',
       keeper: 'Swipe / click to dive that way. Stick: step across',
+      crossing: 'Land it in the zone as the runner arrives: tap / swipe at the zone',
+      crossNow: 'NOW! Whip it in (CROSS / Space / tap the zone)',
+      heading: 'Get on the mark. Jump as it comes: tap / swipe at the goal',
+      headNow: 'JUMP! (HEAD / Space / tap the goal)',
+      tackling: 'Stay goal-side, nick it when it is exposed. Swipe: slide tackle',
+      tackleNow: 'NOW! Win the ball (TACKLE / Space / tap)',
       ready: 'Get ready…',
       done: 'Session over',
     },
@@ -102,10 +115,23 @@ const T: Record<Lang, Strings> = {
       cone: 'CONE!', perfect: 'PERFECT!', good: 'GOOD', early: 'EARLY', late: 'LATE', tackled: 'TACKLED', lap: 'LAP!',
       shuttle: 'MADE IT', perfectStart: 'ON THE BEEP!', goodStart: 'GOOD START', lateArrival: 'TOO LATE', gassed: 'GASSED!', out: 'OUT',
       save: 'SAVE!', held: 'HELD!', conceded: 'CONCEDED', wide: 'WIDE',
+      delivery: 'GOOD BALL', won: 'WON IT!', foul: 'FOUL', beaten: 'BEATEN', whiff: 'MISSED',
     },
     hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', go: 'GO!', grade: 'GRADE', points: 'PTS' },
-    buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE' },
+    buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
   },
+}
+
+/** Per-drill touch controls: action-button label, sprint button, joystick, level badge in the title. */
+const CONTROLS: Record<DrillKind, { button: keyof Strings['buttons'] | null; sprint: boolean; stick: boolean; level: boolean }> = {
+  finishing: { button: null, sprint: false, stick: false, level: false },
+  passing: { button: 'loft', sprint: false, stick: false, level: false },
+  dribbling: { button: 'skill', sprint: true, stick: true, level: true },
+  fitness: { button: 'go', sprint: true, stick: false, level: true },
+  goalkeeping: { button: 'dive', sprint: true, stick: true, level: false },
+  crossing: { button: 'cross', sprint: false, stick: false, level: false },
+  heading: { button: 'head', sprint: false, stick: true, level: false },
+  tackling: { button: 'tackle', sprint: true, stick: true, level: false },
 }
 
 const TONE: Record<Tone, number> = {
@@ -731,7 +757,7 @@ export class TrainingScene extends Phaser.Scene {
   private onScore(e: Extract<DrillEvent, { type: 'score' }>): void {
     const label = this.s.label[e.label]
     const txt = e.points > 0 ? `+${e.points} ${label}` : e.points < 0 ? `${e.points} ${label}` : label
-    const col = e.points > 0 ? (e.label === 'target' || e.label === 'perfect' || e.label === 'perfectStart' || e.label === 'held' ? '#ffd23f' : '#5dff8a') : e.good ? '#ffffff' : '#ff8a8a'
+    const col = e.points > 0 ? (e.label === 'target' || e.label === 'perfect' || e.label === 'perfectStart' || e.label === 'held' || e.label === 'won' ? '#ffd23f' : '#5dff8a') : e.good ? '#ffffff' : '#ff8a8a'
     this.floatText(txt, e.x, e.y, col, 1.1, (e.z ?? 0) + 2.2)
     if (e.points > 0) {
       this.pointsText.setScale(1.25)
@@ -787,7 +813,8 @@ export class TrainingScene extends Phaser.Scene {
     g.fillRect(0, top, w * frac, 4 * u)
 
     // Level badge next to the clock.
-    if (hud.level !== undefined && (this.drill.kind === 'fitness' || this.drill.kind === 'dribbling')) {
+    const ctl = CONTROLS[this.drill.kind]
+    if (hud.level !== undefined && ctl.level) {
       this.titleText.setText(`${(this.data0.opts.title ?? '').toLocaleUpperCase(this.data0.opts.lang === 'tr' ? 'tr-TR' : 'en-US')} · ${this.s.hud.level} ${hud.level}`)
     }
 
@@ -829,14 +856,9 @@ export class TrainingScene extends Phaser.Scene {
     // Touch controls.
     const tu = this.input0.touchUi()
     const show = tu.enabled && !this.drill.finished
-    const skillLabel =
-      this.drill.kind === 'dribbling' ? this.s.buttons.skill
-        : this.drill.kind === 'fitness' ? this.s.buttons.go
-          : this.drill.kind === 'passing' ? this.s.buttons.loft
-            : this.drill.kind === 'goalkeeping' ? this.s.buttons.dive
-              : ''
+    const skillLabel = ctl.button ? this.s.buttons[ctl.button] : ''
     const showSkill = show && skillLabel !== ''
-    const showSprint = show && (this.drill.kind === 'dribbling' || this.drill.kind === 'fitness' || this.drill.kind === 'goalkeeping')
+    const showSprint = show && ctl.sprint
     this.sprintText.setAlpha(showSprint ? 0.9 : 0).setPosition(tu.sprint.x, tu.sprint.y)
     this.skillText.setText(skillLabel).setAlpha(showSkill ? 0.9 : 0).setPosition(tu.skill.x, tu.skill.y)
     if (showSprint) {
@@ -851,7 +873,7 @@ export class TrainingScene extends Phaser.Scene {
       g.lineStyle(2 * u, 0xffd23f, tu.skill.down ? 0.95 : 0.5)
       g.strokeCircle(tu.skill.x, tu.skill.y, tu.skill.r)
     }
-    if (show && tu.joystick && (this.drill.kind === 'dribbling' || this.drill.kind === 'goalkeeping')) {
+    if (show && tu.joystick && ctl.stick) {
       g.lineStyle(2 * u, 0xffffff, 0.35)
       g.strokeCircle(tu.joystick.baseX, tu.joystick.baseY, tu.joystick.r)
       g.fillStyle(0xffffff, 0.35)

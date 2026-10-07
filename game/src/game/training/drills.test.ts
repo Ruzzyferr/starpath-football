@@ -4,7 +4,9 @@ import { cloneBall, predictPlaneCrossing } from '../physics'
 import { dist, norm, sub, type Vec2 } from '../model'
 import { DIVE_PEAK } from '../ai'
 import type { HeroAction } from '../runtime'
-import { createDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type PassingDrill } from './drills'
+import { createDrill, type CrossingDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
+import { JUMP_PEAK } from './drills/heading'
+import type { Attributes } from '../../core/types'
 import type { Drill, DrillInput, DrillKind, DrillResult } from './types'
 import type { DrillBase } from './base'
 
@@ -125,16 +127,86 @@ const keeperBot = (good: boolean): Bot => (d, s) => {
   return act({ kind: 'dive', dir: norm(sub({ x: k.pos.x, y: c.y }, k.pos)) })
 }
 
+const crossingGood: Bot = (d) => {
+  const c = d as CrossingDrill
+  if (!c.ready || c.releaseIn > 0) return idle
+  return act({ kind: 'pass', target: c.zoneCentre, lofted: true })
+}
+
+const crossingMeh: Bot = (d, s) => {
+  const c = d as CrossingDrill
+  if (!after(c.ready, s, 0.25)) return idle
+  const z = c.zoneCentre
+  return act({ kind: 'tapAt', at: { x: z.x + Math.sin(s.t * 5.1) * 1.6, y: z.y + Math.cos(s.t * 3.7) * 1.6 } })
+}
+
+const headingBot = (good: boolean): Bot => (d, s) => {
+  const h = d as HeadingDrill
+  const spot = h.target
+  const off = sub(spot, h.hero.pos)
+  const l = Math.hypot(off.x, off.y)
+  const move = l > 0.12 ? { x: (off.x / l) * Math.min(1, l * 2), y: (off.y / l) * Math.min(1, l * 2) } : { x: 0, y: 0 }
+  if (!h.incomingBall) {
+    s.mem.jumped = 0
+    return { ...idle, move }
+  }
+  if (s.mem.jumped || h.hero.state !== 'run') return { ...idle, move }
+  const eta = h.eta()
+  if (good && eta.t <= JUMP_PEAK + 0.02) {
+    s.mem.jumped = 1
+    return act({ kind: 'action' }, { move })
+  }
+  if (!good && eta.t <= 0.5) {
+    s.mem.jumped = 1
+    return act({ kind: 'tapAt', at: { x: 105, y: 34 + Math.sin(s.t * 9.1) * 3 } }, { move })
+  }
+  return { ...idle, move }
+}
+
+const tacklingBot = (good: boolean): Bot => (d, s) => {
+  const t = d as TacklingDrill
+  if (!t.dueling) return idle
+  const h = t.hero
+  const ball = { x: t.ball.x, y: t.ball.y }
+  const v = t.carrierVel
+  const vl = Math.hypot(v.x, v.y)
+  const cdir = vl > 0.3 ? { x: v.x / vl, y: v.y / vl } : { x: -1, y: 0 }
+  const spot = good ? { x: ball.x + cdir.x * 1.0, y: ball.y + cdir.y * 1.0 } : ball
+  const off = sub(spot, h.pos)
+  const l = Math.hypot(off.x, off.y)
+  const move = l > 0.05 ? { x: (off.x / l) * Math.min(1, l * 1.5), y: (off.y / l) * Math.min(1, l * 1.5) } : { x: 0, y: 0 }
+  const db = dist(h.pos, ball)
+  const actions: HeroAction[] = []
+  if (h.state === 'run') {
+    if (good && db <= t.reach - 0.05 && t.exposure >= 0.75) actions.push({ kind: 'action' })
+    if (!good && db <= 1.45 && s.t - (s.mem.last ?? -9) > 0.6) {
+      actions.push({ kind: 'action' })
+      s.mem.last = s.t
+    }
+  }
+  return { move, sprint: good && l > 3, actions, aim: null }
+}
+
 const BOTS: Record<DrillKind, { good: Bot; meh: Bot }> = {
   finishing: { good: finishingGood, meh: finishingMeh },
   passing: { good: passingGood, meh: passingMeh },
   dribbling: { good: dribbleBot(true), meh: dribbleBot(false) },
   fitness: { good: fitnessBot(true), meh: fitnessBot(false) },
   goalkeeping: { good: keeperBot(true), meh: keeperBot(false) },
+  crossing: { good: crossingGood, meh: crossingMeh },
+  heading: { good: headingBot(true), meh: headingBot(false) },
+  tackling: { good: tacklingBot(true), meh: tacklingBot(false) },
 }
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
-const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping']
+const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling']
+const NEW_KINDS: DrillKind[] = ['crossing', 'heading', 'tackling']
+/** The attributes each new drill is about. */
+const KEY_ATTRS: Record<string, (keyof Attributes)[]> = {
+  crossing: ['crossing', 'passing'],
+  heading: ['heading', 'jumping'],
+  tackling: ['tackling', 'positioning', 'strength'],
+}
 
 describe('training drills (headless)', () => {
   for (const kind of KINDS) {
@@ -165,6 +237,31 @@ describe('training drills (headless)', () => {
     const r = play(d, finishingGood)
     expect(r.stats.shots).toBeGreaterThan(4)
   })
+
+  for (const kind of NEW_KINDS) {
+    it(`${kind}: deterministic for the same seed and inputs`, () => {
+      const a = play(make(kind, 21), BOTS[kind].good)
+      const b = play(make(kind, 21), BOTS[kind].good)
+      expect(a).toEqual(b)
+      expect(a.kind).toBe(kind)
+      expect(a.played).toBeGreaterThanOrEqual(20)
+      expect(a.played).toBeLessThanOrEqual(40)
+    })
+
+    it(`${kind}: better ${KEY_ATTRS[kind].join('/')} raise the score`, () => {
+      const withAttr = (v: number): Attributes => {
+        const at = { ...flatAttrs(60) }
+        for (const k of KEY_ATTRS[kind]) at[k] = v
+        return at
+      }
+      const run = (v: number) =>
+        avg([1, 2, 3, 4, 5, 6].map((seed) => play(createDrill(kind, { attrs: withAttr(v), seed, aimAssist: 'half' }), BOTS[kind].good).points))
+      const weak = run(35)
+      const strong = run(92)
+      if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log(kind, 'attrs', { weak, strong })
+      expect(strong).toBeGreaterThan(weak * 1.1)
+    })
+  }
 
   it('is deterministic for the same seed and inputs', () => {
     const a = play(make('passing', 9), passingGood)

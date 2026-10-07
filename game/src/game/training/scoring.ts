@@ -20,6 +20,9 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
   dribbling: 30,
   fitness: 40,
   goalkeeping: 30,
+  crossing: 35,
+  heading: 30,
+  tackling: 30,
 }
 
 /** Points that count as a top session (performance ≈ 1). Calibrated with scripted bots (drills.test.ts). */
@@ -29,6 +32,9 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   dribbling: 2300,
   fitness: 1500,
   goalkeeping: 1000,
+  crossing: 1900,
+  heading: 1700,
+  tackling: 1150,
 }
 
 /** Which drill a training session plays (null = no mini-game, auto only). */
@@ -40,6 +46,9 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
   dribbling: { kind: 'dribbling', variant: 'standard' },
   physical: { kind: 'fitness', variant: 'standard' },
   goalkeeping: { kind: 'goalkeeping', variant: 'standard' },
+  crossing: { kind: 'crossing', variant: 'standard' },
+  heading: { kind: 'heading', variant: 'standard' },
+  tackling: { kind: 'tackling', variant: 'standard' },
   recovery: null,
 }
 
@@ -186,6 +195,85 @@ export function savePoints(i: SaveScoreInput): number {
   const base = 100 + (i.held ? 30 : 0) + Math.round(clamp01(i.stretch) * 30) + Math.max(0, Math.min(20, i.speed - 18))
   return Math.round(base * comboMultiplier(i.combo))
 }
+
+// ───────────────────────── Crossing ─────────────────────────
+
+/** Radius (m) of a lit delivery zone in the box. */
+export const CROSS_ZONE_R = 2.2
+
+export type CrossTiming = 'perfect' | 'good' | 'early' | 'late'
+
+/**
+ * Delivery timing from `dt` = ball arrival − runner arrival (s): the ball
+ * should drop into the zone as the runner gets there.
+ */
+export function crossTiming(dt: number): CrossTiming {
+  const a = Math.abs(dt)
+  if (a <= 0.3) return 'perfect'
+  if (a <= 0.7) return 'good'
+  return dt < 0 ? 'early' : 'late'
+}
+
+export interface CrossScoreInput {
+  /** The ball dropped inside the lit zone. */
+  inZone: boolean
+  /** Distance from the zone centre where it dropped (m). */
+  miss: number
+  timing: CrossTiming
+  combo: number
+}
+
+/** Points for one cross: in the zone + accuracy + timing with the runner. */
+export function crossPoints(i: CrossScoreInput): number {
+  if (!i.inZone) return 0
+  const accuracy = clamp01(1 - i.miss / CROSS_ZONE_R)
+  // Mistimed balls (the runner is not there yet / already gone) are worth much less.
+  if (i.timing === 'early' || i.timing === 'late') return Math.round(30 + accuracy * 40)
+  const timed = i.timing === 'perfect' ? 70 : 30
+  return Math.round((60 + accuracy * 60 + timed) * comboMultiplier(i.combo))
+}
+
+// ───────────────────────── Heading ─────────────────────────
+
+/** Jump timing quality 0..1: 1 = ball met at the top of the jump. */
+export function jumpTiming(stateT: number, peakT: number): number {
+  return clamp01(1 - Math.abs(stateT - peakT) / Math.max(1e-6, peakT))
+}
+
+export interface HeaderScoreInput {
+  goal: boolean
+  targetHit: boolean
+  /** Jump timing 0..1 at contact. */
+  timing: number
+  combo: number
+}
+
+/** Points for a header (0 unless it is a goal). */
+export function headerPoints(i: HeaderScoreInput): number {
+  if (!i.goal) return 0
+  const base = 100 + (i.targetHit ? 120 : 0) + (i.timing >= 0.75 ? 40 : 0)
+  return Math.round(base * comboMultiplier(i.combo))
+}
+
+// ───────────────────────── Tackling ─────────────────────────
+
+export interface TackleScoreInput {
+  won: boolean
+  /** How exposed the ball was at the tackle 0..1 (1 = just pushed ahead). */
+  timing: number
+  slide: boolean
+  combo: number
+}
+
+/** Points for a won tackle (0 otherwise; fouls and getting beaten are penalties). */
+export function tacklePoints(i: TackleScoreInput): number {
+  if (!i.won) return 0
+  const base = 100 + (i.timing >= 0.75 ? 50 : 0) + (i.slide ? 20 : 0)
+  return Math.round(base * comboMultiplier(i.combo))
+}
+
+export const FOUL_PENALTY = -40
+export const BEATEN_PENALTY = -25
 
 // ───────────────────────── XP preview ─────────────────────────
 

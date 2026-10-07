@@ -105,6 +105,25 @@ describe('training', () => {
     expect(sumXp(rb.xp)).toBeGreaterThan(sumXp(ra.xp))
   })
 
+  it('crossing / heading / tackling sessions grant XP to their own attributes', () => {
+    const cases = [
+      { type: 'crossing', main: 'crossing', others: ['passing', 'setPieces'] },
+      { type: 'heading', main: 'heading', others: ['jumping'] },
+      { type: 'tackling', main: 'tackling', others: ['positioning'] },
+    ] as const
+    for (const c of cases) {
+      const { rng, hero, life } = makeHeroLife()
+      const r = runTraining(rng, hero, life, { type: c.type, performance: 0.8, season: 2026 })
+      expect(r.ok).toBe(true)
+      const xp = r.xp as Record<string, number | undefined>
+      const top = Object.entries(xp).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0][0]
+      expect(top).toBe(c.main)
+      for (const o of c.others) expect(xp[o] ?? 0).toBeGreaterThan(0)
+      expect(xp.shooting ?? 0).toBe(0)
+      expect(life.energy).toBe(100 - trainingEnergyCost(c.type))
+    }
+  })
+
   it('every training type has sane numbers and bilingual names', () => {
     for (const def of Object.values(TRAINING_TYPES)) {
       expect(def.name.tr.length).toBeGreaterThan(0)

@@ -3,6 +3,7 @@ import { qualityFactor, TRAINING_TYPES } from '../../sim/career/training'
 import {
   DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
   passPoints, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
+  BEATEN_PENALTY, CROSS_ZONE_R, FOUL_PENALTY, crossPoints, crossTiming, headerPoints, jumpTiming, tacklePoints,
 } from './scoring'
 import { DRILL_KINDS } from './types'
 
@@ -41,6 +42,9 @@ describe('drill scoring', () => {
     }
     expect(DRILL_FOR_TRAINING.goalkeeping?.kind).toBe('goalkeeping')
     expect(DRILL_FOR_TRAINING.setPiece?.variant).toBe('setPiece')
+    expect(DRILL_FOR_TRAINING.crossing?.kind).toBe('crossing')
+    expect(DRILL_FOR_TRAINING.heading?.kind).toBe('heading')
+    expect(DRILL_FOR_TRAINING.tackling?.kind).toBe('tackling')
   })
 
   it('combo multiplier is capped at +50%', () => {
@@ -104,5 +108,43 @@ describe('drill scoring', () => {
 
   it('XP preview mirrors the sim quality factor', () => {
     for (const p of [0, 0.3, 0.6, 1]) expect(xpQuality(p)).toBeCloseTo(qualityFactor(p))
+  })
+})
+
+describe('crossing / heading / tackling scoring', () => {
+  it('cross timing is relative to the runner', () => {
+    expect(crossTiming(0)).toBe('perfect')
+    expect(crossTiming(-0.25)).toBe('perfect')
+    expect(crossTiming(0.5)).toBe('good')
+    expect(crossTiming(-1)).toBe('early')
+    expect(crossTiming(1)).toBe('late')
+  })
+
+  it('crosses score only in the zone, more when central and on time', () => {
+    expect(crossPoints({ inZone: false, miss: 0, timing: 'perfect', combo: 0 })).toBe(0)
+    const centre = crossPoints({ inZone: true, miss: 0, timing: 'perfect', combo: 0 })
+    const edge = crossPoints({ inZone: true, miss: CROSS_ZONE_R * 0.9, timing: 'perfect', combo: 0 })
+    const early = crossPoints({ inZone: true, miss: 0, timing: 'early', combo: 3 })
+    expect(centre).toBeGreaterThan(edge)
+    expect(centre).toBeGreaterThan(early)
+    expect(crossPoints({ inZone: true, miss: 0, timing: 'perfect', combo: 5 })).toBeGreaterThan(centre)
+  })
+
+  it('jump timing peaks at the top of the jump', () => {
+    expect(jumpTiming(0.3, 0.3)).toBe(1)
+    expect(jumpTiming(0, 0.3)).toBe(0)
+    expect(jumpTiming(0.45, 0.3)).toBeCloseTo(0.5)
+  })
+
+  it('headers score goals, targets and a timed jump', () => {
+    expect(headerPoints({ goal: false, targetHit: true, timing: 1, combo: 0 })).toBe(0)
+    expect(headerPoints({ goal: true, targetHit: true, timing: 1, combo: 0 })).toBeGreaterThan(headerPoints({ goal: true, targetHit: false, timing: 0.2, combo: 0 }))
+  })
+
+  it('won tackles score; fouls and getting beaten cost', () => {
+    expect(tacklePoints({ won: false, timing: 1, slide: true, combo: 0 })).toBe(0)
+    expect(tacklePoints({ won: true, timing: 0.9, slide: false, combo: 0 })).toBeGreaterThan(tacklePoints({ won: true, timing: 0.3, slide: false, combo: 0 }))
+    expect(FOUL_PENALTY).toBeLessThan(0)
+    expect(BEATEN_PENALTY).toBeLessThan(0)
   })
 })

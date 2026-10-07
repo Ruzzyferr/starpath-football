@@ -24,6 +24,7 @@ import { injuryProneness, wellbeingXpMultiplier } from '../life/wellbeing'
 
 export type TrainingType =
   | 'shooting' | 'passing' | 'dribbling' | 'physical' | 'tactical' | 'setPiece' | 'goalkeeping' | 'recovery'
+  | 'crossing' | 'heading' | 'tackling'
 
 export type TrainingIntensity = 'light' | 'normal' | 'hard'
 
@@ -77,6 +78,18 @@ export const TRAINING_TYPES: Readonly<Record<TrainingType, TrainingDef>> = {
   setPiece: {
     id: 'setPiece', icon: '🚩', name: lt('Duran Top', 'Set Pieces'),
     attrs: { setPieces: 4.5, crossing: 2, shooting: 1.5, heading: 1.5 }, baseXp: 28, energy: 14, fatigue: 6, injuryRisk: 0.003, sharpness: 2, stress: 0,
+  },
+  crossing: {
+    id: 'crossing', icon: '📐', name: lt('Orta İstasyonu', 'Cross Station'),
+    attrs: { crossing: 4.5, passing: 2, setPieces: 1.5, vision: 1 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+  },
+  heading: {
+    id: 'heading', icon: '⚽', name: lt('Kafa Topu Makinesi', 'Header Machine'),
+    attrs: { heading: 4.5, jumping: 3, strength: 1.5, positioning: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.006, sharpness: 3, stress: 1,
+  },
+  tackling: {
+    id: 'tackling', icon: '🛡️', name: lt('Top Kapma Düellosu', 'Tackle Duel'),
+    attrs: { tackling: 4.5, positioning: 3, strength: 1.5, agility: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.007, sharpness: 3, stress: 1,
   },
   goalkeeping: {
     id: 'goalkeeping', icon: '🧤', name: lt('Kaleci Antrenmanı', 'Goalkeeping Drill'),
