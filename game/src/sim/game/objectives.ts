@@ -81,6 +81,8 @@ interface Store {
   /** Absolute week of the last short objective handed out per source. */
   lastBy: Partial<Record<ObjectiveSource, number>>
   serial: number
+  /** `season:reason` family reasons already used. */
+  famUsed?: string[]
 }
 
 const emptyStore = (): Store => ({ active: [], history: [], done: 0, failed: 0, lastBy: {}, serial: 0 })
@@ -408,11 +410,24 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
       gain, 3, { money: Math.round(Math.max(life.sponsors[0].weekly * 2, wage * 0.3)) }, undefined, { base: life.followers }) })
   }
   if (fresh('family', 8) && (life.relationships.mother || life.relationships.father)) {
+    // A birthday happens once a year: each family reason is used at most once per season.
     const who = life.relationships.mother ? 'mother' : 'father'
-    cands.push({ w: 1.2, make: () => mk(state, st, 'family', 'familyVisit',
-      who === 'mother' ? lt('Annenin doğum günü: 2 hafta içinde ailene uğra', 'Mum\'s birthday: visit your family within 2 weeks') : lt('Babanın doğum günü: 2 hafta içinde ailene uğra', 'Dad\'s birthday: visit your family within 2 weeks'),
-      lt('Takvimine not düş: bir akşamını aileye ayır.', 'Put it in your diary: give your family an evening.'),
-      1, 2, { happiness: 6, rel: { [who]: 8 } }, { rel: { [who]: -5 } }) })
+    const used = (st.famUsed ?? []).filter((k) => k.startsWith(`${state.calendar.season}:`))
+    const reasons: { key: string; title: LText; rel: string }[] = [
+      { key: 'mbday', rel: 'mother', title: lt('Annenin doğum günü: 2 hafta içinde ailene uğra', 'Mum\u2019s birthday: visit your family within 2 weeks') },
+      { key: 'fbday', rel: 'father', title: lt('Babanın doğum günü: 2 hafta içinde ailene uğra', 'Dad\u2019s birthday: visit your family within 2 weeks') },
+      { key: 'miss', rel: who, title: lt('Ailen seni özledi: 2 hafta içinde bir akşam onlara ayır', 'Your family misses you: give them an evening within 2 weeks') },
+      { key: 'dinner', rel: who, title: lt('Pazar yemeği geleneği: 2 hafta içinde ailene uğra', 'Sunday dinner tradition: visit your family within 2 weeks') },
+    ].filter((r) => life.relationships[r.rel] && !used.includes(`${state.calendar.season}:${r.key}`))
+    if (reasons.length) {
+      const r = reasons[Math.floor(rng.next() * reasons.length)]
+      cands.push({ w: 1.2, make: () => {
+        st.famUsed = [...(st.famUsed ?? []).slice(-8), `${state.calendar.season}:${r.key}`]
+        return mk(state, st, 'family', 'familyVisit', r.title,
+          lt('Takvimine not düş: bir akşamını aileye ayır.', 'Put it in your diary: give your family an evening.'),
+          1, 2, { happiness: 6, rel: { [r.rel]: 8 } }, { rel: { [r.rel]: -5 } })
+      } })
+    }
   }
   if (fresh('agent', 10) && life.agent && transferWindow(state.calendar.week) !== null && !benched) {
     cands.push({ w: 2, make: () => mk(state, st, 'agent', 'rating',
