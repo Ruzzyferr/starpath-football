@@ -10,8 +10,21 @@ import { signal } from '@preact/signals'
 import type { Lang, LText } from '../core/types'
 import { tr } from './tr'
 import { en } from './en'
+import { pseudoize } from './pseudo'
 
 export const currentLang = signal<Lang>('tr')
+
+/** QA pseudo-locale: accented, ~35% longer strings. Enable with ?pseudo=1 or Settings. */
+export const pseudoLocale = signal<boolean>(
+  (() => {
+    try {
+      return new URLSearchParams(globalThis.location?.search ?? '').get('pseudo') === '1'
+    } catch {
+      return false
+    }
+  })(),
+)
+const ps = (s: string): string => (pseudoLocale.value ? pseudoize(s) : s)
 export const dictionaries = { tr, en } as const
 export type Dict = typeof tr
 
@@ -40,8 +53,25 @@ function lookup(lang: Lang, key: string): string | undefined {
   return out
 }
 
-export function format(template: string, vars?: TVars): string {
+const pluralRules: Record<string, Intl.PluralRules> = {}
+function plural(lang: string, n: number): Intl.LDMLPluralRule {
+  return (pluralRules[lang] ??= new Intl.PluralRules(lang === 'tr' ? 'tr-TR' : 'en-GB')).select(n)
+}
+
+/** ICU subset: `{n, plural, =0 {none} one {# item} other {# items}}` (flat bodies). */
+function icuPlural(template: string, vars: TVars, lang: string): string {
+  return template.replace(/\{(\w+),\s*plural,((?:\s*(?:=\d+|zero|one|two|few|many|other)\s*\{[^{}]*\})+)\s*\}/g, (_m, k: string, body: string) => {
+    const n = Number(vars[k])
+    const cases = new Map<string, string>()
+    for (const c of body.matchAll(/(=\d+|zero|one|two|few|many|other)\s*\{([^{}]*)\}/g)) cases.set(c[1]!, c[2]!)
+    const pick = cases.get(`=${n}`) ?? cases.get(plural(lang, n)) ?? cases.get('other') ?? ''
+    return pick.replace(/#/g, new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-GB').format(n))
+  })
+}
+
+export function format(template: string, vars?: TVars, lang: string = currentLang.value): string {
   if (!vars) return template
+  if (template.includes(', plural,')) template = icuPlural(template, vars, lang)
   return template
     .replace(/\{(\w+)\|([^|}]*)\|([^}]*)\}/g, (_m, k: string, one: string, many: string) =>
       Number(vars[k]) === 1 ? one : many,
@@ -56,21 +86,21 @@ export function t(key: TKey, vars?: TVars, lang: Lang = currentLang.value): stri
     if (import.meta.env?.DEV) console.warn('[i18n] missing key', key)
     return key
   }
-  return format(s, vars)
+  return format(ps(s), vars, lang)
 }
 
 /** Translate a dynamic key (built at runtime). Falls back to `fallback`. */
 export function tx(key: string, vars?: TVars, fallback?: string): string {
   const lang = currentLang.value
   const s = lookup(lang, key) ?? lookup('tr', key)
-  return s === undefined ? (fallback ?? key) : format(s, vars)
+  return s === undefined ? (fallback ?? key) : format(ps(s), vars)
 }
 
 /** Pick the active language from an LText (or pass a plain string through). */
 export function lt(text: LText | string | null | undefined, vars?: TVars): string {
   if (text == null) return ''
   const s = typeof text === 'string' ? text : (text[currentLang.value] ?? text.tr)
-  return format(s, vars)
+  return format(ps(s), vars)
 }
 
 /** Locale-correct upper-casing (İ/ı in Turkish). */
