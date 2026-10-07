@@ -134,17 +134,27 @@ export function acceptSponsor(life: Life, offer: SponsorOffer): { ok: boolean; l
 /** Strictness of a deal's brand (0.5 for unknown brands). */
 export const dealStrictness = (deal: SponsorDeal): number => BRAND_BY_NAME[deal.brand]?.strictness ?? 0.5
 
+/** Four-level scandal scale (2.4#85). Level 4 ends every deal and costs reputation. */
+export type ScandalLevel = 1 | 2 | 3 | 4
+export const SCANDAL_LEVELS: Readonly<Record<ScandalLevel, LText>> = {
+  1: lt('Gaf', 'Gaffe'),
+  2: lt('Tartışma', 'Controversy'),
+  3: lt('Skandal', 'Scandal'),
+  4: lt('Rezalet', 'Disgrace'),
+}
+
 /**
  * Morality clause check after a scandal of severity 1 (minor: nightclub photo),
  * 2 (public fight, gambling leak) or 3 (betting scandal, arrest).
  * Termination chance per deal = strictness × severity / 3 → severity 3 always
  * ends strict brands (strictness 1) and ends ~30% of lenient ones.
+ * Severity 4 (disgrace: criminal case, match-fixing) terminates every deal.
  */
-export function checkMoralityClause(rng: Rng, life: Life, hero: Hero, severity: 1 | 2 | 3, calendar: Calendar): { terminated: SponsorDeal[]; lines: Lines } {
+export function checkMoralityClause(rng: Rng, life: Life, hero: Hero, severity: ScandalLevel, calendar: Calendar): { terminated: SponsorDeal[]; lines: Lines } {
   const terminated: SponsorDeal[] = []
   const lines: Lines = []
   life.sponsors = life.sponsors.filter((d) => {
-    if (rng.chance(clamp((dealStrictness(d) * severity) / 3, 0, 1))) {
+    if (severity >= 4 || rng.chance(clamp((dealStrictness(d) * severity) / 3, 0, 1))) {
       terminated.push(d)
       return false
     }

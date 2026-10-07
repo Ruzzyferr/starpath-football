@@ -114,3 +114,57 @@ describe('WP-15 economy & legacy', () => {
     expect(buildCareerSummary(state).postCareer).toBeUndefined()
   })
 })
+
+describe('WP-15 extras', () => {
+  it('birth city: local fans at creation and one-off welcome at the hometown club', async () => {
+    const { applyBirthCity, hometownClubWelcome, HOMETOWN_BASE_FOLLOWERS, HOMETOWN_CLUB_FOLLOWERS } = await import('./hometown')
+    const { hero, life } = makeHeroLife()
+    const f0 = life.followers
+    applyBirthCity(hero, life)
+    expect(life.followers).toBe(f0)
+    hero.birthCity = 'Ankara'
+    applyBirthCity(hero, life)
+    expect(life.followers).toBe(f0 + HOMETOWN_BASE_FOLLOWERS)
+    const cal = { season: 2026, week: 1, day: 0, slot: 0 }
+    expect(hometownClubWelcome(hero, life, 'Izmir', 'X', cal)).toHaveLength(0)
+    expect(hometownClubWelcome(hero, life, ' ankara', 'Y', cal).length).toBeGreaterThan(0)
+    expect(life.followers).toBe(f0 + HOMETOWN_BASE_FOLLOWERS + HOMETOWN_CLUB_FOLLOWERS)
+    expect(hometownClubWelcome(hero, life, 'Ankara', 'Y', cal)).toHaveLength(0)
+  })
+
+  it('disgrace (scandal level 4) ends every sponsor deal', async () => {
+    const { checkMoralityClause } = await import('../life/sponsors')
+    const { hero, life } = makeHeroLife()
+    life.sponsors = [1, 2, 3].map((i) => ({ id: `s${i}`, brand: `B${i}`, category: 'kit', weekly: 1000, untilSeason: 2099, minReputation: 0 }) as never)
+    const r = checkMoralityClause(new Rng(1), life, hero, 4, { season: 2026, week: 1, day: 0, slot: 0 })
+    expect(r.terminated).toHaveLength(3)
+    expect(life.sponsors).toHaveLength(0)
+  })
+
+  it('business revenue is capped at 3x the level base', async () => {
+    const { businessRevenueCap, BUSINESS_DEFS, LEVEL_REVENUE } = await import('../life/business')
+    expect(businessRevenueCap({ kind: 'gym', level: 2 })).toBe(BUSINESS_DEFS.gym.baseRevenue * LEVEL_REVENUE[2] * 3)
+  })
+
+  it('economy invariants hold over 5 seasons of random state (2.5#126)', () => {
+    for (let seed = 1; seed <= 20; seed++) {
+      const { hero, life } = makeHeroLife({ seed })
+      hero.contract = { clubId: 'c', wage: 500 * seed, untilSeason: 2040, signingBonus: 0, goalBonus: 0, assistBonus: 0, releaseClause: null, role: 'starter' }
+      life.money = seed * 5000
+      const rng = new Rng(seed)
+      for (let w = 0; w < 260; w++) {
+        const cal = { season: 2026 + Math.floor(w / 52), week: w % 52, day: 0, slot: 0 }
+        weeklyEconomy(rng, life, hero, { calendar: cal })
+        expect(Number.isFinite(life.money)).toBe(true)
+        expect(life.bank.savings).toBeGreaterThanOrEqual(0)
+        expect(life.bank.creditScore).toBeGreaterThanOrEqual(300)
+        expect(life.bank.creditScore).toBeLessThanOrEqual(850)
+      }
+    }
+  })
+
+  it('asset upkeep stays within 2% of price (assets over 5k) per week (2.5#24 spending curve)', async () => {
+    const { ASSETS } = await import('../../data/assets')
+    for (const a of ASSETS.filter((x) => x.price >= 5000)) expect(a.upkeep / a.price, a.id).toBeLessThanOrEqual(0.02)
+  })
+})

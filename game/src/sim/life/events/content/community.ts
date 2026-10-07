@@ -41,11 +41,11 @@ export const communityEvents: EventDef[] = [
     cooldownWeeks: 52,
     once: true,
     conditions: ({ state }) => state.hero.reputation >= 20,
-    vars: ({ state }) => ({ amount: wageX(state, 4, 6000) }),
+    vars: ({ state }) => ({ amount: wageX(state, 4, 6000), hometown: state.hero.birthCity ? `${state.hero.birthCity} ` : '' }),
     title: t('Çocukluğunun Sahası', 'The Pitch Where It Started'),
     text: t(
-      '{friendName} bir fotoğraf yolladı: top koşturduğun mahalle sahası. Kale direkleri paslanmış, toprak çukur dolu, bir köşesi otopark olmuş. Belediye "bütçe yok" diyor. Yenilemek yaklaşık {amount:money}.',
-      '{friendName} sends a photo: your old neighbourhood pitch. Rusted posts, potholes, one corner now a car park. The council says there is "no budget". Fixing it costs around {amount:money}.',
+      '{friendName} bir fotoğraf yolladı: top koşturduğun {hometown}mahalle sahası. Kale direkleri paslanmış, toprak çukur dolu, bir köşesi otopark olmuş. Belediye "bütçe yok" diyor. Yenilemek yaklaşık {amount:money}.',
+      '{friendName} sends a photo: your old {hometown}neighbourhood pitch. Rusted posts, potholes, one corner now a car park. The council says there is "no budget". Fixing it costs around {amount:money}.',
     ),
     icon: '🥅',
     choices: [

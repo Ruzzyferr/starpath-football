@@ -14,6 +14,7 @@ import { unlockPerk as unlockPerkFn } from '../career/perks'
 import { benchComplaint, type ComplaintApproach } from '../career/squadRole'
 import type { TrainingIntensity, TrainingType } from '../career/training'
 import { acceptTransfer, requestTransfer as requestTransferFn, withdrawTransferRequest as withdrawFn } from '../career/transfers'
+import { hometownClubWelcome } from '../career/hometown'
 import type { TransferOffer } from '../career/transfers'
 import { performActivity, type ActivityOptions, type TrainingReport } from '../life/activities'
 import {
@@ -352,6 +353,7 @@ function signOffer(state: GameState, offer: TransferOffer): ActionResult {
       const to = state.world.clubs[offer.clubId]
       if (!to) return fail(lt('Kulüp bulunamadı.', 'Club not found.'))
       out.push(...acceptTransfer(rng, h, state.life, offer, state.calendar, { managerName: to.managerName, oldClubName: old?.name }))
+      out.push(...hometownClubWelcome(h, state.life, to.city, to.name, state.calendar))
       if (offer.fee > 0 && !offer.isLoan) {
         to.budget -= offer.fee
         if (old) old.budget += offer.fee

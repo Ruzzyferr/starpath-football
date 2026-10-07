@@ -188,6 +188,11 @@ export function expectedRevenue(b: Pick<Business, 'kind' | 'level' | 'brand' | '
   return Math.round(d.baseRevenue * LEVEL_REVENUE[b.level] * fame * brand * (b.manager ? 1.05 : 1))
 }
 
+/** Income ceiling (2.5#53): fame can lift a business to at most 3x its level's base revenue per week. */
+export const BUSINESS_REVENUE_CAP_MULT = 3
+export const businessRevenueCap = (b: Pick<Business, 'kind' | 'level'>): number =>
+  BUSINESS_DEFS[b.kind].baseRevenue * LEVEL_REVENUE[b.level] * BUSINESS_REVENUE_CAP_MULT
+
 /** Weekly P&L of one business (mutates the business: history, brand, totals). */
 export function businessWeek(rng: Rng, b: Business, reputation: number, week: number): BusinessPnl {
   const d = BUSINESS_DEFS[b.kind]
@@ -202,7 +207,7 @@ export function businessWeek(rng: Rng, b: Business, reputation: number, week: nu
     b.brand = meter(b.brand + inc.brand)
     note = inc.note
   }
-  revenue = Math.round(revenue)
+  revenue = Math.round(Math.min(revenue, businessRevenueCap(b)))
   const rent = Math.round(d.rent * LEVEL_FIXED[b.level])
   const staff = Math.round(d.staff * LEVEL_FIXED[b.level])
   const manager = b.manager ? managerWage(b) : 0

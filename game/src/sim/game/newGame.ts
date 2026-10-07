@@ -12,6 +12,7 @@ import { MIN_WAGE, generateContractOffer, roundNice } from '../career/contract'
 import { ARRIVAL_TRUST } from '../career/transfers'
 import { ROLE_NAMES, roleIndex, targetRole } from '../career/squadRole'
 import { applyContract } from '../career/contract'
+import { applyBirthCity, hometownClubWelcome } from '../career/hometown'
 import { heroOvr } from '../career/progression'
 import { generateWorld } from '../world/generate'
 import { clubStrength } from '../world/queries'
@@ -35,6 +36,8 @@ export interface NewGameInput {
   archetype: Archetype
   background: Background
   appearance: Appearance
+  /** Birth city (optional, from data/world CITIES of the nationality): hometown fans and events. */
+  birthCity?: string
   /** Hero gender (default 'male'); the generated world's players follow it. */
   gender?: Gender
   difficulty?: Difficulty
@@ -107,6 +110,7 @@ export function signFirstClub(state: GameState, rng: Rng, clubId: string, terms:
   offer.terms.signingBonus = 0
   if (terms.wageMul !== undefined) offer.terms.wage = Math.max(MIN_WAGE, roundNice(offer.terms.wage * terms.wageMul))
   applyContract(hero, life, offer, state.calendar)
+  hometownClubWelcome(hero, life, club.city, club.name, state.calendar)
   hero.managerTrust = Math.max(hero.managerTrust, ARRIVAL_TRUST[role] - 5)
 
   // ── Relationships: manager, chairman, teammates ──
@@ -140,8 +144,10 @@ export function newGame(input: NewGameInput, seed: number, now: number = determi
     firstName: input.firstName, lastName: input.lastName, nickname: input.nickname, nationality: input.nationality,
     position: input.position, foot: input.foot, appearance: input.appearance, archetype: input.archetype,
     background: input.background, birthYear: input.birthYear, gender,
+    ...(input.birthCity ? { birthCity: input.birthCity } : {}),
   })
   const life = createLife(rng, hero, input.background, input.family)
+  applyBirthCity(hero, life)
   const state: GameState = {
     version: SAVE_VERSION,
     meta: { id: rng.id('car'), slot: input.slot ?? 0, createdAt: now, updatedAt: now, playTimeSec: 0, seed, difficulty: input.difficulty ?? 'normal' },

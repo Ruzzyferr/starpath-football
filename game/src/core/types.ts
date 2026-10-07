@@ -211,6 +211,16 @@ export interface Competition {
   winnerId: string | null
 }
 
+export interface ClubRecords {
+  titles: number
+  bestFinish: { pos: number; season: number; tier: number } | null
+  mostPoints: { pts: number; season: number } | null
+  biggestWin: { gf: number; ga: number; opponentId: string; season: number } | null
+  heaviestDefeat: { gf: number; ga: number; opponentId: string; season: number } | null
+}
+
+export interface ManagerChange { season: number; clubId: string; from: string; to: string; reason: 'sacked' | 'relegated' }
+
 export interface World {
   countries: Record<string, Country>
   leagues: Record<string, League>
@@ -224,6 +234,10 @@ export interface World {
    * in women's leagues). Missing = 'male'.
    */
   gender?: Gender
+  /** Per-club all-time records (2.6#107), updated at each season end. */
+  records?: Record<string, ClubRecords>
+  /** Manager sackings/appointments (2.6#40), newest last. */
+  managerChanges?: ManagerChange[]
   /** Free agents are NpcPlayers with clubId null. */
 }
 
@@ -288,6 +302,8 @@ export interface Hero {
   gender?: Gender
   nickname: string
   nationality: string
+  /** Birth city chosen in the wizard (optional; hometown fans and events). */
+  birthCity?: string
   birthYear: number
   position: Position
   foot: Foot

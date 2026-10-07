@@ -21,6 +21,26 @@ export function groupAvg(attrs: Attributes, group: AttributeGroup): number {
   return Math.round(ks.reduce((s, k) => s + attrs[k], 0) / ks.length)
 }
 
+/** Goalkeeper specialism groups (GDD 2.1): the profile shows these instead of the 2-attribute goalkeeping block. */
+export type GkGroup = 'shotStopping' | 'commandArea' | 'distribution'
+export const GK_GROUPS: Record<GkGroup, AttributeKey[]> = {
+  shotStopping: ['reflexes', 'handling', 'agility'],
+  commandArea: ['positioning', 'jumping', 'leadership'],
+  distribution: ['passing', 'firstTouch', 'vision'],
+}
+export const GK_GROUP_IDS = Object.keys(GK_GROUPS) as GkGroup[]
+
+/** Profile attribute cards for a position: plain groups for outfielders, specialisms + physical/mental for keepers. */
+export function attrCardsFor(pos: Position): { id: GkGroup | AttributeGroup; gk: boolean; keys: AttributeKey[] }[] {
+  if (pos !== 'GK') return groupsFor(pos).map((g) => ({ id: g, gk: false, keys: keysOf(g) }))
+  return [
+    ...GK_GROUP_IDS.map((g) => ({ id: g, gk: true, keys: GK_GROUPS[g] })),
+    { id: 'physical', gk: false, keys: keysOf('physical') },
+    { id: 'mental', gk: false, keys: keysOf('mental') },
+  ]
+}
+export const keysAvg = (attrs: Attributes, ks: AttributeKey[]): number => Math.round(ks.reduce((s, k) => s + attrs[k], 0) / ks.length)
+
 /** Groups worth showing for a position (outfielders hide goalkeeping). */
 export function groupsFor(pos: Position): AttributeGroup[] {
   return pos === 'GK' ? ['goalkeeping', 'physical', 'mental', 'technical'] : ['physical', 'technical', 'mental']

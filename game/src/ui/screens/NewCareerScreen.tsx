@@ -8,6 +8,7 @@ import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, back, data, navigate, screen, type NewGameInput } from '../store'
 import { legacyFor, summaryView } from '../backend/meta'
+import { CITIES } from '../../data/world/names'
 import { PitchPicker } from './newcareer/PitchPicker'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 import { beginNewCareer } from '../tutorial/tour'
@@ -232,7 +233,7 @@ export function NewCareerScreen() {
                         class={`wiz-flag${sel ? ' is-active' : ''}`}
                         onClick={() => {
                           haptic('select')
-                          set('nationality', c.id)
+                          setForm((f) => ({ ...f, nationality: c.id, birthCity: undefined }))
                         }}
                       >
                         <Flag id={c.id} colors={c.flag} size={56} />
@@ -246,6 +247,20 @@ export function NewCareerScreen() {
                       </button>
                     )
                   })}
+                </div>
+              )}
+              {(CITIES[form.nationality] ?? []).length > 0 && (
+                <div class="text-field">
+                  <label for="wiz-city">{t('wizard.birthCity')}</label>
+                  <select
+                    id="wiz-city"
+                    value={form.birthCity ?? ''}
+                    onChange={(e) => set('birthCity', (e.currentTarget as HTMLSelectElement).value || undefined)}
+                  >
+                    <option value="">{t('wizard.birthCityAuto')}</option>
+                    {(CITIES[form.nationality] ?? []).map((c) => <option key={c} value={c}>{c}</option>)}
+                  </select>
+                  <p class="t-xs t-lo">{t('wizard.birthCityHint')}</p>
                 </div>
               )}
             </div>
@@ -358,6 +373,7 @@ export function NewCareerScreen() {
                   {([
                     ['summaryName', `${fullName}${form.nickname.trim() ? ` "${form.nickname.trim()}"` : ''} · ${t('common.ageN', { n: age })}`, 0],
                     ['summaryNation', lt(country.name), 1],
+                    ...(form.birthCity ? ([['summaryCity', form.birthCity, 1]] as const) : []),
                     ['summaryPos', `${t(`data.posLong.${form.position}`)} · ${t(`data.foot.${form.foot}`)}`, 2],
                     ['summaryStyle', t(`data.archetype.${form.archetype}`), 3],
                     ['summaryStory', t(`data.background.${form.background}`), 4],

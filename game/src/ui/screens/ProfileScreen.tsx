@@ -1,6 +1,6 @@
 import { CelebrationPicker } from './profile/CelebrationPicker'
 import { NationalCard } from './national/NationalCard'
-import type { SeasonStats } from '../../core/types'
+import type { AttributeGroup, SeasonStats } from '../../core/types'
 import { lt, t } from '../../i18n'
 import {
   Button, Card, CardHeader, Chip, Crest, EmptyState, Flag, LineChart, MeterRing, Page, PlayerCard, SectionTitle, StatBar,
@@ -8,7 +8,7 @@ import {
 import { formatMoney, formatNumber, formatPercent, formatRating, ratingColor, seasonLabel, tierOf } from '../format'
 import { Icon } from '../icons'
 import { data, gameState, heroClub, navigate } from '../store'
-import { RADAR_AXES, groupAvg, groupsFor, keyStatsFor, keysOf, radarValues } from './career/attrs'
+import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGroup } from './career/attrs'
 import { Radar } from './career/Radar'
 import { ProfileCareerExtras } from './legacy/CareerCards'
 import '../../styles/screens/profile.css'
@@ -64,7 +64,7 @@ export function ProfileScreen() {
   const ovr = data.heroOvr()
   const age = data.heroAge()
   const ovrHist = data.ovrHistory()
-  const groups = groupsFor(h.position)
+  const groups = attrCardsFor(h.position)
   const radar = radarValues(h.attrs)
   const c = h.contract
   const ss = h.seasonStats
@@ -146,13 +146,13 @@ export function ProfileScreen() {
           <SectionTitle>{t('profile.attributes')}</SectionTitle>
           <div class="prof-attr-groups">
             {groups.map((g) => (
-              <Card key={g} pad="md">
+              <Card key={g.id} pad="md" data-testid={`attr-group-${g.id}`}>
                 <div class="row-between prof-group-head">
-                  <h3 class="h3">{t(`data.group.${g}`)}</h3>
-                  <span class="score-font prof-group-avg">{groupAvg(h.attrs, g)}</span>
+                  <h3 class="h3">{g.gk ? t(`data.gkGroup.${g.id as GkGroup}`) : t(`data.group.${g.id as AttributeGroup}`)}</h3>
+                  <span class="score-font prof-group-avg">{keysAvg(h.attrs, g.keys)}</span>
                 </div>
                 <div class="stack prof-bars">
-                  {keysOf(g).map((k) => <StatBar key={k} label={t(`data.attr.${k}`)} value={h.attrs[k]} scale size="sm" />)}
+                  {g.keys.map((k) => <StatBar key={k} label={t(`data.attr.${k}`)} value={h.attrs[k]} scale size="sm" />)}
                 </div>
               </Card>
             ))}

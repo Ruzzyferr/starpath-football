@@ -23,6 +23,8 @@ export interface HeroInput {
   archetype: Archetype
   background: Background
   birthYear: number
+  /** Optional birth city (wizard). */
+  birthCity?: string
   /** Default 'male'. A female hero plays in the (fictional) women's game. */
   gender?: Gender
 }
@@ -138,6 +140,7 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     lastName: input.lastName,
     gender,
     nickname: input.nickname || input.lastName,
+    ...(input.birthCity?.trim() ? { birthCity: input.birthCity.trim().slice(0, 30) } : {}),
     nationality: input.nationality,
     birthYear: input.birthYear,
     position: input.position,

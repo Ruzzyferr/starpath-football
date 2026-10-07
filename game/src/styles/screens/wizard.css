@@ -126,7 +126,7 @@
   color: var(--text-lo);
   max-width: 420px;
 }
-.wiz-search:focus-within { border-color: var(--accent-blue); }
+.wiz-search:focus-within { border-color: var(--accent-blue); box-shadow: var(--focus-ring); }
 .wiz-search input {
   flex: 1;
   min-width: 0;
@@ -457,3 +457,16 @@
   .wiz-foot { justify-content: flex-end; }
   .wiz-foot > :first-child { margin-right: auto; }
 }
+
+/* Birth city select (WP-15) */
+.text-field select {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--r-btn);
+  background: var(--bg-1);
+  color: var(--text-hi);
+  border: 1px solid var(--border-strong);
+  font-size: var(--fs-lg);
+}
+.text-field select:focus { border-color: var(--brand-pitch); }
+.text-field select:focus-visible { box-shadow: var(--focus-ring); }

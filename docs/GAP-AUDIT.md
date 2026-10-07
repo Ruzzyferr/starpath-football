@@ -329,7 +329,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.3#99 | EKSİK | - | 100 gazeteci oylaması yok |
 | 2.3#106 | KISMİ | sim/game/actions.ts:503 | `retire()` var ama **UI'dan çağrılamıyor** |
 | 2.3#117 | KISMİ | ui/screens/NewCareerScreen.tsx:364 | 4 zorluk yalnızca an zorluğunu etkiliyor; özel ayar yok |
-| 2.3#118 | EKSİK | - | Sezon gol bandı ve çift markaj adaptasyonu yok |
+| 2.3#118 | EKSİK | - | Ertelendi: maç sim kalibrasyonu, WP-17 (2.1#129) |
 | 2.3#119 | TAMAM | sim/game/match.ts:176 | Maç seed'i maçtan önce kayda yazılıyor |
 
 ### 2.4 Sosyal Hayat, İlişkiler, Kararlar ve Olaylar
@@ -342,7 +342,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#4 | KISMİ | sim/life/relationships.ts:77 | Sönüm sabit; %2 ve tavan kuralı yok |
 | 2.4#5 | EKSİK | - | İlişki değişim defteri yok |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
-| 2.4#7 | EKSİK | sim/life/events/content.test.ts:100 | Kayıp/kazanç oran linter'ı yok |
+| 2.4#7 | EKSİK | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL değişikliği gerekir |
 | 2.4#11 | KISMİ | ui/screens/life/Relations.tsx:24 | Hızlı aksiyon var; 3 seçenekli sahne yok |
 | 2.4#14 | KISMİ | sim/career/createHero.ts:208 | Aile yapısı sabit |
 | 2.4#15 | TAMAM | sim/life/relationships.ts:189 | Yakın çevre etkisi tavanlı |
@@ -350,9 +350,9 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#24 | KISMİ | sim/life/events/dsl.ts:142 | Partner tercih ayarı yok |
 | 2.4#25 | KISMİ | sim/life/events/content/romance.ts:409 | TD −6, −5 tavanını aşıyor |
 | 2.4#36 | KISMİ | game/ai.ts:338 | İlişki pası etkiliyor; ikon ve rapor yok |
-| 2.4#37 | EKSİK | - | Yakın arkadaş listesi yok |
+| 2.4#37 | EKSİK | - | Ertelendi: Sosyal ekranı (WP-15 dosya listesi dışı) |
 | 2.4#46 | KISMİ | sim/career/squadRole.ts:109 | Kadro kararında form etkisi zayıf |
-| 2.4#47 | EKSİK | - | TD haftalık beklenti sistemi yok |
+| 2.4#47 | EKSİK | - | Ertelendi: WP-16 (TD beklentisi, 2.7#71) ile birlikte yapılacak |
 | 2.4#52 | KISMİ | sim/life/events/content/teammates.ts:92 | Penaltıcı olay kartı var; maç içi seçim yok |
 | 2.4#53 | KISMİ | sim/life/events/content/teammates.ts:128 | Kaptanlık zinciri var; sezon başı oylama yok |
 | 2.4#60 | EKSİK | sim/game/interview.ts:106 | Röportaj etkisinde tavan yok |
@@ -360,9 +360,9 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#65 | EKSİK | sim/life/casino.ts:874 | Tek ziyaret bile manşet olabiliyor |
 | 2.4#69 | KISMİ | sim/life/social.ts:112 | Paylaşım limiti yok |
 | 2.4#70 | KISMİ | sim/life/social.ts:24 | 2 paylaşım tipi eksik |
-| 2.4#79 | EKSİK | sim/life/events/content/fans.ts:51 | Taraftar grupları yok |
+| 2.4#79 | EKSİK | - | Ertelendi: içerik işi (olay + ilişki grubu), WP-15 kapsamı dışı |
 | 2.4#84 | KISMİ | sim/life/events/content/casino.ts:23 | Şike teklifinde reddetmek cezalandırılıyor |
-| 2.4#85 | EKSİK | sim/life/sponsors.ts:139 | 4 seviyeli skandal ölçeği yok |
+| 2.4#85 | TAMAM | sim/life/sponsors.ts (ScandalLevel 1-4) | WP-15: seviye 4 tüm sponsorları bitirir |
 | 2.4#90 | KISMİ | sim/life/events/content/health.ts:146 | Yardım hattı bilgisi yok |
 | 2.4#98 | KISMİ | sim/life/events/content/friends.ts:10 | Zincir 2 adım (plan 4) |
 | 2.4#99 | KISMİ | sim/life/events/content/teammates.ts:92 | Bağlı 4 adımlı zincir yok |
@@ -395,19 +395,19 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.5#19 | KISMİ | data/activities.ts | Enflasyon ayarı yok |
 | 2.5#22 | TAMAM | data/assets.ts:143 | Para ile hızlandırma satılmıyor |
 | 2.5#23 | TAMAM | sim/life/economy.ts:124 | Gider varlık bakımından |
-| 2.5#24 | EKSİK | sim/game/balanceSim.ts | Harcama eğrisi doğrulanmıyor |
+| 2.5#24 | KISMİ | sim/career/wp15.test.ts | WP-15: eşya bakım/fiyat oranı testi; tam harcama eğrisi ertelendi |
 | 2.5#29 | KISMİ | data/assets.ts | Late-game para yutucuları eksik |
 | 2.5#42 | TAMAM | sim/game/internal.ts:93 | Piyasa kayıtlı RNG ile |
-| 2.5#53 | EKSİK | sim/life/economy.ts:365 | İşletme gelir tavanı yok |
+| 2.5#53 | TAMAM | sim/life/business.ts (businessRevenueCap) | WP-15: haftalık gelir 3x tavan |
 | 2.5#54 | KISMİ | sim/life/sponsors.ts:16 | 4 sponsor kategorisi eksik |
 | 2.5#55 | KISMİ | core/types.ts:365 | Performans bonusu yok |
 | 2.5#60 | KISMİ | sim/life/sponsors.ts:68 | Formül farklı |
 | 2.5#62 | TAMAM | sim/life/sponsors.ts:16 | Bahis sponsoru yok |
 | 2.5#63 | KISMİ | data/assets.ts:30 | 85 eşyanın 57'sinde özel etki |
 | 2.5#64 | KISMİ | data/assets.ts | Kategori dağılımı farklı |
-| 2.5#71 | EKSİK | data/assets.ts:62 | Yıpranma modeli yok |
-| 2.5#80 | EKSİK | - | "Y haftalık maaşın" gösterimi yok |
-| 2.5#84 | EKSİK | sim/life/casino.ts:541 | At sahipliği yok |
+| 2.5#71 | EKSİK | - | Ertelendi: resaleValue amortismanı var; ayrı yıpranma modeli denge riski |
+| 2.5#80 | TAMAM | ui/screens/life/Assets.tsx | WP-15: satın alma onayında "net maaşın ~N haftası" |
+| 2.5#84 | EKSİK | - | Ertelendi: yeni içerik (at sahipliği), kapsam dışı |
 | 2.5#89 | TAMAM | - | Fiş/IAP satışı yok |
 | 2.5#90 | EKSİK | ui/screens/SettingsScreen.tsx | Kumarhaneyi kapatma ayarı yok |
 | 2.5#91 | TAMAM | ui/backend/casinoView.ts:47 | 18 yaş kilidi |
@@ -428,7 +428,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.5#120 | EKSİK | - | Mağaza sayfası yok |
 | 2.5#122 | TAMAM | - | Karanlık örüntü yok |
 | 2.5#125 | KISMİ | sim/game/balanceSim.ts:29 | Bot harness var; CI raporu yok |
-| 2.5#126 | EKSİK | sim/game/balance.test.ts:102 | Ekonomi değişmez testleri yok |
+| 2.5#126 | TAMAM | sim/career/wp15.test.ts | WP-15: 20 tohum x 5 sezon ekonomi değişmezleri |
 
 ### 2.6 Dünya, Ligler, Kupalar, NPC'ler, Milli Takımlar, Veri
 

@@ -24,6 +24,7 @@ export const tr = {
     vision: 'VİZ', composure: 'SOĞ', positioning: 'POZ', leadership: 'LİD', workRate: 'ÇAL',
     reflexes: 'REF', handling: 'TUT',
   },
+  gkGroup: { shotStopping: 'Kurtarış', commandArea: 'Alan Hakimiyeti', distribution: 'Oyun Kurma' },
   group: { physical: 'Fiziksel', technical: 'Teknik', mental: 'Zihinsel', goalkeeping: 'Kalecilik', recovery: 'Toparlanma', tactical: 'Taktik' },
   archetype: {
     poacher: 'Golcü', playmaker: 'Oyun Kurucu', winger: 'Kanat Motoru', wall: 'Duvar', boxToBox: 'Box-to-Box', keeper: 'Kaleci',
@@ -118,6 +119,7 @@ export const en: Shape<typeof tr> = {
     vision: 'VIS', composure: 'COM', positioning: 'POS', leadership: 'LEA', workRate: 'WRK',
     reflexes: 'REF', handling: 'HAN',
   },
+  gkGroup: { shotStopping: 'Shot-stopping', commandArea: 'Command of Area', distribution: 'Distribution' },
   group: { physical: 'Physical', technical: 'Technical', mental: 'Mental', goalkeeping: 'Goalkeeping', recovery: 'Recovery', tactical: 'Tactical' },
   archetype: {
     poacher: 'Poacher', playmaker: 'Playmaker', winger: 'Wing Engine', wall: 'The Wall', boxToBox: 'Box-to-Box', keeper: 'Keeper',

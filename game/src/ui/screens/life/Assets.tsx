@@ -6,6 +6,7 @@ import { formatMoney, formatSigned } from '../../format'
 import { Icon } from '../../icons'
 import { actions, data, gameState } from '../../store'
 import { assetIcon, categoryIcon } from './util'
+import { INCOME_TAX, weeklyIncome } from '../../../sim/life/economy'
 import { NewTag, UnlockGate } from '../../tutorial/UnlockGate'
 import { features } from '../../tutorial/unlocks'
 
@@ -162,6 +163,10 @@ export function Assets() {
               <h3 class="h3">{lt(buying.name)}</h3>
             </div>
             <p class="t-mid">{t('life.assets.buyBody', { name: lt(buying.name), upkeep: formatMoney(buying.upkeep) })}</p>
+            {(() => {
+              const net = weeklyIncome(s.life, s.hero) * (1 - INCOME_TAX)
+              return net > 0 ? <p class="t-sm t-lo" data-testid="asset-weeks">{t('life.assets.weeksOfPay', { n: Math.max(1, Math.round(buying.price / net)) })}</p> : null
+            })()}
             {money < buying.price && <Chip tone="neg" icon="warning">{t('common.notEnoughMoney')}</Chip>}
           </div>
         )}
