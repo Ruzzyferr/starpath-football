@@ -8,6 +8,7 @@ import { formatRating, ratingColor } from '../../format'
 import { actions, match, navigate, type LiveMatchView, type MatchEventView, type TeamView } from '../../store'
 import { CompareBar, EVENT_ICON, MOMENT_ICON, PitchLinesHorizontal } from './shared'
 import { MatchHints } from '../../tutorial/ControlHint'
+import { MomentsPanel } from './Moments'
 
 const SPEEDS: { id: 1 | 2 | 4; label: string }[] = [
   { id: 1, label: '1×' },
@@ -106,6 +107,7 @@ export function LiveMatchScreen() {
   void currentLang.value
   const [goalKey, setGoalKey] = useState<number | null>(null)
   const seen = useRef<number>(-1)
+  const resumeAfter = useRef(false)
 
   // Kick off on arrival.
   useEffect(() => {
@@ -182,6 +184,17 @@ export function LiveMatchScreen() {
               <div class="lm-hs"><b class="num">{passPct}%</b><span>{t('match.live.passes')}</span></div>
             </div>
           </div>
+          <MomentsPanel
+            matchKey={m.fixture.fixtureId}
+            onOpen={() => {
+              resumeAfter.current = !m.paused && !m.finished && !m.momentActive
+              if (resumeAfter.current) actions.matchPause(true)
+            }}
+            onClose={() => {
+              if (resumeAfter.current) actions.matchPause(false)
+              resumeAfter.current = false
+            }}
+          />
         </section>
 
         <section class="lm-feed-wrap" aria-label={t('match.live.feed')}>

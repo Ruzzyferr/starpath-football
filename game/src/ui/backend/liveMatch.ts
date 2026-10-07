@@ -23,6 +23,8 @@ import type {
 } from '../store'
 import { RELATION_LABEL, diffSnapshots, fixtureView, snapshot } from './mapping'
 import { playHighlight, type HighlightSession } from './highlightBridge'
+import { celebrationForMatch } from './celebration'
+import { isEveningFixture } from '../../game/presentation'
 import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
@@ -370,6 +372,24 @@ function afterMoment(): void {
   startTimer()
 }
 
+function rawFixture(s: GameState, id: string): { homeId: string; day: number } | null {
+  for (const season of [s.calendar.season, s.calendar.season + 1]) {
+    for (const comp of seasonCompetitions(s.world, season)) {
+      const f = comp.fixtures.find((x) => x.id === id)
+      if (f) return f
+    }
+  }
+  return null
+}
+
+/** Home ground capacity (stadium tier) and floodlights for the match scene. */
+function matchStadium(s: GameState, l: Live): { capacity: number; night: boolean } {
+  const fx = rawFixture(s, l.fixtureId)
+  const home = fx ? s.world.clubs[fx.homeId] : undefined
+  const capacity = l.setup.neutralVenue ? 60_000 : home?.stadium.capacity ?? 42_000
+  return { capacity, night: isEveningFixture(l.fixtureId, fx?.day ?? 5, l.setup.importance) }
+}
+
 /** Hand the pending highlight to the Phaser scene (#match-canvas). */
 export function playMoment(): void {
   const l = live
@@ -393,6 +413,7 @@ export function playMoment(): void {
       highlight: hl, heroColors: heroTeam.colors, oppColors: oppTeam.colors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
       heroName: s.hero.nickname || s.hero.lastName, names, weather: l.setup.weather, importance: l.setup.importance,
       difficulty: s.meta.difficulty, lang: currentLang.value, settings: settings.value, gender: worldGender(s.world),
+      stadium: matchStadium(s, l), celebration: celebrationForMatch(s), matchKey: l.fixtureId,
     },
     (result) => done(() => l.sim.resolveHighlight(result)),
     () => done(() => l.sim.skipHighlight()),

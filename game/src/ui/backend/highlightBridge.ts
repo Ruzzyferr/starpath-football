@@ -12,6 +12,8 @@ import type { Difficulty, KitColors, Lang } from '../../core/types'
 import type { Highlight, HighlightResult, Weather } from '../../sim/match'
 import type { UiSettings } from '../store'
 import { emitHintEvent } from '../tutorial/hints'
+import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from '../../game/presentation'
+import type { MomentRecording } from '../../game/moments'
 
 export interface HighlightRequest {
   highlight: Highlight
@@ -28,6 +30,12 @@ export interface HighlightRequest {
   settings: UiSettings
   /** Players' gender for the head sprites (missing = male). */
   gender?: 'male' | 'female'
+  /** Home ground capacity (stadium tier) and floodlit evening fixture. */
+  stadium?: { capacity: number; night?: boolean }
+  /** Goal celebration choice + unlocked set. */
+  celebration?: { choice: CelebrationChoice; unlocked: CelebrationId[] }
+  /** Recorded moments are grouped by this key (fixture id). */
+  matchKey?: string
 }
 
 export interface HighlightSession {
@@ -71,7 +79,12 @@ export function playHighlight(
             slowMoAim: req.settings.slowMoAim,
             vibration: req.settings.vibration,
             sound: req.settings.sound,
+            reducedMotion: req.settings.reducedMotion,
+            lowFx: req.settings.lowFx,
           },
+          stadium: req.stadium,
+          celebration: req.celebration,
+          matchKey: req.matchKey,
           lang: req.lang,
           difficulty: req.difficulty,
           weather: req.weather,
@@ -107,6 +120,42 @@ export function playHighlight(
     stop() {
       stopped = true
       clearWatchdog()
+      handle?.stop()
+    },
+  }
+}
+
+/**
+ * Rewatch a recorded moment (Moments list) inside `container`. Phaser is
+ * loaded lazily; the game is created for the replay and destroyed after.
+ */
+export function rewatchMoment(
+  container: HTMLElement,
+  moment: MomentRecording,
+  angle: ReplayAngleChoice,
+  settings: UiSettings,
+  onDone: () => void,
+): HighlightSession {
+  let stopped = false
+  let handle: { stop(): void } | null = null
+  import('../../game/MatchScene')
+    .then((mod) => {
+      if (stopped) return
+      handle = mod.replayMoment(
+        container,
+        moment,
+        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx } },
+        () => {
+          if (!stopped) onDone()
+        },
+      )
+    })
+    .catch(() => {
+      if (!stopped) onDone()
+    })
+  return {
+    stop() {
+      stopped = true
       handle?.stop()
     },
   }

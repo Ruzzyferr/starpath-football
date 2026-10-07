@@ -7,6 +7,7 @@ import { formatRating, ratingColor } from '../../format'
 import { useCountUp } from '../../hooks/motion'
 import { actions, data, navigate, type Delta, type InterviewOption, type PostMatchView, type RatingLineView } from '../../store'
 import { CompareBar, MOMENT_ICON } from './shared'
+import { MomentsPanel } from './Moments'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta, type PostStep } from './postFlow'
 
 const TONE_ICON: Record<InterviewOption['tone'], IconName> = {
@@ -435,6 +436,7 @@ export function PostMatchScreen() {
 
       <div class="post-step" key={step} ref={bodyRef}>
         {step === 'result' && <ResultStep pm={pm} />}
+        {step === 'result' && <MomentsPanel matchKey={fx.fixtureId} top />}
         {step === 'rating' && <RatingStep pm={pm} />}
         {step === 'map' && <MapStep pm={pm} />}
         {step === 'trust' && <TrustStep pm={pm} />}

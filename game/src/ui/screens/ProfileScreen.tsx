@@ -1,3 +1,4 @@
+import { CelebrationPicker } from './profile/CelebrationPicker'
 import { NationalCard } from './national/NationalCard'
 import type { SeasonStats } from '../../core/types'
 import { lt, t } from '../../i18n'
@@ -196,6 +197,8 @@ export function ProfileScreen() {
           </Card>
 
           <NationalCard detailed />
+
+          <CelebrationPicker />
 
           <Card pad="md">
             <CardHeader title={t('profile.national.title')} icon="flag" />

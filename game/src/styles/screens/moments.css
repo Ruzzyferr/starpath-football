@@ -1,0 +1,26 @@
+/* Moments list + rewatch player (live match / post-match). */
+.mo-panel { display: flex; flex-direction: column; gap: var(--sp-2, 8px); }
+.mo-title { display: flex; align-items: center; gap: 6px; margin: 0; }
+.mo-empty { margin: 0; }
+.mo-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; max-height: 240px; overflow-y: auto; }
+.mo-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border-radius: 10px; background: rgba(255, 255, 255, 0.04); min-width: 0; }
+.mo-row.is-good { background: rgba(255, 210, 63, 0.08); }
+.mo-min { width: 2.6em; color: var(--text-lo, #9aa); font-size: 0.85em; }
+.mo-icon { display: inline-flex; color: var(--accent, #ffd23f); }
+.mo-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 0.9em; }
+.mo-stage { position: relative; width: 100%; aspect-ratio: 16 / 10; max-height: 62vh; background: #050806; border-radius: 12px; overflow: hidden; }
+.mo-canvas { position: absolute; inset: 0; }
+.mo-controls { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+@media (max-width: 480px) { .mo-stage { aspect-ratio: 3 / 4; } }
+
+/* Profile: goal celebration picker. */
+.cel-hint { margin: 0 0 8px; }
+.cel-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(118px, 1fr)); gap: 6px; }
+.cel-opt { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: 8px 10px; border-radius: 10px; border: 1px solid rgba(255, 255, 255, 0.1); background: rgba(255, 255, 255, 0.03); color: inherit; font: inherit; text-align: left; cursor: pointer; min-height: 44px; }
+.cel-opt.is-on { border-color: var(--accent, #ffd23f); background: rgba(255, 210, 63, 0.1); }
+.cel-opt.is-locked { opacity: 0.6; cursor: default; }
+.cel-opt:focus-visible { outline: 2px solid var(--accent, #ffd23f); outline-offset: 2px; }
+.cel-ico { font-size: 1.2em; }
+.cel-name { font-weight: 700; font-size: 0.88em; }
+.cel-lock { line-height: 1.2; }
+.cel-store { color: var(--accent, #ffd23f); font-weight: 700; }
