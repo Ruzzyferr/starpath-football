@@ -6,7 +6,7 @@ import { describe, expect, it } from 'vitest'
 import { Rng } from '../../core/rng'
 import type { Competition, Fixture, MatchResultSummary, World } from '../../core/types'
 import { START_YEAR } from '../../core/config'
-import { coefficientRanking, ensureCoefficients, updateCoefficients } from './coefficients'
+import { coefficientRanking, ensureCoefficients } from './coefficients'
 import {
   applyFixtureResult, continentalCompId, continentalGroups, continentalQualifyingCompId, cupCompId, hasPlayoff, playoffCompId,
   selectContinentalEntrants, tieAggregate, tieWinner, twoLegFixtures,
