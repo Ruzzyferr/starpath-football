@@ -8,7 +8,7 @@
  * from the passed Rng, so a season replays identically from the same state.
  */
 import type {
-  Club, Competition, LText, MatchResultSummary, NpcPlayer, Position, SeasonStats, World,
+  Club, Competition, LText, MatchResultSummary, NpcPlayer, Position, World,
 } from '../../core/types'
 import { POSITIONS } from '../../core/types'
 import { worldGender } from '../../core/gender'
@@ -16,8 +16,19 @@ import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { positionGroup } from './attributes'
 import {
-  advanceCompetition, applyFixtureResult, createSeasonCompetitions, honourKey, isFinalFixture, isKnockoutFixture,
+  advanceCompetition, aggregateBefore, applyFixtureResult, autoPromotionPlaces, createSeasonCompetitions, honourKey, isDecisiveFixture,
+  isNeutralFixture, isQualifyingComp, playoffCompId,
 } from './competitions'
+import {
+  computeSeasonAwardRecord, goldenStarShortlist, goldenStarVote, nominateGoals, seasonAwards, storeSeasonAwards,
+  type HeroAwardInput, type SeasonAwards,
+} from './awards'
+import { updateCoefficients } from './coefficients'
+import { END_OF_SEASON_WEEK } from './fixtures'
+import {
+  advanceNationalCompetition, createNationalCompetitions, ensureNational, playNationalFixture, recordInternationalStats, resetInternationalStats,
+} from './national'
+import type { GoldenStarResult, SeasonAwardRecord } from './worldTypes'
 import { slotCount } from './formations'
 import { FREE_AGENT_COUNT, generateFreeAgents } from './generate'
 import {
@@ -28,12 +39,11 @@ import type { QuickSimDetail } from './quickSim'
 import { seasonCompetitions, squadPlayers, teamRating } from './queries'
 import { sortTable } from './table'
 
-// ───────────────────────── Constants ─────────────────────────
+export {
+  MIN_AWARD_APPS, YOUNG_PLAYER_MAX_AGE, playerSeasonScore, seasonAwards, type AwardWinner, type SeasonAwards,
+} from './awards'
 
-/** Minimum appearances to be eligible for season awards. */
-export const MIN_AWARD_APPS = 12
-/** Maximum age (during the season) for the young player award. */
-export const YOUNG_PLAYER_MAX_AGE = 21
+// ───────────────────────── Constants ─────────────────────────
 /** Clubs never drop below / rise above these squad sizes after the summer. */
 export const SQUAD_MIN = 22
 export const SQUAD_MAX = 30
@@ -89,7 +99,10 @@ function applyMatchStats(world: World, rng: Rng, d: QuickSimDetail): void {
 
 /** Advance every competition of a season whose current round is complete. */
 export function advanceCompetitions(world: World, rng: Rng, season: number): void {
-  for (const comp of seasonCompetitions(world, season)) advanceCompetition(world, comp, rng)
+  for (const comp of seasonCompetitions(world, season)) {
+    if (comp.type === 'international') advanceNationalCompetition(world, rng, comp)
+    else advanceCompetition(world, comp, rng)
+  }
 }
 
 /**
@@ -110,15 +123,26 @@ export function playFixturesFor(
   for (const comp of seasonCompetitions(world, season)) {
     for (const f of comp.fixtures) {
       if (f.week !== week || f.day !== day || f.result || skipFixtureIds.has(f.id)) continue
+      if (comp.type === 'international') {
+        const d = playNationalFixture(world, rng, comp, f)
+        if (d) {
+          nominateGoals(world, comp, f)
+          played.push({ compId: comp.id, fixtureId: f.id, result: d.result })
+        }
+        continue
+      }
       const home = world.clubs[f.homeId]
       const away = world.clubs[f.awayId]
       if (!home || !away) continue
+      const aggregate = f.leg === 2 ? aggregateBefore(comp, f) ?? undefined : undefined
       const detail = quickSimDetailed(rng, home, away, world, {
-        knockout: isKnockoutFixture(comp, f),
-        neutral: isFinalFixture(comp, f),
+        knockout: isDecisiveFixture(comp, f),
+        neutral: isNeutralFixture(comp, f),
+        aggregate,
       })
       applyFixtureResult(comp, f, detail.result)
       applyMatchStats(world, rng, detail)
+      nominateGoals(world, comp, f)
       played.push({ compId: comp.id, fixtureId: f.id, result: detail.result })
     }
   }
@@ -146,10 +170,19 @@ export function recordFixtureResult(
   if (!comp || !fixture) throw new Error(`Unknown fixture ${compId}/${fixtureId}`)
   if (fixture.result) return
   applyFixtureResult(comp, fixture, result)
-  for (const s of result.scorers) {
+  nominateGoals(world, comp, fixture)
+  if (comp.type === 'international') {
+    // Internationals do not count toward club season stats.
+    if (!comp.meta?.level || comp.meta.level === 'A') recordInternationalStats(world, Object.keys(npcRatings ?? {}), result.scorers)
+    advanceCompetitions(world, rng, comp.season)
+    return
+  }
+  result.scorers.forEach((s, i) => {
     const p = world.players[s.playerId]
     if (p && !s.ownGoal) p.stats.goals++
-  }
+    const a = result.assists?.[i]
+    if (a && world.players[a]) world.players[a].stats.assists++
+  })
   if (npcRatings) {
     for (const [id, rating] of Object.entries(npcRatings)) {
       const p = world.players[id]
@@ -164,14 +197,17 @@ export function recordFixtureResult(
   advanceCompetitions(world, rng, comp.season)
 }
 
-/** Simulate every fixture of the season that is still unplayed (incl. rounds drawn meanwhile). */
-export function simulateRemainingFixtures(world: World, rng: Rng, season: number): number {
+/**
+ * Simulate every fixture of the season that is still unplayed (incl. rounds
+ * drawn meanwhile), optionally only those before week `beforeWeek`.
+ */
+export function simulateRemainingFixtures(world: World, rng: Rng, season: number, beforeWeek = Infinity): number {
   let total = 0
   for (;;) {
     let next: { week: number; day: number } | null = null
     for (const comp of seasonCompetitions(world, season)) {
       for (const f of comp.fixtures) {
-        if (f.result) continue
+        if (f.result || f.week >= beforeWeek) continue
         if (!next || f.week < next.week || (f.week === next.week && f.day < next.day)) next = { week: f.week, day: f.day }
       }
     }
@@ -187,65 +223,6 @@ export function weeklyTick(world: World): void {
     if (p.injuredWeeks > 0) p.injuredWeeks--
     p.morale = Math.round(p.morale + (62 - p.morale) * 0.1)
   }
-}
-
-// ───────────────────────── Awards ─────────────────────────
-
-export interface AwardWinner {
-  playerId: string
-  clubId: string | null
-  /** Goals (top scorer) or award score (best/young player). */
-  value: number
-}
-
-export interface SeasonAwards {
-  season: number
-  topScorer: AwardWinner | null
-  bestPlayer: AwardWinner | null
-  youngPlayer: AwardWinner | null
-  /** Top scorer per league id (league of the player's current club). */
-  leagueTopScorers: Record<string, AwardWinner>
-}
-
-/**
- * Award score used for "player of the season" style awards. Returns null
- * below {@link MIN_AWARD_APPS}. The career layer can feed the hero's stats
- * and OVR to compare against {@link seasonAwards} winners.
- */
-export function playerSeasonScore(stats: SeasonStats, ovr: number, position: Position): number | null {
-  if (stats.apps < MIN_AWARD_APPS) return null
-  const avg = stats.ratingSum / stats.apps
-  const group = positionGroup(position)
-  const defensive = group === 'GK' || group === 'DEF' ? stats.cleanSheets * 0.4 : 0
-  return Math.round((avg * 8 + stats.goals * 0.8 + stats.assists * 0.5 + defensive + stats.motm * 0.5 + ovr * 0.25) * 100) / 100
-}
-
-/** Season awards among NPCs (stats cover all competitions of the season). */
-export function seasonAwards(world: World, season: number): SeasonAwards {
-  let topScorer: AwardWinner | null = null
-  let bestPlayer: AwardWinner | null = null
-  let youngPlayer: AwardWinner | null = null
-  const leagueTopScorers: Record<string, AwardWinner> = {}
-  const better = (cur: AwardWinner | null, v: number, id: string) => !cur || v > cur.value || (v === cur.value && id < cur.playerId)
-
-  for (const p of Object.values(world.players)) {
-    const g = p.stats.goals
-    if (g > 0) {
-      if (better(topScorer, g, p.id)) topScorer = { playerId: p.id, clubId: p.clubId, value: g }
-      const leagueId = p.clubId ? world.clubs[p.clubId]?.leagueId : undefined
-      if (leagueId && better(leagueTopScorers[leagueId] ?? null, g, p.id)) leagueTopScorers[leagueId] = { playerId: p.id, clubId: p.clubId, value: g }
-    }
-    const score = playerSeasonScore(p.stats, p.ovr, p.position)
-    if (score === null) continue
-    // Playing in a stronger league counts.
-    const rep = p.clubId ? world.clubs[p.clubId]?.reputation ?? 50 : 50
-    const weighted = Math.round((score + rep * 0.1) * 100) / 100
-    if (better(bestPlayer, weighted, p.id)) bestPlayer = { playerId: p.id, clubId: p.clubId, value: weighted }
-    if (ageIn(p, season) <= YOUNG_PLAYER_MAX_AGE && better(youngPlayer, weighted, p.id)) {
-      youngPlayer = { playerId: p.id, clubId: p.clubId, value: weighted }
-    }
-  }
-  return { season, topScorer, bestPlayer, youngPlayer, leagueTopScorers }
 }
 
 // ───────────────────────── Transfers ─────────────────────────
@@ -461,6 +438,12 @@ export interface EndOfSeasonSummary {
   champions: ChampionRecord[]
   movements: LeagueMovement[]
   awards: SeasonAwards
+  /** Golden Star vote of the season (hero included when the game layer passed him). */
+  goldenStar: GoldenStarResult
+  /** Golden Glove, Young Player, Goal and Team of the Season. */
+  awardRecord: SeasonAwardRecord
+  /** Country coefficient points earned this season. */
+  coefficientPoints: Record<string, number>
   retired: RetiredPlayer[]
   released: string[]
   youthIntake: string[]
@@ -472,6 +455,8 @@ export interface EndOfSeasonSummary {
 function recordHonours(world: World, season: number): ChampionRecord[] {
   const out: ChampionRecord[] = []
   for (const comp of seasonCompetitions(world, season)) {
+    // International champions are recorded by national.ts when their tournament ends.
+    if (comp.type === 'international' || isQualifyingComp(comp)) continue
     if (comp.type === 'league' && !comp.winnerId && comp.table) comp.winnerId = sortTable(comp.table, comp.fixtures)[0]?.clubId ?? null
     if (!comp.winnerId) continue
     const compKey = honourKey(comp)
@@ -489,7 +474,21 @@ function finalOrder(world: World, leagueId: string, season: number): string[] {
   return [...order, ...league.clubIds.filter((id) => !order.includes(id))]
 }
 
-/** Swap the bottom `relegate` of each tier with the top `promote` of the tier below. */
+/**
+ * The `n` clubs promoted from a league: the automatic places plus the
+ * play-off winner (falls back to the table when no play-off was played).
+ */
+export function promotedClubs(world: World, leagueId: string, season: number, n: number): string[] {
+  const order = finalOrder(world, leagueId, season)
+  const auto = Math.min(n, autoPromotionPlaces(world, leagueId))
+  const out = order.slice(0, auto)
+  const po = world.competitions[playoffCompId(season, leagueId)]
+  if (out.length < n && po?.winnerId && !out.includes(po.winnerId) && order.includes(po.winnerId)) out.push(po.winnerId)
+  for (const id of order) if (out.length < n && !out.includes(id)) out.push(id)
+  return out
+}
+
+/** Swap the bottom `relegate` of each tier with the promoted clubs (automatic + play-off) of the tier below. */
 export function applyPromotionRelegation(world: World, season: number): LeagueMovement[] {
   const moves: LeagueMovement[] = []
   const byCountry = new Map<string, string[]>()
@@ -502,7 +501,7 @@ export function applyPromotionRelegation(world: World, season: number): LeagueMo
       const n = Math.min(upper.relegate, lower.promote)
       if (n <= 0) continue
       for (const clubId of finalOrder(world, upper.id, season).slice(-n)) moves.push({ clubId, fromLeagueId: upper.id, toLeagueId: lower.id, kind: 'relegated' })
-      for (const clubId of finalOrder(world, lower.id, season).slice(0, n)) moves.push({ clubId, fromLeagueId: lower.id, toLeagueId: upper.id, kind: 'promoted' })
+      for (const clubId of promotedClubs(world, lower.id, season, n)) moves.push({ clubId, fromLeagueId: lower.id, toLeagueId: upper.id, kind: 'promoted' })
     }
   }
   // Apply after all decisions so a club cannot move two tiers in one summer.
@@ -723,11 +722,27 @@ export function pruneCompetitions(world: World, keepFromSeason: number): void {
  * Mutates and returns the same `world`. Retired players are deleted from
  * `world.players` (old fixtures may still reference their ids).
  */
-export function endOfSeason(world: World, rng: Rng, season: number): { world: World; summary: EndOfSeasonSummary } {
+export interface EndOfSeasonOptions {
+  /** The hero's season, so he competes for the individual awards. */
+  hero?: HeroAwardInput
+  /** League whose Team of the Season is built (default: the first top-tier league). */
+  totsLeagueId?: string | null
+}
+
+export function endOfSeason(world: World, rng: Rng, season: number, opts: EndOfSeasonOptions = {}): { world: World; summary: EndOfSeasonSummary } {
   const next = season + 1
-  simulateRemainingFixtures(world, rng, season)
+  ensureNational(world)
+  // Last summer's national finals (normally already played in the off-season weeks).
+  simulateRemainingFixtures(world, rng, season - 1)
+  // Club football; this season's national finals are played after the season closes.
+  simulateRemainingFixtures(world, rng, season, END_OF_SEASON_WEEK)
   const champions = recordHonours(world, season)
   const awards = seasonAwards(world, season)
+  const goldenStar = goldenStarVote(goldenStarShortlist(world, season, opts.hero), season)
+  const awardRecord = computeSeasonAwardRecord(world, season, opts.hero, opts.totsLeagueId)
+  storeSeasonAwards(world, goldenStar, awardRecord)
+  const coefficientPoints = updateCoefficients(world, season)
+  resetInternationalStats(world)
   const movements = applyPromotionRelegation(world, season)
   updateClubReputations(world, season, movements, champions)
   const retired = ageAndRetire(world, rng, season)
@@ -740,11 +755,12 @@ export function endOfSeason(world: World, rng: Rng, season: number): { world: Wo
   recomputeWageBudgets(world)
   for (const p of Object.values(world.players)) p.stats = emptySeasonStats()
   createSeasonCompetitions(world, rng, next)
+  createNationalCompetitions(world, rng, next)
   pruneCompetitions(world, season)
   return {
     world,
     summary: {
-      season, nextSeason: next, champions, movements, awards, retired, released, youthIntake: youth,
+      season, nextSeason: next, champions, movements, awards, goldenStar, awardRecord, coefficientPoints, retired, released, youthIntake: youth,
       transfers: [...transfers, ...balanced.signed], fillers: balanced.fillers,
     },
   }

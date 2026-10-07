@@ -8,6 +8,7 @@
  * Knockout ties go to extra time (⅓ of the 90-minute rate) then penalties.
  */
 import type { Club, MatchResultSummary, Position, TacticStyle, World } from '../../core/types'
+import './worldTypes'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import type { Lineup } from './formations'
@@ -53,6 +54,12 @@ export interface QuickSimOptions {
   neutral?: boolean
   homeExclude?: ReadonlySet<string>
   awayExclude?: ReadonlySet<string>
+  /**
+   * Second leg of a two-legged tie: goals already scored in the first leg by
+   * this fixture's home and away team. Extra time + penalties are played when
+   * the aggregate is level after 90' (no away-goals rule).
+   */
+  aggregate?: { home: number; away: number }
 }
 
 export interface QuickSimDetail {
@@ -181,9 +188,25 @@ function rateStarters(
 export function quickSimDetailed(rng: Rng, home: Club, away: Club, world: World, opts: QuickSimOptions = {}): QuickSimDetail {
   const homeLineup = selectLineup(world, home.id, home.formation, opts.homeExclude)
   const awayLineup = selectLineup(world, away.id, away.formation, opts.awayExclude)
+  return quickSimLineups(rng, world, { lineup: homeLineup, style: home.style }, { lineup: awayLineup, style: away.style }, opts)
+}
+
+/** A side for {@link quickSimLineups}: a ready lineup and its tactical style. */
+export interface SimSide {
+  lineup: Lineup
+  style: TacticStyle
+}
+
+/**
+ * Core of the goal model on two ready lineups (clubs or national teams).
+ * `world` is only read for player morale (unknown ids count as neutral).
+ */
+export function quickSimLineups(rng: Rng, world: World, homeSide: SimSide, awaySide: SimSide, opts: QuickSimOptions = {}): QuickSimDetail {
+  const homeLineup = homeSide.lineup
+  const awayLineup = awaySide.lineup
   const hr = rateLineup(world, homeLineup)
   const ar = rateLineup(world, awayLineup)
-  const xg = expectedGoals(hr, ar, home.style, away.style, opts.neutral)
+  const xg = expectedGoals(hr, ar, homeSide.style, awaySide.style, opts.neutral)
 
   let h = rng.poisson(xg.home)
   let a = rng.poisson(xg.away)
@@ -193,7 +216,9 @@ export function quickSimDetailed(rng: Rng, home: Club, away: Club, world: World,
 
   let extraTime = false
   let penalties: { home: number; away: number } | undefined
-  if (opts.knockout && h === a) {
+  const aggH = opts.aggregate?.home ?? 0
+  const aggA = opts.aggregate?.away ?? 0
+  if ((opts.knockout || opts.aggregate) && h + aggH === a + aggA) {
     extraTime = true
     const eh = rng.poisson(xg.home * QUICKSIM_TUNING.extraTimeFraction)
     const ea = rng.poisson(xg.away * QUICKSIM_TUNING.extraTimeFraction)
@@ -201,7 +226,7 @@ export function quickSimDetailed(rng: Rng, home: Club, away: Club, world: World,
     for (let i = 0; i < ea; i++) goals.push(draftGoal(rng, 'away', rng.int(91, 120), awayLineup, homeLineup))
     h += eh
     a += ea
-    if (h === a) penalties = penaltyShootout(rng, hr.overall, ar.overall)
+    if (h + aggH === a + aggA) penalties = penaltyShootout(rng, hr.overall, ar.overall)
   }
   goals.sort((x, y) => x.minute - y.minute)
 
@@ -220,6 +245,8 @@ export function quickSimDetailed(rng: Rng, home: Club, away: Club, world: World,
     }),
   }
   if (penalties) result.penalties = penalties
+  if (extraTime && opts.aggregate) result.extraTime = true
+  if (goals.some((g) => g.assistId)) result.assists = goals.map((g) => g.assistId)
   const motm = manOfTheMatch(ratings, homeLineup, awayLineup, h, a, penalties)
   if (motm) result.motmId = motm
 

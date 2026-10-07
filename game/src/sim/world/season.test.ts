@@ -1,6 +1,6 @@
 import { Rng, hashString } from '../../core/rng'
 import type { MatchResultSummary, World } from '../../core/types'
-import { continentalCompId, cupCompId, finalRound, leagueCompId } from './competitions'
+import { continentalCompId, continentalQualifyingCompId, cupCompId, finalRound, isQualifyingComp, leagueCompId, playoffCompId } from './competitions'
 import { SEASON_WEEKS } from './fixtures'
 import { generateWorld } from './generate'
 import { clubFixtures, seasonCompetitions } from './queries'
@@ -43,7 +43,9 @@ describe('a full season', () => {
   it('plays every fixture and crowns every competition', () => {
     for (const comp of seasonCompetitions(world, S)) {
       expect(comp.fixtures.every((f) => f.result)).toBe(true)
-      expect(comp.winnerId).toBeTruthy()
+      // Qualifying rounds / groups send teams on and crown nobody.
+      if (isQualifyingComp(comp)) expect(comp.winnerId).toBeNull()
+      else expect(comp.winnerId).toBeTruthy()
     }
   })
 
@@ -85,12 +87,18 @@ describe('a full season', () => {
     }
   })
 
-  it('runs the continental cup groups then a 16-team knockout', () => {
+  it('runs qualifying, the continental cup groups then a two-legged knockout', () => {
+    const qual = world.competitions[continentalQualifyingCompId(S)]
     const cont = world.competitions[continentalCompId(S)]
+    // 8 countries: 12 direct places + 4 qualifying winners → 4 groups, 8-team knockout.
+    expect(cont.participantIds.length).toBe(16)
+    expect(qual.participantIds.length).toBe(8)
+    for (const id of qual.alive!) expect(cont.participantIds).toContain(id)
     const group = cont.fixtures.filter((f) => f.round < 6)
     const ko = cont.fixtures.filter((f) => f.round >= 6)
-    expect(group.length).toBe(16 * 6)
-    expect(ko.length).toBe(8 + 4 + 2 + 1)
+    expect(group.length).toBe(8 * 6)
+    expect(ko.length).toBe(4 * 2 + 2 * 2 + 1)
+    expect(ko.filter((f) => !f.leg).length).toBe(1) // single-leg final
     expect(cont.participantIds).toContain(cont.winnerId)
   })
 
@@ -122,6 +130,7 @@ describe('a full season', () => {
     let fixtureGoals = 0
     let ownGoals = 0
     for (const comp of seasonCompetitions(world, S)) {
+      if (comp.type === 'international') continue // internationals are not club stats
       for (const f of comp.fixtures) {
         fixtureGoals += f.result!.home + f.result!.away
         ownGoals += f.result!.scorers.filter((s) => s.ownGoal).length
@@ -137,10 +146,16 @@ describe('a full season', () => {
     })
 
     it('records honours for every competition', () => {
-      const comps = Object.keys(world.leagues).length + COUNTRIES.length + 1
+      const playoffs = Object.keys(world.leagues).filter((id) => world.competitions[playoffCompId(S, id)]).length
+      expect(playoffs).toBe(7 + 2) // every tier-2/3 league
+      const comps = Object.keys(world.leagues).length + COUNTRIES.length + 1 + playoffs
       expect(summary.champions.length).toBe(comps)
-      expect(world.honours.length).toBe(comps)
-      expect(world.honours.every((h) => h.season === S && world.clubs[h.winnerId])).toBe(true)
+      const club = world.honours.filter((h) => !h.compKey.startsWith('nt:'))
+      expect(club.length).toBe(comps)
+      expect(club.every((h) => h.season === S && world.clubs[h.winnerId])).toBe(true)
+      // National tournaments: two youth leagues + the continental championships of the summer.
+      const nt = world.honours.filter((h) => h.compKey.startsWith('nt:'))
+      expect(nt.map((h) => h.compKey).sort()).toEqual(['nt:EU', 'nt:OC', 'nt:youth:U19', 'nt:youth:U21'])
     })
 
     it('promotes and relegates exactly 3 clubs between adjacent tiers', () => {
@@ -151,7 +166,12 @@ describe('a full season', () => {
         const before = preTables.get(m.fromLeagueId)!
         const idx = before.indexOf(m.clubId)
         if (m.kind === 'relegated') expect(idx).toBeGreaterThanOrEqual(before.length - 3)
-        else expect(idx).toBeLessThan(3)
+        else {
+          // Top two go up automatically, the third place goes to the 3rd–6th play-off winner.
+          const po = world.competitions[playoffCompId(S, m.fromLeagueId)]
+          expect(idx < 2 || m.clubId === po.winnerId).toBe(true)
+          expect(idx).toBeLessThan(6)
+        }
         expect(world.clubs[m.clubId].leagueId).toBe(m.toLeagueId)
         expect(world.leagues[m.toLeagueId].clubIds).toContain(m.clubId)
       }
@@ -212,7 +232,8 @@ describe('a full season', () => {
         expect(comp.participantIds.sort()).toEqual([...l.clubIds].sort())
         expect(comp.fixtures.every((f) => !f.result)).toBe(true)
       }
-      expect(world.competitions[continentalCompId(S + 1)].participantIds.length).toBe(32)
+      const q = world.competitions[continentalQualifyingCompId(S + 1)]
+      expect(world.competitions[continentalCompId(S + 1)].participantIds.length + q.participantIds.length / 2).toBe(16)
       expect(seasonCompetitions(world, S).length).toBeGreaterThan(0) // last season kept for history
       // Continental places follow last season's final tables.
       const enChampion = preTables.get('EN1')![0]

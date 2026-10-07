@@ -3,7 +3,7 @@ import type { World } from '../../core/types'
 import { POSITIONS } from '../../core/types'
 import { isRealClubName } from '../../data/world/names'
 import { MIN_KIT_DISTANCE, colorDistance, contrastRatio } from './colors'
-import { continentalCompId, cupCompId, leagueCompId } from './competitions'
+import { continentalCompId, cupCompId, leagueCompId, continentalQualifyingCompId } from './competitions'
 import { FREE_AGENT_COUNT, MAX_SQUAD, MIN_SQUAD, generateWorld } from './generate'
 import { clubStrength } from './queries'
 
@@ -141,11 +141,17 @@ describe('generateWorld', () => {
       expect(cup.alive?.length).toBe(clubs)
       expect(cup.fixtures.length).toBeGreaterThan(0)
     }
+    // Continental: 3/4 of the 32-team group stage direct, 8 places through 16 two-legged qualifiers.
     const cont = world.competitions[continentalCompId(SEASON)]
-    expect(cont.participantIds.length).toBe(32)
-    expect(new Set(cont.participantIds).size).toBe(32)
-    expect(cont.fixtures.length).toBe(8 * 12)
-    for (const id of cont.participantIds) expect(world.leagues[world.clubs[id].leagueId].tier).toBe(1)
+    const qual = world.competitions[continentalQualifyingCompId(SEASON)]
+    expect(cont.participantIds.length + qual.participantIds.length / 2).toBe(32)
+    expect(cont.participantIds.length).toBe(24)
+    const all = [...cont.participantIds, ...qual.participantIds]
+    expect(new Set(all).size).toBe(all.length)
+    expect(cont.fixtures.length).toBe(0) // groups are drawn once the qualifying round is over
+    expect(qual.fixtures.length).toBe(qual.participantIds.length)
+    expect(qual.fixtures.every((f) => f.leg === 1 || f.leg === 2)).toBe(true)
+    for (const id of all) expect(world.leagues[world.clubs[id].leagueId].tier).toBe(1)
     expect(world.honours).toEqual([])
   })
 
@@ -162,7 +168,8 @@ describe('generateWorld', () => {
   it('supports a restricted country set and rejects unknown hero countries', () => {
     const small = generateWorld(new Rng(1), { season: SEASON, heroCountryId: 'TR', countryIds: ['TR', 'EN', 'DE', 'IT'] })
     expect(Object.keys(small.countries).sort()).toEqual(['DE', 'EN', 'IT', 'TR'])
-    expect(small.competitions[continentalCompId(SEASON)].participantIds.length).toBe(16)
+    const q = small.competitions[continentalQualifyingCompId(SEASON)]
+    expect(small.competitions[continentalCompId(SEASON)].participantIds.length + (q?.participantIds.length ?? 0) / 2).toBe(16)
     expect(() => generateWorld(new Rng(1), { season: SEASON, heroCountryId: 'XX' })).toThrow()
   })
 })

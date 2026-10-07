@@ -19,6 +19,8 @@ import {
 } from '../../data/world/names'
 import { generateKits } from './colors'
 import { createSeasonCompetitions } from './competitions'
+import { createNationalCompetitions, ensureNational } from './national'
+import { ensureCoefficients } from './coefficients'
 import { FORMATION_SLOTS, slotCount } from './formations'
 import {
   budgetForReputation, createNpcPlayer, pickForeignNationality, randomName, randomPosition, rollPotential,
@@ -298,6 +300,9 @@ export function generateWorld(rng: Rng, opts: GenerateWorldOptions): World {
   }
 
   generateFreeAgents(rng.fork('free-agents'), world, opts.season, FREE_AGENT_COUNT, 'fa')
+  ensureCoefficients(world)
   createSeasonCompetitions(world, rng.fork('competitions'), opts.season)
+  ensureNational(world)
+  createNationalCompetitions(world, rng.fork('national'), opts.season)
   return world
 }

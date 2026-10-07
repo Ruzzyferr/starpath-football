@@ -2,6 +2,10 @@
  * Public API of the world simulation (fictional football world + season machinery).
  */
 export * from './attributes'
+export * from './awards'
+export * from './coefficients'
+export * from './national'
+export type * from './worldTypes'
 export * from './colors'
 export * from './competitions'
 export * from './fixtures'
