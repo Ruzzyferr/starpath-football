@@ -104,8 +104,8 @@ function hairBack(style: number, g: FaceGeo, c: string): string {
         const x = 60 - hw - 3 + i * 3.2
         const x2 = 60 + hw + 3 - i * 3.2
         const len = 82 - i * 3
-        s += `<path d="M${f(x)} 40L${f(x - 1)} ${len}" stroke="${c}" stroke-width="4.2" stroke-linecap="round"/>`
-        s += `<path d="M${f(x2)} 40L${f(x2 + 1)} ${len}" stroke="${c}" stroke-width="4.2" stroke-linecap="round"/>`
+        s += `<path d="M${f(x + 2)} 46L${f(x - 1)} ${len}" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/>`
+        s += `<path d="M${f(x2 - 2)} 46L${f(x2 + 1)} ${len}" stroke="${c}" stroke-width="4.6" stroke-linecap="round"/>`
       }
       return s
     }
@@ -160,11 +160,11 @@ function hairFront(style: number, g: FaceGeo, c: string, dark: string): string {
     case 10: // twists front
       return cap(16, 40, 54) + Array.from({ length: 7 }, (_, i) => {
         const x = 60 - hw * 0.75 + i * hw * 0.25
-        return `<path d="M${f(x)} 20L${f(x + 1)} ${38 + (i % 2) * 4}" stroke="${dark}" stroke-width="1" opacity=".5"/>`
+        return `<path d="M${f(x)} ${f(22 + Math.abs(x - 60) * 0.35)}L${f(x + 1)} ${38 + (i % 2) * 4}" stroke="${dark}" stroke-width="1" opacity=".5"/>`
       }).join('')
     case 11: // slick back
       return cap(16, 34, 50) + [0, 1, 2].map((i) =>
-        `<path d="M${f(60 - hw * 0.6 + i * hw * 0.55)} 34Q${f(60 - hw * 0.5 + i * hw * 0.5)} 22 ${f(60 - hw * 0.3 + i * hw * 0.45)} 16" stroke="${dark}" stroke-width="1" fill="none" opacity=".45"/>`).join('')
+        `<path d="M${f(60 - hw * 0.6 + i * hw * 0.55)} 34Q${f(60 - hw * 0.5 + i * hw * 0.5)} 24 ${f(60 - hw * 0.3 + i * hw * 0.3)} 20" stroke="${dark}" stroke-width="1" fill="none" opacity=".45"/>`).join('')
     case 12: { // textured fringe
       let zig = ''
       const n = 8
@@ -212,8 +212,11 @@ function femaleHairBack(style: number, g: FaceGeo, c: string, dark: string): str
     }
     case 2: // top bun
       return `<circle cx="60" cy="13" r="10.5" fill="${c}"/><path d="M53 13Q60 6 67 13" stroke="${dark}" stroke-width="1" fill="none" opacity=".5"/>`
-    case 3: // bob to the jaw
-      return curtain(g, c, 86, 6)
+    case 3: { // bob to the jaw, ends curl softly under
+      const L = 60 - hw
+      const R = 60 + hw
+      return `<path d="M${f(L - 3.5)} 40C${f(L - 8.5)} 58 ${f(L - 8.5)} 76 ${f(L - 3)} 85Q${f(L + 4)} 91 ${f(60 - hw * 0.45)} 84L${f(60 + hw * 0.45)} 84Q${f(R - 4)} 91 ${f(R + 3)} 85C${f(R + 8.5)} 76 ${f(R + 8.5)} 58 ${f(R + 3.5)} 40Z" fill="${c}"/>`
+    }
     case 4: { // two long braids
       let s = ''
       for (const side of [-1, 1]) {
@@ -235,13 +238,19 @@ function femaleHairBack(style: number, g: FaceGeo, c: string, dark: string): str
     }
     case 7: // afro puffs
       return `<circle cx="${f(60 - hw - 4)}" cy="24" r="12" fill="${c}"/><circle cx="${f(60 + hw + 4)}" cy="24" r="12" fill="${c}"/>`
-    case 8: // cornrows into a long plait
-      return `<path d="M54 36C50 70 54 96 60 112C66 96 70 70 66 36Z" fill="${c}"/>` +
-        Array.from({ length: 8 }, (_, i) => `<path d="M55 ${44 + i * 8}q5 4 10 0" stroke="${dark}" stroke-width="1" fill="none" opacity=".5"/>`).join('')
+    case 8: { // cornrows into a long plait over the right shoulder
+      const x = 60 + hw
+      let s = `<path d="M${f(x - 8)} 46C${f(x + 1)} 56 ${f(x + 5)} 78 ${f(x + 3)} 112L${f(x - 4)} 112C${f(x - 3)} 86 ${f(x - 5)} 64 ${f(x - 13)} 52Z" fill="${c}"/>`
+      for (let i = 0; i < 6; i++) s += `<path d="M${f(x - 4 + i * 0.6)} ${f(60 + i * 7)}q3.5 3 7 0" stroke="${dark}" stroke-width="1" fill="none" opacity=".5"/>`
+      return s
+    }
     case 9: // side-swept long
       return curtain(g, c, 110, 9)
-    case 10: // low bun
-      return `<ellipse cx="60" cy="90" rx="12" ry="8" fill="${c}"/><path d="M52 90Q60 84 68 90" stroke="${dark}" stroke-width="1" fill="none" opacity=".45"/>`
+    case 10: { // low bun at the nape, peeking out behind the right jaw
+      const x = 60 + hw - 3
+      return `<path d="M${f(60 - hw - 2)} 48C${f(60 - hw - 3)} 64 ${f(60 - hw + 2)} 74 ${f(60 - hw + 8)} 80L${f(60 + hw - 8)} 80C${f(60 + hw - 2)} 74 ${f(60 + hw + 3)} 64 ${f(60 + hw + 2)} 48Z" fill="${c}"/>` +
+        `<ellipse cx="${f(x)}" cy="81" rx="9.5" ry="8.5" fill="${c}"/><path d="M${f(x - 6)} 79Q${f(x)} 74 ${f(x + 6)} 80" stroke="${dark}" stroke-width="1" fill="none" opacity=".45"/>`
+    }
     case 11: // wavy shoulder length
       return curtain(g, c, 98, 10) +
         `<path d="M${f(60 - hw - 8)} 70q4 5 0 10q-4 5 0 10M${f(60 + hw + 8)} 70q-4 5 0 10q4 5 0 10" stroke="${dark}" stroke-width="1" fill="none" opacity=".4"/>`
@@ -256,9 +265,10 @@ function femaleHairFront(style: number, g: FaceGeo, c: string, dark: string): st
   const L = 60 - hw - 1.5
   const R = 60 + hw + 1.5
   const part = `<path d="M60 17L60 34" stroke="${dark}" stroke-width="1.1" opacity=".5"/>`
+  /** Locks framing the face from a centre part, tapering to a soft point at `y`. */
   const sideLocks = (y: number) =>
-    `<path d="M60 34C${f(60 - 9)} 36 ${f(L + 3)} 46 ${f(L + 1)} ${y}L${f(L - 3)} ${y}L${f(L - 2)} 44Z" fill="${c}"/>` +
-    `<path d="M60 34C${f(60 + 9)} 36 ${f(R - 3)} 46 ${f(R - 1)} ${y}L${f(R + 3)} ${y}L${f(R + 2)} 44Z" fill="${c}"/>`
+    `<path d="M60 34C${f(60 - 9)} 36 ${f(L + 3)} 46 ${f(L + 2.5)} ${f(y - 8)}Q${f(L + 2)} ${f(y - 1)} ${f(L - 2)} ${f(y + 1)}C${f(L - 4)} ${f(y - 12)} ${f(L - 3.5)} 54 ${f(L - 2)} 44Z" fill="${c}"/>` +
+    `<path d="M60 34C${f(60 + 9)} 36 ${f(R - 3)} 46 ${f(R - 2.5)} ${f(y - 8)}Q${f(R - 2)} ${f(y - 1)} ${f(R + 2)} ${f(y + 1)}C${f(R + 4)} ${f(y - 12)} ${f(R + 3.5)} 54 ${f(R + 2)} 44Z" fill="${c}"/>`
   switch (style) {
     case 0: // long straight, centre part
       return capPath(g, 16, 40, 62, c) + part + sideLocks(78)
@@ -267,13 +277,14 @@ function femaleHairFront(style: number, g: FaceGeo, c: string, dark: string): st
         `<circle cx="${f(60 + hw - 1)}" cy="33" r="2.2" fill="${dark}"/>`
     case 2: // top bun, smooth
       return capPath(g, 17, 37, 50, c) + `<path d="M${f(60 - hw * 0.5)} 28Q60 22 ${f(60 + hw * 0.5)} 28" stroke="${dark}" stroke-width="1" fill="none" opacity=".4"/>`
-    case 3: { // bob with a straight fringe
+    case 3: { // bob with a soft, slightly arched fringe
       let fr = ''
-      for (let i = 0; i < 7; i++) {
-        const x = L + 6 + i * ((R - L - 12) / 6)
-        fr += `<path d="M${f(x)} 32L${f(x)} 44" stroke="${dark}" stroke-width=".8" opacity=".35"/>`
+      for (let i = 1; i < 6; i++) {
+        const x = L + 4 + i * ((R - L - 8) / 6)
+        fr += `<path d="M${f(x + (x - 60) * 0.12)} 31Q${f(x)} 38 ${f(x - (x - 60) * 0.05)} ${f(43 - Math.abs(x - 60) * 0.05)}" stroke="${dark}" stroke-width=".8" fill="none" opacity=".3"/>`
       }
-      return capPath(g, 15, 44, 66, c) + `<path d="M${f(L + 3)} 30L${f(R - 3)} 30L${f(R - 2)} 45L${f(L + 2)} 45Z" fill="${c}"/>` + fr + sideLocks(84)
+      const fringe = `<path d="M${f(L + 1.5)} 48C${f(L + 1)} 34 ${f(60 - hw * 0.45)} 26 60 26C${f(60 + hw * 0.45)} 26 ${f(R - 1)} 34 ${f(R - 1.5)} 48Q${f(60 + hw * 0.55)} 42 60 44.5Q${f(60 - hw * 0.55)} 42 ${f(L + 1.5)} 48Z" fill="${c}"/>`
+      return capPath(g, 15, 44, 64, c) + fringe + fr + sideLocks(82)
     }
     case 4: // braids: centre part, tight
       return capPath(g, 17, 39, 56, c) + part
