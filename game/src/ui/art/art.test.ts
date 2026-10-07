@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import type { Appearance, CrestSpec, KitColors } from '../../core/types'
-import { ACCESSORY_COUNT, avatarSvg, BEARD_COUNT, EYE_COLORS, FACE_COUNT, HAIR_COLORS, HAIR_STYLE_COUNT, SKIN_TONES } from './avatar'
+import { ACCESSORY_COUNT, avatarSvg, BEARD_COUNT, EYE_COLORS, FACE_COUNT, FEMALE_HAIR_STYLE_COUNT, HAIR_COLORS, HAIR_STYLE_COUNT, SKIN_TONES, hairStyleCount } from './avatar'
 import { CREST_SYMBOL_COUNT, crestSvg } from './crest'
 import { kitSvg } from './kit'
 import { flagSvg } from './flag'
@@ -44,6 +44,35 @@ describe('avatar', () => {
   })
   it('tolerates out-of-range indices', () => {
     expect(wellFormed(avatarSvg({ skin: 99, hairStyle: -3, hairColor: 50, beard: 77, eyeColor: -1, face: 12, accessory: 9 }))).toBe(true)
+  })
+})
+
+describe('avatar gender', () => {
+  const fem: Appearance = { ...base, gender: 'female' }
+  it('male output is unchanged with or without an explicit male gender', () => {
+    expect(avatarSvg({ ...base, gender: 'male' })).toBe(avatarSvg(base))
+    expect(avatarSvg(base, { gender: 'male' })).toBe(avatarSvg(base))
+  })
+  it('has a distinct, well-formed female hair set', () => {
+    expect(FEMALE_HAIR_STYLE_COUNT).toBeGreaterThanOrEqual(10)
+    expect(hairStyleCount('female')).toBe(FEMALE_HAIR_STYLE_COUNT)
+    expect(hairStyleCount(undefined)).toBe(HAIR_STYLE_COUNT)
+    const seen = new Set<string>()
+    for (let h = 0; h < FEMALE_HAIR_STYLE_COUNT; h++) {
+      const svg = avatarSvg({ ...fem, hairStyle: h }, { background: '#1b2740' })
+      expect(wellFormed(svg)).toBe(true)
+      seen.add(svg)
+    }
+    expect(seen.size).toBe(FEMALE_HAIR_STYLE_COUNT)
+  })
+  it('never draws a beard on a female face and differs from the male face', () => {
+    expect(avatarSvg({ ...fem, beard: 5 })).toBe(avatarSvg({ ...fem, beard: 0 }))
+    expect(avatarSvg(fem)).not.toBe(avatarSvg(base))
+    expect(avatarSvg(base, { gender: 'female' })).toBe(avatarSvg(fem))
+  })
+  it('female accessories and odd indices stay well-formed', () => {
+    for (let a = 0; a < ACCESSORY_COUNT; a++) expect(wellFormed(avatarSvg({ ...fem, accessory: a, hairStyle: a * 2 }, { age: 36 }))).toBe(true)
+    expect(wellFormed(avatarSvg({ ...fem, hairStyle: -7, face: 40 }))).toBe(true)
   })
 })
 

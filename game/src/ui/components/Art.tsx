@@ -34,7 +34,7 @@ export interface AvatarProps extends AvatarOpts {
 export const Avatar = memo(function Avatar({ appearance, size = 48, label, ring, ...opts }: AvatarProps) {
   const html = useMemo(
     () => avatarSvg(appearance, opts),
-    [appearance.skin, appearance.hairStyle, appearance.hairColor, appearance.beard, appearance.eyeColor, appearance.face, appearance.accessory, opts.shirt, opts.shirtTrim, opts.background, opts.mood, opts.age],
+    [appearance.skin, appearance.hairStyle, appearance.hairColor, appearance.beard, appearance.eyeColor, appearance.face, appearance.accessory, appearance.gender, opts.gender, opts.shirt, opts.shirtTrim, opts.background, opts.mood, opts.age],
   )
   return (
     <span class={`avatar-wrap${ring ? ' has-ring' : ''}`} style={ring ? { ['--ring' as string]: ring } : undefined}>

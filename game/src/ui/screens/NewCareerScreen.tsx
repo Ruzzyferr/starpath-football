@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks'
 import '../../styles/screens/wizard.css'
-import type { Archetype, AttributeKey, Background, Country, Difficulty, Foot, Position } from '../../core/types'
+import type { Archetype, AttributeKey, Background, Country, Difficulty, Foot, Gender, Position } from '../../core/types'
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
 import { Button, Flag, PlayerCard, Segmented, TextField, toast, type PlayerCardStat } from '../components'
@@ -8,7 +8,7 @@ import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, back, data, navigate, type NewGameInput } from '../store'
 import { PitchPicker } from './newcareer/PitchPicker'
-import { AppearanceEditor, randomAppearance } from './newcareer/AppearanceEditor'
+import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 
 type Step = 'identity' | 'nation' | 'position' | 'archetype' | 'background' | 'look' | 'summary'
 const STEPS: Step[] = ['identity', 'nation', 'position', 'archetype', 'background', 'look', 'summary']
@@ -68,10 +68,12 @@ export function NewCareerScreen() {
     archetype: 'poacher',
     background: 'academy',
     appearance: randomAppearance(Date.now()),
+    gender: 'male',
     difficulty: 'normal',
   }))
   const bodyRef = useRef<HTMLDivElement>(null)
   const set = <K extends keyof NewGameInput>(k: K, v: NewGameInput[K]) => setForm((f) => ({ ...f, [k]: v }))
+  const setGender = (g: Gender) => setForm((f) => ({ ...f, gender: g, appearance: withGender(f.appearance, g) }))
 
   const cur = STEPS[step]
   const nameOk = form.firstName.trim().length > 0 && form.lastName.trim().length > 0
@@ -166,6 +168,16 @@ export function NewCareerScreen() {
               <div class="grid-md-2 stack">
                 <TextField id="wiz-first" label={t('wizard.firstName')} value={form.firstName} placeholder={t('wizard.firstPh')} onInput={(v) => set('firstName', v)} autoFocus />
                 <TextField id="wiz-last" label={t('wizard.lastName')} value={form.lastName} placeholder={t('wizard.lastPh')} onInput={(v) => set('lastName', v)} />
+              </div>
+              <div class="stack" style={{ ['--gap' as string]: 'var(--sp-2)' }}>
+                <span class="label t-mid" id="wiz-gender-label">{t('wizard.gender')}</span>
+                <Segmented<Gender>
+                  label={t('wizard.gender')}
+                  value={form.gender ?? 'male'}
+                  onChange={setGender}
+                  options={[{ id: 'male', label: t('wizard.genderMale') }, { id: 'female', label: t('wizard.genderFemale') }]}
+                />
+                <p class="t-xs t-lo">{t('wizard.genderHint')}</p>
               </div>
               <TextField id="wiz-nick" label={t('wizard.nickname')} value={form.nickname} placeholder={t('wizard.nickPh')} maxLength={14} onInput={(v) => set('nickname', v)} />
               <p class="t-xs t-lo">{t('wizard.nicknameHint')}</p>

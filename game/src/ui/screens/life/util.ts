@@ -1,5 +1,6 @@
 import type { Appearance, AssetCategory, RelationKind, Relationship, World } from '../../../core/types'
 import { hashString } from '../../../core/rng'
+import { FEMALE_HAIR_STYLE_COUNT } from '../../art/avatar'
 import { statLabel } from '../../components'
 import { formatDelta } from '../../format'
 import { isIconName, type IconName } from '../../icons'
@@ -9,22 +10,29 @@ export function deltasText(deltas: Delta[]): string {
   return deltas.map((d) => `${formatDelta(d.key, d.value)} ${statLabel(d.key, d.label)}`).join(', ')
 }
 
-const FEMININE: ReadonlySet<RelationKind> = new Set<RelationKind>(['mother', 'partner'])
-const LONG_STYLES = [6, 7, 14, 10]
+/** Always drawn with the female feature set; partners and siblings can be either. */
+const FEMININE: ReadonlySet<RelationKind> = new Set<RelationKind>(['mother'])
+const EITHER: ReadonlySet<RelationKind> = new Set<RelationKind>(['partner', 'sibling', 'bestFriend'])
 
 /** Deterministic face for people who are not NPC players. */
 export function relAppearance(rel: Relationship, world: World | undefined): Appearance {
   if (rel.npcId && world?.players[rel.npcId]) return world.players[rel.npcId].appearance
   const h = hashString(rel.id + rel.name)
-  const fem = FEMININE.has(rel.kind) || (rel.kind === 'sibling' && h % 2 === 0)
+  const fem = FEMININE.has(rel.kind) || (EITHER.has(rel.kind) && h % 2 === 0)
+  if (fem) {
+    return {
+      skin: h % 10, hairStyle: (h >>> 4) % FEMALE_HAIR_STYLE_COUNT, hairColor: (h >>> 8) % 10, beard: 0,
+      eyeColor: (h >>> 16) % 6, face: (h >>> 19) % 6, accessory: (h >>> 22) % 3 === 0 ? 2 : 0, gender: 'female',
+    }
+  }
   return {
     skin: h % 10,
-    hairStyle: fem ? LONG_STYLES[(h >>> 4) % LONG_STYLES.length] : (h >>> 4) % 15,
+    hairStyle: (h >>> 4) % 15,
     hairColor: (h >>> 8) % 10,
-    beard: fem ? 0 : (h >>> 12) % 8,
+    beard: (h >>> 12) % 8,
     eyeColor: (h >>> 16) % 6,
     face: (h >>> 19) % 6,
-    accessory: fem ? 2 : (h >>> 22) % 6 === 5 ? 5 : 0,
+    accessory: (h >>> 22) % 6 === 5 ? 5 : 0,
   }
 }
 
