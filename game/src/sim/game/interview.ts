@@ -292,7 +292,7 @@ export const IV_PRESS_WEEK_FLAG = 'iv:pressWeek'
 /** Transfer-rumour heat 0..10 (interviews and rumour events fuel or cool it). */
 export const IV_BUZZ_FLAG = 'transfer_buzz'
 /** Session caps on the good stuff (one interview can't make you a legend). */
-export const IV_CAP = { fans: 8, reputation: 2 } as const
+export const IV_CAP = { fans: 8, reputation: 1.2 } as const
 
 const fx2 = (key: InterviewEffectKeyV2, value: number, chance = 1): InterviewEffectV2 => ({ key, value, chance })
 

@@ -7,7 +7,7 @@
  * {@link startDay} when a new day begins).
  */
 import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
-import type { Rng } from '../../core/rng'
+import { hashString, type Rng } from '../../core/rng'
 import { ACTIVITIES, ACTIVITY_BY_ID, DONE_VARIANTS, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
 import { absWeek, clamp, fill, heroAge, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
 import { addFatigue, recoverFatigue } from '../career/condition'
@@ -338,7 +338,7 @@ export function performActivity(
   if (def.special !== 'train' && def.special !== 'post') {
     // Variety without touching the RNG stream: the day and slot pick the completion line.
     const pool = [def.done, ...(DONE_VARIANTS[def.id] ?? [])]
-    const done = pool[(today * 3 + ctx.calendar.slot) % pool.length]
+    const done = pool[hashString(`${def.id}|${today}|${ctx.calendar.slot}`) % pool.length]
     lines.unshift({ tr: `${def.icon} ${done.tr}`, en: `${def.icon} ${done.en}` })
   }
   const summary = deltaLine([

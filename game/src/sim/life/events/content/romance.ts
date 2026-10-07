@@ -182,8 +182,11 @@ export const romanceEvents: EventDef[] = [
       },
       {
         label: t('"Biraz erken değil mi?"', '"Isn\'t it a bit soon?"'),
-        effects: () =>
-          fx(t('{crush} "Tabii, acele yok" dedi. Gülümsemesi biraz eksikti.', '{crush} said "Sure, no rush." The smile was a little short.'), rel('partner', -10), stress(3), follow(chain('romance.getting_serious', 8))),
+        // Postponing twice is an answer too: the question stops coming back (no endless loop).
+        effects: (ctx) =>
+          (typeof ctx.state.life.flags.romance_postpone === 'number' ? ctx.state.life.flags.romance_postpone : 0) < 1
+            ? fx(t('{crush} "Tabii, acele yok" dedi. Gülümsemesi biraz eksikti.', '{crush} said "Sure, no rush." The smile was a little short.'), rel('partner', -10), stress(3), { addFlags: { romance_postpone: 1 } }, follow(chain('romance.getting_serious', 8)))
+            : fx(t('{crush} bir şey demedi. Bu konuyu bir daha açmayacağı belliydi.', '{crush} said nothing. Clearly the subject won’t come up again.'), rel('partner', -12), stress(2), { setFlags: { romance_postpone: null } }),
       },
     ],
   },

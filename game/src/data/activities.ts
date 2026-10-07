@@ -252,14 +252,14 @@ export const ACTIVITIES: readonly ActivityDef[] = [
 
   // ── Public / media / work ────────────────────────────────
   { id: 'charity', icon: '🤲', category: 'social', slots: 2, allowedSlots: DAY, energy: 15, happiness: 4, stress: -2, moneyFormula: 'charity',
-    reputation: 1, followersPct: 0.003, discipline: 2, relations: [{ target: 'fans', delta: 4 }, { target: 'press', delta: 3 }],
+    reputation: 0.6, followersPct: 0.003, discipline: 2, relations: [{ target: 'fans', delta: 4 }, { target: 'press', delta: 3 }],
     name: T('Hayır İşi', 'Charity Work'), desc: T('Çocuk hastanesini ziyaret et, bağış yap.', "Visit a children's hospital and donate."),
     conditions: { injuredOk: true }, triggerTags: ['charity'], eventChance: 0.15, done: T('Çocukların yüzünü güldürdün.', 'You put smiles on the kids’ faces.') },
   { id: 'sponsor_shoot', icon: '📸', category: 'work', slots: 2, allowedSlots: DAY, energy: 15, stress: 2, followersPct: 0.004,
     special: 'shoot', name: T('Reklam Çekimi', 'Sponsor Shoot'), desc: T('Sponsorun için fotoğraf ve reklam çekimi.', 'Photo and ad shoot for your sponsor.'),
     conditions: { requiresSponsor: true, injuredOk: true, notMatchDay: true }, triggerTags: ['media', 'sponsor'], eventChance: 0.08, done: T('Çekim tamamlandı, kamera seni seviyor.', 'Shoot wrapped. The camera loves you.') },
   { id: 'interview', icon: '🎤', category: 'media', slots: 1, allowedSlots: DAY, energy: 8, stress: 3, moneyFormula: 'interview',
-    reputation: 0.5, relations: [{ target: 'press', delta: 4 }],
+    reputation: 0.3, relations: [{ target: 'press', delta: 4 }],
     name: T('Röportaj', 'Media Interview'), desc: T('Bir spor programına konuk ol. Söylediklerine dikkat!', 'Guest on a sports show. Mind your words!'),
     conditions: { injuredOk: true, minReputation: 5 }, triggerTags: ['media', 'press'], eventChance: 0.3, done: T('Röportajın yayınlandı.', 'Your interview has aired.') },
   { id: 'social_post', icon: '📱', category: 'media', slots: 1, allowedSlots: ALL, energy: 2,

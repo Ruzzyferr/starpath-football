@@ -11,6 +11,7 @@ export const friendsEvents: EventDef[] = [
     category: 'friends',
     weight: 1,
     cooldownWeeks: 40,
+    minAge: 18, // a gambling debt to loan sharks is not a 16-year-old's story
     conditions: ({ state }) => hasRel(state, 'bestFriend') && !hasFlag(state, 'friend_debt_open'),
     vars: ({ state }) => ({ amount: wageX(state, 3, 2000) }),
     title: t('Gece Yarısı Telefonu', 'The Midnight Call'),

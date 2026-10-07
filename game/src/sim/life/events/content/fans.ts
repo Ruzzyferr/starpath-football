@@ -39,7 +39,7 @@ export const fansEvents: EventDef[] = [
     id: 'fans.autograph_swarm',
     category: 'fans',
     weight: 1.2,
-    cooldownWeeks: 10,
+    cooldownWeeks: 15,
     triggers: ['weekly', 'training'],
     conditions: ({ state }) => hasClub(state) && state.hero.reputation >= 15,
     title: t('İmza Seli', 'Autograph Avalanche'),

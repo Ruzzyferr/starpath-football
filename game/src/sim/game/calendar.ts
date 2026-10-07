@@ -40,6 +40,7 @@ import {
 } from './season'
 import { announceHeroSquad, checkNationalTrophies, onSeniorDuty } from './national'
 import { monthlyAwards, isMonthAwardWeek } from './awards'
+import { objectivesDaily, objectivesSeasonEnd, objectivesWeekly } from './objectives'
 
 export type StopReason = 'event' | 'offer' | 'match' | 'season_end' | 'retired' | 'limit'
 
@@ -98,6 +99,7 @@ export function advanceDay(state: GameState): AdvanceReport {
     // Off-season days only hold the national finals tournament.
     playFixturesFor(state.world, rng, cal.season, cal.week, cal.day)
     checkNationalTrophies(state, rng, r.lines)
+    if (!state.hero.retired) objectivesDaily(state, r.lines)
     // 3. Next day / week.
     cal.day++
     if (cal.day >= DAYS_PER_WEEK) {
@@ -164,6 +166,7 @@ function onNewWeek(state: GameState, rng: Rng, r: AdvanceReport): void {
   if (isMonthAwardWeek(cal.week)) monthlyAwards(state, rng, r.lines)
   if (cal.week === END_OF_SEASON_WEEK) {
     endSeasonForHero(state, rng, r.lines)
+    objectivesSeasonEnd(state, r.lines)
     r.seasonEnded = true
     tags.push('season_end')
   }
@@ -181,6 +184,7 @@ function onNewWeek(state: GameState, rng: Rng, r: AdvanceReport): void {
   if (!state.hero.retired) {
     r.newOffers += generateHeroOffers(state, rng, r.lines)
     generateSponsorOffers(state, rng, r.lines)
+    objectivesWeekly(state, r.lines)
     rollEvents(state, rng, tags, 2)
   }
 }

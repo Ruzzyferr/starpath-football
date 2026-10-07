@@ -32,3 +32,4 @@ export {
   type CallupView, type MeterParts,
 } from './national'
 export { pendingCeremony, markCeremonySeen, monthName, AWARD_NAMES } from './awards'
+export { objectivesView, OBJECTIVES_FLAG, type ObjectivesView, type ObjectiveView, type ObjectiveSource } from './objectives'

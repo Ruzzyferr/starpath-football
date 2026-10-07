@@ -36,8 +36,9 @@ import { newGame, type NewGameInput } from './newGame'
 import { getOffers, getSponsorOffers, type SeasonDigest } from './season'
 import { answerInterview, interviewQuestions } from './interview'
 import { dashboard, nextHeroFixture } from './summary'
-// BASELINE: objectives not yet implemented
-const objectivesView = (_s: GameState): { active: { title: LText; progress: number; target: number }[] } | null => null
+import { objectivesView } from './objectives'
+import { reinflect } from '../career/trSuffix'
+import { placeholdersOf } from '../life/events/engine'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 const FULL = env.PLAYTEST === '1'
@@ -145,25 +146,15 @@ function safe<T>(f: () => T, fb: T): T {
 
 // ───────────── Text checks ─────────────
 
-const BACK = 'aıou'
-const FRONT = 'eiöü'
-const VOWELS = BACK + FRONT + 'AIİOUEÖÜâ'
-/** Very small Turkish vowel-harmony check for "Name'suffix" (proper nouns). */
+/** Turkish case suffix after a proper noun ("Name'suffix") that does not match vowel harmony / buffer rules. */
+const SUFFIX_OK = new Set(["Kemal'i", "Instagram'da"])
 function suffixIssues(text: string): string[] {
   const out: string[] = []
   const re = /([A-ZÇĞİÖŞÜ][\p{L}]+)'([a-zçğıöşü]+)/gu
   for (const m of text.matchAll(re)) {
-    const word = m[1].toLowerCase().replace('i̇', 'i')
-    const suf = m[2]
-    const lastV = [...word].reverse().find((ch) => VOWELS.toLowerCase().includes(ch))
-    const sufV = [...suf].find((ch) => (BACK + FRONT).includes(ch))
-    if (!lastV || !sufV) continue
-    const wordBack = BACK.includes(lastV) || lastV === 'â'
-    const sufBack = BACK.includes(sufV)
-    if (wordBack !== sufBack && !['ki', 'yken', 'ken'].includes(suf)) out.push(m[0])
-    // Vowel-final word + vowel-initial suffix needs a buffer (n/y/s).
-    const endsV = (BACK + FRONT).includes(word[word.length - 1])
-    if (endsV && (BACK + FRONT).includes(suf[0])) out.push(m[0])
+    if (SUFFIX_OK.has(m[0])) continue
+    const fixed = reinflect(m[1], m[2])
+    if (fixed !== null && fixed !== m[2]) out.push(`${m[0]} (→ ${m[1]}'${fixed})`)
   }
   return out
 }
@@ -197,12 +188,13 @@ interface CareerOut {
   seasons: { season: number; age: number; ovr: number; rep: number; money: number; netWorth: number; wage: number; club: string; tier: number | null; apps: number; goals: number; trophies: number; purchases: number; moneyIdleWeeks: number }[]
   commentary: string[]
   repFrom: Record<string, number>
+  objectives: string[]
 }
 
 function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
   const s = newGame(input(cfg), cfg.seed)
   const rng = new Rng(cfg.seed ^ 0xa11ce)
-  const out: CareerOut = { cfg, transcript: [], cards: [], news: [], logs: [], weeks: [], flags: [], noTradeoff: {}, matches: 0, seasons: [], commentary: [], repFrom: {} }
+  const out: CareerOut = { cfg, transcript: [], cards: [], news: [], logs: [], weeks: [], flags: [], noTradeoff: {}, matches: 0, seasons: [], commentary: [], repFrom: {}, objectives: [] }
   const T = out.transcript
   const when = () => `S${s.calendar.season - startSeason + 1} H${s.calendar.week} ${DAYS[s.calendar.day] ?? '?'}`
   const startSeason = s.calendar.season
@@ -233,7 +225,8 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       T.push(`[${when()}] ${e.icon ?? '·'} ${t}`)
       if (/\{[a-zA-Z]+\}/.test(t)) flag('placeholder', t)
       for (const x of suffixIssues(t)) flag('ek', `${x} ← ${t}`)
-      if (/objective|hedef/i.test(e.kind ?? '') || /🎯/.test(e.icon ?? '')) wk.objectiveEvents++
+      if (e.icon === '🎯' || e.icon === '⌛') wk.objectiveEvents++
+      if (e.icon === '🎯' || e.icon === '⌛') out.objectives.push(t.startsWith('Yeni') ? 'yeni' : t.startsWith('Sezon hedefi') ? 'sezon' : t.startsWith('Hedef tamam') ? 'tamam' : 'kaçtı')
     }
     lastLog = L[L.length - 1]
     const N = s.life.news
@@ -272,11 +265,12 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       const blob = `${v.title} ${v.text} ${v.choices.map((c) => c.label).join(' ')}`
       if (/\{[a-zA-Z]+\}/.test(blob)) flag('placeholder', `${v.defId}: ${blob.slice(0, 160)}`)
       for (const x of suffixIssues(blob)) flag('ek', `${v.defId}: ${x}`)
-      if (!hasPartner && typeof pe.vars.partnerName === 'string' && blob.includes(String(pe.vars.partnerName)) && v.category !== 'romance') flag('hayalet-partner', `${v.defId}: ${v.title}`)
-      if (!hasPartner && v.category === 'romance' && /sevgilin|partnerin|ilişkiniz/i.test(blob)) flag('hayalet-partner', `${v.defId}: ${v.title} — ${v.text.slice(0, 120)}`)
+      const def = getEventDef(pe.defId)
+      const usesPartner = !!def && [def.title, def.text, ...def.choices.map((c) => c.label)].some((x) => placeholdersOf(x).includes('partnerName'))
+      if (!hasPartner && (usesPartner || /sevgilin|partnerin|ilişkiniz/i.test(blob))) flag('hayalet-partner', `${v.defId}: ${v.title} — ${v.text.slice(0, 120)}`)
       if (!s.life.agent && /menajerin|ajanın/i.test(blob) && !/menajer bul|ajan tut/i.test(blob)) flag('hayalet-ajan', `${v.defId}: ${v.title}`)
       if (!s.hero.contract && /kulübün|takım arkadaş|hocan/i.test(blob)) flag('kulüpsüz', `${v.defId}: ${v.title}`)
-      if (age() < 18 && /içki|bira|şarap|şampanya|kokteyl|bahis|kumar|gece kulübü|sarhoş/i.test(blob)) flag('yaş', `${age()} yaş — ${v.defId}: ${v.title}`)
+      if (age() < 18 && /(?<!\p{L})(içki|bira|şarap|şampanya|kokteyl|bahis|kumar\p{L}*|gece kulübü|sarhoş)(?!\p{L})/iu.test(blob)) flag('yaş', `${age()} yaş — ${v.defId}: ${v.title}`)
       if (cfg.gender === 'female' && /\b(kız arkadaşın|delikanlı|beyefendi)\b/i.test(blob)) flag('cinsiyet', `${v.defId}: ${v.title}`)
       const enabled = v.choices.map((c, i) => (c.enabled ? i : -1)).filter((i) => i >= 0)
       const prof = profileChoices(s, pe.defId, pe.vars)
@@ -587,6 +581,9 @@ export function analyse(runs: CareerOut[]): string {
   const nt = new Map<string, number>()
   for (const r of runs) for (const [k, v] of Object.entries(r.noTradeoff)) nt.set(k, (nt.get(k) ?? 0) + v)
   o.push('## Bedelsiz baskın seçenekli kartlar (gösterim sayısı)', '', ...[...nt.entries()].sort((a, b) => b[1] - a[1]).slice(0, 25).map(([k, v]) => `- ${k}: ${v}`), '')
+  const ob = runs.flatMap((r) => r.objectives)
+  const obc = (k: string) => ob.filter((x) => x === k).length
+  o.push('## Hedefler', '', `- Yeni kısa hedef: ${obc('yeni')}, sezon hedefi: ${obc('sezon')}, tamamlanan: ${obc('tamam')}, kaçan: ${obc('kaçtı')} (başarı ${((obc('tamam') / Math.max(1, obc('tamam') + obc('kaçtı'))) * 100).toFixed(0)}%)`, `- Kariyer-sezon başına yeni hedef: ${((obc('yeni') + obc('sezon')) / Math.max(1, runs.reduce((a, r) => a + r.seasons.length, 0))).toFixed(1)}`, '')
   const rf = new Map<string, number>()
   for (const r of runs) for (const [k, v] of Object.entries(r.repFrom)) rf.set(k, (rf.get(k) ?? 0) + v)
   const cs = runs.reduce((a, r) => a + r.seasons.length, 0)
