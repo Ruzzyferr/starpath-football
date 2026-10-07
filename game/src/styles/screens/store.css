@@ -3,7 +3,7 @@
 .pw-actions { display: grid; gap: 10px; max-width: 520px; margin: 16px auto 0; }
 .st-grid { display: grid; gap: 12px; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); }
 .st-card { display: grid; gap: 8px; align-content: start; }
-.st-icon { font-size: 36px; }
+.st-icon { font-size: 2.25rem; }
 .st-owned { font-weight: 700; color: var(--pitch, #1fd47a); }
 .pp-panel { display: grid; gap: 10px; }
 .pp-list { margin: 0; padding-left: 1.2em; }

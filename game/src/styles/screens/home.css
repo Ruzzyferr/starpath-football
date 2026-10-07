@@ -73,7 +73,7 @@
   font-family: var(--font-display);
   font-style: italic;
   font-weight: 900;
-  font-size: calc(36px * var(--text-scale));
+  font-size: 2.25rem;
   line-height: 0.95;
   text-transform: uppercase;
   letter-spacing: -0.01em;
@@ -339,7 +339,7 @@
 .home-news-item.sent-pos { border-left-color: var(--pos); }
 .home-news-item.sent-neg { border-left-color: var(--neg); }
 .home-news-num {
-  font-size: 28px;
+  font-size: 1.75rem;
   color: var(--text-lo);
   width: 18px;
 }
@@ -378,7 +378,7 @@
   height: auto;
 }
 .home-form-last {
-  font-size: 30px;
+  font-size: 1.875rem;
 }
 .home-cardteaser-body {
   display: flex;

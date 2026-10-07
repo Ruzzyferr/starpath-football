@@ -45,14 +45,14 @@
   border: 1px solid var(--border);
 }
 .world-scorer.is-hero { border-color: var(--brand-pitch); background: linear-gradient(90deg, rgba(31, 212, 122, 0.16), var(--surface-1) 70%); }
-.world-rank { width: 30px; font-size: 28px; color: var(--text-lo); text-align: center; }
+.world-rank { width: 30px; font-size: 1.75rem; color: var(--text-lo); text-align: center; }
 .world-scorer.is-top-1 .world-rank { color: var(--tier-gold); }
 .world-scorer.is-top-2 .world-rank { color: var(--tier-silver); }
 .world-scorer.is-top-3 .world-rank { color: var(--tier-bronze); }
 .world-scorer-name { display: flex; flex-direction: column; min-width: 0; font-weight: 600; }
 .world-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; }
-.world-stat .score-font { font-size: 28px; color: var(--text-hi); }
-.world-stat.is-dim .score-font { color: var(--text-mid); font-size: 22px; }
+.world-stat .score-font { font-size: 1.75rem; color: var(--text-hi); }
+.world-stat.is-dim .score-font { color: var(--text-mid); font-size: 1.375rem; }
 
 /* Transfers — newspaper flavour */
 .world-news {
@@ -129,7 +129,7 @@
 .world-club-kits { display: flex; gap: var(--sp-2); }
 .world-top { display: flex; flex-direction: column; gap: 4px; margin-top: var(--sp-2); }
 .world-top-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 48px; border-bottom: 1px solid var(--hairline); }
-.world-ovr { font-family: var(--font-score); font-size: 24px; width: 32px; text-align: right; }
+.world-ovr { font-family: var(--font-score); font-size: 1.5rem; width: 32px; text-align: right; }
 
 /* Interest */
 .world-interest {

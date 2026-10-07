@@ -196,7 +196,7 @@
   box-shadow: 0 3px 0 #0c1424;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 13px;
+  font-size: 0.8125rem;
   color: #fff;
   animation: hint-key 1.6s ease-in-out infinite;
   animation-delay: calc(var(--i) * 0.18s);
@@ -289,7 +289,7 @@
   background: var(--accent-gold);
   color: var(--text-on-gold);
   font-family: var(--font-display);
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 900;
   letter-spacing: 0.02em;
   text-transform: uppercase;

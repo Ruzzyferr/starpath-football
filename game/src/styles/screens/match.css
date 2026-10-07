@@ -339,14 +339,14 @@
   border: 2px solid var(--kit-2);
   font-family: var(--font-score);
   font-weight: 600;
-  font-size: 17px;
+  font-size: 1.0625rem;
   line-height: 1;
   padding-top: 2px;
   box-shadow: 0 3px 0 var(--pitch-shadow), 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 .pm-disc-name {
   max-width: 64px;
-  font-size: 10.5px;
+  font-size: 0.6562rem;
   font-weight: 600;
   color: var(--text-hi);
   text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8);
@@ -400,7 +400,7 @@
   gap: var(--sp-3);
 }
 .pm-key-ovr {
-  font-size: 34px;
+  font-size: 2.125rem;
   color: var(--accent-gold);
 }
 .pm-key-name {
@@ -521,7 +521,7 @@
   padding: 4px 14px;
   background: var(--text-hi);
   color: var(--bg-0);
-  font-size: 34px;
+  font-size: 2.125rem;
   gap: 6px;
 }
 .lm-bug-score > span {
@@ -535,7 +535,7 @@
   padding: 4px 12px;
   background: var(--brand-pitch);
   color: var(--text-on-pitch);
-  font-size: 24px;
+  font-size: 1.5rem;
 }
 .lm-bug-clock > * {
   transform: skewX(10deg);
@@ -638,7 +638,7 @@
   border-radius: var(--r-card);
 }
 .lm-hero-rating {
-  font-size: 24px;
+  font-size: 1.5rem;
 }
 .lm-hero-stats {
   flex: 1;
@@ -656,7 +656,7 @@
 .lm-hs b {
   font-family: var(--font-score);
   font-weight: 600;
-  font-size: 24px;
+  font-size: 1.5rem;
   line-height: 1;
 }
 .lm-hs span {
@@ -758,7 +758,7 @@
   color: var(--accent-gold);
 }
 .lm-ev-score {
-  font-size: 22px;
+  font-size: 1.375rem;
   margin-left: auto;
 }
 .lm-controls {
@@ -938,7 +938,7 @@
     margin: 0 auto;
   }
   .lm-bug-score {
-    font-size: 42px;
+    font-size: 2.625rem;
   }
 }
 
@@ -1057,7 +1057,7 @@
   justify-content: center;
 }
 .post-rating-num {
-  font-size: 52px;
+  font-size: 3.25rem;
 }
 .post-motm {
   flex-direction: row;
@@ -1105,7 +1105,7 @@
   line-height: 1.05;
 }
 .post-motm-rating {
-  font-size: 32px;
+  font-size: 2rem;
 }
 .post-stat-grid {
   display: grid;
@@ -1125,7 +1125,7 @@
 .post-stat b {
   font-family: var(--font-score);
   font-weight: 600;
-  font-size: 26px;
+  font-size: 1.625rem;
   line-height: 1;
 }
 .post-team-legend {
@@ -1310,8 +1310,8 @@
 }
 .prb-from,
 .prb-to { display: flex; flex-direction: column; align-items: center; gap: 2px; }
-.prb-from b { font-size: 34px; color: var(--text-mid); }
-.prb-to b { font-size: 56px; font-style: italic; line-height: 1; }
+.prb-from b { font-size: 2.125rem; color: var(--text-mid); }
+.prb-to b { font-size: 3.5rem; font-style: italic; line-height: 1; }
 .prb-why { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; }
 .prb-chip {
   display: inline-flex;
@@ -1408,8 +1408,8 @@
 /* Manager trust */
 .ptrust-nums { display: flex; align-items: center; justify-content: space-around; text-align: center; }
 .ptrust-nums > div { display: flex; flex-direction: column; gap: 2px; }
-.ptrust-nums b { font-size: 34px; }
-.ptrust-nums .ptrust-delta { font-size: 44px; font-style: italic; }
+.ptrust-nums b { font-size: 2.125rem; }
+.ptrust-nums .ptrust-delta { font-size: 2.75rem; font-style: italic; }
 .ptrust-bar { position: relative; height: 12px; border-radius: 6px; background: var(--surface-2); overflow: hidden; }
 .ptrust-fill {
   position: absolute;
@@ -1459,12 +1459,12 @@
 
 /* Summary */
 .post-summary-row { display: flex; justify-content: space-around; align-items: baseline; }
-.post-summary-score { font-size: 40px; }
-.post-summary-rating { font-size: 40px; font-style: italic; }
+.post-summary-score { font-size: 2.5rem; }
+.post-summary-rating { font-size: 2.5rem; font-style: italic; }
 
 /* Pre-match: expected moments */
 .pm-moments-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--sp-2); }
-.pm-moments-range { font-size: 26px; }
+.pm-moments-range { font-size: 1.625rem; }
 .pm-moment-kinds { display: flex; flex-direction: column; gap: 6px; list-style: none; margin: 0; padding: 0; }
 .pm-moment-kind {
   display: grid;
@@ -1488,7 +1488,7 @@
     white-space: normal;
     text-align: left;
     line-height: 1.05;
-    font-size: 13px;
+    font-size: 0.8125rem;
     overflow-wrap: anywhere;
   }
 }

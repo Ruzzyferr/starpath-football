@@ -109,7 +109,7 @@
   border-radius: var(--r-pill);
   background: var(--state-danger);
   color: #fff;
-  font-size: 11px;
+  font-size: 0.6875rem;
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -318,7 +318,7 @@
   background: var(--state-danger);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 11px;
+  font-size: 0.6875rem;
   line-height: 18px;
   text-align: center;
   padding: 0 4px;
@@ -350,7 +350,7 @@
 /* ───────────── Controls ───────────── */
 .slider-field { display: flex; flex-direction: column; gap: var(--sp-2); }
 .slider-label { font-weight: 600; font-size: var(--fs-sm); color: var(--text-mid); }
-.slider-value { font-family: var(--font-score); font-size: 26px; line-height: 1; color: var(--text-hi); }
+.slider-value { font-family: var(--font-score); font-size: 1.625rem; line-height: 1; color: var(--text-hi); }
 .slider-row { display: flex; align-items: center; gap: var(--sp-2); }
 .slider-step { width: 44px; height: 44px; }
 .slider-track-wrap { position: relative; flex: 1; height: 44px; display: flex; align-items: center; }
@@ -648,7 +648,7 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  font-size: 10px;
+  font-size: 0.625rem;
   font-weight: 800;
   color: var(--bg-0);
 }
@@ -827,13 +827,13 @@
 :root[data-fx='low'] .pcard-sheen { display: none; }
 /* container-query units fallback for old WebViews */
 @supports not (font-size: 1cqw) {
-  .pcard-ovr { font-size: 44px; }
-  .pcard-pos { font-size: 17px; }
-  .pcard-name { font-size: 22px; }
-  .pcard-stat-v { font-size: 19px; }
-  .pcard-stat-l { font-size: 11px; }
-  .pcard-sm .pcard-ovr { font-size: 30px; }
-  .pcard-sm .pcard-name { font-size: 15px; }
-  .pcard-sm .pcard-stat-v { font-size: 13px; }
-  .pcard-sm .pcard-stat-l { font-size: 8px; }
+  .pcard-ovr { font-size: 2.75rem; }
+  .pcard-pos { font-size: 1.0625rem; }
+  .pcard-name { font-size: 1.375rem; }
+  .pcard-stat-v { font-size: 1.1875rem; }
+  .pcard-stat-l { font-size: 0.6875rem; }
+  .pcard-sm .pcard-ovr { font-size: 1.875rem; }
+  .pcard-sm .pcard-name { font-size: 0.9375rem; }
+  .pcard-sm .pcard-stat-v { font-size: 0.8125rem; }
+  .pcard-sm .pcard-stat-l { font-size: 0.5rem; }
 }

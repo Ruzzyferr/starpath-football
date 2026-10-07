@@ -75,7 +75,7 @@
 }
 .trn-ovr-groups { display: flex; gap: var(--sp-5); flex-wrap: wrap; }
 .trn-ovr-group { display: flex; flex-direction: column; gap: 2px; }
-.trn-ovr-num { font-size: 34px; color: var(--text-hi); }
+.trn-ovr-num { font-size: 2.125rem; color: var(--text-hi); }
 .trn-growth {
   display: grid;
   gap: var(--sp-3);
@@ -100,7 +100,7 @@
   background: rgba(142, 92, 255, 0.18);
   color: var(--accent-violet);
 }
-.trn-points-num { font-size: 36px; color: var(--accent-violet); }
+.trn-points-num { font-size: 2.25rem; color: var(--accent-violet); }
 .trn-points-hint { flex-basis: 100%; }
 @media (min-width: 700px) {
   .trn-points-hint { flex-basis: auto; max-width: 340px; }
@@ -321,7 +321,7 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
   height: 84px;
   flex: none;
   border-radius: 22px;
-  font-size: 54px;
+  font-size: 3.375rem;
   font-weight: 900;
   line-height: 1;
   color: var(--text-hi);
@@ -333,7 +333,7 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
 .trn-grade-B { color: #fff; background: var(--accent-blue-deep); }
 .trn-grade-D { color: var(--neg); }
 .trn-result-nums { flex: 1; gap: var(--sp-2); min-width: 0; }
-.trn-result-score { font-size: 30px; color: var(--accent-gold); }
+.trn-result-score { font-size: 1.875rem; color: var(--accent-gold); }
 .trn-perf { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-2); }
 .trn-perf-bar { position: relative; height: 8px; border-radius: 4px; background: var(--surface-3); overflow: visible; }
 .trn-perf-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: linear-gradient(90deg, var(--accent-violet), var(--brand-pitch)); }

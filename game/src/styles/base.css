@@ -6,6 +6,8 @@
 }
 
 html {
+  /* rem-based type: honours the OS/browser font size, then the in-game scale (90-200%). */
+  font-size: calc(100% * var(--text-scale, 1));
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;

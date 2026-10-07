@@ -30,8 +30,8 @@
   border: 1px solid rgba(142, 92, 255, 0.35);
   color: var(--accent-violet);
 }
-.life-followers .score-font { font-size: 26px; color: var(--text-hi); }
-.life-followers .micro { font-size: 9.5px; }
+.life-followers .score-font { font-size: 1.625rem; color: var(--text-hi); }
+.life-followers .micro { font-size: 0.5938rem; }
 
 /* ── Relationships ── */
 .life-people {
@@ -120,7 +120,7 @@
 .life-asset-specs dt, .bank-loan-specs dt { font-size: var(--fs-micro); color: var(--text-lo); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .life-asset-specs dd, .bank-loan-specs dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; }
 .life-asset-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: auto; padding-top: var(--sp-2); }
-.life-asset-price { font-family: var(--font-score); font-size: 28px; line-height: 1; color: var(--accent-gold); }
+.life-asset-price { font-family: var(--font-score); font-size: 1.75rem; line-height: 1; color: var(--accent-gold); }
 
 .life-shelf {
   display: grid;
@@ -186,7 +186,7 @@
 .soc-profile { display: flex; flex-direction: column; gap: var(--sp-4); background: radial-gradient(120% 120% at 100% 0%, rgba(142, 92, 255, 0.22), transparent 60%), var(--surface-2); }
 .soc-profile-head { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
 .soc-followers { margin-top: var(--sp-1); }
-.soc-followers .score-font { font-size: 32px; }
+.soc-followers .score-font { font-size: 2rem; }
 .soc-growth .sparkline { width: 100%; height: auto; margin-top: var(--sp-2); }
 .soc-verified { color: var(--accent-blue); flex: 0 0 auto; }
 .soc-compose { display: flex; flex-direction: column; gap: var(--sp-3); }
@@ -239,13 +239,13 @@
   font-family: var(--font-display);
   font-weight: 900;
   font-style: italic;
-  font-size: 22px;
+  font-size: 1.375rem;
   color: var(--bg-0);
   background: var(--brand);
   box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
 }
 .life-deal-pay { display: flex; flex-direction: column; align-items: flex-end; }
-.life-deal-pay .money { font-family: var(--font-score); font-size: 26px; line-height: 1; color: var(--accent-gold); }
+.life-deal-pay .money { font-family: var(--font-score); font-size: 1.625rem; line-height: 1; color: var(--accent-gold); }
 .life-deal-actions { justify-content: flex-end; }
 
 @media (min-width: 900px) {

@@ -44,7 +44,7 @@
 @media (min-width: 720px) { .draw-pots { grid-template-columns: 1fr 1fr; } }
 .draw-ball {
   display: inline-flex; align-items: center; justify-content: center; width: 40px; height: 40px; border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #fff, #c9d2e3 60%, #8792a8); color: #10182a; font-weight: 800; font-size: 12px;
+  background: radial-gradient(circle at 35% 30%, #fff, #c9d2e3 60%, #8792a8); color: #10182a; font-weight: 800; font-size: 0.75rem;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.35);
 }
 .draw-pair { animation: draw-in var(--dur-slow) var(--ease-spring) both; }
@@ -83,6 +83,6 @@
 .tots-pitch::before { content: ''; position: absolute; left: 0; right: 0; top: 50%; border-top: 2px solid rgba(255, 255, 255, 0.45); }
 .tots-pitch::after { content: ''; position: absolute; left: 50%; top: 50%; width: 22%; aspect-ratio: 1; border: 2px solid rgba(255, 255, 255, 0.45); border-radius: 50%; transform: translate(-50%, -50%); }
 .tots-p { position: absolute; transform: translate(-50%, -50%); display: flex; flex-direction: column; align-items: center; gap: 2px; width: 24%; z-index: 1; }
-.tots-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 11px; font-weight: 800; color: #10182a; background: #fff; border: 2px solid rgba(0, 0, 0, 0.3); }
+.tots-dot { width: 30px; height: 30px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 0.6875rem; font-weight: 800; color: #10182a; background: #fff; border: 2px solid rgba(0, 0, 0, 0.3); }
 .tots-p.is-hero .tots-dot { background: var(--accent-gold); }
-.tots-n { font-size: 10px; line-height: 1.1; color: #fff; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); overflow-wrap: anywhere; }
+.tots-n { font-size: 0.625rem; line-height: 1.1; color: #fff; text-align: center; text-shadow: 0 1px 2px rgba(0, 0, 0, 0.8); overflow-wrap: anywhere; }

@@ -83,16 +83,16 @@
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-score: 'Teko', 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
   --text-scale: 1;
-  --fs-micro: calc(11px * var(--text-scale));
-  --fs-xs: calc(12px * var(--text-scale));
-  --fs-sm: calc(13.5px * var(--text-scale));
-  --fs-md: calc(15px * var(--text-scale));
-  --fs-lg: calc(17px * var(--text-scale));
-  --fs-h3: calc(20px * var(--text-scale));
-  --fs-h2: calc(clamp(22px, 2.2vw + 14px, 26px) * var(--text-scale));
-  --fs-h1: calc(clamp(28px, 2.6vw + 18px, 36px) * var(--text-scale));
-  --fs-display: calc(clamp(40px, 6vw + 16px, 72px) * var(--text-scale));
-  --fs-score: calc(clamp(40px, 5vw + 20px, 64px) * var(--text-scale));
+  --fs-micro: 0.6875rem;
+  --fs-xs: 0.75rem;
+  --fs-sm: 0.8438rem;
+  --fs-md: 0.9375rem;
+  --fs-lg: 1.0625rem;
+  --fs-h3: 1.25rem;
+  --fs-h2: clamp(1.375rem, 2.2vw + 0.875rem, 1.625rem);
+  --fs-h1: clamp(1.75rem, 2.6vw + 1.125rem, 2.25rem);
+  --fs-display: clamp(2.5rem, 6vw + 1rem, 4.5rem);
+  --fs-score: clamp(2.5rem, 5vw + 1.25rem, 4rem);
 
   /* ── Spacing (8px grid with 4px half-steps) ── */
   --sp-1: 4px;

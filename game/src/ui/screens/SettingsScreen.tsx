@@ -125,7 +125,7 @@ export function SettingsScreen() {
             label={t('settings.textSize')}
             value={Math.round(s.textScale * 100)}
             min={90}
-            max={130}
+            max={200}
             step={5}
             onChange={(v) => updateSettings({ textScale: v / 100 })}
             format={(v) => `${v}%`}

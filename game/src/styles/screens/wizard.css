@@ -217,7 +217,7 @@
   border: 2px solid rgba(242, 245, 250, 0.7);
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 12px;
+  font-size: 0.75rem;
   letter-spacing: 0.02em;
   color: var(--text-hi);
   transition: transform var(--dur-fast) var(--ease-spring), background-color var(--dur-fast);

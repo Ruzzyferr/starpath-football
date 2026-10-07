@@ -82,7 +82,7 @@
   padding: var(--sp-2) var(--sp-1);
   background: var(--surface-2);
 }
-.prof-quick .score-font { font-size: 30px; }
+.prof-quick .score-font { font-size: 1.875rem; }
 
 @media (min-width: 720px) {
   .prof-hero {
@@ -109,7 +109,7 @@
   grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
 }
 .prof-group-head { margin-bottom: var(--sp-3); }
-.prof-group-avg { font-size: 32px; color: var(--accent-gold); }
+.prof-group-avg { font-size: 2rem; color: var(--accent-gold); }
 .prof-bars { --gap: var(--sp-2); }
 
 .prof-radar-card {
@@ -121,12 +121,12 @@
 .prof-radar-label {
   font-family: var(--font-display);
   font-weight: 700;
-  font-size: 11px;
+  font-size: 0.6875rem;
   letter-spacing: 0.04em;
   text-transform: uppercase;
   fill: var(--text-mid);
 }
-.prof-radar-value { font-family: var(--font-score); font-size: 15px; fill: var(--text-hi); }
+.prof-radar-value { font-family: var(--font-score); font-size: 0.9375rem; fill: var(--text-hi); }
 .prof-radar-shape { transform-origin: center; animation: prof-grow var(--dur-slow) var(--ease-out) both; }
 @keyframes prof-grow { from { transform: scale(0.2); opacity: 0; } to { transform: none; opacity: 1; } }
 .prof-ovr-badge {
@@ -141,7 +141,7 @@
   background: var(--bg-1);
   border: 1px solid rgba(255, 200, 61, 0.4);
 }
-.prof-ovr-badge .score-font { font-size: 34px; color: var(--accent-gold); }
+.prof-ovr-badge .score-font { font-size: 2.125rem; color: var(--accent-gold); }
 
 .prof-dl,
 .prof-dl > div { margin: 0; }
@@ -238,7 +238,7 @@
   background: var(--surface-1);
   border: 1px solid var(--border);
 }
-.prof-tl-season { font-family: var(--font-score); font-size: 22px; color: var(--accent-gold); line-height: 1; }
+.prof-tl-season { font-family: var(--font-score); font-size: 1.375rem; color: var(--accent-gold); line-height: 1; }
 .prof-tl-rating { font-weight: 700; }
 .prof-tl-club { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); }
 .prof-tl-trophies { margin-top: var(--sp-2); }
