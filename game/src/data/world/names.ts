@@ -492,3 +492,40 @@ export function isRealClubName(name: string): boolean {
 export function formatPattern(pattern: string, vars: Readonly<Record<string, string>>): string {
   return pattern.replace(/\{(\w+)\}/g, (m, key: string) => (key in vars ? vars[key] : m))
 }
+
+// ───────────────────────── Name → gender ─────────────────────────
+
+/** Extra short-list names used by events/family that may be missing from the pools. */
+const EXTRA_FEMALE = list('Su, Lena, Maya, Nora, Mira, Duru, Alba, Sofia, Clara, Maria, Anna, Laura, Elena, Ela, Aylin, Melis, İpek, Defne, Hatice, Emine')
+const EXTRA_MALE = list('Emir, Jonas, Mateo, Noah, Luca, Marco, Tuna, Alp, Mirza, Baran, Rafa, David, Lukas, Daniel, Tom, Pablo, Leo, Adam, Kerem, Arda, Can, Ozan')
+
+let genderIndex: Map<string, { f: number; m: number }> | null = null
+function buildGenderIndex(): Map<string, { f: number; m: number }> {
+  const idx = new Map<string, { f: number; m: number }>()
+  const add = (n: string, k: 'f' | 'm') => {
+    const key = n.toLocaleLowerCase('tr')
+    const e = idx.get(key) ?? { f: 0, m: 0 }
+    e[k]++
+    idx.set(key, e)
+  }
+  for (const p of Object.values(NAME_POOLS)) {
+    for (const n of p.firstFemale) add(n, 'f')
+    for (const n of p.first) add(n, 'm')
+  }
+  for (const n of EXTRA_FEMALE) add(n, 'f')
+  for (const n of EXTRA_MALE) add(n, 'm')
+  return idx
+}
+
+/**
+ * Gender implied by a person's first name ("Ayşe Yılmaz" → 'female'), or
+ * null when unknown or unisex (e.g. Deniz appears in both pools).
+ */
+export function firstNameGender(fullName: string): 'male' | 'female' | null {
+  genderIndex ??= buildGenderIndex()
+  const first = fullName.trim().split(/\s+/)[0]?.toLocaleLowerCase('tr') ?? ''
+  const e = genderIndex.get(first)
+  if (!e || e.f === e.m) return null
+  if (e.f > 0 && e.m > 0) return null
+  return e.f > 0 ? 'female' : 'male'
+}

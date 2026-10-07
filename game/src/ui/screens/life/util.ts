@@ -1,5 +1,6 @@
 import type { Appearance, AssetCategory, RelationKind, Relationship, World } from '../../../core/types'
 import { hashString } from '../../../core/rng'
+import { firstNameGender } from '../../../data/world/names'
 import { FEMALE_HAIR_STYLE_COUNT } from '../../art/avatar'
 import { statLabel } from '../../components'
 import { formatDelta } from '../../format'
@@ -18,7 +19,10 @@ const EITHER: ReadonlySet<RelationKind> = new Set<RelationKind>(['partner', 'sib
 export function relAppearance(rel: Relationship, world: World | undefined): Appearance {
   if (rel.npcId && world?.players[rel.npcId]) return world.players[rel.npcId].appearance
   const h = hashString(rel.id + rel.name)
-  const fem = FEMININE.has(rel.kind) || (EITHER.has(rel.kind) && h % 2 === 0)
+  // Partners, siblings and friends: the face follows the name ("Ayşe" is drawn
+  // as a woman); unisex/unknown names fall back to a stable coin flip.
+  const byName = EITHER.has(rel.kind) ? firstNameGender(rel.name) : null
+  const fem = FEMININE.has(rel.kind) || (EITHER.has(rel.kind) && (byName ? byName === 'female' : h % 2 === 0))
   if (fem) {
     return {
       skin: h % 10, hairStyle: (h >>> 4) % FEMALE_HAIR_STYLE_COUNT, hairColor: (h >>> 8) % 10, beard: 0,
