@@ -392,6 +392,8 @@ export interface PreMatchView {
   tacticHint: LText
   heroStarting: boolean
   odds: { home: number; draw: number; away: number }
+  /** How many moments (and which kinds) the hero can expect, from position/role/relations/form. Null when not starting and unlikely to come on. */
+  expectedMoments?: { min: number; max: number; kinds: { kind: string; share: number }[] } | null
 }
 export interface MatchEventView {
   minute: number
@@ -458,6 +460,43 @@ export interface PostMatchView {
   scorers: { minute: number; name: string; side: 'home' | 'away' }[]
   interview: { question: LText; options: InterviewOption[] } | null
   deltas: Delta[]
+  /** Rating breakdown: starts at ratingBase, each line adds `delta` (see sim/match RatingLogEntry). */
+  ratingBase?: number
+  ratingLog?: RatingLineView[]
+  /** Heat map & shot map, normalised so the hero attacks toward +x (left → right). */
+  heroMap?: HeroMapView
+  /** Manager trust before/after with the reasons that moved it. */
+  trust?: TrustChangeView
+  /** Relationship changes this match caused (largest first). */
+  relations?: RelationChangeView[]
+}
+export interface RatingLineView {
+  minute: number
+  source: 'moment' | 'team' | 'background' | 'final'
+  key: string
+  kind?: string // HighlightKind
+  outcome?: string // HighlightOutcome
+  delta: number
+  auto?: boolean
+}
+export interface HeroMapView {
+  cols: number
+  rows: number
+  heat: number[]
+  shots: { minute: number; x: number; y: number; outcome: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork'; header?: boolean; xg: number; source: 'moment' | 'auto' }[]
+}
+export interface TrustChangeView {
+  before: number
+  after: number
+  reasons: { key: 'rating' | 'minutes' | 'result' | 'card' | 'goals' | 'other'; value: number; label: LText }[]
+}
+export interface RelationChangeView {
+  id: string
+  name: string
+  kind: string
+  before: number
+  after: number
+  why?: LText
 }
 
 // Season / saves ------------------------------------------------------------

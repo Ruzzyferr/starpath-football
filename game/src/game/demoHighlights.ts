@@ -3,13 +3,44 @@
  * page (match-demo.html) and by the headless smoke tests.
  */
 import { Rng } from '../core/rng'
-import { ATTRIBUTE_KEYS, type Attributes, type Lang, type Position } from '../core/types'
+import { ATTRIBUTE_KEYS, type Attributes, type Formation, type Lang, type Position } from '../core/types'
+import { assignSlots, buildScenario, type SlotPlayer } from '../sim/match/highlightGen'
+import { makeTeam } from '../sim/match/testFixtures'
 import type { Highlight, HighlightKind, ScenarioPlayer, Vec2 } from '../sim/match/types'
 import { PITCH_LENGTH } from '../sim/match/types'
 
 export const ALL_KINDS: readonly HighlightKind[] = [
   'build_up', 'counter', 'one_on_one', 'cross', 'edge_of_box', 'freekick', 'penalty', 'corner', 'defend', 'gk_save', 'gk_penalty',
+  'counter_2v1', 'long_ball_control', 'rebound', 'interception',
 ]
+
+/** Typical hero position for a kind (generated scenarios). */
+export const KIND_HERO_POS: Record<HighlightKind, Position> = {
+  build_up: 'CM', counter: 'AM', one_on_one: 'ST', cross: 'LW', edge_of_box: 'AM', freekick: 'AM', penalty: 'ST', corner: 'CB',
+  defend: 'CB', gk_save: 'GK', gk_penalty: 'GK', counter_2v1: 'ST', long_ball_control: 'ST', rebound: 'ST', interception: 'CB',
+}
+
+/**
+ * A realistic Highlight from the real scenario generator (sim/match/highlightGen)
+ * with synthetic teams (hero and both sides at `ovr`). Used by the feel
+ * harness and the demo page for kinds without a hand-made layout.
+ */
+export function generatedHighlight(kind: HighlightKind, seed: number, opts: { ovr?: number; heroOvr?: number; lang?: Lang; heroPos?: Position } = {}): Highlight {
+  const ovr = opts.ovr ?? 65
+  const rng = new Rng(`feel:${kind}:${seed}`)
+  const mf: Formation = '4-2-3-1'
+  const of: Formation = '4-4-2'
+  const home = makeTeam(rng, 'h', { heroPosition: opts.heroPos ?? KIND_HERO_POS[kind], formation: mf, ovr, heroOvr: opts.heroOvr ?? ovr })
+  const away = makeTeam(rng, 'a', { formation: of, ovr })
+  const toSlots = (players: typeof home.lineup, f: Formation): SlotPlayer[] => {
+    const sl = assignSlots(players, f)
+    return players.map((player, i) => ({ player, slot: sl[i] }))
+  }
+  const g = buildScenario({
+    kind, heroSide: 'home', heroId: 'hero', mates: toSlots(home.lineup, mf), opps: toSlots(away.lineup, of), mateFormation: mf, oppFormation: of, lang: opts.lang ?? 'en', rng,
+  })
+  return { id: `feel_${kind}_${seed}`, minute: 30, side: 'home', kind, score: [0, 0], scenario: g.scenario }
+}
 
 type Slot = { role: Position; pos: Vec2 }
 
@@ -72,7 +103,7 @@ interface KindLayout {
   prompt: Record<Lang, string>
 }
 
-const LAYOUTS: Record<HighlightKind, KindLayout> = {
+const LAYOUTS: Partial<Record<HighlightKind, KindLayout>> = {
   build_up: { heroAttacks: true, heroRole: 'CM', heroPos: { x: 56, y: 34 }, ball: { x: 56.5, y: 34 }, owner: 'hero', shift: -2, timeLimit: 14, prompt: { en: 'Build the attack — find a pass or drive forward', tr: 'Atağı kur — pas bul ya da topu sür' } },
   counter: { heroAttacks: true, heroRole: 'AM', heroPos: { x: 58, y: 30 }, ball: { x: 58.5, y: 30 }, owner: 'hero', shift: 4, timeLimit: 12, prompt: { en: 'Counter-attack! Exploit the space', tr: 'Kontra atak! Boşluğu değerlendir' } },
   one_on_one: { heroAttacks: true, heroRole: 'ST', heroPos: { x: 80, y: 32 }, ball: { x: 80.5, y: 32 }, owner: 'hero', shift: 0, timeLimit: 8, prompt: { en: 'Through on goal — beat the keeper', tr: 'Kaleciyle karşı karşıya — bitir!' } },
@@ -93,8 +124,9 @@ const LAYOUTS: Record<HighlightKind, KindLayout> = {
  * @param heroOvr hero rating
  */
 export function makeDemoHighlight(kind: HighlightKind, seed = 1, lang: Lang = 'en', heroOvr = 72): Highlight {
-  const rng = new Rng(`${kind}:${seed}`)
   const L = LAYOUTS[kind]
+  if (!L) return { ...generatedHighlight(kind, seed, { heroOvr, lang }), id: `demo_${kind}_${seed}` }
+  const rng = new Rng(`${kind}:${seed}`)
   const players: ScenarioPlayer[] = []
   const heroShape = L.heroAttacks ? ATTACK_SHAPE : DEFEND_SHAPE.map((s) => ({ role: s.role, pos: mirror(s.pos) }))
   const oppShape = L.heroAttacks ? DEFEND_SHAPE : ATTACK_SHAPE.map((s) => ({ role: s.role, pos: mirror(s.pos) }))

@@ -33,7 +33,7 @@ export interface Cast {
   defending: boolean
 }
 
-export const isDefendingKind = (k: HighlightKind) => k === 'defend' || k === 'gk_save' || k === 'gk_penalty'
+export const isDefendingKind = (k: HighlightKind) => k === 'defend' || k === 'gk_save' || k === 'gk_penalty' || k === 'interception'
 export const isKeeperKind = (k: HighlightKind) => k === 'gk_save' || k === 'gk_penalty'
 
 /** Neutral attribute block used when synthesising extra players. */

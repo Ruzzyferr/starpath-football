@@ -19,6 +19,8 @@ export {
 export {
   assignSlots,
   buildScenario,
+  expectedMoments,
+  guaranteedKind,
   formationSlots,
   isDefensiveKind,
   kindWeights,
@@ -34,9 +36,12 @@ export {
   type ScenarioInput,
   type SlotPlayer,
 } from './highlightGen'
+export { HEAT_COLS, HEAT_ROWS, shotXg } from './heroMap'
 export {
   clampRating,
+  contributionFloor,
   finalRatingAdjustment,
+  finalRatingParts,
   highlightRatingDelta,
   npcRating,
   pickMotm,

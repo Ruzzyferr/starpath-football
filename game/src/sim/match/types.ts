@@ -95,6 +95,10 @@ export type HighlightKind =
   | 'defend' // defensive moment: stop an attacker
   | 'gk_save' // hero is GK: save a shot
   | 'gk_penalty'
+  | 'counter_2v1' // fast break, hero + one team-mate against a lone defender
+  | 'long_ball_control' // a long diagonal to bring down under pressure, then play on
+  | 'rebound' // keeper parries a team-mate's shot: react first to the loose ball
+  | 'interception' // defensive: read the opponent's pass and cut it out
 
 export interface Vec2 {
   x: number
@@ -163,6 +167,60 @@ export interface HighlightResult {
    * opponents in a defensive moment → 'defended').
    */
   offside?: { playerId: string; byHero: boolean }
+  /**
+   * Hero positions sampled during the moment (hero-attack frame, pitch meters),
+   * for the heat map. Optional: auto-resolved moments leave it out.
+   */
+  track?: Vec2[]
+  /** Hero shots taken during the moment (pitch meters, hero attacks +x). */
+  shotLog?: { x: number; y: number; header?: boolean; outcome?: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork' }[]
+}
+
+/** One line of the hero's rating breakdown (sums, with the base, to the final rating before clamping). */
+export interface RatingLogEntry {
+  minute: number
+  /** moment = an interactive/auto moment, team = goal for/against while on the pitch, background = involvement between moments, final = full-time adjustment. */
+  source: 'moment' | 'team' | 'background' | 'final'
+  /**
+   * Machine key for the UI label. moment: the outcome; team: 'goalFor' | 'goalAgainst';
+   * background: 'save' | 'involvement'; final: 'result' | 'cleanSheet' | 'passing' | 'saves' | 'floor'.
+   */
+  key: string
+  kind?: HighlightKind
+  outcome?: HighlightOutcome
+  delta: number
+  /** Moment resolved by the auto-sim (skipped) rather than played. */
+  auto?: boolean
+}
+
+/** A shot by the hero for the shot map (pitch normalised: x 0 own goal line → 1 opponent goal line, y 0..1). */
+export interface ShotMapEntry {
+  minute: number
+  x: number
+  y: number
+  outcome: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork'
+  header?: boolean
+  /** Rough chance quality 0..1. */
+  xg: number
+  /** 'moment' = recorded during a played highlight, 'auto' = from an auto-resolved one (position estimated). */
+  source: 'moment' | 'auto'
+}
+
+/** Hero heat map + shot map (normalised to the hero's attacking direction, +x = toward the opponent goal). */
+export interface HeroMatchMap {
+  cols: number
+  rows: number
+  /** cols × rows presence weights, row-major (row = y band, col = x band). */
+  heat: number[]
+  shots: ShotMapEntry[]
+}
+
+/** Expected moment preview for the pre-match screen. */
+export interface ExpectedMoments {
+  min: number
+  max: number
+  /** Kind shares (sum ≈ 1), most likely first. */
+  kinds: { kind: HighlightKind; share: number }[]
 }
 
 export interface HeroMatchStats {
@@ -197,4 +255,8 @@ export interface MatchSnapshot {
   heroStats: HeroMatchStats
   pendingHighlight: Highlight | null
   penalties?: [number, number]
+  /** Hero rating breakdown so far (base = RATING_BASE). */
+  heroLog?: RatingLogEntry[]
+  /** Hero heat map & shot map so far. */
+  heroMap?: HeroMatchMap
 }

@@ -50,9 +50,10 @@ describe('match feel (average human, normal)', () => {
 describe.runIf(ENV.FEEL_REPORT === '1')('match feel report', () => {
   it('prints kind × difficulty × bot matrix', () => {
     const n = Number(ENV.FEEL_N ?? 200)
-    const diffs: Difficulty[] = ['easy', 'normal', 'hard', 'legend']
+    const diffs = (ENV.FEEL_DIFFS ?? 'easy,normal,hard,legend').split(',') as Difficulty[]
+    const kinds = ENV.FEEL_ONLY ? (ENV.FEEL_ONLY.split(',') as FeelKind[]) : FEEL_KINDS
     const lines: string[] = [`| Tür | Zorluk | ${BOT_LEVELS.join(' | ')} |`, `|---|---|${BOT_LEVELS.map(() => '---').join('|')}|`]
-    for (const kind of FEEL_KINDS) {
+    for (const kind of kinds) {
       for (const d of diffs) {
         const cells = BOT_LEVELS.map((lv) => `${Math.round(feelRate(kind, lv, d, n) * 100)}%`)
         lines.push(`| ${kind} | ${d} | ${cells.join(' | ')} |`)

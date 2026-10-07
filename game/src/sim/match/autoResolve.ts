@@ -27,6 +27,10 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   defend: { tackling: 0.4, positioning: 0.3, pace: 0.15, strength: 0.15 },
   gk_save: { reflexes: 0.45, positioning: 0.3, handling: 0.25 },
   gk_penalty: { reflexes: 0.6, composure: 0.2, positioning: 0.2 },
+  counter_2v1: { pace: 0.25, finishing: 0.3, vision: 0.25, dribbling: 0.2 },
+  long_ball_control: { firstTouch: 0.4, strength: 0.2, composure: 0.2, jumping: 0.1, agility: 0.1 },
+  rebound: { finishing: 0.35, agility: 0.25, positioning: 0.2, composure: 0.2 },
+  interception: { positioning: 0.4, vision: 0.2, pace: 0.2, tackling: 0.2 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -42,6 +46,10 @@ const BASE: Record<HighlightKind, Weights> = {
   defend: { defended: 0.58, lost_ball: 0.08, conceded: 0.12, foul_committed: 0.14, pass_complete: 0.08 },
   gk_save: { defended: 0.76, conceded: 0.24 },
   gk_penalty: { defended: 0.22, conceded: 0.78 },
+  counter_2v1: { goal: 0.2, assist: 0.14, saved: 0.16, missed: 0.14, blocked: 0.06, lost_ball: 0.2, foul_won: 0.06, woodwork: 0.02 },
+  long_ball_control: { goal: 0.04, assist: 0.05, pass_complete: 0.42, lost_ball: 0.26, missed: 0.06, saved: 0.05, blocked: 0.03, foul_won: 0.09 },
+  rebound: { goal: 0.3, saved: 0.17, missed: 0.2, blocked: 0.12, woodwork: 0.02, lost_ball: 0.19 },
+  interception: { defended: 0.56, conceded: 0.09, foul_committed: 0.07, lost_ball: 0.1, timeout: 0.18 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
@@ -93,8 +101,8 @@ function emptyResult(outcome: Outcome): HighlightResult {
 
 /** Fills consistent micro-stats for a sampled outcome. */
 function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
-  const attacking = kind !== 'defend' && kind !== 'gk_save' && kind !== 'gk_penalty'
-  if (attacking && kind !== 'penalty' && kind !== 'freekick' && kind !== 'corner') {
+  const attacking = kind !== 'defend' && kind !== 'gk_save' && kind !== 'gk_penalty' && kind !== 'interception'
+  if (attacking && kind !== 'penalty' && kind !== 'freekick' && kind !== 'corner' && kind !== 'rebound') {
     const p = rng.int(0, 2)
     r.passes += p
     r.passesCompleted += p
@@ -120,7 +128,7 @@ function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
       if (rng.chance(0.5)) r.passes += 1
       break
     case 'defended':
-      if (kind === 'defend') r.tackles += 1
+      if (kind === 'defend' || kind === 'interception') r.tackles += 1
       break
     case 'foul_won':
       r.dribbles += 1

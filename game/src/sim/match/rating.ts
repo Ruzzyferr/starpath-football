@@ -94,19 +94,45 @@ export interface FinalRatingContext {
   saves: number
 }
 
+/** One component of the full-time adjustment (already scaled by minutes). */
+export interface FinalRatingPart {
+  key: 'result' | 'cleanSheet' | 'passing' | 'saves'
+  delta: number
+}
+
+/**
+ * Full-time adjustment split into its components (result, clean sheet, pass
+ * accuracy, GK saves), each scaled by minutes played. Zero parts are omitted.
+ */
+export function finalRatingParts(ctx: FinalRatingContext): FinalRatingPart[] {
+  const share = Math.min(1, ctx.minutes / 90)
+  const parts: FinalRatingPart[] = []
+  const push = (key: FinalRatingPart['key'], d: number) => {
+    if (Math.abs(d * share) > 1e-9) parts.push({ key, delta: d * share })
+  }
+  push('result', ctx.goalsFor > ctx.goalsAgainst ? 0.3 : ctx.goalsFor < ctx.goalsAgainst ? -0.3 : 0)
+  if (ctx.goalsAgainst === 0 && isDefensive(ctx.position)) push('cleanSheet', ctx.position === 'GK' ? 0.5 : 0.35)
+  if (ctx.passes >= 8) push('passing', (ctx.passesCompleted / ctx.passes - 0.78) * 1.5)
+  if (ctx.position === 'GK') push('saves', Math.min(1, ctx.saves * 0.12))
+  return parts
+}
+
 /**
  * Final adjustment applied at full time: result, clean sheet, pass accuracy and
  * GK saves. Scaled by minutes played (a 10-minute cameo moves less).
  */
 export function finalRatingAdjustment(ctx: FinalRatingContext): number {
-  const share = Math.min(1, ctx.minutes / 90)
-  let d = 0
-  if (ctx.goalsFor > ctx.goalsAgainst) d += 0.3
-  else if (ctx.goalsFor < ctx.goalsAgainst) d -= 0.3
-  if (ctx.goalsAgainst === 0 && isDefensive(ctx.position)) d += ctx.position === 'GK' ? 0.5 : 0.35
-  if (ctx.passes >= 8) d += (ctx.passesCompleted / ctx.passes - 0.78) * 1.5
-  if (ctx.position === 'GK') d += Math.min(1, ctx.saves * 0.12)
-  return d * share
+  return finalRatingParts(ctx).reduce((a, p) => a + p.delta, 0)
+}
+
+/**
+ * Decisive-contribution floor: goals and assists guarantee a minimum rating
+ * (1 goal + 2 assists ≥ 7.0, a hat-trick ≥ 8.0) so a match-winning display is
+ * never rated as average. A red card lowers the floor.
+ */
+export function contributionFloor(goals: number, assists: number, red = false): number {
+  if (goals + assists <= 0) return RATING_MIN
+  return Math.min(9.2, 5.8 + goals * 0.75 + assists * 0.45) - (red ? 1.5 : 0)
 }
 
 /** Per-player counters the engine keeps for NPC ratings. */

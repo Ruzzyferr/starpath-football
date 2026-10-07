@@ -24,6 +24,7 @@ import type { EngineState, HeroRuntime, MatchSimOptions, PendingRuntime, PlayerR
 import { assignSlots } from './formations'
 import {
   buildScenario,
+  guaranteedKind,
   isDefensiveKind,
   kindWeights,
   pickHighlightKind,
@@ -32,9 +33,13 @@ import {
   HIGHLIGHTS_MAX_90,
   type SlotPlayer,
 } from './highlightGen'
+import { EARLY_BRAKE_MINUTE, MIN_MOMENT_CHANCE, earlyBrake, momentChance } from './fairness'
+import { HEAT_COLS, HEAT_ROWS, addHeat, backgroundPresence, emptyHeat, shotEntry, typicalShotSpot } from './heroMap'
+import { formationSlots } from './formations'
 import {
   clampRating,
-  finalRatingAdjustment,
+  contributionFloor,
+  finalRatingParts,
   highlightRatingDelta,
   npcRating,
   pickMotm,
@@ -69,6 +74,8 @@ import type {
   MatchSetup,
   MatchSnapshot,
   MatchTeam,
+  RatingLogEntry,
+  ShotMapEntry,
   Side,
 } from './types'
 
@@ -144,6 +151,8 @@ export class MatchSim {
   private lookup!: Map<string, MatchPlayer>
   private skills!: Map<string, UnitSkills>
   private out: MatchEvent[] = []
+  /** Transient: the highlight being resolved came from skipHighlight(). */
+  private resolvingAuto = false
 
   /**
    * @param setup teams, seed, competition flags.
@@ -217,7 +226,12 @@ export class MatchSim {
     const hero = this.heroPlayer()
     if (!hero) return this.resolveHighlight({ outcome: 'timeout', passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 })
     const r = autoResolve(pending.highlight.kind, hero.attrs, this.s.setup.difficulty, this.rng)
-    return this.resolveHighlight(r)
+    this.resolvingAuto = true
+    try {
+      return this.resolveHighlight(r)
+    } finally {
+      this.resolvingAuto = false
+    }
   }
 
   /** Current state for the UI. */
@@ -243,6 +257,10 @@ export class MatchSim {
       pendingHighlight: s.pending?.highlight ?? null,
     }
     if (s.shootout) snap.penalties = [s.shootout.goals[0], s.shootout.goals[1]]
+    if (s.hero.id) {
+      snap.heroLog = (s.hero.log ?? []).map((e) => ({ ...e }))
+      snap.heroMap = { cols: HEAT_COLS, rows: HEAT_ROWS, heat: (s.hero.heat ?? emptyHeat()).map((v) => Math.round(v * 100) / 100), shots: (s.hero.shots ?? []).map((e) => ({ ...e })) }
+    }
     return snap
   }
 
@@ -314,6 +332,10 @@ export class MatchSim {
       form: opts.heroForm ?? 50,
       trust: opts.managerTrust ?? 50,
       finalized: false,
+      log: [],
+      heat: emptyHeat(),
+      shots: [],
+      kinds: {},
     }
     return {
       v: 1,
@@ -498,7 +520,10 @@ export class MatchSim {
     for (const side of ['home', 'away'] as const) {
       for (const id of this.s.teams[side].onPitch) this.s.players[id].minutes++
     }
-    if (this.heroOnPitch()) this.s.hero.stats.minutes++
+    if (this.heroOnPitch()) {
+      this.s.hero.stats.minutes++
+      this.heroPresence()
+    }
   }
 
   private maybeEndPeriod(): void {
@@ -735,7 +760,7 @@ export class MatchSim {
     const pGoal = clamp((xg * fin * w.accuracy * w.keeperError) / gkv, 0.005, 0.95)
     team.shots++
     this.s.ballX = att === 'home' ? 0.9 : 0.1
-    if (this.rng.chance(pGoal)) {
+    if (this.rng.chance(pGoal) && !this.braked(att)) {
       team.onTarget++
       this.s.players[shooter.id].shotsOnTarget++
       const assist = this.pickAssist(att, shooter.id, type)
@@ -783,7 +808,7 @@ export class MatchSim {
     this.s.players[gkId].saves++
     if (this.isHero(gkId) && this.s.hero.side === side) {
       this.s.hero.stats.saves++
-      this.s.hero.ratingRaw += 0.05
+      this.rate(0.05, { source: 'background', key: 'save' })
     }
   }
 
@@ -835,7 +860,7 @@ export class MatchSim {
     if (!ownGoal && assistId === h.id) h.stats.assists++
     if (!this.heroOnPitch()) return
     const pos = this.player(h.id).position
-    h.ratingRaw += teamGoalRatingDelta(pos, side === h.side)
+    this.rate(teamGoalRatingDelta(pos, side === h.side), { source: 'team', key: side === h.side ? 'goalFor' : 'goalAgainst' })
   }
 
   // ───────────────────────── Set pieces ─────────────────────────
@@ -883,7 +908,7 @@ export class MatchSim {
     const gk = this.keeper(other(att))
     const p = clamp(0.76 * Math.sqrt(skillMult(penaltySkill(taker.attrs))) / Math.pow(skillMult(this.ratings(other(att)).gk), 0.4), 0.55, 0.92)
     this.s.teams[att].shots++
-    if (this.rng.chance(p)) {
+    if (this.rng.chance(p) && !this.braked(att)) {
       this.s.teams[att].onTarget++
       return this.applyGoal(att, taker.id, null, { penalty: true })
     }
@@ -1138,7 +1163,9 @@ export class MatchSim {
     const hero = this.heroPlayer() as MatchPlayer
     const side = h.side as Side
     const diff = this.s.score[idx(side)] - this.s.score[idx(other(side))]
-    const kind = hero.position === 'GK' ? 'gk_save' : pickHighlightKind(hero.position, this.rng, diff, this.s.clock)
+    const slotsLeft = h.plan.filter((m) => m >= this.s.clock).length
+    const forced = hero.position === 'GK' ? null : guaranteedKind(hero.position, h.kinds ?? {}, slotsLeft, this.rng)
+    const kind = hero.position === 'GK' ? 'gk_save' : forced ?? pickHighlightKind(hero.position, this.rng, diff, this.s.clock)
     const att = isDefensiveKind(kind) ? other(side) : side
     const share = att === 'home' ? 0.6 : 0.4
     this.s.teams.home.possession += share
@@ -1148,25 +1175,57 @@ export class MatchSim {
     return true
   }
 
-  private slotPlayers(side: Side): SlotPlayer[] {
-    return this.s.teams[side].onPitch.map((id) => ({ player: this.player(id), slot: Math.max(0, this.s.players[id].slot) }))
+  /**
+   * On-pitch players with their slots. With `tired`, players running on empty
+   * late on (after 70', condition under 40%) lose 10% pace and first touch.
+   */
+  private slotPlayers(side: Side, tired = false): SlotPlayer[] {
+    return this.s.teams[side].onPitch.map((id) => {
+      const p = this.player(id)
+      const fat = this.s.players[id].fatigue
+      const player = tired && this.s.clock >= 70 && fat > 0.6
+        ? { ...p, attrs: { ...p.attrs, pace: Math.round(p.attrs.pace * 0.9), firstTouch: Math.round(p.attrs.firstTouch * 0.9) } }
+        : p
+      return { player, slot: Math.max(0, this.s.players[id].slot) }
+    })
   }
 
-  private createHighlight(kind: HighlightKind, context: PendingRuntime['context']): void {
+  /** Early score brake for a background goal by `att` (see fairness.ts). */
+  private braked(att: Side): boolean {
+    const s = this.s
+    if (s.clock > EARLY_BRAKE_MINUTE || !s.hero.id) return false
+    return earlyBrake(s.clock, s.hero.generated, this.heroOnPitch(), s.score[idx(att)], s.score[idx(other(att))])
+  }
+
+  private createHighlight(kindIn: HighlightKind, context: PendingRuntime['context']): void {
     const h = this.s.hero
     const side = h.side as Side
     const opp = other(side)
-    const gen = buildScenario({
-      kind,
+    let kind = kindIn
+    const build = (k: HighlightKind) => buildScenario({
+      kind: k,
       heroSide: side,
       heroId: h.id as string,
-      mates: this.slotPlayers(side),
-      opps: this.slotPlayers(opp),
+      mates: this.slotPlayers(side, true),
+      opps: this.slotPlayers(opp, true),
       mateFormation: this.team(side).formation,
       oppFormation: this.team(opp).formation,
       lang: this.s.lang,
       rng: this.rng,
     })
+    let gen = build(kind)
+    if (context === 'open') {
+      // Fairness: no near-impossible moments. Re-roll the layout, then fall back to keeping the ball.
+      const attrs = this.player(h.id as string).attrs
+      const chance = (g: typeof gen, k: HighlightKind) => momentChance(k, g.scenario, attrs, this.s.setup.difficulty)
+      for (let i = 0; i < 2 && chance(gen, kind) < MIN_MOMENT_CHANCE; i++) gen = build(kind)
+      if (chance(gen, kind) < MIN_MOMENT_CHANCE && kind !== 'build_up' && kind !== 'gk_save') {
+        kind = 'build_up'
+        gen = build(kind)
+      }
+      const counts = (h.kinds ??= {})
+      counts[kind] = (counts[kind] ?? 0) + 1
+    }
     this.s.seq++
     if (context !== 'shootout') h.generated++
     const highlight: Highlight = {
@@ -1226,7 +1285,10 @@ export class MatchSim {
     h.stats.shotsOnTarget += Math.min(r.shots, r.shotsOnTarget)
     h.stats.dribbles += r.dribbles
     h.stats.tackles += r.tackles
-    h.ratingRaw += highlightRatingDelta(kind, r)
+    const entry: Omit<RatingLogEntry, 'minute' | 'delta'> = { source: 'moment', key: r.outcome, kind, outcome: r.outcome }
+    if (this.resolvingAuto) entry.auto = true
+    this.rate(highlightRatingDelta(kind, r), entry)
+    this.recordMomentMap(p, r)
     if (p.context === 'shootout') this.applyShootoutHighlight(p, r)
     else if (isDefensiveKind(kind)) this.applyDefensiveOutcome(p, r)
     else this.applyAttackingOutcome(p, r)
@@ -1452,6 +1514,51 @@ export class MatchSim {
 
   // ───────────────────────── Ratings ─────────────────────────
 
+  // ───────────────────────── Hero rating log & map ─────────────────────────
+
+  /** Moves the hero's running rating and records why. */
+  private rate(delta: number, entry: Omit<RatingLogEntry, 'minute' | 'delta'>): void {
+    const h = this.s.hero
+    h.ratingRaw += delta
+    if (Math.abs(delta) < 1e-9) return
+    ;(h.log ??= []).push({ minute: this.s.clock, delta: Math.round(delta * 1000) / 1000, ...entry })
+  }
+
+  /** One background minute of presence on the heat map. */
+  private heroPresence(): void {
+    const h = this.s.hero
+    if (!h.id || !h.side) return
+    const hero = this.player(h.id)
+    const slots = formationSlots(this.team(h.side).formation)
+    const slot = slots[Math.max(0, this.s.players[h.id].slot)] ?? slots[0]
+    const bx = h.side === 'home' ? this.s.ballX : 1 - this.s.ballX
+    const p = backgroundPresence(slot, bx, this.s.clock, hero.position === 'GK')
+    addHeat((h.heat ??= emptyHeat()), p.x, p.y, 1)
+  }
+
+  /** Heat + shot map contribution of a resolved moment (hero frame, meters). */
+  private recordMomentMap(p: PendingRuntime, r: HighlightResult): void {
+    const h = this.s.hero
+    const heat = (h.heat ??= emptyHeat())
+    const shots = (h.shots ??= [])
+    const start = p.highlight.scenario.players.find((x) => x.isHero)?.pos ?? { x: 52, y: 34 }
+    if (r.track && r.track.length) {
+      const w = Math.min(0.2, 4 / r.track.length)
+      for (const t of r.track) addHeat(heat, t.x / 105, t.y / 68, w)
+    } else {
+      addHeat(heat, start.x / 105, start.y / 68, 2)
+    }
+    const shotOutcome = (o: HighlightResult['outcome']): ShotMapEntry['outcome'] | null =>
+      o === 'goal' || o === 'saved' || o === 'missed' || o === 'blocked' || o === 'woodwork' ? o : null
+    const minute = this.s.clock
+    if (r.shotLog && r.shotLog.length) {
+      for (const sh of r.shotLog) shots.push(shotEntry(minute, sh, sh.outcome ?? shotOutcome(r.outcome) ?? 'missed', 'moment', !!sh.header))
+    } else if (r.shots > 0 && !isDefensiveKind(p.highlight.kind)) {
+      const header = p.highlight.kind === 'corner'
+      shots.push(shotEntry(minute, typicalShotSpot(p.highlight.kind, start), shotOutcome(r.outcome) ?? 'missed', 'auto', header))
+    }
+  }
+
   private finalizeRatings(winner: Side | null): void {
     const s = this.s
     const cands: { id: string; rating: number; minutes: number; won: boolean }[] = []
@@ -1489,7 +1596,7 @@ export class MatchSim {
   private finalizeHero(gf: number, ga: number): number {
     const h = this.s.hero
     const hero = this.heroPlayer() as MatchPlayer
-    const adj = finalRatingAdjustment({
+    const parts = finalRatingParts({
       position: hero.position,
       minutes: h.stats.minutes,
       goalsFor: gf,
@@ -1498,7 +1605,10 @@ export class MatchSim {
       passesCompleted: h.stats.passesCompleted,
       saves: h.stats.saves,
     })
-    h.stats.rating = roundRating(clampRating(h.ratingRaw + adj))
+    for (const part of parts) this.rate(part.delta, { source: 'final', key: part.key })
+    const floor = contributionFloor(h.stats.goals, h.stats.assists, h.stats.red > 0)
+    if (h.ratingRaw < floor) this.rate(floor - h.ratingRaw, { source: 'final', key: 'floor' })
+    h.stats.rating = roundRating(clampRating(h.ratingRaw))
     h.finalized = true
     return h.stats.rating
   }

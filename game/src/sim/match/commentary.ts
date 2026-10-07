@@ -932,6 +932,10 @@ export const HIGHLIGHT_PROMPTS = {
   defend: { tr: 'Rakip atakta! Yolunu kes, topu kap!', en: 'They are attacking! Cut off the attacker and win the ball!' },
   gk_save: { tr: 'Şut geliyor! Kaleni koru!', en: 'Shot incoming! Protect your goal!' },
   gk_penalty: { tr: 'Penaltı! Köşeyi oku ve uzan!', en: 'Penalty! Read the taker and dive!' },
+  counter_2v1: { tr: '2’ye 1 kontra! Savunmacıyı üstüne çek, doğru anda pas ver ya da bitir!', en: '2-on-1 break! Draw the defender, then pass or finish!' },
+  long_ball_control: { tr: 'Uzun top geliyor! Göğsüne al, sırtındaki adamı koru ve oyunu sürdür!', en: 'Long ball incoming! Bring it down, shield it and play on!' },
+  rebound: { tr: 'Kaleci çeldi! Dönen topa herkesten önce yetiş!', en: 'The keeper parries! Be first to the rebound!' },
+  interception: { tr: 'Pası oku! Pas yoluna gir ve topu kes!', en: 'Read the pass! Step into the lane and cut it out!' },
 } as const satisfies Record<string, Record<Lang, string>>
 
 const PLACEHOLDER = /\{(\w+)(?::(gen|dat|acc|loc|abl|ins))?\}/g

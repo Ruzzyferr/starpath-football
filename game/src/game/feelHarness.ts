@@ -4,10 +4,8 @@
  * the human-like bot, and reports success rates per kind × difficulty × bot.
  * Used by feel.test.ts (bands) and its env-gated full report.
  */
-import { Rng } from '../core/rng'
-import type { Difficulty, Formation, Position } from '../core/types'
-import { assignSlots, buildScenario, type SlotPlayer } from '../sim/match/highlightGen'
-import { makeTeam } from '../sim/match/testFixtures'
+import type { Difficulty, Position } from '../core/types'
+import { generatedHighlight } from './demoHighlights'
 import type { Highlight, HighlightKind, HighlightOutcome } from '../sim/match/types'
 import { createHumanBot, humanBotStep, type BotLevel } from './humanBot'
 import { HighlightRuntime } from './runtime'
@@ -36,20 +34,8 @@ export function isSuccess(kind: HighlightKind, o: HighlightOutcome): boolean {
 }
 
 /** A realistic generated highlight (hero and both teams at `ovr`). */
-export function feelHighlight(kind: FeelKind, seed: number, ovr = 65): Highlight {
-  const rng = new Rng(`feel:${kind}:${seed}`)
-  const mf: Formation = '4-2-3-1'
-  const of: Formation = '4-4-2'
-  const home = makeTeam(rng, 'h', { heroPosition: HERO_POS[kind], formation: mf, ovr, heroOvr: ovr })
-  const away = makeTeam(rng, 'a', { formation: of, ovr })
-  const toSlots = (players: typeof home.lineup, f: Formation): SlotPlayer[] => {
-    const s = assignSlots(players, f)
-    return players.map((player, i) => ({ player, slot: s[i] }))
-  }
-  const g = buildScenario({
-    kind, heroSide: 'home', heroId: 'hero', mates: toSlots(home.lineup, mf), opps: toSlots(away.lineup, of), mateFormation: mf, oppFormation: of, lang: 'en', rng,
-  })
-  return { id: `feel_${kind}_${seed}`, minute: 30, side: 'home', kind, score: [0, 0], scenario: g.scenario }
+export function feelHighlight(kind: HighlightKind, seed: number, ovr = 65): Highlight {
+  return generatedHighlight(kind, seed, { ovr, heroPos: HERO_POS[kind as FeelKind] })
 }
 
 /** Plays one moment with the bot; returns the outcome. */
