@@ -234,9 +234,12 @@ export const romanceEvents: EventDef[] = [
       {
         label: t('Şimdilik ayrı evler, kendi alanın önemli', 'Separate places for now'),
         risk: 'medium',
-        effects: (_ctx, rng) =>
+        // Like getting_serious: one postponement re-asks later, the second one ends the topic.
+        effects: (ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('{crush} anlayışla karşıladı ama bitki geri gitti.', '{crush} took it well. The pot plant went home, though.'), rel('partner', -8), follow(chain('romance.move_in', 10)))
+            ? (typeof ctx.state.life.flags.movein_postpone === 'number' ? ctx.state.life.flags.movein_postpone : 0) < 1
+              ? fx(t('{crush} anlayışla karşıladı ama bitki geri gitti.', '{crush} took it well. The pot plant went home, though.'), rel('partner', -8), { addFlags: { movein_postpone: 1 } }, follow(chain('romance.move_in', 10)))
+              : fx(t('{crush} bitkiyi bu sefer hiç getirmedi. Konu kapandı; ikiniz de rahatladınız mı, emin değilsin.', '{crush} didn’t even bring the plant this time. Topic closed; you’re not sure who was more relieved.'), rel('partner', -6), { setFlags: { movein_postpone: null } })
             : fx(
                 t('"Ben bu ilişkide bir yere gidiyoruz sanıyordum." Kapı kapandı, kazaklar da gitti.', '"I thought we were going somewhere." The door closed. The jumpers went too.'),
                 endRel('partner'),
