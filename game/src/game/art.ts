@@ -217,8 +217,8 @@ export function headTexture(scene: Phaser.Scene, idx: number, size = 56, female 
 }
 
 /** Classic black/white ball. */
-export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64): string {
-  const key = `ball_${weather}`
+export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64, shaded = true): string {
+  const key = `ball_${weather}${shaded ? '' : '_flat'}`
   return canvasTexture(scene, key, size, size, (c, w) => {
     const r = w / 2 - 2
     const cx = w / 2
@@ -243,13 +243,16 @@ export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64): s
       const a = -Math.PI / 2 + (i * Math.PI * 2) / 5 + Math.PI / 5
       patch(cx + Math.cos(a) * r * 0.86, cx + Math.sin(a) * r * 0.86, r * 0.26)
     }
-    const g = c.createRadialGradient(cx - r * 0.35, cx - r * 0.4, r * 0.05, cx, cx, r)
-    g.addColorStop(0, 'rgba(255,255,255,0.6)')
-    g.addColorStop(0.5, 'rgba(255,255,255,0)')
-    g.addColorStop(1, 'rgba(0,0,0,0.45)')
-    c.fillStyle = g
-    c.fillRect(0, 0, w, w)
+    if (shaded) {
+      const g = c.createRadialGradient(cx - r * 0.35, cx - r * 0.4, r * 0.05, cx, cx, r)
+      g.addColorStop(0, 'rgba(255,255,255,0.6)')
+      g.addColorStop(0.5, 'rgba(255,255,255,0)')
+      g.addColorStop(1, 'rgba(0,0,0,0.45)')
+      c.fillStyle = g
+      c.fillRect(0, 0, w, w)
+    }
     c.restore()
+    if (!shaded) return
     c.lineWidth = 1.5
     c.strokeStyle = 'rgba(0,0,0,0.6)'
     c.beginPath()
@@ -292,6 +295,49 @@ export function utilTextures(scene: Phaser.Scene): void {
     c.fill()
     c.restore()
   })
+  // Ball lighting overlay (stays fixed while the pattern spins underneath).
+  canvasTexture(scene, 'fx_ballshade', 64, 64, (c, w) => {
+    const r = w / 2 - 2
+    const cx = w / 2
+    const g = c.createRadialGradient(cx - r * 0.38, cx - r * 0.42, r * 0.04, cx, cx, r)
+    g.addColorStop(0, 'rgba(255,255,255,0.85)')
+    g.addColorStop(0.28, 'rgba(255,255,255,0.18)')
+    g.addColorStop(0.62, 'rgba(0,0,0,0)')
+    g.addColorStop(1, 'rgba(0,0,0,0.55)')
+    c.fillStyle = g
+    c.beginPath()
+    c.arc(cx, cx, r, 0, Math.PI * 2)
+    c.fill()
+    c.lineWidth = 2
+    c.strokeStyle = 'rgba(10,12,16,0.75)'
+    c.stroke()
+  })
+  // Facing chevron (points right; rotated per player).
+  canvasTexture(scene, 'fx_chev', 32, 32, (c) => {
+    c.fillStyle = '#ffffff'
+    c.strokeStyle = 'rgba(0,0,0,0.35)'
+    c.lineWidth = 2
+    c.lineJoin = 'round'
+    c.beginPath()
+    c.moveTo(29, 16)
+    c.lineTo(5, 4)
+    c.lineTo(11, 16)
+    c.lineTo(5, 28)
+    c.closePath()
+    c.fill()
+    c.stroke()
+  })
+  // Cast shadow: dark at the feet (left edge), fading out toward the tip.
+  canvasTexture(scene, 'fx_cast', 64, 16, (c, w, h) => {
+    const g = c.createLinearGradient(0, 0, w, 0)
+    g.addColorStop(0, 'rgba(0,0,0,0.75)')
+    g.addColorStop(0.5, 'rgba(0,0,0,0.45)')
+    g.addColorStop(1, 'rgba(0,0,0,0)')
+    c.fillStyle = g
+    c.beginPath()
+    c.ellipse(w / 2, h / 2, w / 2, h / 2 - 1, 0, 0, Math.PI * 2)
+    c.fill()
+  })
   canvasTexture(scene, 'fx_glow', 128, 128, (c, w) => {
     const g = c.createRadialGradient(w / 2, w / 2, w * 0.18, w / 2, w / 2, w / 2)
     g.addColorStop(0, 'rgba(255,255,255,0)')
@@ -310,60 +356,176 @@ export function utilTextures(scene: Phaser.Scene): void {
   })
 }
 
-/** Grass palette per weather. */
-function grass(weather: Weather): [string, string, string] {
-  switch (weather) {
-    case 'rain':
-      return ['#2f7a37', '#3a8a40', '#24602b']
-    case 'snow':
-      return ['#7fa58a', '#8db395', '#6c917a']
-    case 'hot':
-      return ['#5f9a3b', '#6da844', '#4f8432']
-    default:
-      return ['#3d8c3a', '#49993f', '#2f7330']
-  }
+/**
+ * Grass palette of the match scene: [light stripe, dark stripe, apron] per
+ * weather, day and night. Exported so UI surfaces that show a pitch (live hub,
+ * line-ups) can use the same greens — `PITCH_COLORS.clear` is the default turf.
+ */
+export const PITCH_COLORS: Readonly<Record<Weather | 'night', readonly [string, string, string]>> = {
+  clear: ['#3f9140', '#358236', '#2c6d2e'],
+  wind: ['#3f9140', '#358236', '#2c6d2e'],
+  hot: ['#5f9a3b', '#538b33', '#4a7d2e'],
+  rain: ['#2f7a37', '#286c30', '#21592a'],
+  snow: ['#86ab8f', '#7a9f84', '#6c917a'],
+  night: ['#2c7436', '#25652f', '#1c5027'],
 }
 
-/** Draws the static pitch (stripes, apron, lines, arcs, spots) into a Graphics. */
-export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather): void {
-  const [c1, c2, apron] = grass(weather)
+/** Grass palette per weather (night darkens and cools it). */
+function grass(weather: Weather, night = false): readonly [string, string, string] {
+  if (night && weather !== 'snow') return weather === 'rain' ? ['#25683a', '#1f5a33', '#184a2a'] : PITCH_COLORS.night
+  return PITCH_COLORS[weather] ?? PITCH_COLORS.clear
+}
+
+/** Grass grain tile (blades, clover, soil specks), drawn once; tiled over the pitch and baked with it. */
+export function grassGrainTexture(scene: Phaser.Scene): string {
+  return cachedTexture(scene, 'fx_grain', 128, 128, (c, w, h) => {
+    let s = 91
+    const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+    c.lineCap = 'round'
+    for (let i = 0; i < 1500; i++) {
+      const x = rnd() * w
+      const y = rnd() * h
+      const len = 1.5 + rnd() * 3.5
+      const a = -Math.PI / 2 + (rnd() - 0.5) * 0.9
+      const light = rnd() < 0.5
+      c.strokeStyle = light ? `rgba(220,255,200,${0.05 + rnd() * 0.08})` : `rgba(0,30,0,${0.06 + rnd() * 0.1})`
+      c.lineWidth = 0.8 + rnd() * 0.8
+      // Wrap around the tile edges so it repeats seamlessly.
+      for (const ox of [0, -w, w]) for (const oy of [0, -h, h]) {
+        const x0 = x + ox
+        const y0 = y + oy
+        if (x0 < -6 || x0 > w + 6 || y0 < -6 || y0 > h + 6) continue
+        c.beginPath()
+        c.moveTo(x0, y0)
+        c.lineTo(x0 + Math.cos(a) * len, y0 + Math.sin(a) * len)
+        c.stroke()
+      }
+    }
+    for (let i = 0; i < 40; i++) {
+      c.fillStyle = rnd() < 0.7 ? 'rgba(10,40,10,0.12)' : 'rgba(120,90,50,0.10)'
+      c.beginPath()
+      c.arc(rnd() * w, rnd() * h, 1 + rnd() * 1.6, 0, Math.PI * 2)
+      c.fill()
+    }
+  })
+}
+
+export interface PitchOptions {
+  night?: boolean
+  /** Draw the lines into this Graphics instead (so a grain layer can sit between grass and lines). */
+  lines?: Phaser.GameObjects.Graphics
+  /** Sun-side stand shadow across the near touchline strip (m wide); 0 = none. */
+  standShadow?: number
+  /** Seed for wear patches. */
+  seed?: number
+}
+
+/** Draws the static pitch (mown stripes, wear, light, lines, arcs, spots). */
+export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather, o: PitchOptions = {}): void {
+  const night = !!o.night
+  const [c1, c2, apron] = grass(weather, night)
   const P = (x: number, y: number) => project(x, y)
   const rect = (x0: number, y0: number, x1: number, y1: number) => {
     const a = P(x0, y0)
     const b = P(x1, y1)
     g.fillRect(Math.min(a.x, b.x), Math.min(a.y, b.y), Math.abs(b.x - a.x), Math.abs(b.y - a.y))
   }
-  // Apron (beyond the lines).
-  // Only up to the stands (behind the far goal and along both touchlines) so the crowd stays visible.
+  let s = (o.seed ?? 17) >>> 0 || 17
+  const rnd = () => ((s = (s * 1664525 + 1013904223) >>> 0) / 4294967296)
+  // Apron (beyond the lines), only up to the stands so the crowd stays visible.
   g.fillStyle(colorNum(apron), 1)
   rect(-16, -5.5, PITCH_LENGTH + 6.2, PITCH_WIDTH + 5.5)
-  // Mowing stripes (along the length) with a faint cross-hatch.
+  // Mowing stripes across the length; each band shades from its mower-direction edge
+  // so the stripes read like real cut grass, not flat paint.
   const n = 18
   const sw = (PITCH_LENGTH + 6) / n
   for (let i = 0; i < n; i++) {
-    g.fillStyle(colorNum(i % 2 ? c1 : c2), 1)
-    rect(-3 + i * sw, -3, -3 + (i + 1) * sw, PITCH_WIDTH + 3)
+    const base = i % 2 ? c1 : c2
+    const x0 = -3 + i * sw
+    const steps = 4
+    for (let k = 0; k < steps; k++) {
+      const t = k / (steps - 1)
+      g.fillStyle(colorNum(mixHex(base, i % 2 ? '#ffffff' : '#000000', (i % 2 ? 0.05 : 0.04) * (1 - t))), 1)
+      rect(x0 + (sw * k) / steps, -3, x0 + (sw * (k + 1)) / steps, PITCH_WIDTH + 3)
+    }
   }
-  g.fillStyle(0xffffff, 0.035)
+  // Faint cross-cut.
+  g.fillStyle(0xffffff, 0.022)
   for (let j = 0; j < 10; j += 2) rect(-3, -3 + (j * (PITCH_WIDTH + 6)) / 10, PITCH_LENGTH + 3, -3 + ((j + 1) * (PITCH_WIDTH + 6)) / 10)
+  // Wear: goalmouths, penalty spots, centre circle, the assistant referees' runs.
+  const wear = colorNum(weather === 'snow' ? '#9fb59f' : night ? '#3a4a2a' : '#7b7a45')
+  const patch = (cx: number, cy: number, rx: number, ry: number, count: number, a: number) => {
+    for (let i = 0; i < count; i++) {
+      const p = P(cx + (rnd() - 0.5) * rx * 2, cy + (rnd() - 0.5) * ry * 2)
+      const r = (0.4 + rnd() * 1.2) * PPM
+      g.fillStyle(wear, a * (0.5 + rnd()))
+      g.fillEllipse(p.x, p.y, r * 1.6, r * TILT)
+    }
+  }
+  const cy = PITCH_WIDTH / 2
+  if (weather !== 'snow') {
+    for (const gx of [2.2, PITCH_LENGTH - 2.2]) patch(gx, cy, 2.4, 3.6, 34, 0.07)
+    for (const gx of [11, PITCH_LENGTH - 11]) patch(gx, cy, 0.5, 0.5, 6, 0.05)
+    patch(PITCH_LENGTH / 2, cy, 1.6, 1.6, 10, 0.04)
+    for (const yy of [-1.2, PITCH_WIDTH + 1.2]) for (let x = 6; x < PITCH_LENGTH - 6; x += 2.6) patch(x, yy, 1.2, 0.35, 1, 0.07)
+  }
   // Edge darkening toward the stands.
-  g.fillStyle(0x000000, 0.12)
+  g.fillStyle(0x000000, 0.14)
   rect(-16, -5.5, PITCH_LENGTH + 6.2, -4)
   rect(-16, PITCH_WIDTH + 4, PITCH_LENGTH + 6.2, PITCH_WIDTH + 5.5)
+  // Sun / floodlight: warm light from the far left, a little falloff to the near right.
+  const A = P(PITCH_LENGTH + 6.2, -5.5)
+  const B = P(-16, PITCH_WIDTH + 5.5)
+  if (!night) {
+    g.fillGradientStyle(0xfff2c8, 0xfff2c8, 0x000000, 0x000000, 0.07, 0.02, 0.0, 0.07)
+    g.fillRect(A.x, A.y, B.x - A.x, B.y - A.y)
+    // Stand shadow across the touchline strip on the sun side.
+    const sh = o.standShadow ?? 0
+    if (sh > 0) {
+      const layers = 6
+      for (let k = 0; k < layers; k++) {
+        const w = sh * (0.55 + (0.45 * k) / layers)
+        g.fillStyle(0x0a1a2a, 0.045)
+        g.beginPath()
+        const a0 = P(PITCH_LENGTH + 6.2, -5.5)
+        const a1 = P(PITCH_LENGTH + 6.2, -5.5 + w * 1.25)
+        const b1 = P(-16, -5.5 + w * 0.75)
+        const b0 = P(-16, -5.5)
+        g.moveTo(a0.x, a0.y)
+        g.lineTo(a1.x, a1.y)
+        g.lineTo(b1.x, b1.y)
+        g.lineTo(b0.x, b0.y)
+        g.closePath()
+        g.fillPath()
+      }
+    }
+  } else {
+    // Floodlight pools: warm light falling from the four towers onto the turf.
+    const pools: [number, number, number][] = [
+      [PITCH_LENGTH * 0.8, PITCH_WIDTH * 0.22, 34], [PITCH_LENGTH * 0.8, PITCH_WIDTH * 0.78, 34],
+      [PITCH_LENGTH * 0.2, PITCH_WIDTH * 0.22, 34], [PITCH_LENGTH * 0.2, PITCH_WIDTH * 0.78, 34], [PITCH_LENGTH / 2, PITCH_WIDTH / 2, 30],
+    ]
+    for (const [x, y, r] of pools) {
+      const p = P(x, y)
+      for (let k = 0; k < 7; k++) {
+        const rr = r * (1 - k / 8) * PPM
+        g.fillStyle(0xfff1cf, 0.022)
+        g.fillEllipse(p.x, p.y, rr * 2, rr * 2 * TILT)
+      }
+    }
+  }
 
   if (weather === 'snow') {
     g.fillStyle(0xffffff, 0.12)
     rect(-9, -6, PITCH_LENGTH + 9, PITCH_WIDTH + 6)
   }
 
-  // Lines.
+  // Lines: a soft wide under-stroke then the paint (reads anti-aliased once baked), with worn spots.
+  const L = o.lines ?? g
   const lw = 0.12 * PPM
-  g.lineStyle(lw, 0xffffff, weather === 'snow' ? 0.6 : 0.88)
-  const line = (x0: number, y0: number, x1: number, y1: number) => {
-    const a = P(x0, y0)
-    const b = P(x1, y1)
-    g.lineBetween(a.x, a.y, b.x, b.y)
-  }
+  const lineAlpha = weather === 'snow' ? 0.6 : 0.9
+  const segs: [number, number, number, number][] = []
+  const line = (x0: number, y0: number, x1: number, y1: number) => segs.push([x0, y0, x1, y1])
   const box = (x0: number, y0: number, x1: number, y1: number) => {
     line(x0, y0, x1, y0)
     line(x1, y0, x1, y1)
@@ -372,32 +534,26 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather): voi
   }
   box(0, 0, PITCH_LENGTH, PITCH_WIDTH)
   line(PITCH_LENGTH / 2, 0, PITCH_LENGTH / 2, PITCH_WIDTH)
-  const cy = PITCH_WIDTH / 2
   const pa = 40.32 / 2
   const ga = 18.32 / 2
   box(0, cy - pa, 16.5, cy + pa)
   box(PITCH_LENGTH - 16.5, cy - pa, PITCH_LENGTH, cy + pa)
   box(0, cy - ga, 5.5, cy + ga)
   box(PITCH_LENGTH - 5.5, cy - ga, PITCH_LENGTH, cy + ga)
-
   const arc = (cx: number, cyy: number, r: number, a0: number, a1: number, keep: (x: number, y: number) => boolean = () => true) => {
-    let pen = false
-    const steps = 72
-    g.beginPath()
+    const steps = Math.max(12, Math.round(r * 14))
+    let prev: [number, number] | null = null
     for (let i = 0; i <= steps; i++) {
       const a = a0 + ((a1 - a0) * i) / steps
       const x = cx + Math.cos(a) * r
       const y = cyy + Math.sin(a) * r
-      const p = P(x, y)
       if (!keep(x, y)) {
-        pen = false
+        prev = null
         continue
       }
-      if (!pen) g.moveTo(p.x, p.y)
-      else g.lineTo(p.x, p.y)
-      pen = true
+      if (prev) line(prev[0], prev[1], x, y)
+      prev = [x, y]
     }
-    g.strokePath()
   }
   arc(PITCH_LENGTH / 2, cy, 9.15, 0, Math.PI * 2)
   arc(11, cy, 9.15, -Math.PI / 2, Math.PI / 2, (x) => x > 16.5)
@@ -406,14 +562,33 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather): voi
   arc(PITCH_LENGTH, 0, 1, Math.PI / 2, Math.PI)
   arc(0, PITCH_WIDTH, 1, -Math.PI / 2, 0)
   arc(PITCH_LENGTH, PITCH_WIDTH, 1, Math.PI, Math.PI * 1.5)
+  for (const [w, a] of [[lw * 2.1, 0.12], [lw * 1.45, 0.3], [lw, lineAlpha]] as const) {
+    L.lineStyle(w, 0xffffff, a)
+    for (const [x0, y0, x1, y1] of segs) {
+      const p = P(x0, y0)
+      const q = P(x1, y1)
+      L.lineBetween(p.x, p.y, q.x, q.y)
+    }
+  }
+  // Worn paint: a few short scuffs in grass colour on the lines near the goals.
+  if (weather !== 'snow') {
+    L.lineStyle(lw * 1.1, colorNum(c2), 0.35)
+    for (let i = 0; i < 10; i++) {
+      const end = rnd() < 0.5
+      const x = end ? 0 : PITCH_LENGTH
+      const y = cy + (rnd() - 0.5) * 20
+      const p = P(x, y)
+      const q = P(x, y + 0.3 + rnd() * 0.6)
+      L.lineBetween(p.x, p.y, q.x, q.y)
+    }
+  }
   // Spots.
-  g.fillStyle(0xffffff, 0.9)
+  L.fillStyle(0xffffff, 0.9)
   for (const [x, y] of [[11, cy], [PITCH_LENGTH - 11, cy], [PITCH_LENGTH / 2, cy]] as const) {
     const p = P(x, y)
-    g.fillEllipse(p.x, p.y, 0.2 * PPM, 0.2 * PPM * TILT)
+    L.fillEllipse(p.x, p.y, 0.24 * PPM, 0.24 * PPM * TILT)
   }
 }
-
 /** Net ripple state for one goal. */
 export interface NetRipple {
   t: number
@@ -440,6 +615,15 @@ export function drawGoal(g: Phaser.GameObjects.Graphics, end: 'east' | 'west', p
     return ripple.strength * Math.exp(-d2 / 1.4) * Math.sin(ripple.t * 18) * Math.exp(-ripple.t * 3.2)
   }
   if (part === 'net') {
+    // Translucent mesh fill so the net reads as a volume (back, roof, sides).
+    const quad = (pts: { x: number; y: number }[], al: number) => {
+      g.fillStyle(0xffffff, al)
+      g.fillPoints(pts.map((p) => new Phaser.Math.Vector2(p.x, p.y)), true)
+    }
+    const bx = gx + out * NET_DEPTH
+    quad([project(bx, y0, 0), project(bx, y1, 0), project(bx, y1, backTop), project(bx, y0, backTop)], 0.07)
+    quad([project(gx, y0, H), project(gx, y1, H), project(bx, y1, backTop), project(bx, y0, backTop)], 0.06)
+    for (const y of [y0, y1]) quad([project(gx, y, 0), project(gx, y, H), project(bx, y, backTop), project(bx, y, 0)], 0.05)
     // Back panel and roof mesh.
     g.lineStyle(1.2, 0xffffff, 0.38)
     const backX = (y: number, z: number) => gx + out * (NET_DEPTH + disp(y, z))
@@ -581,6 +765,12 @@ export interface CrowdOptions {
   roofLights?: boolean
   night?: boolean
   snow?: boolean
+  /**
+   * Display height ÷ texture height of the stand image (the stand is shown
+   * foreshortened). Supporters are drawn pre-stretched by 1/squash so they
+   * read as people, not pixel noise, once squeezed on screen.
+   */
+  squash?: number
 }
 
 /**
@@ -592,7 +782,8 @@ export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, 
   const w = Math.ceil(lengthM * pxPerM)
   const h = Math.ceil(depthM * pxPerM)
   const density = o.density ?? 0.9
-  const flags = `${o.upperTier ? 'u' : ''}${o.roof ? 'r' : ''}${o.tifo ? 't' : ''}${o.roofLights ? 'l' : ''}${o.night ? 'n' : ''}${o.snow ? 's' : ''}`
+  const squash = Math.min(1, Math.max(0.15, o.squash ?? 1))
+  const flags = `${o.upperTier ? 'u' : ''}${o.roof ? 'r' : ''}${o.tifo ? 't' : ''}${o.roofLights ? 'l' : ''}${o.night ? 'n' : ''}${o.snow ? 's' : ''}q${Math.round(squash * 100)}`
   const ck = `${key}_${Math.round(lengthM)}x${Math.round(depthM)}_${colors.join('')}_${seed}_${Math.round(density * 100)}${flags}`
   let s = seed >>> 0 || 1
   const rnd = () => {
@@ -607,29 +798,79 @@ export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, 
     c.fillRect(0, 0, w, h)
     const roofH = o.roof ? Math.min(h * 0.14, 3.2 * pxPerM) : 0
     const balcony = o.upperTier ? { y: h * 0.48, h: Math.max(8, h * 0.06) } : null
-    const rows = Math.floor((h - roofH) / 9)
+    // Rows sized for the screen: ~9 world px per row after the stand is squeezed.
+    const sy = 1 / squash
+    const rowH = 9 * sy
+    const rows = Math.floor((h - roofH) / rowH)
     const tifoBand = (x: number) => Math.floor(x / (6 * pxPerM)) % 2
+    const skins = ['#f1c9a5', '#e0ac7e', '#c68c5c', '#a86b3f', '#7a4a2a']
+    const aisle = 15 * pxPerM
     for (let r = 0; r < rows; r++) {
-      const y = h - 6 - r * 9
-      if (balcony && y > balcony.y - 4 && y < balcony.y + balcony.h + 4) continue
-      // Tier step shading.
-      c.fillStyle = r % 2 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.12)'
-      c.fillRect(0, y - 4, w, 9)
-      for (let x = 2 + (r % 2) * 3; x < w; x += 6 + rnd() * 2) {
+      const yb = h - 3 - r * rowH
+      if (balcony && yb > balcony.y - 4 && yb - rowH < balcony.y + balcony.h + 4) continue
+      // Concrete step and seat row.
+      c.fillStyle = o.night ? '#0d121c' : '#1b2331'
+      c.fillRect(0, yb - rowH, w, rowH)
+      c.fillStyle = o.night ? 'rgba(255,255,255,0.03)' : 'rgba(255,255,255,0.06)'
+      c.fillRect(0, yb - rowH * 0.28, w, rowH * 0.12)
+      c.fillStyle = 'rgba(0,0,0,0.35)'
+      c.fillRect(0, yb - 1.5 * sy, w, 1.5 * sy)
+      // Far rows sit in the shade of the roof / the night.
+      const fade = 0.62 + 0.38 * (1 - r / Math.max(1, rows))
+      for (let x = 4 + (r % 2) * 4.5 + rnd() * 2; x < w - 3; x += 8.6 + rnd() * 1.4) {
+        if (x % aisle < 2.4 * pxPerM * 0.5) continue
         if (rnd() > density) {
           // Empty seat.
-          c.globalAlpha = 0.5
-          c.fillStyle = '#3a4a63'
-          c.fillRect(x, y - 1, 3.2, 2.2)
+          c.globalAlpha = 0.55
+          c.fillStyle = r % 2 ? '#2f3d55' : '#33435c'
+          c.fillRect(x - 3, yb - 4.5 * sy, 6, 3.5 * sy)
           continue
         }
         const roll = rnd()
-        const tifo = o.tifo && y > h * 0.55 && rnd() < 0.85
-        c.fillStyle = tifo ? colors[tifoBand(x)] : roll < 0.45 ? colors[0] : roll < 0.6 ? colors[1] : roll < 0.8 ? '#d8d2c8' : roll < 0.9 ? '#2a2a2a' : colors[2] ?? '#888'
-        c.globalAlpha = tifo ? 0.95 : 0.55 + rnd() * 0.45
-        c.fillRect(x, y - 2 + rnd() * 2, 3.2, 3.6)
+        const tifo = o.tifo && yb > h * 0.55 && rnd() < 0.85
+        const shirt = tifo ? colors[tifoBand(x)] : roll < 0.45 ? colors[0] : roll < 0.6 ? colors[1] : roll < 0.78 ? '#d8d2c8' : roll < 0.9 ? '#2a2a2a' : colors[2] ?? '#888'
+        const bob = rnd() * 1.6 * sy
+        c.globalAlpha = fade * (tifo ? 1 : 0.85 + rnd() * 0.15)
+        // Body.
+        c.fillStyle = shirt
+        c.beginPath()
+        c.ellipse(x, yb - 3.6 * sy - bob, 3.5, 3.6 * sy, 0, Math.PI, 0)
+        c.lineTo(x + 3.5, yb - 1.5 * sy - bob)
+        c.lineTo(x - 3.5, yb - 1.5 * sy - bob)
+        c.closePath()
+        c.fill()
+        // Raised arms or a scarf held up (a few fans).
+        const pose = rnd()
+        if (pose < 0.07 && !tifo) {
+          c.strokeStyle = shirt
+          c.lineWidth = 1.4
+          c.beginPath()
+          c.moveTo(x - 3, yb - 5.5 * sy - bob)
+          c.lineTo(x - 4.2, yb - 11 * sy - bob)
+          c.moveTo(x + 3, yb - 5.5 * sy - bob)
+          c.lineTo(x + 4.2, yb - 11 * sy - bob)
+          c.stroke()
+        } else if (pose < 0.11 && !tifo) {
+          c.fillStyle = colors[pose < 0.09 ? 0 : 1]
+          c.fillRect(x - 5, yb - 11.5 * sy - bob, 10, 1.8 * sy)
+        }
+        // Head.
+        c.fillStyle = skins[Math.floor(rnd() * skins.length)]
+        c.beginPath()
+        c.ellipse(x, yb - 8.6 * sy - bob, 2.3, 2.3 * sy, 0, 0, Math.PI * 2)
+        c.fill()
+        if (rnd() < 0.55) {
+          c.fillStyle = rnd() < 0.15 ? colors[0] : '#1c140e'
+          c.beginPath()
+          c.ellipse(x, yb - 9.6 * sy - bob, 2.4, 1.3 * sy, 0, Math.PI, 0)
+          c.fill()
+        }
       }
     }
+    // Aisle stairs.
+    c.globalAlpha = 1
+    c.fillStyle = o.night ? 'rgba(120,135,160,0.10)' : 'rgba(150,165,190,0.16)'
+    for (let x = 0; x < w; x += aisle) c.fillRect(x, roofH, 2.4 * pxPerM * 0.5, h - roofH)
     c.globalAlpha = 1
     if (balcony) {
       c.fillStyle = '#0a0d14'

@@ -21,10 +21,9 @@ import {
   drawGoal,
   drawPitch,
   drawWeatherGround,
+  grassGrainTexture,
   luminance,
-  headTexture,
   keeperKit,
-  kitTexture,
   utilTextures,
   type NetRipple,
 } from './art'
@@ -50,6 +49,7 @@ import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
+import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
 import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -127,6 +127,11 @@ interface BakeBox {
   z?: number
 }
 let bakeSeq = 0
+/** Extra layers baked into the same texture: a tiled grain, then a Graphics drawn on top (pitch lines). */
+interface BakeExtra {
+  grain?: { key: string; alpha: number; tileM: number }
+  post?: Phaser.GameObjects.Graphics
+}
 
 // ───────────────────────── Strings ─────────────────────────
 
@@ -160,6 +165,12 @@ const T = {
 } as const
 type Strings = { [K in keyof (typeof T)['en']]: string }
 
+/** HUD type stacks, matching the UI tokens (--font-display / --font-score in styles/tokens.css). */
+const HUD_FONTS = {
+  display: "'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif",
+  score: "'Teko', 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif",
+} as const
+
 const GOOD: ReadonlySet<HighlightOutcome> = new Set<HighlightOutcome>(['goal', 'assist', 'defended', 'pass_complete', 'foul_won'])
 
 // ───────────────────────── Player view ─────────────────────────
@@ -167,15 +178,23 @@ const GOOD: ReadonlySet<HighlightOutcome> = new Set<HighlightOutcome>(['goal', '
 interface PlayerView {
   agent: Agent
   c: Phaser.GameObjects.Container
+  /** Contact blob + cast shadows (sun / floodlights), on the ground below every figure. */
   shadow: Phaser.GameObjects.Image
-  legs: Phaser.GameObjects.Graphics
-  body: Phaser.GameObjects.Image
-  head: Phaser.GameObjects.Image
+  casts: Phaser.GameObjects.Image[]
+  /** Facing chevron on the grass. */
+  chev: Phaser.GameObjects.Image
+  rig: FigureRig
   ring: Phaser.GameObjects.Image | null
+  /** Celebration-only custom arms (drawn over a bare-armed frame). */
   arms: Phaser.GameObjects.Graphics | null
+  /** Outline disc colour for kit clashes is baked into the kit sheet. */
   phase: number
   lastX: number
   lastY: number
+  /** Seconds since this player's last kick / header / held save (animation clocks). */
+  kickT: number
+  headT: number
+  catchT: number
 }
 
 interface Floater {
@@ -186,12 +205,10 @@ interface Floater {
   life: number
 }
 
-const BODY_D = 0.95 * PPM
-const HEAD_D = 0.46 * PPM
 const BALL_D = 0.22 * PPM * 2.1
-const TORSO_Z = 1.0
-const HEAD_Z = 1.62
-const HIP_Z = 0.6
+/** Figure heights (m, with the stylised figure scale): shoulders and head centre. */
+const SHOULDER_Z = 1.49 * FIG_SCALE
+const HEAD_Z = 1.76 * FIG_SCALE
 const zpx = (z: number) => z * PPM * ZS
 
 /**
@@ -204,6 +221,8 @@ export class MatchScene extends Phaser.Scene {
   private sfx!: Sfx
   private s!: Strings
   private ui = 1
+  /** HUD scale: the device-pixel ratio, a little larger on wide desktop windows. */
+  private hudU = 1
 
   private worldLayer!: Phaser.GameObjects.Layer
   private hudLayer!: Phaser.GameObjects.Layer
@@ -212,6 +231,10 @@ export class MatchScene extends Phaser.Scene {
   private views: PlayerView[] = []
   private ballImg!: Phaser.GameObjects.Image
   private ballShadow!: Phaser.GameObjects.Image
+  private ballShade!: Phaser.GameObjects.Image
+  private ballGhosts: Phaser.GameObjects.Image[] = []
+  /** The last kick came from the hero's team-mate set (gold trail on hero strikes). */
+  private lastKickHero = false
   private trailG!: Phaser.GameObjects.Graphics
   private aimG!: Phaser.GameObjects.Graphics
   private netG: Record<'east' | 'west', Phaser.GameObjects.Graphics> = {} as Record<'east' | 'west', Phaser.GameObjects.Graphics>
@@ -220,7 +243,16 @@ export class MatchScene extends Phaser.Scene {
   private confetti!: Phaser.GameObjects.Particles.ParticleEmitter
 
   private hudG!: Phaser.GameObjects.Graphics
-  private scoreText!: Phaser.GameObjects.Text
+  /** Score bug parts (minute, home abbreviation, score, away abbreviation) and their laid-out x positions. */
+  private sb!: {
+    min: Phaser.GameObjects.Text
+    home: Phaser.GameObjects.Text
+    score: Phaser.GameObjects.Text
+    away: Phaser.GameObjects.Text
+    x: { min: number; minW: number; home: number; score: number; scoreW: number; away: number; end: number }
+  }
+  private sbColors: [number, number] = [0xffffff, 0xffffff]
+  private hudTexts: Phaser.GameObjects.Text[] = []
   private promptText!: Phaser.GameObjects.Text
   private bannerText!: Phaser.GameObjects.Text
   private bannerSub!: Phaser.GameObjects.Text
@@ -253,6 +285,8 @@ export class MatchScene extends Phaser.Scene {
   private q: QualitySpec = QUALITY.high
   private fxBudget = new ParticleBudget(QUALITY.high)
   private look!: StadiumLook
+  /** Floodlight positions (world px, on the ground plane) that cast the night shadows. */
+  private lightSrc: { x: number; y: number }[] = []
   private night = false
   /** Stand images (crowd bounce on goals). */
   private stands: Phaser.GameObjects.Image[] = []
@@ -295,7 +329,7 @@ export class MatchScene extends Phaser.Scene {
    * goals and flags are drawn once into a DynamicTexture and shown as Images.
    * The Graphics are kept (hidden) to re-bake on a big zoom change.
    */
-  private baked: { g: Phaser.GameObjects.Graphics; key: string; box: BakeBox; img: Phaser.GameObjects.Image | null; scale: number }[] = []
+  private baked: { g: Phaser.GameObjects.Graphics; key: string; box: BakeBox; img: Phaser.GameObjects.Image | null; scale: number; extra?: BakeExtra }[] = []
   /** Swallows the taps/keys that closed the picker (real seconds left). */
   private pickerCooldown = 0
   /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
@@ -312,6 +346,7 @@ export class MatchScene extends Phaser.Scene {
   init(data: SceneData): void {
     this.data0 = data
     this.views = []
+    this.hudTexts = []
     this.floaters = []
     this.trail = []
     this.mode = 'play'
@@ -336,6 +371,7 @@ export class MatchScene extends Phaser.Scene {
   create(): void {
     const { highlight, opts } = this.data0
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
+    this.hudU = this.ui * (this.scale.width / this.ui >= 1100 ? 1.25 : 1)
     this.s = T[opts.lang] ?? T.en
     const names = { ...(opts.names ?? {}) }
     const heroP = highlight.scenario.players.find((p) => p.isHero)
@@ -549,7 +585,7 @@ export class MatchScene extends Phaser.Scene {
     // Main stand behind the goal we attack (top of the screen). Local grounds: a short stand behind the goal only.
     const endLen = look.tier === 'local' ? 58 : spanY1 - spanY0
     const endY0 = look.tier === 'local' ? PITCH_WIDTH / 2 - endLen / 2 : spanY0
-    const crowdKey = crowdTexture(this, 'crowd_end', endLen, look.endDepth, cols, 7, crowdOpts)
+    const crowdKey = crowdTexture(this, 'crowd_end', endLen, look.endDepth, cols, 7, { ...crowdOpts, squash: (VIS_END * TILT * 1.05) / look.endDepth })
     const top = project(PITCH_LENGTH + 6.2, endY0)
     const endImg = this.addW(this.add.image(top.x, top.y, crowdKey).setOrigin(0, 1).setDepth(-50))
     endImg.setDisplaySize(endLen * PPM, VIS_END * PPM * TILT * 1.05)
@@ -557,7 +593,7 @@ export class MatchScene extends Phaser.Scene {
     endImg.setData('y0', endImg.y)
     // Side stands along both touchlines (rows run up the screen).
     const sideLenM = look.tier === 'local' ? 60 : PITCH_LENGTH + 30
-    const sideKey = crowdTexture(this, 'crowd_side', sideLenM, look.sideDepth, cols, 11, crowdOpts)
+    const sideKey = crowdTexture(this, 'crowd_side', sideLenM, look.sideDepth, cols, 11, { ...crowdOpts, squash: VIS_SIDE / look.sideDepth })
     const sideLen = sideLenM * PPM * TILT
     const sideMidX = look.tier === 'local' ? PITCH_LENGTH / 2 : PITCH_LENGTH / 2 - 0
     const sideCy = look.tier === 'local' ? project(sideMidX, 0).y : project(PITCH_LENGTH + 15, 0).y + sideLen / 2
@@ -577,8 +613,10 @@ export class MatchScene extends Phaser.Scene {
     this.addW(this.add.rectangle(nb.x, nb.y, (spanY1 - spanY0) * PPM, 16 * PPM, 0x070b10).setOrigin(0, 0).setDepth(depthFor(-6)))
 
     const pitch = this.addW(this.add.graphics().setDepth(-40))
-    drawPitch(pitch, opts.weather)
-    this.bakeLater(pitch, { x0: -16.5, x1: PITCH_LENGTH + 9.5, y0: -6.5, y1: PITCH_WIDTH + 6.5 })
+    const lines = this.addW(this.add.graphics().setDepth(-40).setVisible(false))
+    const standShadow = { local: 0, mid: 5, large: 11, mega: 14 }[look.tier]
+    drawPitch(pitch, opts.weather, { night, lines, standShadow, seed: this.data0.highlight.id.length * 13 + 5 })
+    this.bakeLater(pitch, { x0: -16.5, x1: PITCH_LENGTH + 9.5, y0: -6.5, y1: PITCH_WIDTH + 6.5 }, { grain: { key: grassGrainTexture(this), alpha: opts.weather === 'snow' ? 0.5 : 1, tileM: 2.6 }, post: lines })
     if (opts.weather === 'rain' || opts.weather === 'snow') {
       const wg = this.addW(this.add.graphics().setDepth(-39.6))
       drawWeatherGround(wg, opts.weather, this.data0.highlight.id.length * 31 + 7, this.lowFx)
@@ -692,16 +730,33 @@ export class MatchScene extends Phaser.Scene {
         }
       }
     }
+    this.lightSrc = [project(PITCH_LENGTH + 8, -10), project(PITCH_LENGTH + 8, PITCH_WIDTH + 10), project(-8, -10), project(-8, PITCH_WIDTH + 10)]
     if (!night) return
-    // Darken the surroundings; the floodlights pool light onto the pitch.
-    const dark = { local: 0.5, mid: 0.4, large: 0.32, mega: 0.26 }[look.tier]
+    // Darken the surroundings (stands, sky) — the pitch itself carries a night palette with baked light pools.
+    const dark = { local: 0.5, mid: 0.42, large: 0.34, mega: 0.28 }[look.tier]
     const a = project(PITCH_LENGTH + 40, -40)
     const b = project(-20, PITCH_WIDTH + 40)
-    this.addW(this.add.rectangle(a.x, a.y, b.x - a.x, b.y - a.y, 0x02040a, dark).setOrigin(0, 0).setDepth(-39))
-    const pools: [number, number][] = [[PITCH_LENGTH * 0.78, PITCH_WIDTH * 0.25], [PITCH_LENGTH * 0.78, PITCH_WIDTH * 0.75], [PITCH_LENGTH * 0.25, PITCH_WIDTH * 0.25], [PITCH_LENGTH * 0.25, PITCH_WIDTH * 0.75], [PITCH_LENGTH / 2, PITCH_WIDTH / 2]]
-    for (const [x, y] of pools) {
-      const p = project(x, y)
-      this.addW(this.add.image(p.x, p.y, 'fx_dot')).setDisplaySize(60 * PPM, 60 * PPM * TILT).setTint(0xfff3d6).setAlpha(0.09 + (1 - dark) * 0.05).setBlendMode(Phaser.BlendModes.ADD).setDepth(-38.5)
+    this.addW(this.add.rectangle(a.x, a.y, b.x - a.x, b.y - a.y, 0x02040a, dark).setOrigin(0, 0).setDepth(-41))
+    // Floodlight beams: soft additive cones from the lamp banks down onto the turf (baked into one image).
+    if (this.q.profile !== 'low') {
+      const cones = this.addW(this.add.graphics().setDepth(-38.2).setBlendMode(Phaser.BlendModes.ADD))
+      const centre = project(PITCH_LENGTH / 2, PITCH_WIDTH / 2)
+      const every = look.lights === 'poles' || look.lights === 'pylons' ? 1 : this.q.profile === 'high' ? 2 : 4
+      for (let i = 0; i < lamps.length; i += every) {
+        const l = lamps[i]
+        const tx = l.x + (centre.x - l.x) * 0.45
+        const dyc = centre.y - l.y
+        const ty = l.y + (dyc > 0 ? Math.max(14 * PPM, dyc * 0.45) : dyc * 0.45)
+        const dx = tx - l.x
+        const dy = ty - l.y
+        const len = Math.hypot(dx, dy) || 1
+        const half = (look.lights === 'poles' || look.lights === 'pylons' ? 11 : 6) * PPM
+        const nx = (-dy / len) * half
+        const ny = (dx / len) * half
+        cones.fillGradientStyle(0xfff4d6, 0xfff4d6, 0xfff4d6, 0xfff4d6, 0.13, 0, 0, 0)
+        cones.fillTriangle(l.x, l.y, tx + nx, ty + ny, tx - nx, ty - ny)
+      }
+      this.bakeLater(cones, { x0: -12, x1: PITCH_LENGTH + 12, y0: -14, y1: PITCH_WIDTH + 14, z: 26 })
     }
     const step = this.q.lampStep
     for (let i = 0; i < lamps.length; i += step) {
@@ -717,22 +772,29 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private buildPlayers(): void {
+    const S = FIG_RES[this.q.profile]
+    const skinKey = figureSkinSheet(this, S)
+    const female = this.data0.opts.gender === 'female'
+    const night = this.night
+    const casts = night ? { low: 1, medium: 2, high: 4 }[this.q.profile] : 1
     for (const a of this.rt.agents) {
       const kit = this.kitFor(a)
-      const key = kitTexture(this, `kit_${a.team}_${a.isKeeper ? 'gk' : 'of'}_${a.number}_${a.id}`, kit, a.number)
+      const outline = a.isKeeper ? null : this.outline[a.team === 'hero' ? 'hero' : 'opp']
+      const kitKey = figureKitSheet(this, kit, S, { keeper: a.isKeeper, outline })
       let h = 0
       for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) >>> 0
-      const head = headTexture(this, h, 56, this.data0.opts.gender === 'female')
+      const rig = new FigureRig(this, { kitKey, skinKey, headKey: figureHeadTexture(this, h, female), numKey: figureNumberTexture(this, kit, a.number), skin: skinTone(h), S })
       const c = this.add.container(0, 0)
-      const shadow = this.add.image(0, 0, 'fx_shadow').setScale((0.9 * PPM) / 64, (0.9 * PPM * TILT) / 32 * 0.5)
+      const shadow = this.addW(this.add.image(0, 0, 'fx_shadow').setDepth(-37.5))
+      const castImgs: Phaser.GameObjects.Image[] = []
+      for (let i = 0; i < casts; i++) castImgs.push(this.addW(this.add.image(0, 0, 'fx_cast').setOrigin(0.08, 0.5).setDepth(-37.6)))
+      const chev = this.add.image(0, 0, 'fx_chev').setTint(a.isHero ? 0xffd23f : a.team === 'hero' ? 0xffffff : 0x111111).setAlpha(a.isHero ? 0.95 : 0.5)
+      chev.setScale((0.42 * PPM) / 32)
       let ring: Phaser.GameObjects.Image | null = null
       if (a.isHero) {
         ring = this.add.image(0, 0, 'fx_glow').setTint(0xffd23f).setBlendMode(Phaser.BlendModes.ADD)
         ring.setScale((2.0 * PPM) / 128, ((2.0 * PPM) / 128) * TILT)
       }
-      const legs = this.add.graphics()
-      const body = this.add.image(0, -zpx(TORSO_Z), key).setScale(BODY_D / 112)
-      const hd = this.add.image(0, -zpx(HEAD_Z), head).setScale(HEAD_D / 56)
       // Arms only matter for celebrations (scorer + team-mates).
       const arms = a.team === 'hero' && !a.isKeeper ? this.add.graphics() : null
       const parts: Phaser.GameObjects.GameObject[] = []
@@ -744,13 +806,12 @@ export class MatchScene extends Phaser.Scene {
         }
         parts.push(ring)
       }
-      parts.push(shadow, legs, body)
+      parts.push(chev, ...rig.parts())
       if (arms) parts.push(arms)
-      parts.push(hd)
       c.add(parts)
       this.addW(c)
       const p = project(a.pos.x, a.pos.y)
-      this.views.push({ agent: a, c, shadow, legs, body, head: hd, ring, arms, phase: 0, lastX: p.x, lastY: p.y })
+      this.views.push({ agent: a, c, shadow, casts: castImgs, chev, rig, ring, arms, phase: (h % 97) / 97, lastX: p.x, lastY: p.y, kickT: 9, headT: 9, catchT: 9 })
     }
   }
 
@@ -758,7 +819,11 @@ export class MatchScene extends Phaser.Scene {
     const key = ballTexture(this, this.data0.opts.weather)
     this.ballShadow = this.addW(this.add.image(0, 0, 'fx_shadow').setScale((0.5 * PPM) / 64, ((0.5 * PPM) / 32) * TILT * 0.5))
     this.trailG = this.addW(this.add.graphics())
-    this.ballImg = this.addW(this.add.image(0, 0, key).setScale(BALL_D / 64))
+    const flat = ballTexture(this, this.data0.opts.weather, 64, false)
+    this.ballGhosts = [0, 1, 2].map(() => this.addW(this.add.image(0, 0, flat).setVisible(false)))
+    this.ballImg = this.addW(this.add.image(0, 0, flat).setScale(BALL_D / 64))
+    this.ballShade = this.addW(this.add.image(0, 0, 'fx_ballshade').setScale(BALL_D / 64))
+    void key
     this.aimG = this.addW(this.add.graphics().setDepth(5_000_000))
   }
 
@@ -790,19 +855,27 @@ export class MatchScene extends Phaser.Scene {
     ).setDepth(4_500_000)
   }
 
-  private text(size: number, color = '#ffffff', weight = '800'): Phaser.GameObjects.Text {
-    return this.addH(
+  /**
+   * HUD / overlay text in the UI type tokens: `display` = Barlow Condensed
+   * (--font-display), `score` = Teko (--font-score). `stroke` adds a dark
+   * outline for text drawn over the pitch; text on HUD panels has none.
+   */
+  private text(size: number, color = '#ffffff', weight = '800', family: 'display' | 'score' = 'display', stroke = true): Phaser.GameObjects.Text {
+    const t = this.addH(
       this.add
         .text(0, 0, '', {
-          fontFamily: "system-ui, 'Segoe UI', Roboto, Arial, sans-serif",
-          fontSize: `${Math.round(size * this.ui)}px`,
-          fontStyle: weight === '900' ? 'bold' : weight === '800' ? 'bold' : 'normal',
+          fontFamily: HUD_FONTS[family],
+          fontSize: `${Math.round(size * this.hudU)}px`,
+          fontStyle: weight === '900' || weight === '800' || weight === '700' ? 'bold' : 'normal',
           color,
-          stroke: '#000000',
-          strokeThickness: Math.max(2, Math.round(size * this.ui * 0.12)),
+          stroke: '#04070d',
+          strokeThickness: stroke ? Math.max(2, Math.round(size * this.hudU * 0.14)) : 0,
         })
         .setOrigin(0.5),
     )
+    if (stroke) t.setShadow(0, Math.round(1.5 * this.hudU), 'rgba(0,0,0,0.45)', Math.round(3 * this.hudU), true, true)
+    this.hudTexts.push(t)
+    return t
   }
 
   private buildHud(): void {
@@ -810,34 +883,39 @@ export class MatchScene extends Phaser.Scene {
     this.vignette = this.addH(this.add.image(0, 0, 'fx_vignette').setOrigin(0, 0).setAlpha(0))
     this.flash = this.addH(this.add.rectangle(0, 0, 10, 10, 0xffffff, 1).setOrigin(0, 0).setAlpha(0))
     this.hudG = this.addH(this.add.graphics())
-    this.scoreText = this.text(15, '#ffffff', '800').setOrigin(0, 0.5)
-    this.promptText = this.text(17, '#ffffff', '700')
-    this.bannerText = this.text(54, '#ffd23f', '900').setAlpha(0)
-    this.bannerSub = this.text(18, '#ffffff', '700').setAlpha(0)
-    this.focusText = this.text(11, '#9fe8ff', '800').setAlpha(0)
-    this.tagText = this.text(12, '#111111', '800')
-    this.tagText.setStroke('#ffd23f', 0)
-    this.sprintText = this.text(12, '#ffffff', '800')
-    this.skillText = this.text(11, '#ffffff', '800')
-    this.replayText = this.text(16, '#ffffff', '900').setAlpha(0)
+    this.sb = {
+      min: this.text(19, '#1a1405', '700', 'score', false).setOrigin(0.5, 0.42),
+      home: this.text(16, '#f2f5fa', '700', 'display', false).setOrigin(0, 0.5),
+      score: this.text(21, '#0b1220', '700', 'score', false).setOrigin(0.5, 0.42),
+      away: this.text(16, '#f2f5fa', '700', 'display', false).setOrigin(0, 0.5),
+      x: { min: 0, minW: 0, home: 0, score: 0, scoreW: 0, away: 0, end: 0 },
+    }
+    this.promptText = this.text(17, '#f2f5fa', '700', 'display', false)
+    this.bannerText = this.text(70, '#ffc83d', '700', 'score').setAlpha(0)
+    this.bannerSub = this.text(19, '#f2f5fa', '700').setAlpha(0)
+    this.focusText = this.text(12, '#9fe8ff', '700', 'display', false).setAlpha(0)
+    this.tagText = this.text(13, '#1a1405', '700', 'display', false)
+    this.sprintText = this.text(14, '#ffffff', '700')
+    this.skillText = this.text(13, '#ffffff', '700')
+    this.replayText = this.text(17, '#ffffff', '700').setAlpha(0)
     this.tagText.setText(`${this.rt.hero.number}  ${this.rt.hero.name}`)
     this.sprintText.setText(this.s.sprint)
     this.skillText.setText(this.s.skill)
     this.focusText.setText(this.s.focus)
     this.replayText.setText(`● ${this.s.replay}`)
-    this.angleText = this.text(11, '#ffffff', '800').setAlpha(0)
+    this.angleText = this.text(12, '#ffffff', '700').setAlpha(0)
     this.overlayG = this.addW(this.add.graphics().setDepth(-30))
     // Weather read-out (wind arrow + km/h, rain / snow icon) at the right of the HUD band.
     const wind = windReadout(this.rt.env.wind)
     if (wind || opts.weather === 'rain' || opts.weather === 'snow') {
-      this.windText = this.text(11, '#dfe9ff', '800').setOrigin(1, 0.5)
+      this.windText = this.text(13, '#dfe9ff', '700', 'display', false).setOrigin(1, 0.5)
       const icon = opts.weather === 'rain' ? '☂' : opts.weather === 'snow' ? '❄' : ''
       this.windText.setText(`${icon}${icon && wind ? '  ' : ''}${wind ? `${wind.kmh} km/h` : ''}`)
     }
     this.promptText.setText(this.data0.highlight.scenario.prompt)
     this.promptT = 0
     // Aim-assist level and its rating/XP multiplier (less assist, more reward).
-    this.assistText = this.text(10, '#c9d6e8', '800').setOrigin(1, 0.5)
+    this.assistText = this.text(11, '#8494b3', '700', 'display', false).setOrigin(1, 0.5)
     this.assistText.setText(`${this.s[`aim_${this.rt.assist}`]} · ×${ASSIST_REWARD[this.rt.assist].toFixed(2)} XP`)
 
     const h = this.data0.highlight
@@ -845,7 +923,20 @@ export class MatchScene extends Phaser.Scene {
     const oppName = opts.teamNames?.opp ?? (h.side === 'home' ? 'AWAY' : 'HOME')
     const home = h.side === 'home' ? heroName : oppName
     const away = h.side === 'home' ? oppName : heroName
-    this.scoreText.setText(`${h.minute}'   ${upper(home.slice(0, 3), opts.lang)}  ${h.score[0]} - ${h.score[1]}  ${upper(away.slice(0, 3), opts.lang)}`)
+    this.sb.min.setText(`${h.minute}'`)
+    this.sb.home.setText(upper(home.slice(0, 3), opts.lang))
+    this.sb.score.setText(`${h.score[0]}-${h.score[1]}`)
+    this.sb.away.setText(upper(away.slice(0, 3), opts.lang))
+    this.sbColors = h.side === 'home' ? [colorNum(this.kits.hero.primary), colorNum(this.kits.opp.primary)] : [colorNum(this.kits.opp.primary), colorNum(this.kits.hero.primary)]
+    // Web fonts may finish loading after the scene starts: re-measure and re-lay out then.
+    const fonts = (document as Document & { fonts?: FontFaceSet }).fonts
+    if (fonts?.ready) {
+      void fonts.ready.then(() => {
+        if (!this.sys?.isActive()) return
+        for (const t of this.hudTexts) if (t.active) t.updateText()
+        this.layout()
+      })
+    }
 
     // Weather particles over the screen.
     if (opts.weather === 'rain' || opts.weather === 'snow') {
@@ -871,7 +962,7 @@ export class MatchScene extends Phaser.Scene {
   private layout(): void {
     const w = this.scale.width
     const h = this.scale.height
-    const u = this.ui
+    const u = this.hudU
     const landscape = w >= h
     this.safeTop = safeAreaTop(this.game.canvas) * u
     // HUD band: row 1 = score bug + moment timer, row 2 = prompt / focus label.
@@ -883,7 +974,8 @@ export class MatchScene extends Phaser.Scene {
     const vh = Math.max(1, h - this.hudTop)
     this.cameras.main.setViewport(0, this.hudTop, w, vh)
     this.uiCam.setSize(w, h)
-    const metersAcross = landscape ? 40 : 24
+    // Portrait phones frame a little tighter so players (and their numbers) stay readable.
+    const metersAcross = landscape ? 38 : 21
     let z = w / (metersAcross * PPM)
     // Always show enough pitch ahead of the play.
     z = Math.min(z, vh / (24 * PPM * TILT))
@@ -892,19 +984,33 @@ export class MatchScene extends Phaser.Scene {
     this.vignette.setDisplaySize(w, h)
     this.flash.setSize(w, h)
     const top = this.safeTop
-    this.scoreText.setPosition(24 * u, top + 20 * u)
-    const sbRight = 14 * u + this.scoreText.width + 22 * u
+    // Score bug: [minute | ▌HOME  2-1  AWAY▐]
+    const cyB = top + 20 * u
+    const sx = this.sb.x
+    sx.min = 12 * u
+    sx.minW = this.sb.min.width + 14 * u
+    sx.home = sx.min + sx.minW + 10 * u
+    sx.score = sx.home + this.sb.home.width + 8 * u
+    sx.scoreW = this.sb.score.width + 16 * u
+    sx.away = sx.score + sx.scoreW + 8 * u
+    sx.end = sx.away + this.sb.away.width + 10 * u
+    this.sb.min.setPosition(sx.min + sx.minW / 2, cyB)
+    this.sb.home.setPosition(sx.home, cyB)
+    this.sb.score.setPosition(sx.score + sx.scoreW / 2, cyB)
+    this.sb.away.setPosition(sx.away, cyB)
+    const sbRight = sx.end
     const bw0 = Math.min(w * 0.42, 380 * u)
     const bx = Math.max(w / 2 - bw0 / 2, sbRight + 14 * u)
     const reserve = this.windText ? this.windText.width + 34 * u : 0
     const bwMax = w - 16 * u - bx - reserve
-    this.bar = { x: bx, y: top + 17 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
+    this.bar = { x: bx, y: top + 15 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
     this.windText?.setPosition(w - 12 * u, top + 20 * u)
-    this.assistText?.setPosition(w - 12 * u, top + row1 + row2 / 2)
+    // Aim-assist read-out sits under the right end of the timer (never on the prompt's row).
+    this.assistText?.setPosition(this.bar.x + this.bar.w, top + 32 * u)
     this.promptText.setPosition(w / 2, top + row1 + row2 / 2 - 2 * u)
     this.focusText.setPosition(w / 2, top + row1 + row2 / 2)
     this.bannerText.setPosition(w / 2, this.hudTop + vh * 0.3)
-    this.bannerSub.setPosition(w / 2, this.hudTop + vh * 0.3 + 46 * u)
+    this.bannerSub.setPosition(w / 2, this.hudTop + vh * 0.3 + 52 * u)
     this.replayText.setPosition(w - 70 * u, 26 * u)
   }
 
@@ -1208,53 +1314,77 @@ export class MatchScene extends Phaser.Scene {
     const moved = Math.hypot(p.x - v.lastX, p.y - v.lastY)
     v.lastX = p.x
     v.lastY = p.y
-    const speedPx = dt > 0 ? moved / dt : 0
-    v.phase += moved * 0.32
+    // Teleports (replay cuts) never animate a sprint.
+    const step = moved > 3 * PPM ? 0 : moved
+    const speedM = dt > 0 ? step / PPM / dt : 0
+    // One stride cycle per ~2.3 m.
+    v.phase = (v.phase + step / PPM / 2.3) % 1
+    v.kickT += dt
+    v.headT += dt
+    v.catchT += dt
     const fd = pitchDirToScreen(Math.cos(facing), Math.sin(facing))
-
-    // Body pose by state.
+    const [gx, gy] = groundDir(fd.x, fd.y)
+    const moving = speedM > 0.7
+    const runFrame = `run${Math.floor(v.phase * 8) % 8}` as FigPose
+    let frame: FigPose = moving ? runFrame : v.agent.isKeeper ? 'ready' : 'idle'
+    let lift = z
     let rot = 0
-    let torsoZ = TORSO_Z + z
-    let headZ = HEAD_Z + z
-    let legsOn = true
-    const side = fd.x >= 0 ? 1 : -1
+    let shadowLen = 1
     if (state === 'slide') {
-      rot = side * 1.15
-      torsoZ = 0.45
-      headZ = 0.65
-      legsOn = false
-    } else if (state === 'dive') {
-      rot = side * 1.35
-      torsoZ = 0.55 + z
-      headZ = 0.62 + z
-      legsOn = false
-    } else if (state === 'down') {
-      rot = side * 1.45
-      torsoZ = 0.32
-      headZ = 0.36
-      legsOn = false
-    } else if (state === 'celebrate') {
-      const bounce = this.rm ? 0 : Math.abs(Math.sin(stateT * 9)) * 0.35
-      torsoZ += bounce
-      headZ += bounce
-    }
+      frame = 'slide'
+      shadowLen = 1.4
+    } else if (state === 'dive') frame = 'dive'
+    else if (state === 'down') {
+      frame = 'down'
+      lift = 0
+      shadowLen = 1.4
+    } else if (state === 'jump') frame = 'jump'
+    else if (state === 'wall') frame = 'wall'
+    else if (state === 'celebrate') {
+      frame = 'up'
+      lift += this.rm ? 0 : Math.abs(Math.sin(stateT * 9)) * 0.3
+    } else if (state === 'skill') rot = this.rm ? 0 : Math.sin(stateT * 18) * 0.1
+    else if (v.headT < 0.32) frame = 'jump'
+    else if (v.kickT < 0.3) frame = v.kickT < 0.07 ? 'kick1' : 'kick2'
+    else if (v.agent.isKeeper && v.catchT < 0.7) frame = 'catch'
+    // Pass-to-me: the hero's arm goes up for a moment after calling (WP-14).
+    if (v.agent.isHero && this.mode === 'play' && state === 'run' && this.rt.heroCallAt >= 0 && this.rt.time - this.rt.heroCallAt < 0.9) frame = 'call'
+    let customArms: CelebrationPose['arms'] = 'none'
     if (pose) {
       rot = pose.rot
-      if (pose.torsoZ !== null) {
-        torsoZ = pose.torsoZ + pose.lift
-        headZ = pose.torsoZ + 0.55 + pose.lift
-      } else {
-        torsoZ = TORSO_Z + z + pose.lift
-        headZ = HEAD_Z + z + pose.lift
+      lift = pose.lift
+      if (!pose.legs) frame = pose.torsoZ !== null ? 'kneel' : 'tuck'
+      else if (pose.arms === 'out' || pose.arms === 'up' || pose.arms === 'point') frame = pose.arms
+      else if (pose.arms === 'kick') frame = 'kick2'
+      else if (pose.arms !== 'none') {
+        frame = 'bare'
+        customArms = pose.arms
       }
-      legsOn = pose.legs
     }
-    v.body.setPosition(0, -zpx(torsoZ)).setRotation(rot)
-    // Head sits on top of the torso along the body axis.
-    const hx = Math.sin(rot) * zpx(headZ - torsoZ + 0.1)
-    const hy = -zpx(torsoZ) - Math.cos(rot) * zpx(headZ - torsoZ)
-    v.head.setPosition(state === 'dive' || state === 'slide' || state === 'down' || (pose && rot !== 0) ? hx : 0, hy)
-    v.shadow.setAlpha(clampN(1 - z * 0.6, 0.35, 1))
+    v.rig.set(frame, gx, gy, zpx(lift), rot)
+
+    // Shadows on the grass: contact blob + cast shadows (sun or floodlights).
+    const air = clampN(1 - z * 0.45, 0.25, 1)
+    const flat = frame === 'dive' || frame === 'down' || frame === 'slide'
+    const blobW = (flat ? 1.9 : 1.0) * PPM
+    v.shadow.setPosition(p.x, p.y).setScale(blobW / 64, ((0.62 * PPM) / 32) * TILT).setAlpha(0.85 * air)
+    for (let i = 0; i < v.casts.length; i++) {
+      const c = v.casts[i]
+      let ang = 0.62
+      let al = 0.3
+      if (this.night && this.lightSrc.length) {
+        // Away from the floodlight towers.
+        const L = this.lightSrc[i % this.lightSrc.length]
+        ang = Math.atan2(p.y - L.y, p.x - L.x)
+        al = 0.2
+      }
+      const len = (1.55 * shadowLen + z * 0.4) * FIG_SCALE * PPM
+      c.setPosition(p.x, p.y).setRotation(ang).setScale(len / 64, (0.5 * PPM) / 16).setAlpha(al * air)
+    }
+
+    // Facing chevron on the grass.
+    const tipD = 0.82 * PPM
+    v.chev.setPosition(fd.x * tipD, fd.y * tipD).setRotation(Math.atan2(fd.y, fd.x)).setVisible(frame !== 'down' && this.mode !== 'replay')
     if (v.ring) {
       const pulse = this.rm ? 1 : 1 + Math.sin(this.elapsed * 5) * 0.08
       v.ring.setScale(((2.0 * PPM) / 128) * pulse, ((2.0 * PPM) / 128) * TILT * pulse)
@@ -1262,134 +1392,76 @@ export class MatchScene extends Phaser.Scene {
       if (this.ring2) this.ring2.setScale(((2.7 * PPM) / 128) * pulse, ((2.7 * PPM) / 128) * TILT * pulse).setAlpha(this.mode === 'play' ? 0.75 : 0.3)
     }
 
-    // Arms (celebrations only).
-    if (v.arms) {
-      const ag = v.arms
-      ag.clear()
-      const arms = pose?.arms ?? 'none'
-      if (arms !== 'none') {
-        const kitA = this.kitFor(v.agent)
-        const sy = -zpx(torsoZ + 0.12)
-        const sw = 0.24 * PPM
-        const hand = 0xe0ac7e
-        ag.lineStyle(0.13 * PPM, colorNum(kitA.primary), 1)
-        const arm = (x0: number, y0: number, x1: number, y1: number) => {
-          ag.lineBetween(x0, y0, x1, y1)
-          ag.fillStyle(hand, 1)
-          ag.fillCircle(x1, y1, 0.07 * PPM)
-        }
-        const c = Math.cos(rot)
-        const s = Math.sin(rot)
-        const R = (px: number, py: number) => ({ x: px * c - py * s, y: px * s + py * c })
-        const L0 = R(-sw, 0)
-        const R0 = R(sw, 0)
-        if (arms === 'out') {
-          const l1 = R(-0.95 * PPM, -0.05 * PPM)
-          const r1 = R(0.95 * PPM, -0.05 * PPM)
-          arm(L0.x, sy + L0.y, l1.x, sy + l1.y)
-          arm(R0.x, sy + R0.y, r1.x, sy + r1.y)
-        } else if (arms === 'up') {
-          arm(-sw, sy, -0.38 * PPM, sy - zpx(0.95))
-          arm(sw, sy, 0.38 * PPM, sy - zpx(0.95))
-        } else if (arms === 'point') {
-          arm(sw, sy, 0.3 * PPM, sy - zpx(1.0))
-        } else if (arms === 'mouth') {
-          arm(sw, sy, 0.02 * PPM, -zpx(headZ - 0.12))
-          ag.lineStyle(0.05 * PPM, 0xffffff, 0.9)
-          ag.lineBetween(0, -zpx(headZ + 0.05), 0, -zpx(headZ - 0.2))
-        } else if (arms === 'chest') {
-          arm(sw, sy, 0.02 * PPM, -zpx(torsoZ + 0.05))
-          arm(-sw, sy, -0.04 * PPM, -zpx(torsoZ + 0.02))
-        } else if (arms === 'kick') {
-          arm(-sw, sy, -0.7 * PPM, sy - zpx(0.3))
-          arm(sw, sy, 0.7 * PPM, sy - zpx(0.3))
-        } else if (arms === 'robotL' || arms === 'robotR') {
-          // Stiff L-shaped arms: one elbow up, one elbow down, swapping on the beat.
-          const up = arms === 'robotL' ? -1 : 1
-          const elbowL = { x: -0.5 * PPM, y: sy }
-          const elbowR = { x: 0.5 * PPM, y: sy }
-          ag.lineBetween(-sw, sy, elbowL.x, elbowL.y)
-          ag.lineBetween(sw, sy, elbowR.x, elbowR.y)
-          arm(elbowL.x, elbowL.y, elbowL.x, sy - zpx(0.4) * up)
-          arm(elbowR.x, elbowR.y, elbowR.x, sy + zpx(0.4) * up)
-        } else if (arms === 'heart') {
-          // Elbows out, hands meeting above the head: the arms frame a heart.
-          const top = -zpx(headZ + 0.42)
-          const elbowY = -zpx(headZ + 0.05)
-          ag.lineBetween(-sw, sy, -0.5 * PPM, elbowY)
-          ag.lineBetween(sw, sy, 0.5 * PPM, elbowY)
-          arm(-0.5 * PPM, elbowY, -0.1 * PPM, top)
-          arm(0.5 * PPM, elbowY, 0.1 * PPM, top)
-          const hy = top - 0.32 * PPM
-          ag.fillStyle(0xff3b5c, 1)
-          ag.fillCircle(-0.11 * PPM, hy, 0.13 * PPM)
-          ag.fillCircle(0.11 * PPM, hy, 0.13 * PPM)
-          ag.fillTriangle(-0.235 * PPM, hy + 0.04 * PPM, 0.235 * PPM, hy + 0.04 * PPM, 0, hy + 0.3 * PPM)
-        } else if (arms === 'hug') {
-          // Arms crossed tight over the chest.
-          const L = R(-sw, 0)
-          const Rr = R(sw, 0)
-          const lh = R(0.2 * PPM, -zpx(0.05))
-          const rh = R(-0.2 * PPM, -zpx(0.12))
-          // Dark under-stroke so the folded arms read against the shirt.
-          ag.lineStyle(0.2 * PPM, 0x10131a, 0.55)
-          ag.lineBetween(L.x, sy + L.y, lh.x, -zpx(torsoZ) + lh.y)
-          ag.lineBetween(Rr.x, sy + Rr.y, rh.x, -zpx(torsoZ) + rh.y)
-          ag.lineStyle(0.13 * PPM, colorNum(kitA.primary), 1)
-          arm(L.x, sy + L.y, lh.x, -zpx(torsoZ) + lh.y)
-          arm(Rr.x, sy + Rr.y, rh.x, -zpx(torsoZ) + rh.y)
-          ag.lineStyle(0.04 * PPM, 0xbfe6ff, 0.85)
-          ag.lineBetween(-0.4 * PPM, -zpx(headZ + 0.2), -0.48 * PPM, -zpx(headZ + 0.35))
-          ag.lineBetween(0.4 * PPM, -zpx(headZ + 0.2), 0.48 * PPM, -zpx(headZ + 0.35))
-        }
-      }
+    // Custom celebration arms over a bare-armed frame.
+    if (!v.arms) return
+    const ag = v.arms
+    if (customArms === 'none') {
+      if (ag.getData('on')) ag.clear().setData('on', false)
+      return
     }
-
-    // Legs + facing chevron.
-    const g = v.legs
-    g.clear()
-    const kit = this.kitFor(v.agent)
-    // Kit clash / colour-blind outline around the body disc.
-    const oc = v.agent.isKeeper ? null : this.outline[v.agent.team === 'hero' ? 'hero' : 'opp']
-    if (oc !== null) {
-      g.fillStyle(oc, 0.95)
-      g.fillCircle(0, -zpx(torsoZ), BODY_D / 2 + 0.07 * PPM)
+    ag.clear().setData('on', true)
+    const torsoZ = SHOULDER_Z - 0.12 + lift
+    const headZ = HEAD_Z + lift
+    const arms = customArms
+    const kitA = this.kitFor(v.agent)
+    const sy = -zpx(torsoZ + 0.12)
+    const sw = 0.24 * PPM
+    const hand = colorNum(v.rig.skinHex)
+    ag.lineStyle(0.13 * PPM, colorNum(kitA.primary), 1)
+    const arm = (x0: number, y0: number, x1: number, y1: number) => {
+      ag.lineBetween(x0, y0, x1, y1)
+      ag.fillStyle(hand, 1)
+      ag.fillCircle(x1, y1, 0.07 * PPM)
     }
-    // Direction indicator on the ground.
-    const tipD = 0.95 * PPM
-    g.fillStyle(v.agent.isHero ? 0xffd23f : v.agent.team === 'hero' ? 0xffffff : 0x111111, v.agent.isHero ? 0.95 : 0.45)
-    const tx = fd.x * tipD
-    const ty = fd.y * tipD
-    const px = -fd.y * 0.22 * PPM
-    const py = fd.x * 0.22 * PPM
-    g.fillTriangle(tx, ty, fd.x * tipD * 0.62 + px, fd.y * tipD * 0.62 + py, fd.x * tipD * 0.62 - px, fd.y * tipD * 0.62 - py)
-    // Pass-to-me: the hero's arm goes up for a moment after calling (WP-14).
-    if (v.agent.isHero && this.mode === 'play' && state === 'run' && this.rt.heroCallAt >= 0 && this.rt.time - this.rt.heroCallAt < 0.9) {
-      const sh = -zpx(torsoZ + 0.2)
-      const hand = { x: 0.3 * PPM, y: -zpx(headZ + 0.5) }
-      g.lineStyle(0.14 * PPM, colorNum(kit.primary), 1)
-      g.lineBetween(0.16 * PPM, sh, hand.x, hand.y)
-      g.fillStyle(0xf1c27d, 1)
-      g.fillCircle(hand.x, hand.y, 0.09 * PPM)
-    }
-    if (legsOn) {
-      const stride = Math.min(1, speedPx / (6 * PPM)) * 0.32 * PPM
-      const s = Math.sin(v.phase)
-      const hip = -zpx(HIP_Z + z)
-      const lift = z > 0.05 ? -zpx(z) : 0
-      const lx = -0.13 * PPM
-      const rx = 0.13 * PPM
-      const footL = { x: lx + fd.x * stride * s, y: lift + fd.y * stride * s * 0.6 - Math.max(0, -s) * 2 }
-      const footR = { x: rx - fd.x * stride * s, y: lift - fd.y * stride * s * 0.6 - Math.max(0, s) * 2 }
-      g.lineStyle(0.17 * PPM, colorNum(kit.secondary), 1)
-      g.lineBetween(lx * 0.7, hip, footL.x, footL.y - 2)
-      g.lineBetween(rx * 0.7, hip, footR.x, footR.y - 2)
-      // Boots as tiny squares: at ~5 px a circle reads the same but costs a
-      // tessellated 40-gon per foot per frame (22 players).
-      const fr = 0.1 * PPM
-      g.fillStyle(0x161616, 1)
-      g.fillRect(footL.x - fr, footL.y - 1 - fr * 0.8, fr * 2, fr * 1.6)
-      g.fillRect(footR.x - fr, footR.y - 1 - fr * 0.8, fr * 2, fr * 1.6)
+    const c = Math.cos(rot)
+    const s = Math.sin(rot)
+    const R = (px: number, py: number) => ({ x: px * c - py * s, y: px * s + py * c })
+    if (arms === 'mouth') {
+      arm(sw, sy, 0.02 * PPM, -zpx(headZ - 0.12))
+      ag.lineStyle(0.05 * PPM, 0xffffff, 0.9)
+      ag.lineBetween(0, -zpx(headZ + 0.05), 0, -zpx(headZ - 0.2))
+    } else if (arms === 'chest') {
+      arm(sw, sy, 0.02 * PPM, -zpx(torsoZ - 0.25))
+      arm(-sw, sy, -0.04 * PPM, -zpx(torsoZ - 0.28))
+    } else if (arms === 'robotL' || arms === 'robotR') {
+      // Stiff L-shaped arms: one elbow up, one elbow down, swapping on the beat.
+      const up = arms === 'robotL' ? -1 : 1
+      const elbowL = { x: -0.5 * PPM, y: sy }
+      const elbowR = { x: 0.5 * PPM, y: sy }
+      ag.lineBetween(-sw, sy, elbowL.x, elbowL.y)
+      ag.lineBetween(sw, sy, elbowR.x, elbowR.y)
+      arm(elbowL.x, elbowL.y, elbowL.x, sy - zpx(0.4) * up)
+      arm(elbowR.x, elbowR.y, elbowR.x, sy + zpx(0.4) * up)
+    } else if (arms === 'heart') {
+      // Elbows out, hands meeting above the head: the arms frame a heart.
+      const top = -zpx(headZ + 0.42)
+      const elbowY = -zpx(headZ + 0.05)
+      ag.lineBetween(-sw, sy, -0.5 * PPM, elbowY)
+      ag.lineBetween(sw, sy, 0.5 * PPM, elbowY)
+      arm(-0.5 * PPM, elbowY, -0.1 * PPM, top)
+      arm(0.5 * PPM, elbowY, 0.1 * PPM, top)
+      const hy = top - 0.32 * PPM
+      ag.fillStyle(0xff3b5c, 1)
+      ag.fillCircle(-0.11 * PPM, hy, 0.13 * PPM)
+      ag.fillCircle(0.11 * PPM, hy, 0.13 * PPM)
+      ag.fillTriangle(-0.235 * PPM, hy + 0.04 * PPM, 0.235 * PPM, hy + 0.04 * PPM, 0, hy + 0.3 * PPM)
+    } else if (arms === 'hug') {
+      // Arms crossed tight over the chest.
+      const L = R(-sw, 0)
+      const Rr = R(sw, 0)
+      const lh = R(0.2 * PPM, -zpx(0.05))
+      const rh = R(-0.2 * PPM, -zpx(0.12))
+      const ty = -zpx(torsoZ - 0.2)
+      // Dark under-stroke so the folded arms read against the shirt.
+      ag.lineStyle(0.2 * PPM, 0x10131a, 0.55)
+      ag.lineBetween(L.x, sy + L.y, lh.x, ty + lh.y)
+      ag.lineBetween(Rr.x, sy + Rr.y, rh.x, ty + rh.y)
+      ag.lineStyle(0.13 * PPM, colorNum(kitA.primary), 1)
+      arm(L.x, sy + L.y, lh.x, ty + lh.y)
+      arm(Rr.x, sy + Rr.y, rh.x, ty + rh.y)
+      ag.lineStyle(0.04 * PPM, 0xbfe6ff, 0.85)
+      ag.lineBetween(-0.4 * PPM, -zpx(headZ + 0.2), -0.48 * PPM, -zpx(headZ + 0.35))
+      ag.lineBetween(0.4 * PPM, -zpx(headZ + 0.2), 0.48 * PPM, -zpx(headZ + 0.35))
     }
   }
 
@@ -1400,20 +1472,38 @@ export class MatchScene extends Phaser.Scene {
     const sh = 1 + z * 0.12
     this.ballShadow.setScale(((0.5 * PPM) / 64) * sh, ((0.5 * PPM) / 32) * TILT * 0.5 * sh)
     this.ballShadow.setDepth(depthFor(x, -0.4))
-    this.ballImg.setPosition(b.x, b.y)
-    this.ballImg.setScale((BALL_D / 64) * (1 + z * 0.06))
-    this.ballImg.rotation += (speed * dt) / 0.11 * 0.15 * Math.sign(this.rt.ball.vx || 1)
-    this.ballImg.setDepth(z > 2.1 ? 3_000_000 : depthFor(x, 0.5))
-    // Trail for fast shots.
+    const scale = (BALL_D / 64) * (1 + z * 0.06)
+    // Spin: the pattern rolls with the ball's ground speed; the lighting overlay stays put.
+    const prev = this.trail.length ? this.trail[this.trail.length - 1] : null
+    const sdx = prev ? b.x - prev.x : 0
+    this.ballImg.rotation += ((speed * dt) / 0.11) * 0.15 * (Math.abs(sdx) > 0.01 ? Math.sign(sdx) : Math.sign(this.rt.ball.vx || 1))
+    // At the feet the ball draws over the player just behind it, so a dribble never hides it.
+    const depth = z > 2.1 ? 3_000_000 : depthFor(z < 0.6 ? x - 1.1 : x, 0.5)
+    this.ballImg.setPosition(b.x, b.y).setScale(scale).setDepth(depth)
+    this.ballShade.setPosition(b.x, b.y).setScale(scale).setDepth(depth + 0.001)
+    // Motion blur: fading ghosts along the recent path of a fast ball.
+    const blur = clampN((speed - 9) / 14, 0, 1)
     this.trail.push({ x: b.x, y: b.y })
     if (this.trail.length > 14) this.trail.shift()
+    const n = this.trail.length
+    for (let i = 0; i < this.ballGhosts.length; i++) {
+      const gh = this.ballGhosts[i]
+      const k = n - 2 - i
+      if (blur <= 0 || k < 0) {
+        gh.setVisible(false)
+        continue
+      }
+      const q = this.trail[k]
+      gh.setVisible(true).setPosition(q.x, q.y).setScale(scale * (1 - i * 0.08)).setAlpha(blur * (0.42 - i * 0.12)).setDepth(depth - 0.002 - i * 0.001)
+    }
+    // Trail ribbon for real shots (gold tint on the hero's hard strikes).
     this.trailG.clear()
-    this.trailG.setDepth(this.ballImg.depth - 0.01)
-    if (speed > 15 && this.trail.length > 2) {
-      const n = this.trail.length
+    this.trailG.setDepth(depth - 0.01)
+    if (speed > 15 && n > 2) {
+      const col = this.lastKickHero && speed > 24 ? 0xffe38a : 0xffffff
       for (let i = 1; i < n; i++) {
         const t = i / n
-        this.trailG.lineStyle(BALL_D * 0.9 * t, 0xffffff, 0.35 * t * Math.min(1, (speed - 15) / 10))
+        this.trailG.lineStyle(BALL_D * 0.8 * t, col, 0.3 * t * Math.min(1, (speed - 15) / 10))
         this.trailG.lineBetween(this.trail[i - 1].x, this.trail[i - 1].y, this.trail[i].x, this.trail[i].y)
       }
     }
@@ -1601,8 +1691,8 @@ export class MatchScene extends Phaser.Scene {
 
   // ───────────────────────── Static Graphics cache ─────────────────────────
 
-  private bakeLater(g: Phaser.GameObjects.Graphics, box: BakeBox): void {
-    this.baked.push({ g, key: `bake_${bakeSeq++}`, box, img: null, scale: 0 })
+  private bakeLater(g: Phaser.GameObjects.Graphics, box: BakeBox, extra?: BakeExtra): void {
+    this.baked.push({ g, key: `bake_${bakeSeq++}`, box, img: null, scale: 0, extra })
   }
 
   /**
@@ -1637,9 +1727,19 @@ export class MatchScene extends Phaser.Scene {
       const alpha = g.alpha
       g.setVisible(true).setAlpha(1).setScale(s)
       tex.draw(g, -x0 * s, -y0 * s)
+      const ex = e.extra
+      if (ex?.grain) {
+        const ts = (ex.grain.tileM * PPM * s) / 128
+        tex.repeat(ex.grain.key, undefined, 0, 0, tw, th, { alpha: ex.grain.alpha, tileScaleX: ts, tileScaleY: ts * TILT } as unknown as Phaser.Types.GameObjects.TileSprite.TileSpriteConfig)
+      }
+      if (ex?.post) {
+        ex.post.setVisible(true).setScale(s)
+        tex.draw(ex.post, -x0 * s, -y0 * s)
+        ex.post.setScale(1).setVisible(false)
+      }
       tex.render()
       g.setPosition(0, 0).setScale(1).setAlpha(alpha).setVisible(false)
-      const img = this.add.image(x0, y0, e.key).setOrigin(0, 0).setScale(w / tw, h / th).setDepth(g.depth).setAlpha(alpha)
+      const img = this.add.image(x0, y0, e.key).setOrigin(0, 0).setScale(w / tw, h / th).setDepth(g.depth).setAlpha(alpha).setBlendMode(g.blendMode)
       this.addW(img)
       e.img = img
       e.scale = s
@@ -2008,6 +2108,18 @@ export class MatchScene extends Phaser.Scene {
           /* UI observer errors never break play */
         }
       }
+      // Animation clocks (render only): kick swing, header, held save.
+      if (e.type === 'kick' || e.type === 'header' || (e.type === 'save' && e.held)) {
+        const v = this.views.find((w) => w.agent.id === e.by)
+        if (v) {
+          if (e.type === 'kick') {
+            v.kickT = 0
+            this.lastKickHero = e.hero
+          }
+          else if (e.type === 'header') v.headT = 0
+          else v.catchT = 0
+        }
+      }
       switch (e.type) {
         case 'kick': {
           this.sfx.kick(e.power, e.kick)
@@ -2186,7 +2298,7 @@ export class MatchScene extends Phaser.Scene {
     const s = this.s
     const txt = r.offside ? s.offside : (s[r.outcome as keyof Strings] ?? r.outcome)
     const good = GOOD.has(r.outcome)
-    this.bannerText.setText(txt).setColor(good ? '#ffd23f' : '#ffffff').setAlpha(1).setScale(0.3)
+    this.bannerText.setText(txt).setColor(good ? '#ffc83d' : '#ffffff').setAlpha(1).setScale(0.3)
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
     let sub = ''
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
@@ -2214,39 +2326,84 @@ export class MatchScene extends Phaser.Scene {
     const g = this.hudG
     const w = this.scale.width
     const h = this.scale.height
-    const u = this.ui
+    const u = this.hudU
     g.clear()
 
-    // HUD band (the play camera starts below it).
+    // HUD band (the play camera starts below it): deep navy glass with a pitch-green hairline.
     const top = this.safeTop
-    g.fillStyle(0x070b10, 0.92)
+    g.fillGradientStyle(0x070b14, 0x070b14, 0x0b1220, 0x0b1220, 0.97, 0.97, 0.94, 0.94)
     g.fillRect(0, 0, w, this.hudTop)
-    g.fillStyle(0xffffff, 0.08)
+    g.fillStyle(0x1fd47a, 0.35)
     g.fillRect(0, this.hudTop - 1 * u, w, 1 * u)
 
-    // Score bug.
-    const sbW = this.scoreText.width + 22 * u
-    g.fillStyle(0x0b0f16, 0.82)
-    g.fillRoundedRect(14 * u, top + 7 * u, sbW, 26 * u, 6 * u)
-    g.fillStyle(colorNum(this.kits.hero.primary), 1)
-    g.fillRect(14 * u, top + 7 * u, 5 * u, 26 * u)
+    // Score bug: gold minute block, team colour ticks, white score block.
+    const sx = this.sb.x
+    const bugY = top + 7 * u
+    const bugH = 26 * u
+    g.fillStyle(0x000000, 0.35)
+    g.fillRoundedRect(sx.min + 1 * u, bugY + 2 * u, sx.end - sx.min, bugH, 6 * u)
+    g.fillStyle(0x131c2e, 1)
+    g.fillRoundedRect(sx.min, bugY, sx.end - sx.min, bugH, 6 * u)
+    g.fillStyle(0xffffff, 0.07)
+    g.fillRect(sx.min + 6 * u, bugY, sx.end - sx.min - 12 * u, 1 * u)
+    g.fillStyle(0xffc83d, 1)
+    g.fillRoundedRect(sx.min, bugY, sx.minW, bugH, { tl: 6 * u, bl: 6 * u, tr: 0, br: 0 })
+    g.fillStyle(this.sbColors[0], 1)
+    g.fillRect(sx.min + sx.minW, bugY, 4 * u, bugH)
+    g.fillStyle(0xf2f5fa, 1)
+    g.fillRect(sx.score, bugY + 3 * u, sx.scoreW, bugH - 6 * u)
+    g.fillStyle(this.sbColors[1], 1)
+    g.fillRoundedRect(sx.end - 4 * u, bugY, 4 * u, bugH, { tl: 0, bl: 0, tr: 4 * u, br: 4 * u })
 
     // Moment timer bar.
     const frac = clampN(rt.timeLeft / rt.timeLimit, 0, 1)
     const bw = this.bar.w
     const bx = this.bar.x
     const by = this.bar.y
-    g.fillStyle(0x000000, 0.45)
+    g.fillStyle(0x000000, 0.5)
     g.fillRoundedRect(bx - 2 * u, by - 2 * u, bw + 4 * u, 10 * u, 5 * u)
-    const col = frac > 0.5 ? 0x5dff8a : frac > 0.25 ? 0xffb02e : 0xff4040
+    g.fillStyle(0xffffff, 0.06)
+    g.fillRoundedRect(bx, by, bw, 6 * u, 3 * u)
+    const col = frac > 0.5 ? 0x1fd47a : frac > 0.25 ? 0xffc83d : 0xff4d4d
     const pulse = frac < 0.25 ? 0.6 + Math.sin(this.elapsed * 14) * 0.4 : 1
-    g.fillStyle(col, pulse)
-    if (this.mode === 'play') g.fillRoundedRect(bx, by, Math.max(0, bw * frac), 6 * u, 3 * u)
+    if (this.mode === 'play' && frac > 0) {
+      const fw = Math.max(6 * u, bw * frac)
+      g.fillStyle(col, 0.25 * pulse)
+      g.fillRoundedRect(bx - 1 * u, by - 1 * u, fw + 2 * u, 8 * u, 4 * u)
+      g.fillStyle(col, pulse)
+      g.fillRoundedRect(bx, by, fw, 6 * u, 3 * u)
+      g.fillStyle(0xffffff, 0.35 * pulse)
+      g.fillRect(bx + 3 * u, by + 1 * u, Math.max(0, fw - 6 * u), 1.2 * u)
+    }
+
+    // Result banner: a broadcast sweep band behind the big word.
+    const ba = this.bannerText.alpha
+    if (ba > 0.01) {
+      const by0 = this.bannerText.y
+      const bh = this.bannerText.height * 0.92 * this.bannerText.scaleY + (this.bannerSub.alpha > 0 ? 26 * u : 0)
+      const bwid = w * Math.min(1, this.bannerText.scaleX)
+      const skew = 18 * u
+      const good = this.bannerText.style.color === '#ffc83d'
+      const yTop = by0 - this.bannerText.height * 0.46 * this.bannerText.scaleY
+      g.fillStyle(0x070b14, 0.78 * ba)
+      g.beginPath()
+      g.moveTo(w / 2 - bwid / 2 + skew, yTop)
+      g.lineTo(w / 2 + bwid / 2 + skew, yTop)
+      g.lineTo(w / 2 + bwid / 2 - skew, yTop + bh)
+      g.lineTo(w / 2 - bwid / 2 - skew, yTop + bh)
+      g.closePath()
+      g.fillPath()
+      g.fillStyle(good ? 0xffc83d : 0xff4d4d, 0.95 * ba)
+      g.fillRect(w / 2 - bwid / 2, yTop - 2 * u, bwid, 3 * u)
+      g.fillRect(w / 2 - bwid / 2, yTop + bh - 1 * u, bwid, 3 * u)
+    }
 
     // Bullet-time focus bar + vignette.
     const focus = this.mode === 'play' ? rt.bulletFrac : 0
     const slow = this.mode === 'play' ? 1 - rt.timeScale : 0
-    this.vignette.setAlpha(this.rm ? 0 : clampN(slow * 0.75, 0, 0.6) + (this.mode === 'replay' ? 0.35 : 0))
+    // A soft broadcast vignette always frames the play (deeper at night); bullet time and replays push it further.
+    const vBase = this.night ? 0.42 : 0.26
+    this.vignette.setAlpha(this.rm ? vBase : Math.min(0.85, vBase + clampN(slow * 0.75, 0, 0.6) + (this.mode === 'replay' ? 0.2 : 0)))
     if (focus > 0) {
       g.fillStyle(0x9fe8ff, 0.9)
       g.fillRoundedRect(bx + bw / 2 - (bw * 0.5 * focus) / 2, by + 9 * u, bw * 0.5 * focus, 3 * u, 1.5 * u)
@@ -2265,11 +2422,15 @@ export class MatchScene extends Phaser.Scene {
       const hp = project(hero.pos.x, hero.pos.y, HEAD_Z + 0.75 + hero.z)
       const sp = this.worldToScreen(hp.x, hp.y)
       this.tagText.setPosition(sp.x, sp.y).setAlpha(1)
-      const tw = this.tagText.width + 10 * u
-      const th = this.tagText.height + 2 * u
-      g.fillStyle(0xffd23f, 0.95)
-      g.fillRoundedRect(sp.x - tw / 2, sp.y - th / 2, tw, th, 4 * u)
+      const tw = this.tagText.width + 14 * u
+      const th = this.tagText.height + 3 * u
+      g.fillStyle(0x000000, 0.3)
+      g.fillRoundedRect(sp.x - tw / 2 + 1 * u, sp.y - th / 2 + 2 * u, tw, th, 5 * u)
+      g.fillStyle(0xffc83d, 0.97)
+      g.fillRoundedRect(sp.x - tw / 2, sp.y - th / 2, tw, th, 5 * u)
       g.fillTriangle(sp.x - 4 * u, sp.y + th / 2, sp.x + 4 * u, sp.y + th / 2, sp.x, sp.y + th / 2 + 5 * u)
+      g.fillStyle(0xffffff, 0.35)
+      g.fillRect(sp.x - tw / 2 + 4 * u, sp.y - th / 2 + 1 * u, tw - 8 * u, 1 * u)
     } else {
       this.tagText.setAlpha(0)
     }

@@ -3,6 +3,7 @@
  * Lets you play a fake Highlight of every kind and tweak settings.
  * Run `npx vite` and open /match-demo.html.
  */
+import '../styles/fonts.css'
 import type { Difficulty, KitColors, Lang, Position } from '../core/types'
 import type { HighlightKind, Weather } from '../sim/match/types'
 import type { AimAssist } from './kick'

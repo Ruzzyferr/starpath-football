@@ -11,7 +11,8 @@
 import Phaser from 'phaser'
 import type { KitColors, Lang } from '../../core/types'
 import { PITCH_LENGTH, PITCH_WIDTH } from '../../sim/match/types'
-import { ballTexture, colorNum, drawGoal, drawPitch, headTexture, keeperKit, kitTexture, utilTextures, type NetRipple } from '../art'
+import { ballTexture, drawGoal, drawPitch, grassGrainTexture, keeperKit, utilTextures, type NetRipple } from '../art'
+import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from '../figures'
 import { Sfx } from '../audio'
 import { InputController, type FrameIntent } from '../input'
 import type { AimAssist } from '../kick'
@@ -142,23 +143,23 @@ const GRADE_COLOR: Record<Grade, string> = { S: '#ffd23f', A: '#5dff8a', B: '#6e
 const OPP_KIT: KitColors = { primary: '#eef1f5', secondary: '#c0392b', pattern: 'plain' }
 const DUMMY_KIT: KitColors = { primary: '#f5c400', secondary: '#1b1b1b', pattern: 'hoops' }
 
-const BODY_D = 0.95 * PPM
-const HEAD_D = 0.46 * PPM
 const BALL_D = 0.22 * PPM * 2.1
-const TORSO_Z = 1.0
-const HEAD_Z = 1.62
-const HIP_Z = 0.6
 const zpx = (z: number) => z * PPM * ZS
 
 interface PlayerView {
   id: string
   c: Phaser.GameObjects.Container
   shadow: Phaser.GameObjects.Image
+  cast: Phaser.GameObjects.Image
+  /** Facing chevron + drill highlight ring (redrawn only while highlighted). */
   legs: Phaser.GameObjects.Graphics
-  body: Phaser.GameObjects.Image
-  head: Phaser.GameObjects.Image
+  chev: Phaser.GameObjects.Image
+  rig: FigureRig
   ring: Phaser.GameObjects.Image | null
   phase: number
+  kickT: number
+  x: number
+  y: number
   lastX: number
   lastY: number
   seen: boolean
@@ -249,8 +250,7 @@ export class TrainingScene extends Phaser.Scene {
     utilTextures(this)
 
     const view = this.drill.view()
-    const pitch = this.addW(this.add.graphics().setDepth(-40))
-    drawPitch(pitch, 'clear')
+    this.bakePitch()
     for (const end of view.goals) {
       const gx = end === 'east' ? PITCH_LENGTH : 0
       const back = end === 'east' ? gx + 2 : gx - 2
@@ -437,25 +437,34 @@ export class TrainingScene extends Phaser.Scene {
     const ex = this.views.get(a.id)
     if (ex) return ex
     const kit = this.kitFor(a)
-    const key = kitTexture(this, `tkit_${a.role}_${a.id}_${a.number}`, kit, a.number)
+    const S = FIG_RES.medium
     let h = 0
     for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) >>> 0
-    const head = headTexture(this, a.role === 'dummy' ? 3 : h, 56, a.role !== 'dummy' && this.data0.opts.gender === 'female')
+    const dummy = a.role === 'dummy'
+    const rig = new FigureRig(this, {
+      kitKey: figureKitSheet(this, kit, S, { keeper: a.role === 'keeper' }),
+      skinKey: figureSkinSheet(this, S),
+      headKey: figureHeadTexture(this, dummy ? 3 : h, !dummy && this.data0.opts.gender === 'female'),
+      numKey: figureNumberTexture(this, kit, a.number),
+      skin: dummy ? '#f5c400' : skinTone(h),
+      S,
+      headTint: dummy ? 0xf5c400 : undefined,
+    })
     const c = this.add.container(0, 0)
-    const shadow = this.add.image(0, 0, 'fx_shadow').setScale((0.9 * PPM) / 64, ((0.9 * PPM * TILT) / 32) * 0.5)
+    const shadow = this.addW(this.add.image(0, 0, 'fx_shadow').setDepth(-37.5))
+    const cast = this.addW(this.add.image(0, 0, 'fx_cast').setOrigin(0.08, 0.5).setDepth(-37.6))
     let ring: Phaser.GameObjects.Image | null = null
     if (a.role === 'hero') {
       ring = this.add.image(0, 0, 'fx_glow').setTint(0xffd23f).setBlendMode(Phaser.BlendModes.ADD)
       ring.setScale((2.0 * PPM) / 128, ((2.0 * PPM) / 128) * TILT)
     }
     const legs = this.add.graphics()
-    const body = this.add.image(0, -zpx(TORSO_Z), key).setScale(BODY_D / 112)
-    const hd = this.add.image(0, -zpx(HEAD_Z), head).setScale(HEAD_D / 56)
-    if (a.role === 'dummy') hd.setTint(0xf5c400)
-    c.add(ring ? [ring, shadow, legs, body, hd] : [shadow, legs, body, hd])
+    const chev = this.add.image(0, 0, 'fx_chev').setTint(a.role === 'hero' ? 0xffd23f : a.role === 'mate' ? 0xffffff : 0x111111).setAlpha(a.role === 'hero' ? 0.95 : 0.5)
+    chev.setScale((0.42 * PPM) / 32)
+    c.add([...(ring ? [ring] : []), legs, chev, ...rig.parts()])
     this.addW(c)
     const p = project(a.x, a.y)
-    const v: PlayerView = { id: a.id, c, shadow, legs, body, head: hd, ring, phase: 0, lastX: p.x, lastY: p.y, seen: true }
+    const v: PlayerView = { id: a.id, c, shadow, cast, legs, chev, rig, ring, phase: (h % 97) / 97, kickT: 9, x: a.x, y: a.y, lastX: p.x, lastY: p.y, seen: true }
     this.views.set(a.id, v)
     return v
   }
@@ -463,7 +472,13 @@ export class TrainingScene extends Phaser.Scene {
   private render(v: DrillView, dt: number): void {
     for (const pv of this.views.values()) pv.seen = false
     for (const a of [v.hero, ...v.actors]) this.drawPlayer(this.playerView(a), a, dt)
-    for (const pv of this.views.values()) pv.c.setVisible(pv.seen)
+    for (const pv of this.views.values()) {
+      pv.c.setVisible(pv.seen)
+      if (!pv.seen) {
+        pv.shadow.setVisible(false)
+        pv.cast.setVisible(false)
+      }
+    }
     this.drawField(v)
     this.drawBall(v, dt)
     this.drawPreview(v)
@@ -471,8 +486,43 @@ export class TrainingScene extends Phaser.Scene {
     this.updateCamera(v, dt)
   }
 
+  /**
+   * The pitch (mown grass, grain, wear, lines) drawn once into a texture: a
+   * live Graphics would be re-tessellated every frame.
+   */
+  private bakePitch(): void {
+    const g = this.add.graphics()
+    const lines = this.add.graphics()
+    drawPitch(g, 'clear', { lines, seed: 23 })
+    const a = project(PITCH_LENGTH + 9.5, -6.5)
+    const b = project(-16.5, PITCH_WIDTH + 6.5)
+    const x0 = Math.floor(a.x)
+    const y0 = Math.floor(a.y)
+    const w = Math.ceil(b.x) - x0
+    const h = Math.ceil(b.y) - y0
+    const s = 0.8
+    const key = 'train_pitch'
+    if (this.textures.exists(key)) this.textures.remove(key)
+    const tex = this.textures.addDynamicTexture(key, Math.ceil(w * s), Math.ceil(h * s))
+    if (tex) {
+      g.setScale(s)
+      lines.setScale(s)
+      tex.draw(g, -x0 * s, -y0 * s)
+      const ts = (2.6 * PPM * s) / 128
+      tex.repeat(grassGrainTexture(this), undefined, 0, 0, Math.ceil(w * s), Math.ceil(h * s), { tileScaleX: ts, tileScaleY: ts * TILT } as unknown as Phaser.Types.GameObjects.TileSprite.TileSpriteConfig)
+      tex.draw(lines, -x0 * s, -y0 * s)
+      tex.render()
+      this.addW(this.add.image(x0, y0, key).setOrigin(0, 0).setScale(w / Math.ceil(w * s), h / Math.ceil(h * s)).setDepth(-40))
+    }
+    // Kept (hidden): the texture's command buffer may still reference them.
+    g.setVisible(false)
+    lines.setVisible(false)
+  }
+
   private drawPlayer(v: PlayerView, a: ActorView, dt: number): void {
     v.seen = true
+    v.x = a.x
+    v.y = a.y
     const p = project(a.x, a.y)
     v.c.setPosition(p.x, p.y)
     v.c.setDepth(depthFor(a.x, a.role === 'hero' ? 0.2 : 0))
@@ -481,64 +531,40 @@ export class TrainingScene extends Phaser.Scene {
     v.lastY = p.y
     // Teleports (new rep) should not animate a sprint.
     const step = moved > 3 * PPM ? 0 : moved
-    const speedPx = dt > 0 ? step / dt : 0
-    v.phase += step * 0.32
+    const speedM = dt > 0 ? step / PPM / dt : 0
+    v.phase = (v.phase + step / PPM / 2.3) % 1
+    v.kickT += dt
     const fd = pitchDirToScreen(Math.cos(a.facing), Math.sin(a.facing))
+    const [gx, gy] = groundDir(fd.x, fd.y)
+    let frame: FigPose = speedM > 0.7 ? (`run${Math.floor(v.phase * 8) % 8}` as FigPose) : a.role === 'keeper' ? 'ready' : 'idle'
+    let lift = a.z
     let rot = 0
-    let torsoZ = TORSO_Z + a.z
-    let headZ = HEAD_Z + a.z
-    let legsOn = true
-    const side = fd.x >= 0 ? 1 : -1
-    if (a.state === 'dive') {
-      rot = side * 1.35
-      torsoZ = 0.55 + a.z
-      headZ = 0.62 + a.z
-      legsOn = false
-    } else if (a.state === 'down') {
-      rot = side * 1.45
-      torsoZ = 0.32
-      headZ = 0.36
-      legsOn = false
-    } else if (a.state === 'skill') {
-      rot = Math.sin(a.stateT * 18) * 0.12
-    }
-    v.body.setPosition(0, -zpx(torsoZ)).setRotation(rot)
-    const hx = Math.sin(rot) * zpx(headZ - torsoZ + 0.1)
-    const hy = -zpx(torsoZ) - Math.cos(rot) * zpx(headZ - torsoZ)
-    v.head.setPosition(a.state === 'dive' || a.state === 'down' ? hx : 0, hy)
-    v.shadow.setAlpha(clampN(1 - a.z * 0.6, 0.35, 1))
+    if (a.state === 'dive') frame = 'dive'
+    else if (a.state === 'down') {
+      frame = 'down'
+      lift = 0
+    } else if (a.state === 'jump') frame = 'jump'
+    else if (a.state === 'slide') frame = 'slide'
+    else if (a.state === 'skill') rot = Math.sin(a.stateT * 18) * 0.1
+    else if (v.kickT < 0.3) frame = v.kickT < 0.07 ? 'kick1' : 'kick2'
+    v.rig.set(frame, gx, gy, zpx(lift), rot)
+    const air = clampN(1 - a.z * 0.45, 0.25, 1)
+    const flat = frame === 'dive' || frame === 'down' || frame === 'slide'
+    v.shadow.setPosition(p.x, p.y).setScale(((flat ? 1.9 : 1) * PPM) / 64, ((0.62 * PPM) / 32) * TILT).setAlpha(0.85 * air).setVisible(true)
+    v.cast.setPosition(p.x, p.y).setRotation(0.62).setScale(((1.55 * (flat ? 1.4 : 1) + a.z * 0.4) * FIG_SCALE * PPM) / 64, (0.5 * PPM) / 16).setAlpha(0.3 * air).setVisible(true)
     if (v.ring) {
       const pulse = 1 + Math.sin(this.elapsed * 5) * 0.08
       v.ring.setScale(((2.0 * PPM) / 128) * pulse, ((2.0 * PPM) / 128) * TILT * pulse)
     }
     const g = v.legs
-    g.clear()
     if (a.highlight) {
+      g.clear()
       g.lineStyle(0.12 * PPM, 0xffd23f, 0.6 + Math.sin(this.elapsed * 8) * 0.35)
       g.strokeEllipse(0, 0, 2.4 * PPM, 2.4 * PPM * TILT)
-    }
-    const kit = this.kitFor(a)
-    const tipD = 0.95 * PPM
-    g.fillStyle(a.role === 'hero' ? 0xffd23f : a.role === 'mate' ? 0xffffff : 0x111111, a.role === 'hero' ? 0.95 : 0.45)
-    const px = -fd.y * 0.22 * PPM
-    const py = fd.x * 0.22 * PPM
-    g.fillTriangle(fd.x * tipD, fd.y * tipD, fd.x * tipD * 0.62 + px, fd.y * tipD * 0.62 + py, fd.x * tipD * 0.62 - px, fd.y * tipD * 0.62 - py)
-    if (legsOn) {
-      const stride = Math.min(1, speedPx / (6 * PPM)) * 0.32 * PPM
-      const s = Math.sin(v.phase)
-      const hip = -zpx(HIP_Z + a.z)
-      const lift = a.z > 0.05 ? -zpx(a.z) : 0
-      const lx = -0.13 * PPM
-      const rx = 0.13 * PPM
-      const footL = { x: lx + fd.x * stride * s, y: lift + fd.y * stride * s * 0.6 - Math.max(0, -s) * 2 }
-      const footR = { x: rx - fd.x * stride * s, y: lift - fd.y * stride * s * 0.6 - Math.max(0, s) * 2 }
-      g.lineStyle(0.17 * PPM, colorNum(kit.secondary), 1)
-      g.lineBetween(lx * 0.7, hip, footL.x, footL.y - 2)
-      g.lineBetween(rx * 0.7, hip, footR.x, footR.y - 2)
-      g.fillStyle(0x161616, 1)
-      g.fillCircle(footL.x, footL.y - 1, 0.1 * PPM)
-      g.fillCircle(footR.x, footR.y - 1, 0.1 * PPM)
-    }
+      g.setData('on', true)
+    } else if (g.getData('on')) g.clear().setData('on', false)
+    const tipD = 0.82 * PPM
+    v.chev.setPosition(fd.x * tipD, fd.y * tipD).setRotation(Math.atan2(fd.y, fd.x)).setVisible(frame !== 'down')
   }
 
   private drawField(v: DrillView): void {
@@ -690,10 +716,22 @@ export class TrainingScene extends Phaser.Scene {
           this.tweens.add({ targets: this.countText, alpha: 0, scale: 1.6, duration: 700, delay: 250 })
           this.vibrate(25)
           break
-        case 'kick':
+        case 'kick': {
+          // Kick swing on whoever struck it (the hero, or the nearest actor).
+          let best: PlayerView | null = null
+          let bd = 2.2
+          for (const pv of this.views.values()) {
+            const d = Math.hypot(pv.x - e.x, pv.y - e.y)
+            if (pv.seen && d < bd) {
+              bd = d
+              best = pv
+            }
+          }
+          if (best) best.kickT = 0
           this.sfx.kick(e.power)
           if (e.hero) this.vibrate(18)
           break
+        }
         case 'touch':
           this.sfx.tap(0.35)
           break
