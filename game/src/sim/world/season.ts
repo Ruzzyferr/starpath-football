@@ -24,6 +24,7 @@ import {
   type HeroAwardInput, type SeasonAwards,
 } from './awards'
 import { updateCoefficients } from './coefficients'
+import { reviewManagers, updateClubRecords } from './managers'
 import { END_OF_SEASON_WEEK } from './fixtures'
 import {
   advanceNationalCompetition, createNationalCompetitions, ensureNational, playNationalFixture, recordInternationalStats, resetInternationalStats,
@@ -742,6 +743,8 @@ export function endOfSeason(world: World, rng: Rng, season: number, opts: EndOfS
   const awardRecord = computeSeasonAwardRecord(world, season, opts.hero, opts.totsLeagueId)
   storeSeasonAwards(world, goldenStar, awardRecord)
   const coefficientPoints = updateCoefficients(world, season)
+  updateClubRecords(world, season)
+  reviewManagers(world, season)
   resetInternationalStats(world)
   const movements = applyPromotionRelegation(world, season)
   updateClubReputations(world, season, movements, champions)

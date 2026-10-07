@@ -87,6 +87,7 @@ interface CountryContext {
   cityUse: Map<string, number>
   usedNames: Set<string>
   usedShort: Set<string>
+  usedCrests: Set<string>
   clubCounter: number
 }
 
@@ -140,11 +141,21 @@ function chooseShortName(cc: CountryContext, name: string, city: string): string
   return (c + 'XXX').slice(0, 3)
 }
 
-function crestFor(rng: Rng, name: string, primary: string, secondary: string): CrestSpec {
+function crestFor(rng: Rng, cc: CountryContext, name: string, primary: string, secondary: string): CrestSpec {
   const tokens = distinctiveTokens(name)
   const initials = (tokens.length > 1 ? tokens.map((t) => t[0]).join('') : (tokens[0] ?? 'FC').slice(0, 1)).slice(0, 3)
   const accent = rng.pick(['#FFFFFF', '#111111', '#C9A227'].filter((c) => c !== primary && c !== secondary))
-  return { shape: rng.pick(CREST_SHAPES), symbol: rng.int(0, CREST_SYMBOLS - 1), colors: [primary, secondary, accent], initials }
+  const shape = rng.pick(CREST_SHAPES)
+  let symbol = rng.int(0, CREST_SYMBOLS - 1)
+  // 2.6#11: no two clubs of a country look alike (shape + symbol + primary colour); bump the symbol, then the shape.
+  const keyOf = (sh: string, sy: number) => `${sh}|${sy}|${primary}`
+  let sh = shape
+  for (let i = 0; i < CREST_SYMBOLS * CREST_SHAPES.length && cc.usedCrests.has(keyOf(sh, symbol)); i++) {
+    symbol = (symbol + 1) % CREST_SYMBOLS
+    if (symbol === 0) sh = CREST_SHAPES[(CREST_SHAPES.indexOf(sh) + 1) % CREST_SHAPES.length]!
+  }
+  cc.usedCrests.add(keyOf(sh, symbol))
+  return { shape: sh, symbol, colors: [primary, secondary, accent], initials }
 }
 
 function stadiumFor(rng: Rng, def: CountryDef, city: string, reputation: number): { name: string; capacity: number } {
@@ -226,7 +237,7 @@ function createClub(rng: Rng, cc: CountryContext, league: League, quality: numbe
   return {
     id, name, shortName, city, countryId: def.id, leagueId: league.id,
     colors: kits.home, awayColors: kits.away,
-    crest: crestFor(rng, name, kits.home.primary, kits.home.secondary),
+    crest: crestFor(rng, cc, name, kits.home.primary, kits.home.secondary),
     reputation,
     budget: Math.round(budgetForReputation(reputation) * rng.range(0.8, 1.2) / 1000) * 1000,
     wageBudget: 0,
@@ -291,7 +302,7 @@ export function generateWorld(rng: Rng, opts: GenerateWorldOptions): World {
   for (const def of defs) {
     world.countries[def.id] = toCountry(def)
     const crng = rng.fork(def.id)
-    const cc: CountryContext = { def, cityUse: new Map(), usedNames: new Set(), usedShort: new Set(), clubCounter: 0 }
+    const cc: CountryContext = { def, cityUse: new Map(), usedNames: new Set(), usedShort: new Set(), usedCrests: new Set(), clubCounter: 0 }
     const tiers = def.id === opts.heroCountryId ? HERO_COUNTRY_TIERS : DEFAULT_TIERS
     for (let tier = 1; tier <= tiers; tier++) {
       const league = generateLeague(crng, ctx, cc, tier, tiers)
