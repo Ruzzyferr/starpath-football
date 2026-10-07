@@ -18,7 +18,7 @@ import { TOUR_STEPS, currentStep } from './machine'
 import { dispatchTour, tour } from './tour'
 
 const COACH = { skin: 3, hairStyle: 1, hairColor: 4, beard: 2, eyeColor: 0, face: 2, accessory: 0 } as const
-const IMMERSIVE: ReadonlySet<ScreenId> = new Set(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd'])
+const IMMERSIVE: ReadonlySet<ScreenId> = new Set(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'retire', 'documentary'])
 const PAD = 8
 const FOCUSABLE = 'button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'
 
