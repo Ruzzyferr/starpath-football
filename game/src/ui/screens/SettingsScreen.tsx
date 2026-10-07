@@ -5,7 +5,8 @@ import { t } from '../../i18n'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
 import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
-import { actions, gameState, navigate, settings, updateSettings } from '../store'
+import { actions, detectQuality, effectiveQuality, gameState, navigate, settings, updateSettings } from '../store'
+import type { QualityChoice, QualityProfile } from '../../game/quality'
 import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
 import { PurchasesPanel } from './store/PurchasesPanel'
@@ -34,6 +35,10 @@ function Field({ label, children, hint }: { label: string; children: ComponentCh
       {hint && <span class="t-xs t-lo">{hint}</span>}
     </div>
   )
+}
+
+function qualityLabel(p: QualityProfile): string {
+  return p === 'low' ? t('settings.qLow') : p === 'medium' ? t('settings.qMedium') : t('settings.qHigh')
 }
 
 export function SettingsScreen() {
@@ -122,8 +127,6 @@ export function SettingsScreen() {
           <Switch label={t('settings.hideCasino')} desc={t('settings.hideCasinoDesc')} checked={s.hideCasino} onChange={(hideCasino) => updateSettings({ hideCasino })} />
           <Switch label={t('settings.highContrast')} desc={t('settings.highContrastDesc')} checked={s.highContrast} onChange={(highContrast) => updateSettings({ highContrast })} />
           <Switch label={t('settings.reducedMotion')} desc={t('settings.reducedMotionDesc')} checked={s.reducedMotion} onChange={(reducedMotion) => updateSettings({ reducedMotion })} />
-          <Switch label={t('settings.lowFx')} desc={t('settings.lowFxDesc')} checked={s.lowFx} onChange={(lowFx) => updateSettings({ lowFx })} />
-          <Switch label={t('settings.reduceFlashes')} desc={t('settings.reduceFlashesDesc')} checked={s.reduceFlashes} onChange={(reduceFlashes) => updateSettings({ reduceFlashes })} />
           <Switch label={t('settings.soundCaptions')} desc={t('settings.soundCaptionsDesc')} checked={s.soundCaptions} onChange={(soundCaptions) => updateSettings({ soundCaptions })} />
           <Slider
             label={t('settings.textSize')}
@@ -136,6 +139,34 @@ export function SettingsScreen() {
             id="set-text"
           />
           <p class="set-preview">{t('settings.textPreview')}</p>
+        </Group>
+
+        <Group title={t('settings.sections.graphics')} icon="sliders">
+          <div data-testid="quality-setting">
+            <Field label={t('settings.quality')} hint={t('settings.qualityDesc')}>
+              <Segmented<QualityChoice>
+                label={t('settings.quality')}
+                value={s.quality}
+                onChange={(quality) => updateSettings({ quality })}
+                options={[
+                  { id: 'auto', label: t('settings.qAuto') },
+                  { id: 'low', label: t('settings.qLow') },
+                  { id: 'medium', label: t('settings.qMedium') },
+                  { id: 'high', label: t('settings.qHigh') },
+                ]}
+              />
+            </Field>
+            <div class="row-between set-quality-auto">
+              <span class="t-xs t-mid" data-testid="quality-detected" data-profile={effectiveQuality(s)}>
+                {s.qualityAuto ? t('settings.qualityDetected', { p: qualityLabel(s.qualityAuto) }) : t('settings.qualityNotMeasured')}
+              </span>
+              <Button size="sm" variant="ghost" icon="stopwatch" onClick={() => toast(t('settings.qualityDetected', { p: qualityLabel(detectQuality()) }), 'success')}>
+                {t('settings.qualityRedetect')}
+              </Button>
+            </div>
+          </div>
+          <Switch label={t('settings.reduceFlashes')} desc={t('settings.reduceFlashesDesc')} checked={s.reduceFlashes} onChange={(reduceFlashes) => updateSettings({ reduceFlashes })} />
+          <p class="t-xs t-lo">{t('settings.qualityFlashNote')}</p>
         </Group>
 
         <Group title={t('settings.sectionControls')} icon="keyboard">
@@ -208,6 +239,27 @@ export function SettingsScreen() {
 
         <Group title={t('iap.panel.title')} icon="star">
           <PurchasesPanel />
+        </Group>
+
+        <Group title={t('settings.sections.privacy')} icon="shield">
+          <ul class="set-privacy" data-testid="privacy-section">
+            <li class="t-sm t-mid">{t('settings.privacyLocal')}</li>
+            <li class="t-sm t-mid">{t('settings.privacyNoTracking')}</li>
+            <li class="t-sm t-mid">{t('settings.privacyErrors')}</li>
+            <li class="t-sm t-mid">{t('settings.privacyExport')}</li>
+          </ul>
+        </Group>
+
+        <Group title={t('settings.sections.cloud')} icon="upload">
+          <div class="col" data-testid="cloud-section">
+            <span class="set-soon">{t('settings.comingSoon')}</span>
+            <p class="t-sm t-mid">{t('settings.cloudDesc')}</p>
+            <div>
+              <Button variant="ghost" icon="lock" disabled>
+                {t('settings.cloudSignIn')}
+              </Button>
+            </div>
+          </div>
         </Group>
 
         <Group title={t('settings.sections.about')} icon="info">

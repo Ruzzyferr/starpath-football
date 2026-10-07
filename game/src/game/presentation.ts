@@ -6,6 +6,8 @@
  * Pure TS (no Phaser, no DOM) so every rule is unit tested.
  */
 
+import { QUALITY, type QualityProfile } from './quality'
+
 /** Locale-correct upper case for HUD labels (Turkish dotted/dotless i: "izmir" → "İZMİR", "ılgaz" → "ILGAZ"). */
 export function upper(s: string, lang: string): string {
   return s.toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US')
@@ -53,10 +55,15 @@ export function stadiumTier(capacity: number): StadiumTier {
   return 'mega'
 }
 
-/** Visual parameters for a stadium; `lowFx` thins the crowd (fewer sprites). */
-export function stadiumLook(capacity: number, lowFx = false): StadiumLook {
+/**
+ * Visual parameters for a stadium. The quality profile thins the crowd (fewer
+ * sprites) and drops tifo on Low; `true` is the legacy "low effects" flag.
+ */
+export function stadiumLook(capacity: number, quality: boolean | QualityProfile = false): StadiumLook {
   const base = LOOKS[stadiumTier(capacity)]
-  return lowFx ? { ...base, density: Math.round(base.density * 0.6 * 100) / 100, tifo: false } : base
+  const spec = QUALITY[quality === true ? 'low' : quality === false ? 'high' : quality]
+  if (spec.crowdScale === 1 && spec.tifo) return base
+  return { ...base, density: Math.round(base.density * spec.crowdScale * 100) / 100, tifo: base.tifo && spec.tifo }
 }
 
 // ───────────────────────── Evening fixtures ─────────────────────────
@@ -93,6 +100,7 @@ export function windReadout(wind: { x: number; y: number }): { kmh: number; stre
 
 export type CelebrationId =
   | 'knee_slide' | 'airplane' | 'point_sky' | 'badge_kiss' | 'shush' | 'team_huddle' | 'backflip' | 'corner_flag'
+  | 'robot' | 'heart_hands' | 'ice_cold' | 'cartwheel'
 
 /** Where the scorer heads first. */
 export type CelebrationToward = 'fans' | 'teammates' | 'camera'
@@ -145,6 +153,27 @@ export const CELEBRATIONS: readonly CelebrationDef[] = [
     unlock: { tr: 'Şöhret 70 ya da 100 gol', en: 'Reputation 70 or 100 goals' },
     isUnlocked: (x) => x.reputation >= 70 || has(x.achievements, 'goals_100'),
   },
+  // WP-16: four more (12 in total).
+  {
+    id: 'robot', icon: '🤖', name: { tr: 'Robot Dansı', en: 'The Robot' }, toward: 'camera',
+    unlock: { tr: 'Şöhret 15 ya da ilk gol', en: 'Reputation 15 or first goal' },
+    isUnlocked: (x) => x.reputation >= 15 || has(x.achievements, 'first_goal'),
+  },
+  {
+    id: 'heart_hands', icon: '🫶', name: { tr: 'Kalp İşareti', en: 'Heart Hands' }, toward: 'fans',
+    unlock: { tr: 'Şöhret 35 ya da "Önce Aile"', en: 'Reputation 35 or "Family First"' },
+    isUnlocked: (x) => x.reputation >= 35 || has(x.perks, 'family_first'),
+  },
+  {
+    id: 'ice_cold', icon: '🥶', name: { tr: 'Buz Gibi', en: 'Ice Cold' }, toward: 'camera',
+    unlock: { tr: 'Şöhret 55 ya da "Serin Kafa" / "Penaltı Buz Adam"', en: 'Reputation 55 or "Cool Head" / "Ice-Cold Penalties"' },
+    isUnlocked: (x) => x.reputation >= 55 || has(x.perks, 'cool_head', 'penalty_ice'),
+  },
+  {
+    id: 'cartwheel', icon: '🌀', name: { tr: 'Yan Perende', en: 'Cartwheel' }, toward: 'fans',
+    unlock: { tr: 'Şöhret 60 ya da hat-trick', en: 'Reputation 60 or a hat-trick' },
+    isUnlocked: (x) => x.reputation >= 60 || has(x.achievements, 'hat_trick'),
+  },
 ]
 
 export const CELEBRATION_BY_ID: Readonly<Record<string, CelebrationDef>> = Object.fromEntries(CELEBRATIONS.map((c) => [c.id, c]))
@@ -184,7 +213,7 @@ export interface CelebrationPose {
   /** Torso height override (m above ground) or null for standing. */
   torsoZ: number | null
   legs: boolean
-  arms: 'none' | 'out' | 'up' | 'point' | 'mouth' | 'chest' | 'kick'
+  arms: 'none' | 'out' | 'up' | 'point' | 'mouth' | 'chest' | 'kick' | 'robotL' | 'robotR' | 'heart' | 'hug'
   /** Run speed multiplier toward the celebration spot (0 = stand). */
   run: number
 }
@@ -212,6 +241,23 @@ export function celebrationPose(id: CelebrationId, u: number, reducedMotion = fa
       const f = Math.min(1, (u - 0.4) / 0.3)
       if (u < 0.4) return { ...base, run: 0, arms: 'up' }
       if (f < 1) return { ...base, run: 0, legs: false, rot: -f * Math.PI * 2, lift: Math.sin(f * Math.PI) * 1.4, arms: 'none' }
+      return { ...base, run: 0, arms: 'up' }
+    }
+    case 'robot': {
+      // Stiff, stepped arm swaps on a fixed beat (no smooth tweening: that is the joke).
+      if (u < 0.35) return { ...base, run: 1 }
+      const beat = Math.floor((u - 0.35) * 14)
+      return { ...base, run: 0, arms: beat % 2 ? 'robotR' : 'robotL', rot: reducedMotion ? 0 : (beat % 2 ? 0.08 : -0.08) }
+    }
+    case 'heart_hands':
+      return { ...base, arms: u < 0.4 ? 'none' : 'heart', run: u < 0.4 ? 1 : 0, lift: u > 0.45 && !reducedMotion ? Math.abs(Math.sin(u * 10)) * 0.06 : 0 }
+    case 'ice_cold':
+      // Arms wrapped round the chest, a little shiver.
+      return { ...base, arms: u < 0.38 ? 'none' : 'hug', run: u < 0.38 ? 0.8 : 0, rot: u > 0.4 && !reducedMotion ? Math.sin(u * 90) * 0.05 : 0 }
+    case 'cartwheel': {
+      if (reducedMotion || u < 0.4) return { ...base, arms: reducedMotion && u >= 0.4 ? 'out' : 'none', run: u < 0.4 ? 1.1 : 0 }
+      const f = Math.min(1, (u - 0.4) / 0.35)
+      if (f < 1) return { ...base, run: 0.5, legs: true, rot: f * Math.PI * 2, lift: Math.sin(f * Math.PI) * 0.5, arms: 'out' }
       return { ...base, run: 0, arms: 'up' }
     }
   }

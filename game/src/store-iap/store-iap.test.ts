@@ -1,5 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { START_YEAR } from '../core/config'
+import { isCelebrationId } from '../game/presentation'
 import { COSMETIC_PRODUCTS, FULL_CAREER, PRODUCTS, packFor } from './catalog'
 import { _resetEntitlements, cosmeticUnlocked, emptyRecord, grantIn, hasEntitlement, isCareerLocked, parseRecord, purchaseHistory } from './entitlements'
 import { isDemoFlag, resolveFlavor } from './flavor'
@@ -50,6 +51,9 @@ describe('catalog', () => {
     expect(COSMETIC_PRODUCTS.length).toBeGreaterThanOrEqual(2)
     expect(packFor('celebration', 'backflip')?.id).toBe('pack_celebrations')
     expect(packFor('celebration', 'knee_slide')).toBeUndefined()
+    expect(packFor('celebration', 'cartwheel')?.id).toBe('pack_celebrations')
+    // Every cosmetic celebration id exists in the match catalogue.
+    for (const p of COSMETIC_PRODUCTS) for (const id of p.cosmetics?.celebration ?? []) expect(isCelebrationId(id)).toBe(true)
   })
 })
 

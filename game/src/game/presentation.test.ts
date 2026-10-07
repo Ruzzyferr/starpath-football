@@ -52,6 +52,16 @@ describe('evening fixtures & wind', () => {
 
 describe('celebrations', () => {
   const rookie = { reputation: 5, perks: [], achievements: [] }
+  it('has twelve (WP-16), each with a unique id and icon', () => {
+    expect(CELEBRATIONS).toHaveLength(12)
+    expect(new Set(CELEBRATIONS.map((c) => c.id)).size).toBe(12)
+    expect(new Set(CELEBRATIONS.map((c) => c.icon)).size).toBe(12)
+    const robot = CELEBRATIONS.find((c) => c.id === 'robot')!
+    expect(robot.isUnlocked({ ...rookie, achievements: ['first_goal'] })).toBe(true)
+    expect(CELEBRATIONS.find((c) => c.id === 'ice_cold')!.isUnlocked({ ...rookie, perks: ['penalty_ice'] })).toBe(true)
+    expect(CELEBRATIONS.find((c) => c.id === 'cartwheel')!.isUnlocked({ ...rookie, achievements: ['hat_trick'] })).toBe(true)
+    expect(CELEBRATIONS.find((c) => c.id === 'heart_hands')!.isUnlocked({ ...rookie, perks: ['family_first'] })).toBe(true)
+  })
   it('has at least six, three open from the start, the rest unlocked by fame/perks/achievements', () => {
     expect(CELEBRATIONS.length).toBeGreaterThanOrEqual(6)
     expect(CELEBRATIONS.filter((c) => c.isUnlocked(rookie)).length).toBe(3)
@@ -83,6 +93,11 @@ describe('celebrations', () => {
     expect(celebrationSeconds(true)).toBeLessThan(celebrationSeconds(false))
     expect(celebrationPose('backflip', 0.55, true).rot).toBe(0)
     expect(Math.abs(celebrationPose('backflip', 0.55).rot)).toBeGreaterThan(1)
+    expect(celebrationPose('cartwheel', 0.55, true).rot).toBe(0)
+    expect(Math.abs(celebrationPose('cartwheel', 0.55).rot)).toBeGreaterThan(1)
+    // The robot alternates its arm pose on a beat.
+    const arms = new Set([0.5, 0.58, 0.66, 0.74].map((u) => celebrationPose('robot', u).arms))
+    expect(arms).toEqual(new Set(['robotL', 'robotR']))
   })
 })
 

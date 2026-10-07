@@ -11,6 +11,7 @@
 import type { Difficulty, KitColors, Lang } from '../../core/types'
 import type { Highlight, HighlightResult, Weather } from '../../sim/match'
 import type { UiSettings } from '../store'
+import { resolveQuality } from '../../game/quality'
 import { emitHintEvent } from '../tutorial/hints'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from '../../game/presentation'
 import type { MomentRecording } from '../../game/moments'
@@ -81,6 +82,7 @@ export function playHighlight(
             sound: req.settings.sound,
             reducedMotion: req.settings.reducedMotion,
             lowFx: req.settings.lowFx,
+            quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
           },
           stadium: req.stadium,
           celebration: req.celebration,
@@ -144,7 +146,7 @@ export function rewatchMoment(
       handle = mod.replayMoment(
         container,
         moment,
-        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx } },
+        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx, quality: resolveQuality(settings.quality, settings.qualityAuto) } },
         () => {
           if (!stopped) onDone()
         },

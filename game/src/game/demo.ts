@@ -10,6 +10,7 @@ import { ALL_KINDS, makeDemoHighlight } from './demoHighlights'
 import { createMatchGame, replayMoment, startHighlight, type HighlightHandle } from './MatchScene'
 import { listMoments } from './moments'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from './presentation'
+import { isQualityChoice } from './quality'
 
 const HERO: KitColors = { primary: '#c8102e', secondary: '#ffffff', pattern: 'stripes' }
 const OPP: KitColors = { primary: '#1d4ed8', secondary: '#0b1b44', pattern: 'hoops' }
@@ -30,9 +31,11 @@ if (params.get('cap')) $<HTMLSelectElement>('stadium').value = params.get('cap')
 if (params.get('night') === '1') $<HTMLInputElement>('night').checked = true
 if (params.get('angle')) $<HTMLSelectElement>('angle').value = params.get('angle')!
 const celebration = (params.get('celeb') ?? 'auto') as CelebrationChoice
-const ALL_CELEBS: CelebrationId[] = ['knee_slide', 'airplane', 'point_sky', 'badge_kiss', 'team_huddle', 'shush', 'corner_flag', 'backflip']
+const ALL_CELEBS: CelebrationId[] = ['knee_slide', 'airplane', 'point_sky', 'badge_kiss', 'team_huddle', 'shush', 'corner_flag', 'backflip', 'robot', 'heart_hands', 'ice_cold', 'cartwheel']
 const reducedMotion = params.get('rm') === '1'
 const lowFx = params.get('lowfx') === '1'
+const qParam = params.get('q')
+const quality = isQualityChoice(qParam) && qParam !== 'auto' ? qParam : undefined
 let handle: HighlightHandle | null = null
 
 const buttons = new Map<HighlightKind, HTMLButtonElement>()
@@ -61,7 +64,7 @@ function rewatch(): void {
   if (!m) return
   handle?.stop()
   resultEl.textContent = 'replay…'
-  handle = replayMoment(game, m, { settings: { aimAssist: 'half', slowMoAim: true, vibration: false, sound: 0.8, reducedMotion, lowFx }, angle: $<HTMLSelectElement>('angle').value as ReplayAngleChoice }, () => {
+  handle = replayMoment(game, m, { settings: { aimAssist: 'half', slowMoAim: true, vibration: false, sound: 0.8, reducedMotion, lowFx, quality }, angle: $<HTMLSelectElement>('angle').value as ReplayAngleChoice }, () => {
     resultEl.textContent = 'replay done'
     handle = null
   })
@@ -89,6 +92,7 @@ function play(): void {
         sound: $<HTMLInputElement>('sound').checked ? 0.8 : 0,
         reducedMotion,
         lowFx,
+        quality,
       },
       stadium: { capacity: Number($<HTMLSelectElement>('stadium').value), night: $<HTMLInputElement>('night').checked },
       celebration: { choice: celebration, unlocked: ALL_CELEBS },

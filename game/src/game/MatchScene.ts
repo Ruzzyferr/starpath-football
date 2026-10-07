@@ -46,6 +46,7 @@ import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder } from './inputReplay'
 import { ASSIST_REWARD } from '../sim/match/rating'
+import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
 import { CROSS_CAM_ZOOM, PPM, TILT, ZS, crossCamFrame, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -58,8 +59,10 @@ export interface HighlightSettings {
   sound: number
   /** Accessibility: no shake / zoom punches / flashes / vignette; shorter celebrations. */
   reducedMotion?: boolean
-  /** Low effects tier: fewer particles and crowd sprites. */
+  /** Legacy low effects flag (= quality 'low' when `quality` is not given). */
   lowFx?: boolean
+  /** Graphics quality profile (WP-16): particle budget, crowd density, glow. */
+  quality?: QualityProfile
 }
 
 export interface StartHighlightOptions {
@@ -233,6 +236,9 @@ export class MatchScene extends Phaser.Scene {
   /** No screen flashes (Disable flashes setting / reduced motion). */
   private noFlash = false
   private lowFx = false
+  /** Graphics quality profile and the scene's shared particle budget. */
+  private q: QualitySpec = QUALITY.high
+  private fxBudget = new ParticleBudget(QUALITY.high)
   private look!: StadiumLook
   private night = false
   /** Stand images (crowd bounce on goals). */
@@ -322,10 +328,13 @@ export class MatchScene extends Phaser.Scene {
     this.auto = opts.autopilot && !replayOnly ? createAutopilot(highlight.id.length) : null
     this.rm = !!opts.settings.reducedMotion
     this.noFlash = this.rm || getControlPrefs().noFlash
-    this.lowFx = !!opts.settings.lowFx
+    const profile: QualityProfile = opts.settings.quality ?? (opts.settings.lowFx ? 'low' : 'high')
+    this.q = QUALITY[profile]
+    this.fxBudget = new ParticleBudget(this.q)
+    this.lowFx = profile === 'low'
     this.replayAngle = opts.replayAngle ?? 'auto'
     const capacity = opts.stadium?.capacity ?? 18_000
-    this.look = stadiumLook(capacity, this.lowFx)
+    this.look = stadiumLook(capacity, profile)
     this.night = !!opts.stadium?.night
     if (opts.stadium && !replayOnly) {
       try {
@@ -436,6 +445,10 @@ export class MatchScene extends Phaser.Scene {
       fps: this.game.loop.actualFps,
       result: rt.result?.outcome ?? null,
       tier: this.look.tier,
+      quality: this.q.profile,
+      crowdDensity: this.look.density,
+      particlesAlive: this.fxBudget.alive(this.time.now),
+      particleBudget: this.q.particleBudget,
       night: this.night,
       celebration: this.celeb?.id ?? null,
       replayAngle: this.replay ? this.currentAngle() : null,
@@ -548,7 +561,7 @@ export class MatchScene extends Phaser.Scene {
       const np = project(-4, y0)
       this.addW(this.add.image(np.x, np.y, nearAd).setOrigin(0, 1).setScale(sx).setDepth(depthFor(-4)).setAlpha(0.92))
     }
-    if (look.ads === 'led-glow' && !this.lowFx) {
+    if (look.ads === 'led-glow' && this.q.glow) {
       // Soft LED spill on the grass in front of the far boards.
       const glow = this.addW(this.add.image(project(PITCH_LENGTH + 3, PITCH_WIDTH / 2).x, fp.y + 0.4 * PPM, 'fx_dot'))
       glow.setDisplaySize(lenM * PPM, 2.6 * PPM).setTint(0x7fb8ff).setAlpha(night ? 0.22 : 0.1).setBlendMode(Phaser.BlendModes.ADD).setDepth(-39.4)
@@ -648,7 +661,7 @@ export class MatchScene extends Phaser.Scene {
       const p = project(x, y)
       this.addW(this.add.image(p.x, p.y, 'fx_dot')).setDisplaySize(60 * PPM, 60 * PPM * TILT).setTint(0xfff3d6).setAlpha(0.09 + (1 - dark) * 0.05).setBlendMode(Phaser.BlendModes.ADD).setDepth(-38.5)
     }
-    const step = this.lowFx ? 2 : 1
+    const step = this.q.lampStep
     for (let i = 0; i < lamps.length; i += step) {
       const l = lamps[i]
       this.addW(this.add.image(l.x, l.y, 'fx_dot')).setDisplaySize(l.r * 2, l.r * 2).setTint(0xfff1c8).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD).setDepth(-38)
@@ -805,7 +818,7 @@ export class MatchScene extends Phaser.Scene {
           scale: rain ? { min: 0.6 * this.ui, max: 1.1 * this.ui } : { min: 0.25 * this.ui, max: 0.6 * this.ui },
           alpha: rain ? { min: 0.25, max: 0.5 } : { min: 0.6, max: 0.95 },
           rotate: rain ? 8 : 0,
-          frequency: (rain ? 8 : 40) * (this.lowFx ? 2 : 1),
+          frequency: (rain ? 8 : 40) / this.q.weatherRate,
           quantity: rain ? (this.lowFx ? 2 : 3) : 2,
         }),
       )
@@ -1131,6 +1144,35 @@ export class MatchScene extends Phaser.Scene {
         } else if (arms === 'kick') {
           arm(-sw, sy, -0.7 * PPM, sy - zpx(0.3))
           arm(sw, sy, 0.7 * PPM, sy - zpx(0.3))
+        } else if (arms === 'robotL' || arms === 'robotR') {
+          // Stiff L-shaped arms: one elbow up, one elbow down, swapping on the beat.
+          const up = arms === 'robotL' ? -1 : 1
+          const elbowL = { x: -0.5 * PPM, y: sy }
+          const elbowR = { x: 0.5 * PPM, y: sy }
+          ag.lineBetween(-sw, sy, elbowL.x, elbowL.y)
+          ag.lineBetween(sw, sy, elbowR.x, elbowR.y)
+          arm(elbowL.x, elbowL.y, elbowL.x, sy - zpx(0.4) * up)
+          arm(elbowR.x, elbowR.y, elbowR.x, sy + zpx(0.4) * up)
+        } else if (arms === 'heart') {
+          // Hands meet above the head in a heart.
+          const top = -zpx(headZ + 0.35)
+          arm(-sw, sy, -0.12 * PPM, top)
+          arm(sw, sy, 0.12 * PPM, top)
+          ag.fillStyle(0xff4f6d, 0.95)
+          ag.fillCircle(-0.06 * PPM, top - 0.1 * PPM, 0.08 * PPM)
+          ag.fillCircle(0.06 * PPM, top - 0.1 * PPM, 0.08 * PPM)
+          ag.fillTriangle(-0.14 * PPM, top - 0.08 * PPM, 0.14 * PPM, top - 0.08 * PPM, 0, top + 0.1 * PPM)
+        } else if (arms === 'hug') {
+          // Arms crossed tight over the chest.
+          const L = R(-sw, 0)
+          const Rr = R(sw, 0)
+          const lh = R(0.2 * PPM, -zpx(0.05))
+          const rh = R(-0.2 * PPM, -zpx(0.12))
+          arm(L.x, sy + L.y, lh.x, -zpx(torsoZ) + lh.y)
+          arm(Rr.x, sy + Rr.y, rh.x, -zpx(torsoZ) + rh.y)
+          ag.lineStyle(0.04 * PPM, 0xbfe6ff, 0.85)
+          ag.lineBetween(-0.4 * PPM, -zpx(headZ + 0.2), -0.48 * PPM, -zpx(headZ + 0.35))
+          ag.lineBetween(0.4 * PPM, -zpx(headZ + 0.2), 0.48 * PPM, -zpx(headZ + 0.35))
         }
       }
     }
@@ -1565,9 +1607,12 @@ export class MatchScene extends Phaser.Scene {
     } catch {
       /* audio optional */
     }
-    if (!this.lowFx) {
+    if (this.q.glow) {
       const gp = project(target.x, target.y, 1)
-      this.time.delayedCall(400, () => this.confetti.explode(50, gp.x, gp.y))
+      this.time.delayedCall(400, () => {
+        const n = this.fxN(50, 2600)
+        if (n > 0) this.confetti.explode(n, gp.x, gp.y)
+      })
     }
     // Crowd on its feet.
     for (const s of this.stands) {
@@ -1707,9 +1752,14 @@ export class MatchScene extends Phaser.Scene {
     if (!this.rm) this.cameras.main.shake(ms, intensity)
   }
 
-  /** Particle count for the effects tier. */
-  private fxN(n: number): number {
-    return this.lowFx ? Math.max(1, Math.round(n * 0.4)) : n
+  /** Particle count for one burst: scaled by the quality profile and clamped to the scene's particle budget. */
+  private fxN(n: number, lifeMs = 650): number {
+    return this.fxBudget.take(n, lifeMs, this.time.now)
+  }
+
+  /** Explode only when the budget granted particles (explode(0) would emit the emitter default). */
+  private burst(em: Phaser.GameObjects.Particles.ParticleEmitter, n: number, x: number, y: number): void {
+    if (n > 0) em.explode(n, x, y)
   }
 
   private vibrate(ms: number, s = 0.6): void {
@@ -1735,7 +1785,7 @@ export class MatchScene extends Phaser.Scene {
         case 'kick': {
           this.sfx.kick(e.power, e.kick)
           const p = project(e.x, e.y)
-          this.grassFx.explode(this.fxN(e.hero ? 10 : 5), p.x, p.y)
+          this.burst(this.grassFx, this.fxN(e.hero ? 10 : 5), p.x, p.y)
           const shot = e.kick === 'shot' || e.kick === 'chip' || e.kick === 'penalty' || e.kick === 'freekick' || e.kick === 'header'
           if (e.hero) {
             this.cam.punch = this.rm ? 0 : shot ? 0.14 : 0.05
@@ -1789,8 +1839,8 @@ export class MatchScene extends Phaser.Scene {
           if (ours) {
             this.sfx.roar(1)
             const gp = project(e.end === 'east' ? PITCH_LENGTH : 0, GOAL_CENTER_Y, 1.5)
-            this.confetti.explode(this.fxN(90), gp.x, gp.y)
-            this.time.delayedCall(250, () => this.confetti.explode(this.fxN(70), gp.x, gp.y - 2 * PPM))
+            this.burst(this.confetti, this.fxN(90, 2600), gp.x, gp.y)
+            this.time.delayedCall(250, () => this.burst(this.confetti, this.fxN(70, 2600), gp.x, gp.y - 2 * PPM))
             if (!this.noFlash) this.flash.setAlpha(0.55)
             this.tweens.add({ targets: this.flash, alpha: 0, duration: 450, ease: 'Quad.Out' })
             if (!this.rm) for (const s of this.stands) this.tweens.add({ targets: s, y: s.y - 6, duration: 160, yoyo: true, repeat: 6, ease: 'Sine.InOut' })
@@ -1819,7 +1869,7 @@ export class MatchScene extends Phaser.Scene {
         case 'tackle': {
           if (e.slide || e.won) this.sfx.scuff()
           const p = project(e.x, e.y)
-          if (e.slide) this.grassFx.explode(this.fxN(14), p.x, p.y)
+          if (e.slide) this.burst(this.grassFx, this.fxN(14), p.x, p.y)
           if (e.won && e.by === rt.hero.id) this.vibrate(60)
           break
         }

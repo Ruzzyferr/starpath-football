@@ -38,12 +38,12 @@ export const PRODUCTS: readonly ProductDef[] = [
     kind: 'cosmetic',
     name: { tr: 'Gol Sevinci Paketi', en: 'Celebration Pack' },
     desc: {
-      tr: 'Üç gol sevincini hemen aç. Yalnızca görünüm: maç sonuçlarını etkilemez.',
-      en: 'Unlock three goal celebrations right away. Cosmetic only: never affects results.',
+      tr: 'Beş gol sevincini hemen aç. Yalnızca görünüm: maç sonuçlarını etkilemez.',
+      en: 'Unlock five goal celebrations right away. Cosmetic only: never affects results.',
     },
     icon: '🎉',
     fallbackPrice: '€1.99',
-    cosmetics: { celebration: ['shush', 'corner_flag', 'backflip'] },
+    cosmetics: { celebration: ['shush', 'corner_flag', 'backflip', 'heart_hands', 'cartwheel'] },
   },
   {
     id: 'pack_avatar',
