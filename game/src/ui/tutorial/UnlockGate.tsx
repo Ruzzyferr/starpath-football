@@ -26,7 +26,7 @@ export function lockTextLong(st: FeatureState): string {
   const r = st.reason
   if (!r) return ''
   if (r.kind === 'age') return t('help.unlock.inYears', { n: r.yearsLeft, age: r.age })
-  return `${t('help.unlock.atWeek', { week: r.week })} · ${t('help.unlock.inWeeks', { n: r.weeksLeft })}`
+  return t('help.unlock.inWeeks', { week: r.week, n: r.weeksLeft })
 }
 
 /** Small "New!" pill for menus, tiles and tabs. */
@@ -40,9 +40,9 @@ export function LockChip({ feature }: { feature: FeatureId }) {
   const st = features.value[feature]
   if (st.unlocked) return null
   return (
-    <span class="lock-chip" data-locked={feature}>
+    <span class="lock-chip" data-locked={feature} title={lockText(st)}>
       <Icon name="lock" size={12} />
-      {lockText(st)}
+      {st.reason?.kind === 'age' ? t('help.unlock.shortAge', { age: st.reason.age }) : t('help.unlock.shortWeek', { week: st.reason?.week ?? 0 })}
     </span>
   )
 }

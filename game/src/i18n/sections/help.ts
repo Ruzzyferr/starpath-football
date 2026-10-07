@@ -35,7 +35,7 @@ export const tr = {
       },
       advance: {
         title: 'Zamanı ilerlet',
-        body: '“İlerle” planladığın etkinliği oynatır ve bir sonraki dilime geçer. Hadi bir kez dene.',
+        body: 'Vurgulanan düğme planladığın etkinliği oynatır ve zamanı bir sonraki dilime taşır. Hadi bir kez dene.',
       },
       decisions: {
         title: 'Kararlar',
@@ -92,8 +92,10 @@ export const tr = {
     newTag: 'Yeni!',
     locked: 'Kilitli',
     atWeek: '{week}. haftada açılır',
-    inWeeks: '{n} {n|hafta|hafta} sonra açılır',
+    inWeeks: '{week}. haftada açılır · {n} hafta kaldı',
     atAge: '{age} yaşında açılır',
+    shortWeek: '{week}. haftada',
+    shortAge: '{age} yaşında',
     inYears: '{n} {n|yıl|yıl} sonra, {age} yaşında açılır',
     lockedTitle: '{feature} henüz kilitli',
     lockedBody: 'İlk haftalarda futboluna odaklan. Bu bölüm zamanı gelince açılacak.',
@@ -226,7 +228,7 @@ export const en: Shape<typeof tr> = {
       },
       advance: {
         title: 'Move time forward',
-        body: '“Advance” plays your planned activity and moves on to the next slot. Give it a try.',
+        body: 'The highlighted button plays your planned activity and moves time on to the next slot. Give it a try.',
       },
       decisions: {
         title: 'Decisions',
@@ -283,8 +285,10 @@ export const en: Shape<typeof tr> = {
     newTag: 'New!',
     locked: 'Locked',
     atWeek: 'Unlocks in week {week}',
-    inWeeks: 'Unlocks in {n} {n|week|weeks}',
+    inWeeks: 'Unlocks in week {week} · {n} {n|week|weeks} to go',
     atAge: 'Unlocks at age {age}',
+    shortWeek: 'Week {week}',
+    shortAge: 'Age {age}+',
     inYears: 'Unlocks in {n} {n|year|years}, at age {age}',
     lockedTitle: '{feature} is still locked',
     lockedBody: 'Focus on your football for the first few weeks. This section opens up when the time is right.',

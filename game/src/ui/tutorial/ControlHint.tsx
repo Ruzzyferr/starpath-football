@@ -75,8 +75,16 @@ function Hand() {
 /** One hint card. `onDone` fires after success or dismissal. */
 export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: HintGroup; onDone: () => void }) {
   const [success, setSuccess] = useState(false)
+  // Appear once the scene is actually running (first gameplay event), not over the loading screen.
+  const [ready, setReady] = useState(false)
   useEffect(() => {
     watchInputPlatform()
+    const fallback = setTimeout(() => setReady(true), 4000)
+    const off = onHintEvent(() => setReady(true))
+    return () => {
+      clearTimeout(fallback)
+      off()
+    }
   }, [])
   useEffect(() => {
     if (success) return
@@ -92,6 +100,7 @@ export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: H
     return () => clearTimeout(id)
   }, [success])
 
+  if (!ready && !success) return null
   const platform = PLATFORM_KEY[inputPlatform.value]
   const text = tx(`help.hints.${platform}.${group}`)
   const gesture = gestureFor(group, inputPlatform.value)

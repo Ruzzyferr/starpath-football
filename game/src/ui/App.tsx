@@ -35,10 +35,17 @@ import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
+import { AchievementsScreen } from './screens/legacy/AchievementsScreen'
+import { HallOfFameScreen } from './screens/legacy/HallOfFameScreen'
+import { RetireScreen } from './screens/legacy/RetireScreen'
+import { DocumentaryScreen } from './screens/legacy/DocumentaryScreen'
+import { TrialsScreen } from './screens/legacy/TrialsScreen'
+import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
 import { CoachTour } from './tutorial/CoachTour'
 import { MatchdayConfirmHost, requestAdvance } from './tutorial/MatchdayConfirm'
 import { UnlockNotifier, gated } from './tutorial/UnlockGate'
+import { tour } from './tutorial/tour'
 
 export const SCREENS: Record<ScreenId, FunctionComponent> = {
   title: TitleScreen,
@@ -68,11 +75,16 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   seasonEnd: SeasonEndScreen,
   trophies: TrophiesScreen,
   glossary: GlossaryScreen,
+  achievements: AchievementsScreen,
+  hallOfFame: HallOfFameScreen,
+  retire: RetireScreen,
+  documentary: DocumentaryScreen,
+  trials: TrialsScreen,
 }
 
-const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd'])
+const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials'])
 /** Screens usable without a loaded career. */
-const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary'])
+const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary'])
 
 function isTyping(el: Element | null): boolean {
   if (!el) return false
@@ -121,7 +133,8 @@ function useEventAutoOpen() {
     prev.current = n
     if (before === null) return
     const id = screen.value.id
-    if (n > before && activeEvent.value === null && !IMMERSIVE.has(id)) activeEvent.value = 0
+    // During the coach tour new cards wait behind the bell (the tour points at it).
+    if (n > before && activeEvent.value === null && !IMMERSIVE.has(id) && tour.value.status !== 'active') activeEvent.value = 0
   }, [n])
 }
 
@@ -149,6 +162,7 @@ function usePendingNav() {
 
 export function App() {
   usePendingNav()
+  useCareerGates()
   useKeyboardShortcuts()
   useEventAutoOpen()
   useClubTint()
