@@ -115,13 +115,13 @@ Kanıt yolları `game/src/` köküne göredir; 2.9, 2.10, 2.12 satırlarında `g
 | 2.1#121, #125 | TAMAM | sim/match/highlightGen.ts:598,603 | Kanatta ≥2 orta, stoperde ≥3 savunma anı, testli |
 | 2.2#25 | TAMAM | game/MatchScene.ts:1582 | Forma numarası ve isim etiketi |
 | 2.2#37 | TAMAM | game/presentation.ts:98,168 | Kutlama yönü, ilişkiye göre yanına gelenler |
-| 2.2#38 | KISMİ | game/presentation.ts:94-119 | 8 kutlama (hedef 12) |
+| 2.2#38 | TAMAM | game/presentation.ts (CELEBRATIONS) | WP-16: 12 kutlama (robot, heart_hands, ice_cold, cartwheel eklendi); pakette 5 kozmetik |
 | 2.2#47, #49 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
-| 2.2#63 | KISMİ | game/MatchScene.ts:1609 | `lowFx` ölçekliyor, gerçek parçacık bütçesi yok |
+| 2.2#63 | TAMAM | game/quality.ts (ParticleBudget), MatchScene.fxN | WP-16: profil başına sabit canlı parçacık bütçesi (120/260/480) |
 | 2.2#74 | TAMAM | game/MatchScene.ts:756 | Rüzgâr km/sa göstergesi |
 | 2.2#82 | TAMAM | game/presentation.ts:16 | 4 stadyum kademesi |
 | 2.2#102, #103 | TAMAM | PostMatchScreen.tsx:370,158, postFlow.ts:7 | Adım adım maç sonu, count-up reyting |
-| 2.2#118 | KISMİ | game/MatchScene.ts:304 | Tek `lowFx` profili, çok kademeli kalite yok |
+| 2.2#118 | TAMAM | game/quality.ts, ui/store.ts (quality/qualityAuto) | WP-16: Düşük/Orta/Yüksek/Otomatik (cihaz testi); seyirci yoğunluğu, tifo, hava, parlama |
 | 2.2#121 | TAMAM | game/MatchScene.ts:303 | Hareketi azalt sahnede ~26 yerde uygulanıyor |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
 | 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
@@ -167,7 +167,7 @@ Kanıt yolları `game/src/` köküne göredir; 2.9, 2.10, 2.12 satırlarında `g
 | 2.10#111 | TAMAM | sim/game/achievements.ts:140 | Başarım sistemi |
 | 2.11#1, #17, #19-#22 | TAMAM | styles/tokens.css:201, input/bindings.ts:103, i18n/sections/settings.ts:46,48, game/input.ts:166, SettingsScreen.tsx:92 | Renk körü paletleri, tuş atama, sol/tek el, dokunma ölçeği, maç hızı |
 | 2.11#31, #49, #50 | TAMAM | MatchScene.ts:1602, i18n/index.ts:78, ui/a11y/collate.ts:6 | Sarsıntı kapanıyor, tr-TR büyük harf, Collator('tr') |
-| 2.11#32 | KISMİ | i18n/sections/settings.ts:33 | Ayrı "flaşları kapat" yok |
+| 2.11#32 | TAMAM | ui/store.ts reduceFlashes, SettingsScreen (Grafik) | Ayrı anahtar; WP-16 Grafik grubunda, her profilde geçerli |
 | 2.12#1, #2, #10 | TAMAM | game/public/manifest.webmanifest, game/src/data/world/countries.ts:21 | Marka ifadeleri temiz, "Anadolu Ligi" |
 | 2.12#32, #33 | TAMAM | styles/fonts.css, THIRD_PARTY_LICENSES.md | Self-host, lisans dosyası (yalnızca fontlar) |
 | 2.12#42 | KISMİ | core/contentFlags.ts:5 | Derleme bayrağı yok, oyuncu ayarı var |
@@ -217,7 +217,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.1#58 | KISMİ | game/runtime.ts:937 | Başka arkadaşa giden pas başarısız sayılıyor |
 | 2.1#59 | EKSİK | game/runtime.ts:729 | Ver-kaç mekaniği yok |
 | 2.1#60 | EKSİK | - | Vizyon'a göre pas hedefi vurgusu ve ofsayt çerçevesi yok |
-| 2.1#62 | KISMİ | game/view.ts (crossCamFrame), game/MatchScene.ts | WP-13/14: orta havadayken kamera topun düşeceği yere döner ve geri çekilir; gerçek yan açı projeksiyon değişikliği ister (WP-16) |
+| 2.1#62 | KISMİ | game/view.ts (crossCamFit), game/MatchScene.ts | WP-16: gerçek yan açı yapılmadı (saha, tribün, reklam panoları ve kaleler sabit arka-kale projeksiyonunda çiziliyor; dokunmatik nişan `project`in tersini kullanıyor). Yerine orta anında sabit geniş kadraj: orta açan, düşüş noktası ve kale ağzı tek karede (yatayda hepsi, dikeyde düşüş + kale) |
 | 2.1#67 | KISMİ | game/runtime.ts:1890 | Kafa zamanlama halkası var; ayrı kafa an tipi yok |
 | 2.1#68 | EKSİK | - | Kafa yönü kontrolü yok |
 | 2.1#71 | TAMAM | game/kick.ts (HEADER_RANGE) | Kafa vuruşu en fazla 18 m taşır; ötesi kısa indirme (kick.test) |
@@ -267,11 +267,11 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.2#25 | KISMİ | game/MatchScene.ts:394 | Halka ve isim var; forma numarası yok |
 | 2.2#26 | EKSİK | - | Vuruş pozu animasyonu yok |
 | 2.2#37 | EKSİK | game/runtime.ts:1005 | Yalnızca zıplama; kutlama yönü seçimi ve ilişki etkisi yok |
-| 2.2#38 | EKSİK | - | 12 kutlamalık kütüphane yok |
+| 2.2#38 | TAMAM | game/presentation.ts | WP-16: 12 kutlama |
 | 2.2#47 | EKSİK | game/MatchScene.ts:596 | Yalnızca gol sonrası tekrar var; "Anlar" listesi ve en iyi 3 an yok |
 | 2.2#48 | KISMİ | game/runtime.ts:368 | Tekrar kare kaydından; kalıcı değil |
 | 2.2#49 | KISMİ | game/MatchScene.ts:852 | Tekrar kamerası topu izliyor |
-| 2.2#63 | EKSİK | game/MatchScene.ts:417 | Parçacık bütçesi yok |
+| 2.2#63 | TAMAM | game/quality.ts | WP-16: ParticleBudget |
 | 2.2#66 | KISMİ | game/art.ts:430 | File dalgası var; verlet ızgara yok |
 | 2.2#73 | KISMİ | game/MatchScene.ts:489 | Yağmur ve sürtünme var; sıçrama ve HUD ikonu yok |
 | 2.2#74 | EKSİK | game/physics.ts:116 | Rüzgâr fiziği var; ok/km-sa göstergesi ve bayrak yok |
@@ -280,7 +280,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.2#102 | EKSİK | ui/screens/match/PostMatchScreen.tsx:80 | Tek ekran; adım adım maç sonu akışı yok |
 | 2.2#103 | EKSİK | ui/screens/match/PostMatchScreen.tsx:81 | Reyting count-up katkı dökümü yok |
 | 2.2#106 | KISMİ | ui/screens/match/LiveMatchScreen.tsx:212 | 1/2/4x var; "sonraki anıma geç" yok |
-| 2.2#118 | EKSİK | - | Kalite profilleri yok |
+| 2.2#118 | TAMAM | game/quality.ts | WP-16: kalite profilleri |
 | 2.2#119 | EKSİK | - | Düşük cihaz kabul testi yok |
 | 2.2#121 | KISMİ | ui/hooks/motion.ts:7 | Hareketi azalt maçta yalnızca tekrarı kapatıyor |
 
@@ -523,7 +523,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#68 | KISMİ | game/MatchScene.ts:819 | Güç eşiği farklı |
 | 2.7#71 | KISMİ | ui/screens/match/PreMatchScreen.tsx:69 | Kapasite, rol ve TD beklentisi yok |
 | 2.7#72 | EKSİK | ui/screens/match/PostMatchScreen.tsx:45 | Reyting dökümü yok |
-| 2.7#73 | KISMİ | ui/screens/match/PostMatchScreen.tsx:87 | Kazanç dökümü ve adım akışı yok |
+| 2.7#73 | TAMAM | sim/career/matchPay.ts, PostMatchScreen (EarningsStep) | WP-16: maaş payı, gol/asist/maça çıkma/kaleci primi, sponsor, imaj hakları, vergi, menajer |
 | 2.7#74 | TAMAM | ui/screens/match/LiveMatchScreen.tsx:165 | Radar, anlatım, hız ve atla var |
 | 2.7#78 | KISMİ | ui/screens/HomeScreen.tsx:120 | Ana sayfa sırası plandan farklı |
 | 2.7#79 | KISMİ | ui/screens/NewCareerScreen.tsx:14 | 7 adım (plan 4) |
@@ -542,7 +542,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
 | 2.7#94 | KISMİ | ui/screens/WorldScreen.tsx:135 | Kariyer/kulüp kırılımı yok |
 | 2.7#98 | KISMİ | ui/screens/SavesScreen.tsx:65 | Slot ekran görüntüsü yok |
-| 2.7#99 | KISMİ | ui/screens/SettingsScreen.tsx:55 | Kontroller, Bulut ve Gizlilik grupları yok |
+| 2.7#99 | TAMAM | ui/screens/SettingsScreen.tsx | WP-16: Gizlilik ve Bulut ("Yakında", bağlantısız) grupları |
 | 2.7#103 | TAMAM | styles/tokens.css:136 | Hareket token'ları var |
 | 2.7#105 | TAMAM | ui/hooks/motion.ts:20 | Count-up var |
 | 2.7#114 | KISMİ | ui/screens/newcareer/AppearanceEditor.tsx:49 | Özel avatar editörü var |
@@ -715,7 +715,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.11#23 | EKSİK | - | Zamanlama penceresi genişletme yok |
 | 2.11#29 | EKSİK | - | Görsel ses ipuçları yok |
 | 2.11#31 | KISMİ | ui/hooks/motion.ts:4 | MatchScene sarsıntıyı kapatmıyor |
-| 2.11#32 | EKSİK | game/MatchScene.ts:605 | "Flaşları kapat" yok |
+| 2.11#32 | TAMAM | ui/store.ts reduceFlashes | Ayrı anahtar (WP-16 Grafik grubu) |
 | 2.11#38 | EKSİK | - | Erişilebilirlik kontrol listesi yok |
 | 2.11#42 | KISMİ | i18n/index.ts:45 | ICU yok; literal-string lint yok |
 | 2.11#43 | TAMAM | i18n/i18n.test.ts:27 | TR/EN anahtar eşitliği testli |
@@ -994,6 +994,8 @@ Kalan hissiyat boşlukları: sapan şut, salınan güç çubuğu, PC tekerlek fa
   4. Maç sonu kazanç dökümü adımı (2.7#73). Kadro ekranında kapasite ve TD beklentisi (2.7#71).
   5. Ayarlarda Gizlilik ve Bulut bölümleri (Bulut yalnızca "yakında" olarak, bağlantısız) (2.7#99).
   6. Kalan 2.2 EKSİK satırları: #4, #24, #26, #119 karara bağlanıyor.
+
+> **Durum (WP-16 yapıldı):** #1 12 kutlama (`presentation.ts`, pakette heart_hands/cartwheel, `cosmeticUnlocked` ile). #2 `game/quality.ts`: Düşük/Orta/Yüksek/Otomatik (cihaz testi `runDeviceBenchmark` → `profileFromProbe`), sabit parçacık bütçesi (`ParticleBudget`), seyirci yoğunluğu/tifo/hava/parlama; perf spec Düşük profili de ölçüyor (bu makinede 4x kısmada yüksek 46-47, düşük 48 fps; aynı koşulda eb0bd8a temeli 43-44 fps, yani gerileme yok, 60 fps hedefi tutmuyor). #3 "Flaşları kapat" Grafik grubunda, profilden bağımsız. #4 kazanç dökümü adımı (`sim/career/matchPay.ts`, primler artık tek kaynaktan; golden değişmedi). 2.7#71 TD beklentisi ve kadro kapasitesi bu pakette yapılmadı. #5 Gizlilik + Bulut "Yakında" (devre dışı düğme, ağ isteği yok; e2e doğruluyor). #6 2.2#4/#24/#26 ertelendi (animasyon atlası/kadraj; sanat işi), #119 düşük cihaz kabulü perf spec'teki Düşük profil ölçümüyle kısmen karşılandı. Yan kamera: bkz. 2.1#62.
 
 ### WP-17 · Sim Kalibrasyon ve Test Altyapısı
 - **Dokunduğu dosyalar:** `game/src/sim/**/*.test.ts`, `game/src/sim/match/engine.ts` (yalnızca `fork('match:id')`), `game/src/sim/game/newGame.ts` (Date.now temizliği), `game/eslint.config.js`, `game/vitest.config.ts`, `.github/workflows/ci.yml`.

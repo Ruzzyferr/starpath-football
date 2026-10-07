@@ -47,7 +47,7 @@ import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } fr
 import { applyInput, InputRecorder } from './inputReplay'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
-import { CROSS_CAM_ZOOM, PPM, TILT, ZS, crossCamFrame, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
+import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -221,8 +221,8 @@ export class MatchScene extends Phaser.Scene {
   private floaters: Floater[] = []
 
   private cam = { x: 0, y: 0, zoom: 1, base: 1, punch: 0 }
-  /** Cross camera: drop point of the delivery in the air, until game time `until` (WP-13 #4). */
-  private crossCam: { lx: number; ly: number; until: number } | null = null
+  /** Cross camera: a still frame (world px) fitted at delivery, its zoom multiplier, and when it ends (sim time). */
+  private crossCam: { fx: number; fy: number; zoomMult: number; until: number } | null = null
   /** Height (game px) of the HUD band at the top; the play camera renders below it so the HUD never covers play. */
   private hudTop = 0
   /** Safe-area inset (notch) at the top of the canvas, game px. */
@@ -1154,20 +1154,29 @@ export class MatchScene extends Phaser.Scene {
           arm(elbowL.x, elbowL.y, elbowL.x, sy - zpx(0.4) * up)
           arm(elbowR.x, elbowR.y, elbowR.x, sy + zpx(0.4) * up)
         } else if (arms === 'heart') {
-          // Hands meet above the head in a heart.
-          const top = -zpx(headZ + 0.35)
-          arm(-sw, sy, -0.12 * PPM, top)
-          arm(sw, sy, 0.12 * PPM, top)
-          ag.fillStyle(0xff4f6d, 0.95)
-          ag.fillCircle(-0.06 * PPM, top - 0.1 * PPM, 0.08 * PPM)
-          ag.fillCircle(0.06 * PPM, top - 0.1 * PPM, 0.08 * PPM)
-          ag.fillTriangle(-0.14 * PPM, top - 0.08 * PPM, 0.14 * PPM, top - 0.08 * PPM, 0, top + 0.1 * PPM)
+          // Elbows out, hands meeting above the head: the arms frame a heart.
+          const top = -zpx(headZ + 0.42)
+          const elbowY = -zpx(headZ + 0.05)
+          ag.lineBetween(-sw, sy, -0.5 * PPM, elbowY)
+          ag.lineBetween(sw, sy, 0.5 * PPM, elbowY)
+          arm(-0.5 * PPM, elbowY, -0.1 * PPM, top)
+          arm(0.5 * PPM, elbowY, 0.1 * PPM, top)
+          const hy = top - 0.32 * PPM
+          ag.fillStyle(0xff3b5c, 1)
+          ag.fillCircle(-0.11 * PPM, hy, 0.13 * PPM)
+          ag.fillCircle(0.11 * PPM, hy, 0.13 * PPM)
+          ag.fillTriangle(-0.235 * PPM, hy + 0.04 * PPM, 0.235 * PPM, hy + 0.04 * PPM, 0, hy + 0.3 * PPM)
         } else if (arms === 'hug') {
           // Arms crossed tight over the chest.
           const L = R(-sw, 0)
           const Rr = R(sw, 0)
           const lh = R(0.2 * PPM, -zpx(0.05))
           const rh = R(-0.2 * PPM, -zpx(0.12))
+          // Dark under-stroke so the folded arms read against the shirt.
+          ag.lineStyle(0.2 * PPM, 0x10131a, 0.55)
+          ag.lineBetween(L.x, sy + L.y, lh.x, -zpx(torsoZ) + lh.y)
+          ag.lineBetween(Rr.x, sy + Rr.y, rh.x, -zpx(torsoZ) + rh.y)
+          ag.lineStyle(0.13 * PPM, colorNum(kitA.primary), 1)
           arm(L.x, sy + L.y, lh.x, -zpx(torsoZ) + lh.y)
           arm(Rr.x, sy + Rr.y, rh.x, -zpx(torsoZ) + rh.y)
           ag.lineStyle(0.04 * PPM, 0xbfe6ff, 0.85)
@@ -1438,18 +1447,14 @@ export class MatchScene extends Phaser.Scene {
       let py = by
       const cc = !replay && this.crossCam && !rt.owner && rt.time < this.crossCam.until ? this.crossCam : null
       if (!cc) this.crossCam = null
-      if (cc) {
-        const f = crossCamFrame({ x: bx, y: by }, { x: cc.lx, y: cc.ly })
-        px = f.x
-        py = f.y
-      } else if (!replay) {
+      if (!cc && !replay) {
         const look = 0.38
         px += clampN(rt.ball.vx * look, -9, 9)
         py += clampN(rt.ball.vy * look, -6, 6)
         if (rt.heroOnBall) px += 5
         if (rt.heroIsKeeper) px += 7
       }
-      const b = project(px, py, bz * 0.5)
+      const b = cc ? { x: cc.fx, y: cc.fy } : project(px, py, bz * 0.5)
       tx = b.x
       ty = b.y
     }
@@ -1459,7 +1464,7 @@ export class MatchScene extends Phaser.Scene {
     this.cam.punch *= Math.exp(-dt * 5)
     if (this.rm) this.cam.punch = 0
     const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
-    const crossZoom = this.crossCam && !target && !replay ? CROSS_CAM_ZOOM : 1
+    const crossZoom = this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1
     const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
     this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
     // Clamp to the stadium.
@@ -1798,7 +1803,11 @@ export class MatchScene extends Phaser.Scene {
           if ((e.kick === 'cross' || e.kick === 'lofted') && e.x > PITCH_LENGTH * 0.55 && rt.agents.find((a) => a.id === e.by)?.team === 'hero') {
             const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 4 })
             const drop = pts.find((q, i) => i > 0 && q.z < 2.2 && q.z < pts[i - 1].z) ?? pts[pts.length - 1]
-            if (drop && drop.x > PITCH_LENGTH - 22) this.crossCam = { lx: drop.x, ly: drop.y, until: rt.time + Math.min(2.5, drop.t + 0.4) }
+            if (drop && drop.x > PITCH_LENGTH - 22) {
+              const vp = this.cameras.main
+              const f = crossCamFit({ x: e.x, y: e.y }, drop, { x: PITCH_LENGTH, y: GOAL_CENTER_Y, halfWidth: 3.66, height: 2.44 }, { w: vp.width, h: vp.height }, this.cam.base)
+              this.crossCam = { fx: f.x, fy: f.y, zoomMult: f.zoomMult, until: rt.time + Math.min(2.5, drop.t + 0.4) }
+            }
           }
           // Remember the offside line when a delivery is played (drawn if the flag goes up).
           if (!shot) {

@@ -64,3 +64,43 @@ export const CROSS_CAM_ZOOM = 0.86
 export function crossCamFrame(ball: Vec2, landing: Vec2): { x: number; y: number; zoomMult: number } {
   return { x: ball.x + (landing.x - ball.x) * CROSS_CAM_T, y: ball.y + (landing.y - ball.y) * CROSS_CAM_T, zoomMult: CROSS_CAM_ZOOM }
 }
+
+/** Cross framing: tightest and widest zoom (× base zoom) and the margin around the framed points (m). */
+export const CROSS_FIT_MIN_ZOOM = 0.68
+export const CROSS_FIT_PAD_M = 3.5
+
+/**
+ * Cross camera framing (WP-16, 2.1#62). A true side-on angle would need a
+ * different projection: the pitch, stands, ad boards and goals are drawn in
+ * this fixed behind-the-goal view, and touch aiming inverts {@link project}.
+ * So instead of rotating the camera, the frame is fitted once at the moment of
+ * delivery to hold the crosser, the drop point and the whole goal mouth (posts
+ * and crossbar): the ball flies across a still frame, like a broadcast wide
+ * shot. Returns the frame centre in world px and a zoom multiplier ≤ 1.
+ *
+ * `view` is the camera viewport (px) and `baseZoom` the normal live zoom.
+ */
+export function crossCamFit(
+  from: Vec2,
+  landing: Vec2,
+  goal: { x: number; y: number; halfWidth: number; height: number },
+  view: { w: number; h: number },
+  baseZoom: number,
+): { x: number; y: number; zoomMult: number } {
+  const pts = [
+    project(from.x, from.y),
+    project(landing.x, landing.y),
+    project(landing.x, landing.y, 2),
+    project(goal.x, goal.y - goal.halfWidth),
+    project(goal.x, goal.y + goal.halfWidth),
+    project(goal.x, goal.y, goal.height),
+  ]
+  const pad = CROSS_FIT_PAD_M * PPM
+  const minX = Math.min(...pts.map((p) => p.x)) - pad
+  const maxX = Math.max(...pts.map((p) => p.x)) + pad
+  const minY = Math.min(...pts.map((p) => p.y)) - pad
+  const maxY = Math.max(...pts.map((p) => p.y)) + pad
+  const fit = Math.min(view.w / Math.max(1, maxX - minX), view.h / Math.max(1, maxY - minY))
+  const zoomMult = Math.min(1, Math.max(CROSS_FIT_MIN_ZOOM, fit / Math.max(1e-6, baseZoom)))
+  return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, zoomMult }
+}

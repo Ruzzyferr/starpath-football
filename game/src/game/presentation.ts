@@ -257,7 +257,7 @@ export function celebrationPose(id: CelebrationId, u: number, reducedMotion = fa
     case 'cartwheel': {
       if (reducedMotion || u < 0.4) return { ...base, arms: reducedMotion && u >= 0.4 ? 'out' : 'none', run: u < 0.4 ? 1.1 : 0 }
       const f = Math.min(1, (u - 0.4) / 0.35)
-      if (f < 1) return { ...base, run: 0.5, legs: true, rot: f * Math.PI * 2, lift: Math.sin(f * Math.PI) * 0.5, arms: 'out' }
+      if (f < 1) return { ...base, run: 0.5, legs: false, rot: f * Math.PI * 2, lift: Math.sin(f * Math.PI) * 0.5, arms: 'out' }
       return { ...base, run: 0, arms: 'up' }
     }
   }

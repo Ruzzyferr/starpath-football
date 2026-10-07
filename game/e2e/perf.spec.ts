@@ -35,13 +35,14 @@ async function measure(page: Page, ms: number) {
   )
 }
 
-for (const kind of ['counter', 'corner']) {
-  test(`highlight FPS: ${kind}`, async ({ page, isMobile }) => {
+// High profile (worst case) for both kinds; the Low quality profile (WP-16) on the counter.
+for (const [kind, q] of [['counter', 'high'], ['corner', 'high'], ['counter', 'low']] as const) {
+  test(`highlight FPS: ${kind}${q === 'low' ? ' (low profile)' : ''}`, async ({ page, isMobile }) => {
     if (isMobile) {
       const cdp = await page.context().newCDPSession(page)
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })
     }
-    await page.goto(`/match-demo.html?kind=${kind}&seed=5&auto=1`)
+    await page.goto(`/match-demo.html?kind=${kind}&seed=5&auto=1&q=${q}`)
     await page.waitForFunction(
       () => (window as unknown as { __spScene?: { debugInfo(): { phase: string } } }).__spScene?.debugInfo().phase === 'live',
       undefined,
@@ -54,7 +55,7 @@ for (const kind of ['counter', 'corner']) {
       return c ? `${c.width}x${c.height}` : '-'
     })
     console.log(
-      `[perf] ${isMobile ? 'mobile 390x844 dpr' + dpr + ' cpu/4' : 'desktop 1440x900'} ${kind}: ${r.fps.toFixed(1)} fps (phaser ${r.phaserFps.toFixed(1)}), p95 frame ${r.p95.toFixed(1)} ms, worst ${r.worst.toFixed(1)} ms, ${r.renderer}, canvas ${canvas}`,
+      `[perf] ${isMobile ? 'mobile 390x844 dpr' + dpr + ' cpu/4' : 'desktop 1440x900'} ${kind} [${q}]: ${r.fps.toFixed(1)} fps (phaser ${r.phaserFps.toFixed(1)}), p95 frame ${r.p95.toFixed(1)} ms, worst ${r.worst.toFixed(1)} ms, ${r.renderer}, canvas ${canvas}`,
     )
     expect(r.fps).toBeGreaterThan(isMobile ? 20 : 30)
   })
