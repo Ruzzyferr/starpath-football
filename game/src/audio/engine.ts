@@ -133,7 +133,6 @@ export class AudioEngine {
         return
       }
       this.applyPending()
-      void this.rig.crowd.init().then(() => this.applyCrowd(), (e) => this.fail(e))
     }
     const ctx = this.rig.ctx
     if (ctx.state !== 'running' && ctx.state !== 'closed' && !(typeof document !== 'undefined' && document.visibilityState === 'hidden')) {
@@ -199,7 +198,11 @@ export class AudioEngine {
 
   sting(id: StingId): void {
     if (!this.audible('music')) return
-    this.safe((r) => r.music.sting(id))
+    this.safe((r) => {
+      const len = r.music.sting(id)
+      // Let the sting speak over the stadium.
+      r.mixer.duck('crowd', 6, { attack: 0.15, hold: Math.max(0.3, len - 1.2), release: 0.6 })
+    })
   }
 
   // ───────── UI ─────────
@@ -264,7 +267,15 @@ export class AudioEngine {
     }
   }
 
+  private crowdLoading = false
+
   private applyCrowd(): void {
+    // The crowd (textures + loops) is only built once something needs it.
+    if (this.rig && this.leases.size > 0 && !this.rig.crowd.state.ready && !this.crowdLoading) {
+      this.crowdLoading = true
+      const rig = this.rig
+      void rig.crowd.init().then(() => this.applyCrowd(), (e) => this.fail(e))
+    }
     this.safe((r) => {
       let cap = this.stadium.capacity
       let imp = this.stadium.importance

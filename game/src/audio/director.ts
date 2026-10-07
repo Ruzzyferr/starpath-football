@@ -129,6 +129,7 @@ export function installAudioDirector(): void {
     const list = burst ? fresh.filter((e, i) => e.type === 'fulltime' || (e.type === 'goal' && i === fresh.map((x) => x.type).lastIndexOf('goal'))) : fresh
     for (const e of list) react(e)
 
+    engine.withCrowd((c) => c.setMood(m.score[0] - m.score[1]))
     const t = matchTension(m.minute, m.score)
     engine.setTension(m.momentActive ? Math.max(t, 0.6) : t)
     if (m.minute !== memo.minute) {

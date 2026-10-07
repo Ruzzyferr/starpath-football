@@ -150,6 +150,6 @@ export class FakeAudioContext {
 }
 
 /** Cast helper: tests pass the fake where a BaseAudioContext is expected. */
-export function fakeCtx(): FakeAudioContext & BaseAudioContext {
-  return new FakeAudioContext() as unknown as FakeAudioContext & BaseAudioContext
+export function fakeCtx(): BaseAudioContext & Pick<FakeAudioContext, 'created' | 'resumes'> {
+  return new FakeAudioContext() as unknown as BaseAudioContext & Pick<FakeAudioContext, 'created' | 'resumes'>
 }

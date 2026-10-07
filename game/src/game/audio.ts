@@ -18,6 +18,9 @@ export type KickSound = 'pass' | 'lofted' | 'through' | 'shot' | 'chip' | 'cross
 
 let leaseSeq = 0
 
+/** Per-play variation so repeated hits never machine-gun: ±6 % pitch, ±2 dB level. */
+const vary = (): { pitch: number; gain: number } => ({ pitch: 1 + (Math.random() * 2 - 1) * 0.06, gain: Math.pow(10, ((Math.random() * 2 - 1) * 2) / 20) })
+
 export class Sfx {
   private out: GainNode | null = null
   private ctx: AudioContext | null = null
@@ -60,6 +63,7 @@ export class Sfx {
 
   dispose(): void {
     this.disposed = true
+    this.crowd((c) => c.holdBreath(false))
     if (this.held) engine.releaseCrowd(this.lease)
     this.held = false
     try {
@@ -103,6 +107,8 @@ export class Sfx {
   /** Sets the ambient crowd tension 0..1 (e.g. near goal, bullet time). */
   crowdTension(v: number): void {
     engine.setTension(v)
+    // Bullet time / the ball at the hero's feet: the stadium holds its breath.
+    this.crowd((c) => c.holdBreath(v >= 0.8))
   }
 
   /** Big eruption (≥ 0.9: the hero's team scored) or a smaller excited swell. */
@@ -153,13 +159,14 @@ export class Sfx {
     const shot = kind === 'shot' || kind === 'penalty' || kind === 'freekick' || kind === 'volley' || kind === 'clear'
     const soft = kind === 'pass' || kind === 'through'
     const chip = kind === 'chip' || kind === 'lofted' || kind === 'cross'
+    const v = vary()
     // Body: low sine drop (deeper and longer for driven shots).
     const o = ctx.createOscillator()
     o.type = 'sine'
-    o.frequency.setValueAtTime((shot ? 150 : chip ? 210 : 190) + p * 60, t)
-    o.frequency.exponentialRampToValueAtTime(shot ? 44 : 60, t + (shot ? 0.14 : 0.09))
+    o.frequency.setValueAtTime(((shot ? 150 : chip ? 210 : 190) + p * 60) * v.pitch, t)
+    o.frequency.exponentialRampToValueAtTime((shot ? 44 : 60) * v.pitch, t + (shot ? 0.14 : 0.09))
     const g = ctx.createGain()
-    this.env(g, t, (shot ? 0.65 : soft ? 0.38 : 0.45) * p + 0.12, 0.003, shot ? 0.2 : 0.12)
+    this.env(g, t, ((shot ? 0.65 : soft ? 0.38 : 0.45) * p + 0.12) * v.gain, 0.003, shot ? 0.2 : 0.12)
     o.connect(g).connect(this.out!)
     o.start(t)
     o.stop(t + 0.25)
@@ -167,7 +174,7 @@ export class Sfx {
     const n = this.noise()
     const bp = ctx.createBiquadFilter()
     bp.type = 'bandpass'
-    bp.frequency.value = shot ? 2300 : chip ? 1100 : 1700
+    bp.frequency.value = (shot ? 2300 : chip ? 1100 : 1700) * v.pitch
     bp.Q.value = chip ? 0.9 : 0.7
     const g2 = ctx.createGain()
     this.env(g2, t, (shot ? 0.34 : chip ? 0.14 : 0.2) * p, chip ? 0.006 : 0.0015, shot ? 0.05 : chip ? 0.07 : 0.04)
@@ -209,12 +216,13 @@ export class Sfx {
     if (!this.ready || !this.voice(0.1)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
+    const v = vary()
     const o = ctx.createOscillator()
     o.type = 'sine'
-    o.frequency.setValueAtTime(120, t)
-    o.frequency.exponentialRampToValueAtTime(60, t + 0.06)
+    o.frequency.setValueAtTime(120 * v.pitch, t)
+    o.frequency.exponentialRampToValueAtTime(60 * v.pitch, t + 0.06)
     const g = ctx.createGain()
-    this.env(g, t, 0.18 * strength + 0.02, 0.003, 0.07)
+    this.env(g, t, (0.18 * strength + 0.02) * v.gain, 0.003, 0.07)
     o.connect(g).connect(this.out!)
     o.start(t)
     o.stop(t + 0.1)

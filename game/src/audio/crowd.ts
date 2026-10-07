@@ -121,6 +121,9 @@ export interface CrowdState {
   homeShare: number
   heroSide: Side
   tension: number
+  /** Home goal difference (score-aware ambience). */
+  mood: number
+  holdingBreath: boolean
   ready: boolean
 }
 
@@ -153,7 +156,7 @@ export class Crowd {
   private built = false
   /** Extra hook so the engine can duck music on big moments. */
   onBigMoment: ((at: number, size: number) => void) | null = null
-  readonly state: CrowdState = { active: false, capacity: 20000, size: crowdSize(20000), importance: 0.4, homeShare: 0.85, heroSide: 'home', tension: 0, ready: false }
+  readonly state: CrowdState = { active: false, capacity: 20000, size: crowdSize(20000), importance: 0.4, homeShare: 0.85, heroSide: 'home', tension: 0, mood: 0, holdingBreath: false, ready: false }
   reduced = false
 
   private readonly quality: 'high' | 'low'
@@ -298,11 +301,43 @@ export class Crowd {
     this.lp.frequency.setTargetAtTime(bedLevels(k, this.state.importance).cutoff + this.state.tension * 900, at, 0.6)
   }
 
+  /**
+   * Score-aware ambience (home goal difference): trailing home fans get a
+   * heavier, tenser low rumble (+3 dB); leading ones chant more often.
+   */
+  setMood(homeDiff: number, at = this.ctx.currentTime): void {
+    if (homeDiff === this.state.mood) return
+    this.state.mood = homeDiff
+    this.applyBed(at, 3)
+  }
+
+  private moodChantFactor(): number {
+    return this.state.mood > 0 ? 0.6 : this.state.mood < 0 ? 1.5 : 1
+  }
+
+  private roarLevel(): number {
+    return bedLevels(this.state.size, this.state.importance).roar * (this.state.mood < 0 ? 1.41 : 1)
+  }
+
+  /**
+   * The ball reaches the hero: the stadium "holds its breath" (bed −8 dB and
+   * darker) until the outcome; release with `false` (or any big reaction).
+   */
+  holdBreath(on: boolean, at = this.ctx.currentTime): void {
+    if (!this.built || this.state.holdingBreath === on) return
+    this.state.holdingBreath = on
+    const p = this.babbleDip.gain
+    p.cancelScheduledValues(at)
+    p.setTargetAtTime(on ? 0.4 : 1, at, on ? 0.13 : 0.4)
+    const cut = bedLevels(this.state.size, this.state.importance).cutoff + this.state.tension * 900
+    this.lp.frequency.setTargetAtTime(on ? Math.min(cut, 1400) : cut, at, on ? 0.13 : 0.4)
+  }
+
   private applyBed(at: number, tc: number): void {
     if (!this.built) return
     const b = bedLevels(this.state.size, this.state.importance)
     for (const l of this.babble) l.gain.gain.setTargetAtTime(b.babble, at, tc / 3)
-    for (const l of this.roar) l.gain.gain.setTargetAtTime(b.roar, at, tc / 3)
+    for (const l of this.roar) l.gain.gain.setTargetAtTime(this.roarLevel(), at, tc / 3)
     this.lp.frequency.setTargetAtTime(b.cutoff + this.state.tension * 900, at, tc / 3)
     this.wet.gain.setTargetAtTime(b.wet, at, tc / 3)
   }
@@ -376,11 +411,13 @@ export class Crowd {
     if (!this.built) return
     const k = this.state.size
     const w = sideWeight(side, this.state.homeShare)
-    const loud = 0.45 + 0.55 * k
+    // "Soft goal explosion" in reduced-sound mode (−6 dB).
+    const loud = (0.45 + 0.55 * k) * (this.reduced ? 0.5 : 1)
+    this.holdBreath(false, at)
     this.shot(this.tex!.goalYell, this.fansIn(side), at, (0.65 * loud * (0.4 + 0.6 * w)), { rate: this.rng.range(0.97, 1.03) })
     if (side === 'home') {
       this.swell(this.cheerE.gain, at, 0.85 * loud, 0.25, 3.5, 6)
-      for (const l of this.roar) this.swell(l.gain.gain, at, bedLevels(k, 1).roar * 2.2 + 0.1, 0.3, 3, 5, bedLevels(k, this.state.importance).roar)
+      for (const l of this.roar) this.swell(l.gain.gain, at, bedLevels(k, 1).roar * 2.2 + 0.1, 0.3, 3, 5, this.roarLevel())
       this.swell(this.applause.gain.gain, at + 2.5, 0.35 * loud, 1, 3, 4)
       this.swell(this.whistles.gain.gain, at + 0.5, 0.06 * loud, 0.5, 2, 3)
       this.queueChant(at + 7)
@@ -400,12 +437,13 @@ export class Crowd {
     const i = Math.max(0, Math.min(1, intensity))
     if (side === 'home') this.swell(this.cheerE.gain, at, (0.18 + 0.3 * i) * (0.4 + 0.6 * k), 0.6, 1.2, 2.2)
     else this.swell(this.babbleDip.gain, at, 1.25, 0.5, 1, 2, 1)
-    for (const l of this.roar) this.swell(l.gain.gain, at, bedLevels(k, this.state.importance).roar * (1 + 0.8 * i), 0.6, 1, 2.5, bedLevels(k, this.state.importance).roar)
+    for (const l of this.roar) this.swell(l.gain.gain, at, this.roarLevel() * (1 + 0.8 * i), 0.6, 1, 2.5, this.roarLevel())
   }
 
   /** Near miss / woodwork / big save: "ooooh" from the attacking side, applause. */
   nearMiss(side: Side, at = this.ctx.currentTime): void {
     if (!this.built) return
+    this.holdBreath(false, at)
     const k = this.state.size
     const w = sideWeight(side, this.state.homeShare)
     this.shot(this.tex!.ooh, this.fansIn(side), at, (0.55 + 0.45 * k) * (0.35 + 0.65 * w), { rate: this.rng.range(0.95, 1.05) })
@@ -416,6 +454,7 @@ export class Crowd {
   /** Disappointment from `side`'s fans. */
   groan(side: Side, at = this.ctx.currentTime): void {
     if (!this.built) return
+    this.holdBreath(false, at)
     const w = sideWeight(side, this.state.homeShare)
     this.shot(this.tex!.groan, this.fansIn(side), at, (0.5 + 0.4 * this.state.size) * (0.35 + 0.65 * w), { rate: this.rng.range(0.96, 1.04) })
   }
@@ -511,14 +550,14 @@ export class Crowd {
       const c = this.pendingChant
       this.pendingChant = null
       this.chant(c.def, c.passes, c.at)
-      this.nextChantAt = this.chantUntil + b.chantEvery * this.rng.range(0.6, 1.3)
+      this.nextChantAt = this.chantUntil + b.chantEvery * this.moodChantFactor() * this.rng.range(0.6, 1.3)
     }
     if (this.nextChantAt < until) {
       if (!this.reduced && this.state.size > 0.15 && this.nextChantAt >= this.chantUntil) {
         const def = CHANTS[this.rng.int(0, CHANTS.length - 1)]
         this.chant(def, this.rng.int(2, 3), this.nextChantAt)
       }
-      this.nextChantAt = Math.max(this.nextChantAt, this.chantUntil) + b.chantEvery * this.rng.range(0.6, 1.3)
+      this.nextChantAt = Math.max(this.nextChantAt, this.chantUntil) + b.chantEvery * this.moodChantFactor() * this.rng.range(0.6, 1.3)
     }
     if (this.nextShoutAt < until) {
       // Single voices are only audible in small grounds.
