@@ -217,34 +217,34 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.1#58 | KISMİ | game/runtime.ts:937 | Başka arkadaşa giden pas başarısız sayılıyor |
 | 2.1#59 | EKSİK | game/runtime.ts:729 | Ver-kaç mekaniği yok |
 | 2.1#60 | EKSİK | - | Vizyon'a göre pas hedefi vurgusu ve ofsayt çerçevesi yok |
-| 2.1#62 | EKSİK | - | Orta için ayrı yan kamera yok |
+| 2.1#62 | KISMİ | game/view.ts (crossCamFrame), game/MatchScene.ts | WP-13/14: orta havadayken kamera topun düşeceği yere döner ve geri çekilir; gerçek yan açı projeksiyon değişikliği ister (WP-16) |
 | 2.1#67 | KISMİ | game/runtime.ts:1890 | Kafa zamanlama halkası var; ayrı kafa an tipi yok |
 | 2.1#68 | EKSİK | - | Kafa yönü kontrolü yok |
-| 2.1#71 | EKSİK | - | 18 m kafa menzil sınırı yok |
-| 2.1#72 | KISMİ | sim/match/highlightGen.ts:63 | Tek 'defend' tipi var; pas arası, 1'e 1 ve blok ayrı değil |
-| 2.1#73 | KISMİ | game/runtime.ts:812 | Kayarak müdahale var; arkadan faul ve kart kuralları eksik |
+| 2.1#71 | TAMAM | game/kick.ts (HEADER_RANGE) | Kafa vuruşu en fazla 18 m taşır; ötesi kısa indirme (kick.test) |
+| 2.1#72 | TAMAM | sim/match/highlightGen.ts (placeDefend1v1, placeBlock) | WP-14: defend, interception, defend_1v1, block ayrı an tipleri |
+| 2.1#73 | TAMAM | game/ai.ts (tackleOdds, cardForFoul) | Arkadan müdahale faul/kart olasılığını artırıyor; kartlar hakem sertliğiyle ölçekli; avantaj kuralı (runtime.tryAdvantage) |
 | 2.1#74 | KISMİ | game/ai.ts:253 | Zamanlamaya bağlı müdahale var; 0,8 m/%70 kuralı yok |
 | 2.1#81 | TAMAM | game/ai.ts:408 | Kaleci 2D hareket ediyor, tepki Refleks'e bağlı |
-| 2.1#82 | KISMİ | game/ai.ts:471 | Tutma/sektirme var; yumruklama yok |
+| 2.1#82 | TAMAM | game/ai.ts (punchChance), game/runtime.ts (punch) | Yüksek topta kalabalık/yükseklik/hız/tutuş: yumruk ya da tutma |
 | 2.1#83 | KISMİ | game/ai.ts:478 | Kurtarış fonksiyonu var; 1.000 şut tutarlılık testi yok |
 | 2.1#85 | KISMİ | sim/match/highlightGen.ts:456 | Kaleci kariyerinde yalnızca kurtarış ve penaltı anı var |
 | 2.1#86 | KISMİ | game/input.ts:426 | Uzanma var; Refleks'e bağlı pencere yok |
 | 2.1#87 | KISMİ | game/runtime.ts:1238 | Vücut açısı ipucu var; erken ipucu ve ceza yok |
 | 2.1#93 | KISMİ | game/runtime.ts:377 | Penaltı panik titremesi var; eşik ve değerler farklı |
-| 2.1#94 | KISMİ | game/runtime.ts:908 | Kaleci %10 ortada kalıyor; yön hafızası yok |
+| 2.1#94 | TAMAM | sim/match/referee.ts (ShotBook), game/runtime.ts (keeperRead) | Kaleciler kahramanın penaltı/şut yönlerini maç ve sezon boyunca hatırlıyor; penaltıda eğilme + "KÖŞENİ BİLİYOR" ipucu |
 | 2.1#95 | KISMİ | sim/match/highlightGen.ts:295 | Baraj sabit 4 kişi; kaleci talimatı yok |
 | 2.1#97 | KISMİ | sim/match/highlightGen.ts:60 | Korner anı var; yükseklik ve kavis seçimi yok |
 | 2.1#98 | KISMİ | game/runtime.ts:889 | Kornerde ofsayt atlanıyor; birim test yok |
 | 2.1#102 | KISMİ | game/offside.ts:1 | Ofsayt var; 500 değil ~11 test |
 | 2.1#103 | EKSİK | - | Ofsayt çizgisi çizilmiyor |
-| 2.1#104 | KISMİ | game/ai.ts:260 | Faul olasılığı var; hakem sertliği 1–5 yok |
-| 2.1#105 | KISMİ | game/ai.ts:276 | Kırmızı kart olasılıksal; ceza 1 maç (plan 1–3) |
+| 2.1#104 | TAMAM | sim/match/referee.ts, sim/world/referees.ts | Hakem sertliği 1-5 + avantaj eğilimi; maç önü kartı; sim ve anlarda faul/kart çarpanı |
+| 2.1#105 | TAMAM | sim/match/referee.ts (banMatches) | Kırmızı 1-3 maç (ikinci sarı/son adam 1, sert faul 2, şiddet 3); 5 sarı = 1 maç; kahraman ve NPC'ler |
 | 2.1#111 | KISMİ | game/runtime.ts:1108 | Arkadaşlar kesişme noktasına koşuyor; kabul testi yok |
-| 2.1#112 | KISMİ | game/ai.ts:96 | Derinlik koşusu var; el kaldırma yok |
+| 2.1#112 | TAMAM | game/runtime.ts (callForBall), game/input.ts | El kaldırıp pas isteme: uzun bas / G / gamepad Y; ilişki-vizyon-pas yolu; "PAS VERMİYOR" |
 | 2.1#119 | KISMİ | sim/match/highlightGen.ts:446 | Mevkiye göre ağırlık var; kafa ve dribbling tipleri yok |
-| 2.1#120 | KISMİ | sim/match/highlightGen.ts:447 | Forvet anları var; top saklama yok |
+| 2.1#120 | TAMAM | sim/match/highlightGen.ts (placeHoldUp) | WP-14: hold_up (top saklama) anı |
 | 2.1#121 | KISMİ | sim/match/highlightGen.ts:448 | Kanat ortası ağırlıklı; 2 orta garantisi yok |
-| 2.1#124 | KISMİ | sim/match/highlightGen.ts:453 | Bek dengesi plandan farklı |
+| 2.1#124 | KISMİ | sim/match/highlightGen.ts (KIND_WEIGHTS) | Beklere defend_1v1 ve block eklendi; plan oranlarıyla tam kalibrasyon yok |
 | 2.1#125 | KISMİ | sim/match/highlightGen.ts:455 | Stoper için 3 savunma anı garantisi yok |
 | 2.1#128 | KISMİ | core/types.ts:437 | 4 zorluk var; "Özel" mod yok |
 | 2.1#129 | KISMİ | sim/game/balance.test.ts:84 | Sezon gol medyanı raporlanıyor; 25–45 bandı kontrolü yok |
@@ -971,6 +971,8 @@ Kalan hissiyat boşlukları: sapan şut, salınan güç çubuğu, PC tekerlek fa
   3. Takım arkadaşı el kaldırma / pas isteme jesti (GDD 3.4, 2.1#112). İlişkisi düşük arkadaş az pas veriyor ve "Pas vermiyor" mesajı çıkıyor (GDD 2.5).
   4. Ayrı an tipleri: top saklama, 1'e 1 savunma, blok (2.1#72, #120, #124).
   5. Her kural için birim test (faul olasılığı, kart cezası, avantaj).
+
+> **Durum (yapıldı):** Hakem kişilikleri (ülke başına sabit havuz, sertlik 1-5, avantaj eğilimi) maç önü kartında; sim ve anlarda faul/kart çarpanı (sertlik 3 = nötr). Avantaj kuralı: "AVANTAJ!" sonra şut/7 m ilerleme yoksa geri çağrılıyor. Kırmızı kart 1-3 maç (kahraman + NPC, kadro seçiminde cezalı oyuncu yok, kayıtta saklanıyor), 5 sarı 1 maç. Kaleci yumruk/tutma kararı, kaleci defteri (penaltı/şut yön hafızası, eğilme + ipucu), pas isteme jesti ("PAS VERMİYOR"), yeni an tipleri hold_up / defend_1v1 / block (üretim, runtime, auto-resolve, TR/EN, demo, his bandı). Testler: `sim/match/referee.test.ts`, `game/referee.test.ts`, `game/keeper.test.ts`, `game/callForBall.test.ts`, `game/moments14.test.ts`, `e2e/wp14.spec.ts`. WP-13 artıkları: 18 m kafa menzili, orta kamerası (çerçeveleme). **Ertelendi:** 2.1#95 baraj talimatı ve 2.1#97 korner yükseklik/kavis seçimi (kahramanın korner/baraj kurduğu an tipi yok; yeni set-piece arayüzü gerekir).
 
 ### WP-15 · Kariyer, Sözleşme ve Ekonomi Boşlukları
 - **Dokunduğu dosyalar:** `game/src/sim/career/contract.ts`, `sim/career/squadRole.ts`, `sim/game/newGame.ts`, `sim/life/economy.ts`, `sim/life/sponsors.ts`, `core/types.ts` (yalnızca alan ekleme), `ui/screens/ContractScreen.tsx`, `ui/screens/wizard/**`, `ui/screens/life/Bank.tsx`, `i18n/sections/career3.ts`.

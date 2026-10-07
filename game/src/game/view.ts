@@ -50,3 +50,17 @@ export function pitchDirToScreen(dx: number, dy: number): Vec2 {
 
 /** Draw-order depth from the pitch x (nearer the camera = lower on screen = drawn later). */
 export const depthFor = (x: number, bias = 0) => 1000 + (PITCH_LENGTH - x) * 10 + bias
+
+/** Cross camera: how far along ball → drop point the frame sits, and the pull-back. */
+export const CROSS_CAM_T = 0.62
+export const CROSS_CAM_ZOOM = 0.86
+
+/**
+ * Cross camera (WP-13 #4, 2.1#62). While a cross is in the air the live
+ * camera swings off the ball toward where it will drop, framing the delivery
+ * across the box from the flank (crosser, runners and keeper in one shot), and
+ * pulls back a touch. Returns the pitch-space focus and a zoom multiplier.
+ */
+export function crossCamFrame(ball: Vec2, landing: Vec2): { x: number; y: number; zoomMult: number } {
+  return { x: ball.x + (landing.x - ball.x) * CROSS_CAM_T, y: ball.y + (landing.y - ball.y) * CROSS_CAM_T, zoomMult: CROSS_CAM_ZOOM }
+}

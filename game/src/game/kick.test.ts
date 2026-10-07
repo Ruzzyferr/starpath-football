@@ -206,7 +206,7 @@ describe('heading range (WP-13 #4, 2.1#71)', () => {
     const b = landing(plan, from, 2)
     const tr = createTracker()
     for (let i = 0; i < 600; i++) {
-      stepBall(b, DEFAULT_ENV, tr, 1 / 120)
+      stepBall(b, DEFAULT_ENV, tr, [])
       if (b.z <= 0.12 && b.vz <= 0.5) break
     }
     return Math.hypot(b.x - from.x, b.y - from.y)

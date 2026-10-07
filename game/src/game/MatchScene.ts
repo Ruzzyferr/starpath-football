@@ -42,11 +42,11 @@ import {
 } from './presentation'
 import type { AimAssist } from './kick'
 import { clampN, dist, type Agent } from './model'
-import { GOAL_CENTER_Y } from './physics'
+import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder } from './inputReplay'
 import { ASSIST_REWARD } from '../sim/match/rating'
-import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
+import { CROSS_CAM_ZOOM, PPM, TILT, ZS, crossCamFrame, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -218,6 +218,8 @@ export class MatchScene extends Phaser.Scene {
   private floaters: Floater[] = []
 
   private cam = { x: 0, y: 0, zoom: 1, base: 1, punch: 0 }
+  /** Cross camera: drop point of the delivery in the air, until game time `until` (WP-13 #4). */
+  private crossCam: { lx: number; ly: number; until: number } | null = null
   /** Height (game px) of the HUD band at the top; the play camera renders below it so the HUD never covers play. */
   private hudTop = 0
   /** Safe-area inset (notch) at the top of the canvas, game px. */
@@ -1392,7 +1394,13 @@ export class MatchScene extends Phaser.Scene {
       // Target in pitch space: ball + velocity look-ahead + lean toward the action.
       let px = bx
       let py = by
-      if (!replay) {
+      const cc = !replay && this.crossCam && !rt.owner && rt.time < this.crossCam.until ? this.crossCam : null
+      if (!cc) this.crossCam = null
+      if (cc) {
+        const f = crossCamFrame({ x: bx, y: by }, { x: cc.lx, y: cc.ly })
+        px = f.x
+        py = f.y
+      } else if (!replay) {
         const look = 0.38
         px += clampN(rt.ball.vx * look, -9, 9)
         py += clampN(rt.ball.vy * look, -6, 6)
@@ -1409,7 +1417,8 @@ export class MatchScene extends Phaser.Scene {
     this.cam.punch *= Math.exp(-dt * 5)
     if (this.rm) this.cam.punch = 0
     const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
-    const targetZoom = target ? target.zoom : this.cam.base * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
+    const crossZoom = this.crossCam && !target && !replay ? CROSS_CAM_ZOOM : 1
+    const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
     this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
     // Clamp to the stadium.
     const w = this.scale.width
@@ -1733,6 +1742,13 @@ export class MatchScene extends Phaser.Scene {
             if (shot) this.shake(90, 0.003)
             this.vibrate(shot ? 35 : 18)
             this.lastKeyT = rt.time
+          }
+          // Cross camera: a delivery into the box swings the camera toward where it drops.
+          this.crossCam = null
+          if ((e.kick === 'cross' || e.kick === 'lofted') && e.x > PITCH_LENGTH * 0.55 && rt.agents.find((a) => a.id === e.by)?.team === 'hero') {
+            const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 4 })
+            const drop = pts.find((q, i) => i > 0 && q.z < 2.2 && q.z < pts[i - 1].z) ?? pts[pts.length - 1]
+            if (drop && drop.x > PITCH_LENGTH - 22) this.crossCam = { lx: drop.x, ly: drop.y, until: rt.time + Math.min(2.5, drop.t + 0.4) }
           }
           // Remember the offside line when a delivery is played (drawn if the flag goes up).
           if (!shot) {
