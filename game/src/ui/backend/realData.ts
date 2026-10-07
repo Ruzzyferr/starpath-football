@@ -43,6 +43,7 @@ import { readHistory } from './history'
 import { postMatchView, preMatchView } from './liveMatch'
 import { slotInfos } from './persistence'
 import { cached } from './session'
+import { contentFlags } from '../../core/contentFlags'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 const S = (): GameState | null => gameState.value
@@ -132,7 +133,7 @@ function activitiesView(s: GameState): ActivityView[] {
   return cached(s, 'activities', () => {
     const base = activityContext(s)
     const cur = s.calendar.slot
-    return ACTIVITIES.filter((d) => !HIDDEN_ACTIVITIES.has(d.id)).map((def): ActivityView => {
+    return ACTIVITIES.filter((d) => !HIDDEN_ACTIVITIES.has(d.id) && !(contentFlags.hideCasino && d.special === 'casino')).map((def): ActivityView => {
       // Available if it fits any remaining slot of today; the reason shown is for the current slot.
       let reason: LText | null = null
       let ok = false

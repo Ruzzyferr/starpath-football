@@ -33,6 +33,7 @@ import type {
   FollowUp,
   ResolvedEffect,
 } from './types'
+import { contentFlags } from '../../../core/contentFlags'
 
 // ───────────────────────── Tunables ─────────────────────────
 
@@ -372,6 +373,7 @@ const oldEnough = (state: GameState, def: EventDef): boolean =>
 /** True if `def` may spontaneously fire now (ignores weekly caps and chance). */
 export function isEligible(state: GameState, def: EventDef, tags: readonly string[], abs = absoluteWeek(state.calendar)): boolean {
   if (def.followUpOnly) return false
+  if (contentFlags.hideCasino && (def.category === 'casino' || def.triggers?.includes('casino'))) return false
   if (!triggerMatches(def, tags)) return false
   const last = state.life.eventHistory[def.id]
   if (last !== undefined) {

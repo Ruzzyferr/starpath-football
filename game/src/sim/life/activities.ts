@@ -20,6 +20,7 @@ import { casinoExclusion } from './casino'
 import { makePost, type PostType } from './social'
 import { sponsorShootPay } from './sponsors'
 import { addHappiness, addHealth, addStress, energyCap, isBurnedOut, wellbeingXpMultiplier } from './wellbeing'
+import { contentFlags } from '../../core/contentFlags'
 
 /** Situation of the current slot, supplied by the game layer. */
 export interface ActivityContext {
@@ -147,6 +148,7 @@ export function activityBlock(hero: Hero, life: Life, def: ActivityDef, ctx: Act
     const n = c.minAge - heroAge(hero, ctx.calendar.season)
     return fill(lt('{a} yaş sınırı var. {n} yıl sonra kapılar açılır.', 'Strictly {a}+. The doors open in {n} year(s).'), { a: c.minAge, n })
   }
+  if (def.special === 'casino' && contentFlags.hideCasino) return lt('Kumarhane gizli.', 'Casino is hidden.')
   if (def.special === 'casino' && casinoExclusion(life) > 0) {
     return fill(lt('Kumarhaneyi kendine {n} hafta kapattın.', 'You locked yourself out of the casino for {n} more week(s).'), { n: casinoExclusion(life) })
   }

@@ -4,7 +4,7 @@ import '../../styles/screens/life.css'
 import { Button, EmptyState, MeterRing, Page, TabPanel, Tabs } from '../components'
 import { formatCompact } from '../format'
 import { Icon } from '../icons'
-import { gameState, navigate, screen } from '../store'
+import { gameState, navigate, screen, settings } from '../store'
 import { Assets } from './life/Assets'
 import { Bank } from './life/Bank'
 import { Business } from './life/Business'
@@ -33,6 +33,7 @@ export function LifeScreen() {
       wide
       showBack={false}
       actions={
+        settings.value.hideCasino ? undefined : (
         <span class="life-casino-cta">
           <Button size="sm" variant="ghost" icon={features.value.casino.unlocked ? 'cards' : 'lock'} onClick={() => navigate('casino')}>
             {t('life.casinoCta')}
@@ -40,6 +41,7 @@ export function LifeScreen() {
           <NewTag feature="casino" />
           <LockChip feature="casino" />
         </span>
+        )
       }
     >
       <div class="life-stats" role="group" aria-label={t('nav.statusBar')}>
