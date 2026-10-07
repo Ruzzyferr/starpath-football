@@ -388,6 +388,7 @@ export function applyMatchRelations(life: Life, hero: Pick<Hero, 'perks' | 'gend
   }
   life.flags.last_match_rating = Math.round(m.rating * 10) / 10
   life.flags.last_match_shone = heroShone(m) && !m.red
+  life.flags.last_match_result = m.won ? 'W' : m.drew ? 'D' : 'L'
   life.flags[REL_WEEK_FLAG] = week
   return d
 }
