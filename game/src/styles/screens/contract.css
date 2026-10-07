@@ -1,0 +1,111 @@
+/* Contract & negotiation (.ctr-) */
+.ctr-current {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+  max-width: 640px;
+  background: var(--surface-1);
+  background: linear-gradient(130deg, color-mix(in srgb, var(--c1) 26%, transparent), var(--surface-1) 65%);
+}
+.ctr-current-head { gap: var(--sp-4); }
+.ctr-dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  margin: 0;
+}
+.ctr-dl dt { font-size: var(--fs-xs); color: var(--text-lo); }
+.ctr-dl dd { margin: 2px 0 0; font-weight: 600; }
+.ctr-current-actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+
+.ctr-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  margin-bottom: var(--sp-4);
+  border-radius: var(--r-modal);
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--c1) 30%, transparent) 0%, transparent 60%),
+    var(--surface-1);
+  box-shadow: var(--sh-card);
+}
+.ctr-club { font-size: var(--fs-h2); margin: 4px 0 2px; }
+
+.ctr-grid { display: grid; gap: var(--sp-4); grid-template-columns: minmax(0, 1fr); }
+.ctr-grid > *, .ctr-agent > * { min-width: 0; }
+@media (min-width: 1000px) {
+  .ctr-grid { grid-template-columns: 1.3fr 1fr; align-items: start; }
+  .ctr-grid > .stack:last-child { position: sticky; top: var(--sp-2); }
+}
+
+.ctr-agent { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.ctr-bubble {
+  position: relative;
+  flex: 1;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: 4px var(--r-card) var(--r-card) var(--r-card);
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+}
+.ctr-bubble p { margin-top: 4px; }
+.ctr-estimate { display: flex; align-items: center; gap: 6px; color: var(--accent-blue); }
+.ctr-response { border-left: 3px solid var(--accent-gold); }
+.ctr-response p { margin-top: 4px; font-style: italic; }
+
+.ctr-sliders { --gap: var(--sp-5); }
+
+.ctr-compare { overflow: hidden; }
+.ctr-table { font-size: var(--fs-sm); }
+.ctr-table th,
+.ctr-table td { padding: 11px var(--sp-3); text-align: right; }
+.ctr-table thead th {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-mid);
+  background: var(--surface-2);
+}
+.ctr-table tbody th { text-align: left; font-weight: 500; color: var(--text-mid); }
+.ctr-table tbody tr:nth-child(even) { background: rgba(255, 255, 255, 0.025); }
+.ctr-table td { font-weight: 600; }
+.ctr-up { color: var(--accent-gold); }
+.ctr-up::after { content: ' ▲'; font-size: 0.75em; }
+.ctr-down { color: var(--accent-blue); }
+.ctr-down::after { content: ' ▼'; font-size: 0.75em; }
+.ctr-actions { display: flex; flex-direction: column; gap: var(--sp-2); }
+.ctr-confirm { justify-content: flex-end; width: 100%; }
+
+.ctr-outcome {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+  max-width: 520px;
+  margin: var(--sp-6) auto;
+  text-align: center;
+  overflow: hidden;
+  animation: pop-in var(--dur-slow) var(--ease-spring) both;
+}
+.ctr-quote { font-style: italic; }
+.ctr-burst { position: absolute; inset: 0; pointer-events: none; }
+.ctr-burst span {
+  position: absolute;
+  left: 50%;
+  top: 30%;
+  width: 4px;
+  height: 46%;
+  margin-left: -2px;
+  transform-origin: 50% 0;
+  transform: rotate(calc(var(--i) * 30deg));
+  background: linear-gradient(rgba(255, 200, 61, 0.35), transparent);
+  animation: ctr-ray 1.4s var(--ease-out) both;
+}
+@keyframes ctr-ray {
+  from { opacity: 0; transform: rotate(calc(var(--i) * 30deg)) scaleY(0.2); }
+  to { opacity: 1; transform: rotate(calc(var(--i) * 30deg)) scaleY(1); }
+}

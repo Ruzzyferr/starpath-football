@@ -1,0 +1,252 @@
+/* Life hub: relationships, assets, bank, social, sponsors. Tokens only. */
+
+/* ── Top stats strip ── */
+.life-stats {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-4);
+  overflow-x: auto;
+  padding: var(--sp-3) var(--sp-1) var(--sp-4);
+  margin-bottom: var(--sp-2);
+  scrollbar-width: none;
+}
+.life-stats::-webkit-scrollbar { display: none; }
+.life-stats > * { flex: 0 0 auto; }
+.life-followers {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 84px;
+  height: 58px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-card);
+  background: linear-gradient(140deg, rgba(142, 92, 255, 0.22), rgba(142, 92, 255, 0.04));
+  border: 1px solid rgba(142, 92, 255, 0.35);
+  color: var(--accent-violet);
+}
+.life-followers .score-font { font-size: 26px; color: var(--text-hi); }
+.life-followers .micro { font-size: 9.5px; }
+
+/* ── Relationships ── */
+.life-people {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr));
+}
+.life-person {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  position: relative;
+  overflow: hidden;
+}
+.life-person::before {
+  content: '';
+  position: absolute;
+  inset: 0 0 auto 0;
+  height: 3px;
+  background: linear-gradient(90deg, var(--brand-pitch), transparent 70%);
+  opacity: 0.6;
+}
+.life-person-head { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.life-person-kind { color: var(--accent-blue); margin-bottom: 2px; }
+.life-person-memory {
+  font-style: italic;
+  line-height: 1.4;
+  border-left: 2px solid var(--border-strong);
+  padding-left: var(--sp-3);
+  min-height: 2.8em;
+}
+.life-person-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-1);
+  margin-top: auto;
+  padding-top: var(--sp-2);
+  border-top: 1px solid var(--hairline);
+}
+.life-person-actions .btn { min-height: 44px; }
+
+/* ── Assets ── */
+.life-assets-grid {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr));
+}
+.life-asset {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  position: relative;
+}
+.life-asset.is-owned { box-shadow: var(--sh-glow-pitch); }
+.life-asset.is-locked .life-asset-badge,
+.life-asset.is-locked .life-asset-name { opacity: 0.55; }
+.life-asset-top { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--sp-2); }
+.life-asset-badge {
+  display: inline-grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: var(--r-card);
+  color: var(--text-hi);
+  background: linear-gradient(145deg, var(--surface-3), var(--surface-1));
+  border: 1px solid var(--border);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+.life-asset-badge.cat-house, .life-asset-badge.cat-island { color: var(--brand-pitch); background: linear-gradient(145deg, rgba(31, 212, 122, 0.25), var(--surface-1)); }
+.life-asset-badge.cat-car, .life-asset-badge.cat-boat, .life-asset-badge.cat-jet { color: var(--accent-blue); background: linear-gradient(145deg, rgba(61, 165, 255, 0.25), var(--surface-1)); }
+.life-asset-badge.cat-watch, .life-asset-badge.cat-fashion, .life-asset-badge.cat-art { color: var(--accent-gold); background: linear-gradient(145deg, rgba(255, 200, 61, 0.22), var(--surface-1)); }
+.life-asset-badge.cat-tech, .life-asset-badge.cat-business, .life-asset-badge.cat-facility { color: var(--accent-violet); background: linear-gradient(145deg, rgba(142, 92, 255, 0.25), var(--surface-1)); }
+.life-asset-badge.cat-pet { color: var(--state-warning); background: linear-gradient(145deg, rgba(255, 210, 63, 0.18), var(--surface-1)); }
+.life-asset-name { line-height: 1.1; }
+.life-asset-specs {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-2);
+  margin: 0;
+  padding: var(--sp-2);
+  border-radius: var(--r-btn);
+  background: var(--bg-1);
+}
+.life-asset-specs div, .bank-loan-specs div, .cas-stats div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.life-asset-specs dt, .bank-loan-specs dt { font-size: var(--fs-micro); color: var(--text-lo); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
+.life-asset-specs dd, .bank-loan-specs dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; }
+.life-asset-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); margin-top: auto; padding-top: var(--sp-2); }
+.life-asset-price { font-family: var(--font-score); font-size: 28px; line-height: 1; color: var(--accent-gold); }
+
+.life-shelf {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(auto-fill, minmax(min(100%, 280px), 1fr));
+}
+.life-shelf-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-card);
+  background: linear-gradient(180deg, var(--surface-1), var(--bg-1));
+  border: 1px solid var(--border);
+  border-bottom: 3px solid var(--accent-gold-deep);
+}
+.life-shelf-item .life-asset-badge { width: 44px; height: 44px; }
+.life-shelf-name { font-weight: 600; }
+
+/* ── Bank ── */
+.bank-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+.bank-hero { display: flex; flex-direction: column; gap: var(--sp-4); background: radial-gradient(120% 140% at 0% 0%, rgba(255, 200, 61, 0.12), transparent 55%), var(--surface-2); }
+.bank-hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
+.bank-hero-row > :last-child { margin-left: auto; }
+.bank-big { font-size: clamp(30px, 6vw, 44px); }
+.bank-networth { display: flex; flex-direction: column; gap: var(--sp-2); }
+.bank-networth .linechart { width: 100%; }
+.bank-loan-specs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-3); margin: 0; }
+.bank-loan-bar { height: 8px; border-radius: var(--r-pill); background: var(--surface-3); overflow: hidden; }
+.bank-loan-bar span { display: block; height: 100%; background: var(--brand-pitch); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
+.bank-inv-list { display: flex; flex-direction: column; }
+.bank-inv {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+  border-bottom: 1px solid var(--hairline);
+  min-height: 56px;
+}
+.bank-inv-name { font-weight: 600; }
+.bank-inv-val { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.bank-newinv { margin-top: var(--sp-4); padding-top: var(--sp-4); border-top: 1px dashed var(--border); }
+.bank-kinds { display: grid; gap: var(--sp-2); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
+.bank-kind {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  min-height: 56px;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  border-radius: var(--r-btn);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  transition: transform var(--dur-micro) var(--ease-out);
+}
+.bank-kind:active { transform: scale(0.98); }
+.bank-kind.is-active { border-color: var(--brand-pitch); background: rgba(31, 212, 122, 0.1); }
+.bank-kind-name { font-weight: 600; }
+
+/* ── Social ── */
+.soc-layout { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
+.soc-profile { display: flex; flex-direction: column; gap: var(--sp-4); background: radial-gradient(120% 120% at 100% 0%, rgba(142, 92, 255, 0.22), transparent 60%), var(--surface-2); }
+.soc-profile-head { display: flex; align-items: center; gap: var(--sp-4); min-width: 0; }
+.soc-followers { margin-top: var(--sp-1); }
+.soc-followers .score-font { font-size: 32px; }
+.soc-growth .sparkline { width: 100%; height: auto; margin-top: var(--sp-2); }
+.soc-verified { color: var(--accent-blue); flex: 0 0 auto; }
+.soc-compose { display: flex; flex-direction: column; gap: var(--sp-3); }
+.soc-kinds { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.soc-kind {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 var(--sp-3);
+  border-radius: var(--r-pill);
+  background: var(--bg-1);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  transition: transform var(--dur-micro) var(--ease-out);
+}
+.soc-kind:active { transform: scale(0.96); }
+.soc-kind.is-active { color: var(--text-hi); border-color: var(--accent-violet); background: rgba(142, 92, 255, 0.18); }
+.soc-kind.risk-high.is-active { border-color: var(--state-danger); background: rgba(255, 77, 94, 0.14); }
+.soc-risk { display: flex; align-items: center; gap: var(--sp-1); color: var(--text-mid); }
+.soc-risk.risk-high { color: var(--neg); }
+.soc-risk.risk-medium { color: var(--state-warning); }
+.soc-feed { display: flex; flex-direction: column; border-radius: var(--r-card); background: var(--surface-1); border: 1px solid var(--border); overflow: hidden; }
+.soc-post { display: flex; gap: var(--sp-3); padding: var(--sp-4); border-bottom: 1px solid var(--hairline); animation: rise-in var(--dur-screen) var(--ease-out) both; }
+.soc-post:last-child { border-bottom: 0; }
+.soc-post.is-hero { background: linear-gradient(90deg, rgba(142, 92, 255, 0.1), transparent 60%); }
+.soc-post.soc-hater .soc-text { color: var(--text-mid); }
+.soc-post-main { display: flex; flex-direction: column; gap: var(--sp-1); }
+.soc-post-head { display: flex; align-items: center; gap: var(--sp-1); min-width: 0; font-size: var(--fs-sm); }
+.soc-author { font-weight: 700; }
+.soc-handle, .soc-time { color: var(--text-lo); white-space: nowrap; }
+.soc-text { line-height: 1.45; overflow-wrap: anywhere; }
+.soc-meta { display: flex; gap: var(--sp-5); color: var(--text-lo); font-size: var(--fs-sm); }
+.soc-meta > span { display: inline-flex; align-items: center; gap: 4px; }
+
+/* ── Sponsors ── */
+.life-deals { display: grid; gap: var(--sp-3); grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
+.life-deal { display: flex; flex-direction: column; gap: var(--sp-3); }
+.life-deal.is-offer { border-style: dashed; }
+.life-deal-head { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; }
+.life-deal-mono {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex: 0 0 auto;
+  border-radius: var(--r-card);
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: 22px;
+  color: var(--bg-0);
+  background: var(--brand);
+  box-shadow: inset 0 -3px 0 rgba(0, 0, 0, 0.25);
+}
+.life-deal-pay { display: flex; flex-direction: column; align-items: flex-end; }
+.life-deal-pay .money { font-family: var(--font-score); font-size: 26px; line-height: 1; color: var(--accent-gold); }
+.life-deal-actions { justify-content: flex-end; }
+
+@media (min-width: 900px) {
+  .bank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .bank-hero, .bank-invest { grid-column: span 2; }
+  .soc-layout { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; }
+  .soc-profile { position: sticky; top: 0; }
+}

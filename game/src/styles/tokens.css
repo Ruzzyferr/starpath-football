@@ -1,0 +1,210 @@
+/*
+ * StarPath Football — design tokens ("Gece Maçı" / Night Match identity).
+ * Source: docs/research/03-ui-ve-asset-arastirmasi.md §5.
+ * Never hard-code hex values in components; reference these variables.
+ */
+:root {
+  /* ── Surfaces (dark is the default theme) ── */
+  --bg-0: #070b14;
+  --bg-1: #0b1220;
+  --surface-1: #131c2e;
+  --surface-2: #1b2740;
+  --surface-3: #24345a;
+  --border: #2a3a5c;
+  --border-strong: #3a4e78;
+  --hairline: rgba(255, 255, 255, 0.06);
+  --scrim: rgba(3, 6, 12, 0.72);
+
+  /* ── Text ── */
+  --text-hi: #f2f5fa;
+  --text-mid: #b4c0d6;
+  --text-lo: #8494b3; /* lifted from #7A8BAA to keep 4.5:1 on --surface-1 */
+  --text-on-pitch: #04140b;
+  --text-on-gold: #2a1a00;
+
+  /* ── Brand & accents ── */
+  --brand-pitch: #1fd47a;
+  --brand-pitch-hi: #2be88a;
+  --brand-pitch-deep: #0e9f57;
+  --accent-gold: #ffc83d;
+  --accent-gold-hi: #ffe38a;
+  --accent-gold-deep: #d99a0b;
+  --accent-blue: #3da5ff;
+  --accent-blue-deep: #1f6fc0;
+  --accent-violet: #8e5cff;
+  --accent-violet-deep: #5a2fd0;
+
+  /* ── States (football semantics) ── */
+  --state-success: #1fd47a;
+  --state-warning: #ffd23f;
+  --state-danger: #ff4d5e;
+  --state-danger-deep: #c22a3a;
+  --state-info: #3da5ff;
+  --pos: var(--state-success);
+  --neg: var(--state-danger);
+
+  /* ── Attribute scale ── */
+  --attr-1: #ff4d5e;
+  --attr-2: #ff8a3d;
+  --attr-3: #ffd23f;
+  --attr-4: #8be04e;
+  --attr-5: #1fd47a;
+  --attr-6: #3de0e0;
+
+  /* ── Card tiers ── */
+  --tier-bronze: #c27a3e;
+  --tier-bronze-grad: linear-gradient(150deg, #8a4b1e 0%, #e0a06a 48%, #a8612c 100%);
+  --tier-silver: #b8c4d6;
+  --tier-silver-grad: linear-gradient(150deg, #7d8aa3 0%, #e6ecf5 48%, #8e9bb3 100%);
+  --tier-gold: #f2c14e;
+  --tier-gold-grad: linear-gradient(150deg, #b8860b 0%, #ffe38a 48%, #c99a1c 100%);
+  --tier-elite: #8e5cff;
+  --tier-elite-grad: linear-gradient(150deg, #4b1fb8 0%, #c2a3ff 48%, #5b2fd0 100%);
+  --tier-legend-grad: conic-gradient(from 200deg, #ff4d5e, #ffc83d, #1fd47a, #3da5ff, #8e5cff, #ff4d5e);
+
+  /* ── Pitch ── */
+  --pitch-a: #2f8f45;
+  --pitch-b: #37a050;
+  --pitch-line: rgba(234, 245, 234, 0.85);
+  --pitch-shadow: rgba(11, 61, 26, 0.35);
+
+  /* ── League table zones ── */
+  --zone-promo: #1fd47a;
+  --zone-euro: #3da5ff;
+  --zone-playoff: #ffc83d;
+  --zone-releg: #ff4d5e;
+
+  /* ── Club tint (overridden at runtime by the hero's club colour) ── */
+  --club: #1fd47a;
+  --club-2: #f2f5fa;
+
+  /* ── Typography ── */
+  --font-display: 'Barlow Condensed', 'Arial Narrow', 'Roboto Condensed', system-ui, sans-serif;
+  --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --font-score: 'Teko', 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
+  --text-scale: 1;
+  --fs-micro: calc(11px * var(--text-scale));
+  --fs-xs: calc(12px * var(--text-scale));
+  --fs-sm: calc(13.5px * var(--text-scale));
+  --fs-md: calc(15px * var(--text-scale));
+  --fs-lg: calc(17px * var(--text-scale));
+  --fs-h3: calc(20px * var(--text-scale));
+  --fs-h2: calc(clamp(22px, 2.2vw + 14px, 26px) * var(--text-scale));
+  --fs-h1: calc(clamp(28px, 2.6vw + 18px, 36px) * var(--text-scale));
+  --fs-display: calc(clamp(40px, 6vw + 16px, 72px) * var(--text-scale));
+  --fs-score: calc(clamp(40px, 5vw + 20px, 64px) * var(--text-scale));
+
+  /* ── Spacing (8px grid with 4px half-steps) ── */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --sp-10: 40px;
+  --sp-12: 48px;
+  --sp-16: 64px;
+  --gutter: 16px;
+
+  /* ── Radii (6 chip / 10 button / 14 card / 20 modal) ── */
+  --r-xs: 4px;
+  --r-chip: 6px;
+  --r-btn: 10px;
+  --r-card: 14px;
+  --r-modal: 20px;
+  --r-pill: 999px;
+
+  /* ── Shadows (static; never animate box-shadow) ── */
+  --sh-card: 0 8px 24px rgba(0, 0, 0, 0.35), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sh-raised: 0 14px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --sh-pop: 0 24px 64px rgba(0, 0, 0, 0.6);
+  --sh-glow-pitch: 0 0 0 1px rgba(31, 212, 122, 0.4), 0 8px 28px rgba(31, 212, 122, 0.25);
+  --sh-glow-gold: 0 0 0 1px rgba(255, 200, 61, 0.45), 0 8px 28px rgba(255, 200, 61, 0.22);
+  --bevel-primary: 0 4px 0 var(--brand-pitch-deep);
+  --bevel-gold: 0 4px 0 var(--accent-gold-deep);
+  --bevel-danger: 0 4px 0 var(--state-danger-deep);
+  --bevel-neutral: 0 4px 0 #0c1424;
+
+  /* ── Focus ── */
+  --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent-blue);
+
+  /* ── Z layers ── */
+  --z-base: 0;
+  --z-sticky: 10;
+  --z-nav: 20;
+  --z-overlay: 40;
+  --z-modal: 50;
+  --z-toast: 60;
+  --z-tooltip: 70;
+  --z-confetti: 80;
+
+  /* ── Motion ── */
+  --dur-micro: 90ms;
+  --dur-fast: 150ms;
+  --dur-screen: 260ms;
+  --dur-slow: 420ms;
+  --dur-count: 650ms;
+  --dur-celebrate: 1100ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+  --stagger: 30ms;
+
+  /* ── Safe areas ── */
+  --safe-top: env(safe-area-inset-top, 0px);
+  --safe-right: env(safe-area-inset-right, 0px);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  --safe-left: env(safe-area-inset-left, 0px);
+
+  /* ── Layout ── */
+  --topbar-h: 56px;
+  --tabbar-h: 64px;
+  --sidebar-w: 232px;
+  --context-w: 320px;
+  --content-max: 1080px;
+
+  color-scheme: dark;
+}
+
+/* High-contrast mode: brighter text, stronger borders, no translucency. */
+:root[data-contrast='high'] {
+  --text-mid: #dbe3f0;
+  --text-lo: #b4c0d6;
+  --border: #5a6f99;
+  --border-strong: #8ea2c8;
+  --hairline: rgba(255, 255, 255, 0.18);
+  --surface-1: #0f1626;
+  --surface-2: #162038;
+}
+
+/* Colour-blind safe mode: swap red/green semantics for blue/orange and
+   rely on +/− glyphs and icons too. */
+:root[data-colorblind='true'] {
+  --pos: #3da5ff;
+  --neg: #ff9f1c;
+  --state-success: #3da5ff;
+  --state-danger: #ff9f1c;
+  --state-danger-deep: #b86a00;
+  --attr-1: #ff9f1c;
+  --attr-2: #ffb85c;
+  --attr-3: #ffe08a;
+  --attr-4: #9cc8ff;
+  --attr-5: #3da5ff;
+  --attr-6: #b6a3ff;
+  --zone-promo: #3da5ff;
+  --zone-releg: #ff9f1c;
+}
+
+/* Low-fx profile (set by app on weak devices / reduced motion). */
+:root[data-fx='low'] {
+  --sh-card: 0 2px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --sh-raised: 0 4px 0 rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+@media (min-width: 900px) {
+  :root {
+    --gutter: 24px;
+    --topbar-h: 60px;
+  }
+}

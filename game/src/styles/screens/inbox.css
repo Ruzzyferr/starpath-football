@@ -1,0 +1,297 @@
+/* News inbox + career log */
+.inbox-layout {
+  display: grid;
+  gap: var(--sp-4);
+  margin-top: var(--sp-4);
+}
+@media (min-width: 900px) {
+  .inbox-layout {
+    grid-template-columns: minmax(0, 1.3fr) minmax(0, 1fr);
+    align-items: start;
+  }
+}
+
+/* Front page */
+.inbox-front {
+  border-radius: var(--r-card);
+  overflow: hidden;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  box-shadow: var(--sh-raised);
+}
+.inbox-photo {
+  position: relative;
+  height: 200px;
+  overflow: hidden;
+  background: linear-gradient(160deg, var(--c1), var(--bg-0) 85%);
+  isolation: isolate;
+}
+.inbox-photo::after {
+  /* duotone wash */
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(0deg, var(--surface-1) 0%, transparent 45%), linear-gradient(90deg, rgba(7, 11, 20, 0.55), transparent 60%);
+  z-index: 2;
+}
+.inbox-photo-rays {
+  position: absolute;
+  inset: -40%;
+  background: repeating-conic-gradient(from 200deg at 80% 0%, rgba(255, 255, 255, 0.1) 0deg 4deg, transparent 4deg 14deg);
+  z-index: 0;
+}
+.inbox-photo-pitch {
+  position: absolute;
+  inset: auto -10% -30% -10%;
+  height: 60%;
+  background: repeating-linear-gradient(90deg, var(--pitch-a) 0 40px, var(--pitch-b) 40px 80px);
+  transform: perspective(300px) rotateX(55deg);
+  opacity: 0.55;
+  z-index: 0;
+}
+.inbox-photo-crest {
+  position: absolute;
+  left: var(--sp-4);
+  top: var(--sp-4);
+  opacity: 0.85;
+  transform: rotate(-8deg);
+  z-index: 1;
+}
+.inbox-photo-hero {
+  position: absolute;
+  right: 6%;
+  bottom: -14px;
+  z-index: 1;
+  filter: saturate(0.85);
+}
+.inbox-photo-tag {
+  position: absolute;
+  left: var(--sp-4);
+  bottom: var(--sp-3);
+  z-index: 3;
+  padding: 4px 10px;
+  background: var(--state-danger);
+  color: var(--text-hi);
+  transform: skewX(-10deg);
+}
+.inbox-front-text {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+}
+.inbox-front-head {
+  font-family: var(--font-display);
+  font-weight: 900;
+  font-style: italic;
+  font-size: var(--fs-h1);
+  line-height: 0.98;
+  text-transform: uppercase;
+  letter-spacing: -0.01em;
+}
+.inbox-front-body {
+  color: var(--text-mid);
+  max-width: 64ch;
+}
+.inbox-meta {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+}
+.inbox-source {
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--accent-gold);
+}
+.inbox-sent {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-1);
+  align-self: flex-start;
+  font-size: var(--fs-xs);
+  font-weight: 600;
+  color: var(--text-mid);
+}
+.inbox-sent.sent-pos { color: var(--pos); }
+.inbox-sent.sent-neg { color: var(--neg); }
+
+/* List */
+.inbox-side {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.inbox-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.inbox-item {
+  display: flex;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border-radius: var(--r-btn);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-left: 3px solid var(--text-lo);
+}
+.inbox-item.sent-pos { border-left-color: var(--pos); }
+.inbox-item.sent-neg { border-left-color: var(--neg); }
+.inbox-item-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: var(--surface-2);
+  color: var(--text-mid);
+}
+.inbox-item.sent-pos .inbox-item-icon { color: var(--pos); }
+.inbox-item.sent-neg .inbox-item-icon { color: var(--neg); }
+.inbox-item-head {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  line-height: 1.15;
+  margin-top: 2px;
+}
+.inbox-item-body {
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+  margin-top: var(--sp-1);
+}
+.inbox-transfers {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  align-items: flex-start;
+}
+.inbox-transfers-icon {
+  display: grid;
+  place-items: center;
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: rgba(61, 165, 255, 0.16);
+  color: var(--accent-blue);
+}
+
+/* ── Career log timeline ── */
+.log-timeline {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-6);
+  margin-top: var(--sp-4);
+}
+.log-season-head {
+  position: sticky;
+  top: 0;
+  z-index: 2;
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) 0;
+  background: var(--bg-1);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: var(--fs-h2);
+  text-transform: uppercase;
+}
+.log-week {
+  position: relative;
+  padding-left: 28px;
+  margin-top: var(--sp-3);
+}
+.log-week::before {
+  /* the rail */
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: linear-gradient(180deg, var(--border-strong), var(--border));
+}
+.log-week-head {
+  color: var(--text-lo);
+  margin-bottom: var(--sp-2);
+}
+.log-items {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.log-item {
+  position: relative;
+  display: flex;
+  gap: var(--sp-3);
+}
+.log-node {
+  position: absolute;
+  left: -28px;
+  top: 8px;
+  display: grid;
+  place-items: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  border: 2px solid var(--border-strong);
+  color: var(--text-mid);
+}
+.log-body {
+  flex: 1;
+  min-width: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-btn);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.log-item-meta {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  color: var(--text-mid);
+}
+.log-text {
+  font-size: var(--fs-sm);
+  margin-top: 2px;
+}
+.kind-match .log-node { color: var(--brand-pitch); border-color: var(--brand-pitch-deep); }
+.kind-money .log-node { color: var(--accent-gold); border-color: var(--accent-gold-deep); }
+.kind-relation .log-node { color: var(--state-danger); }
+.kind-injury .log-node { color: var(--state-danger); border-color: var(--state-danger-deep); }
+.kind-event .log-node { color: var(--accent-violet); }
+
+.log-item.is-milestone .log-node {
+  left: -32px;
+  top: 10px;
+  width: 36px;
+  height: 36px;
+  background: var(--accent-gold);
+  border-color: var(--accent-gold-hi);
+  color: var(--text-on-gold);
+  box-shadow: var(--sh-glow-gold);
+}
+.log-item.is-milestone .log-body {
+  padding: var(--sp-3) var(--sp-4);
+  margin-left: var(--sp-2);
+  background: linear-gradient(100deg, rgba(255, 200, 61, 0.14), var(--surface-1) 65%);
+  border-color: rgba(255, 200, 61, 0.45);
+}
+.log-item.is-milestone .log-text {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-lg);
+  line-height: 1.2;
+}
+.log-ms {
+  color: var(--accent-gold);
+}

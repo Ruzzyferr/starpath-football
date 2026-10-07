@@ -1,0 +1,144 @@
+/* World screen (.world-) */
+.world-picker { display: flex; flex-direction: column; gap: var(--sp-3); }
+.world-countries {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: 4px;
+  scrollbar-width: none;
+}
+.world-countries::-webkit-scrollbar { display: none; }
+.world-country {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-height: 44px;
+  padding: 0 var(--sp-3) 0 var(--sp-2);
+  border-radius: var(--r-pill);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  font-weight: 600;
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+  transition: transform var(--dur-micro) var(--ease-out);
+}
+.world-country:active { transform: scale(0.96); }
+.world-country .flag { border-radius: 3px; overflow: hidden; }
+.world-country.is-active {
+  color: var(--text-hi);
+  border-color: var(--brand-pitch);
+  background: linear-gradient(90deg, rgba(31, 212, 122, 0.16), var(--surface-1));
+}
+.world-league-name { display: flex; align-items: baseline; gap: var(--sp-2); }
+
+/* Scorers */
+.world-scorers { display: flex; flex-direction: column; gap: var(--sp-2); }
+.world-scorer {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 60px;
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.world-scorer.is-hero { border-color: var(--brand-pitch); background: linear-gradient(90deg, rgba(31, 212, 122, 0.16), var(--surface-1) 70%); }
+.world-rank { width: 30px; font-size: 28px; color: var(--text-lo); text-align: center; }
+.world-scorer.is-top-1 .world-rank { color: var(--tier-gold); }
+.world-scorer.is-top-2 .world-rank { color: var(--tier-silver); }
+.world-scorer.is-top-3 .world-rank { color: var(--tier-bronze); }
+.world-scorer-name { display: flex; flex-direction: column; min-width: 0; font-weight: 600; }
+.world-stat { display: flex; flex-direction: column; align-items: center; min-width: 44px; }
+.world-stat .score-font { font-size: 28px; color: var(--text-hi); }
+.world-stat.is-dim .score-font { color: var(--text-mid); font-size: 22px; }
+
+/* Transfers — newspaper flavour */
+.world-news {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+.world-news-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-4);
+  border-radius: var(--r-card);
+  background: linear-gradient(180deg, var(--surface-2), var(--surface-1));
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent-blue);
+}
+.world-news-card.sent-1 { border-top-color: var(--pos); }
+.world-news-card.sent--1 { border-top-color: var(--neg); }
+.world-news-meta { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-lo); }
+.world-headline {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-h3);
+  line-height: 1.05;
+}
+
+/* Clubs grid */
+.world-crests {
+  display: grid;
+  gap: var(--sp-2);
+  grid-template-columns: repeat(auto-fill, minmax(112px, 1fr));
+}
+.world-crest {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-2);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  min-width: 0;
+  transition: transform var(--dur-fast) var(--ease-out);
+}
+.world-crest:hover { transform: translateY(-2px); }
+.world-crest:active { transform: scale(0.97); }
+.world-crest.is-own { border-color: var(--brand-pitch); box-shadow: var(--sh-glow-pitch); }
+.world-crest-name { width: 100%; text-align: center; font-size: var(--fs-sm); font-weight: 600; }
+.world-crest-rep {
+  width: 70%;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.world-crest-rep span {
+  display: block;
+  height: 100%;
+  background: var(--accent-gold);
+  transform-origin: left;
+}
+
+.world-club-sheet-hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+  padding: var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  background: linear-gradient(120deg, color-mix(in srgb, var(--c1) 34%, transparent), var(--surface-1) 70%);
+}
+.world-club-kits { display: flex; gap: var(--sp-2); }
+.world-top { display: flex; flex-direction: column; gap: 4px; margin-top: var(--sp-2); }
+.world-top-row { display: flex; align-items: center; gap: var(--sp-3); min-height: 48px; border-bottom: 1px solid var(--hairline); }
+.world-ovr { font-family: var(--font-score); font-size: 24px; width: 32px; text-align: right; }
+
+/* Interest */
+.world-interest {
+  display: grid;
+  gap: var(--sp-3);
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+}
+.world-int { display: flex; flex-direction: column; gap: var(--sp-3); }
+.world-int.is-high { border-color: rgba(255, 200, 61, 0.5); box-shadow: var(--sh-glow-gold); }
+.world-int-head { gap: var(--sp-3); }
+.world-int-note { flex: 1; }
+.world-int .btn { align-self: flex-start; }

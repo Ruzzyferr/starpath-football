@@ -1,0 +1,59 @@
+import type { Shape } from '../shape'
+
+export const tr = {
+  title: 'Dünya',
+  sub: 'Ligler, golcüler, transferler ve seni izleyenler',
+  tabs: { leagues: 'Ligler', scorers: 'Gol Krallığı', transfers: 'Transferler', clubs: 'Kulüpler', interest: 'İlgi' },
+  country: 'Ülke',
+  league: 'Lig',
+  tier: '{n}. lig',
+  noTable: 'Bu lig için puan durumu henüz yok',
+  scorers: { player: 'Oyuncu', goals: 'Gol', assists: 'Asist', empty: 'Henüz gol atılmadı', you: 'Sen' },
+  transfers: { empty: 'Transfer haberi yok', source: 'Kaynak: {s}', week: '{n}. hafta' },
+  clubs: {
+    count: '{n} kulüp',
+    stadium: '{name} · {cap} kişi',
+    reputation: 'İtibar',
+    topPlayers: 'Öne çıkan oyuncular',
+    noPlayers: 'Kadro bilgisi yok',
+    yours: 'Senin kulübün',
+    manager: 'TD: {name}',
+  },
+  interest: {
+    title: 'Seni izleyen kulüpler',
+    level: 'İlgi seviyesi',
+    talk: 'Görüş',
+    empty: 'Şu an seni izleyen kulüp yok',
+    emptyHint: 'İyi maçlar çıkar, scoutlar mutlaka fark edecek.',
+    levels: { low: 'Takipte', mid: 'Ciddi ilgi', high: 'Teklif hazırlığı' },
+  },
+}
+
+export const en: Shape<typeof tr> = {
+  title: 'World',
+  sub: 'Leagues, scorers, transfers and who’s watching you',
+  tabs: { leagues: 'Leagues', scorers: 'Top Scorers', transfers: 'Transfers', clubs: 'Clubs', interest: 'Interest' },
+  country: 'Country',
+  league: 'League',
+  tier: 'Tier {n}',
+  noTable: 'No standings for this league yet',
+  scorers: { player: 'Player', goals: 'Goals', assists: 'Assists', empty: 'No goals scored yet', you: 'You' },
+  transfers: { empty: 'No transfer news', source: 'Source: {s}', week: 'Week {n}' },
+  clubs: {
+    count: '{n} {n|club|clubs}',
+    stadium: '{name} · {cap} seats',
+    reputation: 'Reputation',
+    topPlayers: 'Key players',
+    noPlayers: 'No squad info',
+    yours: 'Your club',
+    manager: 'Manager: {name}',
+  },
+  interest: {
+    title: 'Clubs scouting you',
+    level: 'Interest level',
+    talk: 'Talk',
+    empty: 'No clubs are watching you right now',
+    emptyHint: 'Keep performing — the scouts will notice.',
+    levels: { low: 'Monitoring', mid: 'Serious interest', high: 'Preparing a bid' },
+  },
+}

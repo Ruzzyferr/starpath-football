@@ -1,0 +1,77 @@
+import type { ComponentChildren } from 'preact'
+import { useRef } from 'preact/hooks'
+import { Icon, type IconName } from '../icons'
+import { haptic } from '../haptics'
+
+export interface TabItem<K extends string = string> {
+  id: K
+  label: string
+  icon?: IconName
+  badge?: number
+}
+
+/**
+ * Accessible tablist (roving tabindex, arrow keys). `variant="pill"` for
+ * segmented controls, `"line"` for page-level tabs.
+ */
+export function Tabs<K extends string>({
+  items, value, onChange, variant = 'line', label, scroll = true, idPrefix = 'tab',
+}: {
+  items: TabItem<K>[]
+  value: K
+  onChange: (id: K) => void
+  variant?: 'line' | 'pill'
+  label?: string
+  scroll?: boolean
+  idPrefix?: string
+}) {
+  const ref = useRef<HTMLDivElement>(null)
+  const onKey = (e: KeyboardEvent) => {
+    const idx = items.findIndex((i) => i.id === value)
+    let next = idx
+    if (e.key === 'ArrowRight') next = (idx + 1) % items.length
+    else if (e.key === 'ArrowLeft') next = (idx - 1 + items.length) % items.length
+    else if (e.key === 'Home') next = 0
+    else if (e.key === 'End') next = items.length - 1
+    else return
+    e.preventDefault()
+    onChange(items[next].id)
+    const btn = ref.current?.querySelectorAll<HTMLButtonElement>('[role=tab]')[next]
+    btn?.focus()
+    btn?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })
+  }
+  return (
+    <div ref={ref} class={`tabs tabs-${variant}${scroll ? ' tabs-scroll' : ''}`} role="tablist" aria-label={label} onKeyDown={onKey}>
+      {items.map((it) => {
+        const sel = it.id === value
+        return (
+          <button
+            key={it.id}
+            type="button"
+            role="tab"
+            id={`${idPrefix}-${it.id}`}
+            aria-selected={sel}
+            tabIndex={sel ? 0 : -1}
+            class={`tab${sel ? ' is-active' : ''}`}
+            onClick={() => {
+              if (!sel) haptic('select')
+              onChange(it.id)
+            }}
+          >
+            {it.icon && <Icon name={it.icon} size={18} />}
+            <span>{it.label}</span>
+            {it.badge ? <span class="tab-badge">{it.badge}</span> : null}
+          </button>
+        )
+      })}
+    </div>
+  )
+}
+
+export function TabPanel({ id, idPrefix = 'tab', children }: { id: string; idPrefix?: string; children: ComponentChildren }) {
+  return (
+    <div role="tabpanel" aria-labelledby={`${idPrefix}-${id}`} class="tab-panel" key={id}>
+      {children}
+    </div>
+  )
+}

@@ -1,0 +1,285 @@
+/* Reset, typography and global behaviour. Depends on tokens.css. */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  -webkit-tap-highlight-color: transparent;
+  height: 100%;
+  background: var(--bg-0);
+}
+
+body {
+  margin: 0;
+  min-height: 100%;
+  min-height: 100dvh;
+  background: var(--bg-0);
+  color: var(--text-hi);
+  font-family: var(--font-body);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overscroll-behavior-y: none;
+  overflow: hidden;
+}
+
+#app {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+}
+
+h1, h2, h3, h4, p, ul, ol, figure, blockquote {
+  margin: 0;
+}
+ul, ol {
+  padding: 0;
+  list-style: none;
+}
+img, svg {
+  display: block;
+  max-width: 100%;
+}
+button, input, select, textarea {
+  font: inherit;
+  color: inherit;
+}
+button {
+  background: none;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+a {
+  color: var(--accent-blue);
+  text-decoration: none;
+}
+table {
+  border-collapse: collapse;
+  width: 100%;
+}
+[hidden] {
+  display: none !important;
+}
+
+/* ── Typography ── */
+.display,
+h1,
+.h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: var(--fs-h1);
+  line-height: 1;
+  letter-spacing: -0.01em;
+  text-transform: uppercase;
+}
+.display {
+  font-weight: 900;
+  font-size: var(--fs-display);
+  line-height: 0.92;
+}
+h2,
+.h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-h2);
+  line-height: 1.05;
+  letter-spacing: 0.005em;
+}
+h3,
+.h3 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-h3);
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+}
+.label {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-md);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+.micro {
+  font-size: var(--fs-micro);
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+.score-font {
+  font-family: var(--font-score);
+  font-weight: 600;
+  line-height: 0.9;
+  font-variant-numeric: tabular-nums;
+}
+.num {
+  font-variant-numeric: tabular-nums;
+}
+.t-mid { color: var(--text-mid); }
+.t-lo { color: var(--text-lo); }
+.t-pos { color: var(--pos); }
+.t-neg { color: var(--neg); }
+.t-gold { color: var(--accent-gold); }
+.t-sm { font-size: var(--fs-sm); }
+.t-xs { font-size: var(--fs-xs); }
+.t-center { text-align: center; }
+.truncate {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}
+.sr-only {
+  position: absolute !important;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Turkish: browsers handle İ/ı correctly with text-transform when lang=tr. */
+:lang(tr) .label,
+:lang(tr) .micro,
+:lang(tr) h1,
+:lang(tr) .display {
+  text-transform: uppercase;
+}
+
+/* ── Focus ── */
+:focus {
+  outline: none;
+}
+:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--r-btn);
+}
+input:focus-visible,
+select:focus-visible,
+textarea:focus-visible {
+  box-shadow: var(--focus-ring);
+}
+
+/* ── Scrollbars (desktop) ── */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--surface-3) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--surface-3);
+  border-radius: 8px;
+}
+
+::selection {
+  background: rgba(31, 212, 122, 0.35);
+}
+
+/* ── Layout helpers ── */
+.stack { display: flex; flex-direction: column; gap: var(--gap, var(--sp-3)); }
+.row { display: flex; align-items: center; gap: var(--gap, var(--sp-2)); min-width: 0; }
+.row-between { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); min-width: 0; }
+.wrap { flex-wrap: wrap; }
+.grow { flex: 1 1 auto; min-width: 0; }
+.grid-auto {
+  display: grid;
+  gap: var(--gap, var(--sp-3));
+  grid-template-columns: repeat(auto-fill, minmax(var(--min, 160px), 1fr));
+}
+.grid-2 { display: grid; gap: var(--gap, var(--sp-3)); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.grid-3 { display: grid; gap: var(--gap, var(--sp-3)); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+@media (min-width: 900px) {
+  .grid-md-2 { display: grid; gap: var(--gap, var(--sp-4)); grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .grid-md-3 { display: grid; gap: var(--gap, var(--sp-4)); grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .span-2 { grid-column: span 2; }
+}
+
+/* ── Reduced motion: honour both OS and in-game setting ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+:root[data-motion='reduced'] *,
+:root[data-motion='reduced'] *::before,
+:root[data-motion='reduced'] *::after {
+  animation-duration: 1ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 1ms !important;
+}
+
+/* ── Shared keyframes ── */
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  0% { opacity: 0; transform: scale(0.85); }
+  60% { opacity: 1; transform: scale(1.04); }
+  100% { transform: scale(1); }
+}
+@keyframes sheen {
+  0% { transform: translateX(-120%) skewX(-18deg); }
+  55%, 100% { transform: translateX(260%) skewX(-18deg); }
+}
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+@keyframes pulse-dot {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.35); opacity: 0.6; }
+}
+@keyframes shimmer {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+@keyframes flash-pos {
+  0% { color: var(--pos); text-shadow: 0 0 12px rgba(31, 212, 122, 0.6); }
+  100% { color: inherit; text-shadow: none; }
+}
+@keyframes flash-neg {
+  0% { color: var(--neg); }
+  100% { color: inherit; }
+}
+
+.stagger > * {
+  animation: rise-in var(--dur-screen) var(--ease-out) both;
+}
+.stagger > *:nth-child(1) { animation-delay: 0ms; }
+.stagger > *:nth-child(2) { animation-delay: 30ms; }
+.stagger > *:nth-child(3) { animation-delay: 60ms; }
+.stagger > *:nth-child(4) { animation-delay: 90ms; }
+.stagger > *:nth-child(5) { animation-delay: 120ms; }
+.stagger > *:nth-child(6) { animation-delay: 150ms; }
+.stagger > *:nth-child(7) { animation-delay: 180ms; }
+.stagger > *:nth-child(8) { animation-delay: 210ms; }
+.stagger > *:nth-child(n + 9) { animation: none; }

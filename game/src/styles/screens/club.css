@@ -1,0 +1,187 @@
+/* Club screen (.club-) */
+.club-squad-layout {
+  display: grid;
+  gap: var(--sp-4);
+}
+@media (min-width: 1100px) {
+  .club-squad-layout { grid-template-columns: 300px 1fr; align-items: start; }
+  .club-manager-col { position: sticky; top: var(--sp-2); }
+}
+.club-manager { display: flex; flex-direction: column; gap: var(--sp-3); }
+.club-manager-row { gap: var(--sp-3); }
+.club-manager .btn { align-self: flex-start; }
+
+.club-lines { display: flex; flex-direction: column; gap: var(--sp-4); min-width: 0; }
+.club-line-title {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-style: italic;
+  font-size: var(--fs-lg);
+  text-transform: uppercase;
+  letter-spacing: 0.02em;
+  margin-bottom: var(--sp-2);
+}
+.club-line-title::before {
+  content: '';
+  width: 6px;
+  height: 18px;
+  border-radius: 2px;
+  transform: skewX(-12deg);
+  background: var(--lc, var(--brand-pitch));
+}
+.club-line-GK { --lc: var(--accent-gold); }
+.club-line-DEF { --lc: var(--accent-blue); }
+.club-line-MID { --lc: var(--brand-pitch); }
+.club-line-FWD { --lc: var(--state-danger); }
+
+.club-rows {
+  display: flex;
+  flex-direction: column;
+  border-radius: var(--r-card);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  background: var(--surface-1);
+}
+.club-row {
+  display: grid;
+  grid-template-columns: 28px 40px minmax(0, 1fr) auto 40px;
+  align-items: center;
+  gap: var(--sp-3);
+  min-height: 60px;
+  padding: var(--sp-2) var(--sp-3);
+  text-align: left;
+  border-bottom: 1px solid var(--hairline);
+  transition: background-color var(--dur-fast) var(--ease-out);
+}
+.club-row:last-child { border-bottom: 0; }
+button.club-row:hover { background: var(--surface-2); }
+.club-row.is-hero {
+  background: linear-gradient(90deg, rgba(31, 212, 122, 0.16), transparent 70%);
+  box-shadow: inset 3px 0 0 var(--brand-pitch);
+}
+.club-num { color: var(--text-lo); font-weight: 600; text-align: center; }
+.club-row-main { display: flex; flex-direction: column; min-width: 0; gap: 2px; }
+.club-row-name { font-weight: 600; }
+.club-row-sub { display: flex; align-items: center; gap: var(--sp-2); }
+.club-inj { display: inline-flex; align-items: center; gap: 3px; font-size: var(--fs-xs); color: var(--state-danger); }
+.club-pos {
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: var(--fs-sm);
+  padding: 2px 8px;
+  border-radius: var(--r-chip);
+  background: var(--surface-3);
+  color: var(--text-mid);
+}
+.club-ovr { font-family: var(--font-score); font-size: 26px; text-align: right; line-height: 1; }
+
+.club-mate-head { gap: var(--sp-4); }
+.club-mate-ovr { font-size: 40px; }
+.club-memory { display: flex; flex-direction: column; gap: 6px; margin-top: 6px; }
+.club-memory li {
+  font-size: var(--fs-sm);
+  color: var(--text-mid);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--border-strong);
+}
+.club-mate-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.club-mate-actions .btn { width: 100%; }
+.club-confirm { justify-content: flex-end; width: 100%; }
+
+/* Fixtures */
+.club-fx-grid { display: grid; gap: var(--sp-5); }
+@media (min-width: 1000px) { .club-fx-grid { grid-template-columns: 1fr 1fr; align-items: start; } }
+.club-fx-list { display: flex; flex-direction: column; gap: var(--sp-2); margin-top: var(--sp-3); }
+.club-fx {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.club-fx.is-today { border-color: var(--brand-pitch); box-shadow: var(--sh-glow-pitch); }
+.club-fx-meta { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+.club-fx-ha {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xs);
+  padding: 1px 6px;
+  border-radius: var(--r-xs);
+  background: var(--surface-3);
+  color: var(--text-mid);
+}
+.club-fx-teams {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  gap: var(--sp-3);
+}
+.club-fx-team { display: flex; align-items: center; gap: var(--sp-2); min-width: 0; font-weight: 600; font-size: var(--fs-sm); }
+.club-fx-team.is-home { justify-content: flex-end; text-align: right; }
+.club-fx-score {
+  font-family: var(--font-score);
+  font-size: 24px;
+  line-height: 1;
+  min-width: 64px;
+  text-align: center;
+  padding: 4px 8px;
+  border-radius: var(--r-chip);
+  background: var(--bg-1);
+  transform: skewX(-8deg);
+}
+.club-fx-res {
+  position: absolute;
+  top: var(--sp-3);
+  right: var(--sp-3);
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border-radius: var(--r-xs);
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: var(--fs-xs);
+  color: var(--bg-0);
+}
+.res-W.club-fx-res { background: var(--pos); }
+.res-D.club-fx-res { background: var(--text-lo); }
+.res-L.club-fx-res { background: var(--neg); }
+.club-fx.res-W { box-shadow: inset 3px 0 0 var(--pos); }
+.club-fx.res-L { box-shadow: inset 3px 0 0 var(--neg); }
+
+/* Info */
+.club-info { display: grid; gap: var(--sp-3); }
+@media (min-width: 1000px) {
+  .club-info { grid-template-columns: 1.2fr 1fr; }
+  .club-info-hero { grid-column: 1 / -1; }
+}
+.club-info-hero {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-5);
+  flex-wrap: wrap;
+  overflow: hidden;
+  background: var(--surface-1);
+  background:
+    linear-gradient(115deg, color-mix(in srgb, var(--c1) 30%, transparent) 0%, transparent 55%),
+    var(--surface-1);
+}
+.club-info-name { font-size: var(--fs-h1); }
+.club-info-rep { margin-top: var(--sp-3); max-width: 360px; }
+.club-dl {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--sp-3) var(--sp-4);
+  margin: 0;
+}
+.club-dl dt { font-size: var(--fs-xs); color: var(--text-lo); }
+.club-dl dd { margin: 2px 0 0; font-weight: 600; }
+.club-kits { display: flex; justify-content: space-around; gap: var(--sp-4); }
+.club-kits figure { display: flex; flex-direction: column; align-items: center; gap: var(--sp-2); }
+.club-kits figcaption { font-size: var(--fs-sm); color: var(--text-mid); }

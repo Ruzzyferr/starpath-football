@@ -1,0 +1,319 @@
+import { useState } from 'preact/hooks'
+import type { AttributeGroup } from '../../core/types'
+import { lt, t, tx } from '../../i18n'
+import {
+  Button, Card, Chip, EmptyState, Modal, Page, RiskBadge, SectionTitle, StatBar, Tabs, TabPanel, toast, MeterRing,
+} from '../components'
+import { formatMoney } from '../format'
+import { Icon, type IconName } from '../icons'
+import { actions, data, gameState, screen, type PerkView, type TrainingSessionView } from '../store'
+import { GROUPS, groupAvg, keysOf } from './career/attrs'
+import { deltaText, pickTab } from './career/util'
+import '../../styles/screens/training.css'
+
+type TabId = 'sessions' | 'growth' | 'perks' | 'trainer'
+const TAB_IDS: TabId[] = ['sessions', 'growth', 'perks', 'trainer']
+
+const GROUP_ICON: Record<TrainingSessionView['group'], IconName> = {
+  physical: 'run', technical: 'ball', mental: 'brain', goalkeeping: 'shield', recovery: 'heartbeat', tactical: 'tactics',
+}
+
+function SessionCard({ s, energy }: { s: TrainingSessionView; energy: number }) {
+  const short = energy < s.energy
+  return (
+    <Card class={`trn-session trn-g-${s.group}`} pad="md">
+      <div class="trn-session-head">
+        <span class="trn-session-icon" aria-hidden="true"><Icon name={GROUP_ICON[s.group]} size={22} /></span>
+        <div class="grow">
+          <h3 class="h3">{lt(s.name)}</h3>
+          <div class="t-xs t-lo">{tx(`data.group.${s.group}`)}</div>
+        </div>
+        <RiskBadge risk={s.injuryRisk} />
+      </div>
+      <p class="t-sm t-mid trn-session-desc">{lt(s.desc)}</p>
+      {s.focus.length > 0 && (
+        <div class="trn-focus" aria-label={t('training.session.focus')}>
+          {s.focus.map((k) => <Chip key={k}>{t(`data.attr.${k}`)}</Chip>)}
+        </div>
+      )}
+      <div class="trn-session-foot">
+        <span class="trn-meta"><Icon name="energy" size={16} class="t-gold" />{t('training.session.energy', { n: s.energy })}</span>
+        <span class="trn-meta trn-xp"><Icon name="sparkle" size={16} />{t('training.session.xp', { n: s.xp })}</span>
+        <Button
+          variant="primary"
+          size="sm"
+          icon="barbell"
+          disabled={short}
+          title={short ? t('training.session.lowEnergy') : undefined}
+          onClick={() => {
+            const d = actions.train(s.id)
+            toast(d.length ? t('training.session.doneWith', { list: deltaText(d) }) : t('training.session.done'), 'success', 'barbell')
+          }}
+        >
+          {t('training.session.train')}
+        </Button>
+      </div>
+    </Card>
+  )
+}
+
+function Sessions() {
+  const s = gameState.value!
+  const sessions = data.trainingSessions()
+  if (!sessions.length) return <EmptyState icon="barbell" title={t('training.session.empty')} />
+  return (
+    <div class="stack">
+      <div class="trn-energy">
+        <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" />
+      </div>
+      <div class="trn-sessions stagger">
+        {sessions.map((x) => <SessionCard key={x.id} s={x} energy={s.life.energy} />)}
+      </div>
+    </div>
+  )
+}
+
+function Growth() {
+  const h = gameState.value!.hero
+  const groups: AttributeGroup[] = h.position === 'GK' ? ['goalkeeping', ...GROUPS.filter((g) => g !== 'goalkeeping')] : GROUPS
+  return (
+    <div class="stack">
+      <Card class="trn-ovr" pad="md">
+        <MeterRing value={data.heroOvr()} max={99} size={84} color="var(--accent-gold)" label={t('training.growth.ovr')} />
+        <div class="trn-ovr-groups">
+          {groups.map((g) => (
+            <div key={g} class="trn-ovr-group">
+              <span class="micro t-mid">{t(`data.group.${g}`)}</span>
+              <span class="score-font trn-ovr-num">{groupAvg(h.attrs, g)}</span>
+            </div>
+          ))}
+        </div>
+      </Card>
+      <p class="t-xs t-lo">{t('training.growth.xpHint')}</p>
+      <div class="trn-growth">
+        {groups.map((g) => (
+          <Card key={g} pad="md" class="trn-group">
+            <div class="row-between trn-group-head">
+              <h3 class="h3">{t(`data.group.${g}`)}</h3>
+              <Chip tone="info">{t('training.growth.avg', { n: groupAvg(h.attrs, g) })}</Chip>
+            </div>
+            <div class="stack trn-bars">
+              {keysOf(g).map((k) => {
+                const xp = h.attrXp[k] ?? 0
+                return <StatBar key={k} label={t(`data.attr.${k}`)} value={h.attrs[k]} scale progress={xp >= 1 ? xp % 1 : xp} size="sm" />
+              })}
+            </div>
+          </Card>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+const CELL_H = 116
+
+function PerkTree() {
+  const h = gameState.value!.hero
+  const perks = data.perks()
+  const [sel, setSel] = useState<PerkView | null>(null)
+  if (!perks.length) return <EmptyState icon="rocket" title={t('training.perks.empty')} />
+  const cols = Math.max(...perks.map((p) => p.col)) + 1
+  const rows = Math.max(...perks.map((p) => p.row)) + 1
+  const byId = new Map(perks.map((p) => [p.id, p]))
+  const cx = (c: number) => ((c + 0.5) / cols) * cols * 100
+  const cy = (r: number) => r * CELL_H + CELL_H / 2
+  const state = (p: PerkView) => (p.owned ? 'owned' : p.available ? 'available' : 'locked')
+  const current = sel ? (byId.get(sel.id) ?? sel) : null
+  return (
+    <div class="stack">
+      <Card class="trn-points" pad="sm">
+        <span class="trn-points-icon" aria-hidden="true"><Icon name="rocket" size={22} /></span>
+        <div class="grow">
+          <div class="micro t-mid">{t('training.perks.points')}</div>
+          <div class="score-font trn-points-num">{h.perkPoints}</div>
+        </div>
+        <p class="t-xs t-lo trn-points-hint">{t('training.perks.hint')}</p>
+      </Card>
+      <div class="trn-tree-scroll">
+        <div class="trn-tree" style={{ height: `${rows * CELL_H}px`, minWidth: `${cols * 92}px` }}>
+          <svg class="trn-tree-lines" viewBox={`0 0 ${cols * 100} ${rows * CELL_H}`} preserveAspectRatio="none" aria-hidden="true">
+            {perks.flatMap((p) =>
+              p.requires.map((rid) => {
+                const r = byId.get(rid)
+                if (!r) return null
+                const on = r.owned
+                return (
+                  <path
+                    key={`${rid}-${p.id}`}
+                    d={`M${cx(r.col)} ${cy(r.row)} C${cx(r.col)} ${cy(r.row) + CELL_H / 2} ${cx(p.col)} ${cy(p.row) - CELL_H / 2} ${cx(p.col)} ${cy(p.row)}`}
+                    class={`trn-link${on ? ' is-on' : ''}`}
+                    vector-effect="non-scaling-stroke"
+                  />
+                )
+              }),
+            )}
+          </svg>
+          {perks.map((p) => (
+            <button
+              key={p.id}
+              type="button"
+              class={`trn-node is-${state(p)}`}
+              style={{ left: `${((p.col + 0.5) / cols) * 100}%`, top: `${cy(p.row)}px` }}
+              onClick={() => setSel(p)}
+              aria-label={`${lt(p.name)}, ${t(`training.perks.${state(p)}`)}`}
+            >
+              <span class="trn-node-disc">
+                <Icon name={p.owned || p.available ? p.icon : 'lock'} size={22} />
+              </span>
+              <span class="trn-node-name">{lt(p.name)}</span>
+            </button>
+          ))}
+        </div>
+      </div>
+      <Modal
+        open={!!current}
+        onClose={() => setSel(null)}
+        title={current ? lt(current.name) : ''}
+        size="sm"
+        footer={
+          current && !current.owned ? (
+            <Button
+              variant="primary"
+              block
+              icon="lock-open"
+              disabled={!current.available || h.perkPoints < current.cost}
+              onClick={() => {
+                const ok = actions.unlockPerk(current.id)
+                if (ok) toast(t('training.perks.unlocked', { name: lt(current.name) }), 'reward', 'rocket')
+                else toast(t('training.perks.failed'), 'warning')
+                setSel(null)
+              }}
+            >
+              {t('training.perks.unlock')}
+            </Button>
+          ) : undefined
+        }
+      >
+        {current && (
+          <div class="stack trn-perk-detail">
+            <div class={`trn-perk-badge is-${state(current)}`} aria-hidden="true"><Icon name={current.icon} size={34} /></div>
+            <p class="t-mid">{lt(current.desc)}</p>
+            <div class="row wrap">
+              <Chip tone={current.owned ? 'pos' : current.available ? 'gold' : 'neutral'} icon={current.owned ? 'check' : current.available ? 'lock-open' : 'lock'}>
+                {t(`training.perks.${state(current)}`)}
+              </Chip>
+              {!current.owned && <Chip tone="violet" icon="rocket">{t('training.perks.cost', { n: current.cost })}</Chip>}
+            </div>
+            {current.requires.length > 0 && !current.owned && (
+              <p class="t-sm t-lo">
+                {t('training.perks.requires', { list: current.requires.map((r) => lt(byId.get(r)?.name ?? r)).join(', ') })}
+              </p>
+            )}
+          </div>
+        )}
+      </Modal>
+    </div>
+  )
+}
+
+function Stars({ n }: { n: number }) {
+  return (
+    <span class="trn-stars" role="img" aria-label={t('common.stars', { n })}>
+      {[1, 2, 3, 4, 5].map((i) => <Icon key={i} name={i <= n ? 'star-fill' : 'star'} size={14} />)}
+    </span>
+  )
+}
+
+function Trainer() {
+  const s = gameState.value!
+  const cur = s.life.trainer
+  const offers = data.trainerOffers()
+  return (
+    <div class="stack">
+      <SectionTitle>{t('training.trainer.current')}</SectionTitle>
+      {cur ? (
+        <Card variant="accent" class="trn-trainer-current">
+          <span class="trn-trainer-icon" aria-hidden="true"><Icon name={GROUP_ICON[cur.group]} size={26} /></span>
+          <div class="grow">
+            <h3 class="h3">{cur.name}</h3>
+            <div class="t-sm t-mid">{t('training.trainer.focus')}: {t(`data.group.${cur.group}`)}</div>
+            <div class="t-sm t-lo num">{t('training.trainer.fee')}: {formatMoney(cur.weeklyFee)}{t('common.perWeek')}</div>
+          </div>
+          <Button variant="ghost" size="sm" icon="sign-out" onClick={() => { actions.fireTrainer(); toast(t('training.trainer.fired'), 'info') }}>
+            {t('training.trainer.fire')}
+          </Button>
+        </Card>
+      ) : (
+        <Card variant="inset" class="trn-trainer-none">
+          <Icon name="whistle" size={28} class="t-lo" />
+          <div>
+            <div class="h3">{t('training.trainer.none')}</div>
+            <p class="t-sm t-lo">{t('training.trainer.noneHint')}</p>
+          </div>
+        </Card>
+      )}
+      <SectionTitle>{t('training.trainer.offers')}</SectionTitle>
+      {cur && <p class="t-xs t-lo">{t('training.trainer.replaceNote')}</p>}
+      {offers.length === 0 ? (
+        <EmptyState icon="whistle" />
+      ) : (
+        <div class="trn-offers stagger">
+          {offers.map((o) => (
+            <Card key={o.id} class="trn-offer" pad="md">
+              <div class="row">
+                <span class="trn-trainer-icon" aria-hidden="true"><Icon name={GROUP_ICON[o.group]} size={22} /></span>
+                <div class="grow">
+                  <h3 class="h3 truncate">{o.name}</h3>
+                  <div class="t-xs t-lo">{t(`data.group.${o.group}`)}</div>
+                </div>
+                <Stars n={o.quality} />
+              </div>
+              <div class="trn-offer-stats">
+                <div><span class="micro t-lo">{t('training.trainer.fee')}</span><span class="num">{formatMoney(o.weeklyFee)}{t('common.perWeek')}</span></div>
+                <div><span class="micro t-lo">XP</span><span class="num t-pos">{t('training.trainer.bonus', { n: Math.round(o.bonus * 100) })}</span></div>
+              </div>
+              <Button
+                variant="secondary"
+                size="sm"
+                block
+                icon="handshake"
+                disabled={s.life.money < o.weeklyFee}
+                onClick={() => { actions.hireTrainer(o.id); toast(t('training.trainer.hired', { name: o.name }), 'success', 'whistle') }}
+              >
+                {t('training.trainer.hire')}
+              </Button>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}
+
+export function TrainingScreen() {
+  const s = gameState.value
+  const [tab, setTab] = useState<TabId>(pickTab(screen.value.params?.tab, TAB_IDS, 'sessions'))
+  if (!s) return <Page title={t('training.title')}><EmptyState /></Page>
+  return (
+    <Page title={t('training.title')} sub={t('training.sub')} wide>
+      <Tabs
+        idPrefix="trn"
+        label={t('training.title')}
+        value={tab}
+        onChange={setTab}
+        items={[
+          { id: 'sessions', label: t('training.tabs.sessions'), icon: 'barbell' },
+          { id: 'growth', label: t('training.tabs.growth'), icon: 'chart-bar' },
+          { id: 'perks', label: t('training.tabs.perks'), icon: 'rocket', badge: s.hero.perkPoints },
+          { id: 'trainer', label: t('training.tabs.trainer'), icon: 'whistle' },
+        ]}
+      />
+      <TabPanel id={tab} idPrefix="trn">
+        {tab === 'sessions' && <Sessions />}
+        {tab === 'growth' && <Growth />}
+        {tab === 'perks' && <PerkTree />}
+        {tab === 'trainer' && <Trainer />}
+      </TabPanel>
+    </Page>
+  )
+}
