@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">StarPath Football</string>
+    <string name="title_activity_main">StarPath Football</string>
+    <string name="package_name">app.starpath.football</string>
+    <string name="custom_url_scheme">app.starpath.football</string>
+</resources>
