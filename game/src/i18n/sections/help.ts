@@ -54,7 +54,7 @@ export const tr = {
     touch: {
       shoot: 'Kaleye doğru kaydır: şut. Kaydırırken kavis çizersen top falsolu gider.',
       pass: 'Takım arkadaşına dokun: pas. Ona doğru kaydırırsan havadan atarsın.',
-      move: 'Sol başparmakla joystick’i sürükle; DEPAR ile hızlan.',
+      move: 'Sol başparmakla joystick’i sürükle; DEPAR ile hızlan. Topsuzken sağ tarafa basılı tut: el kaldır, pas iste.',
       header: 'Top inerken ekrana dokun: kafa vuruşu. Zamanlama her şey.',
       defend: 'Rakibe yaklaş ve dokun: top kapma. Kaydırırsan kayarak girersin.',
       keeper: 'Topun gittiği yöne kaydır ya da dokun: o tarafa uzanırsın.',
@@ -67,7 +67,7 @@ export const tr = {
     mouse: {
       shoot: 'Fareyi kaleye tut, sol tuşu basılı tut ve bırak: şut. Basılı tutma süresi gücü belirler.',
       pass: 'Takım arkadaşına tıkla: pas. Sağ tık: ara pas.',
-      move: 'WASD veya ok tuşları: hareket. Shift: depar. Boşluk: çalım.',
+      move: 'WASD veya ok tuşları: hareket. Shift: depar. Boşluk: çalım. G: pas iste.',
       header: 'Top inerken tıkla: kafa vuruşu. İmleç yönü belirler.',
       defend: 'Rakibe yaklaş ve Boşluk’a bas: top kapma.',
       keeper: 'Topun gideceği yere tıkla: o tarafa uzanırsın. Boşluk: otomatik uzan.',
@@ -80,7 +80,7 @@ export const tr = {
     pad: {
       shoot: 'B’yi basılı tut ve bırak: şut. Sol analog nişanı belirler; LB ile aşırtma.',
       pass: 'A: yerden pas. Y: ara pas. X: havadan.',
-      move: 'Sol analog: hareket. RT: depar. RB: çalım.',
+      move: 'Sol analog: hareket. RT: depar. RB: çalım. Topsuzken Y: pas iste.',
       header: 'Top inerken B: kafa vuruşu.',
       defend: 'Rakibe yaklaş ve A: top kapma.',
       keeper: 'Sol analogla yönü seç, B: o tarafa uzan.',
@@ -256,7 +256,7 @@ export const en: Shape<typeof tr> = {
     touch: {
       shoot: 'Swipe toward goal to shoot. Curve your swipe to bend it.',
       pass: 'Tap a team-mate to pass. Swipe toward them for a lofted ball.',
-      move: 'Drag the joystick with your left thumb; hold SPRINT to speed up.',
+      move: 'Drag the joystick with your left thumb; hold SPRINT to speed up. Off the ball, press and hold on the right: raise your hand and call for it.',
       header: 'Tap as the ball drops to head it. Timing is everything.',
       defend: 'Get close to the attacker and tap to tackle. Swipe for a slide tackle.',
       keeper: 'Swipe or tap toward where the ball is going to dive that way.',
@@ -269,7 +269,7 @@ export const en: Shape<typeof tr> = {
     mouse: {
       shoot: 'Point at the goal, hold the left button and release to shoot. Hold longer for more power.',
       pass: 'Click a team-mate to pass. Right-click for a through ball.',
-      move: 'WASD or arrow keys to move. Shift to sprint. Space for a skill move.',
+      move: 'WASD or arrow keys to move. Shift to sprint. Space for a skill move. G to call for the ball.',
       header: 'Click as the ball drops to head it. The cursor sets the direction.',
       defend: 'Get close to the attacker and press Space to tackle.',
       keeper: 'Click where the ball is going to dive that way. Space dives automatically.',
@@ -282,7 +282,7 @@ export const en: Shape<typeof tr> = {
     pad: {
       shoot: 'Hold B and release to shoot. The left stick aims; LB chips.',
       pass: 'A: ground pass. Y: through ball. X: lofted.',
-      move: 'Left stick to move. RT to sprint. RB for a skill move.',
+      move: 'Left stick to move. RT to sprint. RB for a skill move. Off the ball, Y calls for it.',
       header: 'Press B as the ball drops to head it.',
       defend: 'Get close to the attacker and press A to tackle.',
       keeper: 'Pick a direction with the left stick and press B to dive.',

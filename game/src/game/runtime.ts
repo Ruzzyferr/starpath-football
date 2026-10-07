@@ -23,6 +23,8 @@ import {
   carrierDecision,
   catchChance,
   punchChance,
+  callAcceptChance,
+  CALL_LANE_MIN,
   defendTargets,
   diveSpeed,
   inField,
@@ -167,6 +169,8 @@ export type HeroAction =
   | { kind: 'skill' }
   | { kind: 'action' }
   | { kind: 'dive'; dir: Vec2 }
+  /** Raise the hand: ask the team-mate on the ball to pass (optionally into space at `at`). */
+  | { kind: 'call'; at?: Vec2 }
 
 /** Live aim state (while the player drags / holds) for previews. */
 export type AimState =
@@ -199,6 +203,8 @@ export type RuntimeEvent =
   | { type: 'bullet'; on: boolean }
   | { type: 'out'; x: number; y: number }
   | { type: 'callForBall'; by: string }
+  /** The team-mate on the ball ignored the hero's call: poor relationship, or no passing lane. */
+  | { type: 'callRefused'; by: string; reason: 'relation' | 'lane' }
   /** One-two armed: `by` (the receiver of the hero's pass) will return it into the hero's run. */
   | { type: 'oneTwo'; by: string }
   /** Assistant referee's flag: `by` touched the ball from an offside position. */
@@ -318,7 +324,9 @@ export class HighlightRuntime {
   private bulletScale = 0.25
   private lossT = 0
   private oppClearedAt = -1
-  private heroRequest: { at: Vec2 | null; t: number } | null = null
+  private heroRequest: { at: Vec2 | null; t: number; explicit?: boolean } | null = null
+  /** Game time the hero last raised his hand (renderer: arm up), −1 = never. */
+  heroCallAt = -1
   private heroHeaderAim: Vec2 | null = null
   private heroTackleResolved = false
   private ballX0: number
@@ -646,6 +654,7 @@ export class HighlightRuntime {
 
   private handleAction(act: HeroAction): void {
     const hero = this.hero
+    if (act.kind === 'call') return this.callForBall(act.at ?? null)
     if (this.heroBusy()) return
     if (hero.isKeeper && this.owner !== hero) {
       this.keeperAction(act)
@@ -871,6 +880,21 @@ export class HighlightRuntime {
       this.heroRequest = { at, t: this.time }
       this.events.push({ type: 'callForBall', by: hero.id })
     }
+  }
+
+  /**
+   * Pass-to-me call (WP-14): the hero raises his hand; the team-mate on the
+   * ball reacts at once and passes if relationship / vision / the lane allow
+   * (see {@link callAcceptChance}), otherwise ignores him ("won't pass").
+   */
+  private callForBall(at: Vec2 | null): void {
+    if (this.heroOnBall || this.hero.isKeeper || this.phase !== 'live') return
+    this.heroCallAt = this.time
+    this.events.push({ type: 'callForBall', by: this.hero.id })
+    const carrier = this.owner
+    if (!carrier || carrier.team !== 'hero' || carrier.isHero) return
+    this.heroRequest = { at, t: this.time, explicit: true }
+    carrier.think = Math.min(carrier.think, 0.05)
   }
 
   /** Arms the one-two if the action is a tap/press within the window. */
@@ -1372,13 +1396,15 @@ export class HighlightRuntime {
     // One-two requested: first-time return into the hero's run.
     if (a.team === 'hero' && this.oneTwo?.armed && this.oneTwo.id === a.id) return this.playOneTwo(a)
     // Hero called for the ball.
-    if (a.team === 'hero' && this.heroRequest && this.time - this.heroRequest.t < 1.6 && heldFor > 0.2) {
-      const p = 0.4 + (a.relationToHero / 100) * 0.35 + a01(a.attrs.vision) * 0.25
+    if (a.team === 'hero' && this.heroRequest && this.time - this.heroRequest.t < 1.6 && heldFor > (this.heroRequest.explicit ? 0.05 : 0.2)) {
       const req = this.heroRequest
       this.heroRequest = null
-      if (this.rng.chance(clamp01(p))) {
-        const heroC = { id: this.hero.id, pos: this.hero.pos, vel: this.hero.vel }
-        const target = req.at ? inField(req.at, 1) : leadPosition(a.pos, heroC, 13)
+      const heroC = { id: this.hero.id, pos: this.hero.pos, vel: this.hero.vel }
+      const target = req.at ? inField(req.at, 1) : leadPosition(a.pos, heroC, 13)
+      const lane = laneOpenness({ x: this.ball.x, y: this.ball.y }, target, this.agents.filter((q) => q.team === 'opp').map((q) => q.pos))
+      if (!this.rng.chance(callAcceptChance(a, lane))) {
+        this.events.push({ type: 'callRefused', by: a.id, reason: lane < CALL_LANE_MIN ? 'lane' : 'relation' })
+      } else {
         const lofted = dist(a.pos, target) > 26
         const plan = planKick({ kind: lofted ? 'lofted' : 'pass', from: { x: this.ball.x, y: this.ball.y }, target, power: 0.6, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale: 0.9 }, this.rng)
         this.kickBall(a, plan, lofted ? 'lofted' : 'pass', 0.6, null)

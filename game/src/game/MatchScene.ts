@@ -124,6 +124,7 @@ const T = {
     offside: 'OFFSIDE', offsideFlag: 'FLAG UP!', oneTwo: 'ONE-TWO!',
     advantage: 'ADVANTAGE!', advantagePlayed: 'PLAY ON', advantageBack: 'BACK FOR THE FOUL',
     punch: 'PUNCHED!', keeperRead: 'HE KNOWS YOUR SPOT', keeperReadMid: 'HE EXPECTS THE MIDDLE',
+    refuseRelation: "WON'T PASS", refuseLane: 'NO LANE',
     aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
   },
@@ -136,6 +137,7 @@ const T = {
     offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!', oneTwo: 'VER-KAÇ!',
     advantage: 'AVANTAJ!', advantagePlayed: 'DEVAM', advantageBack: 'FAUL ÇALINDI',
     punch: 'YUMRUKLADI!', keeperRead: 'KÖŞENİ BİLİYOR', keeperReadMid: 'ORTAYI BEKLİYOR',
+    refuseRelation: 'PAS VERMİYOR', refuseLane: 'PAS YOLU KAPALI',
     aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
   },
@@ -1148,6 +1150,15 @@ export class MatchScene extends Phaser.Scene {
     const px = -fd.y * 0.22 * PPM
     const py = fd.x * 0.22 * PPM
     g.fillTriangle(tx, ty, fd.x * tipD * 0.62 + px, fd.y * tipD * 0.62 + py, fd.x * tipD * 0.62 - px, fd.y * tipD * 0.62 - py)
+    // Pass-to-me: the hero's arm goes up for a moment after calling (WP-14).
+    if (v.agent.isHero && this.mode === 'play' && state === 'run' && this.rt.heroCallAt >= 0 && this.rt.time - this.rt.heroCallAt < 0.9) {
+      const sh = -zpx(torsoZ + 0.2)
+      const hand = { x: 0.3 * PPM, y: -zpx(headZ + 0.5) }
+      g.lineStyle(0.14 * PPM, colorNum(kit.primary), 1)
+      g.lineBetween(0.16 * PPM, sh, hand.x, hand.y)
+      g.fillStyle(0xf1c27d, 1)
+      g.fillCircle(hand.x, hand.y, 0.09 * PPM)
+    }
     if (legsOn) {
       const stride = Math.min(1, speedPx / (6 * PPM)) * 0.32 * PPM
       const s = Math.sin(v.phase)
@@ -1834,6 +1845,12 @@ export class MatchScene extends Phaser.Scene {
         case 'callForBall':
           this.floatText(this.s.call, rt.hero.pos.x, rt.hero.pos.y, '#ffffff', 0.8, 2.8)
           break
+        case 'callRefused': {
+          // Pass-to-me ignored: over the team-mate who kept it.
+          const a = this.agentById(e.by)
+          if (a) this.floatText(e.reason === 'lane' ? this.s.refuseLane : this.s.refuseRelation, a.pos.x, a.pos.y, '#ff9f6b', 1.1, 2.9)
+          break
+        }
         case 'oneTwo': {
           const a = this.agentById(e.by)
           if (a) this.floatText(this.s.oneTwo, a.pos.x, a.pos.y, '#9fe8ff', 0.9, 2.8)

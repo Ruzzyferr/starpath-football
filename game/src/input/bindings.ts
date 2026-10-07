@@ -7,7 +7,7 @@
  */
 import { signal } from '@preact/signals'
 
-export const BIND_ACTIONS = ['up', 'down', 'left', 'right', 'sprint', 'pass', 'through', 'shoot', 'chip', 'skill', 'action', 'pause'] as const
+export const BIND_ACTIONS = ['up', 'down', 'left', 'right', 'sprint', 'pass', 'through', 'shoot', 'chip', 'skill', 'action', 'call', 'pause'] as const
 export type BindAction = (typeof BIND_ACTIONS)[number]
 export type Bindings = Record<BindAction, string>
 
@@ -23,6 +23,7 @@ export const DEFAULT_BINDINGS: Readonly<Bindings> = {
   chip: 'KeyE',
   skill: 'Space',
   action: 'KeyF',
+  call: 'KeyG',
   pause: 'KeyP',
 }
 

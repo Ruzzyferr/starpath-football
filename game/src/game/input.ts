@@ -98,11 +98,15 @@ interface TouchGesture {
   pts: GesturePoint[]
   fingers: number
   start: number
+  /** A still long-press off the ball already called for the ball (WP-14). */
+  called?: boolean
 }
 
 const TAP_MAX_TIME = 0.28
 const DOUBLE_TAP_TIME = 0.32
 const HOLD_SHOT_MIN = 0.16
+/** Touch: a still press this long off the ball raises the hand and calls for a pass (WP-14). */
+export const CALL_HOLD = 0.45
 /** Tap-meter: an armed meter that is never fired is dropped after this long. */
 const METER_TIMEOUT = 4
 
@@ -342,7 +346,7 @@ export class InputController {
     const g = this.gesture
     if (g && g.id === e.pointerId) {
       this.gesture = null
-      if (cancel) return
+      if (cancel || g.called) return
       g.pts.push(this.point(p, t))
       const sw = this.swipeOf(g)
       const dur = t - g.start
@@ -443,8 +447,9 @@ export class InputController {
     if (down) {
       this.anyFlag = true
       if (!this.keys.has(code)) {
-        const act = isBound(code, 'skill') ? 'skill' : isBound(code, 'action') ? 'action' : isBound(code, 'pass') ? 'pass' : isBound(code, 'through') ? 'through' : isBound(code, 'shoot') ? 'shoot' : isBound(code, 'pause') ? 'pause' : null
-        if (act === 'skill') this.queued.push(this.lastCtx?.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
+        const act = isBound(code, 'skill') ? 'skill' : isBound(code, 'action') ? 'action' : isBound(code, 'pass') ? 'pass' : isBound(code, 'through') ? 'through' : isBound(code, 'shoot') ? 'shoot' : isBound(code, 'call') ? 'call' : isBound(code, 'pause') ? 'pause' : null
+        if (act === 'call') this.queued.push({ kind: 'call' })
+        else if (act === 'skill') this.queued.push(this.lastCtx?.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
         else if (act === 'action') this.queued.push({ kind: 'action' })
         else if (act === 'pass' || act === 'through') {
           this.queued.push({ kind: 'pass', target: this.map.toWorld(this.mouse.x, this.mouse.y), through: act === 'through', lofted: this.chipMod() })
@@ -509,6 +514,13 @@ export class InputController {
       }
     }
     if (this.sprintTouch !== null) sprint = true
+
+    // Touch long-press off the ball: raise the hand and call for it.
+    const lg = this.gesture
+    if (lg && !lg.called && !ctx.heroOnBall && !ctx.heroIsKeeper && t - lg.start >= CALL_HOLD && this.swipeOf(lg).isTap) {
+      lg.called = true
+      this.queued.push({ kind: 'call' })
+    }
 
     // Touch aim (live swipe).
     if (this.gesture && this.gesture.pts.length > 2) {
@@ -606,6 +618,8 @@ export class InputController {
       this.skipFlag = true
     }
     if (pressed(3) && ctx.heroOnBall) this.queued.push({ kind: 'pass', dir: stickDir ?? undefined, through: true, lofted: chip })
+    // Y off the ball: call for it.
+    else if (pressed(3) && !ctx.heroIsKeeper) this.queued.push({ kind: 'call' })
     if (pressed(2) && ctx.heroOnBall) this.queued.push({ kind: 'pass', dir: stickDir ?? undefined, lofted: true })
     if (pressed(5)) this.queued.push(ctx.heroOnBall ? { kind: 'skill' } : { kind: 'action' })
     if (pressed(1)) this.pad.holdB = t

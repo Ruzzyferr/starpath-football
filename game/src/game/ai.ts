@@ -498,6 +498,22 @@ export function catchChance(gk: Agent, ballSpeed: number, stretch: number, diffi
   return clampN(0.25 + h * 0.65 - Math.max(0, ballSpeed - 15) * 0.02 - stretch * 0.35 + diffAdj, 0.05, 0.95)
 }
 
+/** Passing lane openness (0..1) below which a team-mate sees the call as "no pass on". */
+export const CALL_LANE_MIN = 0.15
+
+/**
+ * Pass-to-me call (WP-14): probability the team-mate on the ball plays it to
+ * the hero. Relationship and vision decide; a blocked lane makes a clever
+ * passer (high vision) keep it instead.
+ * @param lane 0..1 openness of the lane to the hero (kick.laneOpenness)
+ */
+export function callAcceptChance(mate: Agent, lane: number): number {
+  const vis = a01(mate.attrs.vision)
+  let p = 0.4 + (mate.relationToHero / 100) * 0.35 + vis * 0.25
+  if (lane < CALL_LANE_MIN) p -= 0.15 + vis * 0.35
+  return clampN(p, 0.03, 0.97)
+}
+
 /**
  * Keeper meeting a high ball (cross / corner, not a shot): probability he
  * punches it clear rather than catching it (WP-14). Traffic around him, a ball
