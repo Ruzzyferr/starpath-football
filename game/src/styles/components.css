@@ -837,3 +837,11 @@
   .pcard-sm .pcard-stat-v { font-size: 0.8125rem; }
   .pcard-sm .pcard-stat-l { font-size: 0.5rem; }
 }
+
+/* Pattern mask (2.11#3): with any colour-blind palette on, colour is never the only cue.
+   Wins stay solid, draws get dots, losses get diagonal stripes; table zones get a dashed edge. */
+:root:not([data-cb='off']) .form-D { background-image: radial-gradient(rgba(0, 0, 0, 0.45) 1.2px, transparent 1.6px); background-size: 5px 5px; }
+:root:not([data-cb='off']) .form-L { background-image: repeating-linear-gradient(45deg, transparent 0 3px, rgba(0, 0, 0, 0.4) 3px 5px); }
+:root:not([data-cb='off']) .league-table tr.zone-releg .c-pos::before,
+:root:not([data-cb='off']) .league-table tr.zone-playoff .c-pos::before { background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.5) 3px 5px); }
+:root:not([data-cb='off']) .zone-key::before { background-image: repeating-linear-gradient(45deg, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 3px); }
