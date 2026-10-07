@@ -6,7 +6,7 @@
 import type { Award, GameState, LText, SeasonRecord, SeasonStats } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID } from '../../data/world/countries'
-import { NEWS_SOURCES, absWeek, emptyStats, fill, fmtMoney, heroAge, lt, meter, pushNews } from '../career/common'
+import { NEWS_SOURCES, absWeek, emptyStats, fameGain, fill, fmtMoney, heroAge, lt, meter, pushNews } from '../career/common'
 import { renewalOffer } from '../career/contract'
 import { heroOvr } from '../career/progression'
 import { endLoan, freeAgentOffers, generateLoanOffers, generateTransferOffers, TRANSFER_REQUEST_FLAG } from '../career/transfers'
@@ -70,7 +70,7 @@ export function playInternationalBreak(state: GameState, rng: Rng, out: LText[])
   for (let i = 0; i < games; i++) if (rng.chance(scoring * (0.6 + ovr / 100))) goals++
   h.nationalTeam.caps += games
   h.nationalTeam.goals += goals
-  h.reputation = meter(h.reputation + 0.5 * games + goals)
+  h.reputation = meter(h.reputation + fameGain(h.reputation, 0.5 * games + goals))
   h.fatigue = meter(h.fatigue + 8 * games)
   log(state, out, fill(lt('Milli takımla {n} maç oynadın ({g} gol). Toplam: {c} maç.', 'You played {n} international(s) ({g} goals). Caps: {c}.'), { n: games, g: goals, c: h.nationalTeam.caps }), 'career', '🎽')
 }
@@ -262,7 +262,7 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
   }
   for (const a of heroAwards) {
     h.awards.push(a)
-    h.reputation = meter(h.reputation + (a.key === 'golden_star' ? 8 : 3))
+    h.reputation = meter(h.reputation + fameGain(h.reputation, a.key === 'golden_star' ? 8 : 3))
     log(state, out, fill(lt('🏆 Ödül: {a}!', '🏆 Award: {a}!'), { a: a.name }), 'award', '🏆')
     pushNews(state.life, rng, state.calendar, fill(lt('{n} {a} ödülünü kazandı', '{n} wins the {a}'), { n: `${h.firstName} ${h.lastName}`, a: a.name }), 1, rng.pick(NEWS_SOURCES))
   }
@@ -277,7 +277,7 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
       if (c.winnerId !== club.id) continue
       trophies.push(c.name)
       h.trophies.push({ season, name: c.name })
-      h.reputation = meter(h.reputation + (c.type === 'continental' ? 6 : c.type === 'league' ? 3 : 2))
+      h.reputation = meter(h.reputation + fameGain(h.reputation, c.type === 'continental' ? 6 : c.type === 'league' ? 3 : 2))
       log(state, out, fill(lt('🏆 {c} şampiyonu oldunuz!', '🏆 You won the {c}!'), { c: c.name }), 'award', '🏆')
     }
   }

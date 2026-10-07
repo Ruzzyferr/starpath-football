@@ -9,7 +9,7 @@ export const healthEvents: EventDef[] = [
     id: 'health.minor_knock',
     category: 'health',
     weight: 1.2,
-    cooldownWeeks: 10,
+    cooldownWeeks: 16, // ≤ ~3 a season once cards became more frequent
     triggers: ['training', 'post_match', 'weekly'],
     conditions: ({ state }) => hasClub(state) && !isInjured(state),
     title: t('Ufak Bir Sızı', 'A Little Twinge'),

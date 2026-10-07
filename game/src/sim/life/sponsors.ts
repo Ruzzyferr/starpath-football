@@ -58,14 +58,15 @@ export const BRAND_BY_NAME: Readonly<Record<string, BrandDef>> = Object.fromEntr
 const TIER_MULT = { 1: 0.7, 2: 1, 3: 1.5 } as const
 
 /**
- * Weekly sponsor value. 200 × e^(0.065·rep): rep 10 → ~380, rep 50 → ~5.2K,
- * rep 90 → ~69K per week before multipliers — a superstar's sponsor portfolio
- * (6 categories × tier 3 × followers) lands near 0.5–0.7M/week, on par with a
- * top wage, as in real football. Followers add up to +75% (log scale above
+ * Weekly sponsor value. 150 × e^(0.055·rep): rep 10 → ~260, rep 50 → ~2.3K,
+ * rep 80 → ~12K, rep 100 → ~37K per week before multipliers — a global
+ * superstar's portfolio (6 categories × tier 3 × followers) lands near
+ * 0.4–0.6M/week, on par with a top wage. (Balance pass: was 200·e^(0.065·rep),
+ * i.e. 2M+/week at rep 100 — sponsors out-earned football ten to one.) Followers add up to +75% (log scale above
  * 10K), perks `sponsor_value` stack on top.
  */
 export function sponsorWeeklyValue(hero: Pick<Hero, 'reputation' | 'perks'>, life: Pick<Life, 'followers'>, tier: 1 | 2 | 3): number {
-  const base = 200 * Math.exp(0.065 * clamp(hero.reputation, 0, 100))
+  const base = 150 * Math.exp(0.055 * clamp(hero.reputation, 0, 100))
   const fol = 1 + clamp(Math.log10(Math.max(1, life.followers) / 10000), 0, 3) * 0.25
   const v = base * TIER_MULT[tier] * fol * (1 + perkValue(hero, 'sponsor_value'))
   return Math.round(v / 10) * 10

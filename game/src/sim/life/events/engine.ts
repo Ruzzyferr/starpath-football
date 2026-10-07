@@ -49,10 +49,10 @@ export const RECENT_CATEGORY_MEMORY = 8
 export const CATEGORY_REPEAT_PENALTY = 0.4
 /** Chance that a roll produces its first card, by tag (max over tags). */
 export const TAG_FIRE_CHANCE: Record<string, number> = {
-  weekly: 0.55,
-  post_match: 0.3,
-  match_win: 0.35,
-  match_loss: 0.35,
+  weekly: 0.9,
+  post_match: 0.4,
+  match_win: 0.45,
+  match_loss: 0.45,
   match_draw: 0.3,
   scored: 0.3,
   injury: 0.7,
@@ -68,8 +68,18 @@ export const TAG_FIRE_CHANCE: Record<string, number> = {
   shopping: 0.4,
   social_post: 0.6,
 }
+/**
+ * Event cards are a side dish for fame, not the main course (balance pass,
+ * docs/BALANCE.md): they used to add +13–20 reputation a season — more than
+ * matches. Gains are halved and shrink as fame grows (×0.45 at 0, ×0.18 at
+ * 50, ×0.04 at 85); losses apply in full (scandals still hurt).
+ */
+export const EVENT_REP_SCALE = 0.45
+export const eventRepGain = (rep: number, amount: number): number =>
+  amount > 0 ? amount * EVENT_REP_SCALE * Math.pow(Math.max(0, 1 - rep / 100), 1.3) : amount
+
 /** Each extra card in the same roll is this much less likely than the previous. */
-export const EXTRA_CARD_FACTOR = 0.3
+export const EXTRA_CARD_FACTOR = 0.5
 export const CURRENCY_SYMBOL = '€'
 
 export const FLAG_FOLLOWUPS = 'ev:followups'
@@ -668,8 +678,8 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
     }
     case 'reputation': {
       const before = h.reputation
-      h.reputation = clamp(Math.round(before + num(d.amount)), 0, 100)
-      return h.reputation === before ? null : { kind: 'reputation', amount: h.reputation - before }
+      h.reputation = clamp(Math.round((before + eventRepGain(before, num(d.amount))) * 10) / 10, 0, 100)
+      return h.reputation === before ? null : { kind: 'reputation', amount: Math.round((h.reputation - before) * 10) / 10 }
     }
     case 'discipline': {
       const before = l.discipline

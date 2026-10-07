@@ -165,6 +165,7 @@ describe('real backend end to end', () => {
     S().life.energy = Math.max(S().life.energy, 40)
     S().life.money = Math.max(S().life.money, 2000)
     const money0 = S().life.money
+    S().hero.injury = null // casino is not open to injured heroes; this step tests the games
     let bj = A.casino.blackjackDeal(100)
     expect(bj.player.length).toBe(2)
     for (let i = 0; i < 10 && bj.phase === 'player'; i++) bj = A.casino.blackjackStand()

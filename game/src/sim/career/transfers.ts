@@ -8,7 +8,7 @@
  */
 import type { Agent, Calendar, Hero, LText, Life, SquadRole } from '../../core/types'
 import type { Rng } from '../../core/rng'
-import { absWeek, clamp, fill, fmtMoney, heroAge, lt, meter, pushLog, pushNews, NEWS_SOURCES, type Lines } from './common'
+import { absWeek, clamp, fameGain, fill, fmtMoney, heroAge, lt, meter, pushLog, pushNews, NEWS_SOURCES, type Lines } from './common'
 import { heroOvr, potentialStars } from './progression'
 import {
   applyContract, generateContractOffer, heroMarketValue, roundNice, type ClubContext, type ContractOffer,
@@ -83,11 +83,15 @@ const toClubContext = (c: CandidateClub): ClubContext => ({
   clubId: c.clubId, clubName: c.name, reputation: c.reputation, squadAvgOvr: c.squadAvgOvr, wageBudget: c.wageBudget,
 })
 
+/** OVR below a club's squad average at which its scouts are fully interested. */
+export const SCOUT_FIT_MARGIN = 1
+
 /**
  * Scout interest per candidate club (current club excluded), sorted by level.
  *
  * level = fit + fame + youth upside + form + request + noise, where
- *  - fit: clubs want players around their level: 60 when OVR ≈ squad avg − 3,
+ *  - fit: clubs want players around their level: 60 when OVR ≈ squad avg − 1
+ *    (balance pass: was − 3, which moved 17-year-olds up a tier every window),
  *    +2 per OVR above (max +25); −8 per OVR below (they don't need you);
  *  - fame: (hero rep − 0.6·club rep) × 0.3, ±15 — big clubs ignore unknowns;
  *  - youth: ≤ 21 → (scouted potential stars − 2.5) × 8 (wonderkid premium);
@@ -102,7 +106,7 @@ export function scoutInterest(
   const out: ClubInterest[] = []
   for (const c of candidates) {
     if (c.clubId === (ctx.currentClubId ?? hero.contract?.clubId)) continue
-    const d = ovr - (c.squadAvgOvr - 3)
+    const d = ovr - (c.squadAvgOvr - SCOUT_FIT_MARGIN)
     let level = d >= 0 ? 60 + Math.min(25, d * 2) : 60 + d * 8
     level += clamp((hero.reputation - 0.6 * c.reputation) * 0.3, -15, 15)
     if (age <= 21) level += (potentialStars(hero.potential, rng.normal(0, 4)) - 2.5) * 8
@@ -313,8 +317,9 @@ export function acceptTransfer(
     headline = fill(lt('{p}, {f} bonservisle {c} yolunda', '{p} completes {f} move to {c}'), { p: name, c: offer.clubName, f: fmtMoney(offer.fee) })
   }
   pushNews(life, rng, calendar, headline, 1, rng.pick(NEWS_SOURCES))
-  // Fame: +1 per ~doubling of fee above 1M (a 64M move ≈ +6).
-  if (offer.fee >= 1_000_000) hero.reputation = meter(hero.reputation + Math.min(8, Math.log2(offer.fee / 1_000_000)))
+  // Fame: +1 per ~doubling of fee above 1M (a 64M move ≈ +6), less once already famous
+  // (balance pass: frequent big moves pushed everyone to 100).
+  if (offer.fee >= 1_000_000) hero.reputation = meter(hero.reputation + fameGain(hero.reputation, Math.min(8, Math.log2(offer.fee / 1_000_000))))
   lines.push(pushLog(life, calendar, headline, 'career', '🔁'))
   if (opts.oldClubName) {
     lines.push(fill(lt('{o} taraftarlarına veda ettin.', 'You said goodbye to the {o} fans.'), { o: opts.oldClubName }))

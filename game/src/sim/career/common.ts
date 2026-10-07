@@ -79,6 +79,14 @@ export const absWeek = (cal: Pick<Calendar, 'season' | 'week'>): number => (cal.
 /** Age of the hero during the given season (birthday assumed before season start). */
 export const heroAge = (hero: Pick<Hero, 'birthYear'>, season: number): number => season - hero.birthYear
 
+/**
+ * Fame saturates: a positive reputation gain is scaled by (1 − rep/100), so
+ * the climb from 80 to 90 takes as long as from 20 to 50 (balance pass,
+ * docs/BALANCE.md — nearly every career used to hit 100 by 21). Losses apply in full.
+ */
+export const fameGain = (rep: number, amount: number): number =>
+  amount > 0 ? amount * Math.max(0, 1 - clamp(rep, 0, 100) / 100) : amount
+
 /** Legal age for gambling, betting and alcohol-themed nightlife (casino, nightclub, their events). */
 export const ADULT_AGE = 18
 /** True once the hero may gamble / go clubbing. */

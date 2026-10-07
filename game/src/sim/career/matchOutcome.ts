@@ -64,6 +64,12 @@ export interface MatchApplyResult {
 
 /** Average rating used as the neutral point for most deltas. */
 export const NEUTRAL_RATING = 6.5
+/**
+ * Match reputation scale (balance pass, docs/BALANCE.md): fame used to hit
+ * 90+ by 19 and 100 by 20 for nearly every career. Now a regular starter at a
+ * small club gains ~5–8 a season, a star in a top league ~8–12 until fame saturates.
+ */
+export const MATCH_REP_SCALE = 1.0
 
 /** Form = EMA of a rating-derived target: ~last 5 matches matter (α = 0.35). */
 export const FORM_ALPHA = 0.35
@@ -142,8 +148,9 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
 
   // ── Reputation (diminishing at the top, bigger on big stages) ──
   const stage = 0.5 + imp + clamp(((m.opponentReputation ?? 50) - 50) / 100, -0.3, 0.4)
-  let repD = ((rating - NEUTRAL_RATING) * 0.4 + goals * 0.3 + assists * 0.2 + (m.motm ? 0.5 : 0)) * stage
-  repD = repD > 0 ? repD * (1 - hero.reputation / 120) : repD * 0.5
+  let repD = ((rating - NEUTRAL_RATING) * 0.4 + goals * 0.3 + assists * 0.2 + (m.motm ? 0.5 : 0)) * stage * MATCH_REP_SCALE
+  // Fame gets harder to add the more you have: ×0.75 at 20, ×0.4 at 50, ×0.1 at 85.
+  repD = repD > 0 ? repD * Math.pow(Math.max(0, 1 - hero.reputation / 100), 1.3) : repD * 0.5
   const repBefore = hero.reputation
   hero.reputation = clamp(Math.round((hero.reputation + repD) * 100) / 100, 0, 100)
   const reputationDelta = hero.reputation - repBefore

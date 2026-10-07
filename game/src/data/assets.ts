@@ -119,8 +119,8 @@ export const ASSETS: readonly AssetDef[] = [
   a('art_masterpiece', 'art', 'Modern Ustanın Başyapıtı', 'Modern Master Painting', '🖼️', 12_000_000, 3_000, 4, 8, 1.25, { ...fx('followers', 0.08), minReputation: 70 }),
 
   // ── Islands: endgame flex; resale ~0.9, large upkeep, top fame ──
-  a('island_lake', 'island', 'Göl Adacığı', 'Lake Islet', '🏝️', 3_000_000, 7_000, 6, 4, 0.9, { ...fx('stress_relief', 4), minReputation: 55 }),
-  a('island_aegean', 'island', 'Ege Koyu Adası', 'Aegean Cove Island', '🏝️', 15_000_000, 30_000, 9, 7, 0.9, { ...fx('stress_relief', 6), minReputation: 70 }),
+  a('island_lake', 'island', 'Göl Adacığı', 'Lake Islet', '🏝️', 3_000_000, 7_000, 6, 4, 0.9, { ...fx('stress_relief', 4), minReputation: 75 }),
+  a('island_aegean', 'island', 'Ege Koyu Adası', 'Aegean Cove Island', '🏝️', 15_000_000, 30_000, 9, 7, 0.9, { ...fx('stress_relief', 6), minReputation: 82 }),
   a('island_tropic', 'island', 'Tropik Özel Ada', 'Private Tropical Island', '🌴', 55_000_000, 90_000, 12, 10, 0.9, { ...fx('stress_relief', 8), minReputation: 85 }),
   a('island_atoll', 'island', 'Mercan Atolü Cenneti', 'Coral Atoll Paradise', '🐚', 120_000_000, 180_000, 14, 12, 0.9, { ...fx('happiness_partner', 5), minReputation: 92 }),
 

@@ -143,6 +143,15 @@ export function trainingInjuryChance(hero: Hero, life: Life, type: TrainingType,
 }
 
 /**
+ * Global scale on session XP (balance pass, docs/BALANCE.md). The autopilot
+ * and most players train twice a day (~10 sessions/week, not the 5 the curve
+ * was first tuned for), which doubled growth: OVR 62 → 79 in two seasons and
+ * heroes blowing past their potential. 0.45 brings a 10-session week back to
+ * the intended pace (+5–7 OVR per season while young).
+ */
+export const SESSION_XP_SCALE = 0.45
+
+/**
  * Raw XP per attribute a session would grant (before the age multiplier),
  * with the hero's current fatigue, perks, assets, wellbeing and trainer.
  * Pure: the UI uses it for previews ("+38 XP at grade A").
@@ -152,7 +161,7 @@ export function trainingXp(hero: Hero, life: Life, type: TrainingType, performan
   const bonus =
     perkValue(hero, 'xp_all') + (def.perkKey ? perkValue(hero, def.perkKey) : 0) + assetEffectTotal(life, 'xp_bonus')
   const total =
-    def.baseXp * qualityFactor(performance) * INTENSITY[intensity].xp * fatigueEfficiency(hero.fatigue) * (1 + bonus) * wellbeingXpMultiplier(life)
+    SESSION_XP_SCALE * def.baseXp * qualityFactor(performance) * INTENSITY[intensity].xp * fatigueEfficiency(hero.fatigue) * (1 + bonus) * wellbeingXpMultiplier(life)
   const wsum = Object.values(def.attrs).reduce((a, b) => a + (b ?? 0), 0)
   const tb = trainerBonus(life.trainer)
   const xp: Partial<Record<AttributeKey, number>> = {}

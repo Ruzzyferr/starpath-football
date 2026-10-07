@@ -1,0 +1,120 @@
+/**
+ * Career balance report. `BALANCE=1 npx vitest run src/sim/game/balance.test.ts`
+ * runs N auto careers (BALANCE_N, default 30) for BALANCE_SEASONS (default 10)
+ * and prints the markdown tables used in docs/BALANCE.md. Without the env var
+ * only a quick smoke run executes.
+ */
+import { describe, expect, it } from 'vitest'
+import { runCareer, standardMix, type CareerTrace } from './balanceSim'
+
+const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
+
+const q = (xs: number[], p: number): number => {
+  if (!xs.length) return NaN
+  const s = [...xs].sort((a, b) => a - b)
+  const i = (s.length - 1) * p
+  const lo = Math.floor(i)
+  return s[lo] + (s[Math.min(s.length - 1, lo + 1)] - s[lo]) * (i - lo)
+}
+const med = (xs: number[]) => q(xs, 0.5)
+const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN)
+const money = (v: number) => (!Number.isFinite(v) ? '–' : Math.abs(v) >= 1e6 ? `${(v / 1e6).toFixed(1)}M` : Math.abs(v) >= 1e3 ? `${(v / 1e3).toFixed(0)}K` : v.toFixed(0))
+const pct = (v: number) => `${(v * 100).toFixed(0)}%`
+const f1 = (v: number) => (Number.isFinite(v) ? v.toFixed(1) : '–')
+
+/** Markdown report for a batch of careers. */
+export function report(traces: CareerTrace[]): string {
+  const out: string[] = []
+  const seasons = Math.max(...traces.map((t) => t.samples.length))
+  const highPot = (t: CareerTrace) => (t.samples[0]?.potential ?? 0) >= 85
+
+  out.push('### Sezon sonu dağılımı (medyan [p25–p75])', '')
+  out.push('| Sezon | Yaş | OVR | OVR (pot≥85) | İtibar | Lig 1. kademe | Haftalık maaş (medyan / p90) | Net servet (medyan / p90 / max) | Kupa (ort.) |')
+  out.push('|---|---|---|---|---|---|---|---|---|')
+  for (let i = 0; i < seasons; i++) {
+    const rows = traces.map((t) => t.samples[i]).filter(Boolean)
+    const hp = traces.filter(highPot).map((t) => t.samples[i]).filter(Boolean)
+    const ovr = rows.map((r) => r.ovr)
+    out.push(`| ${i + 1} | ${med(rows.map((r) => r.age))} | ${med(ovr).toFixed(0)} [${q(ovr, 0.25).toFixed(0)}–${q(ovr, 0.75).toFixed(0)}] | ${med(hp.map((r) => r.ovr)).toFixed(0)} | ${med(rows.map((r) => r.reputation)).toFixed(0)} | ${pct(rows.filter((r) => r.tier === 1).length / rows.length)} | ${money(med(rows.map((r) => r.wage)))} / ${money(q(rows.map((r) => r.wage), 0.9))} | ${money(med(rows.map((r) => r.netWorth)))} / ${money(q(rows.map((r) => r.netWorth), 0.9))} / ${money(Math.max(...rows.map((r) => r.netWorth)))} | ${f1(mean(rows.map((r) => r.trophies)))} |`)
+  }
+
+  out.push('', '### İtibar kaynakları (sezon başına ortalama)', '')
+  out.push('| Sezon | Maç | Haftalık (milli takım, ödül, kupa) | Olay kartları | Transfer | Diğer (aktivite) | Alışveriş |')
+  out.push('|---|---|---|---|---|---|---|')
+  for (let i = 0; i < seasons; i++) {
+    const rows = traces.map((t) => t.samples[i]).filter(Boolean)
+    out.push(`| ${i + 1} | ${f1(mean(rows.map((r) => r.repFrom.match)))} | ${f1(mean(rows.map((r) => r.repFrom.weekly)))} | ${f1(mean(rows.map((r) => r.repFrom.cards)))} | ${f1(mean(rows.map((r) => r.repFrom.transfer)))} | ${f1(mean(rows.map((r) => r.repFrom.other)))} | ${f1(mean(rows.map((r) => r.repFrom.shopping)))} |`)
+  }
+
+  out.push('', '### Para: gelir ve harcama kalemleri (tüm kariyerlerin toplamı, sezon başına)', '')
+  out.push('| Sezon | Gelir (vergi sonrası) | Varlık alımı | Bakım | Antrenör | Kumarhane (net kayıp) | Diğer (aktivite/olay/bonus, net) | Harcama / gelir |')
+  out.push('|---|---|---|---|---|---|---|---|')
+  for (let i = 0; i < seasons; i++) {
+    const rows = traces.map((t) => t.samples[i]).filter(Boolean)
+    const inc = rows.reduce((a, r) => a + r.income, 0)
+    const sp = (k: keyof (typeof rows)[number]['spend']) => rows.reduce((a, r) => a + r.spend[k], 0)
+    const tot = sp('assets') + sp('upkeep') + sp('trainer') + Math.max(0, sp('casino')) + Math.max(0, sp('other'))
+    out.push(`| ${i + 1} | ${money(inc)} | ${money(sp('assets'))} | ${money(sp('upkeep'))} | ${money(sp('trainer'))} | ${money(sp('casino'))} | ${money(sp('other'))} | ${pct(tot / Math.max(1, inc))} |`)
+  }
+
+  const all = traces.flatMap((t) => t.samples)
+  const weeks = all.reduce((a, r) => a + r.weeks, 0)
+  const gamblers = traces.filter((t) => t.cfg.persona === 'gambler')
+  const gamblerSpend = gamblers.flatMap((t) => t.samples).reduce((a, r) => a + r.spend.assets + r.spend.upkeep + r.spend.trainer + Math.max(0, r.spend.casino) + Math.max(0, r.spend.other), 0)
+  const allSpend = all.reduce((a, r) => a + r.spend.assets + r.spend.upkeep + r.spend.trainer + Math.max(0, r.spend.casino) + Math.max(0, r.spend.other), 0)
+  const firstTop = traces.map((t) => t.firstTopTierAge).filter((v): v is number => v !== null)
+  const firstElite = traces.map((t) => t.firstEliteAge).filter((v): v is number => v !== null)
+  const hp = traces.filter(highPot)
+  const hp80by25 = hp.filter((t) => t.ovr80Age !== null && t.ovr80Age <= 25).length
+  const s3 = traces.map((t) => t.samples[2]).filter(Boolean)
+  out.push('', '### Özet metrikler', '')
+  out.push('| Metrik | Değer |', '|---|---|')
+  out.push(`| Kariyer sayısı × sezon | ${traces.length} × ${seasons} |`)
+  out.push(`| İlk 1. kademe lig yaşı (medyan, ulaşan %) | ${f1(med(firstTop))} (${pct(firstTop.length / traces.length)}) |`)
+  out.push(`| İlk elit kulüp (itibar ≥ 80) yaşı (medyan, ulaşan %) | ${f1(med(firstElite))} (${pct(firstElite.length / traces.length)}) |`)
+  out.push(`| Yüksek potansiyel (≥85): 25 yaşına kadar OVR 80+ | ${hp80by25}/${hp.length} |`)
+  out.push(`| 3. sezon sonu net servet (medyan / max) | ${money(med(s3.map((r) => r.netWorth)))} / ${money(Math.max(...s3.map((r) => r.netWorth)))} |`)
+  const broke = traces.filter((t) => t.bankrupt)
+  out.push(`| İflas eden kariyer | ${pct(broke.length / traces.length)}${broke.length ? ` (${broke.map((t) => t.cfg.persona).join(', ')})` : ''} |`)
+  out.push(`| Sezon başına kulüp değişikliği (ort.) | ${f1(mean(all.map((r) => r.moves)))} |`)
+  out.push(`| Nakdin eksiye düştüğü hafta (kariyer başına) | ${f1(all.reduce((a, r) => a + r.negativeWeeks, 0) / traces.length)} |`)
+  out.push(`| Haftalık olay kartı (ort.) | ${f1(all.reduce((a, r) => a + r.events, 0) / Math.max(1, weeks))} |`)
+  out.push(`| Sezon başına sakatlık (ort.) / sakat hafta | ${f1(mean(all.map((r) => r.injuries)))} / ${f1(mean(all.map((r) => r.weeksInjured)))} |`)
+  out.push(`| Enerji yetmediği için normal antrenman yapılamayan sabahlar | ${pct(all.reduce((a, r) => a + r.lowEnergyMornings, 0) / Math.max(1, all.reduce((a, r) => a + r.days, 0)))} |`)
+  out.push(`| Sezon başına maç (medyan) / gol (medyan) | ${med(all.map((r) => r.apps))} / ${med(all.map((r) => r.goals))} |`)
+  out.push(`| Kumarhane payı: kumarbaz personada harcamanın % kaçı | ${pct(gamblers.reduce((a, t) => a + Math.max(0, t.casinoNet), 0) / Math.max(1, gamblerSpend))} |`)
+  out.push(`| Kumarhane payı: tüm kariyerlerde | ${pct(traces.reduce((a, t) => a + Math.max(0, t.casinoNet), 0) / Math.max(1, allSpend))} |`)
+  const islands = traces.filter((t) => t.boughtIsland)
+  out.push(`| Ada alan kariyer (yaş / itibar) | ${islands.length ? islands.map((t) => `${t.boughtIsland!.age} / ${t.boughtIsland!.reputation.toFixed(0)}`).join(', ') : 'yok'} |`)
+
+  out.push('', '### Kariyerler', '')
+  out.push('| # | Persona | Arketip | Köken | Ülke | Cinsiyet | Pot. | Son OVR | İtibar | Kademe yolu | Son maaş | Net servet | Kupa | Kulüpler |')
+  out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+  traces.forEach((t, i) => {
+    const last = t.samples[t.samples.length - 1]
+    if (!last) return
+    out.push(`| ${i + 1} | ${t.cfg.persona} | ${t.cfg.archetype} | ${t.cfg.background} | ${t.cfg.nationality} | ${t.cfg.gender === 'female' ? 'K' : 'E'} | ${t.samples[0].potential} | ${last.ovr} | ${last.reputation} | ${t.samples.map((r) => r.tier ?? '-').join('')} | ${money(last.wage)} | ${money(last.netWorth)} | ${last.trophies} | ${t.clubs.length} |`)
+  })
+  return out.join('\n')
+}
+
+describe('balance simulator', () => {
+  it('smoke: one career season runs and records a sample', () => {
+    const [cfg] = standardMix(1, 1)
+    const t = runCareer(cfg)
+    expect(t.samples).toHaveLength(1)
+    const s = t.samples[0]
+    expect(s.weeks).toBeGreaterThan(30)
+    expect(s.ovr).toBeGreaterThan(30)
+    expect(Number.isFinite(s.netWorth)).toBe(true)
+  }, 60_000)
+
+  it.skipIf(!env.BALANCE)('full report', () => {
+    const n = Number(env.BALANCE_N) || 30
+    const seasons = Number(env.BALANCE_SEASONS) || 10
+    const t0 = performance.now()
+    const traces = standardMix(n, seasons, Number(env.BALANCE_SEED) || 1000).map((c) => runCareer(c))
+    console.log(`\n<!-- balance: ${n} careers × ${seasons} seasons in ${((performance.now() - t0) / 1000).toFixed(0)} s -->\n${report(traces)}\n`)
+    expect(traces.length).toBe(n)
+  }, 3_600_000)
+})
