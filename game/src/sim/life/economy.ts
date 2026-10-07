@@ -11,6 +11,7 @@ import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, finite, fmtMoney, lt, type Lines } from '../career/common'
 import { ASSET_BY_ID } from '../../data/assets'
 import { ownedAssetDefs } from './assetEffects'
+import { businessesValue, sellBusiness, weeklyBusinessTick } from './business'
 
 // ───────────────────────── Tuning ─────────────────────────
 
@@ -295,6 +296,7 @@ export function netWorth(life: Life, cal: Pick<Calendar, 'season' | 'week'>): nu
     const d = ASSET_BY_ID[o.defId]
     if (d) w += resaleValue(o, d, cal)
   }
+  w += businessesValue(life)
   if (life.bank.loan) w -= life.bank.loan.remaining
   return finite(w)
 }
@@ -363,6 +365,12 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   for (const d of ownedAssetDefs(life)) {
     if (d.effect?.key === 'rent_income') b.rent += d.effect.value
     if (d.effect?.key === 'business_income') b.business += d.effect.value * (1 + rng.normal(0, BUSINESS_SD))
+  }
+  // Owned businesses (life/business): weekly P&L, profit or loss.
+  if (life.businesses?.length) {
+    const biz = weeklyBusinessTick(rng, life, hero, cal)
+    b.business += biz.net
+    lines.push(...biz.lines)
   }
   b.business = Math.round(finite(b.business))
 
@@ -468,6 +476,17 @@ export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week
       const r = sellInvestment(life, inv.id)
       raised += r.amount
       lines.push(fill(lt('Zorunlu satış: {n}', 'Forced sale: {n}'), { n: inv.name }))
+    }
+  }
+  if (life.money < 0 && life.businesses?.length) {
+    // Loss-makers go first.
+    const ranked = [...life.businesses].sort((p, q) => (p.history[0]?.profit ?? 0) - (q.history[0]?.profit ?? 0))
+    for (const bz of ranked) {
+      if (life.money >= 0) break
+      const r = sellBusiness(life, bz.id)
+      raised += r.amount
+      life.bank.creditScore -= 10
+      lines.push(fill(lt('⚠️ Alacaklılar yüzünden işletmeni sattın: {n}', '⚠️ Creditors forced you to sell your business: {n}'), { n: bz.name }))
     }
   }
   if (life.money < 0 && life.assets.length) {

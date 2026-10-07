@@ -444,6 +444,44 @@ export interface Life {
   eventHistory: Record<string, number>
   log: LogEntry[]
   news: NewsItem[]
+  /** Businesses the hero runs (sim/life/business). Missing on old saves. */
+  businesses?: Business[]
+}
+
+export type BusinessKind = 'restaurant' | 'gym' | 'clothing'
+
+/** One week's profit & loss statement of a business. */
+export interface BusinessPnl {
+  /** Absolute week. */
+  w: number
+  revenue: number
+  rent: number
+  staff: number
+  manager: number
+  /** Stock / ingredients / production (variable cost). */
+  stock: number
+  /** One-off incident cost (fine, repair) or windfall (negative cost). */
+  incident: number
+  profit: number
+  /** What happened this week, if anything. */
+  note?: LText
+}
+
+export interface Business {
+  id: string
+  kind: BusinessKind
+  name: string
+  level: 1 | 2 | 3
+  /** A hired general manager: steadier weeks, fewer incidents, no owner stress. */
+  manager: boolean
+  /** Brand reputation 0..100. */
+  brand: number
+  openedWeek: number
+  /** Purchase + upgrades paid so far (resale basis). */
+  invested: number
+  totalProfit: number
+  /** Last 8 weeks, most recent first. */
+  history: BusinessPnl[]
 }
 
 // ───────────────────────── Events (decision cards) ─────────────────────────
