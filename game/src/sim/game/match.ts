@@ -16,6 +16,7 @@ import { fmtMoney, fill, lt } from '../career/common'
 import { applyMatchToHero, type HeroMatchInput } from '../career/matchOutcome'
 import { heroOvr } from '../career/progression'
 import { rollSelection } from '../career/squadRole'
+import { heroMatchAttributes } from '../career/matchPerks'
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
 import { deriveAttributes } from '../world/attributes'
@@ -95,7 +96,7 @@ function teamMorale(avgMorale: number): number {
 }
 
 /** Build a MatchTeam; for the hero's club the hero takes the best-fitting slot (or a bench seat). */
-function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: boolean): MatchTeam {
+function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
   const w = state.world
   const lineup = selectLineup(w, club.id, club.formation)
   const ids = [...lineup.playerIds]
@@ -117,7 +118,8 @@ function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: bool
     }
   }
   const mental = mentalMatchModifier(state.life)
-  const heroAttrs = { ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }
+  // Perk hook (career/matchPerks): match_* perks become attribute boosts read by the sim and the Phaser runtime.
+  const heroAttrs = heroMatchAttributes(hero, { ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }, { importance })
   const heroPlayer = (slot: Position): MatchPlayer => ({
     id: HERO_ID, name: hero.nickname || hero.lastName, number: hero.shirtNumber, position: slot, ovr: heroOvr(hero),
     attrs: heroAttrs, isHero: true, relationToHero: 100,
@@ -170,9 +172,10 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
     const away = state.world.clubs[fixture.awayId]
     const mental = mentalMatchModifier(state.life)
     const base = DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
+    const importance = importanceOf(competition, fixture, home, away)
     const setup: MatchSetup = {
-      home: buildTeam(state, home, isHome, sel.starts),
-      away: buildTeam(state, away, !isHome, sel.starts),
+      home: buildTeam(state, home, isHome, sel.starts, importance),
+      away: buildTeam(state, away, !isHome, sel.starts, importance),
       seed: rng.nextUint(),
       competitionName: competition.name.en,
       weather: rollWeather(rng, home.countryId, fixture.week),
@@ -180,7 +183,7 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       heroOnBench: !sel.starts,
       knockout: isKnockoutFixture(competition, fixture),
       neutralVenue: isFinalFixture(competition, fixture),
-      importance: importanceOf(competition, fixture, home, away),
+      importance,
       difficulty: clamp(base * (1 + (1 - mental) * 0.5), 0.8, 1.4),
       ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
     }
