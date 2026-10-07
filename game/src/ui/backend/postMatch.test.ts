@@ -127,6 +127,9 @@ describe('post flow', () => {
       stats, heroMap: { cols: 1, rows: 1, heat: [1], shots: [] }, trust: { before: 1, after: 2, reasons: [] },
       relations: [{ id: 'a', name: 'A', kind: 'fans', before: 0, after: 2 }],
     })).toEqual(['result', 'rating', 'map', 'trust', 'relations', 'interview'])
+    const earnings = { lines: [{ key: 'wage' as const, amount: 100, when: 'week' as const }], paidNow: 0, weekShare: 100, net: 100 }
+    expect(postSteps({ stats, earnings })).toEqual(['result', 'rating', 'earnings', 'interview'])
+    expect(postSteps({ stats, earnings: { ...earnings, lines: [] } })).toEqual(['result', 'rating', 'interview'])
   })
 
   it('rating groups add up to the final rating via an "other" line', () => {

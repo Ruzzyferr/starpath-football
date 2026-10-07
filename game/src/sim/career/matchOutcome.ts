@@ -15,6 +15,7 @@ import { pushRecentRating, updateTrustFromMatch } from './squadRole'
 import { applyMatchRelations } from '../life/relationships'
 import { assetEffectTotal } from '../life/assetEffects'
 import { yellowAccumulationBan } from '../match/referee'
+import { NO_BONUSES, matchBonuses, type MatchBonuses } from './matchPay'
 
 /** The hero's line from a finished match (produced by the match engine / UI). */
 export interface HeroMatchInput {
@@ -61,6 +62,8 @@ export interface MatchApplyResult {
   lines: Lines
   headlines: NewsItem[]
   bonusPaid: number
+  /** Per-match contract bonuses, itemised (WP-16 earnings step). */
+  bonuses: MatchBonuses
   reputationDelta: number
   followersDelta: number
 }
@@ -132,7 +135,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   if (!played) {
     // Unused sub: only morale & form drift.
     hero.morale = meter(hero.morale + (m.won ? 1 : m.drew ? 0 : -2))
-    return { lines: [lt('Maçta forma şansı bulamadın.', 'You did not get on the pitch.')], headlines, bonusPaid: 0, reputationDelta: 0, followersDelta: 0 }
+    return { lines: [lt('Maçta forma şansı bulamadın.', 'You did not get on the pitch.')], headlines, bonusPaid: 0, bonuses: NO_BONUSES, reputationDelta: 0, followersDelta: 0 }
   }
   const resultWord = m.won ? lt('Galibiyet', 'Win') : m.drew ? lt('Beraberlik', 'Draw') : lt('Mağlubiyet', 'Defeat')
   lines.push(fill(lt('{r} · Puanın {x} · {g} gol, {a} asist', '{r} · Rating {x} · {g} goals, {a} assists'), {
@@ -187,15 +190,15 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   }
 
   // ── Contract bonuses ──
-  let bonusPaid = 0
-  if (hero.contract) bonusPaid = goals * hero.contract.goalBonus + assists * hero.contract.assistBonus + (minutes > 0 ? hero.contract.appearanceBonus ?? 0 : 0)
+  const bonuses = matchBonuses(hero.contract, { goals, assists, minutes, cleanSheet: !!m.cleanSheet, isKeeper: hero.position === 'GK' })
+  let bonusPaid = bonuses.goal + bonuses.assist + bonuses.appearance
   if (bonusPaid > 0) {
     life.money += bonusPaid
     lines.push(fill(lt('💰 Gol/asist primi: {m}', '💰 Goal/assist bonus: {m}'), { m: fmtMoney(bonusPaid) }))
   }
   // Goalkeeper clean-sheet bonus (2.5#4): keepers earn the goal bonus (min 10% of the weekly wage) per shutout.
-  if (hero.contract && hero.position === 'GK' && m.cleanSheet && minutes >= 60) {
-    const keeperBonus = Math.max(hero.contract.goalBonus, Math.round(hero.contract.wage * 0.1))
+  if (bonuses.cleanSheet > 0) {
+    const keeperBonus = bonuses.cleanSheet
     life.money += keeperBonus
     bonusPaid += keeperBonus
     lines.push(fill(lt('🧤 Kaleci primi (gol yemedin): {m}', '🧤 Clean-sheet bonus: {m}'), { m: fmtMoney(keeperBonus) }))
@@ -221,7 +224,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   }
   for (const l of lines) pushLog(life, cal, l, 'match', '⚽')
   if (!rngIn) state.rng = rng.state
-  return { lines, headlines, bonusPaid, reputationDelta, followersDelta }
+  return { lines, headlines, bonusPaid, bonuses, reputationDelta, followersDelta }
 }
 
 interface Headline { text: LText; sentiment: -1 | 0 | 1 }

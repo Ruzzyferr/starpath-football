@@ -22,6 +22,8 @@ import type {
 import { currentLang } from '../i18n'
 import { setControlPrefs } from '../input/prefs'
 import { contentFlags } from '../core/contentFlags'
+import type { MatchEarnings } from '../sim/career/matchPay'
+import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { DrillKind, DrillVariant } from '../game/training/types'
 
 // ───────────────────────── Shared view types ─────────────────────────
@@ -488,6 +490,8 @@ export interface PostMatchView {
   trust?: TrustChangeView
   /** Relationship changes this match caused (largest first). */
   relations?: RelationChangeView[]
+  /** WP-16: what this match earned (bonuses paid now + this match's share of the weekly wage/sponsors). */
+  earnings?: MatchEarnings
 }
 export interface RatingLineView {
   minute: number
@@ -763,7 +767,12 @@ export const activeEvent = signal<number | null>(null)
 export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' | 'music'> {
   reducedMotion: boolean
   highContrast: boolean
+  /** Derived from the quality profile (true on Low); kept for older readers (audio quality, CSS data-fx). */
   lowFx: boolean
+  /** WP-16 graphics quality profile; 'auto' uses the device benchmark result below. */
+  quality: QualityChoice
+  /** Profile picked by the device benchmark (null = not measured yet). */
+  qualityAuto: QualityProfile | null
   /** Colour-blind palette (the legacy `colorblind` flag mirrors `cbMode !== 'off'`). */
   cbMode: ColorblindMode
   leftHanded: boolean
@@ -802,6 +811,8 @@ export const DEFAULT_SETTINGS: UiSettings = {
   reducedMotion: false,
   highContrast: false,
   lowFx: false,
+  quality: 'auto',
+  qualityAuto: null,
   cbMode: 'off',
   leftHanded: false,
   oneHand: false,
@@ -822,7 +833,13 @@ const SETTINGS_KEY = 'starpath.settings.v1'
 function loadSettings(): UiSettings {
   try {
     const raw = globalThis.localStorage?.getItem(SETTINGS_KEY)
-    if (raw) return { ...DEFAULT_SETTINGS, ...(JSON.parse(raw) as Partial<UiSettings>) }
+    if (raw) {
+      const saved = JSON.parse(raw) as Partial<UiSettings>
+      // Before WP-16 there was only the "low effects" switch: it maps to the Low profile.
+      if (saved.quality === undefined && saved.lowFx) saved.quality = 'low'
+      if (!isQualityChoice(saved.quality)) delete saved.quality
+      return withDerivedFx({ ...DEFAULT_SETTINGS, ...saved })
+    }
   } catch {
     /* storage unavailable */
   }
@@ -830,10 +847,17 @@ function loadSettings(): UiSettings {
   const osReduce = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
   return { ...DEFAULT_SETTINGS, reducedMotion: osReduce }
 }
+/** The graphics profile in effect (explicit choice, else the benchmark result). */
+export function effectiveQuality(s: Pick<UiSettings, 'quality' | 'qualityAuto'> = settings.value): QualityProfile {
+  return resolveQuality(s.quality, s.qualityAuto)
+}
+function withDerivedFx(s: UiSettings): UiSettings {
+  return { ...s, lowFx: effectiveQuality(s) === 'low' }
+}
 export const settings = signal<UiSettings>(loadSettings())
 currentLang.value = settings.value.lang
 export function updateSettings(patch: Partial<UiSettings>): void {
-  settings.value = { ...settings.value, ...patch }
+  settings.value = withDerivedFx({ ...settings.value, ...patch })
   currentLang.value = settings.value.lang
   try {
     globalThis.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(settings.value))
@@ -843,8 +867,25 @@ export function updateSettings(patch: Partial<UiSettings>): void {
 }
 export const lang = computed<Lang>(() => settings.value.lang)
 
+/**
+ * Runs the short device benchmark and stores its profile (Auto quality).
+ * Called once on first launch and from Settings ("Detect again").
+ */
+export function detectQuality(): QualityProfile {
+  const auto = profileFromProbe(runDeviceBenchmark())
+  updateSettings({ qualityAuto: auto })
+  return auto
+}
+
 /** Reflect settings onto <html> data attributes (browser only). */
 export function bindSettingsToDocument(): () => void {
+  if (settings.peek().qualityAuto === null && typeof window !== 'undefined') {
+    try {
+      detectQuality()
+    } catch {
+      /* benchmark unavailable: Auto falls back to Medium */
+    }
+  }
   return effect(() => {
     const s = settings.value
     currentLang.value = s.lang
@@ -871,6 +912,7 @@ export function bindSettingsToDocument(): () => void {
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'
     root.dataset.motion = s.reducedMotion ? 'reduced' : 'full'
     root.dataset.fx = s.lowFx ? 'low' : 'full'
+    root.dataset.quality = effectiveQuality(s)
     root.dataset.flash = s.reduceFlashes ? 'off' : 'on'
     root.style.setProperty('--text-scale', String(s.textScale))
   })

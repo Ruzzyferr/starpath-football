@@ -1,7 +1,7 @@
 import '../../../styles/screens/match.css'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { t, lt, tx, currentLang } from '../../../i18n'
-import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRing, ShotMap, ShotMarker } from '../../components'
+import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRing, Money, ShotMap, ShotMarker } from '../../components'
 import { Icon, type IconName } from '../../icons'
 import { formatRating, ratingColor } from '../../format'
 import { useCountUp } from '../../hooks/motion'
@@ -23,6 +23,7 @@ const STEP_ICON: Record<PostStep, IconName> = {
   map: 'map-pin',
   trust: 'handshake',
   relations: 'users',
+  earnings: 'coins',
   interview: 'megaphone',
 }
 
@@ -280,6 +281,41 @@ function TrustStep({ pm }: { pm: PostMatchView }) {
   )
 }
 
+function EarningsStep({ pm }: { pm: PostMatchView }) {
+  const e = pm.earnings
+  if (!e) return null
+  const now = e.lines.filter((l) => l.when === 'now')
+  const week = e.lines.filter((l) => l.when === 'week')
+  const row = (l: (typeof e.lines)[number], i: number) => (
+    <li key={l.key} class={deltaClass(l.amount)} style={{ ['--i' as string]: String(i) }} data-testid={`earn-${l.key}`}>
+      <span>{tx(`postmatch.earnings.line.${l.key}`)}</span>
+      <b class="num"><Money value={l.amount} sign animate={false} /></b>
+    </li>
+  )
+  return (
+    <section class="post-card post-step-card pearn" aria-labelledby="post-step-h" data-testid="post-earnings">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="coins" size={14} /> {t('postmatch.earnings.title')}</h2>
+      <div class="pearn-total">
+        <span class="micro t-lo">{t('postmatch.earnings.total')}</span>
+        <b class="score-font num" data-testid="earn-net"><Money value={e.net} /></b>
+      </div>
+      {now.length > 0 && (
+        <>
+          <h3 class="micro t-mid">{t('postmatch.earnings.now')}</h3>
+          <ul class="ptrust-list pearn-list">{now.map(row)}</ul>
+        </>
+      )}
+      {week.length > 0 && (
+        <>
+          <h3 class="micro t-mid">{t('postmatch.earnings.week')}</h3>
+          <ul class="ptrust-list pearn-list">{week.map((l, i) => row(l, i + now.length))}</ul>
+          <p class="t-xs t-lo">{t('postmatch.earnings.weekNote')}</p>
+        </>
+      )}
+    </section>
+  )
+}
+
 function RelationsStep({ pm }: { pm: PostMatchView }) {
   const rows = pm.relations ?? []
   const name = (r: (typeof rows)[number]) =>
@@ -441,6 +477,7 @@ export function PostMatchScreen() {
         {step === 'map' && <MapStep pm={pm} />}
         {step === 'trust' && <TrustStep pm={pm} />}
         {step === 'relations' && <RelationsStep pm={pm} />}
+        {step === 'earnings' && <EarningsStep pm={pm} />}
         {step === 'interview' && <SummaryStep pm={pm} iv={iv} answer={answer} setAnswer={setAnswer} />}
       </div>
 

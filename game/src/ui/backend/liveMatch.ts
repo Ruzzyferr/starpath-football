@@ -13,7 +13,8 @@ import {
   GFLAG, HERO_ID, answerInterview, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
   type InterviewDef, type InterviewEffect, type InterviewTone,
 } from '../../sim/game'
-import { readJson, writeJson } from '../../sim/game/internal'
+import { readJson, weekCounters, writeJson } from '../../sim/game/internal'
+import { matchEarnings, type MatchBonuses, type MatchEarnings } from '../../sim/career/matchPay'
 import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
 import { pickKeyPlayer, playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
@@ -438,6 +439,19 @@ export function simToEnd(): void {
 }
 
 /** Final whistle: apply the match to the career and build the post-match record. */
+/** Earnings breakdown for the post-match step, from the contract, sponsors, agent and this week's match count. */
+function earningsFor(s: GameState, bonuses: MatchBonuses): MatchEarnings {
+  const season = s.calendar.season
+  return matchEarnings({
+    contract: s.hero.contract,
+    bonuses,
+    sponsorsWeekly: s.life.sponsors.filter((d) => d.untilSeason >= season).reduce((a, d) => a + Math.max(0, d.weekly || 0), 0),
+    agentCommission: s.life.agent?.commission ?? 0,
+    matchesThisWeek: weekCounters(s.life).matches,
+    retired: s.hero.retired,
+  })
+}
+
 function finalize(): void {
   const l = live
   if (!l || l.finalized) return
@@ -506,6 +520,7 @@ function finalize(): void {
     scorers: res.scorers.map((g) => ({ minute: g.minute, name: nameOf(g.playerId) + (g.ownGoal ? ' (o.g.)' : ''), side: g.team })),
     deltas: diffSnapshots(before, after).filter((d) => d.key !== 'energy'),
     ...postDetails(s, snap, report, trustBefore, relBefore),
+    ...(report.bonuses && s.hero.contract ? { earnings: earningsFor(s, report.bonuses) } : {}),
   }
   const opp = side === 'home' ? l.setup.away : l.setup.home
   const interview = report.minutes > 0 || blob.starts

@@ -7,6 +7,7 @@
  * lives in `life.flags['g:match']` as JSON; `state.activeMatchId` holds the
  * fixture id while a match is prepared or in progress.
  */
+import type { MatchBonuses } from '../career/matchPay'
 import type { Club, Competition, Fixture, GameState, Lang, LText, MatchResultSummary, NpcPlayer, Position } from '../../core/types'
 import { clamp, Rng } from '../../core/rng'
 import { MatchSim } from '../match'
@@ -297,6 +298,8 @@ export interface HeroMatchReport {
   lines: LText[]
   /** Pending events fired by the match. */
   newEvents: number
+  /** Contract bonuses paid for this match (club matches only). */
+  bonuses?: MatchBonuses
 }
 
 /**
@@ -445,7 +448,7 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
     }
     return {
       result, won, drew, goalsFor: gf, goalsAgainst: ga, rating: st.rating, minutes: st.minutes, lines,
-      newEvents: state.pendingEvents.length - before,
+      newEvents: state.pendingEvents.length - before, bonuses: applied.bonuses,
     }
   })
 }

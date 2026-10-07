@@ -1467,6 +1467,10 @@
 }
 .ptrust-list li > span { color: var(--text-hi); }
 
+/* Earnings (WP-16) */
+.pearn-total { display: flex; flex-direction: column; align-items: center; gap: 2px; text-align: center; }
+.pearn-total b { font-size: 2.25rem; color: var(--accent-gold); }
+
 /* Relationships */
 .prel-row {
   display: grid;
