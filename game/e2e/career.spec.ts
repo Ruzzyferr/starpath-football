@@ -46,6 +46,10 @@ test('new career through the wizard lands on Home with the hero name', async ({ 
   await expect(page.locator('.wiz-summary')).toBeVisible()
   await assertCleanText(page)
   await shot('a8-summary')
+  // Trials are on by default; this path skips them and lands straight on Home.
+  const trialSwitch = page.locator('label.switch-row', { hasText: 'Start with trials' }).locator('input')
+  await expect(trialSwitch).toBeChecked()
+  await trialSwitch.uncheck()
   await page.getByRole('button', { name: 'Start career' }).click()
 
   // Home

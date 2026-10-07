@@ -6,6 +6,7 @@ import { computed } from '@preact/signals'
 import { actions, gameState, touch } from '../store'
 import { INITIAL_TOUR, readTour, reduceTour, writeTour, type TourEvent, type TourState } from './machine'
 import { helpPrefs, updateHelp } from './prefs'
+import { needsTrial } from '../backend/meta'
 import { markCareerStart } from './unlocks'
 
 export const tour = computed<TourState>(() => {
@@ -48,6 +49,18 @@ export function beginNewCareer(): void {
   const s = gameState.value
   if (!s) return
   markCareerStart(s.life.flags, s.calendar)
+  // Starting-club trials come first: the tour starts once the hero lands on Home (startTourIfDue).
+  if (needsTrial()) {
+    touch()
+    persistSoon()
+    return
+  }
+  startTourIfDue()
+}
+
+/** Start the first-career coach tour when tips are on and it was never offered. */
+export function startTourIfDue(): void {
+  if (!gameState.value) return
   if (helpPrefs.value.tips && !helpPrefs.value.tourOffered) {
     updateHelp({ tourOffered: true })
     dispatchTour({ type: 'start' })

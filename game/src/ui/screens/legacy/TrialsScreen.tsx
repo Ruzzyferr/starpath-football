@@ -9,6 +9,7 @@ import { Icon } from '../../icons'
 import { haptic } from '../../haptics'
 import { gameState, navigate, settings } from '../../store'
 import { drillFinished, finishTrial, trialInvites, type TrialResultView } from '../../backend/meta'
+import { startTourIfDue } from '../../tutorial/tour'
 import type { TrialInvite } from '../../../sim/game/trials'
 
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
@@ -86,7 +87,7 @@ export function TrialsScreen() {
         <p class="t-mid">{result.club} · {t('meta.trials.result', { p: Math.round(result.performance * 100) })}</p>
         {result.text && <p>{lt(result.text)}</p>}
         {result.signed || invites.length === 0 ? (
-          <Button variant="primary" block icon="play" onClick={() => navigate('home', undefined, { tab: true })} data-testid="trial-continue">{t('meta.trials.continue')}</Button>
+          <Button variant="primary" block icon="play" onClick={() => { navigate('home', undefined, { tab: true }); startTourIfDue() }} data-testid="trial-continue">{t('meta.trials.continue')}</Button>
         ) : (
           <Button variant="secondary" block onClick={() => setResult(null)}>{t('meta.trials.tryAnother')}</Button>
         )}

@@ -76,7 +76,7 @@ export function NewCareerScreen() {
     appearance: randomAppearance(Date.now()),
     gender: 'male',
     difficulty: 'normal',
-    trials: false,
+    trials: true,
     ...(legacy ? { legacy } : {}),
     ...(parent && countries.some((c) => c.id === parent.nationality) ? { nationality: parent.nationality } : {}),
   }))

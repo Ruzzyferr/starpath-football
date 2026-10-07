@@ -21,7 +21,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 /** Create a career through the wizard (the only path that starts the coach tour). */
-async function wizardCareer(page: Page): Promise<void> {
+async function wizardCareer(page: Page, trial = false): Promise<void> {
   await page.goto('/')
   await waitForApp(page)
   await page.getByRole('button', { name: 'New career' }).click()
@@ -31,7 +31,19 @@ async function wizardCareer(page: Page): Promise<void> {
   await next.click()
   await page.locator('.wiz-flag').first().click()
   for (let i = 0; i < 5; i++) await next.click()
+  // Starting-club trials are ON by default; the tour tests skip them unless asked.
+  const sw = page.locator('label.switch-row', { hasText: 'Start with trials' }).locator('input')
+  await expect(sw).toBeChecked()
+  if (!trial) await sw.uncheck()
   await page.getByRole('button', { name: 'Start career' }).click()
+  if (trial) {
+    await expect(page.getByTestId('trials')).toBeVisible({ timeout: 30_000 })
+    await expect(coach(page)).toHaveCount(0) // no tour during the trial
+    await page.getByTestId('trial-sim-academy').click()
+    await expect(page.getByTestId('trial-result')).toContainText('Contract signed')
+    await expect(coach(page)).toHaveCount(0)
+    await page.getByTestId('trial-continue').click()
+  }
   await expect(page.locator('.home-grid')).toBeVisible({ timeout: 30_000 })
 }
 
@@ -114,6 +126,12 @@ test('new career: coach tour runs end to end and does not come back after reload
   expect(await sp<string>(page, `sp.state().life.flags['tut:status']`)).toBe('done')
   await page.waitForTimeout(500)
   await expect(coach(page)).toHaveCount(0)
+})
+
+test('trial on: the coach tour starts only after the trial, on Home', async ({ page }) => {
+  await wizardCareer(page, true)
+  await expect(coach(page)).toBeVisible()
+  await expect(coach(page)).toHaveAttribute('data-step', 'welcome')
 })
 
 test('skip the tour, then replay it from Settings', async ({ page }, info) => {
