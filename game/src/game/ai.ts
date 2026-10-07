@@ -498,6 +498,18 @@ export function catchChance(gk: Agent, ballSpeed: number, stretch: number, diffi
   return clampN(0.25 + h * 0.65 - Math.max(0, ballSpeed - 15) * 0.02 - stretch * 0.35 + diffAdj, 0.05, 0.95)
 }
 
+/**
+ * Keeper meeting a high ball (cross / corner, not a shot): probability he
+ * punches it clear rather than catching it (WP-14). Traffic around him, a ball
+ * above his comfortable reach, pace on the delivery and shaky handling all
+ * push toward the punch.
+ * @param crowd 0..1 opponents jostling him (0 = alone, 1 = two or more within 1.6 m)
+ */
+export function punchChance(gk: Agent, z: number, crowd: number, speed: number): number {
+  const h = a01(gk.attrs.handling)
+  return clampN(0.08 + crowd * 0.45 + Math.max(0, z - 2.1) * 0.6 + Math.max(0, speed - 16) * 0.03 + (0.6 - h) * 0.5, 0.03, 0.92)
+}
+
 /** Probability a keeper gets a hand to a ball inside reach (fingertips at the edge). */
 export function saveChance(gk: Agent, stretch: number, ballSpeed: number, difficulty = 1): number {
   const r = a01(gk.attrs.reflexes) * 0.6 + a01(gk.attrs.agility) * 0.25 + a01(gk.attrs.positioning) * 0.15

@@ -22,6 +22,7 @@ import {
   cardForFoul,
   carrierDecision,
   catchChance,
+  punchChance,
   defendTargets,
   diveSpeed,
   inField,
@@ -76,7 +77,7 @@ import {
 } from './physics'
 import { offsideSnapshot } from './offside'
 import { ASSIST_REWARD } from '../sim/match/rating'
-import { refHighlightFoulMult } from '../sim/match/referee'
+import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
 import { buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import {
@@ -109,7 +110,7 @@ export const HERO_HEADER_NOISE = 1.3
 /** Flat extra save probability on every keeper contact with a shot. */
 export const KEEPER_SAVE_BONUS = 0.08
 /** Base chance an AI keeper reads a penalty's side (before positioning/difficulty). Was 0.2. */
-export const PENALTY_READ_BASE = 0.22
+export const PENALTY_READ_BASE = 0.36
 /** A diving keeper's body extends this far (m) behind his centre, opposite the dive (legs/torso): an over-dive no longer lets the ball through the body. */
 export const DIVE_BODY_BACK = 0.7
 /** Dive reach of opposition keepers facing the hero (m): a touch under {@link KEEPER_REACH} so 1v1 finishing lands ~38–40% (docs/BALANCE.md). */
@@ -130,6 +131,8 @@ export const ADVANTAGE_WINDOW = 2.5
 export const ADVANTAGE_GAIN_M = 7
 /** Advantage tendency when the highlight carries no referee (demo / tests). */
 export const DEFAULT_ADVANTAGE = 0.5
+/** Penalty tell-tale: meters an AI keeper cheats toward the hero's habit (× the habit share). */
+export const KEEPER_LEAN = 0.7
 
 export interface RuntimeOptions {
   aimAssist?: AimAssist
@@ -180,7 +183,9 @@ export type RuntimeEvent =
   | { type: 'bar'; speed: number; x: number; y: number; z: number }
   | { type: 'net'; speed: number; end: 'west' | 'east' }
   | { type: 'goal'; team: Team; scorerId: string; end: 'west' | 'east' }
-  | { type: 'save'; by: string; held: boolean; x: number; y: number; z: number }
+  | { type: 'save'; by: string; held: boolean; x: number; y: number; z: number; punch?: boolean }
+  /** Penalty: the keeper has studied the hero and leans toward his favourite side (tell-tale). */
+  | { type: 'keeperRead'; by: string; zone: 0 | 1 | 2; x: number; y: number }
   | { type: 'block'; by: string; x: number; y: number }
   | { type: 'tackle'; by: string; won: boolean; slide: boolean; x: number; y: number }
   | { type: 'foul'; by: string; on: string; card?: 'yellow' | 'red'; advantage?: boolean }
@@ -235,8 +240,12 @@ interface ShotTrack {
 interface KeeperAlert {
   keeper: Agent
   at: number
-  penaltyGuess?: { read: boolean; centre: boolean }
+  /** `habit`: the keeper goes where the book says the hero puts his penalties. */
+  penaltyGuess?: { read: boolean; centre: boolean; habit?: GoalZone }
 }
+
+/** Goal-line y a keeper dives to for a goal-mouth third. */
+const zoneY = (z: GoalZone): number => (z === 1 ? GOAL_CENTER_Y : GOAL_CENTER_Y + (z === 0 ? -2.6 : 2.6))
 
 /**
  * Interactive highlight simulation.
@@ -336,6 +345,12 @@ export class HighlightRuntime {
   /** Vision pass options cache (ids, best first). */
   private passOpts: { t: number; ids: string[] } = { t: -1, ids: [] }
 
+  /**
+   * Penalty against an AI keeper who has studied the hero (keepers' book, WP-14):
+   * the zone he expects and how sure he is; null when the hero mixes it up.
+   */
+  readonly keeperRead: { zone: GoalZone; share: number } | null
+
   constructor(highlight: Highlight, opts: RuntimeOptions = {}) {
     this.highlight = highlight
     this.kind = highlight.scenario.kind ?? highlight.kind
@@ -363,6 +378,8 @@ export class HighlightRuntime {
     this.timingMult = clampN(opts.timingMult ?? 1, 1, 2)
     this.refStrictness = highlight.referee?.strictness
     this.refAdvantage = clamp01(highlight.referee?.advantage ?? DEFAULT_ADVANTAGE)
+    const habit = this.kind === 'penalty' ? bookHabit(highlight.keeperBook, true) : null
+    this.keeperRead = habit ? { zone: habit.zone, share: habit.share } : null
     this.introLeft = this.setPiece ? 0.7 : 0.35
     this.events.push({ type: 'whistle', long: false })
     // Stagger AI thinking so they don't all decide on the same frame.
@@ -575,6 +592,10 @@ export class HighlightRuntime {
 
   private goLive(): void {
     this.phase = 'live'
+    if (this.keeperRead) {
+      const k = this.agents.find((a) => a.team === 'opp' && a.isKeeper)
+      if (k) this.events.push({ type: 'keeperRead', by: k.id, zone: this.keeperRead.zone, x: k.pos.x, y: k.pos.y })
+    }
     if (this.owner === this.hero) this.startBullet(0.25, this.possessionWindow())
     if (this.kind === 'rebound') this.startBullet(0.45, 0.45 + a01(this.hero.attrs.composure) * 0.3)
     if (this.kind === 'long_ball_control') this.longBall()
@@ -1058,6 +1079,9 @@ export class HighlightRuntime {
       if (prev && !prev.outcome && this.shot?.by.isHero) prev.outcome = this.shot.parried ? 'saved' : this.shot.blocked ? 'blocked' : this.shot.woodwork ? 'woodwork' : 'missed'
       const e: NonNullable<HighlightResult['shotLog']>[number] = { x: Math.round(this.ball.x * 10) / 10, y: Math.round(this.ball.y * 10) / 10 }
       if (kind === 'header') e.header = true
+      // Keepers' book: which third of the goal the hero went for (from his aim).
+      e.zone = goalZoneOf(plan.aim.y, GOAL_CENTER_Y)
+      if (wasSetPiece?.kind === 'penalty') e.pen = true
       this.shotLog.push(e)
     }
     if (SHOT_KINDS.has(kind)) {
@@ -1070,12 +1094,20 @@ export class HighlightRuntime {
           if (wasSetPiece?.kind !== 'penalty') this.startBullet(0.3, 0.3 + a01(keeper.attrs.reflexes) * 0.55)
         } else {
           const isPen = wasSetPiece?.kind === 'penalty'
-          const reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
+          let reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
+          // A keeper who knows the hero's favourite corner is quicker to it (open play).
+          const shotHabit = by.isHero && !isPen ? bookHabit(this.highlight.keeperBook, false) : null
+          if (shotHabit && goalZoneOf(plan.aim.y, GOAL_CENTER_Y) === shotHabit.zone) reaction *= 0.8
           let penaltyGuess: KeeperAlert['penaltyGuess']
           if (isPen) {
             const pRead = clampN(PENALTY_READ_BASE + a01(keeper.attrs.positioning) * 0.25 + (this.difficulty - 1) * 0.4 - (power > 0.9 ? 0.08 : 0), 0.1, 0.6)
             penaltyGuess = { read: this.rng.chance(pRead), centre: this.rng.chance(0.1) }
+            // Did his homework: commits to the hero's habit (the surer the book, the likelier).
+            const read = by.isHero ? this.keeperRead : null
+            if (read && this.rng.chance(clampN(read.share * 0.85, 0, 0.9))) penaltyGuess.habit = read.zone
           }
+          // Committed to the book: he goes as the ball is struck (no reaction delay).
+          if (penaltyGuess?.habit !== undefined) reaction = 0
           this.keeperAlert = { keeper, at: this.time + reaction, penaltyGuess }
         }
       }
@@ -1266,13 +1298,17 @@ export class HighlightRuntime {
           return
         }
       }
+      // Penalty: stay on the line (the ball sitting on the spot is not a loose ball to collect).
+      if (this.setPiece?.kind === 'penalty' && !a.isHero) {
+        // Tell-tale: a keeper who read the hero's habit cheats a step toward it.
+        const read = a.team === 'opp' ? this.keeperRead : null
+        const lean = read && read.zone !== 1 ? (read.zone === 0 ? -1 : 1) * KEEPER_LEAN * read.share : 0
+        a.intent = { kind: 'run', to: { x: a.pos.x, y: GOAL_CENTER_Y + lean + Math.sin(this.time * 2.2) * 0.45 * (lean ? 0.5 : 1) }, until: this.time + 1 }
+        return
+      }
       // Loose slow ball in the box: collect.
       if (!this.owner && Math.abs(this.ball.x - ownGoalX(a.team)) < 15 && Math.abs(this.ball.y - GOAL_CENTER_Y) < 18 && Math.hypot(this.ball.vx, this.ball.vy) < 9) {
         a.intent = { kind: 'run', to: interceptPoint(a, w, 1.5).point, until: this.time + 1 }
-        return
-      }
-      if (this.setPiece?.kind === 'penalty' && !a.isHero) {
-        a.intent = { kind: 'run', to: { x: a.pos.x, y: GOAL_CENTER_Y + Math.sin(this.time * 2.2) * 0.45 }, until: this.time + 1 }
         return
       }
       a.intent = { kind: 'run', to: keeperTarget(a, w).pos, until: this.time + 1 }
@@ -2001,6 +2037,11 @@ export class HighlightRuntime {
       b.vy *= 0.9
       return
     }
+    // High ball (cross / corner): catch it, or punch it clear under pressure (WP-14).
+    if (!this.shot && b.z > 1.3) {
+      const crowd = Math.min(2, this.agents.filter((o) => o.team !== k.team && !o.isKeeper && dist(o.pos, k.pos) < 1.6).length) / 2
+      if (this.rng.chance(punchChance(k, b.z, crowd, speed))) return this.punch(k, speed)
+    }
     const held = speed < 11 || this.rng.chance(catchChance(k, speed, stretch, this.difficulty))
     if (held) {
       this.events.push({ type: 'save', by: k.id, held: true, x: b.x, y: b.y, z: b.z })
@@ -2023,6 +2064,27 @@ export class HighlightRuntime {
       if (this.shot) this.shot.parried = true
       this.events.push({ type: 'save', by: k.id, held: false, x: b.x, y: b.y, z: b.z })
     }
+  }
+
+  /** Two-fisted punch: high and away from goal, toward the side the ball came in on. */
+  private punch(k: Agent, speed: number): void {
+    const b = this.ball
+    const inward = attackDir(k.team)
+    const side = b.y >= GOAL_CENTER_Y ? 1 : -1
+    const d = norm({ x: inward * this.rng.range(0.7, 1), y: side * this.rng.range(0.2, 0.7) })
+    const sp = clampN(11 + speed * 0.2 + a01(k.attrs.strength) * 4, 11, 19)
+    b.vx = d.x * sp
+    b.vy = d.y * sp
+    b.vz = this.rng.range(3.5, 6)
+    b.spin.side = 0
+    b.spin.top = 0
+    k.noTouch = 0.7
+    k.state = 'jump'
+    k.stateT = 0.1
+    this.lastTouch = k
+    this.events.push({ type: 'save', by: k.id, held: false, punch: true, x: b.x, y: b.y, z: b.z })
+    // An AI keeper punching our delivery away counts as a clearance.
+    if (k.team === 'opp' && !this.defending) this.oppClearedAt = this.time
   }
 
   // ───────────────────────── Offside ─────────────────────────
@@ -2208,6 +2270,13 @@ export class HighlightRuntime {
     if (!plan) return
     if (al.penaltyGuess) {
       const g = al.penaltyGuess
+      if (g.habit !== undefined) {
+        // Goes where the book says; if the hero changed it up, he is left stranded.
+        const ty = zoneY(g.habit)
+        if (Math.abs(plan.point.y - ty) < 1.4) this.startDive(k, norm(sub(plan.point, k.pos)))
+        else if (g.habit !== 1) this.startDive(k, norm(sub({ x: k.pos.x, y: ty }, k.pos)))
+        return
+      }
       if (g.centre) return
       const actualSide = Math.sign(plan.point.y - k.pos.y) || 1
       const side = g.read ? actualSide : -actualSide

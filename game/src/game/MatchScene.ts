@@ -123,6 +123,7 @@ const T = {
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
     offside: 'OFFSIDE', offsideFlag: 'FLAG UP!', oneTwo: 'ONE-TWO!',
     advantage: 'ADVANTAGE!', advantagePlayed: 'PLAY ON', advantageBack: 'BACK FOR THE FOUL',
+    punch: 'PUNCHED!', keeperRead: 'HE KNOWS YOUR SPOT', keeperReadMid: 'HE EXPECTS THE MIDDLE',
     aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
   },
@@ -134,6 +135,7 @@ const T = {
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
     offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!', oneTwo: 'VER-KAÇ!',
     advantage: 'AVANTAJ!', advantagePlayed: 'DEVAM', advantageBack: 'FAUL ÇALINDI',
+    punch: 'YUMRUKLADI!', keeperRead: 'KÖŞENİ BİLİYOR', keeperReadMid: 'ORTAYI BEKLİYOR',
     aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
   },
@@ -1776,6 +1778,7 @@ export class MatchScene extends Phaser.Scene {
           this.sfx.glove()
           this.sfx.roar(0.3)
           this.shake(120, 0.004)
+          if (e.punch) this.floatText(this.s.punch, e.x, e.y, '#ffffff', 0.9, 3.4)
           if (rt.heroIsKeeper && e.by === rt.hero.id) {
             this.floatText(this.s.save, e.x, e.y, '#9fe8ff', 1.1, 3)
             this.vibrate(80)
@@ -1798,6 +1801,10 @@ export class MatchScene extends Phaser.Scene {
           if (e.card) this.floatText(e.card === 'red' ? this.s.red : this.s.yellow, by.pos.x, by.pos.y, e.card === 'red' ? '#ff4040' : '#ffd23f', 1.6, 3.2)
           break
         }
+        case 'keeperRead':
+          // Tell-tale: the keeper studied your penalties; the hint sits on the side he is cheating to.
+          this.floatText(e.zone === 1 ? this.s.keeperReadMid : this.s.keeperRead, e.x - 1.2, e.y + (e.zone === 0 ? -1.8 : e.zone === 2 ? 1.8 : 0), '#ffb86b', 2.2, 3.4)
+          break
         case 'advantage':
           // Referee's arms out: play on; called back = whistle for the free kick.
           if (e.state === 'on') {
