@@ -330,6 +330,24 @@ export function setPaused(paused: boolean): void {
   publish()
 }
 
+// Auto-pause: backgrounding the app (platform/lifecycle `sp:app-pause`) pauses a running live match;
+// it comes back paused with a hint, the player resumes with the play button.
+let autoPaused = false
+export function installAutoPause(): void {
+  if (typeof window === 'undefined') return
+  window.addEventListener('sp:app-pause', () => {
+    if (live && !live.paused && !live.finalized && !live.sim.finished) {
+      autoPaused = true
+      setPaused(true)
+    }
+  })
+  window.addEventListener('sp:app-resume', () => {
+    if (!autoPaused) return
+    autoPaused = false
+    if (live?.paused) notify({ tr: 'Maç duraklatıldı. Devam etmek için oynat tuşuna bas.', en: 'Match paused. Press play to resume.' }, 'info')
+  })
+}
+
 /** Let the sim resolve the pending highlight. */
 export function simMoment(): void {
   const l = live

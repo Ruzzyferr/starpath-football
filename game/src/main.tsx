@@ -9,6 +9,8 @@ import { bindSettingsToDocument } from './ui/store'
 import { installRealBackend } from './ui/backend'
 import { initPlatform } from './platform'
 import { installAudioDirector } from './audio/director'
+import { installErrorLog } from './telemetry/errorLog'
+import { screen } from './ui/store'
 
 /**
  * Backend selection: the real simulation by default; the mock backend (UI
@@ -23,6 +25,7 @@ async function boot(): Promise<void> {
     installRealBackend()
   }
   bindSettingsToDocument()
+  installErrorLog(() => screen.value.id)
   await initPlatform()
   // After initPlatform so the AudioContext is tracked for background suspend.
   installAudioDirector()
