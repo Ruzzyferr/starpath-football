@@ -95,7 +95,11 @@ export function migrate(raw: any, fromVersion: number): GameState | null {
 }
 
 export class SaveManager {
-  constructor(private readonly storage: SaveStorage) {}
+  private readonly storage: SaveStorage
+
+  constructor(storage: SaveStorage) {
+    this.storage = storage
+  }
 
   /** Atomically write a slot, rotating the previous live save into backups. */
   async save(slot: number, state: GameState, summary: SaveSummary): Promise<void> {
