@@ -30,7 +30,7 @@ export const NT_COACH_REL = 'nt_coach'
 export const CALLUP_THRESHOLD = 55
 const STATUS_CUTS: readonly [NationalStatus, number][] = [['certain', 72], ['likely', CALLUP_THRESHOLD], ['borderline', 42], ['out', -1]]
 /** Reputation from internationals is scaled by team level. */
-export const LEVEL_REP_SCALE: Readonly<Record<NationalLevel, number>> = { A: 1, U21: 0.4, U19: 0.25 }
+export const LEVEL_REP_SCALE: Readonly<Record<NationalLevel, number>> = { A: 1, U21: 0.3, U19: 0.15 }
 const ACHIEVED_FLAG = 'g:ntTrophies'
 
 export const statusOf = (m: number): NationalStatus => STATUS_CUTS.find(([, cut]) => m >= cut)?.[0] ?? 'out'
@@ -408,7 +408,7 @@ export function checkNationalTrophies(state: GameState, rng: Rng, out: LText[]):
     const h = state.hero
     h.trophies.push({ season: comp.season, name: { ...comp.name } })
     const big = comp.meta?.format === 'nt_finals'
-    h.reputation = meter(h.reputation + fameGain(h.reputation, big ? 6 : 1.5))
+    h.reputation = meter(h.reputation + fameGain(h.reputation, big ? 5 : 0.5))
     log(state, out, fill(lt('🏆 {c} şampiyonu: {t}!', '🏆 {c} champions: {t}!'), { c: comp.name, t: teamName(teamId) }), 'award', '🏆')
     pushNews(state.life, rng, state.calendar, fill(lt('{t} {c} şampiyonu! {n} kupayı kaldırdı', '{t} win the {c}! {n} lifts the trophy'), { t: teamName(teamId), c: comp.name, n: `${h.firstName} ${h.lastName}` }), 1, rng.pick(NEWS_SOURCES))
   }

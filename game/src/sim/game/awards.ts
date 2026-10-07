@@ -35,7 +35,7 @@ export const AWARD_NAMES: Record<string, LText> = {
 /** Reputation (before diminishing returns) per award. */
 export const AWARD_FAME: Readonly<Record<string, number>> = {
   golden_star: 8, golden_star_podium: 2, player_of_season: 3, top_scorer: 3, league_top_scorer: 2, young_player: 3,
-  golden_glove: 2, goal_of_season: 1.5, team_of_season: 1, player_of_month: 0.5,
+  golden_glove: 2, goal_of_season: 1, team_of_season: 0.75, player_of_month: 0.25,
 }
 
 const MONTHS: readonly LText[] = [
