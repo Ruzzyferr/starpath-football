@@ -94,6 +94,20 @@ import {
   type Vec2,
 } from './model'
 
+// ── Match-feel tuning (measured with feel.test.ts; see docs/BALANCE.md) ──
+/** Hero shot accuracy noise on top of attributes/difficulty: swipes are imprecise (was 1, i.e. almost nothing missed the frame). */
+export const HERO_SHOT_NOISE = 1.5
+/** Extra noise on hero headers (corner headers converted ~45% before). */
+export const HERO_HEADER_NOISE = 1.3
+/** Flat extra save probability on every keeper contact with a shot. */
+export const KEEPER_SAVE_BONUS = 0.08
+/** Base chance an AI keeper reads a penalty's side (before positioning/difficulty). Was 0.2. */
+export const PENALTY_READ_BASE = 0.22
+/** A diving keeper's body extends this far (m) behind his centre, opposite the dive (legs/torso): an over-dive no longer lets the ball through the body. */
+export const DIVE_BODY_BACK = 0.7
+/** Balls within 0.55 m of the keeper below this height are taken standing (was 1.7: keepers flung themselves past head-high shots). */
+export const KEEPER_STAND_MAX_Z = 2.2
+
 /** Difficulty label → opponent sharpness multiplier. */
 export const DIFFICULTY_SCALE: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
 
@@ -547,7 +561,7 @@ export class HighlightRuntime {
         tz = 1.5
         t = { x: PITCH_LENGTH + 0.3, y: t.y }
       }
-      const plan = planKick({ ...base, kind, target: t, targetZ: tz, power, curl, noiseScale: this.noiseScale() }, rng)
+      const plan = planKick({ ...base, kind, target: t, targetZ: tz, power, curl, noiseScale: this.noiseScale() * HERO_SHOT_NOISE }, rng)
       return { plan, kind, power, passTo: null }
     }
     const pass = (to: PassCandidate, lofted: boolean, power: number) => {
@@ -697,7 +711,7 @@ export class HighlightRuntime {
       if (incoming && this.ball.z < 1.0 && dist(hero.pos, ballP) < 1.6) {
         // First-time volley / shot.
         const aim = this.heroHeaderAim ?? this.autoGoalAim()
-        const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, env: this.env, noiseScale: this.noiseScale() * 1.3 }, this.rng)
+        const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, env: this.env, noiseScale: this.noiseScale() * 1.3 * HERO_SHOT_NOISE }, this.rng)
         this.kickBall(hero, plan, 'shot', 0.85, null)
         return
       }
@@ -890,7 +904,7 @@ export class HighlightRuntime {
           const reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
           let penaltyGuess: KeeperAlert['penaltyGuess']
           if (isPen) {
-            const pRead = clampN(0.2 + a01(keeper.attrs.positioning) * 0.25 + (this.difficulty - 1) * 0.4 - (power > 0.9 ? 0.08 : 0), 0.1, 0.6)
+            const pRead = clampN(PENALTY_READ_BASE + a01(keeper.attrs.positioning) * 0.25 + (this.difficulty - 1) * 0.4 - (power > 0.9 ? 0.08 : 0), 0.1, 0.6)
             penaltyGuess = { read: this.rng.chance(pRead), centre: this.rng.chance(0.1) }
           }
           this.keeperAlert = { keeper, at: this.time + reaction, penaltyGuess }
@@ -1399,7 +1413,8 @@ export class HighlightRuntime {
         let reachR = 0.6
         let reachZ = 2.45 + a.z
         if (a.state === 'dive') {
-          const seg = pointSegment(bp, a.pos, add(a.pos, scale(a.actionDir, KEEPER_REACH)))
+          // The diving body is a line from trailing legs to fingertips: a ball behind the body (over-dive) still hits it.
+          const seg = pointSegment(bp, add(a.pos, scale(a.actionDir, -DIVE_BODY_BACK)), add(a.pos, scale(a.actionDir, KEEPER_REACH)))
           reachD = seg.d
           reachR = 0.32
           reachZ = 2.4 + a.z
@@ -1501,7 +1516,7 @@ export class HighlightRuntime {
       const dz = Math.abs(b.z - (1.78 + a.z))
       const timing = clamp01(1 - dz / 0.5) * (a.stateT > 0.12 && a.stateT < 0.44 ? 1 : 0.7)
       const aim = this.heroHeaderAim ?? this.autoGoalAim()
-      const plan = planKick({ kind: 'header', from: bp, fromZ: b.z, target: aim, targetZ: 0.6, power: 0.55 + timing * 0.45, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: this.assist, env: this.env, noiseScale: (1.6 - timing * 0.8) * this.noiseScale() }, this.rng)
+      const plan = planKick({ kind: 'header', from: bp, fromZ: b.z, target: aim, targetZ: 0.6, power: 0.55 + timing * 0.45, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: this.assist, env: this.env, noiseScale: (1.6 - timing * 0.8) * this.noiseScale() * HERO_SHOT_NOISE * HERO_HEADER_NOISE }, this.rng)
       this.kickBall(a, plan, 'header', 0.55 + timing * 0.45, null)
       this.stopBullet()
       return
@@ -1573,6 +1588,7 @@ export class HighlightRuntime {
     let stretch = 0.15
     if (k.state === 'dive') stretch = clamp01(pointSegment(bp, k.pos, add(k.pos, scale(k.actionDir, KEEPER_REACH))).t)
     let p = saveChance(k, stretch, speed, this.difficulty)
+    if (this.shot && this.shot.by.team !== k.team) p += KEEPER_SAVE_BONUS
     if (speed < 11) p = 1
     if (k.isHero) p = clamp01(p + 0.12)
     if (!this.rng.chance(p)) {
@@ -1716,7 +1732,7 @@ export class HighlightRuntime {
     }
     if (!plan.onTarget) return
     const lateral = Math.abs(plan.point.y - k.pos.y)
-    if (lateral < 0.55 && plan.z < 1.7) {
+    if (lateral < 0.55 && plan.z < KEEPER_STAND_MAX_Z) {
       k.intent = { kind: 'run', to: plan.point, until: this.time + 1 }
       return
     }

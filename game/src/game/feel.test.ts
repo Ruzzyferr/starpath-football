@@ -10,17 +10,19 @@ import { FEEL_KINDS, feelRate, playFeel, type FeelKind } from './feelHarness'
 
 /** Normal difficulty, average bot: [min, max] success rate. */
 const BANDS: Record<FeelKind, [number, number]> = {
-  one_on_one: [0.28, 0.55],
+  one_on_one: [0.3, 0.55],
   penalty: [0.62, 0.88],
-  freekick: [0.08, 0.3],
+  freekick: [0.07, 0.28],
   edge_of_box: [0.05, 0.22],
-  cross: [0.08, 0.4],
-  corner: [0.05, 0.3],
-  defend: [0.4, 0.8],
-  gk_save: [0.3, 0.7],
+  cross: [0.02, 0.25],
+  corner: [0.15, 0.45],
+  defend: [0.6, 0.98],
+  gk_save: [0.5, 0.85],
 }
 
 const N = 60
+/** Env access without Node typings (the app tsconfig has no @types/node). */
+const ENV = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 
 describe('match feel (average human, normal)', () => {
   for (const kind of FEEL_KINDS) {
@@ -45,9 +47,9 @@ describe('match feel (average human, normal)', () => {
   })
 })
 
-describe.runIf(process.env.FEEL_REPORT === '1')('match feel report', () => {
+describe.runIf(ENV.FEEL_REPORT === '1')('match feel report', () => {
   it('prints kind × difficulty × bot matrix', () => {
-    const n = Number(process.env.FEEL_N ?? 200)
+    const n = Number(ENV.FEEL_N ?? 200)
     const diffs: Difficulty[] = ['easy', 'normal', 'hard', 'legend']
     const lines: string[] = [`| Tür | Zorluk | ${BOT_LEVELS.join(' | ')} |`, `|---|---|${BOT_LEVELS.map(() => '---').join('|')}|`]
     for (const kind of FEEL_KINDS) {

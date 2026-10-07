@@ -68,6 +68,8 @@ export interface HumanBotState {
   jumpErr: number
   /** Real time at which a pending action fires. */
   pendingAt: number
+  /** Wide player crosses (else cuts inside and shoots). */
+  crosser: boolean
 }
 
 export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
@@ -87,6 +89,7 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     slider: rng.chance(0.2),
     jumpErr: rng.normal(0, skill.timingSd),
     pendingAt: -1,
+    crosser: rng.chance(0.6),
   }
 }
 
@@ -162,10 +165,14 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       if (held > 0.8) act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0.3, chip: false, isTap: false } })
       return
     }
-    if (rt.kind === 'cross' && (hero.pos.y > 52 || hero.pos.y < 16)) {
-      // Wide: cross into the box (with scatter) once at the byline area.
-      if (hero.pos.x > PITCH_LENGTH - 22 || held > 1.4) {
-        const tgt = { x: PITCH_LENGTH - 9 + st.rng.normal(0, 2.2), y: GOAL_CENTER_Y + st.rng.normal(0, 3.5) }
+    if (rt.kind === 'cross' && st.crosser && (hero.pos.y > 52 || hero.pos.y < 16)) {
+      // Wide: cross toward the best-placed runner in the box (with scatter).
+      if (held > 0.5) {
+        const box = rt.agents
+          .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 18 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12)
+          .sort((p, q) => Math.abs(p.pos.y - GOAL_CENTER_Y) - Math.abs(q.pos.y - GOAL_CENTER_Y))[0]
+        const aim = box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+        const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2) }
         const dir = norm(sub(tgt, hero.pos))
         act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0, chip: false, isTap: false } })
       }
