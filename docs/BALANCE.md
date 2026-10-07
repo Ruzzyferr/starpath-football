@@ -394,6 +394,29 @@ güç aralığı 0–1.15 aynı kaldığı için bantlar etkilenmez.
 Mobil performans (4x CPU kısıtlama, 390x844 dpr3): counter ~52 fps, corner ~51 fps
 (WP-13 öncesi 52 / 50).
 
+### WP-14 sonrası (Ekim 2026; normal, N=120; novice / average / good / expert)
+
+| Tür | Oran | Not |
+|---|---|---|
+| penalty | 57 / 75 / 70 / 80 | Kaleci artık penaltıda çizgide kalıyor (önceden noktadaki topa doğru çıkıyordu, bu da %73'ü yapay olarak düşürüyordu). Düzeltme %80'e çıkardı; `PENALTY_READ_BASE` 0.22 → 0.36 ile N=200'de %76. |
+| one_on_one | 36 / 34 / 41 / 56 | Değişmedi (örneklem gürültüsü). |
+| corner | 18 / 28 / 27 / 28 | Kaleci yumruğu eklendi; korner kalecilere nadiren ulaştığı için etkisi küçük. |
+| defend / interception | 53 / 64 / 75 / 73 · 63 / 76 / 77 / 75 | Bant içinde. |
+| hold_up (yeni) | 37 / 62 / 80 / 95 | Başarı: pas tamam / faul / gol. Sabırlı oyuncu 2.6 s saklar ya da destek gelince bırakır. |
+| defend_1v1 (yeni) | 60 / 70 / 72 / 83 | 1v1 savunma `defend`'den kolay değil ama arkada kimse yok; bant %50–85. |
+| block (yeni) | 50 / 45 / 54 / 51 | Bot şut çizgisine giriyor ama beceri farkı zayıf; bant %30–65. |
+
+| Ayar | Değer | Not |
+|---|---|---|
+| Hakem sertliği (`sim/match/referee.ts`) | 1..5, 3 = nötr | Sim faul ×0.8…1.2, kart ×0.6…1.55; an içi faul ×0.75…1.25. |
+| `ADVANTAGE_WINDOW` / `ADVANTAGE_GAIN_M` | 2.5 s / 7 m | Avantaj: şut ya da 7 m ilerleme = devam; top kaybı ya da süre = geri çağır (faul). |
+| Ceza süresi | ikinci sarı/son adam 1, sert faul 2 (sertlik 5'te 3), şiddet 3 | 5 sarı = 1 maç. NPC'ler de cezalı, kadroya giremiyor. |
+| `KEEPER_LEAN` | 0.7 m × alışkanlık payı | Kaleci defteri: ≥2 deneme ve %55+ aynı üçte birlik. |
+| `HEADER_RANGE` | 18 m | Kafa vuruşu taşıma sınırı. |
+| `HOLD_UP_SECONDS` / `HERO_BLOCK_R` | 2.6 s / 0.62 m (kayarken 0.9) | Yeni anlar. |
+
+Mobil performans (4x CPU, 390x844 dpr3, tek işçi): counter 55 fps, corner 54 fps.
+
 ### Bilinen açıklar
 
 - **Savunma artık beceriye bağlı** (53 / 64 / 75 / 73). Eski ~%93 sorunu çözüldü;
