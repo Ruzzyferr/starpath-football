@@ -1,0 +1,52 @@
+# electron-builder config — `npm run desktop:build` builds for the current OS.
+appId: app.starpath.football
+productName: StarPath Football
+copyright: Copyright © 2026 StarPath Football
+directories:
+  output: release
+  buildResources: build-resources
+# The renderer is fully bundled by Vite: ship only dist/ + the Electron shell, no node_modules.
+files:
+  - dist/**/*
+  - electron/**/*
+  - build-resources/icon.png
+  - package.json
+  - "!node_modules/**/*"
+  - "!dist/sw.js"
+# steamworks.js (optional, Steam builds) ships native .node binaries that must live outside the asar.
+asarUnpack:
+  - "**/*.node"
+artifactName: StarPath-Football-${version}-${os}-${arch}.${ext}
+win:
+  icon: build-resources/icon.png
+  target:
+    - target: nsis
+      arch: [x64]
+    - target: portable
+      arch: [x64]
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  shortcutName: StarPath Football
+  artifactName: StarPath-Football-Setup-${version}-${arch}.${ext}
+portable:
+  artifactName: StarPath-Football-Portable-${version}-${arch}.${ext}
+mac:
+  icon: build-resources/icon.png
+  category: public.app-category.sports-games
+  target:
+    - target: dmg
+      arch: [universal]
+  hardenedRuntime: true
+dmg:
+  artifactName: StarPath-Football-${version}-mac.${ext}
+linux:
+  icon: build-resources/icon.png
+  category: Game
+  target:
+    - target: AppImage
+      arch: [x64]
+  synopsis: Futbol kariyeri ve yaşam simülasyonu
+publish: null

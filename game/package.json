@@ -1,7 +1,7 @@
 {
   "name": "starpath-football",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -9,7 +9,18 @@
     "preview": "vite preview",
     "test": "vitest run",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
-    "e2e": "playwright test"
+    "e2e": "playwright test",
+    "icons": "node scripts/gen-icons.mjs",
+    "desktop:dev": "node scripts/desktop-dev.mjs",
+    "desktop:start": "npm run build && electron .",
+    "desktop:build": "npm run build && electron-builder --publish never",
+    "desktop:build:win": "npm run build && electron-builder --win --publish never -c.electronDist=node_modules/electron/dist",
+    "desktop:build:mac": "npm run build && electron-builder --mac --publish never",
+    "desktop:build:linux": "npm run build && electron-builder --linux --publish never",
+    "cap:sync": "npm run build && cap sync",
+    "android:open": "cap open android",
+    "android:apk": "npm run cap:sync && node scripts/android-gradle.mjs assembleDebug",
+    "android:bundle": "npm run cap:sync && node scripts/android-gradle.mjs bundleRelease"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
@@ -37,5 +48,8 @@
     "typescript": "~6.0.2",
     "vite": "^8.3.0",
     "vitest": "^5.0.3"
-  }
+  },
+  "description": "StarPath Football — futbol kariyeri ve yaşam simülasyonu",
+  "author": "StarPath Football",
+  "main": "electron/main.cjs"
 }
