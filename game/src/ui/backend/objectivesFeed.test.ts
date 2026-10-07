@@ -12,7 +12,7 @@ import { forceCompleteObjective, installObjectivesFeed, mapObjectives } from './
 const L = (s: string) => ({ tr: s, en: s })
 const ov = (id: string, source: ObjectiveView['source'], seasonal: boolean): ObjectiveView => ({
   id, source, sourceName: L(source), icon: 'x', title: L(id), desc: L(id), progress: 1, target: 3, ratio: 0.33,
-  weeksLeft: 4, reward: L('r'), penalty: null, seasonal,
+  weeksLeft: 4, reward: L('r'), penalty: null, rewardParts: [], penaltyParts: [], seasonal,
 })
 
 describe('mapObjectives', () => {
@@ -49,7 +49,8 @@ describe('objectives over the real backend', () => {
   })
 
   it('hands out goals as weeks pass and toasts a forced completion', () => {
-    for (let i = 0; i < 40 && D.objectives().short.length === 0; i++) {
+    expect(D.objectives().short.length).toBeGreaterThan(0) // week-one objective issued at career start
+    for (let i = 0; i < 1; i++) {
       for (let k = 0; k < 10 && (gameState.value?.pendingEvents.length ?? 0) > 0; k++) A.resolveEvent(0, 0)
       A.advanceToMatch()
     }

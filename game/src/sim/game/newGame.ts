@@ -20,6 +20,7 @@ import { ensureRelation } from '../life/relationships'
 import { rollEvents } from './eventsAdapter'
 import { syncClubRelations, evaluateNationalTeam } from './season'
 import { clubContextOf } from './internal'
+import { objectivesStart } from './objectives'
 import { applyLegacyStart, type LegacyStart } from './legacy'
 import { generateTrialInvites, writeTrialInvites } from './trials'
 
@@ -123,6 +124,7 @@ export function signFirstClub(state: GameState, rng: Rng, clubId: string, terms:
   pushLog(life, state.calendar, fill(lt('Kariyerin başlıyor! {c} ile ilk profesyonel sözleşmeni imzaladın.', 'Your career begins! You signed your first professional contract with {c}.'), { c: club.name }), 'career', '⭐')
   pushLog(life, state.calendar, fill(lt('Hazırlık haftası. Teknik direktör {m} seni izleyecek. Rolün: {r}.', 'Pre-season week. Manager {m} will be watching you. Your role: {r}.'), { m: club.managerName, r: ROLE_NAMES[role] }), 'career', '📋')
   pushNews(life, rng, state.calendar, fill(lt('{c} genç yetenek {n}\'i kadrosuna kattı', '{c} sign young talent {n}'), { c: club.name, n: `${hero.firstName} ${hero.lastName}` }), 1, rng.pick(NEWS_SOURCES))
+  objectivesStart(state, [])
 }
 
 /** Seed-derived stand-in timestamp (2026-01-01 + seed seconds) so `newGame` never reads the wall clock. */

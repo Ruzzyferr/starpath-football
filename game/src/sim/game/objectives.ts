@@ -118,7 +118,18 @@ export interface ObjectiveView {
   weeksLeft: number
   reward: LText
   penalty: LText | null
+  /** Structured reward / penalty for chips. */
+  rewardParts: ObjectivePart[]
+  penaltyParts: ObjectivePart[]
   seasonal: boolean
+}
+
+/** One reward / penalty component: a stat change or a relationship change. */
+export interface ObjectivePart {
+  key: 'money' | 'reputation' | 'managerTrust' | 'morale' | 'happiness' | 'buzz' | 'relation'
+  value: number
+  /** Relationship id when key is 'relation'. */
+  rel?: string
 }
 
 export interface ObjectivesView {
@@ -139,7 +150,8 @@ export function objectivesView(state: GameState): ObjectivesView {
       progress: o.kind === 'rating' ? Math.round(((o.sum ?? 0) / Math.max(1, o.progress)) * 10) / 10 : o.progress,
       target: o.target, ratio: clamp(ratioOf(o), 0, 1),
       weeksLeft: Math.max(0, (seasonal(o) ? seasonEnd : o.deadlineWeek) - now),
-      reward: rewardText(o.reward), penalty: o.penalty ? rewardText(o.penalty) : null, seasonal: seasonal(o),
+      reward: rewardText(o.reward), penalty: o.penalty ? rewardText(o.penalty) : null,
+      rewardParts: partsOf(o.reward), penaltyParts: o.penalty ? partsOf(o.penalty) : [], seasonal: seasonal(o),
     })),
     recent: st.history.slice(0, 5).map((o) => ({ title: o.title, status: o.status === 'done' ? 'done' as const : 'failed' as const, source: o.source, icon: SOURCE_ICON[o.source] })),
     done: st.done,
@@ -155,11 +167,23 @@ function ratioOf(o: Objective): number {
   return o.progress / Math.max(1, o.target)
 }
 
+function partsOf(r: ObjectiveReward): ObjectivePart[] {
+  const out: ObjectivePart[] = []
+  if (r.money) out.push({ key: 'money', value: r.money })
+  if (r.reputation) out.push({ key: 'reputation', value: r.reputation })
+  if (r.trust) out.push({ key: 'managerTrust', value: r.trust })
+  if (r.morale) out.push({ key: 'morale', value: r.morale })
+  if (r.happiness) out.push({ key: 'happiness', value: r.happiness })
+  if (r.buzz) out.push({ key: 'buzz', value: r.buzz })
+  for (const [id, v] of Object.entries(r.rel ?? {})) out.push({ key: 'relation', value: v, rel: id })
+  return out
+}
+
 function rewardText(r: ObjectiveReward): LText {
   const parts: LText[] = []
   if (r.money) parts.push(fmtMoney(r.money))
   if (r.reputation) parts.push(fill(lt('itibar {n}', 'reputation {n}'), { n: r.reputation > 0 ? `+${r.reputation}` : r.reputation }))
-  if (r.trust) parts.push(fill(lt('hoca güveni {n}', 'manager trust {n}'), { n: r.trust > 0 ? `+${r.trust}` : r.trust }))
+  if (r.trust) parts.push(fill(lt('TD güveni {n}', 'manager trust {n}'), { n: r.trust > 0 ? `+${r.trust}` : r.trust }))
   if (r.buzz) parts.push(lt('transfer ilgisi artar', 'more transfer interest'))
   if (r.happiness) parts.push(fill(lt('mutluluk {n}', 'happiness {n}'), { n: r.happiness > 0 ? `+${r.happiness}` : r.happiness }))
   if (r.morale) parts.push(fill(lt('moral {n}', 'morale {n}'), { n: r.morale > 0 ? `+${r.morale}` : r.morale }))
@@ -168,8 +192,8 @@ function rewardText(r: ObjectiveReward): LText {
 }
 
 const REL_NAME: Record<string, LText> = {
-  manager: lt('hoca', 'manager'), fans: lt('taraftar', 'fans'), mother: lt('annen', 'mum'), father: lt('baban', 'dad'),
-  chairman: lt('başkan', 'chairman'), agent: lt('menajer', 'agent'),
+  manager: lt('TD ilişkisi', 'manager relation'), fans: lt('Taraftar', 'fans'), mother: lt('Annen', 'mum'), father: lt('Baban', 'dad'),
+  chairman: lt('Başkan', 'chairman'), agent: lt('Menajer', 'agent'),
 }
 
 // ───────────────────────── Engine hooks ─────────────────────────
@@ -211,6 +235,31 @@ export function objectivesWeekly(state: GameState, out: LText[]): void {
         log(state, out, fill(lt('Yeni hedef ({s}): {t}', 'New objective ({s}): {t}'), { s: SOURCE_NAME[o.source], t: o.title }), 'career', '🎯')
       }
     }
+  }
+  save(state, st)
+}
+
+/**
+ * Career-start hook (right after the first contract is signed): the board and
+ * personal season targets plus one short manager objective, so the Home card is
+ * never empty in week one. Deterministic and idempotent.
+ */
+export function objectivesStart(state: GameState, out: LText[]): void {
+  if (!heroClub(state)) return
+  const st = load(state)
+  addSeasonObjectives(state, st, out)
+  if (!st.active.some((o) => !seasonal(o)) && st.serial < 5) {
+    const role = state.hero.contract?.role ?? 'reserve'
+    const o = role === 'youth' || role === 'reserve'
+      ? mk(state, st, 'manager', 'apps', lt('İlk maçın: 4 hafta içinde formayı giy', 'Make your debut: play a match within 4 weeks'),
+        lt('Hoca seni izliyor. Antrenmanda göz dol, ilk dakikalarını al.', 'The manager is watching. Impress in training and earn your first minutes.'),
+        1, 4, { trust: 4, morale: 4, rel: { manager: 4 } })
+      : mk(state, st, 'manager', 'apps', lt('Güven kazan: ilk 2 maçta forma giy', 'Earn trust: play in the first 2 matches'),
+        lt('Hoca ilk haftalarda seni sahada görmek istiyor.', 'The manager wants to see you on the pitch early.'),
+        2, 4, { trust: 4, morale: 4, rel: { manager: 4 } }, { trust: -2 })
+    st.active.push(o)
+    st.lastBy.manager = absWeek(state.calendar)
+    log(state, out, fill(lt('Yeni hedef ({s}): {t}', 'New objective ({s}): {t}'), { s: SOURCE_NAME[o.source], t: o.title }), 'career', '🎯')
   }
   save(state, st)
 }

@@ -77,3 +77,14 @@ describe('personal objectives', () => {
     expect(s.life.log.some((l) => l.text.tr.includes('Yeni hedef'))).toBe(true)
   })
 })
+
+describe('career-start objectives', () => {
+  it('issues board, personal and one short objective before week one', () => {
+    const s = makeGame(11)
+    const v = objectivesView(s)
+    expect(v.active.filter((o) => o.source === 'board')).toHaveLength(1)
+    expect(v.active.some((o) => o.seasonal && o.source !== 'board')).toBe(true)
+    expect(v.active.filter((o) => !o.seasonal)).toHaveLength(1)
+    expect(v.active.find((o) => o.source === 'manager')?.rewardParts.some((p) => p.key === 'relation' && p.rel === 'manager')).toBe(true)
+  })
+})
