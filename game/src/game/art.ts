@@ -508,68 +508,193 @@ export function drawGoal(g: Phaser.GameObjects.Graphics, end: 'east' | 'west', p
 }
 
 const BRANDS = ['STARPATH', 'NOVA BANK', 'PIXEL COLA', 'ORBIT AIR', 'YILDIZ YOLU', 'KICKR', 'LUMEN TV', 'NORTH GEAR', 'VOLTA', 'GOAL+']
+const LOCAL_BRANDS = ['OTO TAMİR', 'FIRIN', 'KASAP', 'NALBUR', 'ECZANE', 'KUAFÖR']
 
-/** Ad-board strip texture (one long canvas, tiled brands). */
-export function adBoardTexture(scene: Phaser.Scene, key: string, lengthM: number, seed: number): string {
+/** Like {@link canvasTexture} but reuses an existing texture under the same key (keys must encode every parameter). */
+export function cachedTexture(scene: Phaser.Scene, key: string, w: number, h: number, draw: (c: CanvasRenderingContext2D, w: number, h: number) => void): string {
+  if (scene.textures.exists(key)) return key
+  return canvasTexture(scene, key, w, h, draw)
+}
+
+export type AdStyle = 'painted' | 'boards' | 'led' | 'led-glow'
+
+/** Ad-board strip texture (one long canvas, tiled brands). Cached per key + style. */
+export function adBoardTexture(scene: Phaser.Scene, key: string, lengthM: number, seed: number, style: AdStyle = 'boards'): string {
   const pxPerM = PPM * 1.5
   const w = Math.ceil(lengthM * pxPerM)
   const h = Math.ceil(0.9 * pxPerM * ZS)
-  return canvasTexture(scene, key, w, h, (c) => {
-    const palette = ['#0b1f4a', '#c4122f', '#111111', '#f2b705', '#0f6b3a', '#5a1f8f', '#e8e8e8']
-    const seg = 14 * pxPerM
+  return cachedTexture(scene, `${key}_${style}_${seed}_${Math.round(lengthM)}`, w, h, (c) => {
+    const led = style === 'led' || style === 'led-glow'
+    const palette = style === 'painted'
+      ? ['#e9e4d6', '#2f4f6b', '#7a2c22', '#dcd2b0', '#3e5a35']
+      : led ? ['#0016ff', '#ff1f4b', '#00c2ff', '#ffd400', '#00e07a', '#b100ff', '#ffffff'] : ['#0b1f4a', '#c4122f', '#111111', '#f2b705', '#0f6b3a', '#5a1f8f', '#e8e8e8']
+    const brands = style === 'painted' ? LOCAL_BRANDS : BRANDS
+    const seg = (style === 'painted' ? 9 : 14) * pxPerM
     for (let i = 0, x = 0; x < w; i++, x += seg) {
       const bg = palette[(i + seed) % palette.length]
-      c.fillStyle = bg
+      c.fillStyle = led ? '#05070c' : bg
       c.fillRect(x, 0, seg, h)
-      c.fillStyle = luminance(bg) > 0.5 ? '#111' : '#fff'
-      c.font = `900 ${Math.round(h * 0.62)}px system-ui, 'Segoe UI', Arial, sans-serif`
+      if (led) {
+        // LED panel: dark matrix, glowing brand.
+        const g = c.createLinearGradient(x, 0, x, h)
+        g.addColorStop(0, bg)
+        g.addColorStop(1, mixHex(bg, '#000000', 0.55))
+        c.fillStyle = g
+        c.globalAlpha = 0.85
+        c.fillRect(x + 1, 1, seg - 2, h - 2)
+        c.globalAlpha = 1
+      }
+      c.fillStyle = led ? '#ffffff' : luminance(bg) > 0.5 ? '#111' : '#fff'
+      if (led) {
+        c.shadowColor = '#ffffff'
+        c.shadowBlur = style === 'led-glow' ? h * 0.35 : h * 0.15
+      }
+      c.font = `${style === 'painted' ? 700 : 900} ${Math.round(h * (style === 'painted' ? 0.48 : 0.62))}px system-ui, 'Segoe UI', Arial, sans-serif`
       c.textAlign = 'center'
       c.textBaseline = 'middle'
-      c.fillText(BRANDS[(i * 3 + seed) % BRANDS.length], x + seg / 2, h * 0.54)
+      c.fillText(brands[(i * 3 + seed) % brands.length], x + seg / 2, h * 0.54)
+      c.shadowBlur = 0
+      if (style === 'painted') {
+        c.fillStyle = 'rgba(0,0,0,0.25)'
+        c.fillRect(x + seg - 2, 0, 2, h)
+      }
     }
-    c.fillStyle = 'rgba(255,255,255,0.18)'
+    if (led) {
+      // Pixel grid.
+      c.fillStyle = 'rgba(0,0,0,0.22)'
+      for (let y = 0; y < h; y += 3) c.fillRect(0, y, w, 1)
+    }
+    c.fillStyle = `rgba(255,255,255,${style === 'painted' ? 0.08 : 0.18})`
     c.fillRect(0, 0, w, h * 0.12)
     c.fillStyle = 'rgba(0,0,0,0.35)'
     c.fillRect(0, h * 0.9, w, h * 0.1)
   })
 }
 
-/** Crowd band texture: tiers of coloured heads in team colours. */
-export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, depthM: number, colors: string[], seed: number): string {
+export interface CrowdOptions {
+  /** Share of filled seats 0..1 (default 0.9). */
+  density?: number
+  upperTier?: boolean
+  roof?: boolean
+  tifo?: boolean
+  /** Lamps along the roof edge. */
+  roofLights?: boolean
+  night?: boolean
+  snow?: boolean
+}
+
+/**
+ * Crowd band texture: tiers of coloured heads in team colours. Cached: the key
+ * encodes size, palette and options so a rebuilt scene reuses the canvas.
+ */
+export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, depthM: number, colors: string[], seed: number, o: CrowdOptions = {}): string {
   const pxPerM = PPM
   const w = Math.ceil(lengthM * pxPerM)
   const h = Math.ceil(depthM * pxPerM)
+  const density = o.density ?? 0.9
+  const flags = `${o.upperTier ? 'u' : ''}${o.roof ? 'r' : ''}${o.tifo ? 't' : ''}${o.roofLights ? 'l' : ''}${o.night ? 'n' : ''}${o.snow ? 's' : ''}`
+  const ck = `${key}_${Math.round(lengthM)}x${Math.round(depthM)}_${colors.join('')}_${seed}_${Math.round(density * 100)}${flags}`
   let s = seed >>> 0 || 1
   const rnd = () => {
     s = (s * 1664525 + 1013904223) >>> 0
     return s / 4294967296
   }
-  return canvasTexture(scene, key, w, h, (c) => {
+  return cachedTexture(scene, ck, w, h, (c) => {
     const g = c.createLinearGradient(0, 0, 0, h)
-    g.addColorStop(0, '#05080d')
-    g.addColorStop(1, '#1a2230')
+    g.addColorStop(0, o.night ? '#020309' : '#05080d')
+    g.addColorStop(1, o.night ? '#121826' : '#1a2230')
     c.fillStyle = g
     c.fillRect(0, 0, w, h)
-    const rows = Math.floor(h / 9)
+    const roofH = o.roof ? Math.min(h * 0.14, 3.2 * pxPerM) : 0
+    const balcony = o.upperTier ? { y: h * 0.48, h: Math.max(8, h * 0.06) } : null
+    const rows = Math.floor((h - roofH) / 9)
+    const tifoBand = (x: number) => Math.floor(x / (6 * pxPerM)) % 2
     for (let r = 0; r < rows; r++) {
       const y = h - 6 - r * 9
+      if (balcony && y > balcony.y - 4 && y < balcony.y + balcony.h + 4) continue
       // Tier step shading.
       c.fillStyle = r % 2 ? 'rgba(255,255,255,0.03)' : 'rgba(0,0,0,0.12)'
       c.fillRect(0, y - 4, w, 9)
       for (let x = 2 + (r % 2) * 3; x < w; x += 6 + rnd() * 2) {
-        if (rnd() < 0.08) continue
+        if (rnd() > density) {
+          // Empty seat.
+          c.globalAlpha = 0.5
+          c.fillStyle = '#3a4a63'
+          c.fillRect(x, y - 1, 3.2, 2.2)
+          continue
+        }
         const roll = rnd()
-        c.fillStyle = roll < 0.45 ? colors[0] : roll < 0.6 ? colors[1] : roll < 0.8 ? '#d8d2c8' : roll < 0.9 ? '#2a2a2a' : colors[2] ?? '#888'
-        c.globalAlpha = 0.55 + rnd() * 0.45
+        const tifo = o.tifo && y > h * 0.55 && rnd() < 0.85
+        c.fillStyle = tifo ? colors[tifoBand(x)] : roll < 0.45 ? colors[0] : roll < 0.6 ? colors[1] : roll < 0.8 ? '#d8d2c8' : roll < 0.9 ? '#2a2a2a' : colors[2] ?? '#888'
+        c.globalAlpha = tifo ? 0.95 : 0.55 + rnd() * 0.45
         c.fillRect(x, y - 2 + rnd() * 2, 3.2, 3.6)
       }
     }
     c.globalAlpha = 1
+    if (balcony) {
+      c.fillStyle = '#0a0d14'
+      c.fillRect(0, balcony.y, w, balcony.h)
+      c.fillStyle = 'rgba(255,255,255,0.18)'
+      c.fillRect(0, balcony.y, w, 1.5)
+    }
+    if (roofH > 0) {
+      c.fillStyle = o.snow ? '#dfe7ef' : '#1d232e'
+      c.fillRect(0, 0, w, roofH)
+      c.fillStyle = 'rgba(0,0,0,0.5)'
+      c.fillRect(0, roofH - 3, w, 3)
+      if (o.roofLights) {
+        for (let x = 10; x < w; x += 22) {
+          c.fillStyle = o.night ? '#fffbe8' : '#c9d3e6'
+          c.fillRect(x, roofH - 7, 12, 4)
+        }
+      }
+    }
     // Haze toward the top (floodlight glare).
     const haze = c.createLinearGradient(0, 0, 0, h * 0.5)
-    haze.addColorStop(0, 'rgba(180,200,255,0.10)')
+    haze.addColorStop(0, o.night ? 'rgba(255,245,210,0.16)' : 'rgba(180,200,255,0.10)')
     haze.addColorStop(1, 'rgba(180,200,255,0)')
     c.fillStyle = haze
     c.fillRect(0, 0, w, h)
   })
+}
+
+/** Weather ground layer: rain puddle sheen or snow dusting (one static draw). */
+export function drawWeatherGround(g: Phaser.GameObjects.Graphics, weather: Weather, seed: number, lowFx = false): void {
+  let s = seed >>> 0 || 7
+  const rnd = () => {
+    s = (s * 1664525 + 1013904223) >>> 0
+    return s / 4294967296
+  }
+  if (weather === 'rain') {
+    const n = lowFx ? 10 : 22
+    for (let i = 0; i < n; i++) {
+      const p = project(4 + rnd() * (PITCH_LENGTH - 8), 3 + rnd() * (PITCH_WIDTH - 6))
+      const rw = (2.5 + rnd() * 5) * PPM
+      const rh = rw * TILT * (0.35 + rnd() * 0.3)
+      g.fillStyle(0xcfe3ff, 0.06 + rnd() * 0.05)
+      g.fillEllipse(p.x, p.y, rw, rh)
+      g.fillStyle(0xffffff, 0.05)
+      g.fillEllipse(p.x - rw * 0.12, p.y - rh * 0.15, rw * 0.45, rh * 0.3)
+    }
+    // Overall wet sheen.
+    const a = project(PITCH_LENGTH + 6, -5)
+    const b = project(-16, PITCH_WIDTH + 5)
+    g.fillStyle(0x8fb4d9, 0.06)
+    g.fillRect(a.x, a.y, b.x - a.x, b.y - a.y)
+  } else if (weather === 'snow') {
+    const n = lowFx ? 500 : 1400
+    for (let i = 0; i < n; i++) {
+      const p = project(-4 + rnd() * (PITCH_LENGTH + 9), -5 + rnd() * (PITCH_WIDTH + 10))
+      g.fillStyle(0xffffff, 0.18 + rnd() * 0.3)
+      g.fillCircle(p.x, p.y, (0.06 + rnd() * 0.12) * PPM)
+    }
+    // Drifts along the touchlines.
+    for (const yy of [-4.5, PITCH_WIDTH + 4.5]) {
+      for (let x = -4; x < PITCH_LENGTH + 5; x += 3) {
+        const p = project(x, yy)
+        g.fillStyle(0xf4f8ff, 0.55)
+        g.fillEllipse(p.x, p.y, (1.6 + rnd()) * PPM, 2.4 * PPM * TILT)
+      }
+    }
+  }
 }

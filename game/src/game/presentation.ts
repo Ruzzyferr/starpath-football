@@ -6,6 +6,11 @@
  * Pure TS (no Phaser, no DOM) so every rule is unit tested.
  */
 
+/** Locale-correct upper case for HUD labels (Turkish dotted/dotless i: "izmir" → "İZMİR", "ılgaz" → "ILGAZ"). */
+export function upper(s: string, lang: string): string {
+  return s.toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US')
+}
+
 // ───────────────────────── Stadium tiers ─────────────────────────
 
 export type StadiumTier = 'local' | 'mid' | 'large' | 'mega'

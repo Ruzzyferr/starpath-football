@@ -1,10 +1,18 @@
 import { describe, expect, it } from 'vitest'
 import {
   CELEBRATIONS, celebrationJoiners, celebrationPose, celebrationSeconds, dominantAngle, isEveningFixture, replayAngleWeights, replayRate,
-  resolveCelebration, stadiumLook, stadiumTier, windReadout,
+  resolveCelebration, stadiumLook, stadiumTier, upper, windReadout,
 } from './presentation'
 import { clearMoments, compactFrames, listMoments, recordMoment, topMoments } from './moments'
 import type { Highlight } from '../sim/match/types'
+
+describe('upper', () => {
+  it('uses Turkish casing for İ/ı', () => {
+    expect(upper('izmir', 'tr')).toBe('İZMİR')
+    expect(upper('ılgaz', 'tr')).toBe('ILGAZ')
+    expect(upper('izmir', 'en')).toBe('IZMIR')
+  })
+})
 
 describe('stadium tiers', () => {
   it('maps capacity to four tiers', () => {

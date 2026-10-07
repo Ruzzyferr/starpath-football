@@ -7,7 +7,9 @@ import type { Difficulty, KitColors, Lang } from '../core/types'
 import type { HighlightKind, Weather } from '../sim/match/types'
 import type { AimAssist } from './kick'
 import { ALL_KINDS, makeDemoHighlight } from './demoHighlights'
-import { createMatchGame, startHighlight, type HighlightHandle } from './MatchScene'
+import { createMatchGame, replayMoment, startHighlight, type HighlightHandle } from './MatchScene'
+import { listMoments } from './moments'
+import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from './presentation'
 
 const HERO: KitColors = { primary: '#c8102e', secondary: '#ffffff', pattern: 'stripes' }
 const OPP: KitColors = { primary: '#1d4ed8', secondary: '#0b1b44', pattern: 'hoops' }
@@ -24,6 +26,13 @@ let seed = Number(params.get('seed') ?? 1) || 1
 const auto = params.get('auto') === '1'
 if (params.get('weather')) $<HTMLSelectElement>('weather').value = params.get('weather')!
 if (params.get('lang')) $<HTMLSelectElement>('lang').value = params.get('lang')!
+if (params.get('cap')) $<HTMLSelectElement>('stadium').value = params.get('cap')!
+if (params.get('night') === '1') $<HTMLInputElement>('night').checked = true
+if (params.get('angle')) $<HTMLSelectElement>('angle').value = params.get('angle')!
+const celebration = (params.get('celeb') ?? 'auto') as CelebrationChoice
+const ALL_CELEBS: CelebrationId[] = ['knee_slide', 'airplane', 'point_sky', 'badge_kiss', 'team_huddle', 'shush', 'corner_flag', 'backflip']
+const reducedMotion = params.get('rm') === '1'
+const lowFx = params.get('lowfx') === '1'
 let handle: HighlightHandle | null = null
 
 const buttons = new Map<HighlightKind, HTMLButtonElement>()
@@ -42,7 +51,22 @@ $<HTMLButtonElement>('again').onclick = () => {
   seed++
   play()
 }
-for (const id of ['assist', 'diff', 'weather', 'lang', 'slowmo', 'sound']) $<HTMLElement>(id).addEventListener('change', () => play())
+for (const id of ['assist', 'diff', 'weather', 'lang', 'slowmo', 'sound', 'stadium', 'night']) $<HTMLElement>(id).addEventListener('change', () => play())
+$<HTMLButtonElement>('rewatch').onclick = () => rewatch()
+
+/** Rewatch the latest recorded moment (Moments list in the real game). */
+function rewatch(): void {
+  const all = listMoments('demo')
+  const m = all[all.length - 1]
+  if (!m) return
+  handle?.stop()
+  resultEl.textContent = 'replay…'
+  handle = replayMoment(game, m, { settings: { aimAssist: 'half', slowMoAim: true, vibration: false, sound: 0.8, reducedMotion, lowFx }, angle: $<HTMLSelectElement>('angle').value as ReplayAngleChoice }, () => {
+    resultEl.textContent = 'replay done'
+    handle = null
+  })
+}
+;(window as unknown as { __spRewatch?: () => void }).__spRewatch = rewatch
 
 function play(): void {
   handle?.stop()
@@ -63,7 +87,13 @@ function play(): void {
         slowMoAim: $<HTMLInputElement>('slowmo').checked,
         vibration: true,
         sound: $<HTMLInputElement>('sound').checked ? 0.8 : 0,
+        reducedMotion,
+        lowFx,
       },
+      stadium: { capacity: Number($<HTMLSelectElement>('stadium').value), night: $<HTMLInputElement>('night').checked },
+      celebration: { choice: celebration, unlocked: ALL_CELEBS },
+      replayAngle: $<HTMLSelectElement>('angle').value as ReplayAngleChoice,
+      matchKey: 'demo',
       lang,
       difficulty: $<HTMLSelectElement>('diff').value as Difficulty,
       weather: $<HTMLSelectElement>('weather').value as Weather,
