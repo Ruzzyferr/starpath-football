@@ -29,7 +29,8 @@ import {
 import { Sfx } from './audio'
 import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot'
 import { InputController, type FrameIntent } from './input'
-import { effectiveAimAssist } from '../input/prefs'
+import { effectiveAimAssist, getControlPrefs } from '../input/prefs'
+import { distinctOpponentKit } from '../core/colorVision'
 import type { AimAssist } from './kick'
 import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y } from './physics'
@@ -231,9 +232,10 @@ export class MatchScene extends Phaser.Scene {
     })
     this.sfx = new Sfx(opts.settings.sound)
     this.auto = opts.autopilot ? createAutopilot(highlight.id.length) : null
-    const heroGk = keeperKit([opts.heroTeamColors, opts.oppColors], 0)
-    const oppGk = keeperKit([opts.heroTeamColors, opts.oppColors, heroGk], 2)
-    this.kits = { hero: opts.heroTeamColors, opp: opts.oppColors, heroGk, oppGk }
+    const oppKit = distinctOpponentKit(opts.heroTeamColors, opts.oppColors, getControlPrefs().cbMode)
+    const heroGk = keeperKit([opts.heroTeamColors, oppKit], 0)
+    const oppGk = keeperKit([opts.heroTeamColors, oppKit, heroGk], 2)
+    this.kits = { hero: opts.heroTeamColors, opp: oppKit, heroGk, oppGk }
 
     this.cameras.main.setBackgroundColor('#0b1410')
     this.worldLayer = this.add.layer()

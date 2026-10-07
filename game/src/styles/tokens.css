@@ -196,6 +196,63 @@
   --zone-releg: #ff9f1c;
 }
 
+/* Per-type colour-blind palettes (data-cb is set from Settings). Every pair
+   differs in lightness as well as hue; UI also keeps +/- glyphs and icons. */
+:root[data-cb='protanopia'] {
+  /* Reds look dark and muddy: pair blue with a bright yellow-orange. */
+  --pos: #4aa8ff;
+  --neg: #ffc400;
+  --state-success: #4aa8ff;
+  --state-danger: #ffc400;
+  --state-danger-deep: #9a7600;
+  --state-warning: #f2f2f2;
+  --attr-1: #ffc400;
+  --attr-2: #ffd75a;
+  --attr-3: #f2f2f2;
+  --attr-4: #9cc8ff;
+  --attr-5: #4aa8ff;
+  --attr-6: #c9b8ff;
+  --zone-promo: #4aa8ff;
+  --zone-euro: #c9b8ff;
+  --zone-playoff: #f2f2f2;
+  --zone-releg: #ffc400;
+}
+:root[data-cb='deuteranopia'] {
+  --pos: #3da5ff;
+  --neg: #ff9f1c;
+  --state-success: #3da5ff;
+  --state-danger: #ff9f1c;
+  --state-danger-deep: #b86a00;
+  --state-warning: #f4f4a0;
+  --zone-promo: #3da5ff;
+  --zone-euro: #c9b8ff;
+  --zone-playoff: #f4f4a0;
+  --zone-releg: #ff9f1c;
+}
+:root[data-cb='tritanopia'] {
+  /* Blue/yellow confusion: use teal vs. magenta-red, keep gold away from pink. */
+  --pos: #19d1b0;
+  --neg: #ff5c8a;
+  --state-success: #19d1b0;
+  --state-danger: #ff5c8a;
+  --state-danger-deep: #c22a5a;
+  --state-warning: #ffffff;
+  --state-info: #19d1b0;
+  --accent-blue: #19d1b0;
+  --attr-1: #ff5c8a;
+  --attr-2: #ff8fb0;
+  --attr-3: #ffe0ea;
+  --attr-4: #7ee8d4;
+  --attr-5: #19d1b0;
+  --attr-6: #0f8f7a;
+  --zone-promo: #19d1b0;
+  --zone-euro: #7ee8d4;
+  --zone-playoff: #ffffff;
+  --zone-releg: #ff5c8a;
+}
+:root[data-cb='protanopia'] .btn-danger { --btn-bg: linear-gradient(180deg, #ffd75a, #ffc400); --btn-fg: #2a2000; }
+:root[data-cb='tritanopia'] .btn-danger { --btn-bg: linear-gradient(180deg, #ff8fb0, #ff5c8a); --btn-fg: #2a0a14; }
+
 /* Low-fx profile (set by app on weak devices / reduced motion). */
 :root[data-fx='low'] {
   --sh-card: 0 2px 0 rgba(0, 0, 0, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.06);

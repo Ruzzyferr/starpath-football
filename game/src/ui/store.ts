@@ -20,6 +20,8 @@ import type {
   SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender,
 } from '../core/types'
 import { currentLang } from '../i18n'
+import { setControlPrefs } from '../input/prefs'
+import { contentFlags } from '../core/contentFlags'
 import type { DrillKind, DrillVariant } from '../game/training/types'
 
 // ───────────────────────── Shared view types ─────────────────────────
@@ -743,7 +745,16 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   reducedMotion: boolean
   highContrast: boolean
   lowFx: boolean
+  /** Colour-blind palette (the legacy `colorblind` flag mirrors `cbMode !== 'off'`). */
+  cbMode: ColorblindMode
+  leftHanded: boolean
+  oneHand: boolean
+  /** Touch button scale 0.8..1.5. */
+  touchScale: number
+  hideCasino: boolean
 }
+
+export type ColorblindMode = 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia'
 
 export const DEFAULT_SETTINGS: UiSettings = {
   lang: 'tr',
@@ -758,6 +769,11 @@ export const DEFAULT_SETTINGS: UiSettings = {
   reducedMotion: false,
   highContrast: false,
   lowFx: false,
+  cbMode: 'off',
+  leftHanded: false,
+  oneHand: false,
+  touchScale: 1,
+  hideCasino: false,
   ...DEFAULT_AUDIO_SETTINGS,
 }
 
@@ -792,7 +808,11 @@ export function bindSettingsToDocument(): () => void {
     const root = globalThis.document?.documentElement
     if (!root) return
     root.lang = s.lang
-    root.dataset.colorblind = String(s.colorblind)
+    const cb: ColorblindMode = s.cbMode !== 'off' ? s.cbMode : s.colorblind ? 'deuteranopia' : 'off'
+    root.dataset.colorblind = String(cb !== 'off')
+    root.dataset.cb = cb
+    setControlPrefs({ leftHanded: s.leftHanded, oneHand: s.oneHand, touchScale: s.touchScale, cbMode: cb })
+    contentFlags.hideCasino = s.hideCasino
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'
     root.dataset.motion = s.reducedMotion ? 'reduced' : 'full'
     root.dataset.fx = s.lowFx ? 'low' : 'full'

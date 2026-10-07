@@ -10,9 +10,11 @@ export interface ControlPrefs {
   oneHand: boolean
   /** Touch button scale (1 = default). */
   touchScale: number
+  /** Colour-blind palette in effect (for in-match kit contrast). */
+  cbMode: 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia'
 }
 
-const state: ControlPrefs = { leftHanded: false, oneHand: false, touchScale: 1 }
+const state: ControlPrefs = { leftHanded: false, oneHand: false, touchScale: 1, cbMode: 'off' }
 
 export function getControlPrefs(): Readonly<ControlPrefs> {
   return state
