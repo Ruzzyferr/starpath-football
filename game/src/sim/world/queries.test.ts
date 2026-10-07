@@ -93,3 +93,15 @@ describe('queries', () => {
     expect(matchKits(a, clone).away).toBe(clone.awayColors)
   })
 })
+
+import { pickKeyPlayer } from './queries'
+describe('pickKeyPlayer', () => {
+  const p = (id: string, ovr: number, form: number, position: 'ST' | 'GK' | 'CB', injuredWeeks = 0) => ({ id, ovr, form, position, injuredWeeks })
+  it('prefers in-form attackers over a slightly higher-rated keeper', () => {
+    expect(pickKeyPlayer([p('gk', 76, 50, 'GK'), p('st', 73, 70, 'ST'), p('cb', 74, 50, 'CB')])?.id).toBe('st')
+  })
+  it('skips injured players and is deterministic on ties', () => {
+    expect(pickKeyPlayer([p('a', 80, 50, 'ST', 3), p('c', 70, 50, 'ST'), p('b', 70, 50, 'ST')])?.id).toBe('b')
+    expect(pickKeyPlayer([])).toBeNull()
+  })
+})

@@ -232,3 +232,26 @@ export function matchKits(home: Club, away: Club): { home: KitColors; away: KitC
   if (!kitsClash(home.colors, away.colors)) return { home: home.colors, away: away.colors }
   return { home: home.colors, away: away.awayColors }
 }
+
+// ───────────────────────── Opposition scouting ─────────────────────────
+
+const KEY_POSITION_BONUS: Record<Position, number> = {
+  GK: -5, CB: -1, LB: -2, RB: -2, DM: 0, CM: 0.5, AM: 2, LW: 1.5, RW: 1.5, ST: 3,
+}
+
+/** Scouting score: overall, current form (0..100, 50 neutral) and a small attacking-threat position weight. */
+export function keyPlayerScore(p: Pick<NpcPlayer, 'ovr' | 'form' | 'position'>): number {
+  return p.ovr + (p.form - 50) * 0.12 + KEY_POSITION_BONUS[p.position]
+}
+
+/** The opposition "player to watch": best scouting score among available players; ties broken by id for determinism. */
+export function pickKeyPlayer<T extends Pick<NpcPlayer, 'id' | 'ovr' | 'form' | 'position' | 'injuredWeeks'>>(players: readonly T[]): T | null {
+  let best: T | null = null
+  let bestScore = -Infinity
+  for (const p of players) {
+    if (p.injuredWeeks > 0) continue
+    const s = keyPlayerScore(p)
+    if (s > bestScore || (s === bestScore && best && p.id < best.id)) { best = p; bestScore = s }
+  }
+  return best
+}

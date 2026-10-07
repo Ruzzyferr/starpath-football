@@ -403,7 +403,9 @@ export interface PreMatchView {
   homeLineup: LineupPlayer[]
   awayLineup: LineupPlayer[]
   opponentForm: ('W' | 'D' | 'L')[]
-  opponentKeyPlayer: { name: string; position: Position; ovr: number } | null
+  opponentKeyPlayer: { name: string; position: Position; ovr: number; form?: number; contractUntil?: number } | null
+  /** Your own ban / injury / contract status, shown before kick-off. */
+  heroAvailability?: { suspendedMatches: number; injured: boolean; contractUntil: number | null }
   tacticHint: LText
   heroStarting: boolean
   odds: { home: number; draw: number; away: number }
@@ -549,6 +551,8 @@ export interface NewGameInput {
   lastName: string
   nickname: string
   nationality: string // country id
+  /** Optional birth city (data/world CITIES of the nationality): hometown fans and events. */
+  birthCity?: string
   birthYear: number
   position: Position
   foot: Foot
@@ -764,6 +768,14 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   oneHand: boolean
   /** Touch button scale 0.8..1.5. */
   touchScale: number
+  /** WP-13 control schemes (see input/prefs.ts). */
+  touchShot: 'swipe' | 'slingshot' | 'meter'
+  pcPower: 'hold' | 'oscillate'
+  padPower: 'hold' | 'oscillate' | 'analog'
+  /** Gamepad stick dead zone 0.05..0.4. */
+  padDeadzone: number
+  /** Vision-based pass option rings. */
+  visionHints: boolean
   hideCasino: boolean
   /** Never flash the screen (goal/celebration/offside flashes); stricter than reduced motion for photosensitivity. */
   reduceFlashes: boolean
@@ -790,6 +802,11 @@ export const DEFAULT_SETTINGS: UiSettings = {
   leftHanded: false,
   oneHand: false,
   touchScale: 1,
+  touchShot: 'swipe',
+  pcPower: 'hold',
+  padPower: 'hold',
+  padDeadzone: 0.18,
+  visionHints: true,
   hideCasino: false,
   reduceFlashes: false,
   soundCaptions: false,
@@ -832,7 +849,17 @@ export function bindSettingsToDocument(): () => void {
     const cb: ColorblindMode = s.cbMode !== 'off' ? s.cbMode : s.colorblind ? 'deuteranopia' : 'off'
     root.dataset.colorblind = String(cb !== 'off')
     root.dataset.cb = cb
-    setControlPrefs({ leftHanded: s.leftHanded, oneHand: s.oneHand, touchScale: s.touchScale, cbMode: cb })
+    setControlPrefs({
+      leftHanded: s.leftHanded,
+      oneHand: s.oneHand,
+      touchScale: s.touchScale,
+      cbMode: cb,
+      touchShot: s.touchShot,
+      pcPower: s.pcPower,
+      padPower: s.padPower,
+      padDeadzone: s.padDeadzone,
+      visionHints: s.visionHints,
+    })
     contentFlags.hideCasino = s.hideCasino
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'
     root.dataset.motion = s.reducedMotion ? 'reduced' : 'full'

@@ -6,7 +6,7 @@
  * deltas, interview) that `data.postMatch()` shows.
  */
 import { Rng, clamp, hashString } from '../../core/rng'
-import type { GameState, LText } from '../../core/types'
+import type { GameState, LText, NpcPlayer } from '../../core/types'
 import { worldGender } from '../../core/gender'
 import { currentLang } from '../../i18n'
 import {
@@ -16,7 +16,7 @@ import {
 import { readJson, writeJson } from '../../sim/game/internal'
 import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
-import { playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
+import { pickKeyPlayer, playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
 import { match, settings } from '../store'
 import type {
   Delta, FixtureView, HeroMatchStatsView, InterviewOption, LineupPlayer, LiveMatchView, MatchEventView, PostMatchView, PreMatchView,
@@ -160,7 +160,8 @@ export function preMatchView(s: GameState): PreMatchView | null {
   const heroSide = blob.setup.heroSide ?? 'home'
   const opp = heroSide === 'home' ? away : home
   const oppClub = s.world.clubs[opp.id]
-  const key = [...opp.lineup].sort((a, b) => b.ovr - a.ovr)[0]
+  const keyNpc = pickKeyPlayer(opp.lineup.map((p) => s.world.players[p.id]).filter((p): p is NpcPlayer => !!p))
+  const key = opp.lineup.find((p) => p.id === keyNpc?.id) ?? [...opp.lineup].sort((a, b) => b.ovr - a.ovr)[0]
   // Opponent form from its league table row (current season).
   let form: ('W' | 'D' | 'L')[] = []
   for (const comp of seasonCompetitions(s.world, s.calendar.season)) {
@@ -180,7 +181,11 @@ export function preMatchView(s: GameState): PreMatchView | null {
     homeLineup: lineupOf(home),
     awayLineup: lineupOf(away),
     opponentForm: form,
-    opponentKeyPlayer: key ? { name: key.name, position: key.position, ovr: key.ovr } : null,
+    opponentKeyPlayer: key ? {
+      name: key.name, position: key.position, ovr: key.ovr,
+      ...(keyNpc ? { form: Math.round(keyNpc.form), contractUntil: keyNpc.contractUntil } : {}),
+    } : null,
+    heroAvailability: { suspendedMatches: s.hero.suspendedMatches, injured: !!s.hero.injury, contractUntil: s.hero.contract?.untilSeason ?? null },
     tacticHint: HINTS[oppClub?.style ?? 'balanced'] ?? HINTS.balanced,
     heroStarting: blob.starts,
     odds: { home: ODDS(pHome * (1 - pDraw)), draw: ODDS(pDraw), away: ODDS((1 - pHome) * (1 - pDraw)) },

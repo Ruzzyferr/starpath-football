@@ -157,9 +157,26 @@ export function PreMatchScreen() {
                 <div class="grow">
                   <div class="pm-key-name truncate">{pm.opponentKeyPlayer.name}</div>
                   <div class="t-xs t-mid">{t(`data.posLong.${pm.opponentKeyPlayer.position}`)}</div>
+                  {pm.opponentKeyPlayer.form !== undefined && pm.opponentKeyPlayer.contractUntil !== undefined && (
+                    <div class="t-xs t-lo" data-testid="pm-key-meta">
+                      {t('match.pre.keyForm', { n: pm.opponentKeyPlayer.form })} · {t('match.pre.keyContract', { y: pm.opponentKeyPlayer.contractUntil })}
+                    </div>
+                  )}
                 </div>
                 <Icon name="eye" size={20} class="t-gold" />
               </div>
+            </div>
+          )}
+
+          {pm.heroAvailability && (
+            <div class="pm-card" data-testid="pm-hero-status">
+              <h3 class="micro t-mid">{t('match.pre.yourStatus')}</h3>
+              <ul class="t-sm">
+                <li>{pm.heroAvailability.suspendedMatches > 0
+                  ? t('match.pre.statusBan', { n: pm.heroAvailability.suspendedMatches })
+                  : pm.heroAvailability.injured ? t('match.pre.statusInjured') : t('match.pre.statusFit')}</li>
+                {pm.heroAvailability.contractUntil !== null && <li>{t('match.pre.statusContract', { y: pm.heroAvailability.contractUntil })}</li>}
+              </ul>
             </div>
           )}
 
