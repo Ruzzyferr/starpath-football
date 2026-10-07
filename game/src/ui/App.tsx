@@ -35,12 +35,6 @@ import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
-import { AchievementsScreen } from './screens/legacy/AchievementsScreen'
-import { HallOfFameScreen } from './screens/legacy/HallOfFameScreen'
-import { RetireScreen } from './screens/legacy/RetireScreen'
-import { DocumentaryScreen } from './screens/legacy/DocumentaryScreen'
-import { TrialsScreen } from './screens/legacy/TrialsScreen'
-import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
 import { CoachTour } from './tutorial/CoachTour'
 import { MatchdayConfirmHost, requestAdvance } from './tutorial/MatchdayConfirm'
@@ -75,16 +69,11 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   seasonEnd: SeasonEndScreen,
   trophies: TrophiesScreen,
   glossary: GlossaryScreen,
-  achievements: AchievementsScreen,
-  hallOfFame: HallOfFameScreen,
-  retire: RetireScreen,
-  documentary: DocumentaryScreen,
-  trials: TrialsScreen,
 }
 
-const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials'])
+const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd'])
 /** Screens usable without a loaded career. */
-const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary'])
+const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary'])
 
 function isTyping(el: Element | null): boolean {
   if (!el) return false
@@ -162,7 +151,6 @@ function usePendingNav() {
 
 export function App() {
   usePendingNav()
-  useCareerGates()
   useKeyboardShortcuts()
   useEventAutoOpen()
   useClubTint()
