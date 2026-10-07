@@ -1,6 +1,6 @@
-// Writes StarPath launcher icons + splash screens into the generated Android
-// project (android/app/src/main/res). Run after `npx cap add android`:
-//   node scripts/gen-android-res.mjs
+// Writes StarPath launcher icons + splash screens into the generated native
+// projects (android/app/src/main/res and ios/App/App/Assets.xcassets).
+// Run after `npx cap add android|ios`:  npm run icons:native
 import sharp from 'sharp'
 import { existsSync, readdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
@@ -8,10 +8,7 @@ import { fileURLToPath } from 'node:url'
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..')
 const res = join(root, 'android/app/src/main/res')
-if (!existsSync(res)) {
-  console.error('android/ not found — run `npx cap add android` first')
-  process.exit(1)
-}
+
 const NAVY = '#0B1220'
 const svg = readFileSync(join(root, 'build-resources/icon.svg'), 'utf8')
 const body = svg.replace(/<svg[^>]*>/, '').replace('</svg>', '')
@@ -26,6 +23,7 @@ const wrap = (inner, scale, bg) => {
   )
 }
 
+if (existsSync(res)) {
 const DENS = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 }
 for (const [d, k] of Object.entries(DENS)) {
   const dir = join(res, `mipmap-${d}`)
@@ -60,3 +58,18 @@ for (const d of readdirSync(res).filter((x) => x.startsWith('drawable'))) {
   writeFileSync(f, out)
 }
 console.log('Android launcher icons + splash written to', res)
+}
+
+// iOS: 1024 opaque app icon (Apple rejects alpha) + 2732² splash.
+const xc = join(root, 'ios/App/App/Assets.xcassets')
+if (existsSync(xc)) {
+  const bleed = wrap(art, 0.86, `<rect width="512" height="512" fill="${NAVY}"/><rect width="512" height="512" fill="url(#bg)"/>`)
+  await sharp(bleed, { density: 300 }).resize(1024, 1024).flatten({ background: NAVY }).png().toFile(join(xc, 'AppIcon.appiconset/AppIcon-512@2x.png'))
+  const icon = await sharp(Buffer.from(svg), { density: 600 }).resize(820, 820).png().toBuffer()
+  const splash = await sharp({ create: { width: 2732, height: 2732, channels: 3, background: NAVY } })
+    .composite([{ input: icon, gravity: 'centre' }])
+    .png()
+    .toBuffer()
+  for (const f of ['splash-2732x2732.png', 'splash-2732x2732-1.png', 'splash-2732x2732-2.png']) writeFileSync(join(xc, 'Splash.imageset', f), splash)
+  console.log('iOS app icon + splash written to', xc)
+}

@@ -20,7 +20,9 @@
     "cap:sync": "npm run build && cap sync",
     "android:open": "cap open android",
     "android:apk": "npm run cap:sync && node scripts/android-gradle.mjs assembleDebug",
-    "android:bundle": "npm run cap:sync && node scripts/android-gradle.mjs bundleRelease"
+    "android:bundle": "npm run cap:sync && node scripts/android-gradle.mjs bundleRelease",
+    "icons:native": "node scripts/gen-native-res.mjs",
+    "ios:open": "cap open ios"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
