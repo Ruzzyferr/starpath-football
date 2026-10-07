@@ -7,6 +7,8 @@ import { Icon, type IconName } from '../icons'
 import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
 import { actions, gameState, navigate, settings, updateSettings } from '../store'
 import { HelpSettings } from '../tutorial/HelpSettings'
+import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
+import type { ColorblindMode } from '../store'
 
 function Group({ title, icon, children }: { title: string; icon: IconName; children: ComponentChildren }) {
   return (
@@ -100,7 +102,20 @@ export function SettingsScreen() {
         </Group>
 
         <Group title={t('settings.sections.access')} icon="eye">
-          <Switch label={t('settings.colorblind')} desc={t('settings.colorblindDesc')} checked={s.colorblind} onChange={(colorblind) => updateSettings({ colorblind })} />
+          <Field label={t('settings.cbMode')} hint={t('settings.cbModeDesc')}>
+            <Segmented<ColorblindMode>
+              label={t('settings.cbMode')}
+              value={s.cbMode !== 'off' ? s.cbMode : s.colorblind ? 'deuteranopia' : 'off'}
+              onChange={(cbMode) => updateSettings({ cbMode, colorblind: cbMode !== 'off' })}
+              options={[
+                { id: 'off', label: t('settings.cbOff') },
+                { id: 'protanopia', label: t('settings.cbProtan') },
+                { id: 'deuteranopia', label: t('settings.cbDeutan') },
+                { id: 'tritanopia', label: t('settings.cbTritan') },
+              ]}
+            />
+          </Field>
+          <Switch label={t('settings.hideCasino')} desc={t('settings.hideCasinoDesc')} checked={s.hideCasino} onChange={(hideCasino) => updateSettings({ hideCasino })} />
           <Switch label={t('settings.highContrast')} desc={t('settings.highContrastDesc')} checked={s.highContrast} onChange={(highContrast) => updateSettings({ highContrast })} />
           <Switch label={t('settings.reducedMotion')} desc={t('settings.reducedMotionDesc')} checked={s.reducedMotion} onChange={(reducedMotion) => updateSettings({ reducedMotion })} />
           <Switch label={t('settings.lowFx')} desc={t('settings.lowFxDesc')} checked={s.lowFx} onChange={(lowFx) => updateSettings({ lowFx })} />
@@ -115,6 +130,23 @@ export function SettingsScreen() {
             id="set-text"
           />
           <p class="set-preview">{t('settings.textPreview')}</p>
+        </Group>
+
+        <Group title={t('settings.sectionControls')} icon="keyboard">
+          <Switch label={t('settings.leftHanded')} desc={t('settings.leftHandedDesc')} checked={s.leftHanded} onChange={(leftHanded) => updateSettings({ leftHanded })} />
+          <Switch label={t('settings.oneHand')} desc={t('settings.oneHandDesc')} checked={s.oneHand} onChange={(oneHand) => updateSettings({ oneHand })} />
+          <Slider
+            label={t('settings.touchScale')}
+            value={Math.round(s.touchScale * 100)}
+            min={80}
+            max={150}
+            step={10}
+            onChange={(v) => updateSettings({ touchScale: v / 100 })}
+            format={(v) => `${v}%`}
+            id="set-touch"
+          />
+          <h3 class="h3">{t('settings.ctl.title')}</h3>
+          <KeyBindingsPanel />
         </Group>
 
         <Group title={t('help.settings.title')} icon="question">

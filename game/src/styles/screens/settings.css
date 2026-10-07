@@ -260,3 +260,14 @@
 @media (min-width: 900px) {
   .menu-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
+
+/* ── Key bindings ── */
+.kb-panel { display: flex; flex-direction: column; gap: var(--sp-3); }
+.kb-list { list-style: none; margin: 0; padding: 0; display: grid; gap: var(--sp-2); grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); }
+.kb-row { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); padding: var(--sp-2) var(--sp-3); border-radius: var(--r-btn); background: var(--bg-1); border: 1px solid var(--hairline); }
+.kb-name { color: var(--text-hi); font-size: var(--fs-sm); }
+.kb-key { min-width: 64px; min-height: 36px; padding: 4px 10px; border-radius: var(--r-btn); border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-hi); cursor: pointer; font: inherit; }
+.kb-key kbd { font-family: var(--font-mono, monospace); font-weight: 700; }
+.kb-key.is-listening { border-color: var(--accent-gold); color: var(--accent-gold-hi); }
+.kb-status { min-height: 1.5em; display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.kb-msg { color: var(--state-warning); font-size: var(--fs-sm); }

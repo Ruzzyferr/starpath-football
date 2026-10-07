@@ -3,6 +3,7 @@
  * Screens are plain components keyed by ScreenId. Shell-less ("immersive")
  * screens: title, new career and the match flow.
  */
+import { startGamepadNav } from '../input/gamepadNav'
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
 import { activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
@@ -166,7 +167,13 @@ function usePendingNav() {
   }, [want, id])
 }
 
+/** Gamepad menu navigation (D-pad/stick, A, B, LB/RB) while a DOM screen is up. */
+function useGamepadNav() {
+  useEffect(() => startGamepadNav(), [])
+}
+
 export function App() {
+  useGamepadNav()
   usePendingNav()
   useCareerGates()
   useKeyboardShortcuts()

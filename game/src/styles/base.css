@@ -283,3 +283,11 @@ textarea:focus-visible {
 .stagger > *:nth-child(7) { animation-delay: 180ms; }
 .stagger > *:nth-child(8) { animation-delay: 210ms; }
 .stagger > *:nth-child(n + 9) { animation: none; }
+
+/* Gamepad / keyboard users always get a clearly visible focus ring. */
+html[data-input='pad'] :focus,
+html[data-input='kb'] :focus-visible {
+  outline: 3px solid var(--accent-gold);
+  outline-offset: 2px;
+  box-shadow: var(--focus-ring);
+}
