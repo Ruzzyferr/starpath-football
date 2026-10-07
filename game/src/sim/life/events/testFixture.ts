@@ -22,6 +22,8 @@ export interface FixtureOptions {
   reputation?: number
   /** Hero without club/contract. */
   clubless?: boolean
+  /** Hero gender (default male). */
+  gender?: 'male' | 'female'
 }
 
 /** Build a GameState with 1 league × 4 clubs × 18 NPCs, a contracted hero and the usual relationships. */
@@ -88,6 +90,7 @@ export function makeTestState(opts: FixtureOptions = {}): GameState {
       honours: [],
     },
     hero: {
+      ...(opts.gender === 'female' ? { gender: 'female' as const } : {}),
       firstName: 'Ali', lastName: 'Yılmaz', nickname: 'Aliço', nationality: 'TR', birthYear: 2008, position: 'ST', foot: 'R',
       appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 },
       archetype: 'poacher', background: 'street', attrs, attrXp: {}, potential: 85, perkPoints: 0, perks: [],

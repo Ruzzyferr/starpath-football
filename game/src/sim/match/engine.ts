@@ -418,7 +418,7 @@ export class MatchSim {
   }
 
   private say(key: CommentaryKey, vars: CommentaryVars): string {
-    return commentary(key, this.s.lang, { score: this.scoreText(), ...vars }, this.rng)
+    return commentary(key, this.s.lang, { score: this.scoreText(), ...vars }, this.rng, this.s.setup.gender)
   }
 
   private name(id: string | null | undefined): string {

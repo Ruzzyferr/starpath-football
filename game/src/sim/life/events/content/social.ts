@@ -284,7 +284,7 @@ export const socialEvents: EventDef[] = [
       {
         label: t('Lüks bir saatle poz', 'Pose with a luxury watch'),
         risk: 'medium',
-        effects: (ctx) => fx(t('Beğeniler geldi, ama "kendini kaybetti" yorumları da.', 'The likes poured in, along with "he\'s lost the plot" comments.'), folPct(ctx, 6), fans(-3), rep(1)),
+        effects: (ctx) => fx(t('Beğeniler geldi, ama "kendini kaybetti" yorumları da.', 'The likes poured in, along with "{g:he\'s|she\'s} lost the plot" comments.'), folPct(ctx, 6), fans(-3), rep(1)),
       },
     ],
   },
@@ -339,7 +339,7 @@ export const socialEvents: EventDef[] = [
         effects: (ctx, rng) =>
           ctx.vars.recovery === 'expert' || rng.chance(0.6)
             ? fx(t('Hiçbir şey sızmadı; açıklaman dürüstlüğün kanıtı oldu.', 'Nothing leaked; your statement became proof of your honesty.'), folPct(ctx, 3), press(3), stress(-5))
-            : fx(t('Bir grup sohbetinden hocaya ait bir lakap sızdı. Gülünç ama can sıkıcı.', 'A nickname you used for the gaffer leaked from a group chat. Funny, but awkward.'), boss(-6), folPct(ctx, 4), stress(4), news(t('{heroName}\'ın hocasına taktığı lakap ortaya çıktı', '{heroName}\'s secret nickname for his manager revealed'), -1)),
+            : fx(t('Bir grup sohbetinden hocaya ait bir lakap sızdı. Gülünç ama can sıkıcı.', 'A nickname you used for the gaffer leaked from a group chat. Funny, but awkward.'), boss(-6), folPct(ctx, 4), stress(4), news(t('{heroName}\'ın hocasına taktığı lakap ortaya çıktı', '{heroName}\'s secret nickname for {g:his|her} manager revealed'), -1)),
       },
       {
         label: t('Bir süre sosyal medyaya ara ver', 'Take a social media break'),

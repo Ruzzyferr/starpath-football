@@ -473,8 +473,8 @@ function socialFeed(s: GameState): SocialPostView[] {
     const fanLines: LText[] = last !== undefined && last >= 7.5
       ? [L(`${name} bu sezon başka bir seviyede! 🔥`, `${name} is on another level this season! 🔥`), L('Bu çocuğa milli takım formasını verin artık.', 'Give this kid a national team shirt already.')]
       : last !== undefined && last < 6
-        ? [L(`${name} biraz kendine gelmeli. Bu formla olmaz.`, `${name} needs to wake up. Not good enough.`), L('Hocam neden hâlâ oynuyor?', 'Why does he keep playing?')]
-        : [L(`${club?.name ?? 'Takım'} formasıyla sahaya çıkışını izlemek güzel.`, `Love watching him in the ${club?.name ?? 'team'} shirt.`), L('Potansiyel çok yüksek, sabır.', 'Huge potential. Patience.')]
+        ? [L(`${name} biraz kendine gelmeli. Bu formla olmaz.`, `${name} needs to wake up. Not good enough.`), L('Hocam neden hâlâ oynuyor?', s.hero.gender === 'female' ? 'Why does she keep playing?' : 'Why does he keep playing?')]
+        : [L(`${club?.name ?? 'Takım'} formasıyla sahaya çıkışını izlemek güzel.`, `Love watching ${s.hero.gender === 'female' ? 'her' : 'him'} in the ${club?.name ?? 'team'} shirt.`), L('Potansiyel çok yüksek, sabır.', 'Huge potential. Patience.')]
     feed.push({
       id: `fan${wk}`, author: fans >= 0 ? 'Tribün Sesi' : 'kararsiz_taraftar', handle: fans >= 0 ? 'tribunsesi' : 'kararsiz', isHero: false,
       kind: fans >= 0 || (last ?? 6.5) >= 6 ? 'fan' : 'hater', text: rng.pick(fanLines),

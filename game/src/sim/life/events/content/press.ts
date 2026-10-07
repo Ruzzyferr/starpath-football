@@ -22,7 +22,7 @@ export const pressEvents: EventDef[] = [
     icon: '🎙️',
     choices: [
       {
-        label: t('"Takıma ve taraftara."', '"The lads and the fans."'),
+        label: t('"Takıma ve taraftara."', '"The {g:lads|girls} and the fans."'),
         effects: () => fx(t('Kitap gibi cevap. Kimse kızmadı, kimse de hatırlamayacak.', 'Textbook answer. Nobody\'s upset, nobody will remember it.'), rel('teammate', 2), fans(3), press(1)),
       },
       {
@@ -184,7 +184,7 @@ export const pressEvents: EventDef[] = [
     title: t('{rivalPlayer} Laf Soktu', '{rivalPlayer} Has Been Talking'),
     text: t(
       '{rivalClub} forması giyen {rivalPlayer} röportajda: "{heroName} mi? Instagram\'da iyi, sahada pek görmedim." Muhabirler senin cevabını bekliyor.',
-      '{rivalClub}\'s {rivalPlayer} in an interview: "{heroName}? Great on Instagram. Haven\'t noticed him on the pitch." Reporters want your reply.',
+      '{rivalClub}\'s {rivalPlayer} in an interview: "{heroName}? Great on Instagram. Haven\'t noticed {g:him|her} on the pitch." Reporters want your reply.',
     ),
     icon: '🗯️',
     choices: [
@@ -197,11 +197,11 @@ export const pressEvents: EventDef[] = [
         risk: 'medium',
         effects: (ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('"O da beni maç özetlerinde görür, kenardan." Internet yıkıldı.', '"He\'ll see me in the highlights. From the bench." The internet melted.'), folPct(ctx, 7), fans(6), rep(2))
+            ? fx(t('"O da beni maç özetlerinde görür, kenardan." Internet yıkıldı.', '"{g:He\'ll|She\'ll} see me in the highlights. From the bench." The internet melted.'), folPct(ctx, 7), fans(6), rep(2))
             : fx(t('Espri yanlış anlaşıldı; kibirli göründün.', 'The joke landed badly; you came off arrogant.'), press(-4), rep(-1), stress(4)),
       },
       {
-        label: t('"Ona başarılar dilerim."', '"I wish him all the best."'),
+        label: t('"Ona başarılar dilerim."', '"I wish {g:him|her} all the best."'),
         effects: () => fx(t('Büyüklük gösterdin. Bazı taraftarlar daha fazlasını bekliyordu.', 'You took the high road. Some fans wanted blood.'), press(4), fans(-2), boss(2)),
       },
     ],

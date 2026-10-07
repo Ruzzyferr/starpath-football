@@ -41,7 +41,7 @@ export const fansEvents: EventDef[] = [
           rng.chance(0.5)
             ? fx(t('Kimse fark etmedi. Eve erken vardın, kanepe seni bekliyordu.', 'Nobody noticed. Home early, the sofa welcomed you back.'), energy(6))
             : fx(
-                t('Biri seni kamerayla yakaladı: "Yıldız taraftardan kaçıyor." Video bir günde yayıldı.', 'Someone filmed you sneaking off: "Star runs from his own fans." It went round in a day.'),
+                t('Biri seni kamerayla yakaladı: "Yıldız taraftardan kaçıyor." Video bir günde yayıldı.', 'Someone filmed you sneaking off: "Star runs from {g:his|her} own fans." It went round in a day.'),
                 fans(-8), folPct(ctx, -1), stress(5),
               ),
       },
@@ -89,7 +89,7 @@ export const fansEvents: EventDef[] = [
           rng.chance(0.6)
             ? fx(t('Forma derneğin duvarına asıldı. Onurlandılar, idare eder.', 'The shirt went up on the clubhouse wall. Honour roughly satisfied.'), fans(4))
             : fx(
-                t('{ultraLeader} formayı geri yollamadı ama mesaj attı: "Forma değil, adam istiyoruz."', '{ultraLeader} kept the shirt but texted: "We wanted a man, not a shirt."'),
+                t('{ultraLeader} formayı geri yollamadı ama mesaj attı: "Forma değil, {g:adam|yürek} istiyoruz."', '{ultraLeader} kept the shirt but texted: "We wanted {g:a man|a leader}, not a shirt."'),
                 fans(-2), stress(3), follow(chain('fans.ultras_hostile_banner', 4)),
               ),
       },
@@ -189,8 +189,8 @@ export const fansEvents: EventDef[] = [
         hint: t('Doğru olan bu; tribün bunu nasıl alır bilinmez.', 'The right thing; who knows how the stands take it.'),
         effects: (_ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('Dize "annesinin oğlu" olarak değişti. {motherName} gururdan ağladı.', 'The line became "his mother\'s pride". {motherName} cried with joy.'), fans(4), rel('mother', 6), rep(1))
-            : fx(t('"Şarkıya da mı karışacak?" Tribün dizeyi daha yüksek söylemeye başladı.', '"Now he\'s editing our songs?" They started singing the verse louder.'), fans(-4), stress(3)),
+            ? fx(t('Dize "annesinin {g:oğlu|kızı}" olarak değişti. {motherName} gururdan ağladı.', 'The line became "{g:his|her} mother\'s pride". {motherName} cried with joy.'), fans(4), rel('mother', 6), rep(1))
+            : fx(t('"Şarkıya da mı karışacak?" Tribün dizeyi daha yüksek söylemeye başladı.', '"Now {g:he\'s|she\'s} editing our songs?" They started singing the verse louder.'), fans(-4), stress(3)),
       },
       {
         label: t('Mütevazı kal, sahada konuş', 'Stay humble, let your feet talk'),
@@ -332,7 +332,7 @@ export const fansEvents: EventDef[] = [
         label: t('Kibar ama net bir sınır koy', 'Set a kind but firm boundary'),
         effects: (_ctx, rng) =>
           rng.chance(0.7)
-            ? fx(t('"Anladım abi, kusura bakma." Sonra gerçekten kayboldu. Rahatladın.', '"Got it, sorry." And then actually vanished. Relief.'), stress(-3))
+            ? fx(t('"Anladım {g:abi|abla}, kusura bakma." Sonra gerçekten kayboldu. Rahatladın.', '"Got it, sorry." And then actually vanished. Relief.'), stress(-3))
             : fx(t('Anlamış gibi yaptı. Ertesi hafta bakkalda yine karşındaydı.', 'Nodded along. Next week, there at the corner shop again.'), stress(4), follow(chain('fans.superfan_gate', 2))),
       },
       {

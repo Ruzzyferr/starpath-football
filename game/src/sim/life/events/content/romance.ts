@@ -48,8 +48,8 @@ export const romanceEvents: EventDef[] = [
         risk: 'high',
         effects: (ctx, rng) =>
           rng.chance(0.25 + ctx.state.hero.reputation / 200)
-            ? fx(t('Telefonundan seni aradı, gözleri büyüdü, güldü: "Peki, ünlü bey, kahve borcun var."', 'They googled you, eyes widened, laughed: "Alright, famous one, you owe me a coffee."'), happy(5), flags({ romance_stage: 'crush' }), follow(chain('romance.first_date', 1)))
-            : fx(t('"Ah. Sen şu reklamdaki adamsın." Konu kapandı.', '"Oh. You\'re the guy from that advert." Conversation over.'), happy(-4), morale(-3)),
+            ? fx(t('Telefonundan seni aradı, gözleri büyüdü, güldü: "Peki, {g:ünlü bey|ünlü hanım}, kahve borcun var."', 'They googled you, eyes widened, laughed: "Alright, famous one, you owe me a coffee."'), happy(5), flags({ romance_stage: 'crush' }), follow(chain('romance.first_date', 1)))
+            : fx(t('"Ah. Sen şu reklamdaki {g:adamsın|kızsın}." Konu kapandı.', '"Oh. You\'re the {g:guy|girl} from that advert." Conversation over.'), happy(-4), morale(-3)),
       },
       {
         label: t('Gizemli kal, erken çık', 'Stay mysterious, leave early'),

@@ -137,7 +137,7 @@ export const clubEvents: EventDef[] = [
       },
       {
         label: t('Kibarca reddet', 'Politely decline'),
-        effects: () => fx(t('Lansmana {mate} çıktı. Püskül ona daha çok yakıştı açıkçası.', '{mate} did it instead. Honestly, the tassel suited him.'), chairman(-5), stress(-2)),
+        effects: () => fx(t('Lansmana {mate} çıktı. Püskül ona daha çok yakıştı açıkçası.', '{mate} did it instead. Honestly, the tassel suited {g:him|her}.'), chairman(-5), stress(-2)),
       },
     ],
   },

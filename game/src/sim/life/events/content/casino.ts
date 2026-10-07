@@ -625,7 +625,7 @@ export const casinoEvents: EventDef[] = [
     weight: 0.8,
     cooldownWeeks: 30,
     conditions: ({ state }) => hasClub(state),
-    title: t('Telefondaki Kupon', 'The Slip on His Phone'),
+    title: t('Telefondaki Kupon', 'The Slip on {g:His|Her} Phone'),
     text: t(
       'Soyunma odasında {mate}\'in telefon ekranını gördün: bir bahis kuponu. Kendi maçlarınız değil ama ligin maçları. Kurallar net: oyuncular futbola bahis oynayamaz.',
       "In the dressing room you glimpse {mate}'s screen: a betting slip. Not your games, but games in the league. The rules are clear: players can't bet on football.",
@@ -638,7 +638,7 @@ export const casinoEvents: EventDef[] = [
         effects: (ctx, rng) =>
           rng.chance(0.6)
             ? fx(t('{mate} önce kızardı, sonra uygulamayı önünde sildi. "Sağ ol, gerçekten."', '{mate} went red, then deleted the app in front of you. "Thanks. Really."'), relNpc(ctx.vars.mateId, ctx.vars.mate, 10), happy(2))
-            : fx(t('"Sana ne?" diye patladı. Antrenmanda sana pas vermemeye başladı.', '"None of your business," he snapped. He has stopped passing to you in training.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -10), stress(4)),
+            : fx(t('"Sana ne?" diye patladı. Antrenmanda sana pas vermemeye başladı.', '"None of your business," {g:he|she} snapped. {g:He|She} has stopped passing to you in training.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -10), stress(4)),
       },
       {
         label: t('Kulübün etik sorumlusuna bildir', "Tell the club's integrity officer"),

@@ -10,7 +10,7 @@
  * In a Highlight scenario the hero's team ALWAYS attacks toward +x (the scene
  * flips visuals if needed).
  */
-import type { Attributes, Formation, KitColors, Position, TacticStyle } from '../../core/types'
+import type { Attributes, Formation, Gender, KitColors, Position, TacticStyle } from '../../core/types'
 
 export const PITCH_LENGTH = 105
 export const PITCH_WIDTH = 68
@@ -62,6 +62,8 @@ export interface MatchSetup {
   /** 0..1, derby/final etc. Raises crowd intensity & hero composure test. */
   importance: number
   difficulty: number // 0.8 easy … 1.3 legend; scales opponent AI in highlights
+  /** Players' gender for commentary pronouns (the world follows the hero). Missing = male. */
+  gender?: Gender
 }
 
 export type MatchEventType =

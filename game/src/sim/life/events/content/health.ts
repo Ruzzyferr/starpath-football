@@ -25,7 +25,7 @@ export const healthEvents: EventDef[] = [
         risk: 'high',
         effects: (_ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('Bacak dayandı. {managerName} omzuna vurdu: "İşte adam."', 'The leg held. {managerName} slaps your shoulder: "That\'s my player."'), trust(5), fatigue(8))
+            ? fx(t('Bacak dayandı. {managerName} omzuna vurdu: "İşte budur."', 'The leg held. {managerName} slaps your shoulder: "That\'s my player."'), trust(5), fatigue(8))
             : fx(t('Isınmada "tık" diye bir ses. Bu sefer üç hafta.', 'A "pop" in the warm-up. Three weeks this time.'), injury(3, t('Baldır yırtığı', 'Calf tear')), trust(1), stress(6)),
       },
       {

@@ -88,7 +88,7 @@ export const familyEvents: EventDef[] = [
     conditions: ({ state }) => hasRel(state, 'father') || hasRel(state, 'mother'),
     title: t('Babanın Gururu', "Dad's Pride"),
     text: t(
-      '{fatherName} her şeyi öğrenmiş. Telefonu açtığında sesi ciddi: "Oğlum, borcumu taksit taksit ödeyeceğim. Tartışma yok."',
+      '{fatherName} her şeyi öğrenmiş. Telefonu açtığında sesi ciddi: "{g:Oğlum|Kızım}, borcumu taksit taksit ödeyeceğim. Tartışma yok."',
       '{fatherName} found out. His voice is stern on the phone: "I\'m paying you back in instalments. No arguments."',
     ),
     icon: '🤝',
@@ -244,7 +244,7 @@ export const familyEvents: EventDef[] = [
         lockedHint: t('Ünlü cerrahlar ucuz değil.', 'Star surgeons are not cheap.'),
         effects: (ctx) =>
           fx(
-            t('Para konuştu, cerrah geldi. Sen de maça çıkabildin; içi rahat bir adam olarak.', 'Money talked, the surgeon came, and you could play with a clear head.'),
+            t('Para konuştu, cerrah geldi. Sen de maça rahat bir kafayla çıkabildin.', 'Money talked, the surgeon came, and you could play with a clear head.'),
             money(-num(ctx, 'surgeon')),
             rel('father', 10),
             rel('mother', 8),
@@ -287,7 +287,7 @@ export const familyEvents: EventDef[] = [
         risk: 'medium',
         effects: (_ctx, rng) =>
           rng.chance(0.7)
-            ? fx(t('Baba-oğul gizli kebap operasyonu. Annen hâlâ bilmiyor.', 'A secret father-son kebab mission. Mum still doesn\'t know.'), rel('father', 15), rel('mother', -2), happy(5))
+            ? fx(t('{g:Baba-oğul|Baba-kız} gizli kebap operasyonu. Annen hâlâ bilmiyor.', 'A secret {g:father-son|father-daughter} kebab mission. Mum still doesn\'t know.'), rel('father', 15), rel('mother', -2), happy(5))
             : fx(t('Annen yakaladı. İkinize de bir hafta konuşmadı.', 'Mum caught you both. Neither of you was spoken to for a week.'), rel('father', 8), rel('mother', -12), stress(5)),
       },
     ],

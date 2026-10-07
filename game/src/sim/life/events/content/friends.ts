@@ -289,10 +289,10 @@ export const friendsEvents: EventDef[] = [
     once: true,
     conditions: ({ state }) => hasRel(state, 'bestFriend') && relVal(state, 'bestFriend') > 0,
     vars: ({ state }) => ({ amount: wageX(state, 1, 800) }),
-    title: t('Sağdıç Sensin', 'You\'re the Best Man'),
+    title: t('{g:Sağdıç|Nedime} Sensin', 'You\'re the {g:Best Man|Maid of Honour}'),
     text: t(
-      '{friendName} evleniyor ve seni sağdıç istiyor! Tek sorun: düğün, deplasman maçının ertesi sabahı, 800 kilometre ötede.',
-      '{friendName} is getting married and wants you as best man! One problem: the wedding is the morning after an away game, 800 km away.',
+      '{friendName} evleniyor ve seni {g:sağdıç|nedime} istiyor! Tek sorun: düğün, deplasman maçının ertesi sabahı, 800 kilometre ötede.',
+      '{friendName} is getting married and wants you as {g:best man|maid of honour}! One problem: the wedding is the morning after an away game, 800 km away.',
     ),
     icon: '💍',
     choices: [
@@ -319,7 +319,7 @@ export const friendsEvents: EventDef[] = [
       },
       {
         label: t('Video mesaj gönder', 'Send a video message'),
-        effects: () => fx(t('Videon salonda oynatıldı. Alkış aldı ama sağdıç sandalyesi boştu.', 'Your video played in the hall. Applause, but the best man\'s chair stayed empty.'), rel('bestFriend', -12), trust(2)),
+        effects: () => fx(t('Videon salonda oynatıldı. Alkış aldı ama {g:sağdıç|nedime} sandalyesi boştu.', 'Your video played in the hall. Applause, but the {g:best man\'s|maid of honour\'s} chair stayed empty.'), rel('bestFriend', -12), trust(2)),
       },
     ],
   },

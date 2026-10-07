@@ -11,6 +11,7 @@ const variants = (seed: number): GameState[] => [
   makeTestState({ seed }),
   makeTestState({ seed, partner: true, money: 5_000_000, reputation: 85 }),
   makeTestState({ seed, money: 0, reputation: 3 }),
+  makeTestState({ seed, gender: 'female', partner: true, reputation: 60 }),
 ]
 
 function nonEmpty(t: LText | undefined, where: string): void {
@@ -27,7 +28,8 @@ function findBad(obj: unknown, path: string, out: string[]): void {
   }
 }
 
-const UNRESOLVED = /\{\w+(?::\w+)?\}/
+/** `{var}`, `{var:spec}` or a `{g:male|female}` alternative left in rendered text. */
+const UNRESOLVED = /\{\w+(?::\w+)?\}|\{g:/
 
 /** Run every choice of every event on several states/seeds; collect incoming chain vars. */
 function exercise(): { incoming: Map<string, Set<string>>; edges: [string, string][]; errors: string[] } {
@@ -141,6 +143,30 @@ describe('event content', () => {
 
   it('runs every effect on sample states without throwing, NaN or unresolved text', () => {
     expect(run.errors.slice(0, 20)).toEqual([])
+  })
+
+  it('gender alternatives are well-formed and render per hero gender', () => {
+    const GENDER_ALT = /\{g:([^{}|]*)\|([^{}|]*)\}/g
+    let alts = 0
+    for (const e of ALL_EVENTS) {
+      const texts = [e.title, e.text, ...e.choices.flatMap((c) => [c.label, c.hint].filter((x): x is LText => !!x))]
+      for (const tx of texts) {
+        for (const lang of ['tr', 'en'] as const) {
+          // Every "{g:" opens a complete two-way alternative.
+          expect((tx[lang].match(/\{g:/g) ?? []).length, `${e.id}: ${tx[lang]}`).toBe((tx[lang].match(GENDER_ALT) ?? []).length)
+          alts += (tx[lang].match(GENDER_ALT) ?? []).length
+        }
+      }
+    }
+    expect(alts).toBeGreaterThan(20)
+    const male = makeTestState({ seed: 3 })
+    const female = makeTestState({ seed: 3, gender: 'female' })
+    const def = byId.get('teammates.mentor_youngster') ?? ALL_EVENTS.find((e) => e.text.en.includes('{g:'))!
+    const mv = buildVars(male, new Rng(1), def, [])
+    const fv = buildVars(female, new Rng(1), def, [])
+    expect(mv.heroGender).toBe('male')
+    expect(fv.heroGender).toBe('female')
+    expect(formatBoth(def.text, fv).en).not.toBe(formatBoth(def.text, mv).en)
   })
 
   it('follow-up-only events are reachable and chains are plentiful', () => {

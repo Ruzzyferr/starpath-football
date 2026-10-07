@@ -18,6 +18,7 @@
  */
 import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, RelationKind, Relationship } from '../../../core/types'
 import { clamp, type Rng } from '../../../core/rng'
+import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
 import { absWeek } from '../../career/common'
 import { teammateId } from '../relationships'
@@ -167,13 +168,28 @@ export function formatMoney(n: number, lang: Lang): string {
 }
 
 const PLACEHOLDER = /\{(\w+)(?::(\w+))?\}/g
+/**
+ * Gender alternative: `{g:male text|female text}` picks by `vars.heroGender`
+ * (missing = male). It covers the hero AND the players of the hero's world
+ * (teammates, rivals, youth prospects share the hero's gender); staff, family
+ * and strangers keep their own fixed pronouns. Alternatives may not contain
+ * braces or `|`, so nest `{var}` placeholders outside them.
+ */
+const GENDER_ALT = /\{g:([^{}|]*)\|([^{}|]*)\}/g
+
+/** Resolve only the `{g:male|female}` alternatives. */
+export function resolveGender(text: string, gender: unknown): string {
+  const female = gender === 'female'
+  return text.replace(GENDER_ALT, (_w, m: string, f: string) => (female ? f : m))
+}
 
 /**
- * Resolve `{var}` / `{var:money}` placeholders. Numbers are digit-grouped per
- * language. Unknown placeholders are left untouched (tests guard against them).
+ * Resolve `{g:male|female}` alternatives, then `{var}` / `{var:money}`
+ * placeholders. Numbers are digit-grouped per language. Unknown placeholders
+ * are left untouched (tests guard against them).
  */
 export function formatText(text: LText, vars: EventVars, lang: Lang): string {
-  return text[lang].replace(PLACEHOLDER, (whole, key: string, spec: string | undefined) => {
+  return resolveGender(text[lang], vars['heroGender']).replace(PLACEHOLDER, (whole, key: string, spec: string | undefined) => {
     const v = vars[key]
     if (v === undefined) return whole
     if (typeof v === 'number') return spec === 'money' ? formatMoney(v, lang) : formatNumber(v, lang)
@@ -203,7 +219,7 @@ export const STANDARD_VAR_KEYS = [
   'heroName', 'heroFirst', 'heroLast', 'clubName', 'clubShort', 'city', 'stadium', 'managerName', 'leagueName',
   'rivalClub', 'rivalPlayer', 'rivalPlayerId', 'mate', 'mateId', 'mate2', 'mate2Id',
   'partnerName', 'motherName', 'fatherName', 'siblingName', 'friendName', 'agentName', 'chairmanName',
-  'season', 'age', 'shirt', 'wage',
+  'season', 'age', 'shirt', 'wage', 'heroGender',
 ] as const
 
 function relName(state: GameState, kind: RelationKind, fallback: string): string {
@@ -250,7 +266,7 @@ export function standardVars(state: GameState, rng: Rng): EventVars {
     mateId: mate?.id ?? '',
     mate2: mate2 ? `${mate2.firstName} ${mate2.lastName}` : `${fb()} Demir`,
     mate2Id: mate2?.id ?? '',
-    partnerName: relName(state, 'partner', rng.pick(['Deniz', 'Selin', 'Ece', 'Ada'])),
+    partnerName: relName(state, 'partner', rng.pick(['Deniz', 'Selin', 'Ece', 'Ada', 'Kerem', 'Arda'])),
     motherName: relName(state, 'mother', 'Ayşe'),
     fatherName: relName(state, 'father', 'Mehmet'),
     siblingName: relName(state, 'sibling', 'Can'),
@@ -261,6 +277,7 @@ export function standardVars(state: GameState, rng: Rng): EventVars {
     age: state.calendar.season - h.birthYear,
     shirt: h.shirtNumber,
     wage: Math.max(400, h.contract?.wage ?? 400),
+    heroGender: heroGender(h),
   }
 }
 

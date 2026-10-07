@@ -10,12 +10,22 @@
  * ```
  */
 import type { AttributeKey, GameState, LText, RelationKind, Relationship } from '../../../core/types'
+import { heroGender } from '../../../core/gender'
 import type { Rng } from '../../../core/rng'
 import type { Delta, EffectResult, EventCtx, FlagValue, FollowUp, StatKey } from './types'
 
 // ───────────────────────── Text ─────────────────────────
 
-/** Bilingual text: Turkish first, English second. */
+/**
+ * Bilingual text: Turkish first, English second.
+ *
+ * Placeholders: `{var}` / `{amount:money}` (see engine.formatText) and the
+ * gender alternative `{g:male text|female text}`, chosen by the hero's
+ * gender. Use it for the hero and for players (teammates, rivals, academy
+ * kids — the world's players share the hero's gender), e.g.
+ * `t('{g:Oğlum|Kızım}, …', '"{rivalPlayer}? {g:He|She} won't get past me."')`.
+ * Staff, family, strangers and partners keep fixed or neutral wording.
+ */
 export const t = (tr: string, en: string): LText => ({ tr, en })
 
 // ───────────────────────── Deltas ─────────────────────────
@@ -128,7 +138,14 @@ export const FIRST_NAMES = [
   'Emre', 'Kerem', 'Baran', 'Mert', 'Arda', 'Can', 'Burak', 'Onur', 'Tolga', 'Kaan',
   'Sofia', 'Lena', 'Maya', 'Clara', 'Nora', 'Luca', 'Marco', 'Tom', 'Jonas', 'Rafa',
 ] as const
-export const PARTNER_NAMES = ['Deniz', 'Ece', 'Selin', 'Zeynep', 'Elif', 'Defne', 'Aylin', 'Melis', 'Sofia', 'Lena', 'Maya', 'Clara', 'Nora', 'İpek', 'Su'] as const
+/** Partners can be of any gender; content refers to them by name or "they". */
+export const PARTNER_NAMES = [
+  'Deniz', 'Ece', 'Selin', 'Zeynep', 'Elif', 'Defne', 'Aylin', 'Melis', 'Sofia', 'Lena', 'Maya', 'Clara', 'Nora', 'İpek', 'Su',
+  'Kerem', 'Arda', 'Can', 'Emir', 'Ozan', 'Luca', 'Marco', 'Jonas', 'Mateo', 'Noah',
+] as const
+/** Footballers share the hero's gender (the world follows the hero). */
+export const PLAYER_FIRST_MALE = ['Efe', 'Yusuf', 'Mirza', 'Tuna', 'Alp', 'Noah', 'Emre', 'Kerem', 'Baran', 'Mert', 'Luca', 'Marco', 'Jonas', 'Rafa'] as const
+export const PLAYER_FIRST_FEMALE = ['Elif', 'Zeynep', 'Defne', 'Duru', 'Ela', 'Mira', 'Ece', 'Selin', 'Lena', 'Sofia', 'Maya', 'Clara', 'Nora', 'Alba'] as const
 export const LAST_NAMES = [
   'Yıldız', 'Kaya', 'Demir', 'Şahin', 'Çelik', 'Aydın', 'Öztürk', 'Arslan', 'Doğan', 'Koç',
   'Moreau', 'Rossi', 'Novak', 'Silva', 'Becker', 'Walsh', 'Ortega', 'Larsen', 'Costa', 'Varga',
@@ -137,3 +154,8 @@ export const BRANDS = ['Volta', 'Nordline', 'Kairo', 'Meridyen', 'Strada', 'Orbi
 export const pickFirst = (rng: Rng): string => rng.pick(FIRST_NAMES)
 export const pickFull = (rng: Rng): string => `${rng.pick(FIRST_NAMES)} ${rng.pick(LAST_NAMES)}`
 export const pickBrand = (rng: Rng): string => rng.pick(BRANDS)
+/** First name of a footballer in the hero's world (gender follows the hero). */
+export const pickPlayerFirst = (s: GameState, rng: Rng): string =>
+  rng.pick(heroGender(s.hero) === 'female' ? PLAYER_FIRST_FEMALE : PLAYER_FIRST_MALE)
+/** Full name of a footballer in the hero's world. */
+export const pickPlayerFull = (s: GameState, rng: Rng): string => `${pickPlayerFirst(s, rng)} ${rng.pick(LAST_NAMES)}`

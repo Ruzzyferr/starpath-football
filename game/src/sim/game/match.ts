@@ -182,6 +182,7 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       neutralVenue: isFinalFixture(competition, fixture),
       importance: importanceOf(competition, fixture, home, away),
       difficulty: clamp(base * (1 + (1 - mental) * 0.5), 0.8, 1.4),
+      ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
     }
     const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
     writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts } satisfies ActiveMatchBlob)

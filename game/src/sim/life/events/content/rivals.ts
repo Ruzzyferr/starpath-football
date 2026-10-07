@@ -13,7 +13,7 @@ export const rivalsEvents: EventDef[] = [
     title: t('Bir Düşman Doğuyor', 'A Nemesis Is Born'),
     text: t(
       '{rivalClub} formasıyla {rivalPlayer} maç sonu mikrofonları yakaladı: "{heroName} mi? Sosyal medyada iyi, sahada kayıp. Bir dahaki sefere cebimden çıkaramayacak."',
-      '{rivalClub}\'s {rivalPlayer} grabbed the post-match microphones: "{heroName}? Great on social media, invisible on the pitch. Next time he won\'t even get out of my pocket."',
+      '{rivalClub}\'s {rivalPlayer} grabbed the post-match microphones: "{heroName}? Great on social media, invisible on the pitch. Next time {g:he|she} won\'t even get out of my pocket."',
     ),
     icon: '😤',
     choices: [
@@ -23,7 +23,7 @@ export const rivalsEvents: EventDef[] = [
         risk: 'medium',
         effects: (ctx) =>
           fx(
-            t('"Cebinde sadece bahaneler var." Manşetler hazır, ateş yandı.', '"The only thing in his pocket is excuses." Headlines written, fire lit.'),
+            t('"Cebinde sadece bahaneler var." Manşetler hazır, ateş yandı.', '"The only thing in {g:his|her} pocket is excuses." Headlines written, fire lit.'),
             press(6), rep(2), boss(-3), stress(4), folPct(ctx, 3),
             flags({ nemesis: String(ctx.vars.rivalPlayer) }),
             { addFlags: { nemesis_heat: 2 } },
@@ -66,7 +66,7 @@ export const rivalsEvents: EventDef[] = [
         risk: 'medium',
         effects: (ctx) =>
           fx(
-            t('Onun ofsayt rekorlarını derledin, fon müziği: dramatik keman. İnternet ikiye bölündü.', 'You compiled his offside highlights, scored with tragic violins. The internet split in two.'),
+            t('Onun ofsayt rekorlarını derledin, fon müziği: dramatik keman. İnternet ikiye bölündü.', 'You compiled {g:his|her} offside highlights, scored with tragic violins. The internet split in two.'),
             folPct(ctx, 6), rep(1), boss(-4), disc(-3),
             { addFlags: { nemesis_heat: 2 } },
             follow(chain('rivals.derby_showdown', 2)),
@@ -83,13 +83,13 @@ export const rivalsEvents: EventDef[] = [
           ),
       },
       {
-        label: t('Ona özelden mesaj at: "Kahve?"', 'DM him: "Coffee?"'),
+        label: t('Ona özelden mesaj at: "Kahve?"', 'DM {g:him|her}: "Coffee?"'),
         hint: t('Ya barış ya da ekran görüntüsü.', 'Either peace or a screenshot.'),
         risk: 'high',
         effects: (_ctx, rng) =>
           rng.chance(0.45)
-            ? fx(t('Şaşırtıcı biçimde kabul etti. Şakalaştınız, gerginlik dağıldı.', 'Surprisingly, he said yes. Jokes were made, tension gone.'), happy(5), stress(-5), flags({ nemesis: null, nemesis_heat: null }))
-            : fx(t('Mesajının ekran görüntüsü 10 dakikada her yerdeydi: "Korkmuş."', 'Your DM was screenshotted and everywhere in ten minutes: "He\'s scared."'), morale(-6), press(-3), { addFlags: { nemesis_heat: 1 } }, follow(chain('rivals.derby_showdown', 2))),
+            ? fx(t('Şaşırtıcı biçimde kabul etti. Şakalaştınız, gerginlik dağıldı.', 'Surprisingly, {g:he|she} said yes. Jokes were made, tension gone.'), happy(5), stress(-5), flags({ nemesis: null, nemesis_heat: null }))
+            : fx(t('Mesajının ekran görüntüsü 10 dakikada her yerdeydi: "Korkmuş."', 'Your DM was screenshotted and everywhere in ten minutes: "{g:He\'s|She\'s} scared."'), morale(-6), press(-3), { addFlags: { nemesis_heat: 1 } }, follow(chain('rivals.derby_showdown', 2))),
       },
     ],
   },
@@ -112,19 +112,19 @@ export const rivalsEvents: EventDef[] = [
         label: t('Elini uzat', 'Offer a handshake'),
         effects: (_ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('Bir an tereddüt etti, sonra sıktı. Ertesi gün manşet: "Centilmenler Derbisi".', 'He hesitated, then shook it. Next day\'s headline: "The Gentlemen\'s Derby".'), rep(4), press(5), trust(3), flags({ nemesis: null, nemesis_heat: null }), { news: { headline: t('Tünelde centilmenlik!', 'Sportsmanship in the tunnel!'), sentiment: 1 } })
-            : fx(t('Elini havada bıraktı. Ama tribünler seni alkışladı.', 'He left you hanging. The stands applauded you anyway.'), fans(5), rep(2), morale(-2)),
+            ? fx(t('Bir an tereddüt etti, sonra sıktı. Ertesi gün manşet: "{g:Centilmenler Derbisi|Fair Play Derbisi}".', '{g:He|She} hesitated, then shook it. Next day\'s headline: "{g:The Gentlemen\'s Derby|The Fair Play Derby}".'), rep(4), press(5), trust(3), flags({ nemesis: null, nemesis_heat: null }), { news: { headline: t('Tünelde centilmenlik!', 'Sportsmanship in the tunnel!'), sentiment: 1 } })
+            : fx(t('Elini havada bıraktı. Ama tribünler seni alkışladı.', '{g:He|She} left you hanging. The stands applauded you anyway.'), fans(5), rep(2), morale(-2)),
       },
       {
-        label: t('Kulağına bir şey fısılda', 'Whisper something in his ear'),
+        label: t('Kulağına bir şey fısılda', 'Whisper something in {g:his|her} ear'),
         risk: 'high',
         effects: (_ctx, rng) =>
           rng.chance(0.5)
-            ? fx(t('Ne dediysen işe yaradı: 30. dakikada kırmızı kart gördü. Efsane oldun.', 'Whatever you said worked: he saw red on 30 minutes. Instant folklore.'), fans(10), rep(3), form(4), disc(-2), { addFlags: { nemesis_heat: 1 } })
+            ? fx(t('Ne dediysen işe yaradı: 30. dakikada kırmızı kart gördü. Efsane oldun.', 'Whatever you said worked: {g:he|she} saw red on 30 minutes. Instant folklore.'), fans(10), rep(3), form(4), disc(-2), { addFlags: { nemesis_heat: 1 } })
             : fx(t('Kafa attı... sana değil, kameraya göre sana. İkiniz de kırmızı gördünüz.', 'Heads clashed. Both of you saw red, and the replays are not kind.'), ban(2), disc(-8), boss(-6), press(-4), { addFlags: { nemesis_heat: 2 } }),
       },
       {
-        label: t('Görmezden gel, maçına odaklan', 'Ignore him, focus on the game'),
+        label: t('Görmezden gel, maçına odaklan', 'Ignore {g:him|her}, focus on the game'),
         effects: () => fx(t('Kulaklığını takıp geçtin. Hoca soyunma odasında sırtını sıvazladı.', 'Headphones on, you walked past. The gaffer patted your back in the dressing room.'), trust(5), form(3), stress(-3)),
       },
     ],
@@ -139,7 +139,7 @@ export const rivalsEvents: EventDef[] = [
     title: t('Oscar Adayı', 'And the Oscar Goes To…'),
     text: t(
       '{rivalPlayer} sana dokunmadan yere yattı, üç tur döndü, hakem sana sarı gösterdi. Tekrarlar açık: temas yok.',
-      '{rivalPlayer} went down without contact, rolled three times, and you got booked. Replays are clear: you never touched him.',
+      '{rivalPlayer} went down without contact, rolled three times, and you got booked. Replays are clear: you never touched {g:him|her}.',
     ),
     icon: '🎭',
     choices: [
@@ -153,7 +153,7 @@ export const rivalsEvents: EventDef[] = [
             : fx(t('Herkes görüntüyü paylaştı. {rivalPlayer} şimdi "Dalgıç" lakabıyla anılıyor.', 'Everyone shared the clip. {rivalPlayer} is now known as "The Diver".'), fans(6), press(4), rep(1)),
       },
       {
-        label: t('Kutlamada onun düşüşünü taklit et', 'Imitate his dive in your next celebration'),
+        label: t('Kutlamada onun düşüşünü taklit et', 'Imitate {g:his|her} dive in your next celebration'),
         risk: 'medium',
         effects: (ctx) => fx(t('Gol sonrası üç tur takla attın. Stadyum yıkıldı, hoca yüzünü kapattı.', 'After scoring you did three rolls on the grass. The stadium roared; the gaffer covered his face.'), fans(8), folPct(ctx, 5), boss(-3), disc(-2)),
       },
@@ -211,12 +211,12 @@ export const rivalsEvents: EventDef[] = [
     icon: '🤝',
     choices: [
       {
-        label: t('Ona asist yap', 'Set him up for a goal'),
-        effects: () => fx(t('Mükemmel pas, o attı, sarıldınız. Fotoğraf yılın karesi seçildi.', 'Perfect pass, he scored, you hugged. Photo of the year.'), rep(4), press(5), happy(4), flags({ nemesis: null, nemesis_heat: null })),
+        label: t('Ona asist yap', 'Set {g:him|her} up for a goal'),
+        effects: () => fx(t('Mükemmel pas, o attı, sarıldınız. Fotoğraf yılın karesi seçildi.', 'Perfect pass, {g:he|she} scored, you hugged. Photo of the year.'), rep(4), press(5), happy(4), flags({ nemesis: null, nemesis_heat: null })),
       },
       {
-        label: t('Topu ona hiç verme', 'Never pass to him'),
-        effects: () => fx(t('90 dakika boyunca onu görmezden geldin. Seyirciler bunu fark edip gülüştü.', 'You ignored him for 90 minutes. The crowd noticed and giggled.'), press(-3), rep(-1), { addFlags: { nemesis_heat: 1 } }),
+        label: t('Topu ona hiç verme', 'Never pass to {g:him|her}'),
+        effects: () => fx(t('90 dakika boyunca onu görmezden geldin. Seyirciler bunu fark edip gülüştü.', 'You ignored {g:him|her} for 90 minutes. The crowd noticed and giggled.'), press(-3), rep(-1), { addFlags: { nemesis_heat: 1 } }),
       },
       {
         label: t('Devre arası birlikte bağış toplayın', 'Team up to collect donations at half-time'),

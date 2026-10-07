@@ -164,7 +164,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
     changeRelation(life, teammateId(npc), 3, { hero, week, contact: true, memory: lt('Golüne asist yaptı.', 'Set up your goal.') })
   }
   for (const npc of m.assistedTo ?? []) {
-    changeRelation(life, teammateId(npc), 4, { hero, week, contact: true, memory: lt('Ona asist yaptın.', 'You assisted his goal.') })
+    changeRelation(life, teammateId(npc), 4, { hero, week, contact: true, memory: lt('Ona asist yaptın.', hero.gender === 'female' ? 'You assisted her goal.' : 'You assisted his goal.') })
   }
   if (m.won || rating < 5) {
     // Shared joy or shared frustration in the dressing room.
@@ -223,11 +223,11 @@ interface Headline { text: LText; sentiment: -1 | 0 | 1 }
  * a red card, a big-game winner, or a missed penalty.
  */
 function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, goals: number, assists: number): Headline | null {
-  const vars = { name: heroName(hero), opp: m.opponentName ?? lt('rakip', 'the opposition'), g: goals, a: assists }
+  const vars = { name: heroName(hero), his: hero.gender === 'female' ? 'her' : 'his', opp: m.opponentName ?? lt('rakip', 'the opposition'), g: goals, a: assists }
   const T = (variants: LText[], sentiment: Headline['sentiment']): Headline => ({ text: fill(rng.pick(variants), vars), sentiment })
   if (m.red) {
     return T([
-      lt('{name} kırmızı kartla takımını yaktı!', '{name} sees red and lets his team down!'),
+      lt('{name} kırmızı kartla takımını yaktı!', '{name} sees red and lets {his} team down!'),
       lt('Kontrolsüz {name}: erken duş!', 'Hot-headed {name} sent for an early bath!'),
     ], -1)
   }
@@ -284,7 +284,7 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
     return T([
       lt('{name} için unutulacak bir gece', 'A night to forget for {name}'),
       lt('Eleştirilerin hedefinde {name} var', '{name} under fire after woeful display'),
-      lt('{name} formdan düştü mü?', 'Has {name} lost his touch?'),
+      lt('{name} formdan düştü mü?', 'Has {name} lost {his} touch?'),
     ], -1)
   }
   if (goals >= 1 && !m.won && !m.drew) {

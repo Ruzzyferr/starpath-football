@@ -87,7 +87,7 @@ export const awardsEvents: EventDef[] = [
     choices: [
       {
         label: t('Takım arkadaşlarını fotoğrafa çağır', 'Bring your teammates into the photo'),
-        effects: () => fx(t('On bir kişilik bir ödül fotoğrafı. Soyunma odasında prim hanen arttı.', 'An eleven-man award photo. Your stock in the dressing room rose.'), rel('teammate', 6), rep(2), morale(5)),
+        effects: () => fx(t('On bir kişilik bir ödül fotoğrafı. Soyunma odasında prim hanen arttı.', 'An eleven-{g:man|woman} award photo. Your stock in the dressing room rose.'), rel('teammate', 6), rep(2), morale(5)),
       },
       {
         label: t('Sponsorla poz ver', 'Pose with the sponsor'),
@@ -106,7 +106,7 @@ export const awardsEvents: EventDef[] = [
     cooldownWeeks: 40,
     triggers: ['season_end'],
     conditions: ({ state }) => state.hero.reputation >= 30,
-    title: t('Ödül Ona Gitti', 'The Award Went to Him'),
+    title: t('Ödül Ona Gitti', 'The Award Went to {g:Him|Her}'),
     text: t(
       'Sezonun oyuncusu ödülü {rivalClub} forması giyen {rivalPlayer}\'a gitti. Senin rakamların daha iyiydi, herkes biliyor. Kamera yüzüne kilitlendi.',
       'Player of the Season goes to {rivalPlayer} of {rivalClub}. Your numbers were better and everyone knows it. The camera is locked on your face.',
@@ -114,7 +114,7 @@ export const awardsEvents: EventDef[] = [
     icon: '😬',
     choices: [
       {
-        label: t('Ayağa kalk, centilmence alkışla', 'Stand and applaud like a gentleman'),
+        label: t('Ayağa kalk, centilmence alkışla', 'Stand and applaud like a {g:gentleman|true sportswoman}'),
         effects: () => fx(t('Fair-play anın gecenin en çok paylaşılan görüntüsü oldu.', 'Your sporting moment became the most shared clip of the night.'), rep(3), press(4), disc(3), happy(-3)),
       },
       {
@@ -227,7 +227,7 @@ export const awardsEvents: EventDef[] = [
     title: t('Golü Kime Adayacaksın?', 'Who Is This One For?'),
     text: t(
       'Maçın oyuncusu seçildin; saha kenarı röportajında muhabir soruyor: "Bu performansı kime adıyorsun?" Kafanda üç isim var.',
-      'You are named man of the match, and the touchline reporter asks: "Who do you dedicate this performance to?" Three answers spring to mind.',
+      'You are named {g:man|player} of the match, and the touchline reporter asks: "Who do you dedicate this performance to?" Three answers spring to mind.',
     ),
     icon: '🎙️',
     choices: [

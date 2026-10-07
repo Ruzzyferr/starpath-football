@@ -120,7 +120,7 @@ export const nightlifeEvents: EventDef[] = [
     title: t('Bardaki Kabadayı', 'The Bar-Room Hard Man'),
     text: t(
       'Bir adam {mate}\'in üstüne bilerek içki döktü, sonra kulübünüz hakkında yüksek sesle bir şeyler söyledi. Arkadaşları sırıtıyor, telefonlar kayıtta. {mate} yumruklarını sıkıyor.',
-      'A bloke deliberately spilled a drink down {mate}, then loudly said something about your club. His friends are grinning, phones already recording. {mate} is clenching his fists.',
+      'A bloke deliberately spilled a drink down {mate}, then loudly said something about your club. His friends are grinning, phones already recording. {mate} is clenching {g:his|her} fists.',
     ),
     icon: '🥊',
     choices: [
@@ -363,11 +363,11 @@ export const nightlifeEvents: EventDef[] = [
               ),
       },
       {
-        label: t('Onu sen de vazgeçir', 'Talk him out of it too'),
+        label: t('Onu sen de vazgeçir', 'Talk {g:him|her} out of it too'),
         effects: (ctx, rng) =>
           rng.chance(0.5)
-            ? fx(t('Biraz homurdandı ama kaldı. Ertesi gün iyi oynadı ve sana göz kırptı.', 'He grumbled, but stayed. Played well the next day and winked at you.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 4), trust(1))
-            : fx(t('"Sen bilirsin hocanın gözdesi." Tek başına gitti.', '"Fine, teacher\'s pet." He went alone.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -6)),
+            ? fx(t('Biraz homurdandı ama kaldı. Ertesi gün iyi oynadı ve sana göz kırptı.', '{g:He|She} grumbled, but stayed. Played well the next day and winked at you.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 4), trust(1))
+            : fx(t('"Sen bilirsin hocanın gözdesi." Tek başına gitti.', '"Fine, teacher\'s pet." {g:He|She} went alone.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -6)),
       },
       {
         label: t('Kapıyı kapat, uyu', 'Close the door, go to sleep'),

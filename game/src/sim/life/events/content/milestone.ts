@@ -18,7 +18,7 @@ export const milestoneEvents: EventDef[] = [
     title: t('İlk Profesyonel Gol!', 'First Professional Goal!'),
     text: t(
       'Top ağlarda, sen dizlerinin üstünde kaydın. Malzemeci topu sana uzattı: "Bunu sakla evlat." Telefon titriyor: {motherName} arıyor.',
-      'Ball in the net, you knee-slid halfway to the corner flag. The kit man hands you the ball: "Keep this, son." Phone buzzing: {motherName} calling.',
+      'Ball in the net, you knee-slid halfway to the corner flag. The kit man hands you the ball: "Keep this, {g:son|kid}." Phone buzzing: {motherName} calling.',
     ),
     icon: '⚽',
     choices: [
@@ -188,7 +188,7 @@ export const milestoneEvents: EventDef[] = [
       },
       {
         label: t('Eski kaptanı yemeğe davet et', 'Take the old captain to dinner'),
-        effects: () => fx(t('Tavsiyeleri altın değerindeydi, kırgınlık da bitti.', 'His advice was gold, and the hurt feelings faded.'), rel('teammate', 4), attr('leadership', 1), happy(3)),
+        effects: () => fx(t('Tavsiyeleri altın değerindeydi, kırgınlık da bitti.', '{g:His|Her} advice was gold, and the hurt feelings faded.'), rel('teammate', 4), attr('leadership', 1), happy(3)),
       },
     ],
   },

@@ -7,7 +7,7 @@
  * possessive "'s" and the other cases render the bare name, so the same keys can
  * be used safely in both languages.
  */
-import type { Lang } from '../../core/types'
+import type { Gender, Lang } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { trSuffix, type TrCase } from './turkish'
 
@@ -139,14 +139,14 @@ const LINES = {
       'Kendi ağlarına! {player} yere bakıyor. {score}',
     ],
     en: [
-      'Own goal! {player} turns it into his own net. {score}',
-      'Oh no! {player} tries to clear but puts it past his own keeper. {score}',
+      'Own goal! {player} turns it into {g:his|her} own net. {score}',
+      'Oh no! {player} tries to clear but puts it past {g:his|her} own keeper. {score}',
       'An own goal! A nightmare moment for {player}. {score}',
       'It deflects off {player} and in! Own goal. {score}',
-      'Unlucky! {player} diverts it into his own net. {score}',
+      'Unlucky! {player} diverts it into {g:his|her} own net. {score}',
       'The keeper is stunned! {player} scores an own goal. {score}',
       '{opp} gratefully accept a gift from {player}. {score}',
-      'Into his own net! {player} cannot believe it. {score}',
+      'Into {g:his|her} own net! {player} cannot believe it. {score}',
     ],
   },
   save: {
@@ -167,11 +167,11 @@ const LINES = {
       '{player} shoots, {gk} dives and pushes it away!',
       'Stunning reflexes! {gk} keeps out {player}.',
       'Comfortable for {gk}, who gathers the effort from {player}.',
-      'That was in! {gk} tips it round the post with his fingertips.',
+      'That was in! {gk} tips it round the post with {g:his|her} fingertips.',
       '{player} hits the target but {gk} is equal to it.',
       'What a save! {gk} is a brick wall today!',
       '{player} drives it, {gk} spills then gathers at the second attempt.',
-      '{gk} comes off his line, narrows the angle and saves!',
+      '{gk} comes off {g:his|her} line, narrows the angle and saves!',
       'On target, but {gk} says no.',
     ],
   },
@@ -191,14 +191,14 @@ const LINES = {
     en: [
       '{player} shoots but it drifts just wide.',
       'Chance gone! {player} blazes it over the bar.',
-      '{player} tries his luck, past the post.',
+      '{player} tries {g:his|her} luck, past the post.',
       'What a miss! {player} somehow fails to score!',
       '{player} hits it first time and it flies into the stands.',
       'Ambitious from {player}, but nowhere near the target.',
       '{player} tries to place it, it rolls inches wide.',
-      'That had to be a goal! {player} holds his head in his hands.',
+      'That had to be a goal! {player} holds {g:his|her} head in {g:his|her} hands.',
       'A long-range effort, {player} cannot find the frame.',
-      '{player} gets his head to it but it loops over.',
+      '{player} gets {g:his|her} head to it but it loops over.',
     ],
   },
   blocked: {
@@ -240,7 +240,7 @@ const LINES = {
       'It kisses the post! {player} cannot believe it!',
       'The woodwork denies {player} again.',
       'And it hits the post! So close from {player}!',
-      'Off the frame! {gk} is a lucky man.',
+      'Off the frame! {gk} is a {g:lucky man|lucky woman}.',
       '{player} strikes it and the post says no!',
       'The woodwork is against {team}! {player} hits the post.',
     ],
@@ -263,7 +263,7 @@ const LINES = {
       '{player} drives into the box...',
       'Dangerous moment! {player} finds space.',
       '{team} turn the screw, {player} looking for a shot.',
-      '{player} shrugs off his marker and heads for goal.',
+      '{player} shrugs off {g:his|her} marker and heads for goal.',
       '{passer} threads it through, {player} is in!',
       '{team} commit numbers forward, {player} waiting for the chance.',
       '{player} cuts inside from the flank...',
@@ -289,7 +289,7 @@ const LINES = {
       '{player} will take it, corner for {team}.',
       'Another corner for {team}.',
       'The defence clears it behind for a corner.',
-      'Corner for {team}, the big men go forward.',
+      'Corner for {team}, the {g:big men|tall players} go forward.',
       '{team} to take a corner kick.',
     ],
   },
@@ -421,9 +421,9 @@ const LINES = {
       '{player} arrives late and is booked.',
       'Cynical foul, yellow card: {player}.',
       '{player} is booked for dissent.',
-      '{player} pulls back his man by the shirt, yellow.',
+      '{player} pulls back {g:his man|her opponent} by the shirt, yellow.',
       'Card! {player} goes into the book.',
-      'Yellow for {player}, he must be careful now.',
+      'Yellow for {player}, {g:he|she} must be careful now.',
       'The referee reaches for his pocket: {player} is booked.',
     ],
   },
@@ -445,7 +445,7 @@ const LINES = {
       '{team} down to ten! {player} sent off for a second booking.',
       'An unnecessary foul and {player} is gone on a second yellow.',
       'The match is over for {player}, second yellow!',
-      'Second yellow! {player} leaves his team in trouble.',
+      'Second yellow! {player} leaves {g:his|her} team in trouble.',
       'Red! {player} was already on a yellow.',
     ],
   },
@@ -488,7 +488,7 @@ const LINES = {
       '{player} picks up a knock and looks unable to continue.',
       '{player} is limping and signalling to the bench.',
       'The medics attend to {player}, a worrying moment.',
-      '{player} is clutching his hamstring.',
+      '{player} is clutching {g:his|her} hamstring.',
       'A heavy collision and {player} cannot get up.',
       '{player} leaves the field on a stretcher.',
     ],
@@ -529,7 +529,7 @@ const LINES = {
     en: [
       'Here we go! {hero} has finished warming up and is coming on!',
       'The manager turns to {hero}! {out} makes way.',
-      '{hero} is on! The fans greet him with applause.',
+      '{hero} is on! The fans greet {g:him|her} with applause.',
       'Change: {hero} replaces {out}. Time to make a difference.',
       '{hero} comes off the bench, {out} goes off.',
       'Your turn, {hero}! You are coming on.',
@@ -549,7 +549,7 @@ const LINES = {
       '{hero} soyunma odasına, {player} sahaya.',
     ],
     en: [
-      '{hero} is taken off, {player} replaces him.',
+      '{hero} is taken off, {player} replaces {g:him|her}.',
       'The manager has made up his mind about {hero}: substitution.',
       '{hero} comes off, {player} goes on.',
       'That is it for {hero} today. {player} comes on.',
@@ -595,7 +595,7 @@ const LINES = {
     en: [
       'The ball is with {hero}! This is your moment!',
       'Here comes a chance for {hero}...',
-      '{hero} is involved, what will he do?',
+      '{hero} is involved, what will {g:he|she} do?',
       'Here it is! {hero} gets involved.',
       'All eyes on {hero}!',
       '{hero} steps up at a crucial moment!',
@@ -663,7 +663,7 @@ const LINES = {
       '{hero} snuffs out the attack!',
       '{hero} intercepts at the last moment!',
       'Crucial defending from {hero}!',
-      '{hero} does not let his man past.',
+      '{hero} does not let {g:his man|her opponent} past.',
       'Perfect timing, {hero} wins the ball.',
       '{hero} clears the danger.',
       'Like a wall! {hero} ends the threat.',
@@ -707,7 +707,7 @@ const LINES = {
       '{player} goes down, foul given.',
       'The referee gives the foul for {player}.',
       '{player} cleverly draws the foul.',
-      '{player} forces the foul from his marker.',
+      '{player} forces the foul from {g:his|her} marker.',
       'Foul! They had to stop {player} somehow.',
       '{player} is pulled back, foul.',
       'Free kick, {player} is brought down.',
@@ -729,10 +729,10 @@ const LINES = {
       'The referee penalises {player}.',
       '{player} is late, foul.',
       'Foul from {player}, free kick to the opposition.',
-      '{player} brings down his man.',
+      '{player} brings down {g:his man|her opponent}.',
       '{player} mistimes the challenge.',
       'Heavy challenge from {player}.',
-      '{player} uses his arm, foul.',
+      '{player} uses {g:his|her} arm, foul.',
     ],
   },
   flavor: {
@@ -864,7 +864,7 @@ const LINES = {
       '{player} is ice cold! ({score})',
       'In! {player} converts. ({score})',
       '{player} sends the keeper the wrong way. ({score})',
-      'Goal! {player} runs back to his teammates. ({score})',
+      'Goal! {player} runs back to {g:his|her} teammates. ({score})',
     ],
   },
   shootoutMiss: {
@@ -885,7 +885,7 @@ const LINES = {
       'Post! Unlucky {player}. ({score})',
       '{gk} goes the right way! ({score})',
       '{player} hits it at the keeper, saved. ({score})',
-      'Missed! {player} sinks to his knees. ({score})',
+      'Missed! {player} sinks to {g:his|her} knees. ({score})',
       '{player} gets it all wrong, wide. ({score})',
     ],
   },
@@ -929,7 +929,7 @@ export const HIGHLIGHT_PROMPTS = {
   freekick: { tr: 'Serbest vuruş! Barajın üstünden kaleyi bul!', en: 'Free kick! Bend it over the wall!' },
   penalty: { tr: 'Penaltı! Köşeni seç ve vur!', en: 'Penalty! Pick your corner and strike!' },
   corner: { tr: 'Korner geliyor! Doğru zamanda yüksel!', en: 'Corner incoming! Time your jump!' },
-  defend: { tr: 'Rakip atakta! Yolunu kes, topu kap!', en: 'They are attacking! Cut him off and win the ball!' },
+  defend: { tr: 'Rakip atakta! Yolunu kes, topu kap!', en: 'They are attacking! Cut off the attacker and win the ball!' },
   gk_save: { tr: 'Şut geliyor! Kaleni koru!', en: 'Shot incoming! Protect your goal!' },
   gk_penalty: { tr: 'Penaltı! Köşeyi oku ve uzan!', en: 'Penalty! Read the taker and dive!' },
 } as const satisfies Record<string, Record<Lang, string>>
@@ -941,8 +941,8 @@ const PLACEHOLDER = /\{(\w+)(?::(gen|dat|acc|loc|abl|ins))?\}/g
  * Turkish case markers (`{player:gen}`) use vowel harmony; English renders
  * `{x:gen}` as "x's" and other cases as the bare value.
  */
-export function fillTemplate(template: string, vars: CommentaryVars, lang: Lang): string {
-  return template.replace(PLACEHOLDER, (_m, key: string, kase?: TrCase) => {
+export function fillTemplate(template: string, vars: CommentaryVars, lang: Lang, gender: Gender = 'male'): string {
+  return resolveGenderAlt(template, gender).replace(PLACEHOLDER, (_m, key: string, kase?: TrCase) => {
     const raw = vars[key as keyof CommentaryVars]
     const value = raw === undefined ? '' : String(raw)
     if (!kase || !value) return value
@@ -963,9 +963,18 @@ export const COMMENTARY_KEYS = Object.keys(LINES) as CommentaryKey[]
  * Picks a random variant for `key` and fills it. Uses the supplied seeded Rng so
  * commentary is deterministic for a given match seed.
  */
-export function commentary(key: CommentaryKey, lang: Lang, vars: CommentaryVars, rng: Rng): string {
+export function commentary(key: CommentaryKey, lang: Lang, vars: CommentaryVars, rng: Rng, gender: Gender = 'male'): string {
   const bank = (LINES[key] as Bank)[lang]
-  return fillTemplate(rng.pick(bank), vars, lang)
+  return fillTemplate(rng.pick(bank), vars, lang, gender)
+}
+
+/**
+ * Resolve `{g:male|female}` alternatives in a commentary line. Every player in
+ * a match shares the world's gender (it follows the hero); referees and
+ * managers keep fixed wording.
+ */
+export function resolveGenderAlt(text: string, gender: Gender = 'male'): string {
+  return text.replace(/\{g:([^{}|]*)\|([^{}|]*)\}/g, (_m, m: string, f: string) => (gender === 'female' ? f : m))
 }
 
 /** Formats a score tuple like "2-1" (home first). */

@@ -221,7 +221,7 @@ export const weirdEvents: EventDef[] = [
       },
       {
         label: t('Koroyla bir şarkı söyle, sonra kaç', 'Sing one song with the choir, then run'),
-        effects: (ctx) => fx(t('Teyzeler videoyu paylaştı: "Ne tatlı çocuk!" Maça yetiştin, ama kıl payı.', 'The grannies posted the video: "What a sweet boy!" You made kick-off, barely.'), folPct(ctx, 5), happy(5), boss(-4)),
+        effects: (ctx) => fx(t('Teyzeler videoyu paylaştı: "Ne tatlı çocuk!" Maça yetiştin, ama kıl payı.', 'The grannies posted the video: "What a sweet {g:boy|girl}!" You made kick-off, barely.'), folPct(ctx, 5), happy(5), boss(-4)),
       },
     ],
   },
@@ -281,7 +281,7 @@ export const weirdEvents: EventDef[] = [
       },
       {
         label: t('Takım arkadaşından araba ödünç al', 'Borrow a teammate\'s car'),
-        effects: () => fx(t('{mate} arabasını verdi; koltuklar enerji içeceği yapışkanıyla kaplı.', '{mate} lent you his car; the seats are sticky with energy drink.'), rel('teammate', 2), happy(2)),
+        effects: () => fx(t('{mate} arabasını verdi; koltuklar enerji içeceği yapışkanıyla kaplı.', '{mate} lent you {g:his|her} car; the seats are sticky with energy drink.'), rel('teammate', 2), happy(2)),
       },
     ],
   },
@@ -396,8 +396,8 @@ export const weirdEvents: EventDef[] = [
         risk: 'medium',
         effects: (_ctx, rng) =>
           rng.chance(0.5)
-            ? fx(t('İtiraf etti: "Takım adına yaktım." Kahkahalar arasında barıştınız; batıl inanç da yandı.', 'He confessed: "I burned them for the good of the team." You made peace amid laughter; the superstition burned too.'), rel('teammate', 5), stress(-3), flags({ lucky_socks: null }))
-            : fx(t('Masummuş. Ortam gerildi; sonra çoraplar annenin çamaşır sepetinden çıktı.', 'He was innocent. Things got tense — then the socks turned up in your mum\'s laundry basket.'), rel('teammate', -6), stress(3), flags({ lucky_socks: null })),
+            ? fx(t('İtiraf etti: "Takım adına yaktım." Kahkahalar arasında barıştınız; batıl inanç da yandı.', '{g:He|She} confessed: "I burned them for the good of the team." You made peace amid laughter; the superstition burned too.'), rel('teammate', 5), stress(-3), flags({ lucky_socks: null }))
+            : fx(t('Masummuş. Ortam gerildi; sonra çoraplar annenin çamaşır sepetinden çıktı.', '{g:He|She} was innocent. Things got tense — then the socks turned up in your mum\'s laundry basket.'), rel('teammate', -6), stress(3), flags({ lucky_socks: null })),
       },
       {
         label: t('Yeni çoraplarla oyna, kendine güven', 'Play in new socks — trust yourself'),

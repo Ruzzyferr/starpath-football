@@ -1,7 +1,7 @@
 /** Teammates: dressing-room politics, friendships, pranks and favours. */
 import {
   attr, boss, canAfford, chairman, disc, energy, fans, flagNum, flags, follow, folPct, form, fx, happy, hasClub, hasFlag, injury, money, morale, news,
-  num, press, rel, relNpc, rep, sharp, stress, t, chain, trust, wageX,
+  num, pickPlayerFirst, press, rel, relNpc, rep, sharp, stress, t, chain, trust, wageX,
 } from '../dsl'
 import type { EventDef } from '../types'
 
@@ -16,7 +16,7 @@ export const teammatesEvents: EventDef[] = [
     title: t('Ufak Bir Rica', 'A Small Favour'),
     text: t(
       '{mate} soyunma odasında yanına sokuldu, sesini alçalttı: "Kardeşim, ev sahibi kirayı artırdı, ay sonuna kadar {amount:money} lazım. Maaş yatınca ilk iş veririm, söz."',
-      '{mate} sidles up in the dressing room and lowers his voice: "Mate, my landlord hiked the rent. I need {amount:money} till payday. First thing I do when wages land, promise."',
+      '{mate} sidles up in the dressing room and lowers {g:his|her} voice: "Mate, my landlord hiked the rent. I need {amount:money} till payday. First thing I do when wages land, promise."',
     ),
     icon: '💸',
     choices: [
@@ -37,14 +37,14 @@ export const teammatesEvents: EventDef[] = [
       {
         label: t('Kibarca reddet', 'Politely decline'),
         effects: (ctx) =>
-          fx(t('"Anlıyorum" dedi ama bakışları başka şey söylüyordu.', '"No worries," he said. His eyes said otherwise.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -6)),
+          fx(t('"Anlıyorum" dedi ama bakışları başka şey söylüyordu.', '"No worries," {g:he|she} said. {g:His|Her} eyes said otherwise.'), relNpc(ctx.vars.mateId, ctx.vars.mate, -6)),
       },
       {
-        label: t('Kulübün avans sistemine yönlendir', "Point him to the club's wage advance"),
+        label: t('Kulübün avans sistemine yönlendir', "Point {g:him|her} to the club's wage advance"),
         hint: t('Mantıklı ama soğuk.', 'Sensible, a bit cold.'),
         effects: (ctx) =>
           fx(
-            t('Muhasebeye gitti. Sorunu çözüldü; size olan sıcaklığı biraz soğudu.', 'He went to accounts. Problem solved; the warmth cooled a little.'),
+            t('Muhasebeye gitti. Sorunu çözüldü; size olan sıcaklığı biraz soğudu.', '{g:He|She} went to accounts. Problem solved; the warmth cooled a little.'),
             relNpc(ctx.vars.mateId, ctx.vars.mate, -2),
             trust(1),
           ),
@@ -61,7 +61,7 @@ export const teammatesEvents: EventDef[] = [
     title: t('Borç Meselesi', 'About That Loan'),
     text: t(
       '{mate} antrenman sonrası yanına geldi. Elinde zarf var mı yok mu, uzaktan anlaşılmıyor.',
-      "{mate} wanders over after training. From here you can't tell if there's an envelope in his hand.",
+      "{mate} wanders over after training. From here you can't tell if there's an envelope in {g:his|her} hand.",
     ),
     icon: '✉️',
     choices: [
@@ -76,7 +76,7 @@ export const teammatesEvents: EventDef[] = [
                 happy(3),
               )
             : fx(
-                t('"Gelecek ay kesin" dedi. Üçüncü kez.', '"Next month, definitely," he said. For the third time.'),
+                t('"Gelecek ay kesin" dedi. Üçüncü kez.', '"Next month, definitely," {g:he|she} said. For the third time.'),
                 relNpc(ctx.vars.mateId, ctx.vars.mate, -4),
                 stress(4),
               ),
@@ -135,7 +135,7 @@ export const teammatesEvents: EventDef[] = [
     title: t('Pazubandı Yarışı', 'The Armband Race'),
     text: t(
       'Kaptan futbolu bıraktı, pazubant boşta. {managerName} oyuncuların görüşünü soracak. Kulislerde iki isim dolaşıyor: sen ve {mate}.',
-      "The old skipper has hung up his boots and the armband is up for grabs. {managerName} will sound out the squad. Two names are doing the rounds: yours and {mate}'s.",
+      "The old skipper has hung up {g:his|her} boots and the armband is up for grabs. {managerName} will sound out the squad. Two names are doing the rounds: yours and {mate}'s.",
     ),
     icon: '🎗️',
     choices: [
@@ -169,7 +169,7 @@ export const teammatesEvents: EventDef[] = [
         label: t('{mate} için çekil', 'Step aside for {mate}'),
         effects: (ctx) =>
           fx(
-            t('"Bu iş ona yakışır" dedin. {mate} bunu hiç unutmayacak.', '"The job suits him," you said. {mate} will never forget it.'),
+            t('"Bu iş ona yakışır" dedin. {mate} bunu hiç unutmayacak.', '"The job suits {g:him|her}," you said. {mate} will never forget it.'),
             relNpc(ctx.vars.mateId, ctx.vars.mate, 20),
             rel('teammate', 2),
             morale(-3),
@@ -205,7 +205,7 @@ export const teammatesEvents: EventDef[] = [
                 news(t("{clubName}'da yeni kaptan: {heroName}", '{clubName} name {heroName} new captain'), 1),
               )
             : fx(
-                t('{mate} kazandı. Elini ilk sıkan sen oldun; bu da konuşuldu.', '{mate} won. You were first to shake his hand, and people noticed.'),
+                t('{mate} kazandı. Elini ilk sıkan sen oldun; bu da konuşuldu.', '{mate} won. You were first to shake {g:his|her} hand, and people noticed.'),
                 relNpc(ctx.vars.mateId, ctx.vars.mate, 10),
                 trust(2),
                 morale(-4),
@@ -241,16 +241,16 @@ export const teammatesEvents: EventDef[] = [
     weight: (ctx) => (ctx.state.calendar.season - ctx.state.hero.birthYear >= 23 ? 1.2 : 0.25),
     cooldownWeeks: 52,
     conditions: ({ state }) => hasClub(state) && !hasFlag(state, 'mentoring'),
-    vars: (_ctx, rng) => ({ kid: rng.pick(['Efe', 'Yusuf', 'Mirza', 'Tuna', 'Alp', 'Noah']) }),
+    vars: ({ state }, rng) => ({ kid: pickPlayerFirst(state, rng) }),
     title: t('Akademiden Gelen Çocuk', 'The Academy Kid'),
     text: t(
       'A takıma yeni çıkan 17 yaşındaki {kid} gölgen gibi peşinde. Bağcıklarını senin gibi bağlıyor, senin gibi sevinç yapıyor. Bugün cesaretini toplayıp ekstra antrenmanlarına katılıp katılamayacağını sordu.',
-      '{kid}, 17 and fresh up from the academy, follows you like a shadow. Same bootlaces, same celebration. Today he finally asked if he can join your extra sessions.',
+      '{kid}, 17 and fresh up from the academy, follows you like a shadow. Same bootlaces, same celebration. Today {g:he|she} finally asked if {g:he|she} can join your extra sessions.',
     ),
     icon: '🧒',
     choices: [
       {
-        label: t('Kanatlarının altına al', 'Take him under your wing'),
+        label: t('Kanatlarının altına al', 'Take {g:him|her} under your wing'),
         hint: t('Zaman ve enerji ister.', 'Costs time and energy.'),
         effects: () =>
           fx(
@@ -265,14 +265,14 @@ export const teammatesEvents: EventDef[] = [
       {
         label: t('"Önce kendi oyunuma bakmalıyım"', '"I need to focus on my own game"'),
         effects: () =>
-          fx(t('{kid} başını önüne eğdi. Ertesi gün başka birinin peşindeydi.', '{kid} nodded at the floor. Next day he was shadowing someone else.'), sharp(3), rel('teammate', -2)),
+          fx(t('{kid} başını önüne eğdi. Ertesi gün başka birinin peşindeydi.', '{kid} nodded at the floor. Next day {g:he|she} was shadowing someone else.'), sharp(3), rel('teammate', -2)),
       },
       {
-        label: t('Ona profesyonel krampon hediye et', 'Gift him a pair of pro boots'),
+        label: t('Ona profesyonel krampon hediye et', 'Gift {g:him|her} a pair of pro boots'),
         requires: (ctx) => canAfford(ctx.state, 600),
         lockedHint: t('600 € gerek.', 'Needs €600.'),
         effects: () =>
-          fx(t('Çocuk kramponlarla uyumuş, öyle diyorlar.', 'Word is he slept in them.'), money(-600), happy(5), rel('teammate', 3), rep(1)),
+          fx(t('Çocuk kramponlarla uyumuş, öyle diyorlar.', 'Word is {g:he|she} slept in them.'), money(-600), happy(5), rel('teammate', 3), rep(1)),
       },
     ],
   },
@@ -284,16 +284,16 @@ export const teammatesEvents: EventDef[] = [
     followUpOnly: true,
     conditions: () => true,
     /** Fallback only; the parent's {kid} overrides it. */
-    vars: (_ctx, rng) => ({ kid: rng.pick(['Efe', 'Yusuf', 'Mirza', 'Tuna', 'Alp', 'Noah']) }),
+    vars: ({ state }, rng) => ({ kid: pickPlayerFirst(state, rng) }),
     title: t('Öğrenci Parlayınca', 'When the Pupil Shines'),
     text: t(
       '{kid} ilk A takım golünü attı ve koşarak doğruca sana geldi. Kameralar ikinizi yakaladı. Şimdi bir muhabir soruyor: "Formanıza mı göz dikti?"',
-      '{kid} scored his first senior goal and sprinted straight to you. The cameras caught it all. Now a reporter asks: "Is he after your shirt?"',
+      '{kid} scored {g:his|her} first senior goal and sprinted straight to you. The cameras caught it all. Now a reporter asks: "Is {g:he|she} after your shirt?"',
     ),
     icon: '🌱',
     choices: [
       {
-        label: t('"Umarım bir gün yerimi alır."', '"I hope he takes it one day."'),
+        label: t('"Umarım bir gün yerimi alır."', '"I hope {g:he|she} takes it one day."'),
         effects: () =>
           fx(t('Söz manşet oldu. Taraftar seni bir kat daha sevdi.', 'The quote made headlines. The fans loved you a little more.'), rep(3), fans(6), happy(5), flags({ mentoring: null })),
       },
@@ -324,7 +324,7 @@ export const teammatesEvents: EventDef[] = [
     icon: '🤡',
     choices: [
       {
-        label: t('Misilleme: arabasını streç filmle sar', 'Retaliate: cling-film his car'),
+        label: t('Misilleme: arabasını streç filmle sar', 'Retaliate: cling-film {g:his|her} car'),
         risk: 'medium',
         effects: (ctx, rng) =>
           rng.chance(0.7)
@@ -412,23 +412,23 @@ export const teammatesEvents: EventDef[] = [
     title: t('Kıskançlık Kokusu', 'Whiff of Jealousy'),
     text: t(
       '{mate} röportajında adını bir kez bile anmadı, sahada da paslar sana gelmiyor. Biri kulağına fısıldadı: "Manşetlerini kıskanıyor."',
-      "{mate} didn't mention you once in his interview, and on the pitch the passes have dried up. Someone whispers: \"He's jealous of your headlines.\"",
+      "{mate} didn't mention you once in {g:his|her} interview, and on the pitch the passes have dried up. Someone whispers: \"{g:He's|She's} jealous of your headlines.\"",
     ),
     icon: '😒',
     choices: [
       {
-        label: t('Yemeğe davet et, konuşun', 'Invite him to dinner, talk it out'),
+        label: t('Yemeğe davet et, konuşun', 'Invite {g:him|her} to dinner, talk it out'),
         requires: (ctx) => canAfford(ctx.state, 250),
         lockedHint: t('Yemek parası bile yok.', "Can't even cover dinner."),
         effects: (ctx, rng) =>
           rng.chance(0.65)
             ? fx(t('İkinci tatlıda buzlar eridi. Paslar geri geldi.', 'By the second dessert the ice had melted. The passes are back.'), money(-250), relNpc(ctx.vars.mateId, ctx.vars.mate, 18))
-            : fx(t('Hesabı sen ödedin, o telefonuna baktı. Hiçbir şey değişmedi.', 'You paid; he scrolled his phone. Nothing changed.'), money(-250), relNpc(ctx.vars.mateId, ctx.vars.mate, 2), stress(3)),
+            : fx(t('Hesabı sen ödedin, o telefonuna baktı. Hiçbir şey değişmedi.', 'You paid; {g:he|she} scrolled {g:his|her} phone. Nothing changed.'), money(-250), relNpc(ctx.vars.mateId, ctx.vars.mate, 2), stress(3)),
       },
       {
-        label: t('Basına onu öven sözler söyle', 'Praise him publicly to the press'),
+        label: t('Basına onu öven sözler söyle', 'Praise {g:him|her} publicly to the press'),
         effects: (ctx) =>
-          fx(t('Egosunu okşadın. Bazı yorumcular buna "zayıflık" dedi.', 'You stroked his ego. Some pundits called it weakness.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 12), press(2), rep(-1)),
+          fx(t('Egosunu okşadın. Bazı yorumcular buna "zayıflık" dedi.', 'You stroked {g:his|her} ego. Some pundits called it weakness.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 12), press(2), rep(-1)),
       },
       {
         label: t('Hocaya götür', 'Take it to the gaffer'),

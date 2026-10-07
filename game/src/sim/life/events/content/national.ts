@@ -1,5 +1,5 @@
 /** National team: call-ups, anthems, armbands and club-versus-country dilemmas. */
-import { boss, canAfford, disc, fans, fatigue, flags, follow, form, fx, happy, hasClub, hasFlag, injury, money, morale, news, num, pickFull, press, rel, rep, stress, t, chain, trust, wageX, attr, folPct } from '../dsl'
+import { boss, canAfford, disc, fans, fatigue, flags, follow, form, fx, happy, hasClub, hasFlag, injury, money, morale, news, num, pickPlayerFull, press, rel, rep, stress, t, chain, trust, wageX, attr, folPct } from '../dsl'
 import type { GameState } from '../../../../core/types'
 import type { EventDef } from '../types'
 
@@ -80,11 +80,11 @@ export const nationalEvents: EventDef[] = [
     once: true,
     triggers: ['national_break'],
     conditions: ({ state }) => called(state) && state.hero.reputation >= 65,
-    vars: (_ctx, rng) => ({ veteran: pickFull(rng) }),
+    vars: ({ state }, rng) => ({ veteran: pickPlayerFull(state, rng) }),
     title: t('Pazubandı', 'The Armband'),
     text: t(
       'Milli takım hocası seni odasına çağırdı: "Kaptan {veteran} sakat. Pazubandını sana vermek istiyorum. Ama o yarın kampa gelecek ve kimse ona söylemedi."',
-      'The national coach calls you in: "Captain {veteran} is injured. I want you to wear the armband. But he arrives at camp tomorrow and nobody has told him yet."',
+      'The national coach calls you in: "Captain {veteran} is injured. I want you to wear the armband. But {g:he|she} arrives at camp tomorrow and nobody has told {g:him|her} yet."',
     ),
     icon: '🫡',
     choices: [
@@ -101,7 +101,7 @@ export const nationalEvents: EventDef[] = [
       },
       {
         label: t('Kibarca reddet, {veteran} dönene kadar beklesin', 'Decline; keep it warm for {veteran}'),
-        effects: () => fx(t('Hoca şaşırdı, kıdemliler etkilendi. "Bu çocukta karakter var" diyorlar.', 'The coach was surprised, the veterans impressed. "That lad has character," they say.'), disc(4), happy(-2), press(3)),
+        effects: () => fx(t('Hoca şaşırdı, kıdemliler etkilendi. "Bu çocukta karakter var" diyorlar.', 'The coach was surprised, the veterans impressed. "That {g:lad|girl} has character," they say.'), disc(4), happy(-2), press(3)),
       },
     ],
   },
@@ -129,7 +129,7 @@ export const nationalEvents: EventDef[] = [
       },
       {
         label: t('Kulübü dinle, kamptan çekil', 'Listen to the club and withdraw'),
-        effects: () => fx(t('Kulüp memnun. Milli takım çevresinde "kulübünü seçti" fısıltıları.', 'The club is happy. Around the national setup there are whispers: "He chose his club."'), trust(5), boss(5), fans(-4), press(-3)),
+        effects: () => fx(t('Kulüp memnun. Milli takım çevresinde "kulübünü seçti" fısıltıları.', 'The club is happy. Around the national setup there are whispers: "{g:He chose his|She chose her} club."'), trust(5), boss(5), fans(-4), press(-3)),
       },
       {
         label: t('Kampa git, durumunu açıkça söyle', 'Go to camp and be honest about it'),
@@ -144,7 +144,7 @@ export const nationalEvents: EventDef[] = [
     cooldownWeeks: 24,
     triggers: ['national_break'],
     conditions: ({ state }) => called(state),
-    vars: (_ctx, rng) => ({ roomie: pickFull(rng) }),
+    vars: ({ state }, rng) => ({ roomie: pickPlayerFull(state, rng) }),
     title: t('Kamp Odası Savaşları', 'Camp Room Wars'),
     text: t(
       'Kamp odasına döndüğünde yatağının tamamen streç filmle sarıldığını gördün. Oda arkadaşın {roomie} masum masum kitap okuyor. Ters tutarak.',
