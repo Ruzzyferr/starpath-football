@@ -200,4 +200,146 @@ kullanıldı.
 | Kumarhane payı: tüm kariyerlerde | 4% |
 | Ada alan kariyer (yaş / itibar) | 27 / 92, 25 / 88, 25 / 94 |
 
-<!-- MATCH-FEEL -->
+## Maç hissi (highlight) ayarı
+
+### Yöntem
+
+`src/game/humanBot.ts`, gerçek bir dokunmatik oyuncuyu taklit eden gürültülü bir
+bottur. Kale çizgisinde nişan sapması, düzensiz vuruş gücü, gecikmeli reaksiyon,
+ara sıra ters tarafa plonjon, zamanlaması kaçan müdahale ve kafa vuruşları
+yapar. Dört seviyesi var: novice / average / good / expert.
+
+Bot, oyunun gerçek senaryo üreticisiyle (`buildScenario`, 65 OVR takımlar)
+kurulan highlight'ları başsız runtime'da oynar (tam nişan yardımı, ağır çekim
+açık). Ölçüm `src/game/feelHarness.ts` içinde, bantlar `src/game/feel.test.ts`
+içinde (average/normal). Tam tablo için:
+
+```
+FEEL_REPORT=1 FEEL_N=120 npx vitest run src/game/feel.test.ts -t report
+```
+
+Başarı tanımı:
+
+- 1v1, penaltı, serbest vuruş, ceza sahası önü: gol.
+- Orta, korner: gol ya da asist.
+- Savunma: `defended` / `foul_won`.
+- Kaleci: gol yememek.
+
+### Hedefler (ortalama oyuncu, normal zorluk)
+
+| Tür | Hedef | Önce | Sonra |
+|---|---|---|---|
+| one_on_one | ~%40 | %57 | %45 |
+| penalty | ~%75 | %84 | %73–75 |
+| freekick | %15–20 | %34 | %14–15 |
+| edge_of_box | ~%12 | %32 | %13 |
+| cross | %15–25 | %3* | %8 |
+| corner | %20–30 | %48 | %32 |
+| defend | ~%65 | %90 | %93 |
+| gk_save | %60–70 | %62 | %68 |
+
+\* Önceki ölçümde bot her zaman orta açıyordu. Sonraki ölçümde %60 orta, %40
+içeri kat edip şut olarak karıştırıldı.
+
+### Önce (N=120; novice / average / good / expert)
+
+| Tür | Zorluk | novice | average | good | expert |
+|---|---|---|---|---|---|
+| one_on_one | easy | 71% | 73% | 73% | 78% |
+| one_on_one | normal | 65% | 57% | 68% | 62% |
+| one_on_one | hard | 55% | 50% | 60% | 53% |
+| one_on_one | legend | 44% | 38% | 50% | 44% |
+| penalty | easy | 87% | 88% | 90% | 91% |
+| penalty | normal | 79% | 84% | 86% | 81% |
+| penalty | hard | 78% | 78% | 78% | 79% |
+| penalty | legend | 73% | 69% | 75% | 78% |
+| freekick | easy | 33% | 34% | 34% | 43% |
+| freekick | normal | 34% | 34% | 30% | 32% |
+| freekick | hard | 24% | 25% | 23% | 29% |
+| freekick | legend | 25% | 21% | 30% | 30% |
+| edge_of_box | easy | 33% | 46% | 40% | 36% |
+| edge_of_box | normal | 31% | 32% | 28% | 28% |
+| edge_of_box | hard | 28% | 26% | 18% | 15% |
+| edge_of_box | legend | 18% | 17% | 13% | 11% |
+| cross | easy | 3% | 2% | 2% | 2% |
+| cross | normal | 3% | 3% | 3% | 3% |
+| cross | hard | 3% | 3% | 3% | 3% |
+| cross | legend | 4% | 3% | 3% | 3% |
+| corner | easy | 40% | 53% | 57% | 58% |
+| corner | normal | 43% | 48% | 50% | 57% |
+| corner | hard | 30% | 35% | 40% | 44% |
+| corner | legend | 33% | 35% | 40% | 45% |
+| defend | easy | 91% | 90% | 92% | 94% |
+| defend | normal | 88% | 90% | 90% | 85% |
+| defend | hard | 91% | 90% | 92% | 93% |
+| defend | legend | 89% | 92% | 90% | 89% |
+| gk_save | easy | 63% | 69% | 68% | 78% |
+| gk_save | normal | 62% | 62% | 68% | 73% |
+| gk_save | hard | 54% | 56% | 61% | 66% |
+| gk_save | legend | 54% | 56% | 64% | 69% |
+
+### Sonra (N=120)
+
+| Tür | Zorluk | novice | average | good | expert |
+|---|---|---|---|---|---|
+| one_on_one | easy | 43% | 54% | 53% | 69% |
+| one_on_one | normal | 37% | 45% | 44% | 53% |
+| one_on_one | hard | 31% | 33% | 40% | 38% |
+| one_on_one | legend | 26% | 22% | 28% | 24% |
+| penalty | easy | 78% | 81% | 84% | 89% |
+| penalty | normal | 72% | 73% | 81% | 78% |
+| penalty | hard | 68% | 69% | 75% | 75% |
+| penalty | legend | 62% | 64% | 72% | 70% |
+| freekick | easy | 15% | 18% | 13% | 14% |
+| freekick | normal | 13% | 14% | 14% | 10% |
+| freekick | hard | 11% | 11% | 12% | 7% |
+| freekick | legend | 12% | 11% | 13% | 7% |
+| edge_of_box | easy | 21% | 23% | 30% | 27% |
+| edge_of_box | normal | 21% | 13% | 12% | 15% |
+| edge_of_box | hard | 8% | 8% | 8% | 10% |
+| edge_of_box | legend | 9% | 10% | 4% | 6% |
+| cross | easy | 5% | 7% | 8% | 12% |
+| cross | normal | 8% | 8% | 9% | 13% |
+| cross | hard | 6% | 5% | 9% | 10% |
+| cross | legend | 6% | 6% | 9% | 7% |
+| corner | easy | 31% | 38% | 38% | 41% |
+| corner | normal | 27% | 32% | 37% | 40% |
+| corner | hard | 21% | 28% | 30% | 32% |
+| corner | legend | 18% | 24% | 24% | 27% |
+| defend | easy | 96% | 97% | 96% | 97% |
+| defend | normal | 90% | 93% | 90% | 89% |
+| defend | hard | 94% | 93% | 92% | 94% |
+| defend | legend | 93% | 93% | 93% | 93% |
+| gk_save | easy | 73% | 73% | 85% | 83% |
+| gk_save | normal | 67% | 68% | 82% | 79% |
+| gk_save | hard | 65% | 68% | 79% | 78% |
+| gk_save | legend | 63% | 66% | 78% | 79% |
+
+Zorluk yayılımı (average): 1v1 easy %54 → legend %22, penaltı %81 → %64, ceza
+sahası önü %23 → %10, korner %38 → %24. `DIFFICULTY_SCALE` (easy 0.85 /
+normal 1 / hard 1.15 / legend 1.3) değişmedi.
+
+### Değişen sabitler (`src/game/runtime.ts`)
+
+| Sabit | Eski | Yeni | Neden |
+|---|---|---|---|
+| `DIVE_BODY_BACK` | yok (0) | 0.7 m | **Hata düzeltmesi:** plonjondaki kalecinin temas çizgisi yalnızca gövde merkezinden ele doğru uzanıyordu. Fazla uzanan kalecinin gövdesinin içinden geçen top gol sayılıyordu. Artık bacak ve gövde de sayılıyor. |
+| `KEEPER_STAND_MAX_Z` | 1.7 m | 2.2 m | Kalecinin 0.55 m yakınından gelen baş hizasındaki toplarda yana uçmak yerine ayakta müdahale. |
+| `HERO_SHOT_NOISE` | 1 | 1.5 | Kaydırma isabetsizliği. Önceden şutların neredeyse hiçbiri çerçeve dışına çıkmıyordu (gerçekte ~1/3). Şut, vole ve kafaya uygulanır, paslara uygulanmaz. |
+| `HERO_HEADER_NOISE` | 1 | 1.3 | Korner kafaları ~%45 golle bitiyordu. |
+| `KEEPER_SAVE_BONUS` | 0 | +0.08 | Her şut temasında küçük bir kurtarış katkısı. |
+| `PENALTY_READ_BASE` | 0.20 | 0.22 | Kalecinin penaltıda tarafı okuma olasılığı; penaltıyı ~%75'e çeker. |
+
+### Bilinen açıklar
+
+- **Savunma (defend) ~%93, zorluktan bağımsız.** Sonucu çoğunlukla yapay zekâ
+  takım arkadaşlarının rakip pasını kesmesi belirliyor; kahramanın müdahalesi
+  az fark yaratıyor. Rakip taşıyıcının ve pas kararlarının yeniden ele alınması
+  gerekiyor.
+- **Orta ~%8.** Markajcılar topun yolunda duruyor ve ortaların ~%96'sını ilk
+  onlar karşılıyor. Hücumcuların topun ineceği noktaya koşması gerekiyor.
+- **Korner ~%32.** Hedefin (%20–25) biraz üstünde.
+- **1v1 ~%45.** Hedef %40'ın biraz üstünde.
+- **Tam nişan yardımı beceri farkını eziyor.** Direk dışına kaçan şutlar
+  çerçeveye geri çekildiği için bot seviyeleri arasındaki fark küçük. Serbest
+  vuruşta zorluk etkisi zayıf; expert seviye biraz daha az gol buluyor.
