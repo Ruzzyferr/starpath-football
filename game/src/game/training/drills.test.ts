@@ -146,7 +146,7 @@ describe('training drills (headless)', () => {
       const pg = avg(good.map((r) => r.performance))
       const pm = avg(meh.map((r) => r.performance))
       const pn = avg(none.map((r) => r.performance))
-      if (process.env.DRILL_DEBUG) console.log(kind, { good: pg.toFixed(2), meh: pm.toFixed(2), none: pn.toFixed(2), pts: good.map((r) => r.points), mehPts: meh.map((r) => r.points), stats: good[0].stats, mehStats: meh[0].stats })
+      if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log(kind, { good: pg.toFixed(2), meh: pm.toFixed(2), none: pn.toFixed(2), pts: good.map((r) => r.points), mehPts: meh.map((r) => r.points), stats: good[0].stats, mehStats: meh[0].stats })
       expect(pg).toBeGreaterThan(pm + 0.1)
       expect(pm).toBeGreaterThan(pn)
       expect(pg).toBeGreaterThan(0.75)

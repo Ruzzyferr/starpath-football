@@ -9,16 +9,17 @@ import type {
 } from '../../core/types'
 import { SLOTS_PER_DAY } from '../../core/config'
 import { lt as render } from '../../i18n'
-import { ACTIVITIES, type ActivityDef } from '../../data/activities'
+import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef } from '../../data/activities'
 import { ASSETS } from '../../data/assets'
 import { PERKS, type PerkGroup } from '../../data/perks'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { absWeek, heroAge } from '../../sim/career/common'
 import { perkBlock } from '../../sim/career/perks'
 import { heroOvr } from '../../sim/career/progression'
-import { TRAINER_GROUP_BONUS, TRAINING_TYPES, trainingEnergyCost, type TrainingType } from '../../sim/career/training'
+import { TRAINER_QUALITY_BONUS, TRAINING_TYPES, trainingEnergyCost, trainingXpTotal, type TrainingType } from '../../sim/career/training'
+import { DRILL_FOR_TRAINING } from '../../game/training/scoring'
 import { scoutInterest } from '../../sim/career/transfers'
-import { activityBlock, activityEnergy, activityMoney, TRAINER_FEES, type ActivityContext } from '../../sim/life/activities'
+import { activityBlock, activityEnergy, activityMoney, TRAINER_FEES, trainerName, type ActivityContext } from '../../sim/life/activities'
 import { createRace, type RaceCard } from '../../sim/life/casino'
 import { netWorth } from '../../sim/life/economy'
 import { getEventDef, absoluteWeek } from '../../sim/life/events/engine'
@@ -280,17 +281,27 @@ const TRAINING_DESC: Record<TrainingType, LText> = {
 }
 
 function trainingSessions(s: GameState): TrainingSessionView[] {
-  return (Object.keys(TRAINING_TYPES) as TrainingType[])
-    .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping'))
-    .map((t) => {
-      const d = TRAINING_TYPES[t]
-      const focus = Object.entries(d.attrs).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)).map(([k]) => k as AttributeKey).slice(0, 4)
-      return {
-        id: t, name: d.name, desc: TRAINING_DESC[t], group: TRAINING_GROUP[t], icon: ACT_ICON[`train_${t}`] ?? 'barbell',
-        energy: trainingEnergyCost(t), focus, xp: d.baseXp,
-        injuryRisk: d.injuryRisk >= 0.007 ? 'medium' : d.injuryRisk > 0.003 ? 'low' : 'safe',
-      }
-    })
+  return cached(s, 'trainingSessions', () => {
+    const ctx = activityContext(s)
+    return (Object.keys(TRAINING_TYPES) as TrainingType[])
+      .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping'))
+      .map((t): TrainingSessionView => {
+        const d = TRAINING_TYPES[t]
+        const focus = Object.entries(d.attrs).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)).map(([k]) => k as AttributeKey).slice(0, 4)
+        const def = ACTIVITY_BY_ID[`train_${t}`]
+        const block = def ? activityBlock(s.hero, s.life, def, ctx) : L('Bilinmeyen seans.', 'Unknown session.')
+        return {
+          id: t, name: d.name, desc: TRAINING_DESC[t], group: TRAINING_GROUP[t], icon: ACT_ICON[`train_${t}`] ?? 'barbell',
+          energy: trainingEnergyCost(t), focus,
+          xp: Math.round(trainingXpTotal(s.hero, s.life, t)),
+          xpMax: Math.round(trainingXpTotal(s.hero, s.life, t, 1)),
+          injuryRisk: d.injuryRisk >= 0.007 ? 'medium' : d.injuryRisk > 0.003 ? 'low' : 'safe',
+          available: block === null,
+          ...(block ? { lockedReason: block } : {}),
+          drill: DRILL_FOR_TRAINING[t],
+        }
+      })
+  })
 }
 
 const PERK_GROUP_ICON: Record<PerkGroup, string> = {
@@ -331,15 +342,28 @@ function perksView(s: GameState): PerkView[] {
 
 const TRAINER_GROUPS: AttributeGroup[] = ['technical', 'physical', 'mental', 'goalkeeping']
 const TRAINER_STARS: Record<1 | 2 | 3, number> = { 1: 2, 2: 4, 3: 5 }
-const TRAINER_NAME: Record<1 | 2 | 3, string> = { 1: 'Kerem Hoca', 2: 'Dr. Ercan Aksoy', 3: 'Prof. Victor Hale' }
 
+/**
+ * Trainers for hire: one per speciality and tier. The name, fee and XP bonus
+ * shown are exactly what hiring gives (activities.trainerName / TRAINER_FEES /
+ * TRAINER_QUALITY_BONUS). Availability mirrors the hire activity's rules.
+ */
 export function trainerOffers(s: GameState | null): TrainerOffer[] {
   const gk = s?.hero.position === 'GK'
   const out: TrainerOffer[] = []
+  const ctx = s ? activityContext(s) : null
+  const def = ACTIVITY_BY_ID.hire_trainer
   for (const g of TRAINER_GROUPS) {
     if (g === 'goalkeeping' && !gk) continue
     for (const q of [1, 2, 3] as const) {
-      out.push({ id: `${g}:${q}`, name: `${TRAINER_NAME[q]} · ${q}★`, group: g, quality: TRAINER_STARS[q], weeklyFee: TRAINER_FEES[q], bonus: TRAINER_GROUP_BONUS })
+      const name = trainerName(g, q)
+      const cur = s?.life.trainer
+      const current = !!cur && cur.group === g && cur.name === name
+      const block = current ? L('Zaten antrenörün.', 'Already your trainer.') : s && ctx && def ? activityBlock(s.hero, s.life, def, ctx, { trainerGroup: g, trainerQuality: q }) : null
+      out.push({
+        id: `${g}:${q}`, name, group: g, quality: TRAINER_STARS[q], weeklyFee: TRAINER_FEES[q], bonus: TRAINER_QUALITY_BONUS[q],
+        current, available: !!s && block === null, ...(block ? { lockedReason: block } : {}),
+      })
     }
   }
   return out

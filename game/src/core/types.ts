@@ -412,7 +412,8 @@ export interface Life {
   relationships: Record<string, Relationship>
   agent: Agent | null
   sponsors: SponsorDeal[]
-  trainer: { name: string; group: AttributeGroup; weeklyFee: number } | null
+  /** Personal trainer; `quality` 1..3 (missing on old saves → treated as 2). */
+  trainer: { name: string; group: AttributeGroup; weeklyFee: number; quality?: 1 | 2 | 3 } | null
   casino: { addiction: number; won: number; lost: number; visitsThisWeek: number }
   /** Free-form flags for event chains: 'has_tattoo', 'scandal_bet', counters… */
   flags: Record<string, number | string | boolean>

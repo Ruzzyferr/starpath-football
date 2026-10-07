@@ -15,7 +15,7 @@ import { benchComplaint, type ComplaintApproach } from '../career/squadRole'
 import type { TrainingIntensity, TrainingType } from '../career/training'
 import { acceptTransfer, requestTransfer as requestTransferFn, withdrawTransferRequest as withdrawFn } from '../career/transfers'
 import type { TransferOffer } from '../career/transfers'
-import { performActivity, type ActivityOptions } from '../life/activities'
+import { performActivity, type ActivityOptions, type TrainingReport } from '../life/activities'
 import {
   blackjackAction, canBet, createRace, createShoe, makeRouletteBet, playPassLine, playSevens, runRace, settleBet,
   settleHorseBet, settleRoulette, spinRoulette, spinSlot, startBlackjack, visitCasino,
@@ -51,7 +51,7 @@ const okr = <T = undefined>(lines: LText[], value?: T): ActionResult<T> => (valu
  * activity's trigger tags. Casino visits unlock the casino games for today
  * and do NOT end the day: the UI calls `advanceDay` when the hero leaves.
  */
-export function doActivity(state: GameState, activityId: string, opts: ActivityOptions = {}): ActionResult {
+export function doActivity(state: GameState, activityId: string, opts: ActivityOptions = {}): ActionResult<TrainingReport> {
   if (state.hero.retired) return fail(lt('Emekli oldun.', 'You are retired.'))
   const res = withRng(state, (rng) => {
     const ctx = activityContext(state)
@@ -78,22 +78,29 @@ export function doActivity(state: GameState, activityId: string, opts: ActivityO
   else if (state.calendar.slot + used >= SLOTS_PER_DAY) advance = advanceDay(state)
   else state.calendar.slot += used
   lines.push(...syncEventFlags(state))
-  return { ok: true, lines, ...(advance ? { advance } : {}) }
+  return { ok: true, lines, ...(advance ? { advance } : {}), ...(res.training ? { value: res.training } : {}) }
 }
 
 /** Training session (mini-game score 0..1). */
-export function train(state: GameState, type: TrainingType, performance?: number, intensity: TrainingIntensity = 'normal'): ActionResult {
+export function train(state: GameState, type: TrainingType, performance?: number, intensity: TrainingIntensity = 'normal'): ActionResult<TrainingReport> {
   return doActivity(state, `train_${type}`, { trainingType: type, performance, intensity })
 }
 
 /** Social media post (uses the `social_post` activity slot). */
 export function socialPost(state: GameState, type: PostType): ActionResult {
-  return doActivity(state, 'social_post', { postType: type })
+  return plain(doActivity(state, 'social_post', { postType: type }))
 }
 
 /** Hire a personal trainer (activity). */
 export function hireTrainer(state: GameState, group: AttributeGroup, quality: 1 | 2 | 3 = 1): ActionResult {
-  return doActivity(state, 'hire_trainer', { trainerGroup: group, trainerQuality: quality })
+  return plain(doActivity(state, 'hire_trainer', { trainerGroup: group, trainerQuality: quality }))
+}
+
+/** Drops the typed value of a result. */
+function plain(r: ActionResult<unknown>): ActionResult {
+  const { value: _value, ...rest } = r
+  void _value
+  return rest
 }
 
 /** Fire the personal trainer (no slot cost). */

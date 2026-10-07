@@ -466,10 +466,15 @@ export const mockActions: GameActions = {
     return out
   },
 
-  train(sessionId) {
+  train(sessionId, performance) {
+    return mockActions.trainSession(sessionId, performance).deltas
+  },
+  trainSession(sessionId, performance) {
     const s = get()
+    const perf = Math.max(0, Math.min(1, performance ?? 0.6))
     const sess = TRAINING.find((x) => x.id === sessionId)
-    if (!sess || (sess.energy > 0 && s.life.energy < sess.energy)) return []
+    const fail = { ok: false, error: L('Bu antrenman için enerjin yetersiz.', 'Not enough energy for this session.'), performance: perf, xp: 0, attrXp: [], deltas: [], injured: false }
+    if (!sess || (sess.energy > 0 && s.life.energy < sess.energy)) return fail
     const out: Delta[] = [{ key: 'energy', value: -sess.energy }]
     s.life.energy = clamp(s.life.energy - sess.energy, 0, 100)
     if (sess.group === 'recovery') {
@@ -477,7 +482,7 @@ export const mockActions: GameActions = {
       out.push({ key: 'fatigue', value: -20 })
     } else {
       const bonus = s.life.trainer && s.life.trainer.group === sess.group ? (TRAINERS.find((t) => t.name === s.life.trainer?.name)?.bonus ?? 0.2) : 0
-      const xp = sess.xp * (1 + bonus)
+      const xp = (sess.xp / 100) * (0.3 + 1.2 * perf) * (1 + bonus)
       const attrXp = { ...s.hero.attrXp }
       for (const k of sess.focus) {
         let v = (attrXp[k] ?? 0) + xp
@@ -495,7 +500,9 @@ export const mockActions: GameActions = {
     }
     addLog(s, L(`Antrenman: ${sess.name.tr}`, `Training: ${sess.name.en}`), 'career', sess.icon)
     commit(s)
-    return out
+    const total = sess.group === 'recovery' ? 0 : Math.round(sess.xp * (0.3 + 1.2 * perf))
+    const attrXp = sess.focus.map((key) => ({ key, xp: Math.round((total / Math.max(1, sess.focus.length)) * 10) / 10 }))
+    return { ok: true, performance: perf, xp: total, attrXp, deltas: [...(total ? [{ key: 'xp' as const, value: total }] : []), ...out.filter((d) => d.key !== 'xp')], injured: false }
   },
   unlockPerk(perkId) {
     const s = get()
@@ -510,10 +517,11 @@ export const mockActions: GameActions = {
   hireTrainer(offerId) {
     const s = get()
     const o = TRAINERS.find((x) => x.id === offerId)
-    if (!o) return
+    if (!o) return false
     s.life.trainer = { name: o.name, group: o.group, weeklyFee: o.weeklyFee }
     addLog(s, L(`${o.name} özel antrenörün oldu`, `${o.name} is now your personal trainer`), 'career', 'whistle')
     commit(s)
+    return true
   },
   fireTrainer() {
     const s = get()

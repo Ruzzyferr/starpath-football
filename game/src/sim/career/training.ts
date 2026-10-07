@@ -104,8 +104,17 @@ export const qualityFactor = (performance: number): number => 0.3 + 1.2 * clamp(
 /** A tired body learns less: fatigue 0 → 1.0, 100 → 0.6. */
 export const fatigueEfficiency = (fatigue: number): number => 1 - clamp(fatigue, 0, 100) / 250
 
-/** Trainer bonus on attributes in his group. */
+/** Trainer bonus on attributes in his group (legacy default; see {@link trainerBonus}). */
 export const TRAINER_GROUP_BONUS = 0.25
+
+/** XP bonus on the trainer's group by trainer quality (1 = club coach … 3 = elite). */
+export const TRAINER_QUALITY_BONUS: Readonly<Record<1 | 2 | 3, number>> = { 1: 0.15, 2: 0.25, 3: 0.4 }
+
+/** XP bonus a hired trainer gives on his group (0 without a trainer). */
+export function trainerBonus(trainer: Life['trainer']): number {
+  if (!trainer) return 0
+  return TRAINER_QUALITY_BONUS[trainer.quality ?? 2] ?? TRAINER_GROUP_BONUS
+}
 
 export interface TrainingInput {
   type: TrainingType
@@ -134,6 +143,33 @@ export function trainingInjuryChance(hero: Hero, life: Life, type: TrainingType,
 }
 
 /**
+ * Raw XP per attribute a session would grant (before the age multiplier),
+ * with the hero's current fatigue, perks, assets, wellbeing and trainer.
+ * Pure: the UI uses it for previews ("+38 XP at grade A").
+ */
+export function trainingXp(hero: Hero, life: Life, type: TrainingType, performance = AUTO_PERFORMANCE, intensity: TrainingIntensity = 'normal'): Partial<Record<AttributeKey, number>> {
+  const def = TRAINING_TYPES[type]
+  const bonus =
+    perkValue(hero, 'xp_all') + (def.perkKey ? perkValue(hero, def.perkKey) : 0) + assetEffectTotal(life, 'xp_bonus')
+  const total =
+    def.baseXp * qualityFactor(performance) * INTENSITY[intensity].xp * fatigueEfficiency(hero.fatigue) * (1 + bonus) * wellbeingXpMultiplier(life)
+  const wsum = Object.values(def.attrs).reduce((a, b) => a + (b ?? 0), 0)
+  const tb = trainerBonus(life.trainer)
+  const xp: Partial<Record<AttributeKey, number>> = {}
+  for (const k in def.attrs) {
+    const key = k as AttributeKey
+    let v = (total * (def.attrs[key] ?? 0)) / wsum
+    if (life.trainer && life.trainer.group === ATTRIBUTE_GROUP[key]) v *= 1 + tb
+    xp[key] = v
+  }
+  return xp
+}
+
+/** Sum of {@link trainingXp}. */
+export const trainingXpTotal = (hero: Hero, life: Life, type: TrainingType, performance = AUTO_PERFORMANCE, intensity: TrainingIntensity = 'normal'): number =>
+  Object.values(trainingXp(hero, life, type, performance, intensity)).reduce((a, b) => a + (b ?? 0), 0)
+
+/**
  * Run one training session: spends energy, applies fatigue/sharpness/stress,
  * rolls injury, grants XP. Refuses (ok=false) if the hero is injured or lacks
  * energy — the UI should grey the option out using {@link trainingEnergyCost}.
@@ -152,18 +188,7 @@ export function runTraining(rng: Rng, hero: Hero, life: Life, input: TrainingInp
   life.energy = meter(life.energy - energy)
 
   // XP total — computed with the fatigue *before* the session.
-  const bonus =
-    perkValue(hero, 'xp_all') + (def.perkKey ? perkValue(hero, def.perkKey) : 0) + assetEffectTotal(life, 'xp_bonus')
-  const total =
-    def.baseXp * qualityFactor(performance) * im.xp * fatigueEfficiency(hero.fatigue) * (1 + bonus) * wellbeingXpMultiplier(life)
-  const wsum = Object.values(def.attrs).reduce((a, b) => a + (b ?? 0), 0)
-  const xp: Partial<Record<AttributeKey, number>> = {}
-  for (const k in def.attrs) {
-    const key = k as AttributeKey
-    let v = (total * (def.attrs[key] ?? 0)) / wsum
-    if (life.trainer && life.trainer.group === ATTRIBUTE_GROUP[key]) v *= 1 + TRAINER_GROUP_BONUS
-    xp[key] = v
-  }
+  const xp = trainingXp(hero, life, input.type, performance, intensity)
 
   // Body & mind.
   if (def.fatigue >= 0) addFatigue(hero, def.fatigue * im.fatigue)

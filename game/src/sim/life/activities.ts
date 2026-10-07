@@ -6,7 +6,7 @@
  * and the game layer moves `calendar.slot` forward (and calls
  * {@link startDay} when a new day begins).
  */
-import type { AttributeGroup, Calendar, Hero, LText, Life, Position } from '../../core/types'
+import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
 import { absWeek, clamp, fill, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
@@ -49,6 +49,19 @@ export interface ActivityResult {
   /** Hint for the event system: probability to fire a follow-up card. */
   eventChance: number
   slotsUsed: number
+  /** Present for training sessions: what the session gave. */
+  training?: TrainingReport
+}
+
+/** Outcome of a training session (for result screens). */
+export interface TrainingReport {
+  type: TrainingType
+  performance: number
+  /** Raw XP per attribute (before the age multiplier). */
+  xp: Partial<Record<AttributeKey, number>>
+  /** Whole attribute points gained. */
+  gains: Partial<Record<AttributeKey, number>>
+  injured: boolean
 }
 
 /** Absolute day index for cooldowns / hangover tracking. */
@@ -64,10 +77,18 @@ export const lifestyleScale = (money: number): number => 1 + clamp(Math.log10(Ma
 /** Weekly fee for a personal trainer by quality tier. */
 export const TRAINER_FEES: Readonly<Record<1 | 2 | 3, number>> = { 1: 800, 2: 2500, 3: 7000 }
 
-const TRAINER_NAMES: Readonly<Record<1 | 2 | 3, readonly string[]>> = {
+export const TRAINER_NAMES: Readonly<Record<1 | 2 | 3, readonly string[]>> = {
   1: ['Kerem Hoca', 'Coach Dani', 'Selim Usta', 'Coach Mikey'],
   2: ['Dr. Ercan Aksoy', 'Coach Helena Brandt', 'Tolga Sezer', 'Coach Rafael Moura'],
   3: ['Prof. Victor Hale', 'Dr. Leyla Karaca', 'Coach Anders Lund', 'Dr. Matteo Ricci'],
+}
+
+const GROUP_INDEX: Readonly<Record<AttributeGroup, number>> = { physical: 0, technical: 1, mental: 2, goalkeeping: 3 }
+
+/** The trainer on offer for a speciality and tier (the same name the hire uses). */
+export function trainerName(group: AttributeGroup, quality: 1 | 2 | 3): string {
+  const list = TRAINER_NAMES[quality]
+  return list[GROUP_INDEX[group] % list.length]
 }
 
 /** Money delta of an activity (negative = cost). Deterministic. */
@@ -199,6 +220,7 @@ export function performActivity(
   const s0 = life.stress
   const m0 = life.money
   const f0 = hero.fatigue
+  let trainingReport: TrainingReport | undefined
 
   // ── Special handlers ──
   switch (def.special) {
@@ -206,6 +228,7 @@ export function performActivity(
       const type = opts.trainingType ?? def.trainingType ?? 'tactical'
       const r = runTraining(rng, hero, life, { type, performance: opts.performance, intensity: opts.intensity, season: ctx.calendar.season })
       if (!r.ok) return { ok: false, lines: r.lines, triggerTags: [], eventChance: 0, slotsUsed: 0 }
+      trainingReport = { type, performance: Math.max(0, Math.min(1, opts.performance ?? 0.6)), xp: r.xp, gains: r.gains, injured: r.injured }
       lines.push(...r.lines)
       if (r.injured) tags.push('injury')
       if ((opts.performance ?? 0.6) >= 0.8 && ctx.inSeason) changeRelation(life, 'manager', 1, { hero })
@@ -242,8 +265,8 @@ export function performActivity(
     case 'trainer': {
       const q = opts.trainerQuality ?? 1
       const group = opts.trainerGroup ?? 'technical'
-      const name = rng.pick(TRAINER_NAMES[q])
-      life.trainer = { name, group, weeklyFee: TRAINER_FEES[q] }
+      const name = trainerName(group, q)
+      life.trainer = { name, group, weeklyFee: TRAINER_FEES[q], quality: q }
       lines.push(fill(lt('{n} artık özel antrenörün ({f}/hafta).', '{n} is now your personal trainer ({f}/week).'), { n: name, f: fmtMoney(TRAINER_FEES[q]) }))
       break
     }
@@ -298,7 +321,7 @@ export function performActivity(
     { label: lt('Para', 'Money'), v: life.money - m0, money: true },
   ])
   if (summary) lines.push(summary)
-  return { ok: true, lines, triggerTags: tags, eventChance: def.eventChance, slotsUsed: def.slots }
+  return { ok: true, lines, triggerTags: tags, eventChance: def.eventChance, slotsUsed: def.slots, ...(trainingReport ? { training: trainingReport } : {}) }
 }
 
 /** Overnight fatigue recovery (before perks/facilities). */

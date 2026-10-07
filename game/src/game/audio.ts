@@ -199,6 +199,31 @@ export class Sfx {
     n.stop(t + 0.08)
   }
 
+  /** Sets the crowd bed level directly (0 = silent training ground, 1 = full stadium). */
+  ambience(level: number): void {
+    if (!this.ready || !this.crowdGain) return
+    const k = Math.max(0, Math.min(1, level))
+    this.crowdGain.gain.setTargetAtTime(Math.max(0.0001, k * 0.13), this.ctx!.currentTime, 0.2)
+  }
+
+  /** Electronic fitness-test beep (higher pitch on later levels). */
+  beep(level = 1): void {
+    if (!this.ready) return
+    const ctx = this.ctx!
+    const t = ctx.currentTime
+    const o = ctx.createOscillator()
+    o.type = 'square'
+    o.frequency.value = 880 + Math.min(8, Math.max(0, level - 1)) * 40
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.value = 2400
+    const g = ctx.createGain()
+    this.env(g, t, 0.12, 0.005, 0.16)
+    o.connect(lp).connect(g).connect(this.master!)
+    o.start(t)
+    o.stop(t + 0.2)
+  }
+
   /** Light dribble touch / bounce. */
   tap(strength = 0.3): void {
     if (!this.ready) return

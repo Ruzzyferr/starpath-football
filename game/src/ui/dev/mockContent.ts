@@ -200,15 +200,15 @@ export const EVENTS: EventDef[] = [
 
 // ───────────────────────── Training ─────────────────────────
 export const TRAINING: TrainingSessionView[] = [
-  { id: 'finishing_drill', name: L('Bitiricilik', 'Finishing'), desc: L('Ceza sahası içinde tek vuruş.', 'One-touch finishes in the box.'), group: 'technical', icon: 'target', energy: 18, focus: ['finishing', 'composure'], xp: 0.45, injuryRisk: 'safe' },
-  { id: 'passing_rondo', name: L('Rondo', 'Rondo'), desc: L('Dar alanda hızlı pas.', 'Quick passing in tight space.'), group: 'technical', icon: 'ball', energy: 14, focus: ['passing', 'firstTouch', 'vision'], xp: 0.35, injuryRisk: 'safe' },
-  { id: 'dribble_course', name: L('Dripling parkuru', 'Dribble course'), desc: L('Kukalar arası slalom.', 'Slalom through the cones.'), group: 'technical', icon: 'shuffle', energy: 16, focus: ['dribbling', 'agility'], xp: 0.4, injuryRisk: 'low' },
-  { id: 'set_piece', name: L('Duran top', 'Set pieces'), desc: L('Frikik ve korner kalıpları.', 'Free-kick and corner routines.'), group: 'technical', icon: 'flag', energy: 10, focus: ['setPieces', 'crossing'], xp: 0.4, injuryRisk: 'safe' },
-  { id: 'sprints', name: L('Patlayıcı sprint', 'Explosive sprints'), desc: L('10 × 30 m maksimum hız.', '10 × 30 m flat out.'), group: 'physical', icon: 'run', energy: 24, focus: ['pace', 'agility'], xp: 0.35, injuryRisk: 'medium' },
-  { id: 'weights', name: L('Kuvvet', 'Strength'), desc: L('Ağırlık ve plyometri.', 'Weights and plyometrics.'), group: 'physical', icon: 'barbell', energy: 22, focus: ['strength', 'jumping'], xp: 0.35, injuryRisk: 'low' },
-  { id: 'endurance', name: L('Dayanıklılık', 'Endurance'), desc: L('Interval koşuları.', 'Interval runs.'), group: 'physical', icon: 'heartbeat', energy: 26, focus: ['stamina', 'workRate'], xp: 0.35, injuryRisk: 'low' },
-  { id: 'tactics', name: L('Taktik oturumu', 'Tactical session'), desc: L('Pres tetikleyicileri ve koşu yolları.', 'Pressing triggers and runs.'), group: 'tactical', icon: 'tactics', energy: 8, focus: ['positioning', 'vision', 'leadership'], xp: 0.3, injuryRisk: 'safe' },
-  { id: 'recovery', name: L('Toparlanma', 'Recovery'), desc: L('Havuz, esneme, buz banyosu.', 'Pool, stretching, ice bath.'), group: 'recovery', icon: 'bed', energy: -10, focus: [], xp: 0, injuryRisk: 'safe' },
+  { id: 'finishing_drill', name: L('Bitiricilik', 'Finishing'), desc: L('Ceza sahası içinde tek vuruş.', 'One-touch finishes in the box.'), group: 'technical', icon: 'target', energy: 18, focus: ['finishing', 'composure'], xp: 45, xpMax: 68, injuryRisk: 'safe', available: true, drill: { kind: 'finishing', variant: 'standard' } },
+  { id: 'passing_rondo', name: L('Rondo', 'Rondo'), desc: L('Dar alanda hızlı pas.', 'Quick passing in tight space.'), group: 'technical', icon: 'ball', energy: 14, focus: ['passing', 'firstTouch', 'vision'], xp: 35, xpMax: 52, injuryRisk: 'safe', available: true, drill: { kind: 'passing', variant: 'standard' } },
+  { id: 'dribble_course', name: L('Dripling parkuru', 'Dribble course'), desc: L('Kukalar arası slalom.', 'Slalom through the cones.'), group: 'technical', icon: 'shuffle', energy: 16, focus: ['dribbling', 'agility'], xp: 40, xpMax: 60, injuryRisk: 'low', available: true, drill: { kind: 'dribbling', variant: 'standard' } },
+  { id: 'set_piece', name: L('Duran top', 'Set pieces'), desc: L('Frikik ve korner kalıpları.', 'Free-kick and corner routines.'), group: 'technical', icon: 'flag', energy: 10, focus: ['setPieces', 'crossing'], xp: 40, xpMax: 60, injuryRisk: 'safe', available: true, drill: { kind: 'finishing', variant: 'setPiece' } },
+  { id: 'sprints', name: L('Patlayıcı sprint', 'Explosive sprints'), desc: L('10 × 30 m maksimum hız.', '10 × 30 m flat out.'), group: 'physical', icon: 'run', energy: 24, focus: ['pace', 'agility'], xp: 35, xpMax: 52, injuryRisk: 'medium', available: true, drill: { kind: 'fitness', variant: 'standard' } },
+  { id: 'weights', name: L('Kuvvet', 'Strength'), desc: L('Ağırlık ve plyometri.', 'Weights and plyometrics.'), group: 'physical', icon: 'barbell', energy: 22, focus: ['strength', 'jumping'], xp: 35, xpMax: 52, injuryRisk: 'low', available: true, drill: null },
+  { id: 'endurance', name: L('Dayanıklılık', 'Endurance'), desc: L('Interval koşuları.', 'Interval runs.'), group: 'physical', icon: 'heartbeat', energy: 26, focus: ['stamina', 'workRate'], xp: 35, xpMax: 52, injuryRisk: 'low', available: true, drill: { kind: 'fitness', variant: 'standard' } },
+  { id: 'tactics', name: L('Taktik oturumu', 'Tactical session'), desc: L('Pres tetikleyicileri ve koşu yolları.', 'Pressing triggers and runs.'), group: 'tactical', icon: 'tactics', energy: 8, focus: ['positioning', 'vision', 'leadership'], xp: 30, xpMax: 45, injuryRisk: 'safe', available: true, drill: { kind: 'passing', variant: 'standard' } },
+  { id: 'recovery', name: L('Toparlanma', 'Recovery'), desc: L('Havuz, esneme, buz banyosu.', 'Pool, stretching, ice bath.'), group: 'recovery', icon: 'bed', energy: -10, focus: [], xp: 0, xpMax: 0, injuryRisk: 'safe', available: true, drill: null },
 ]
 
 type PerkSeed = Omit<PerkView, 'owned' | 'available'>
@@ -232,10 +232,10 @@ export const PERKS: PerkSeed[] = [
 ]
 
 export const TRAINERS: TrainerOffer[] = [
-  { id: 'tr_finish', name: 'Hakan Tekin', group: 'technical' as AttributeGroup, quality: 4, weeklyFee: 2400, bonus: 0.3 },
-  { id: 'tr_phys', name: 'Marta Ruiz', group: 'physical', quality: 3, weeklyFee: 1500, bonus: 0.2 },
-  { id: 'tr_mind', name: 'Dr. Selin Aksoy', group: 'mental', quality: 5, weeklyFee: 3800, bonus: 0.4 },
-  { id: 'tr_cheap', name: 'Rıfat Usta', group: 'technical', quality: 2, weeklyFee: 600, bonus: 0.1 },
+  { id: 'tr_finish', name: 'Hakan Tekin', group: 'technical' as AttributeGroup, quality: 4, weeklyFee: 2400, bonus: 0.3, current: false, available: true },
+  { id: 'tr_phys', name: 'Marta Ruiz', group: 'physical', quality: 3, weeklyFee: 1500, bonus: 0.2, current: false, available: true },
+  { id: 'tr_mind', name: 'Dr. Selin Aksoy', group: 'mental', quality: 5, weeklyFee: 3800, bonus: 0.4, current: false, available: true },
+  { id: 'tr_cheap', name: 'Rıfat Usta', group: 'technical', quality: 2, weeklyFee: 600, bonus: 0.1, current: false, available: true },
 ]
 
 // ───────────────────────── Assets ─────────────────────────

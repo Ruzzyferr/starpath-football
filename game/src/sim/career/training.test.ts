@@ -1,6 +1,6 @@
 import { Rng } from '../../core/rng'
 import { ASSETS } from '../../data/assets'
-import { INTENSITY, TRAINING_TYPES, qualityFactor, runTraining, trainingEnergyCost, trainingInjuryChance } from './training'
+import { INTENSITY, TRAINER_QUALITY_BONUS, TRAINING_TYPES, qualityFactor, runTraining, trainerBonus, trainingEnergyCost, trainingInjuryChance, trainingXp, trainingXpTotal } from './training'
 import { makeHeroLife } from './testFixtures'
 
 const sumXp = (xp: Partial<Record<string, number>>): number => Object.values(xp).reduce<number>((a, b) => a + (b ?? 0), 0)
@@ -62,6 +62,26 @@ describe('training', () => {
     // ~0.8% × ~1.6 proneness at fatigue ~34 → ≈1.3%
     expect(injuries / N).toBeGreaterThan(0.005)
     expect(injuries / N).toBeLessThan(0.03)
+  })
+
+  it('trainingXp previews exactly what a session grants', () => {
+    const a = makeHeroLife()
+    const preview = trainingXp(a.hero, a.life, 'dribbling', 0.85)
+    const r = runTraining(a.rng, a.hero, a.life, { type: 'dribbling', performance: 0.85, season: 2026 })
+    for (const k of Object.keys(preview)) expect(r.xp[k as keyof typeof r.xp]).toBeCloseTo(preview[k as keyof typeof preview] ?? 0)
+    const b = makeHeroLife()
+    expect(trainingXpTotal(b.hero, b.life, 'dribbling', 1)).toBeGreaterThan(trainingXpTotal(b.hero, b.life, 'dribbling', 0.6))
+  })
+
+  it('trainer quality scales the group bonus (old saves default to tier 2)', () => {
+    expect(trainerBonus(null)).toBe(0)
+    expect(trainerBonus({ name: 'x', group: 'technical', weeklyFee: 1 })).toBe(TRAINER_QUALITY_BONUS[2])
+    expect(TRAINER_QUALITY_BONUS[3]).toBeGreaterThan(TRAINER_QUALITY_BONUS[1])
+    const lo = makeHeroLife()
+    lo.life.trainer = { name: 'a', group: 'technical', weeklyFee: 1, quality: 1 }
+    const hi = makeHeroLife()
+    hi.life.trainer = { name: 'b', group: 'technical', weeklyFee: 1, quality: 3 }
+    expect(trainingXpTotal(hi.hero, hi.life, 'shooting')).toBeGreaterThan(trainingXpTotal(lo.hero, lo.life, 'shooting'))
   })
 
   it('a hired trainer boosts XP in his group', () => {

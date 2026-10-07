@@ -19,6 +19,7 @@ import type {
   SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender,
 } from '../core/types'
 import { currentLang } from '../i18n'
+import type { DrillKind, DrillVariant } from '../game/training/types'
 
 // ───────────────────────── Shared view types ─────────────────────────
 
@@ -132,9 +133,30 @@ export interface TrainingSessionView {
   icon: string
   energy: number
   focus: AttributeKey[]
-  /** Expected XP per focused attribute. */
+  /** Expected total XP for an auto (0.6) session with the hero's current modifiers. */
   xp: number
+  /** Expected total XP for a perfect (1.0) drill. */
+  xpMax: number
   injuryRisk: Risk
+  /** Can be done right now (energy, injury, time of day…). */
+  available: boolean
+  lockedReason?: LText
+  /** Mini-game for this session (null = auto only, e.g. recovery). */
+  drill: { kind: DrillKind; variant: DrillVariant } | null
+}
+/** What a finished training session gave. */
+export interface TrainingOutcomeView {
+  ok: boolean
+  error?: LText
+  /** 0..1 performance used. */
+  performance: number
+  /** Total raw XP gained. */
+  xp: number
+  /** Raw XP per attribute, biggest first. */
+  attrXp: { key: AttributeKey; xp: number }[]
+  /** Stat / attribute changes (energy, fatigue, +1 Shooting…). */
+  deltas: Delta[]
+  injured: boolean
 }
 export interface PerkView {
   id: string
@@ -155,6 +177,10 @@ export interface TrainerOffer {
   quality: number // 1..5
   weeklyFee: number
   bonus: number // fraction, 0.25 = +25% XP
+  /** This exact trainer is already hired. */
+  current: boolean
+  available: boolean
+  lockedReason?: LText
 }
 
 // Club / world --------------------------------------------------------------
@@ -484,9 +510,12 @@ export interface GameActions {
   resolveEvent(index: number, choice: number): EventOutcomeView
 
   // training
-  train(sessionId: string): Delta[]
+  /** Train with a mini-game score (omit = auto 0.6). Returns the stat chips. */
+  train(sessionId: string, performance?: number): Delta[]
+  /** Same as train() with the full outcome (XP gained, per-attribute XP). */
+  trainSession(sessionId: string, performance?: number): TrainingOutcomeView
   unlockPerk(perkId: string): boolean
-  hireTrainer(offerId: string): void
+  hireTrainer(offerId: string): boolean
   fireTrainer(): void
 
   // life

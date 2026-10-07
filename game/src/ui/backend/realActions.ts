@@ -6,7 +6,7 @@
  * `pendingNav`. Time-moving actions schedule a debounced, non-blocking
  * autosave and record the weekly history snapshot.
  */
-import type { AttributeGroup, GameState, LText, RelationKind } from '../../core/types'
+import type { AttributeGroup, AttributeKey, GameState, LText, RelationKind } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
 import { absWeek } from '../../sim/career/common'
 import type { ContractTerms, NegotiationState } from '../../sim/career/contract'
@@ -19,6 +19,7 @@ import {
   type BlackjackOutcome, type BlackjackRound, type Card, type RouletteBetType,
 } from '../../sim/life/casino'
 import { netWorth } from '../../sim/life/economy'
+import type { TrainingReport } from '../../sim/life/activities'
 import { changeRelation } from '../../sim/life/relationships'
 import type { PostType } from '../../sim/life/social'
 import * as G from '../../sim/game'
@@ -28,7 +29,7 @@ import type { AdvanceReport } from '../../sim/game'
 import {
   blackjack, negotiation, pendingNav,
   type BlackjackHandView, type BlackjackView, type CardView, type Delta, type EventOutcomeView, type GameActions, type InteractionKind, type NegotiationView,
-  type OfferTerms, type PostKind, type Rank, type SocialPostView, type Suit,
+  type OfferTerms, type PostKind, type TrainingOutcomeView, type Rank, type SocialPostView, type Suit,
 } from '../store'
 import { eventDeltas, diffSnapshots, snapshot, teamViewOr } from './mapping'
 import { markDone, plannedSlots, doneSlots, setPlanned } from './plan'
@@ -136,7 +137,7 @@ function advanceToMatch(): void {
 
 // ───────────────────────── Activities ─────────────────────────
 
-function runActivity(s: GameState, id: string, fn: () => G.ActionResult): Delta[] {
+function runActivity(s: GameState, id: string, fn: () => G.ActionResult<unknown>): Delta[] {
   const before = snapshot(s)
   const slot = s.calendar.slot
   const day = absDayOf(s)
@@ -377,12 +378,10 @@ export const realActions: GameActions = {
     return out
   },
 
-  train(sessionId) {
-    const s = get()
-    if (!(sessionId in TRAINING_TYPES)) return []
-    const type = sessionId as TrainingType
-    return runActivity(s, `train_${type}`, () => G.train(s, type))
+  train(sessionId, performance) {
+    return trainSession(sessionId, performance).deltas
   },
+  trainSession,
   unlockPerk(perkId) {
     const s = get()
     const r = G.unlockPerk(s, perkId)
@@ -394,7 +393,14 @@ export const realActions: GameActions = {
     const s = get()
     const [group, q] = offerId.split(':')
     const quality = clamp(Number(q) || 1, 1, 3) as 1 | 2 | 3
-    runActivity(s, 'hire_trainer', () => G.hireTrainer(s, group as AttributeGroup, quality))
+    if (!['physical', 'technical', 'mental', 'goalkeeping'].includes(group)) return false
+    let ok = false
+    runActivity(s, 'hire_trainer', () => {
+      const r = G.hireTrainer(s, group as AttributeGroup, quality)
+      ok = r.ok
+      return r
+    })
+    return ok
   },
   fireTrainer() {
     const s = get()
@@ -723,6 +729,34 @@ function bjAct(action: 'hit' | 'stand' | 'double' | 'split'): BlackjackView {
   const v = bjView(s, r.value)
   casinoDone(s)
   return v
+}
+
+/**
+ * One training session with an optional mini-game score. Returns what it gave:
+ * XP (total and per attribute, as granted by the sim), attribute/stat chips.
+ */
+function trainSession(sessionId: string, performance?: number): TrainingOutcomeView {
+  const s = get()
+  const perf = performance === undefined || !Number.isFinite(performance) ? undefined : clamp(performance, 0, 1)
+  const fail = (error: LText): TrainingOutcomeView => ({ ok: false, error, performance: perf ?? 0.6, xp: 0, attrXp: [], deltas: [], injured: false })
+  if (!(sessionId in TRAINING_TYPES)) return fail(L('Bilinmeyen seans.', 'Unknown session.'))
+  if (live.liveActive()) return fail(L('Önce maçını tamamla.', 'Finish your match first.'))
+  const type = sessionId as TrainingType
+  let report: TrainingReport | undefined
+  let error: LText | undefined
+  const deltas = runActivity(s, `train_${type}`, () => {
+    const r = G.train(s, type, perf)
+    report = r.value
+    if (!r.ok) error = r.error
+    return r
+  })
+  if (!report) return fail(error ?? L('Antrenman yapılamadı.', 'Training was not possible.'))
+  const attrXp = (Object.entries(report.xp) as [AttributeKey, number | undefined][])
+    .map(([key, xp]) => ({ key, xp: Math.round((xp ?? 0) * 10) / 10 }))
+    .filter((x) => x.xp > 0)
+    .sort((a, b) => b.xp - a.xp)
+  const xp = Math.round(attrXp.reduce((a, b) => a + b.xp, 0))
+  return { ok: true, performance: report.performance, xp, attrXp, deltas: [{ key: 'xp', value: xp }, ...deltas], injured: report.injured }
 }
 
 /** Re-record this week's snapshot (new investment appears in the charts). */
