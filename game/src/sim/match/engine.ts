@@ -1282,9 +1282,17 @@ export class MatchSim {
       case 'foul_committed':
         return this.emit('commentary', side, this.say('foulCommitted', vars), { playerId: heroId })
       default:
+        // Flag up: the attack dies, the opponents restart with an indirect free kick.
+        if (r.offside) return this.emitHighlightOffside(side, r.offside.playerId, heroId)
         this.emit('commentary', side, this.say('heroLostBall', vars), { playerId: heroId })
         if (this.rng.chance(0.15)) this.openPlayShot(other(side), true)
     }
+  }
+
+  /** Offside flag raised during an interactive moment (runtime reported the player). */
+  private emitHighlightOffside(att: Side, playerId: string, fallbackId: string | null): void {
+    const id = this.lookup.has(playerId) ? playerId : fallbackId
+    this.emit('offside', att, this.say('offside', { ...this.teamVars(att), player: this.name(id) }), id ? { playerId: id } : {})
   }
 
   private validMate(id: string | null | undefined): string | undefined {
@@ -1321,6 +1329,7 @@ export class MatchSim {
     const oppTeam = this.s.teams[opp]
     switch (r.outcome) {
       case 'defended':
+        if (r.offside) return this.emitHighlightOffside(opp, r.offside.playerId, attacker?.id ?? null)
         if (kind === 'defend') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
         oppTeam.shots++
         oppTeam.onTarget++

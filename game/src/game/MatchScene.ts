@@ -90,6 +90,7 @@ const T = {
     foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
+    offside: 'OFFSIDE', offsideFlag: 'FLAG UP!',
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
@@ -97,6 +98,7 @@ const T = {
     foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
+    offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!',
   },
 } as const
 type Strings = { [K in keyof (typeof T)['en']]: string }
@@ -251,6 +253,40 @@ export class MatchScene extends Phaser.Scene {
     this.cam.zoom = this.cam.base * 0.82
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanup())
+    // Dev/e2e: expose the live scene (debugInfo / FPS probes). Stripped from production builds.
+    if (import.meta.env.DEV) (globalThis as { __spScene?: MatchScene }).__spScene = this
+  }
+
+  /**
+   * Dev/e2e probe: key positions in CSS pixels relative to the canvas, plus
+   * the runtime state, so automated tests can aim real input at the goal.
+   */
+  debugInfo() {
+    const canvas = this.game.canvas
+    const r = canvas.getBoundingClientRect()
+    const kx = r.width / Math.max(1, this.scale.width)
+    const ky = r.height / Math.max(1, this.scale.height)
+    const css = (p: { x: number; y: number }) => {
+      const s = this.worldToScreen(p.x, p.y)
+      return { x: r.left + s.x * kx, y: r.top + s.y * ky }
+    }
+    const rt = this.rt
+    return {
+      phase: rt.phase,
+      finished: rt.finished,
+      mode: this.mode,
+      kind: this.data0.highlight.kind,
+      heroOnBall: rt.heroOnBall,
+      heroIsKeeper: rt.heroIsKeeper,
+      timeLeft: rt.timeLeft,
+      goal: css(project(PITCH_LENGTH, GOAL_CENTER_Y, 1)),
+      ownGoal: css(project(0, GOAL_CENTER_Y, 1)),
+      hero: css(project(rt.hero.pos.x, rt.hero.pos.y)),
+      ball: css(project(rt.ball.x, rt.ball.y, rt.ball.z)),
+      canvas: { left: r.left, top: r.top, width: r.width, height: r.height },
+      fps: this.game.loop.actualFps,
+      result: rt.result?.outcome ?? null,
+    }
   }
 
   private cleanup(): void {
@@ -978,6 +1014,16 @@ export class MatchScene extends Phaser.Scene {
         case 'callForBall':
           this.floatText(this.s.call, rt.hero.pos.x, rt.hero.pos.y, '#ffffff', 0.8, 2.8)
           break
+        case 'offside': {
+          const ours = e.team === 'hero'
+          if (ours) this.sfx.groan()
+          else this.sfx.roar(0.4)
+          this.floatText(`⚑ ${this.s.offside}`, e.x, e.y, '#ffd23f', 1.4, 3)
+          this.flash.setFillStyle(0xffd23f, 1).setAlpha(0.28)
+          this.tweens.add({ targets: this.flash, alpha: 0, duration: 380, ease: 'Quad.Out', onComplete: () => this.flash.setFillStyle(0xffffff, 1) })
+          this.vibrate(ours ? 90 : 50, 0.5)
+          break
+        }
         case 'end':
           this.showBanner(e.result)
           break
@@ -990,12 +1036,13 @@ export class MatchScene extends Phaser.Scene {
 
   private showBanner(r: HighlightResult): void {
     const s = this.s
-    const txt = s[r.outcome as keyof Strings] ?? r.outcome
+    const txt = r.offside ? s.offside : (s[r.outcome as keyof Strings] ?? r.outcome)
     const good = GOOD.has(r.outcome)
     this.bannerText.setText(txt).setColor(good ? '#ffd23f' : '#ffffff').setAlpha(1).setScale(0.3)
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
     let sub = ''
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
+    else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && r.outcome !== 'woodwork') this.cameras.main.shake(100, 0.002)

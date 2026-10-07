@@ -106,7 +106,11 @@ export function supportTarget(a: Agent, w: AiWorld, ballX0: number, rng: Rng): V
     const goalDist = Math.abs(attackGoalX(a.team) - carrier.pos.x)
     const pressure = nearestDist(carrier.pos, opp)
     if (goalDist < 50 && pressure > 3.5 && rng.chance(0.35 + a01(a.attrs.positioning) * 0.4)) {
-      const runX = line + dir * (6 + a01(a.attrs.pace) * 6)
+      // Hold the run on the last defender's shoulder so the pass can be played into
+      // the space behind; a poorly-positioned forward sometimes mistimes it and
+      // drifts beyond the line (caught offside if the ball is played then).
+      const mistime = rng.chance(clampN(0.22 - a01(a.attrs.positioning) * 0.18, 0.03, 0.2))
+      const runX = mistime ? line + dir * rng.range(1.2, 4) : line - dir * 0.6
       const laneY = clampN(a.pos.y + (GOAL_CENTER_Y - a.pos.y) * 0.35, 8, PITCH_WIDTH - 8)
       return inField({ x: runX, y: laneY }, 3)
     }

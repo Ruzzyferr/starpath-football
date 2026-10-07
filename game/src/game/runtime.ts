@@ -70,6 +70,7 @@ import {
   type PhysicsEvent,
   type TrajectoryPoint,
 } from './physics'
+import { offsideSnapshot } from './offside'
 import { buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import {
   a01,
@@ -155,6 +156,8 @@ export type RuntimeEvent =
   | { type: 'bullet'; on: boolean }
   | { type: 'out'; x: number; y: number }
   | { type: 'callForBall'; by: string }
+  /** Assistant referee's flag: `by` touched the ball from an offside position. */
+  | { type: 'offside'; by: string; team: Team; x: number; y: number }
   | { type: 'end'; result: HighlightResult; reason: string }
 
 export type Phase = 'intro' | 'live' | 'post' | 'done'
@@ -173,6 +176,8 @@ export const STATE_CODES: readonly AgentState[] = ['run', 'slide', 'dive', 'jump
 const DT = PHYSICS_DT
 const REPLAY_SECONDS = 6
 const SHOT_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['shot', 'chip', 'header', 'penalty', 'freekick'])
+/** Deliveries that can put a team-mate offside (shots/clearances cannot). */
+const PASS_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['pass', 'lofted', 'through', 'cross'])
 
 interface ShotTrack {
   by: Agent
@@ -266,6 +271,8 @@ export class HighlightRuntime {
   private readonly physEvents: PhysicsEvent[] = []
   private lastTouchBefore: Agent | null = null
   private readonly wallIds: Set<string>
+  /** Team-mates of the last passer who were offside when the ball was played. */
+  private offsideSnap: { team: Team; ids: Set<string> } | null = null
 
   constructor(highlight: Highlight, opts: RuntimeOptions = {}) {
     this.highlight = highlight
@@ -822,6 +829,8 @@ export class HighlightRuntime {
 
   private kickBall(by: Agent, plan: KickPlan, kind: KickKind, power: number, passTo: string | null): void {
     if (this.owner && this.owner !== by) return
+    // A first-time touch (volley, header, flick) is the receiver's first involvement.
+    if (this.owner !== by && this.offsideCheck(by)) return
     // First-time finish/flick by a team-mate straight from the hero's delivery completes the pass.
     if (!by.isHero && by.team === 'hero' && this.owner !== by && this.lastTouch?.isHero && this.heroPassTo) {
       this.stats.passesCompleted++
@@ -859,6 +868,13 @@ export class HighlightRuntime {
       else this.stats.passes++
       this.heroPassTo = passTo ? { id: passTo, t: this.time } : SHOT_KINDS.has(kind) ? null : { id: '*', t: this.time }
       this.heroHeaderAim = null
+    }
+
+    // Offside positions are judged at the moment the ball is played (no offside from a corner).
+    this.offsideSnap = null
+    if (PASS_KINDS.has(kind) && wasSetPiece?.kind !== 'corner' && (by.team === 'hero' || this.defending)) {
+      const ids = offsideSnapshot(this.agents, this.ball.x, by)
+      if (ids.size) this.offsideSnap = { team: by.team, ids }
     }
 
     if (SHOT_KINDS.has(kind)) {
@@ -1462,6 +1478,7 @@ export class HighlightRuntime {
   }
 
   private block(a: Agent): void {
+    if (this.offsideCheck(a)) return
     const b = this.ball
     const sp = Math.hypot(b.vx, b.vy)
     const ang = Math.atan2(-b.vy, -b.vx) + this.rng.range(-1.1, 1.1)
@@ -1511,6 +1528,7 @@ export class HighlightRuntime {
     const limit = 9.5 + a01(a.attrs.firstTouch) * 9 + (a.isHero && this.assist === 'full' ? 3 : 0)
     // Hero slide tackle on a loose ball.
     if (a.isHero && a.state === 'slide') {
+      if (this.offsideCheck(a)) return
       this.heroTackleResolved = true
       b.vx = a.actionDir.x * 8
       b.vy = a.actionDir.y * 8
@@ -1533,6 +1551,7 @@ export class HighlightRuntime {
         return
       }
     }
+    if (this.offsideCheck(a)) return
     if (rel < limit) {
       this.setOwner(a)
       return
@@ -1548,6 +1567,7 @@ export class HighlightRuntime {
   }
 
   private keeperContact(k: Agent, speed: number): void {
+    if (this.offsideCheck(k)) return
     const b = this.ball
     const bp = { x: b.x, y: b.y }
     let stretch = 0.15
@@ -1585,6 +1605,34 @@ export class HighlightRuntime {
       if (this.shot) this.shot.parried = true
       this.events.push({ type: 'save', by: k.id, held: false, x: b.x, y: b.y, z: b.z })
     }
+  }
+
+  // ───────────────────────── Offside ─────────────────────────
+
+  /**
+   * Called on every touch of a loose ball. The first touch after a pass
+   * settles the offside snapshot: if the toucher was offside when the ball was
+   * played the flag goes up (returns true, play is dead); otherwise the
+   * snapshot is cleared.
+   */
+  private offsideCheck(a: Agent): boolean {
+    const snap = this.offsideSnap
+    if (!snap) return false
+    this.offsideSnap = null
+    if (!snap.ids.has(a.id) || this.phase !== 'live') return false
+    const b = this.ball
+    this.events.push({ type: 'offside', by: a.id, team: snap.team, x: a.pos.x, y: a.pos.y })
+    // Play stops: the receiver checks the ball, everyone eases off.
+    b.vx *= 0.25
+    b.vy *= 0.25
+    b.vz = Math.min(b.vz, 0)
+    a.noTouch = 1
+    this.heroPassTo = null
+    this.assistChain = null
+    const offside = { playerId: a.id, byHero: a.isHero }
+    if (snap.team === 'hero') this.finish('lost_ball', 'offside', { offside })
+    else this.finish('defended', 'opponent offside', { offside })
+    return true
   }
 
   // ───────────────────────── Duels ─────────────────────────

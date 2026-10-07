@@ -56,6 +56,10 @@ function kindAdjustment(kind: HighlightKind, outcome: HighlightResult['outcome']
  */
 export function highlightRatingDelta(kind: HighlightKind, r: HighlightResult): number {
   let d = OUTCOME_DELTA[r.outcome] + kindAdjustment(kind, r.outcome)
+  // Offside: a team-mate's mistimed run is mostly not the hero's fault; an
+  // opponent flagged offside in a defensive moment is not really a hero stop.
+  if (r.offside && r.outcome === 'lost_ball' && !r.offside.byHero) d += 0.15
+  if (r.offside && r.outcome === 'defended') d -= 0.2
   const failedPasses = Math.max(0, r.passes - r.passesCompleted)
   d += r.passesCompleted * 0.03 - failedPasses * 0.05
   d += r.tackles * 0.08 + r.dribbles * 0.04

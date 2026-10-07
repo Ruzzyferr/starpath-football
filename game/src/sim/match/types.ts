@@ -155,6 +155,12 @@ export interface HighlightResult {
   /** Optional booking for the hero (rash tackle). */
   card?: 'yellow' | 'red'
   injured?: boolean
+  /**
+   * Set when the moment ended on an offside flag: the player who touched the
+   * ball from an offside position (hero's team → outcome 'lost_ball',
+   * opponents in a defensive moment → 'defended').
+   */
+  offside?: { playerId: string; byHero: boolean }
 }
 
 export interface HeroMatchStats {
