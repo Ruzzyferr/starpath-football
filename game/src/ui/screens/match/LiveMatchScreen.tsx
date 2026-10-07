@@ -149,6 +149,7 @@ export function LiveMatchScreen() {
   const hs = m.heroStats
   const passPct = hs.passes ? Math.round((hs.passesCompleted / hs.passes) * 100) : 0
   const feed = [...m.events].reverse()
+  const keyEvent = feed.find((e) => e.type === 'goal' || e.type === 'red')
   const moment = m.pendingMoment
   const kindLabel = moment ? tx(`match.kind.${moment.kind}`, undefined, moment.kind) : ''
 
@@ -197,9 +198,13 @@ export function LiveMatchScreen() {
           />
         </section>
 
+        {/* Assertive announcement for the events that change the match: goals and red cards. */}
+        <div class="sr-only" role="alert" aria-live="assertive" aria-atomic="true" data-testid="lm-announce">
+          {keyEvent ? `${keyEvent.minute}' ${keyEvent.score[0]}–${keyEvent.score[1]} ${keyEvent.text}` : ''}
+        </div>
         <section class="lm-feed-wrap" aria-label={t('match.live.feed')}>
           <h2 class="micro t-mid lm-feed-title">{t('match.live.feed')}</h2>
-          <ol class="lm-feed" aria-live="polite" aria-relevant="additions">
+          <ol class="lm-feed" role="log" aria-live="polite" aria-relevant="additions">
             {feed.length === 0 && <li class="lm-ev lm-ev-empty t-lo">{t('match.live.noEvents')}</li>}
             {feed.map((e, i) => <FeedItem key={`${e.minute}-${e.type}-${feed.length - i}`} e={e} home={home} away={away} />)}
           </ol>
@@ -237,7 +242,7 @@ export function LiveMatchScreen() {
       </footer>
 
       {moment && !m.momentActive && (
-        <div class="lm-moment" role="alertdialog" aria-labelledby="lm-moment-title" aria-describedby="lm-moment-prompt">
+        <div class="lm-moment" role="alertdialog" aria-modal="true" aria-labelledby="lm-moment-title" aria-describedby="lm-moment-prompt">
           <div class="lm-moment-card">
             <div class="lm-moment-head">
               <span class="lm-moment-icon"><Icon name={MOMENT_ICON[moment.kind] ?? 'star'} size={26} /></span>

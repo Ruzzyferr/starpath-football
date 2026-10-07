@@ -35,7 +35,7 @@ export function ToastHost() {
   return (
     <div class="toast-host" aria-live="polite" aria-atomic="false">
       {toasts.value.map((x) => (
-        <div key={x.id} class={`toast toast-${x.kind}`} role="status">
+        <div key={x.id} class={`toast toast-${x.kind}`} aria-live={x.kind === 'error' ? 'assertive' : undefined} role={x.kind === 'error' ? 'alert' : 'status'}>
           <span class="toast-icon"><Icon name={x.icon ?? ICONS[x.kind]} size={18} /></span>
           <span class="grow">{x.text}</span>
           <button type="button" class="toast-close" onClick={() => dismiss(x.id)} aria-label={t('ui.toastClose')}>
