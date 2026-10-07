@@ -253,6 +253,8 @@
 }
 .statbar-sm .statbar-track { height: 5px; }
 .statbar-lg .statbar-track { height: 12px; }
+.statbar-flash { font-weight: 700; }
+.statbar-tier { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 3px; border-radius: 4px; font-size: 10px; font-weight: 800; line-height: 1; color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); }
 .statbar-fill,
 .statbar-preview,
 .statbar-xp {
@@ -280,6 +282,11 @@
 .meter-ring { display: inline-flex; flex-direction: column; align-items: center; gap: 6px; }
 .meter-ring-dial { position: relative; }
 .meter-ring-arc { transition: stroke-dashoffset var(--dur-count) var(--ease-out); }
+.meter-ring-low { position: absolute; top: -2px; right: -2px; display: grid; place-items: center; width: 20px; height: 20px; border-radius: 50%; background: var(--state-danger); color: var(--text-hi); border: 2px solid var(--surface-1); }
+.meter-ring.is-low .meter-ring-dial { animation: ring-low 1.6s ease-in-out infinite; border-radius: 50%; }
+@keyframes ring-low { 0%, 100% { box-shadow: 0 0 0 0 transparent; } 50% { box-shadow: 0 0 0 4px color-mix(in srgb, var(--state-danger) 35%, transparent); } }
+:root[data-motion='reduced'] .meter-ring.is-low .meter-ring-dial { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--state-danger) 35%, transparent); }
+@media (prefers-reduced-motion: reduce) { .meter-ring.is-low .meter-ring-dial { animation: none; box-shadow: 0 0 0 3px color-mix(in srgb, var(--state-danger) 35%, transparent); } }
 .meter-ring-center { position: absolute; inset: 0; display: grid; place-items: center; }
 .meter-ring-label { text-align: center; }
 
@@ -545,7 +552,9 @@
 .toast-error .toast-icon { background: color-mix(in srgb, var(--neg) 15%, transparent); color: var(--neg); }
 .toast-reward { border-color: rgba(255, 200, 61, 0.5); }
 .toast-reward .toast-icon { background: rgba(255, 200, 61, 0.15); color: var(--accent-gold); }
-.toast-close { width: 36px; height: 36px; display: grid; place-items: center; color: var(--text-lo); border-radius: 10px; flex: none; }
+.toast-action { min-height: 44px; padding: 0 14px; border-radius: 10px; font-weight: 700; color: var(--accent-blue); background: color-mix(in srgb, var(--accent-blue) 14%, transparent); flex: none; }
+.toast-action:hover { background: color-mix(in srgb, var(--accent-blue) 24%, transparent); }
+.toast-close { width: 44px; height: 44px; display: grid; place-items: center; color: var(--text-lo); border-radius: 10px; flex: none; }
 @media (min-width: 900px) {
   .toast-host { left: auto; right: 24px; top: 20px; align-items: flex-end; }
 }

@@ -139,7 +139,7 @@ Kanıt yolları `game/src/` köküne göredir; 2.9, 2.10, 2.12 satırlarında `g
 | 2.4#65, #90 | TAMAM | sim/life/casino.ts:916,992 | Tek ziyaret manşet değil, yardım hattı |
 | 2.4#101, #111, #112 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.5#90 | TAMAM | ui/screens/SettingsScreen.tsx:120 | Kumarhaneyi gizle |
-| 2.5#105 | KISMİ | docs/PLATFORM.md:148 | Yalnızca kontrol listesi |
+| 2.5#105 | KISMİ | docs/PLATFORM.md:148 | Ertelendi: monetizasyon: store-iap ajanı |
 | 2.5#112-#114 | TAMAM | store-iap/entitlements.ts:46, catalog.ts:12, capacitorProvider.ts:38 | Deneme kilidi, kozmetikler, satın alma/geri yükleme |
 | 2.5#119, #120 | KISMİ | ui/screens/store/PurchasesPanel.tsx:20, StoreScreen.tsx:8 | Satın alma geçmişi ve mağaza varlıkları eksik |
 | 2.6#17, #32, #46, #55 | TAMAM | sim/world/quickSim.test.ts:21, ClubScreen.tsx:112, season.test.ts:211, gender.test.ts:30 | Testler, forma numarası |
@@ -337,97 +337,97 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.4#1 | TAMAM | sim/life/relationships.ts:125 | Her takım arkadaşı ayrı −100..100 |
-| 2.4#2 | KISMİ | sim/life/relationships.ts:12 | 5 anı tutuluyor; UI yalnızca sonuncuyu gösteriyor |
-| 2.4#3 | KISMİ | sim/life/relationships.ts:176 | Bantlar farklı; bant etkisi yazılmıyor |
-| 2.4#4 | KISMİ | sim/life/relationships.ts:77 | Sönüm sabit; %2 ve tavan kuralı yok |
+| 2.4#2 | TAMAM | ui/screens/life/Relations.tsx (rel-memories) | Kart son 5 anıyı listeler |
+| 2.4#3 | KISMİ | sim/life/relationships.ts:176 | Ertelendi: bant etkisi şimdilik yalnızca pas faktörü ve etiket; bant açıklama metni UI işi |
+| 2.4#4 | KISMİ | sim/life/relationships.ts:77 | Ertelendi: sönüm sabit/hafta ayarlı; %2 oranına geçiş denge ve golden değişikliği gerektirir, BALANCE turu ile v1.1 |
 | 2.4#5 | TAMAM | sim/life/relationLedger.test.ts; relationships.ts:47 | WP-sweep: ilişki değişim defteri (son 10, ardışık sönüm birleşir) |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
-| 2.4#7 | EKSİK | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL değişikliği gerekir |
-| 2.4#11 | KISMİ | ui/screens/life/Relations.tsx:24 | Hızlı aksiyon var; 3 seçenekli sahne yok |
-| 2.4#14 | KISMİ | sim/career/createHero.ts:208 | Aile yapısı sabit |
+| 2.4#7 | EKSİK | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL yeniden yazımı gerekir (v2) |
+| 2.4#11 | KISMİ | ui/screens/life/Relations.tsx:24 | Ertelendi: 3 seçenekli sahne yeni içerik ve UI akışı; v2 |
+| 2.4#14 | KISMİ | sim/career/createHero.ts:208 | Ertelendi: başlangıç ailesi çeşitliliği createHero + hikâye şablonları + UI metni; v2 |
 | 2.4#15 | TAMAM | sim/life/relationships.ts:189 | Yakın çevre etkisi tavanlı |
 | 2.4#23 | TAMAM | sim/life/wellbeing.ts:67 | Partner yokluğu ceza vermiyor |
-| 2.4#24 | KISMİ | sim/life/events/dsl.ts:142 | Partner tercih ayarı yok |
-| 2.4#25 | KISMİ | sim/life/events/content/romance.ts:409 | TD −6, −5 tavanını aşıyor |
-| 2.4#36 | KISMİ | game/ai.ts:338 | İlişki pası etkiliyor; ikon ve rapor yok |
-| 2.4#37 | EKSİK | - | Ertelendi: Sosyal ekranı (WP-15 dosya listesi dışı) |
-| 2.4#46 | KISMİ | sim/career/squadRole.ts:109 | Kadro kararında form etkisi zayıf |
-| 2.4#47 | EKSİK | - | Ertelendi: WP-16 (TD beklentisi, 2.7#71) ile birlikte yapılacak |
-| 2.4#52 | KISMİ | sim/life/events/content/teammates.ts:92 | Penaltıcı olay kartı var; maç içi seçim yok |
-| 2.4#53 | KISMİ | sim/life/events/content/teammates.ts:128 | Kaptanlık zinciri var; sezon başı oylama yok |
+| 2.4#24 | KISMİ | sim/life/events/dsl.ts:142 | Ertelendi: partner tercihi Ayarlar ekranı gerektirir (UI ajanı sahibi) |
+| 2.4#25 | TAMAM | sim/life/events/content/romance.ts:415 | TD etkisi −4 (tavan −5) |
+| 2.4#36 | KISMİ | game/ai.ts:338 | Ertelendi: maç içi ikon sim/match ve match UI (başka ajanın alanı) |
+| 2.4#37 | EKSİK | - | Ertelendi: Sosyal ekranı yakın arkadaş listesi; v2 |
+| 2.4#46 | TAMAM | sim/career/squadRole.ts formTerm/ratingTerm/trustTerm; life/sweep2.test.ts | Form+reyting %75, güven/ilişki en çok %25 |
+| 2.4#47 | EKSİK | - | Ertelendi: TD beklenti sistemi 2.7#71 ile birlikte (UI ajanı) |
+| 2.4#52 | KISMİ | sim/life/events/content/teammates.ts:92 | Ertelendi: maç içi penaltı seçimi match motoru (başka ajanın alanı) |
+| 2.4#53 | KISMİ | sim/life/events/content/teammates.ts:128 | Ertelendi: sezon başı oylama yeni akış + UI; v2 |
 | 2.4#60 | TAMAM | sim/game/interview.ts:296 IV_CAP; interview3.test.ts:95 | Oturum başı fans/itibar tavanı |
-| 2.4#61 | KISMİ | sim/game/interview.ts:14 | Tek soru ve 4 ton; 3 soru ve tuzak yok |
+| 2.4#61 | TAMAM | sim/game/interview.ts (3 soru, 5 ton + joke, trap); interview3.test.ts | Mini oyun tam |
 | 2.4#65 | TAMAM | sim/life/casino.ts:903 casinoHeadlineWorthy; casinoRg.test.ts:28 | Tek ziyaret manşet olmaz, örüntü olur |
 | 2.4#69 | TAMAM | sim/life/social.ts:153 SPAM_DECAY (haftalık paylaşım sayacı) | Haftada tekrar eden paylaşımın getirisi üstel düşer |
-| 2.4#70 | KISMİ | sim/life/social.ts:24 | 2 paylaşım tipi eksik |
-| 2.4#79 | EKSİK | - | Ertelendi: içerik işi (olay + ilişki grubu), WP-15 kapsamı dışı |
+| 2.4#70 | TAMAM | sim/life/social.ts POST_TYPES.thanks/rival; Social.tsx | Taraftara teşekkür ve rakibe gönderme eklendi |
+| 2.4#79 | EKSİK | - | Ertelendi: taraftar grupları içerik + ilişki grubu; v2 |
 | 2.4#84 | TAMAM | sim/life/events/content/casino.ts:51 | Reddetmek yalnız stres; ceza yok |
 | 2.4#85 | TAMAM | sim/life/sponsors.ts (ScandalLevel 1-4) | WP-15: seviye 4 tüm sponsorları bitirir |
 | 2.4#90 | TAMAM | sim/life/events/content/health.ts:health.burnout + casino.ts HELPLINE_MESSAGE | Destek hattı bilgisi metinde |
-| 2.4#98 | KISMİ | sim/life/events/content/friends.ts:10 | Zincir 2 adım (plan 4) |
-| 2.4#99 | KISMİ | sim/life/events/content/teammates.ts:92 | Bağlı 4 adımlı zincir yok |
-| 2.4#100 | KISMİ | sim/life/events/content/nightlife.ts:47 | Paparazzi var; görev yok |
+| 2.4#98 | TAMAM | sim/life/events/content/friends.ts debt_trouble>aftermath>debt_press>debt_reunion | 4 adımlı zincir |
+| 2.4#99 | KISMİ | sim/life/events/content/teammates.ts:92 | Ertelendi: penaltı zinciri maç içi kanca gerektirir (match motoru, başka ajan) |
+| 2.4#100 | KISMİ | sim/life/events/content/nightlife.ts:47 | Ertelendi: paparazzi görevi yeni mini görev UI; v2 |
 | 2.4#101 | TAMAM | sim/life/events/content/abroad.ts friends.abroad_lonely/homesick/language/settled | Yurt dışı zinciri var |
 | 2.4#102 | TAMAM | sim/life/events/content/casino.ts:23 | Bahis çetesi zinciri tam |
-| 2.4#110 | KISMİ | sim/life/events/types.ts:150 | TS şeması var; Zod yok |
-| 2.4#111 | KISMİ | sim/life/events/types.ts:13 | ~199 olay; hukuk, dolandırıcılık ve iş kategorileri eksik |
-| 2.4#112 | KISMİ | sim/life/events/engine.ts:360 | "Kariyerde en fazla 2" kuralı yok |
-| 2.4#113 | KISMİ | ui/screens/EventModal.tsx:78 | Risk rozeti var; tam şeffaflık ayarı yok |
-| 2.4#114 | KISMİ | sim/life/events/types.ts:118 | Sistematik geçmiş hatırlatma yok |
-| 2.4#118 | KISMİ | sim/life/events/engine.ts:180 | `{g:}` var; ICU select yok |
+| 2.4#110 | KISMİ | sim/life/events/types.ts:150 | Ertelendi: Zod yeni bağımlılık; TS şeması + content.test.ts doğrulaması yeterli, v2 |
+| 2.4#111 | TAMAM | sim/life/events/content/ (257 olay; legal, scam, business dahil) | v1 hedefi aşıldı |
+| 2.4#112 | KISMİ | sim/life/events/engine.ts:360 | Ertelendi: varsayılan 2 sınırı zincir ve ardışık olayları sessizleştirir; olay bazlı maxPerCareer ile yönetiliyor, v2 |
+| 2.4#113 | KISMİ | ui/screens/EventModal.tsx:78 | Ertelendi: şeffaflık ayarı Ayarlar ekranı (UI ajanı) |
+| 2.4#114 | KISMİ | sim/life/events/types.ts:118 | Ertelendi: geçmiş hatırlatma tüm gecikmeli olay metinlerinin yeniden yazımı; v2 |
+| 2.4#118 | KISMİ | sim/life/events/engine.ts:180 | Ertelendi: ICU select i18n altyapı değişikliği; mevcut {g:} kalıbı çalışıyor, v2 |
 
 ### 2.5 Ekonomi, Lüks, Yatırım, Kumarhane, Monetizasyon
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.5#1 | KISMİ | sim/career/contract.ts:5 | Haftalık ölçek var; para birimi € |
-| 2.5#2 | KISMİ | sim/life/events/engine.ts:83 | Simgesiz fiyat lint kuralı yok |
-| 2.5#3 | KISMİ | sim/career/matchOutcome.ts:196 | Kazanç dökümü ekranı yok |
+| 2.5#1 | KISMİ | sim/career/contract.ts:5 | Ertelendi: kurgusal para birimi simge/biçim Ayarlar (UI ajanı) |
+| 2.5#2 | KISMİ | sim/life/events/engine.ts:83 | Ertelendi: simgesiz fiyat lint kuralı UI lint altyapısı (UI ajanı) |
+| 2.5#3 | KISMİ | sim/career/matchOutcome.ts:196 | Ertelendi: kazanç dökümü ekranı Kariyer/Finans UI (UI ajanı); veri hazır: EconomyBreakdown |
 | 2.5#4 | TAMAM | sim/career/matchPay.ts:matchBonuses cleanSheet | Kaleci temiz kasa primi |
 | 2.5#5 | TAMAM | sim/game/season.ts:paySeasonEndBonuses | Kupa başına 4 haftalık takım primi |
-| 2.5#8 | KISMİ | sim/life/economy.ts:22 | Sabit %35 vergi; ülkeye göre değil |
-| 2.5#10 | KISMİ | sim/life/economy.ts:362 | Komisyon yalnızca maaştan |
-| 2.5#11 | EKSİK | core/types.ts:416 | Personel sözleşmesinde bitiş tarihi yok |
-| 2.5#15 | KISMİ | sim/game/balanceSim.ts:76 | Temel yaşam gideri yok |
+| 2.5#8 | TAMAM | sim/life/economy.ts COUNTRY_TAX/incomeTaxRate; sweep2.test.ts | Kulüp ülkesine göre %27–40 vergi |
+| 2.5#10 | TAMAM | sim/life/economy.ts agentFee (maaş+sponsor); matchPay.ts | Komisyon sponsor gelirinden de kesilir |
+| 2.5#11 | TAMAM | sim/life/economy.ts tickTrainerContract; sweep2.test.ts | Antrenör sözleşmesi 44 hafta, 4 hafta kala uyarı, bitince ayrılır (UI çubuğu: TrainingScreen, UI ajanı) |
+| 2.5#15 | KISMİ | sim/game/balanceSim.ts:76 | Ertelendi: temel yaşam gideri denge değişikliği, BALANCE turu gerektirir; v1.1 |
 | 2.5#16 | TAMAM | data/activities.ts energy_drink; activities.test.ts | Enerji içeceği aktivitesi (hızlı enerji, yorgunluk bedeli) |
 | 2.5#17 | TAMAM | data/activities.ts:2 | Günde 3 dilim |
-| 2.5#18 | KISMİ | sim/life/activities.ts:337 | Ev kalitesine bağlı enerji yok |
-| 2.5#19 | KISMİ | data/activities.ts | Enflasyon ayarı yok |
+| 2.5#18 | KISMİ | sim/life/activities.ts:337 | Ertelendi: uyku %70–100 ev kalitesi tüm erken kariyerlere ceza olur; denge turu gerektirir (sleep varlık bonusu mevcut) |
+| 2.5#19 | TAMAM | data/activities.ts, data/assets.ts | Fiyatlar sabit tasarım gereği; enflasyon yok |
 | 2.5#22 | TAMAM | data/assets.ts:143 | Para ile hızlandırma satılmıyor |
 | 2.5#23 | TAMAM | sim/life/economy.ts:124 | Gider varlık bakımından |
-| 2.5#24 | KISMİ | sim/career/wp15.test.ts | WP-15: eşya bakım/fiyat oranı testi; tam harcama eğrisi ertelendi |
-| 2.5#29 | KISMİ | data/assets.ts | Late-game para yutucuları eksik |
+| 2.5#24 | KISMİ | sim/career/wp15.test.ts | Ertelendi: tam harcama eğrisi telemetri ile; v1.1 denge turu |
+| 2.5#29 | KISMİ | data/assets.ts | Ertelendi: geç oyun para yutucuları yeni içerik; v2 |
 | 2.5#42 | TAMAM | sim/game/internal.ts:93 | Piyasa kayıtlı RNG ile |
 | 2.5#53 | TAMAM | sim/life/business.ts (businessRevenueCap) | WP-15: haftalık gelir 3x tavan |
-| 2.5#54 | KISMİ | sim/life/sponsors.ts:16 | 4 sponsor kategorisi eksik |
-| 2.5#55 | KISMİ | core/types.ts:365 | Performans bonusu yok |
-| 2.5#60 | KISMİ | sim/life/sponsors.ts:68 | Formül farklı |
+| 2.5#54 | TAMAM | sim/life/sponsors.ts (10 kategori, 6 anlaşma tavanı); sponsors.test.ts | 4 yeni kategori |
+| 2.5#55 | KISMİ | core/types.ts:365 | Ertelendi: performans bonusu şablonu sözleşme UI; v2 |
+| 2.5#60 | KISMİ | sim/life/sponsors.ts:68 | Ertelendi: sponsor formülü (rep+takipçi) denge testli; plan formülüne geçiş v1.1 |
 | 2.5#62 | TAMAM | sim/life/sponsors.ts:16 | Bahis sponsoru yok |
-| 2.5#63 | KISMİ | data/assets.ts:30 | 85 eşyanın 57'sinde özel etki |
-| 2.5#64 | KISMİ | data/assets.ts | Kategori dağılımı farklı |
-| 2.5#71 | EKSİK | - | Ertelendi: resaleValue amortismanı var; ayrı yıpranma modeli denge riski |
+| 2.5#63 | KISMİ | data/assets.ts:30 | Ertelendi: katalog özel etkileri içerik işi; v2 |
+| 2.5#64 | KISMİ | data/assets.ts | Ertelendi: kategori dağılımı içerik işi; v2 |
+| 2.5#71 | EKSİK | - | Ertelendi: ayrı yıpranma modeli denge riski; v2 |
 | 2.5#80 | TAMAM | ui/screens/life/Assets.tsx | WP-15: satın alma onayında "net maaşın ~N haftası" |
-| 2.5#84 | EKSİK | - | Ertelendi: yeni içerik (at sahipliği), kapsam dışı |
+| 2.5#84 | EKSİK | - | Ertelendi: at sahipliği yeni içerik; v2 |
 | 2.5#89 | TAMAM | - | Fiş/IAP satışı yok |
-| 2.5#90 | EKSİK | ui/screens/SettingsScreen.tsx | Kumarhaneyi kapatma ayarı yok |
+| 2.5#90 | EKSİK | ui/screens/SettingsScreen.tsx | Ertelendi: Ayarlar öğesi (UI ajanı) |
 | 2.5#91 | TAMAM | ui/backend/casinoView.ts:47 | 18 yaş kilidi |
-| 2.5#92 | KISMİ | sim/life/casino.ts:513 | RTP testi var; 10M spin yok |
-| 2.5#99 | KISMİ | sim/life/casino.ts:772 | Bağımlılık göstergesi var; sızıntı kuralı yok |
-| 2.5#102 | KISMİ | sim/life/events/content/casino.ts:301 | Men süreleri plandan farklı |
+| 2.5#92 | KISMİ | sim/life/casino.ts:513 | Ertelendi: 200k spin testi CI süresi için yeterli; 10M yerel betik olarak v1.1 |
+| 2.5#99 | KISMİ | sim/life/casino.ts:772 | Ertelendi: sızıntı kuralı casino.ts bağımlılık modeli ayarı, v1.1 |
+| 2.5#102 | KISMİ | sim/life/events/content/casino.ts:301 | Ertelendi: men süreleri olay içeriği ve denge; v1.1 |
 | 2.5#103 | TAMAM | sim/life/events/content/casino.ts:51 | Sessiz ret cezasız |
 | 2.5#105 | EKSİK | - | Mağaza beyanı yok |
 | 2.5#109 | TAMAM | sim/life/economy.ts lowCashRisk/lowCashWarning; economy.test.ts | Zorunlu satıştan önce 4 haftada bir uyarı |
-| 2.5#112 | EKSİK | - | Deneme / tam sürüm kilidi yok |
-| 2.5#113 | EKSİK | - | Kozmetik IAP yok |
-| 2.5#114 | EKSİK | - | Satın alma ve geri yükleme yok |
+| 2.5#112 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
+| 2.5#113 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
+| 2.5#114 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
 | 2.5#115 | TAMAM | - | Kariyer parası satılmıyor |
 | 2.5#116 | TAMAM | - | Reklam yok |
-| 2.5#117 | EKSİK | - | Makbuz doğrulama yok |
+| 2.5#117 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
 | 2.5#118 | TAMAM | - | Ödüllü yorum istemi yok |
-| 2.5#119 | EKSİK | - | Satın alma geçmişi yok |
-| 2.5#120 | EKSİK | - | Mağaza sayfası yok |
+| 2.5#119 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
+| 2.5#120 | EKSİK | - | Ertelendi: monetizasyon: store-iap ajanı |
 | 2.5#122 | TAMAM | - | Karanlık örüntü yok |
-| 2.5#125 | KISMİ | sim/game/balanceSim.ts:29 | Bot harness var; CI raporu yok |
+| 2.5#125 | KISMİ | sim/game/balanceSim.ts:29 | Ertelendi: CI raporu CI altyapısı (dış hizmet) |
 | 2.5#126 | TAMAM | sim/career/wp15.test.ts | WP-15: 20 tohum x 5 sezon ekonomi değişmezleri |
 
 ### 2.6 Dünya, Ligler, Kupalar, NPC'ler, Milli Takımlar, Veri
@@ -509,28 +509,28 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#39 | KISMİ | ui/components/Button.tsx:25 | Danger varyantı var |
 | 2.7#40 | KISMİ | ui/components/PlayerCard.tsx:31 | Oyuncu kartı var |
 | 2.7#42 | KISMİ | ui/components/Chip.tsx:10 | İkon zorunlu değil |
-| 2.7#43 | KISMİ | ui/components/MeterRing.tsx:19 | Düşük değer uyarısı yok |
-| 2.7#44 | KISMİ | ui/components/StatBar.tsx:34 | ▲▼ gösterimi yok |
-| 2.7#48 | EKSİK | - | "Geri al" toast'u yok |
+| 2.7#43 | TAMAM | ui/components/MeterRing.tsx lowAt, styles/components.css .meter-ring-low | %20 altında uyarı rozeti, nabız (reduced motion saygılı) ve ekran okuyucu metni |
+| 2.7#44 | TAMAM | ui/components/StatBar.tsx | Önizleme ve 3 sn'lik değişim "+3 ▲ / −1 ▼" |
+| 2.7#48 | KISMİ | ui/components/Toast.tsx toastUndo, PlannerScreen.tsx, e2e/wp27.spec.ts | 6 sn Geri al toast'u var, plan silmede kullanılıyor. Satış/eşya atma geri alma ertelendi: sim tarafında geri alma API'si yok (life/** başka ajanda) |
 | 2.7#50 | KISMİ | ui/components/Controls.tsx:7 | ± butonları yok |
 | 2.7#55 | KISMİ | ui/screens/career/Radar.tsx:2 | Önceki sezon çizgisi yok |
 | 2.7#56 | KISMİ | ui/components/Charts.tsx:68 | Sparkline dokunulamıyor |
 | 2.7#59 | KISMİ | ui/screens/life/Bank.tsx:86 | Gelir/gider halka grafiği yok |
 | 2.7#60 | TAMAM | ui/components/LeagueTable.tsx:14 | Bölge şeritleri ve vurgu var |
-| 2.7#63 | KISMİ | ui/format.ts:119 | Renk körü modunda kademe numarası yok |
+| 2.7#63 | TAMAM | ui/components/StatBar.tsx statbar-tier | Renk körü modunda kademe numarası (1-6) |
 | 2.7#66 | KISMİ | game/MatchScene.ts:486 | HUD alanı ölçülmemiş |
 | 2.7#67 | KISMİ | game/MatchScene.ts:394 | Renk körü çift çizgisi yok |
 | 2.7#68 | KISMİ | game/MatchScene.ts:819 | Güç eşiği farklı |
 | 2.7#71 | KISMİ | ui/screens/match/PreMatchScreen.tsx:69 | Kapasite, rol ve TD beklentisi yok |
-| 2.7#72 | EKSİK | ui/screens/match/PostMatchScreen.tsx:45 | Reyting dökümü yok |
+| 2.7#72 | TAMAM | ui/screens/match/PostMatchScreen.tsx RatingStep | Reyting dökümü adımı mevcut |
 | 2.7#73 | TAMAM | sim/career/matchPay.ts, PostMatchScreen (EarningsStep) | WP-16: maaş payı, gol/asist/maça çıkma/kaleci primi, sponsor, imaj hakları, vergi, menajer |
 | 2.7#74 | TAMAM | ui/screens/match/LiveMatchScreen.tsx:165 | Radar, anlatım, hız ve atla var |
 | 2.7#78 | KISMİ | ui/screens/HomeScreen.tsx:120 | Ana sayfa sırası plandan farklı |
 | 2.7#79 | KISMİ | ui/screens/NewCareerScreen.tsx:14 | 7 adım (plan 4) |
 | 2.7#80 | KISMİ | ui/screens/TrainingScreen.tsx:54 | Erime uyarısı yok |
 | 2.7#81 | KISMİ | ui/screens/life/Relations.tsx:45 | Eğilim oku yok |
-| 2.7#82 | EKSİK | - | İlişki değişim nedeni yok |
-| 2.7#83 | EKSİK | - | "Neden oldu?" paneli yok |
+| 2.7#82 | KISMİ | ui/screens/match/PostMatchScreen.tsx RelationsStep | Maç sonunda nedenli ilişki değişimi var; İlişkiler ekranı (screens/life) başka ajanın alanı, ertelendi |
+| 2.7#83 | KISMİ | sim/game/whyPlaying.ts, legacy/CareerCards.tsx WhyPlayingCard, whyPlaying.test.ts | Yedek kalma için "Neden?" paneli (en etkili 3 etken, sabit/etkilenebilir). Transfer reddi, sponsor ve ödül kaybı için ertelendi |
 | 2.7#84 | KISMİ | ui/screens/life/Assets.tsx:49 | Filtre var |
 | 2.7#85 | EKSİK | - | Mağaza ekranı yok |
 | 2.7#86 | KISMİ | ui/screens/life/Assets.tsx:25 | Raf görünümü yok |
@@ -551,7 +551,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#127 | EKSİK | - | Onay/gizlilik penceresi yok |
 | 2.7#128 | KISMİ | ui/format.ts:15 | `Price` tipi yok |
 | 2.7#129 | EKSİK | - | Puan istemi yok |
-| 2.7#130 | KISMİ | ui/components/Modal.tsx:21 | Kapat butonu gizlenebiliyor |
+| 2.7#130 | TAMAM | ui/components/Button.tsx IconButton 44px, Toast .toast-close 44px | Kapat düğmeleri 44x44, gecikme yok |
 | 2.7#131 | EKSİK | - | Satın alma ekranı yok |
 
 ### 2.8 Ses ve Müzik

@@ -2,7 +2,7 @@ import '../../styles/screens/planner.css'
 import { useState } from 'preact/hooks'
 import { lt, t, tx } from '../../i18n'
 import {
-  Button, Card, Chip, DeltaList, EmptyState, Modal, Page, RiskBadge, StatBar, Tabs, toast,
+  Button, Card, Chip, DeltaList, EmptyState, Modal, Page, RiskBadge, StatBar, Tabs, toast, toastUndo,
 } from '../components'
 import { formatMoney } from '../format'
 import { Icon, isIconName, type IconName } from '../icons'
@@ -115,7 +115,12 @@ function Picker({ slot, current, onClose }: { slot: DaySlotView | null; current:
         ))}
       </div>
       {current && (
-        <Button variant="ghost" icon="trash" onClick={() => { actions.planSlot(slot.slot, null); onClose() }}>
+        <Button variant="ghost" icon="trash" onClick={() => {
+          const prev = current
+          actions.planSlot(slot.slot, null)
+          onClose()
+          if (prev) toastUndo(t('board.undo.cleared'), () => { actions.planSlot(slot.slot, prev); toast(t('board.undo.restored'), 'success', 'check') })
+        }}>
           {t('planner.clear')}
         </Button>
       )}

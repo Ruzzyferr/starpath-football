@@ -1,5 +1,8 @@
 import type { ComponentChildren } from 'preact'
-import { attrColor, clamp01 } from '../format'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { t } from '../../i18n'
+import { attrBucket, attrColor, clamp01 } from '../format'
+import { settings } from '../store'
 import { useMounted } from '../hooks/motion'
 
 export interface StatBarProps {
@@ -24,6 +27,18 @@ export interface StatBarProps {
 
 export function StatBar({ label, value, max = 100, progress, preview, color, scale, showValue = true, size = 'md', suffix, info, hideLabel }: StatBarProps) {
   const mounted = useMounted()
+  // Value change flash: "+3 ▲" / "−1 ▼" for 3 seconds after the bar moves (GAP 2.7#44).
+  const prev = useRef(value)
+  const [flash, setFlash] = useState<number | null>(null)
+  useEffect(() => {
+    const d = Math.round(value) - Math.round(prev.current)
+    prev.current = value
+    if (!d) return
+    setFlash(d)
+    const id = setTimeout(() => setFlash(null), 3000)
+    return () => clearTimeout(id)
+  }, [value])
+  const cbOn = settings.value.cbMode !== 'off' || settings.value.colorblind
   const p = clamp01(value / max)
   const fill = color ?? (scale ? attrColor((value / max) * 100) : 'var(--brand-pitch)')
   const pv = preview ? clamp01((value + preview) / max) : null
@@ -36,7 +51,9 @@ export function StatBar({ label, value, max = 100, progress, preview, color, sca
             <span class="statbar-value num" style={{ color: scale ? fill : undefined }}>
               {Math.round(value)}
               {suffix}
-              {preview ? <span class={preview > 0 ? 't-pos' : 't-neg'}> {preview > 0 ? '+' : '−'}{Math.abs(preview)}</span> : null}
+              {preview ? <span class={preview > 0 ? 't-pos' : 't-neg'}> {preview > 0 ? '+' : '−'}{Math.abs(preview)} {preview > 0 ? '▲' : '▼'}</span> : null}
+              {flash ? <span class={`statbar-flash ${flash > 0 ? 't-pos' : 't-neg'}`} data-testid="statbar-flash"> {flash > 0 ? '+' : '−'}{Math.abs(flash)} {flash > 0 ? '▲' : '▼'}</span> : null}
+              {scale && cbOn ? <span class="statbar-tier" title={t('ui.tier', { n: attrBucket((value / max) * 100) })}>{attrBucket((value / max) * 100)}</span> : null}
             </span>
           )}
         </div>

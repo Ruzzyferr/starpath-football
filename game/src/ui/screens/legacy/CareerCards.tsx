@@ -5,7 +5,9 @@
  * reference and the form-guarantee switch.
  */
 import '../../../styles/screens/legacy.css'
+import { useState } from 'preact/hooks'
 import { lt, t } from '../../../i18n'
+import { whyPlaying } from '../../../sim/game/whyPlaying'
 import type { SquadRole } from '../../../core/types'
 import { Button, Card, CardHeader, Switch, toast } from '../../components'
 import { formatMoney, formatRating, seasonLabel } from '../../format'
@@ -71,6 +73,33 @@ export function BenchComplaintCard() {
   )
 }
 
+/** "Why?" panel (GAP 2.7#83): top factors behind the chance to start the next match. */
+export function WhyPlayingCard() {
+  const s = gameState.value
+  const [open, setOpen] = useState(false)
+  const w = s ? whyPlaying(s) : null
+  if (!w) return null
+  return (
+    <Card pad="md" data-testid="why-playing">
+      <CardHeader
+        title={t('board.why.title', { p: Math.round(w.chance * 100) })}
+        icon="question"
+        action={<Button size="sm" variant="secondary" aria-expanded={open} aria-controls="why-body" onClick={() => setOpen(!open)} data-testid="why-toggle">{open ? t('board.why.close') : t('board.why.button')}</Button>}
+      />
+      {open && (
+        <ul class="rec-list" id="why-body">
+          {w.factors.map((f) => (
+            <li key={f.key}>
+              <span>{lt(f.label)}<span class="t-xs t-lo"> · {f.actionable ? t('board.why.actionable') : t('board.why.fixed')}</span></span>
+              {f.points !== 0 ? <b class={`num ${f.points > 0 ? 't-pos' : 't-neg'}`}>{f.points > 0 ? '+' : '−'}{Math.abs(f.points)}</b> : <span class="t-xs t-lo">{t('board.why.fixedLabel')}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
 /** Profile block: decay warning, potential, form clause, personal records, retirement. */
 export function ProfileCareerExtras() {
   const s = gameState.value
@@ -87,6 +116,7 @@ export function ProfileCareerExtras() {
       {decay !== null && !h.retired && (
         <p class="lg-warn t-sm" role="status">{decay > 0 ? t('meta.decay.warn', { n: decay }) : t('meta.decay.now')}</p>
       )}
+      <WhyPlayingCard />
       <BenchComplaintCard />
       {s.life.flags.promised_start === true && <p class="t-xs t-pos" role="status">{t('meta.complaint.promised')}</p>}
       <Card pad="md">

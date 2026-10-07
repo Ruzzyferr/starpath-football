@@ -11,6 +11,8 @@ export interface ToastItem {
   kind: ToastKind
   text: string
   icon?: IconName
+  /** Optional inline action (e.g. Undo). */
+  action?: { label: string; onClick: () => void }
 }
 
 export const toasts = signal<ToastItem[]>([])
@@ -34,6 +36,17 @@ export function toast(text: string, kind: ToastKind = 'info', icon?: IconName, m
   setTimeout(() => dismiss(id), ms)
 }
 
+/** 6-second "Undo" toast instead of a confirm dialog (GAP 2.7#48). The action runs once and closes the toast. */
+export function toastUndo(text: string, onUndo: () => void, ms = 6000): void {
+  const id = nextId++
+  const item: ToastItem = {
+    id, kind: 'info', text, icon: 'history',
+    action: { label: t('board.undo.action'), onClick: () => { dismiss(id); onUndo() } },
+  }
+  toasts.value = [...toasts.value.slice(-2), item]
+  setTimeout(() => dismiss(id), ms)
+}
+
 export function dismiss(id: number): void {
   toasts.value = toasts.value.filter((x) => x.id !== id)
 }
@@ -50,6 +63,7 @@ export function ToastHost() {
         <div key={x.id} class={`toast toast-${x.kind}`} aria-live={x.kind === 'error' ? 'assertive' : undefined} role={x.kind === 'error' ? 'alert' : 'status'}>
           <span class="toast-icon"><Icon name={x.icon ?? ICONS[x.kind]} size={18} /></span>
           <span class="grow">{x.text}</span>
+          {x.action && <button type="button" class="toast-action" onClick={x.action.onClick} data-testid="toast-action">{x.action.label}</button>}
           <button type="button" class="toast-close" onClick={() => dismiss(x.id)} aria-label={t('ui.toastClose')}>
             <Icon name="close" size={16} />
           </button>
