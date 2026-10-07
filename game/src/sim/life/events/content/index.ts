@@ -23,6 +23,13 @@ import { communityEvents } from './community'
 import { transferEvents } from './transfer'
 import { milestoneEvents } from './milestone'
 import { weirdEvents } from './weird'
+import { legalEvents } from './legal'
+import { scamEvents } from './scam'
+import { rumourEvents } from './rumour'
+import { businessEvents } from './business'
+import { charityEvents } from './charity'
+import { mentorEvents } from './mentor'
+import { abroadEvents } from './abroad'
 
 export const ALL_EVENTS: readonly EventDef[] = [
   ...teammatesEvents,
@@ -45,4 +52,11 @@ export const ALL_EVENTS: readonly EventDef[] = [
   ...transferEvents,
   ...milestoneEvents,
   ...weirdEvents,
+  ...legalEvents,
+  ...scamEvents,
+  ...rumourEvents,
+  ...businessEvents,
+  ...charityEvents,
+  ...mentorEvents,
+  ...abroadEvents,
 ]

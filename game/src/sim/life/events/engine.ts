@@ -87,6 +87,13 @@ export const FLAG_WEEK = 'ev:week'
 export const FLAG_WEEK_COUNT = 'ev:weekCount'
 export const FLAG_WEEK_REGULAR = 'ev:weekRegular'
 export const FLAG_RECENT_CATS = 'ev:recentCats'
+/** JSON map eventId → times fired this career (for `maxPerCareer`). */
+export const FLAG_COUNTS = 'ev:counts'
+
+/** Times an event fired this career. */
+export function careerCount(state: GameState, id: string): number {
+  return readJson<Record<string, number>>(state, FLAG_COUNTS, {})[id] ?? 0
+}
 
 // ───────────────────────── Registry ─────────────────────────
 
@@ -320,6 +327,15 @@ export function categoryAffinity(state: GameState, cat: EventCategory): number {
       return h.managerTrust < 35 ? 1.3 : 1
     case 'family':
       return l.happiness < 45 ? 1.2 : 1
+    case 'business':
+      return (l.businesses?.length ?? 0) > 0 ? 1.6 : l.money > Math.max(400, h.contract?.wage ?? 400) * 30 ? 1 : 0.5
+    case 'scam':
+      return l.money > Math.max(400, h.contract?.wage ?? 400) * 20 ? 1.3 : 0.8
+    case 'rumour':
+    case 'charity':
+      return 0.8 + h.reputation / 80
+    case 'mentor':
+      return state.calendar.season - h.birthYear >= 25 ? 1.3 : 0.6
     default:
       return 1
   }
@@ -362,6 +378,7 @@ export function isEligible(state: GameState, def: EventDef, tags: readonly strin
     if (def.once) return false
     if (abs - last < def.cooldownWeeks) return false
   }
+  if (def.maxPerCareer !== undefined && careerCount(state, def.id) >= def.maxPerCareer) return false
   if (def.minWeek !== undefined && state.calendar.week < def.minWeek) return false
   if (!oldEnough(state, def)) return false
   if (state.pendingEvents.some((p) => p.defId === def.id)) return false
@@ -387,6 +404,11 @@ function fire(state: GameState, rng: Rng, def: EventDef, tags: readonly string[]
   const pending: PendingEvent = { defId: def.id, vars, firedAt: { ...state.calendar } }
   state.pendingEvents.push(pending)
   state.life.eventHistory[def.id] = abs
+  if (def.maxPerCareer !== undefined) {
+    const counts = readJson<Record<string, number>>(state, FLAG_COUNTS, {})
+    counts[def.id] = (counts[def.id] ?? 0) + 1
+    state.life.flags[FLAG_COUNTS] = JSON.stringify(counts)
+  }
   const recent = readJson<string[]>(state, FLAG_RECENT_CATS, [])
   recent.push(def.category)
   state.life.flags[FLAG_RECENT_CATS] = JSON.stringify(recent.slice(-RECENT_CATEGORY_MEMORY))
@@ -725,6 +747,14 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
       const change = bump(r, amount, memory, abs)
       if (change === 0) return null
       return { kind: 'relation', target: r.kind, amount: change, label: r.name, ...(r.npcId ? { npcId: r.npcId } : {}) }
+    }
+    case 'brand': {
+      const list = l.businesses ?? []
+      const b = d.business ? list.find((x) => x.kind === d.business) : list[0]
+      if (!b) return null
+      const before = b.brand
+      b.brand = clamp(Math.round(before + num(d.amount)), 0, 100)
+      return b.brand === before ? null : { kind: 'brand', amount: b.brand - before, label: b.name }
     }
     case 'endRelation': {
       const r = findRel(state, d.target, d.npcId)

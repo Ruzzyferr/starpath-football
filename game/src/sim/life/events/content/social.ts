@@ -1,6 +1,6 @@
 /** Social media: virality, trolls, brand DMs and the eternal screenshot. */
 import {
-  boss, canAfford, disc, fans, flags, follow, folPct, fx, happy, hasClub, money, morale, news, nice, num, pickBrand, press, rel, rep, stress, t, chain, trust, wageX, form, fol,
+  boss, canAfford, disc, fans, flags, follow, folPct, fx, happy, hasClub, money, morale, news, nice, num, pickBrand, press, rel, rep, stress, t, chain, trust, wageX, form, fol, heroShoneLastMatch,
 } from '../dsl'
 import type { EventDef } from '../types'
 
@@ -109,7 +109,7 @@ export const socialEvents: EventDef[] = [
     weight: 1,
     cooldownWeeks: 10,
     triggers: ['match_loss'],
-    conditions: () => true,
+    conditions: ({ state }) => !heroShoneLastMatch(state),
     title: t('Yorumlar Zehir', 'The Comments Are Poison'),
     text: t(
       'Yenilginin ardından son paylaşımının altına binlerce yorum: "emekli ol", "kardeşim bile daha iyi oynar", bir de palyaço emojisi yağmuru.',
@@ -239,7 +239,7 @@ export const socialEvents: EventDef[] = [
     weight: 1.1,
     cooldownWeeks: 12,
     triggers: ['match_loss', 'match_draw'],
-    conditions: ({ state }) => state.hero.position !== 'GK',
+    conditions: ({ state }) => state.hero.position !== 'GK' && !heroShoneLastMatch(state),
     title: t('Kaçan Gol Caps Oldu', 'Your Miss Is a Meme'),
     text: t(
       'Boş kaleye kaçırdığın pozisyon "Ne zaman kira ödeyeceğimi sorduklarında ben" yazısıyla her yerde.',

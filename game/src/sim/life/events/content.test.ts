@@ -97,8 +97,8 @@ function exercise(): { incoming: Map<string, Set<string>>; edges: [string, strin
 describe('event content', () => {
   const run = exercise()
 
-  it('has at least 160 events with unique, category-prefixed ids', () => {
-    expect(ALL_EVENTS.length).toBeGreaterThanOrEqual(160)
+  it('has at least 240 events with unique, category-prefixed ids', () => {
+    expect(ALL_EVENTS.length).toBeGreaterThanOrEqual(240)
     const ids = new Set<string>()
     for (const e of ALL_EVENTS) {
       expect(ids.has(e.id), `duplicate ${e.id}`).toBe(false)

@@ -6,7 +6,7 @@
  * (`engine.ts → applyEffectResult`) is the single place that mutates
  * GameState. That keeps content testable and saves deterministic.
  */
-import type { AttributeKey, GameState, LText, RelationKind } from '../../../core/types'
+import type { AttributeKey, BusinessKind, GameState, LText, RelationKind } from '../../../core/types'
 import type { Rng } from '../../../core/rng'
 
 /** Narrative categories. Used for variety balancing and UI theming. */
@@ -31,10 +31,17 @@ export type EventCategory =
   | 'transfer'
   | 'milestone'
   | 'weird'
+  | 'legal'
+  | 'scam'
+  | 'rumour'
+  | 'business'
+  | 'charity'
+  | 'mentor'
 
 export const EVENT_CATEGORIES: readonly EventCategory[] = [
   'teammates', 'manager', 'club', 'family', 'romance', 'friends', 'press', 'social', 'fans', 'nightlife',
   'money', 'casino', 'health', 'national', 'awards', 'rivals', 'community', 'transfer', 'milestone', 'weird',
+  'legal', 'scam', 'rumour', 'business', 'charity', 'mentor',
 ]
 
 /**
@@ -115,6 +122,8 @@ export type Delta =
   | { kind: 'suspension'; matches: number }
   /** Removes a relationship (break-up, falling out). */
   | { kind: 'endRelation'; target: RelationKind; npcId?: string }
+  /** Brand reputation of an owned business (life/business); no-op without one. */
+  | { kind: 'brand'; amount: number; business?: BusinessKind }
 
 /** Delta after application: amounts are the *actual* change after clamping. */
 export type AppliedDelta = Delta & { label?: string }
@@ -179,6 +188,8 @@ export interface EventDef {
   cooldownWeeks: number
   /** Fires at most once per career. */
   once?: boolean
+  /** Fires at most this many times per career ("kariyerde en fazla 2"). */
+  maxPerCareer?: number
   /** Only reachable as a scheduled follow-up of another event (chain step). */
   followUpOnly?: boolean
   /** Earliest week of the season (calendar.week) at which it may fire. */

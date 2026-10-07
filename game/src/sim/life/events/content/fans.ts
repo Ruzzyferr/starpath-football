@@ -1,11 +1,40 @@
 /** Fans: autographs, ultras politics, chants, away-day hostility, superfans. */
 import {
   ban, boss, canAfford, disc, energy, fans, fatigue, flags, folPct, follow, fx, happy, hasClub, money, morale, news, num,
-  pickFirst, press, rel, rep, stress, t, chain, trust, wageX,
+  pickFirst, press, rel, rep, stress, t, chain, trust, wageX, heroShoneLastMatch,
 } from '../dsl'
 import type { EventDef } from '../types'
 
 export const fansEvents: EventDef[] = [
+  {
+    // Fairness (store reviews: "hat-trick and still got blamed"): the stand knows who fought.
+    id: 'fans.hero_in_defeat',
+    category: 'fans',
+    weight: 2,
+    cooldownWeeks: 6,
+    triggers: ['match_loss'],
+    conditions: ({ state }) => hasClub(state) && heroShoneLastMatch(state),
+    title: t('Yenilgide Ayakta Alkış', 'A Standing Ovation in Defeat'),
+    text: t(
+      'Maç kaybedildi ama tribün oturmadı. Senin adını söylüyorlar. Takım arkadaşların başları önde soyunma odasına giderken sen hâlâ sahadasın.',
+      'The game is lost, but the stand won\'t sit down. They\'re chanting your name. Your teammates head for the tunnel, heads bowed; you\'re still on the pitch.',
+    ),
+    icon: '👏',
+    choices: [
+      {
+        label: t('Takımı geri çağır, birlikte selamlayın', 'Call the team back and salute them together'),
+        effects: () => fx(t('Bütün takım tribüne yürüdü. Alkış ikiye katlandı. Kaptan omzuna dokundu: "Sağ ol."', 'The whole squad walked to the stand. The applause doubled. The captain touched your shoulder: "Thanks."'), fans(4), rel('teammate', 3), trust(2)),
+      },
+      {
+        label: t('Formanı tribüne at', 'Throw your shirt into the crowd'),
+        effects: () => fx(t('Formayı küçük bir çocuk yakaladı. Haftanın fotoğrafı oldu.', 'A small kid caught it. Photo of the week.'), fans(6), rep(1)),
+      },
+      {
+        label: t('Başını eğ, kazanamadık', 'Head down: we didn\'t win'),
+        effects: () => fx(t('Alkışı kabul etmedin. Taraftar bunu da sevdi: "Kazanmak istiyor."', 'You didn\'t accept the applause. The fans loved that too: "This one wants to win."'), fans(3), morale(2)),
+      },
+    ],
+  },
   {
     id: 'fans.autograph_swarm',
     category: 'fans',

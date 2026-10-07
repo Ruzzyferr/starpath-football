@@ -9,7 +9,7 @@
  *   : fx(t('Kaybettin.', 'You lost.'), money(-500), stress(6), { followUps: [chain('casino.chaser', 1)] })
  * ```
  */
-import type { AttributeKey, GameState, LText, RelationKind, Relationship } from '../../../core/types'
+import type { AttributeKey, BusinessKind, GameState, LText, RelationKind, Relationship } from '../../../core/types'
 import { heroGender } from '../../../core/gender'
 import type { Rng } from '../../../core/rng'
 import type { Delta, EffectResult, EventCtx, FlagValue, FollowUp, StatKey } from './types'
@@ -121,6 +121,25 @@ export const canAfford = (s: GameState, amount: number): boolean => s.life.money
 export const num = (ctx: EventCtx, key: string): number => {
   const v = ctx.vars[key]
   return typeof v === 'number' ? v : Number(v) || 0
+}
+
+/** Brand reputation change for an owned business (first one, or of a given kind). */
+export const brand = (amount: number, business?: BusinessKind): Delta => (business ? { kind: 'brand', amount, business } : { kind: 'brand', amount })
+/** The hero owns at least one business (of a kind). */
+export const hasBusiness = (s: GameState, kind?: BusinessKind): boolean =>
+  (s.life.businesses ?? []).some((b) => !kind || b.kind === kind)
+/** Name of the hero's (first / given kind) business, with a fallback for previews. */
+export const businessName = (s: GameState, kind?: BusinessKind): string =>
+  (s.life.businesses ?? []).find((b) => !kind || b.kind === kind)?.name ?? 'Köşe Lokanta'
+/**
+ * The hero carried the team in the last match (2+ goals, 7.5+ rating or MOTM,
+ * no red card). Blame-themed post-defeat cards must not fire then.
+ */
+export const heroShoneLastMatch = (s: GameState): boolean => s.life.flags['last_match_shone'] === true
+/** The hero plays abroad (club country ≠ nationality). */
+export const playsAbroad = (s: GameState): boolean => {
+  const c = s.hero.contract ? s.world.clubs[s.hero.contract.clubId] : undefined
+  return !!c && c.countryId !== s.hero.nationality
 }
 
 /** Round to 2 significant-ish digits so amounts read naturally (12 500, not 12 487). */
