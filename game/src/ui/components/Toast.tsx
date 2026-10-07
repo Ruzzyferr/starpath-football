@@ -3,6 +3,7 @@ import { t } from '../../i18n'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { sfx } from '../../audio'
+import { screen, type ScreenId } from '../store'
 
 export type ToastKind = 'info' | 'success' | 'warning' | 'error' | 'reward'
 export interface ToastItem {
@@ -37,11 +38,15 @@ export function dismiss(id: number): void {
   toasts.value = toasts.value.filter((x) => x.id !== id)
 }
 
+/** Full-bleed "hero moment" screens: one toast at a time so the scoreboard / ceremony stays visible. */
+const IMMERSIVE = new Set<ScreenId>(['preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'awards', 'cupDraw'])
+
 /** Top on mobile, top-right on desktop. aria-live polite. */
 export function ToastHost() {
+  const list = IMMERSIVE.has(screen.value.id) ? toasts.value.slice(-1) : toasts.value
   return (
     <div class="toast-host" aria-live="polite" aria-atomic="false">
-      {toasts.value.map((x) => (
+      {list.map((x) => (
         <div key={x.id} class={`toast toast-${x.kind}`} aria-live={x.kind === 'error' ? 'assertive' : undefined} role={x.kind === 'error' ? 'alert' : 'status'}>
           <span class="toast-icon"><Icon name={x.icon ?? ICONS[x.kind]} size={18} /></span>
           <span class="grow">{x.text}</span>

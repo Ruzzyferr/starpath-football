@@ -2,7 +2,7 @@ import { CeremonyBanner } from './awards/CeremonyBanner'
 import '../../styles/screens/season.css'
 import { useEffect, useState } from 'preact/hooks'
 import { t, lt, currentLang } from '../../i18n'
-import { Button, Crest, EmptyState, Money, NumberTicker } from '../components'
+import { Button, Crest, EmptyState, Money, NumberTicker, toasts } from '../components'
 import { Icon } from '../icons'
 import { haptic } from '../haptics'
 import { formatCompact, formatRating, seasonLabel } from '../format'
@@ -21,6 +21,10 @@ export function SeasonEndScreen() {
   void currentLang.value
   const total = s ? 5 + s.awards.length : 0
   const [stage, setStage] = useState(() => (prefersReducedMotion() ? 99 : 0))
+  // The ceremony is the one hero moment: drop stale day-to-day toasts on entry.
+  useEffect(() => {
+    toasts.value = toasts.value.filter((x) => x.kind === 'reward')
+  }, [])
 
   useEffect(() => {
     if (!s || stage >= total) return
