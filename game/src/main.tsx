@@ -6,6 +6,7 @@ import './styles/layout.css'
 import { App } from './ui/App'
 import { bindSettingsToDocument } from './ui/store'
 import { installRealBackend } from './ui/backend'
+import { initPlatform } from './platform'
 
 /**
  * Backend selection: the real simulation by default; the mock backend (UI
@@ -20,6 +21,7 @@ async function boot(): Promise<void> {
     installRealBackend()
   }
   bindSettingsToDocument()
+  await initPlatform()
   const root = document.getElementById('app')
   if (root) render(<App />, root)
 }

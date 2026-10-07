@@ -1,8 +1,9 @@
 import preact from '@preact/preset-vite'
 import { defineConfig } from 'vitest/config'
+import { starpathServiceWorker } from './scripts/sw-plugin.ts'
 
 export default defineConfig({
-  plugins: [preact()],
+  plugins: [preact(), starpathServiceWorker()],
   base: './',
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
   // The e2e suite (playwright.config.ts) runs without HMR so edits made while it runs cannot reload pages mid-test.

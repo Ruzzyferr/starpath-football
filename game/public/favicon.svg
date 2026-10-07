@@ -1,1 +1,27 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48"><rect width="48" height="48" rx="11" fill="#0b1220"/><path d="M8 40C15 24 27 14 42 10" fill="none" stroke="#1fd47a" stroke-width="4" stroke-linecap="round" stroke-dasharray="1 7"/><path d="M30 5l3.1 6.4 7 1-5.1 4.9 1.2 7-6.2-3.3-6.2 3.3 1.2-7-5.1-4.9 7-1z" fill="#ffc83d"/><circle cx="10" cy="38" r="6" fill="#f2f5fa"/><path d="M10 34.2l2.8 2-1.1 3.3h-3.4l-1.1-3.3z" fill="#0b1220"/></svg>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <!-- StarPath Football app icon: a dotted pitch-green path curving up to a gold star, ball at the start. -->
+  <defs>
+    <radialGradient id="bg" cx="30%" cy="80%" r="95%">
+      <stop offset="0" stop-color="#15233b"/>
+      <stop offset="1" stop-color="#0B1220"/>
+    </radialGradient>
+    <linearGradient id="star" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFE08A"/>
+      <stop offset="1" stop-color="#FFC83D"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <!-- faint pitch lines -->
+  <g fill="none" stroke="#1FD47A" stroke-opacity=".12" stroke-width="6">
+    <circle cx="256" cy="512" r="120"/>
+    <path d="M0 400H512"/>
+  </g>
+  <!-- the path -->
+  <path d="M112 404C170 290 250 200 372 150" fill="none" stroke="#1FD47A" stroke-width="30" stroke-linecap="round" stroke-dasharray="2 54"/>
+  <!-- the star -->
+  <path d="M372 64l26.5 53.7 59.3 8.6-42.9 41.8 10.1 59-53-27.9-53 27.9 10.1-59-42.9-41.8 59.3-8.6z" fill="url(#star)" stroke="#0B1220" stroke-width="6" stroke-linejoin="round"/>
+  <!-- the ball -->
+  <circle cx="112" cy="404" r="58" fill="#F2F5FA"/>
+  <path d="M112 368l30 21.8-11.5 35.2h-37l-11.5-35.2z" fill="#0B1220"/>
+  <path d="M112 368V346M142 389.8l21-6.8M130.5 425l13 17.9M93.5 425l-13 17.9M82 389.8l-21-6.8" stroke="#0B1220" stroke-width="7" stroke-linecap="round"/>
+</svg>

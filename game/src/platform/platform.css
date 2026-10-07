@@ -1,0 +1,25 @@
+/*
+ * Native shells: on Android WebViews older than Chromium 140 env(safe-area-inset-*)
+ * reports 0 while Capacitor's SystemBars (insetsHandling: "css") injects
+ * --safe-area-inset-* instead. Take whichever is larger.
+ */
+html.platform-android,
+html.platform-ios {
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+}
+
+/* Native apps: no text selection / long-press callouts outside form fields, no pull-to-refresh. */
+html.platform-native body {
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-touch-callout: none;
+  overscroll-behavior: none;
+}
+html.platform-native input,
+html.platform-native textarea {
+  -webkit-user-select: text;
+  user-select: text;
+}

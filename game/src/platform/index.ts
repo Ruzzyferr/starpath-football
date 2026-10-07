@@ -1,0 +1,126 @@
+/**
+ * Platform layer: one entry point, `initPlatform()`, called by main.tsx before
+ * the first render. It
+ *  - detects web / electron / android / ios and tags <html> (platform-<id>),
+ *  - picks the SaveStorage (Electron: userData/saves files over IPC; Capacitor:
+ *    Filesystem files; web: IndexedDB default) and migrates IndexedDB saves once,
+ *  - installs native haptics, status bar, Android back button, keep-awake
+ *    during matches, and audio pause while the app is in the background,
+ *  - registers the offline service worker on the web production build.
+ *
+ * Everything else talks to `platform` (achievements, keepAwake, exit).
+ */
+import { effect } from '@preact/signals'
+import { IdbStorage, type SaveStorage } from '../state/save'
+import { useStorage } from '../ui/backend/persistence'
+import { screen } from '../ui/store'
+import { detectPlatform, isMobileNative, type PlatformId } from './detect'
+import { knownSaveKeys } from './keys'
+import { trackAudioContexts, watchVisibility } from './lifecycle'
+import { ElectronFileStorage, migrateMissing } from './storage'
+import { handleBack } from './back'
+import { registerServiceWorker } from './sw-register'
+import { createWebWakeLock } from './wakeLock'
+import './platform.css'
+
+export type { PlatformId } from './detect'
+
+type CapModule = typeof import('./capacitor')
+
+let id: PlatformId = 'web'
+let cap: CapModule | null = null
+const webWake = createWebWakeLock()
+
+/** Screens during which the display must not sleep. */
+const AWAKE_SCREENS = new Set(['liveMatch', 'training'])
+
+export const platform = {
+  get id(): PlatformId {
+    return id
+  },
+  get isNative(): boolean {
+    return id !== 'web'
+  },
+  achievements: {
+    /** Unlock a Steam achievement (API name). No-op (false) outside a Steam-enabled desktop build. */
+    async unlock(achievementId: string): Promise<boolean> {
+      if (id !== 'electron' || !window.starpathNative) return false
+      try {
+        return await window.starpathNative.steam.unlock(achievementId)
+      } catch {
+        return false
+      }
+    },
+    async available(): Promise<boolean> {
+      if (id !== 'electron' || !window.starpathNative) return false
+      return window.starpathNative.steam.available().catch(() => false)
+    },
+  },
+  /** Keep the screen on (matches). Native plugin on mobile, Wake Lock API on web/desktop. */
+  async keepAwake(on: boolean): Promise<void> {
+    if (cap) await cap.keepAwake(on)
+    else await webWake.set(on)
+  },
+  /** Quit the app (desktop / Android). On the web there is nothing to quit. */
+  exit(): void {
+    if (cap) cap.exitApp()
+    else window.starpathNative?.quit()
+  },
+}
+
+async function pickStorage(): Promise<SaveStorage | null> {
+  if (id === 'electron' && window.starpathNative) return new ElectronFileStorage(window.starpathNative)
+  if (cap) return new cap.CapacitorFileStorage()
+  return null // web: SaveManager's default (IndexedDB → compressed localStorage)
+}
+
+const MIGRATED = 'sp.migrated.idb'
+
+async function migrateFromIdb(target: SaveStorage): Promise<void> {
+  if ((await target.get(MIGRATED).catch(() => null)) !== null) return
+  if (typeof indexedDB === 'undefined') return
+  const n = await migrateMissing(new IdbStorage(), target, knownSaveKeys())
+  await target.set(MIGRATED, String(Date.now())).catch(() => undefined)
+  if (n) console.info(`[StarPath] migrated ${n} save entries from IndexedDB`)
+}
+
+let started = false
+
+export async function initPlatform(): Promise<PlatformId> {
+  if (started) return id
+  started = true
+  id = detectPlatform()
+  document.documentElement.classList.add(`platform-${id}`)
+  if (id !== 'web') document.documentElement.classList.add('platform-native')
+
+  trackAudioContexts()
+  watchVisibility()
+
+  if (isMobileNative(id)) {
+    try {
+      cap = await import('./capacitor')
+      cap.installHaptics()
+      cap.setupLifecycle(() => handleBack(() => platform.exit()))
+      void cap.setupChrome()
+    } catch (e) {
+      console.warn('[StarPath] Capacitor plugins unavailable', e)
+    }
+  }
+
+  try {
+    const st = await pickStorage()
+    if (st) {
+      await migrateFromIdb(st)
+      useStorage(st)
+    }
+  } catch (e) {
+    console.warn('[StarPath] native save storage unavailable, using browser storage', e)
+  }
+
+  effect(() => {
+    void platform.keepAwake(AWAKE_SCREENS.has(screen.value.id))
+  })
+
+  if (id === 'web') registerServiceWorker()
+  return id
+}
