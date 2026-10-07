@@ -1,11 +1,11 @@
 /** Casino-wide pieces: header strip, bet picker, playing card, slot symbols. */
 import type { ComponentChildren } from 'preact'
 import { t } from '../../../i18n'
-import { IconButton, Money } from '../../components'
+import { Button, Card, IconButton, Money, Page } from '../../components'
 import { formatMoney } from '../../format'
 import { Icon } from '../../icons'
 import { haptic } from '../../haptics'
-import { data, gameState, type CardView, type Suit } from '../../store'
+import { data, gameState, navigate, type CardView, type Suit } from '../../store'
 
 export function casinoMoney(): number {
   return gameState.value?.life.money ?? 0
@@ -181,5 +181,22 @@ export function SlotSymbol({ index, size = 56 }: { index: number; size?: number 
     <svg width={size} height={size} viewBox="0 0 48 48" role="img" aria-label={t(`casino.slot.symbols.${name}`)}>
       {body}
     </svg>
+  )
+}
+
+/** Friendly locked state for under-18 heroes (lobby and every game screen). */
+export function CasinoAgeLock({ title }: { title?: string }) {
+  const lock = data.casinoStatus().ageLock
+  const minAge = lock?.minAge ?? 18
+  return (
+    <Page title={title ?? t('casino.title')} backTo="life">
+      <Card class="cas-locked" variant="raised">
+        <span class="cas-locked-badge" aria-hidden="true">{minAge}+</span>
+        <h2 class="h3">{t('casino.locked.title')}</h2>
+        <p>{t('casino.locked.body', { age: minAge, n: lock?.yearsLeft ?? 1 })}</p>
+        <p class="t-sm t-mid">{t('casino.locked.hint')}</p>
+        <Button variant="primary" icon="arrow-left" onClick={() => navigate('life', undefined, { tab: true })}>{t('casino.locked.back')}</Button>
+      </Card>
+    </Page>
   )
 }

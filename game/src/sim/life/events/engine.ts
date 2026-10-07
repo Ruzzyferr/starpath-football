@@ -20,7 +20,7 @@ import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, Relatio
 import { clamp, type Rng } from '../../../core/rng'
 import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
-import { absWeek } from '../../career/common'
+import { ADULT_AGE, absWeek, heroAge } from '../../career/common'
 import { teammateId } from '../relationships'
 import type {
   AppliedDelta,
@@ -333,6 +333,16 @@ function safeCond(def: EventDef, ctx: EventCtx): boolean {
   }
 }
 
+/** Categories built around gambling, betting or alcohol: adults only. */
+export const ADULT_EVENT_CATEGORIES: readonly EventCategory[] = ['casino', 'nightlife']
+
+/** Minimum hero age for an event (explicit `minAge`, else 18 for adult categories, else 0). */
+export const eventMinAge = (def: EventDef): number =>
+  def.minAge ?? (ADULT_EVENT_CATEGORIES.includes(def.category) ? ADULT_AGE : 0)
+
+const oldEnough = (state: GameState, def: EventDef): boolean =>
+  heroAge(state.hero, state.calendar.season) >= eventMinAge(def)
+
 /** True if `def` may spontaneously fire now (ignores weekly caps and chance). */
 export function isEligible(state: GameState, def: EventDef, tags: readonly string[], abs = absoluteWeek(state.calendar)): boolean {
   if (def.followUpOnly) return false
@@ -343,6 +353,7 @@ export function isEligible(state: GameState, def: EventDef, tags: readonly strin
     if (abs - last < def.cooldownWeeks) return false
   }
   if (def.minWeek !== undefined && state.calendar.week < def.minWeek) return false
+  if (!oldEnough(state, def)) return false
   if (state.pendingEvents.some((p) => p.defId === def.id)) return false
   return safeCond(def, { state, vars: {}, absWeek: abs, tags })
 }
@@ -409,7 +420,7 @@ export function rollEvents(state: GameState, rng: Rng, tags: string[], maxCount 
       continue
     }
     const tagOk = tags.includes('weekly') || (def.triggers ?? []).some((tg) => tags.includes(tg))
-    const condOk = tagOk && !state.pendingEvents.some((p) => p.defId === def.id) && safeCond(def, { state, vars: q.vars, absWeek: abs, tags })
+    const condOk = tagOk && oldEnough(state, def) && !state.pendingEvents.some((p) => p.defId === def.id) && safeCond(def, { state, vars: q.vars, absWeek: abs, tags })
     if (condOk && room()) {
       added.push(fire(state, rng, def, tags, abs, q.vars))
       usedCats.add(def.category)

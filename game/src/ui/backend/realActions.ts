@@ -8,7 +8,7 @@
  */
 import type { AttributeGroup, AttributeKey, GameState, LText, RelationKind } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
-import { absWeek } from '../../sim/career/common'
+import { ADULT_AGE, absWeek, isAdult } from '../../sim/career/common'
 import type { ContractTerms, NegotiationState } from '../../sim/career/contract'
 import { renewalOffer } from '../../sim/career/contract'
 import { heroOvr } from '../../sim/career/progression'
@@ -32,6 +32,7 @@ import {
   type OfferTerms, type PostKind, type TrainingOutcomeView, type Rank, type SocialPostView, type Suit,
 } from '../store'
 import { eventDeltas, diffSnapshots, snapshot, teamViewOr } from './mapping'
+import { slotSpinView } from './casinoView'
 import { markDone, plannedSlots, doneSlots, setPlanned } from './plan'
 import { readHistory, recordWeek } from './history'
 import * as live from './liveMatch'
@@ -210,6 +211,10 @@ const emptyBj = (): BlackjackView => ({ bet: 0, player: [], dealer: [], playerTo
 
 /** Games need a casino visit today (the evening activity); visit automatically when possible. */
 function ensureCasino(s: GameState): boolean {
+  if (!isAdult(s.hero, s.calendar.season)) {
+    notify(L(`Kumarhane ${ADULT_AGE} yaş ve üzeri içindir.`, `The casino is strictly ${ADULT_AGE}+.`), 'info')
+    return false
+  }
   if (s.life.flags[GFLAG.casinoDay] === absDayOf(s)) return true
   if (s.calendar.slot < 2) {
     notify(L('Kumarhane akşam açılıyor. Günü akşama kadar ilerlet.', 'The casino opens in the evening. Advance the day to the evening first.'))
@@ -580,17 +585,17 @@ export const realActions: GameActions = {
     },
     slotsSpin(bet) {
       const s = get()
-      if (!ensureCasino(s)) return { reels: [0, 1, 2], net: 0, winLine: false }
-      const r = G.playSlots(s, Math.round(bet))
+      const none = { reels: [0, 1, 2], window: [[1, 0, 2], [2, 1, 0], [0, 2, 1]], wins: [], net: 0, winLine: false }
+      if (!ensureCasino(s)) return none
+      const stake = Math.round(bet)
+      const r = G.playSlots(s, stake)
       if (!r.ok || !r.value) {
         notify(r.error)
         commit(s)
-        return { reels: [0, 1, 2], net: 0, winLine: false }
+        return none
       }
-      const SYM: Record<string, number> = { cherry: 0, star: 1, bell: 2, seven: 3, ball: 4, lemon: 5, orange: 6 }
-      const reels = r.value.window.map((col) => SYM[col[1]] ?? 0)
       casinoDone(s)
-      return { reels, net: Math.round(r.value.payout - bet), winLine: r.value.wins.length > 0 }
+      return slotSpinView(r.value, stake)
     },
     horseRace(bet, horse) {
       const s = get()

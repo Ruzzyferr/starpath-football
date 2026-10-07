@@ -106,6 +106,11 @@ describe('casino & negotiation', () => {
     expect(playSlots(s, 10).ok).toBe(false)
     s.calendar.slot = 2
     s.calendar.day = 1
+    // Under 18: turned away at the door, and the games refuse too.
+    s.hero.birthYear = s.calendar.season - 17
+    expect(doActivity(s, 'casino').ok).toBe(false)
+    expect(playSlots(s, 10).ok).toBe(false)
+    s.hero.birthYear = s.calendar.season - 20
     const v = doActivity(s, 'casino')
     expect(v.ok).toBe(true)
     const m0 = s.life.money

@@ -79,6 +79,11 @@ export const absWeek = (cal: Pick<Calendar, 'season' | 'week'>): number => (cal.
 /** Age of the hero during the given season (birthday assumed before season start). */
 export const heroAge = (hero: Pick<Hero, 'birthYear'>, season: number): number => season - hero.birthYear
 
+/** Legal age for gambling, betting and alcohol-themed nightlife (casino, nightclub, their events). */
+export const ADULT_AGE = 18
+/** True once the hero may gamble / go clubbing. */
+export const isAdult = (hero: Pick<Hero, 'birthYear'>, season: number): boolean => heroAge(hero, season) >= ADULT_AGE
+
 /**
  * Nominal number of weeks in a season used to convert per-season tuning into
  * per-week rates. GDD: 38–46 weeks. Rates are robust to ±15% mismatches.

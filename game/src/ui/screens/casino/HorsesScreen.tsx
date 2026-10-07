@@ -7,7 +7,7 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type HorseRaceResult, type HorseView } from '../../store'
-import { BetPicker, casinoMoney } from './shared'
+import { BetPicker, casinoMoney, CasinoAgeLock } from './shared'
 
 const RACE_MS = 6500
 
@@ -39,6 +39,10 @@ function interp(timeline: number[][], p: number): number[] {
 }
 
 export function HorsesScreen() {
+  return data.casinoStatus().ageLock ? <CasinoAgeLock title={t('casino.games.horses')} /> : <HorsesMain />
+}
+
+function HorsesMain() {
   const st = data.casinoStatus()
   const horses: HorseView[] = data.horses()
   const [pick, setPick] = useState<number | null>(null)

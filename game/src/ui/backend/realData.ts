@@ -36,6 +36,7 @@ import type {
   HorseView, InterestView, PerkView, Risk, ScorerRow, SeasonSummaryView, SocialPostView, SquadMemberView, StatKey, TrainerOffer,
   TrainingSessionView,
 } from '../store'
+import { casinoAgeLock, slotRulesView } from './casinoView'
 import { RELATION_LABEL, eventDeltas, fixtureView, teamView, teamViewOr } from './mapping'
 import { doneSlots, plannedSlots } from './plan'
 import { readHistory } from './history'
@@ -701,6 +702,8 @@ export const realData: GameData = {
     return {
       addiction: Math.round(c.addiction), won: Math.round(c.won), lost: Math.round(c.lost), visitsThisWeek: c.visitsThisWeek,
       minBet: 50, maxBet: Math.max(500, Math.min(250_000, Math.floor((money * 0.5) / 50) * 50)),
+      ageLock: s ? casinoAgeLock(s.hero, s.calendar.season) : null,
+      slots: slotRulesView(),
     }
   },
   horses() {

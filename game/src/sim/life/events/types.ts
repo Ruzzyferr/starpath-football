@@ -183,6 +183,11 @@ export interface EventDef {
   followUpOnly?: boolean
   /** Earliest week of the season (calendar.week) at which it may fire. */
   minWeek?: number
+  /**
+   * Minimum hero age. Defaults to 18 for the `casino` and `nightlife`
+   * categories (gambling, betting, alcohol) — see `eventMinAge`.
+   */
+  minAge?: number
   conditions: (ctx: EventCtx) => boolean
   triggers?: EventTag[]
   vars?: (ctx: EventCtx, rng: Rng) => EventVars

@@ -38,7 +38,7 @@ describe('blackjack split via real backend', () => {
     vi.useFakeTimers()
     useStorage(new MemoryStorage())
     installBackend({ actions: A, data: D })
-    A.newGame({ ...DEFAULT_CAREER, seed: 4242 })
+    A.newGame({ ...DEFAULT_CAREER, birthYear: 2006, seed: 4242 }) // 20: casino is 18+
     const s = S()
     s.calendar.slot = 2
     s.life.flags[GFLAG.casinoDay] = absDayOf(s)

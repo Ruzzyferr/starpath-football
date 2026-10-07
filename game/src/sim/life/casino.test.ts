@@ -1,7 +1,7 @@
 import { Rng } from '../../core/rng'
 import type { Hero, Life } from '../../core/types'
 import {
-  PASS_LINE_WIN_P, RACE_OVERROUND, SEVENS_PAYOUT, availableActions, basicStrategyAction, blackjackAction,
+  PASS_LINE_WIN_P, RACE_MAX_ODDS, RACE_MIN_ODDS, RACE_OVERROUND, raceOdds, SEVENS_PAYOUT, availableActions, basicStrategyAction, blackjackAction,
   blackjackTotalStake, canBet, handNet, handReturn, cardValue, createRace, createShoe, handValue, isBlackjack, makeRouletteBet,
   playPassLine, playSevens, raceWinProbabilities, resetCasinoDay, rouletteExpectedValue, runRace, setLossLimit,
   settleBet, settleHorseBet, settleRoulette, slotExactRtp, spinRoulette, spinSlot, startBlackjack, visitCasino,
@@ -245,6 +245,40 @@ describe('horse racing', () => {
     const rtp = returned / staked
     expect(rtp).toBeGreaterThan(0.8)
     expect(rtp).toBeLessThan(0.9)
+  })
+
+  it('odds stay within 1.5×–40×, the book carries the overround and every bet has a house edge', () => {
+    const rng = new Rng(77)
+    let books = 0
+    let minOdds = Infinity
+    let maxOdds = 0
+    for (let r = 0; r < 300; r++) {
+      const race = createRace(rng)
+      const book = race.horses.reduce((s, h) => s + 1 / h.odds, 0)
+      expect(book).toBeGreaterThanOrEqual(1 + RACE_OVERROUND - 0.001)
+      expect(book).toBeLessThan(1 + RACE_OVERROUND + 0.05)
+      books += book
+      for (const h of race.horses) {
+        expect(h.odds).toBeGreaterThanOrEqual(RACE_MIN_ODDS)
+        expect(h.odds).toBeLessThanOrEqual(RACE_MAX_ODDS)
+        expect(h.winProb * h.odds).toBeLessThan(0.98)
+        minOdds = Math.min(minOdds, h.odds)
+        maxOdds = Math.max(maxOdds, h.odds)
+      }
+    }
+    expect(books / 300).toBeLessThan(1 + RACE_OVERROUND + 0.03)
+    // The band is actually used: real favourites and real long shots.
+    expect(minOdds).toBeLessThan(2.5)
+    expect(maxOdds).toBeGreaterThan(25)
+  })
+
+  it('raceOdds solves the margin exactly before rounding, even with capped outsiders', () => {
+    const odds = raceOdds([0.45, 0.2, 0.15, 0.1, 0.05, 0.03, 0.015, 0.005])
+    expect(odds[0]).toBeGreaterThanOrEqual(RACE_MIN_ODDS)
+    expect(odds[7]).toBe(RACE_MAX_ODDS)
+    const book = odds.reduce((s, o) => s + 1 / o, 0)
+    expect(book).toBeGreaterThan(1 + RACE_OVERROUND - 0.001)
+    expect(book).toBeLessThan(1 + RACE_OVERROUND + 0.03)
   })
 
   it('stronger horses are more likely to win', () => {

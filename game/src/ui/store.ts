@@ -298,10 +298,39 @@ export interface RouletteResult {
   color: 'red' | 'black' | 'green'
   net: number
 }
+export interface SlotLineWin {
+  /** Index into {@link SlotRules.lines}. */
+  line: number
+  /** Winning symbol (SLOT_SYMBOLS index). */
+  symbol: number
+  /** Matching symbols from the left: 3, or 2 for the cherry pair. */
+  count: 2 | 3
+  /** Pay in multiples of the line bet. */
+  multiplier: number
+  /** Amount this line returned. */
+  amount: number
+}
 export interface SlotsResult {
-  reels: number[] // 3 symbol indices (see SLOT_SYMBOLS in screens)
+  /** Middle row, 3 symbol indices (see SLOT_SYMBOLS in screens). */
+  reels: number[]
+  /** Full visible window: window[reel][row], rows top→bottom (3×3). */
+  window: number[][]
+  /** Every paying line (all are shown on screen). */
+  wins: SlotLineWin[]
   net: number
   winLine: boolean
+}
+export interface SlotPay {
+  symbol: number
+  count: 2 | 3
+  /** Multiple of the line bet. */
+  multiplier: number
+}
+export interface SlotRules {
+  /** Paylines: [reel] → row (0 top, 1 middle, 2 bottom). The stake is split evenly across them. */
+  lines: number[][]
+  /** Paytable, best first. */
+  pays: SlotPay[]
 }
 export interface HorseView {
   index: number
@@ -323,6 +352,9 @@ export interface CasinoStatus {
   visitsThisWeek: number
   minBet: number
   maxBet: number
+  /** Non-null while the hero is under the legal gambling age. */
+  ageLock: { minAge: number; yearsLeft: number } | null
+  slots: SlotRules
 }
 
 // Match ---------------------------------------------------------------------

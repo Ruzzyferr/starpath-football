@@ -4,6 +4,8 @@ import { blackjack } from '../store'
 import type {
   BlackjackView, CardView, CasinoActions, HorseRaceResult, HorseView, Rank, RouletteBet, RouletteResult, SlotsResult, Suit,
 } from '../store'
+import { spinSlot } from '../../sim/life/casino'
+import { slotSpinView } from '../backend/casinoView'
 import { HORSE_COLORS, HORSE_NAMES } from './mockContent'
 
 export interface CasinoHost {
@@ -17,9 +19,6 @@ export interface CasinoHost {
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 const SUITS: Suit[] = ['S', 'H', 'D', 'C']
 export const RED_NUMBERS = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36])
-/** Slot symbols: index → weight & 3-of-a-kind multiplier. */
-export const SLOT_WEIGHTS = [30, 24, 18, 12, 8, 5, 3]
-export const SLOT_PAYS = [3, 5, 8, 12, 20, 40, 100]
 
 export function handTotal(cards: CardView[]): number {
   let t = 0
@@ -179,19 +178,10 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
       return { number: n, color, net }
     },
     slotsSpin(bet): SlotsResult {
-      const rng = host.rng()
-      const idx = SLOT_WEIGHTS.map((_, i) => i)
-      const reels = [0, 1, 2].map(() => rng.weighted(idx, (i) => SLOT_WEIGHTS[i]))
-      let net = -bet
-      let winLine = false
-      if (reels[0] === reels[1] && reels[1] === reels[2]) {
-        net = bet * SLOT_PAYS[reels[0]] - bet
-        winLine = true
-      } else if (reels[0] === reels[1] || reels[1] === reels[2]) {
-        net = Math.round(bet * 0.5) - bet + (reels[1] >= 4 ? bet : 0)
-      }
-      host.settle(net)
-      return { reels, net, winLine }
+      // Same machine as the real game: 3×3 window, 5 paylines, sim paytable.
+      const res = slotSpinView(spinSlot(host.rng(), bet), bet)
+      host.settle(res.net)
+      return res
     },
     horseRace(bet, horse): HorseRaceResult {
       const rng = host.rng()

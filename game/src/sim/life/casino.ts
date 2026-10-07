@@ -523,7 +523,7 @@ export function slotExactRtp(): number {
 
 export interface Horse {
   name: LText
-  /** Hidden strength 45..80. */
+  /** Hidden strength 45..80 (may be fractional after field shaping). */
   strength: number
   /** Visible form hint 1..5 (noisy view of strength). */
   formStars: number
@@ -594,26 +594,74 @@ export function raceWinProbabilities(strengths: readonly number[]): number[] {
   return probs.map((p) => p / s)
 }
 
+/** Shortest odds offered: a hot favourite still pays 1.5×. */
+export const RACE_MIN_ODDS = 1.5
 /** Longest odds offered (bookmakers cap outsiders; extra edge on no-hopers). */
-export const RACE_MAX_ODDS = 150
+export const RACE_MAX_ODDS = 40
+/**
+ * Field shaping: no horse may be a bigger favourite than this, otherwise the
+ * 1.5× floor would hand the player an edge (1 / (1.5 · 1.15) ≈ 0.58).
+ */
+export const RACE_MAX_FAV_P = 0.5
+/** …and no horse less likely than this (40× would be far too generous below ~1/46). */
+export const RACE_MIN_P = 0.012
 
-/** Decimal odds with overround, rounded DOWN to 0.05 (house-favourable), within 1.05..{@link RACE_MAX_ODDS}. */
+/** Decimal odds with overround, rounded DOWN to 0.05 (house-favourable), within {@link RACE_MIN_ODDS}..{@link RACE_MAX_ODDS}. */
 export const oddsFromProbability = (p: number): number =>
-  clamp(Math.floor((1 / (Math.max(1e-9, p) * (1 + RACE_OVERROUND))) * 20) / 20, 1.05, RACE_MAX_ODDS)
+  clamp(Math.floor((1 / (Math.max(1e-9, p) * (1 + RACE_OVERROUND))) * 20) / 20, RACE_MIN_ODDS, RACE_MAX_ODDS)
+
+/**
+ * Bookmaker prices for a field: implied probabilities qᵢ = clamp(k·pᵢ, 1/40, 1/1.5)
+ * with k solved so Σqᵢ = 1 + overround exactly (capped outsiders soak up some
+ * of the margin, so k is a touch under 1.15). Odds round DOWN to 0.05, and are
+ * never above 0.97/pᵢ — every single bet keeps a house edge.
+ */
+export function raceOdds(probs: readonly number[]): number[] {
+  const lo = 1 / RACE_MAX_ODDS
+  const hi = 1 / RACE_MIN_ODDS
+  const book = (k: number) => probs.reduce((s, p) => s + clamp(p * k, lo, hi), 0)
+  let a = 0.5
+  let b = 4
+  for (let i = 0; i < 60; i++) {
+    const m = (a + b) / 2
+    if (book(m) < 1 + RACE_OVERROUND) a = m
+    else b = m
+  }
+  const k = (a + b) / 2
+  return probs.map((p) => {
+    const fair = Math.floor((0.97 / Math.max(1e-9, p)) * 20) / 20
+    const priced = Math.floor((1 / clamp(p * k, lo, hi)) * 20) / 20
+    return clamp(Math.min(priced, fair), RACE_MIN_ODDS, RACE_MAX_ODDS)
+  })
+}
+
+/** Field strengths whose win probabilities fit the odds band (spread squeezed if needed). */
+function shapeField(raw: readonly number[]): { strengths: number[]; probs: number[] } {
+  const mean = raw.reduce((s, v) => s + v, 0) / raw.length
+  let spread = 1
+  for (let i = 0; i < 12; i++) {
+    const strengths = raw.map((v) => mean + (v - mean) * spread)
+    const probs = raceWinProbabilities(strengths)
+    if ((Math.max(...probs) <= RACE_MAX_FAV_P && Math.min(...probs) >= RACE_MIN_P) || i === 11) return { strengths, probs }
+    spread *= 0.85
+  }
+  throw new Error('unreachable')
+}
 
 /** Create a race card: 8 named horses with hidden strength, form hint and odds. */
 export function createRace(rng: Rng): RaceCard {
   const names = rng.shuffle([...HORSE_NAMES]).slice(0, HORSE_COUNT)
   // SD 6: a competitive field (most horses 5–25% to win), the odd clear favourite.
-  const strengths = names.map(() => clamp(Math.round(rng.normal(60, 6)), 45, 80))
-  const probs = raceWinProbabilities(strengths)
+  const raw = names.map(() => clamp(Math.round(rng.normal(60, 6)), 45, 80))
+  const { strengths, probs } = shapeField(raw)
+  const odds = raceOdds(probs)
   return {
     horses: names.map((name, i) => ({
       name,
       strength: strengths[i],
       formStars: clamp(Math.round((strengths[i] + rng.normal(0, 6) - 35) / 10), 1, 5),
       winProb: probs[i],
-      odds: oddsFromProbability(probs[i]),
+      odds: odds[i],
     })),
   }
 }

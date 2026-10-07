@@ -7,7 +7,7 @@ import type { AttributeGroup, GameState, Investment, LText, PendingEvent } from 
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { SLOTS_PER_DAY } from '../../core/config'
-import { absWeek, fill, fmtMoney, lt } from '../career/common'
+import { ADULT_AGE, absWeek, fill, fmtMoney, isAdult, lt } from '../career/common'
 import type { ContractTerms, NegotiationState } from '../career/contract'
 import { acceptOffer as acceptNegotiated, applyContract, counterOffer, rejectOffer, startNegotiation as startNego } from '../career/contract'
 import { unlockPerk as unlockPerkFn } from '../career/perks'
@@ -153,7 +153,12 @@ function settle(state: GameState, stake: number, payout: number): LText[] {
   return r.lines
 }
 
+/** Gambling is 18+: under-age heroes are turned away at the door. */
+const underAge = (state: GameState): boolean => !isAdult(state.hero, state.calendar.season)
+const underAgeText = (): LText => fill(lt('Kumarhaneye {a} yaşından küçükler giremez.', 'You must be {a} or older to gamble.'), { a: ADULT_AGE })
+
 function checkBet(state: GameState, stake: number): LText | null {
+  if (underAge(state)) return underAgeText()
   if (!atCasino(state)) return notAtCasino()
   const c = canBet(state.life, stake)
   return c.ok ? null : c.reason
@@ -225,6 +230,7 @@ export function playSlots(state: GameState, stake: number): ActionResult<SlotSpi
 
 /** Race card for the next horse race (created once, shown before betting). */
 export function horseRaceCard(state: GameState): ActionResult<RaceCard> {
+  if (underAge(state)) return fail(underAgeText())
   if (!atCasino(state)) return fail(notAtCasino())
   const existing = readJson<RaceCard | null>(state.life, GFLAG.race, null)
   if (existing) return okr([], existing)

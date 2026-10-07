@@ -3,7 +3,7 @@ import '../../../styles/screens/casino.css'
 import { Button, Card, Money, Page, StatBar } from '../../components'
 import { Icon } from '../../icons'
 import { data, gameState, navigate, type ScreenId } from '../../store'
-import { PlayingCard, SlotSymbol } from './shared'
+import { PlayingCard, SlotSymbol, CasinoAgeLock } from './shared'
 
 type Game = 'blackjack' | 'roulette' | 'slots' | 'horses'
 const GAMES: { id: Game; screen: ScreenId }[] = [
@@ -54,6 +54,10 @@ function TileArt({ game }: { game: Game }) {
 }
 
 export function CasinoScreen() {
+  return data.casinoStatus().ageLock ? <CasinoAgeLock /> : <CasinoMain />
+}
+
+function CasinoMain() {
   const s = gameState.value
   const st = data.casinoStatus()
   const level = st.addiction >= 60 ? 'high' : st.addiction >= 30 ? 'medium' : 'low'

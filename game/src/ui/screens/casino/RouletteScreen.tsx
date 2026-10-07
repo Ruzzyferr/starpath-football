@@ -7,7 +7,7 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type RouletteBet, type RouletteResult } from '../../store'
-import { casinoMoney, chipValues, ChipToken } from './shared'
+import { casinoMoney, chipValues, ChipToken, CasinoAgeLock } from './shared'
 
 export const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36])
@@ -74,6 +74,10 @@ function RlCell({ label, cls, amt, hit, disabled, isNumber, onPlace }: { label: 
 }
 
 export function RouletteScreen() {
+  return data.casinoStatus().ageLock ? <CasinoAgeLock title={t('casino.games.roulette')} /> : <RouletteMain />
+}
+
+function RouletteMain() {
   const st = data.casinoStatus()
   const chips = chipValues(st.minBet, st.maxBet)
   const [chip, setChip] = useState(chips[0] ?? st.minBet)

@@ -46,6 +46,8 @@ export interface ActivityConditions {
   injuredOk?: boolean
   minReputation?: number
   minMoney?: number
+  /** Minimum hero age (gambling and nightclubs: 18). */
+  minAge?: number
   /** Not on match day. */
   notMatchDay?: boolean
   /** Not the day before a match. */
@@ -166,10 +168,10 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     moneyFormula: 'party', followersPct: 0.002, relations: [{ target: 'teammates', delta: 2 }],
     disciplineInSeason: -3, disciplineBeforeMatch: -6,
     name: T('Gece Kulübü', 'Nightclub'), desc: T('Şampanya, müzik ve paparazziler. Maç öncesi riskli!', 'Champagne, music and paparazzi. Risky before a match!'),
-    conditions: { minMoney: 200 }, triggerTags: ['nightlife', 'party'], eventChance: 0.25, done: T('Sabaha kadar dans ettin.', 'You danced until sunrise.') },
+    conditions: { minMoney: 200, minAge: 18 }, triggerTags: ['nightlife', 'party'], eventChance: 0.25, done: T('Sabaha kadar dans ettin.', 'You danced until sunrise.') },
   { id: 'casino', icon: '🎰', category: 'gambling', slots: 1, allowedSlots: [2], energy: 15, stress: 2, special: 'casino',
     name: T('Kumarhane', 'Casino'), desc: T('Blackjack, rulet, slot, at yarışı. Sorumlu oyna.', 'Blackjack, roulette, slots, horse racing. Play responsibly.'),
-    conditions: { minMoney: 100 }, triggerTags: ['casino', 'gambling', 'nightlife'], eventChance: 0.15, done: T('Kumarhaneye gittin.', 'You went to the casino.') },
+    conditions: { minMoney: 100, minAge: 18 }, triggerTags: ['casino', 'gambling', 'nightlife'], eventChance: 0.15, done: T('Kumarhaneye gittin.', 'You went to the casino.') },
 
   // ── Public / media / work ────────────────────────────────
   { id: 'charity', icon: '🤲', category: 'social', slots: 2, allowedSlots: DAY, energy: 15, happiness: 4, stress: -2, moneyFormula: 'charity',

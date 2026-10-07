@@ -1,4 +1,5 @@
 /** GameData (read-only view models) for the mock backend. */
+import { casinoAgeLock, slotRulesView } from '../backend/casinoView'
 import { Rng, hashString } from '../../core/rng'
 import type { GameState, NewsItem, SponsorDeal } from '../../core/types'
 import { gameState } from '../store'
@@ -368,7 +369,10 @@ export const mockData: GameData = {
   casinoStatus(): CasinoStatus {
     const s = getState()
     const c = s?.life.casino ?? { addiction: 0, won: 0, lost: 0, visitsThisWeek: 0 }
-    return { ...c, minBet: 50, maxBet: Math.max(500, Math.min(50000, Math.round((s?.life.money ?? 0) * 0.25 / 50) * 50)) }
+    return {
+      ...c, minBet: 50, maxBet: Math.max(500, Math.min(50000, Math.round((s?.life.money ?? 0) * 0.25 / 50) * 50)),
+      ageLock: s ? casinoAgeLock(s.hero, s.calendar.season) : null, slots: slotRulesView(),
+    }
   },
   horses() {
     const s = getState()

@@ -9,7 +9,7 @@
 import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
-import { absWeek, clamp, fill, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
+import { absWeek, clamp, fill, heroAge, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
 import { addFatigue, recoverFatigue } from '../career/condition'
 import { perkValue } from '../career/perks'
 import { applyXpBundle } from '../career/progression'
@@ -142,6 +142,10 @@ export function activityBlock(hero: Hero, life: Life, def: ActivityDef, ctx: Act
   if (c.requiresPartner && !hasPartner(life)) return lt('Bir sevgilin yok.', "You don't have a partner.")
   if (c.requiresSponsor && life.sponsors.length === 0) return lt('Sponsorun yok.', 'You have no sponsor.')
   if (c.requiresTrainer && !life.trainer) return lt('Özel antrenörün yok.', 'You have no personal trainer.')
+  if (c.minAge !== undefined && heroAge(hero, ctx.calendar.season) < c.minAge) {
+    const n = c.minAge - heroAge(hero, ctx.calendar.season)
+    return fill(lt('{a} yaş sınırı var. {n} yıl sonra kapılar açılır.', 'Strictly {a}+. The doors open in {n} year(s).'), { a: c.minAge, n })
+  }
   if (c.minReputation !== undefined && hero.reputation < c.minReputation) return lt('Henüz yeterince tanınmıyorsun.', "You're not famous enough yet.")
   if (c.minMoney !== undefined && life.money < c.minMoney) return lt('Yeterli paran yok.', 'Not enough money.')
   const cost = -activityMoney(def, hero, life)

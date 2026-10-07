@@ -5,6 +5,7 @@ import { chain, fx, happy, money, rel, t } from './dsl'
 import {
   absoluteWeek,
   describeEvent,
+  isEligible,
   formatText,
   MAX_EVENTS_PER_WEEK,
   MAX_PENDING,
@@ -207,5 +208,32 @@ describe('5-season simulation with real content', () => {
     for (const [id, n] of perEvent) expect(n, id).toBeLessThanOrEqual(12)
     expect(perEvent.size).toBeGreaterThan(80)
     expect(Number.isFinite(s.life.money)).toBe(true)
+  })
+})
+
+describe('age gate', () => {
+  it('casino and nightlife events (and their follow-ups) wait until the hero is 18', () => {
+    const s = makeTestState()
+    const casino = mk('casino.test', 'casino', { triggers: ['weekly'] })
+    const club = mk('nightlife.test', 'nightlife', { triggers: ['weekly'] })
+    const family = mk('family.test', 'family', { triggers: ['weekly'] })
+    s.hero.birthYear = s.calendar.season - 17
+    expect(isEligible(s, casino, ['weekly'])).toBe(false)
+    expect(isEligible(s, club, ['weekly'])).toBe(false)
+    expect(isEligible(s, family, ['weekly'])).toBe(true)
+    for (let i = 0; i < 30; i++) {
+      for (const p of rollEvents(s, new Rng(i), ['weekly'], 3, { events: [casino, club], fireChance: 1 })) throw new Error(`fired ${p.defId}`)
+    }
+    s.hero.birthYear = s.calendar.season - 18
+    expect(isEligible(s, casino, ['weekly'])).toBe(true)
+    expect(isEligible(s, club, ['weekly'])).toBe(true)
+  })
+
+  it('every real casino/nightlife event is adults-only', () => {
+    const s = makeTestState()
+    s.hero.birthYear = s.calendar.season - 16
+    const adult = ALL_EVENTS.filter((e) => e.category === 'casino' || e.category === 'nightlife')
+    expect(adult.length).toBeGreaterThan(5)
+    for (const e of adult) expect(isEligible(s, e, ['weekly', 'casino', 'nightlife', 'big_money'])).toBe(false)
   })
 })

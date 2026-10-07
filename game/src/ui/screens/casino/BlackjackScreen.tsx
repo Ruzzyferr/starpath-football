@@ -6,7 +6,7 @@ import { formatMoney } from '../../format'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, blackjack, data, type BlackjackHandView, type BlackjackView, type CardView } from '../../store'
-import { BetPicker, casinoMoney, PlayingCard } from './shared'
+import { BetPicker, casinoMoney, PlayingCard, CasinoAgeLock } from './shared'
 
 function Hand({ cards, label, total, dealer, revealed }: { cards: CardView[]; label: string; total: number | null; dealer?: boolean; revealed?: boolean }) {
   return (
@@ -58,6 +58,10 @@ function SplitHand({ h, index, active, done }: { h: BlackjackHandView; index: nu
 }
 
 export function BlackjackScreen() {
+  return data.casinoStatus().ageLock ? <CasinoAgeLock title={t('casino.games.blackjack')} /> : <BlackjackMain />
+}
+
+function BlackjackMain() {
   const st = data.casinoStatus()
   const [view, setView] = useState<BlackjackView | null>(blackjack.value)
   const [bet, setBet] = useState(st.minBet)
