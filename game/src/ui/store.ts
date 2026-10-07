@@ -411,6 +411,8 @@ export interface PreMatchView {
   odds: { home: number; draw: number; away: number }
   /** How many moments (and which kinds) the hero can expect, from position/role/relations/form. Null when not starting and unlikely to come on. */
   expectedMoments?: { min: number; max: number; kinds: { kind: string; share: number }[] } | null
+  /** Referee in charge (WP-14): strictness 1..5 and advantage tendency 0..1. */
+  referee?: { name: string; strictness: number; advantage: number } | null
 }
 export interface MatchEventView {
   minute: number

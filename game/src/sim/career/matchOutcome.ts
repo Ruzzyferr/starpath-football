@@ -14,6 +14,7 @@ import { addFatigue, applyInjury, rollInjury } from './condition'
 import { pushRecentRating, updateTrustFromMatch } from './squadRole'
 import { applyMatchRelations } from '../life/relationships'
 import { assetEffectTotal } from '../life/assetEffects'
+import { yellowAccumulationBan } from '../match/referee'
 
 /** The hero's line from a finished match (produced by the match engine / UI). */
 export interface HeroMatchInput {
@@ -37,6 +38,8 @@ export interface HeroMatchInput {
   cleanSheet?: boolean
   yellow?: number
   red?: boolean
+  /** Matches banned for the red card (1..3, WP-14). Missing = 1. */
+  ban?: number
   motm?: boolean
   /** The engine flagged an in-match injury to the hero. */
   injured?: boolean
@@ -171,10 +174,13 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
 
   // ── Discipline: cards ──
   if (m.red) {
-    hero.suspendedMatches += 1
-    life.discipline = meter(life.discipline - 6)
-    lines.push(lt('🟥 Kırmızı kart: bir sonraki maçta cezalısın.', '🟥 Red card: suspended for the next match.'))
-  } else if ((m.yellow ?? 0) > 0 && hero.seasonStats.yellow > 0 && hero.seasonStats.yellow % 5 === 0) {
+    const ban = Math.max(1, Math.min(3, Math.round(m.ban ?? 1)))
+    hero.suspendedMatches += ban
+    life.discipline = meter(life.discipline - 4 - ban * 2)
+    lines.push(ban === 1
+      ? lt('🟥 Kırmızı kart: bir sonraki maçta cezalısın.', '🟥 Red card: suspended for the next match.')
+      : fill(lt('🟥 Kırmızı kart: {n} maç ceza aldın.', '🟥 Red card: banned for {n} matches.'), { n: ban }))
+  } else if ((m.yellow ?? 0) > 0 && yellowAccumulationBan(hero.seasonStats.yellow)) {
     // Accumulation ban every 5 yellows.
     hero.suspendedMatches += 1
     lines.push(lt('🟨 5. sarı kart: bir maç cezalısın.', '🟨 Fifth yellow card: one-match ban.'))

@@ -22,15 +22,19 @@ const STAT_KEYS: readonly (keyof SeasonStats)[] = [
 type PackedPlayer = [
   string, string, string, string, number, NpcPlayer['position'], NpcPlayer['foot'], number, number, number, string | null,
   number, number, number, number, number, NpcPlayer['personality'], number[], number, number[] | 0,
+  /** suspendedMatches (WP-14), only when banned. */
+  number?,
 ]
 
 function packPlayer(p: NpcPlayer): PackedPlayer {
   const stats = STAT_KEYS.map((k) => p.stats[k])
-  return [
+  const out: PackedPlayer = [
     p.id, p.firstName, p.lastName, p.nationality, p.birthYear, p.position, p.foot, p.ovr, p.potential, p.styleSeed, p.clubId,
     p.value, p.wage, p.contractUntil, p.morale, p.form, p.personality, APPEARANCE_KEYS.map((k) => p.appearance[k]), p.injuredWeeks,
     stats.every((v) => v === 0) ? 0 : stats,
   ]
+  if (p.suspendedMatches) out.push(p.suspendedMatches)
+  return out
 }
 
 function unpackPlayer(a: PackedPlayer, female: boolean): NpcPlayer {
@@ -44,6 +48,7 @@ function unpackPlayer(a: PackedPlayer, female: boolean): NpcPlayer {
     id: a[0], firstName: a[1], lastName: a[2], nationality: a[3], birthYear: a[4], position: a[5], foot: a[6], ovr: a[7],
     potential: a[8], styleSeed: a[9], clubId: a[10], value: a[11], wage: a[12], contractUntil: a[13], morale: a[14], form: a[15],
     personality: a[16], appearance: app, injuredWeeks: a[18], stats,
+    ...(a[20] ? { suspendedMatches: a[20] } : {}),
   }
 }
 

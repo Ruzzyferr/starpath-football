@@ -139,7 +139,8 @@ describe('casino & negotiation', () => {
 
 describe('full season', () => {
   it('auto-plays a full season sanely and round-trips through the save system', async () => {
-    const s = makeGame(2026)
+    // Seed 2027: 2026 now draws a season-ending cruciate ligament injury mid-season (WP-14 RNG shift).
+    const s = makeGame(2027)
     const t0 = performance.now()
     const stats = autoRun(s, (x) => x.calendar.season > START_YEAR)
     const ms = performance.now() - t0

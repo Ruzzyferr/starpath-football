@@ -159,6 +159,8 @@ export interface NpcPlayer {
   personality: Personality
   appearance: Appearance
   injuredWeeks: number
+  /** Matches still to sit out after a red card / yellow accumulation (WP-14). Optional for old saves. */
+  suspendedMatches?: number
   stats: SeasonStats
 }
 
@@ -295,6 +297,12 @@ export interface Award {
   name: LText
 }
 
+/** Hero shot habits per goal-mouth third [low-y, centre, high-y] (sim/match/referee). */
+export interface ShotBook {
+  pen: [number, number, number]
+  shot: [number, number, number]
+}
+
 export interface Hero {
   firstName: string
   lastName: string
@@ -322,6 +330,11 @@ export interface Hero {
   fatigue: number // 0..100 (high = tired)
   injury: Injury | null
   suspendedMatches: number
+  /**
+   * Where the hero puts penalties / shots (goal-mouth thirds, faded each
+   * match). Keepers study it (WP-14). Optional for old saves.
+   */
+  keeperBook?: ShotBook
   contract: Contract | null
   managerTrust: number // 0..100
   reputation: number // 0..100 global fame

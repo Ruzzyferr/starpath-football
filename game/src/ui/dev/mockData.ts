@@ -14,6 +14,7 @@ import {
 import { buildLineup, createMatchEngine, interviewOptions, mockExpectedMoments, mockPostDetails, weatherFor } from './mockMatch'
 import { makeHorses } from './mockCasino'
 import { computeOvr } from './mockState'
+import { refereeFor } from '../../sim/world/referees'
 import { COUNTRIES } from './mockNames'
 
 export const engine = createMatchEngine({ onFinished: () => {} })
@@ -134,6 +135,7 @@ function preMatch(s: GameState): PreMatchView | null {
     heroStarting: starting,
     odds: { home: odds(ph * 0.75), draw: odds(0.25), away: odds((1 - ph) * 0.75) },
     expectedMoments: mockExpectedMoments(s.hero.position, starting),
+    referee: refereeFor(1, home.countryId, f.id),
   }
 }
 

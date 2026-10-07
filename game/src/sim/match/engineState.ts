@@ -6,7 +6,7 @@
  * match mid-way and `MatchSim.restore()` resumes it bit-identically.
  */
 import type { HighlightKind, RatingLogEntry, ShotMapEntry } from './types'
-import type { Lang, MatchResultSummary } from '../../core/types'
+import type { Lang, MatchResultSummary, ShotBook } from '../../core/types'
 import type { RngState } from '../../core/rng'
 import type { HeroMatchStats, Highlight, MatchEvent, MatchSetup, Side } from './types'
 
@@ -34,6 +34,8 @@ export interface PlayerRuntime {
   fatigue: number
   yellow: number
   red: boolean
+  /** Matches banned after this match's red card (1..3), WP-14. */
+  ban?: number
   goals: number
   assists: number
   ownGoals: number
@@ -101,6 +103,8 @@ export interface HeroRuntime {
   shots?: ShotMapEntry[]
   /** Moment kinds generated so far (position guarantees). */
   kinds?: Partial<Record<HighlightKind, number>>
+  /** Keepers' book on the hero (setup.keeperBook + this match), WP-14. */
+  book?: ShotBook
 }
 
 /** Complete engine state. */

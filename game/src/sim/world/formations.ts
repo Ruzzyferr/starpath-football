@@ -68,7 +68,10 @@ export function selectLineupFromPlayers(
   excludeIds?: ReadonlySet<string>,
 ): Lineup {
   const slots = FORMATION_SLOTS[formation]
-  let pool = players.filter((p) => !excludeIds?.has(p.id) && p.injuredWeeks <= 0)
+  // Suspended players never play (WP-14); injured ones only when fewer than 11 are fit.
+  const eligible = players.filter((p) => !excludeIds?.has(p.id) && !((p.suspendedMatches ?? 0) > 0))
+  let pool = eligible.filter((p) => p.injuredWeeks <= 0)
+  if (pool.length < slots.length) pool = eligible
   if (pool.length < slots.length) pool = players.filter((p) => !excludeIds?.has(p.id))
 
   const pairs: { slot: number; player: number; value: number }[] = []

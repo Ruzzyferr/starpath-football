@@ -10,7 +10,8 @@
  * In a Highlight scenario the hero's team ALWAYS attacks toward +x (the scene
  * flips visuals if needed).
  */
-import type { Attributes, Formation, Gender, KitColors, Position, TacticStyle } from '../../core/types'
+import type { Attributes, Formation, Gender, KitColors, Position, ShotBook, TacticStyle } from '../../core/types'
+import type { Referee, RefereeBrief, RedReason } from './referee'
 
 export const PITCH_LENGTH = 105
 export const PITCH_WIDTH = 68
@@ -64,6 +65,10 @@ export interface MatchSetup {
   difficulty: number // 0.8 easy … 1.3 legend; scales opponent AI in highlights
   /** Players' gender for commentary pronouns (the world follows the hero). Missing = male. */
   gender?: Gender
+  /** Match referee (WP-14). Missing = neutral (strictness 3, no advantage data). */
+  referee?: Referee
+  /** Keepers' book on the hero from earlier matches (WP-14). */
+  keeperBook?: ShotBook
 }
 
 export type MatchEventType =
@@ -134,6 +139,10 @@ export interface Highlight {
   scenario: HighlightScenario
   /** Score at the moment of the highlight. */
   score: [number, number]
+  /** Referee in charge (strictness / advantage), WP-14. */
+  referee?: RefereeBrief
+  /** What the keepers know of the hero's shooting habits (WP-14). */
+  keeperBook?: ShotBook
 }
 
 export type HighlightOutcome =
@@ -161,6 +170,10 @@ export interface HighlightResult {
   tackles: number
   /** Optional booking for the hero (rash tackle). */
   card?: 'yellow' | 'red'
+  /** Why a straight red was shown (ban length, WP-14). Missing = 'serious'. */
+  redReason?: RedReason
+  /** The referee played advantage during the moment (and whether it was called back). */
+  advantage?: 'played' | 'called_back'
   injured?: boolean
   /**
    * Set when the moment ended on an offside flag: the player who touched the
@@ -174,7 +187,7 @@ export interface HighlightResult {
    */
   track?: Vec2[]
   /** Hero shots taken during the moment (pitch meters, hero attacks +x). */
-  shotLog?: { x: number; y: number; header?: boolean; outcome?: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork' }[]
+  shotLog?: { x: number; y: number; header?: boolean; outcome?: 'goal' | 'saved' | 'missed' | 'blocked' | 'woodwork'; zone?: 0 | 1 | 2; pen?: boolean }[]
   /**
    * Aim-assist reward multiplier for the interactive moment (WP-13): less
    * assist, more reward. Scales the positive part of the moment's rating
@@ -243,6 +256,8 @@ export interface HeroMatchStats {
   saves: number
   yellow: number
   red: number
+  /** Matches banned for this match's red card (1..3), WP-14. */
+  ban?: number
   rating: number // 0..10 running rating
   highlightsPlayed: number
 }

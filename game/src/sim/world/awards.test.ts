@@ -49,7 +49,7 @@ describe('awards over a season', () => {
   it('hero competes on equal terms', () => {
     const top = goldenStarShortlist(world, S)[0]
     const p = world.players[top.playerId]
-    const hero = { name: 'Hero', clubId: p.clubId, nationality: p.nationality, position: p.position, ovr: p.ovr + 5, age: 24, stats: { ...p.stats, goals: p.stats.goals + 10, ratingSum: p.stats.ratingSum + p.stats.apps * 0.5 }, intlCaps: 6, intlGoals: 4 }
+    const hero = { name: 'Hero', clubId: p.clubId, nationality: p.nationality, position: p.position, ovr: p.ovr + 5, age: 24, stats: { ...p.stats, goals: p.stats.goals + 15, ratingSum: p.stats.ratingSum + p.stats.apps * 0.5 }, intlCaps: 6, intlGoals: 4 }
     const list = goldenStarShortlist(world, S, hero)
     expect(list[0].isHero).toBe(true)
     expect(goldenStarVote(list, S).ranking[0].isHero).toBe(true)

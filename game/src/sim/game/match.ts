@@ -27,6 +27,8 @@ import { teamName } from '../world/national'
 import { penaltyShootout, QUICKSIM_TUNING } from '../world/quickSim'
 import { playerDisplayName, rateLineup, squadPlayers } from '../world/queries'
 import { recordFixtureResult } from '../world/season'
+import { addNpcBan, refereeFor, serveClubBans } from '../world/referees'
+import { copyBook, fadeBook } from '../match/referee'
 import type { GoalCandidate } from '../world/worldTypes'
 import { rollEvents } from './eventsAdapter'
 import {
@@ -235,6 +237,9 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       importance,
       difficulty: clamp(base * (1 + (1 - mental) * 0.5), 0.8, 1.4),
       ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
+      // WP-14: the referee (stable per-country pool, picked by fixture) and the keepers' book on the hero.
+      referee: refereeFor(state.meta.seed, home.countryId, fixture.id),
+      ...(state.hero.keeperBook ? { keeperBook: copyBook(state.hero.keeperBook) } : {}),
     }
     const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
     writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts, ...(national ? { national } : {}) } satisfies ActiveMatchBlob)
@@ -342,6 +347,20 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       drew = false
     }
     recordFixtureResult(state.world, rng, blob.compId, blob.fixtureId, result, ratings)
+    // ── Discipline (WP-14): club bans are served, then this match's reds ban NPCs for 1..3 matches ──
+    if (!blob.national) {
+      serveClubBans(state.world, blob.setup.home.id)
+      serveClubBans(state.world, blob.setup.away.id)
+      for (const p of Object.values(engine.players)) {
+        const npc = p.id === HERO_ID ? undefined : state.world.players[p.id]
+        if (!npc) continue
+        if (p.yellow > 0 && !p.red) npc.stats.yellow++
+        if (p.red) npc.stats.red++
+        addNpcBan(npc, { red: p.red, ban: p.ban, yellowAdded: p.yellow > 0 && !p.red }, `${p.id}:${blob.fixtureId}`)
+      }
+    }
+    // Keepers' book on the hero: this match's attempts, older habits fading.
+    if (engine.hero.book) state.hero.keeperBook = fadeBook(engine.hero.book)
     if (compX && fixtureX) nominateHeroGoals(state, compX, fixtureX, snap.events, st.rating)
 
     // ── Hero ──
@@ -379,7 +398,7 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       goals: st.goals, assists: st.assists, minutes: st.minutes, started: blob.starts, won, drew,
       importance: blob.setup.importance, shots: st.shots, shotsOnTarget: st.shotsOnTarget, passes: st.passes,
       passesCompleted: st.passesCompleted, tackles: st.tackles, dribbles: st.dribbles, saves: st.saves,
-      cleanSheet: ga === 0, yellow: st.yellow, red: st.red > 0, motm: result.motmId === HERO_ID, injured,
+      cleanSheet: ga === 0, yellow: st.yellow, red: st.red > 0, ...(st.ban ? { ban: st.ban } : {}), motm: result.motmId === HERO_ID, injured,
       isAway: side === 'away', opponentName: opp.name, opponentReputation: oppClub?.reputation ?? teamReputation(state, opp.id),
       assistedBy, assistedTo,
     }

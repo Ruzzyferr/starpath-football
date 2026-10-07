@@ -51,6 +51,15 @@ describe('applyMatchToHero', () => {
     expect(s.hero.seasonStats.red).toBe(1)
   })
 
+  it('a straight red bans 1..3 matches (WP-14)', () => {
+    const s = state()
+    applyMatchToHero(s, { ...base, rating: 4.5, red: true, ban: 3 })
+    expect(s.hero.suspendedMatches).toBe(3)
+    const t = state()
+    applyMatchToHero(t, { ...base, rating: 4.5, red: true, ban: 2 })
+    expect(t.hero.suspendedMatches).toBe(2)
+  })
+
   it('adds fatigue and sharpness; away trips tire more', () => {
     const a = state(); const b = state()
     a.hero.fatigue = b.hero.fatigue = 10

@@ -36,6 +36,7 @@ import {
 import { EARLY_BRAKE_MINUTE, MIN_MOMENT_CHANCE, earlyBrake, momentChance } from './fairness'
 import { HEAT_COLS, HEAT_ROWS, addHeat, backgroundPresence, emptyHeat, shotEntry, typicalShotSpot } from './heroMap'
 import { formationSlots } from './formations'
+import { backgroundRedReason, banMatches, copyBook, noteShot, refCardMult, refFoulMult, type RedReason } from './referee'
 import {
   clampRating,
   contributionFloor,
@@ -336,6 +337,7 @@ export class MatchSim {
       heat: emptyHeat(),
       shots: [],
       kinds: {},
+      ...(setup.keeperBook ? { book: copyBook(setup.keeperBook) } : {}),
     }
     return {
       v: 1,
@@ -923,7 +925,7 @@ export class MatchSim {
   // ───────────────────────── Fouls, cards, injuries ─────────────────────────
 
   private fouls(def: Side, att: Side): void {
-    if (!this.rng.chance(FOUL_RATE * STYLES[this.team(def).style].fouls)) return
+    if (!this.rng.chance(FOUL_RATE * STYLES[this.team(def).style].fouls * refFoulMult(this.s.setup.referee?.strictness))) return
     this.s.teams[def].fouls++
     const fouler = this.pickFrom(def, (p) => FOUL_WEIGHT[p.position] * (110 - p.attrs.composure), { excludeHero: true })
     if (fouler) this.maybeCard(def, fouler)
@@ -940,10 +942,13 @@ export class MatchSim {
 
   private maybeCard(side: Side, p: MatchPlayer): void {
     const r = this.rng.next()
-    if (r < RED_PER_FOUL) return this.sendOff(side, p.id, 'red')
+    // The referee's strictness scales both colours (strictness 3 / no referee = 1).
+    const m = refCardMult(this.s.setup.referee?.strictness)
+    const red = RED_PER_FOUL * m
+    if (r < red) return this.sendOff(side, p.id, 'red', backgroundRedReason(`${p.id}:${this.s.clock}:${this.s.seq}`))
     // Booked players tread carefully: far less likely to pick up a second yellow.
-    const yellow = YELLOW_PER_FOUL * (this.s.players[p.id].yellow > 0 ? 0.35 : 1)
-    if (r < RED_PER_FOUL + yellow) this.book(side, p.id)
+    const yellow = YELLOW_PER_FOUL * m * (this.s.players[p.id].yellow > 0 ? 0.35 : 1)
+    if (r < red + yellow) this.book(side, p.id)
   }
 
   /** Yellow card; a second yellow becomes a red. */
@@ -956,11 +961,16 @@ export class MatchSim {
     this.emit('yellow', side, this.say('yellow', { ...this.teamVars(side), player: this.name(id) }), { playerId: id })
   }
 
-  private sendOff(side: Side, id: string, key: 'red' | 'secondYellow'): void {
+  private sendOff(side: Side, id: string, key: 'red' | 'secondYellow', reason: RedReason = key === 'secondYellow' ? 'secondYellow' : 'serious'): void {
     const rt = this.s.players[id]
     rt.red = true
+    // Ban for the coming matches (1..3), applied by the career layer.
+    rt.ban = banMatches(key === 'secondYellow' ? 'secondYellow' : reason, this.s.setup.referee?.strictness)
     this.s.periodEvents++
-    if (this.isHero(id)) this.s.hero.stats.red++
+    if (this.isHero(id)) {
+      this.s.hero.stats.red++
+      this.s.hero.stats.ban = rt.ban
+    }
     this.emit('red', side, this.say(key, { ...this.teamVars(side), player: this.name(id) }), { playerId: id })
     const wasKeeper = this.player(id).position === 'GK'
     this.removeFromPitch(side, id)
@@ -1236,6 +1246,9 @@ export class MatchSim {
       scenario: gen.scenario,
       score: [this.s.score[0], this.s.score[1]],
     }
+    const ref = this.s.setup.referee
+    if (ref) highlight.referee = { strictness: ref.strictness, advantage: ref.advantage }
+    if (h.book) highlight.keeperBook = copyBook(h.book)
     this.s.pending = { highlight, passerId: gen.passerId, finisherId: gen.finisherId, opponentId: gen.opponentId, context }
     const heroX = isDefensiveKind(kind) ? 0.2 : 0.75
     this.s.ballX = side === 'home' ? heroX : 1 - heroX
@@ -1289,10 +1302,20 @@ export class MatchSim {
     if (this.resolvingAuto) entry.auto = true
     this.rate(highlightRatingDelta(kind, r), entry)
     this.recordMomentMap(p, r)
+    this.noteHeroShots(r)
     if (p.context === 'shootout') this.applyShootoutHighlight(p, r)
     else if (isDefensiveKind(kind)) this.applyDefensiveOutcome(p, r)
     else this.applyAttackingOutcome(p, r)
     this.applyHeroCardAndInjury(r)
+  }
+
+  /** Keepers' book: where the hero put his penalties / shots this moment (WP-14). */
+  private noteHeroShots(r: HighlightResult): void {
+    const log = r.shotLog
+    if (!log?.some((e) => e.zone !== undefined)) return
+    const h = this.s.hero
+    const book = (h.book ??= copyBook(undefined))
+    for (const e of log) if (e.zone !== undefined && !e.header) noteShot(book, e.zone, !!e.pen)
   }
 
   private heroVars(): CommentaryVars {
@@ -1441,7 +1464,7 @@ export class MatchSim {
     const heroId = h.id as string
     if (!this.heroOnPitch()) return
     if (r.card === 'yellow') this.book(side, heroId)
-    else if (r.card === 'red') this.sendOff(side, heroId, 'red')
+    else if (r.card === 'red') this.sendOff(side, heroId, 'red', r.redReason ?? 'serious')
     if (r.injured && this.heroOnPitch()) {
       this.s.periodEvents++
       this.emit('injury', side, this.say('injury', { ...this.teamVars(side), player: this.name(heroId) }), { playerId: heroId })

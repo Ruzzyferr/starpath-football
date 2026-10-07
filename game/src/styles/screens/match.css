@@ -406,6 +406,33 @@
 .pm-key-name {
   font-weight: 600;
 }
+.pm-ref-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 0;
+}
+.pm-ref-name {
+  flex: 1;
+  min-width: 0;
+}
+.pm-ref-pips {
+  display: inline-flex;
+  gap: 3px;
+  flex: none;
+}
+.pm-ref-pip {
+  width: 8px;
+  height: 12px;
+  border-radius: 2px;
+  background: var(--surface-3);
+}
+.pm-ref-pip.is-on {
+  background: var(--accent-gold);
+}
+.pm-ref[data-strictness='5'] .pm-ref-pip.is-on {
+  background: var(--state-danger);
+}
 .pm-hint {
   flex-direction: row;
   align-items: flex-start;

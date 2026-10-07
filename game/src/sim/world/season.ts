@@ -39,6 +39,7 @@ import { quickSimDetailed } from './quickSim'
 import type { QuickSimDetail } from './quickSim'
 import { seasonCompetitions, squadPlayers, teamRating } from './queries'
 import { sortTable } from './table'
+import { addNpcBan, serveClubBans } from './referees'
 
 export {
   MIN_AWARD_APPS, YOUNG_PLAYER_MAX_AGE, playerSeasonScore, seasonAwards, type AwardWinner, type SeasonAwards,
@@ -80,8 +81,11 @@ function applyMatchStats(world: World, rng: Rng, d: QuickSimDetail): void {
       p.stats.minutes += minutes
       p.stats.ratingSum += rating
       if (side.ga === 0 && (positionGroup(side.slots[i]) === 'GK' || positionGroup(side.slots[i]) === 'DEF')) p.stats.cleanSheets++
-      if (rng.chance(YELLOW_CHANCE)) p.stats.yellow++
-      if (rng.chance(RED_CHANCE)) p.stats.red++
+      const yellowAdded = rng.chance(YELLOW_CHANCE)
+      if (yellowAdded) p.stats.yellow++
+      const red = rng.chance(RED_CHANCE)
+      if (red) p.stats.red++
+      addNpcBan(p, { red, yellowAdded }, `${id}:${p.stats.apps}:${p.stats.red}`)
       p.form = Math.round(p.form * 0.7 + rating * 10 * 0.3)
       p.morale = clamp(p.morale + moraleDelta, 0, 100)
       if (rng.chance(INJURY_CHANCE_PER_MATCH)) p.injuredWeeks = rng.weighted([1, 2, 3, 4, 6, 10], (w) => 12 / w)
@@ -142,6 +146,9 @@ export function playFixturesFor(
         aggregate,
       })
       applyFixtureResult(comp, f, detail.result)
+      // Banned players sat this one out: serve a match, then book the new bans.
+      serveClubBans(world, home.id)
+      serveClubBans(world, away.id)
       applyMatchStats(world, rng, detail)
       nominateGoals(world, comp, f)
       played.push({ compId: comp.id, fixtureId: f.id, result: detail.result })

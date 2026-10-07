@@ -190,6 +190,7 @@ export function preMatchView(s: GameState): PreMatchView | null {
     heroStarting: blob.starts,
     odds: { home: ODDS(pHome * (1 - pDraw)), draw: ODDS(pDraw), away: ODDS((1 - pHome) * (1 - pDraw)) },
     expectedMoments: expectedFor(s, blob),
+    referee: blob.setup.referee ? { ...blob.setup.referee } : null,
   }
 }
 

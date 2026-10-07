@@ -49,6 +49,27 @@ function ExpectedMomentsCard({ em, starting }: { em: NonNullable<PreMatchView['e
   )
 }
 
+const REF_STYLE = ['lenient', 'relaxed', 'balanced', 'strict', 'cardHappy'] as const
+
+/** Referee in charge: strictness 1..5 (card pips) and how readily he plays advantage (WP-14). */
+function RefereeCard({ r }: { r: NonNullable<PreMatchView['referee']> }) {
+  const s = Math.max(1, Math.min(5, Math.round(r.strictness)))
+  const flow = r.advantage >= 0.6 ? 'flow' : r.advantage <= 0.4 ? 'whistle' : 'mixed'
+  return (
+    <div class="pm-card pm-ref" data-testid="pm-referee" data-strictness={s}>
+      <h3 class="micro t-mid">{t('match.pre.referee')}</h3>
+      <div class="pm-ref-row">
+        <Icon name="whistle" size={20} class="t-gold" />
+        <b class="truncate pm-ref-name">{r.name}</b>
+        <span class="pm-ref-pips" role="img" aria-label={t('match.pre.refStrictness', { n: s })}>
+          {[1, 2, 3, 4, 5].map((i) => <span key={i} class={`pm-ref-pip${i <= s ? ' is-on' : ''}`} />)}
+        </span>
+      </div>
+      <p class="t-sm t-mid">{t(`match.pre.refStyle.${REF_STYLE[s - 1]}`)} · {t(`match.pre.refFlow.${flow}`)}</p>
+    </div>
+  )
+}
+
 export function PreMatchScreen() {
   const pm = data.preMatch()
   void currentLang.value
@@ -179,6 +200,8 @@ export function PreMatchScreen() {
               </ul>
             </div>
           )}
+
+          {pm.referee && <RefereeCard r={pm.referee} />}
 
           <div class="pm-card pm-hint">
             <span class="pm-hint-icon"><Icon name="whistle" size={22} /></span>
