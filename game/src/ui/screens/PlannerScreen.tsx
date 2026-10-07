@@ -7,6 +7,20 @@ import {
 import { formatMoney } from '../format'
 import { Icon, isIconName, type IconName } from '../icons'
 import { actions, data, gameState, type ActivityCategory, type ActivityView, type DaySlotView } from '../store'
+import { requestAdvance } from '../tutorial/MatchdayConfirm'
+import { lockText } from '../tutorial/UnlockGate'
+import { features, type FeatureId } from '../tutorial/unlocks'
+
+/** Activity categories hidden behind progressive unlocks (UI messaging only). */
+const GATED: Partial<Record<ActivityCategory, FeatureId>> = { casino: 'casino', business: 'business' }
+
+function withUnlocks(a: ActivityView): ActivityView {
+  const f = GATED[a.category]
+  const st = f ? features.value[f] : null
+  if (!st || st.unlocked) return a
+  const msg = lockText(st)
+  return { ...a, available: false, lockedReason: { tr: msg, en: msg } }
+}
 
 const CAT_ICON: Record<ActivityCategory, IconName> = {
   training: 'barbell', rest: 'bed', social: 'users', family: 'house', media: 'megaphone', business: 'storefront',
@@ -68,7 +82,7 @@ function ActivityRow({ a, onPick, selected }: { a: ActivityView; onPick: (a: Act
 function Picker({ slot, current, onClose }: { slot: DaySlotView | null; current: string | null; onClose: () => void }) {
   const [cat, setCat] = useState<ActivityCategory | 'all'>('all')
   if (!slot) return null
-  const acts = data.activities()
+  const acts = data.activities().map(withUnlocks)
   const cats = CAT_ORDER.filter((c) => acts.some((a) => a.category === c))
   const list = cat === 'all' ? acts : acts.filter((a) => a.category === cat)
   const groups = cat === 'all' ? cats.map((c) => ({ c, items: list.filter((a) => a.category === c) })) : [{ c: cat, items: list }]
@@ -132,7 +146,7 @@ export function PlannerScreen() {
       title={t('planner.title')}
       sub={t('planner.sub', { day: tx(`data.day.${cal.day}`), week: t('common.week', { n: cal.week + 1 }) })}
       footer={
-        <Button variant="primary" size="lg" block icon="fast-forward" haptic="select" onClick={() => actions.advance()}>
+        <Button variant="primary" size="lg" block icon="fast-forward" haptic="select" onClick={() => requestAdvance()} data-tour="advance">
           {t('planner.advance')}
         </Button>
       }
@@ -148,7 +162,7 @@ export function PlannerScreen() {
         {low && <p class="t-xs t-neg plan-energy-warn"><Icon name="warning" size={14} /> {t('planner.energyLow')}</p>}
       </Card>
 
-      <ol class="plan-slots">
+      <ol class="plan-slots" data-tour="plan-slot">
         {plan.slots.map((sl) => {
           const a = sl.activityId ? byId.get(sl.activityId) : undefined
           const editable = sl.state === 'current' || sl.state === 'upcoming'

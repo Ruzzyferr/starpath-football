@@ -14,24 +14,26 @@ export interface MeterRingProps {
   icon?: IconName
   children?: ComponentChildren
   ariaLabel?: string
+  /** Trailing element after the label (e.g. an info tooltip). */
+  info?: ComponentChildren
 }
 
-export function MeterRing({ value, max = 100, size = 72, stroke = 7, color = 'var(--brand-pitch)', track = 'var(--surface-3)', label, icon, children, ariaLabel }: MeterRingProps) {
+export function MeterRing({ value, max = 100, size = 72, stroke = 7, color = 'var(--brand-pitch)', track = 'var(--surface-3)', label, icon, children, ariaLabel, info }: MeterRingProps) {
   const mounted = useMounted()
   const r = (size - stroke) / 2
   const c = 2 * Math.PI * r
   const p = clamp01(value / max)
   return (
-    <div
-      class="meter-ring"
-      style={{ minWidth: size }}
-      role="meter"
-      aria-valuenow={Math.round(value)}
-      aria-valuemin={0}
-      aria-valuemax={max}
-      aria-label={ariaLabel ?? `${label ?? ''} ${Math.round(value)}`}
-    >
-      <div class="meter-ring-dial" style={{ width: size, height: size }}>
+    <div class="meter-ring" style={{ minWidth: size }}>
+      <div
+        class="meter-ring-dial"
+        style={{ width: size, height: size }}
+        role="meter"
+        aria-valuenow={Math.round(value)}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label={ariaLabel ?? `${label ?? ''} ${Math.round(value)}`}
+      >
         <svg width={size} height={size} viewBox={`0 0 ${size} ${size}`} aria-hidden="true">
           <circle cx={size / 2} cy={size / 2} r={r} fill="none" stroke={track} stroke-width={stroke} />
           <circle
@@ -54,7 +56,7 @@ export function MeterRing({ value, max = 100, size = 72, stroke = 7, color = 'va
             : <span class="score-font" style={{ fontSize: `${size * 0.34}px` }}>{Math.round(value)}</span>)}
         </div>
       </div>
-      {label && <div class="meter-ring-label micro t-mid">{label}</div>}
+      {label && <div class="meter-ring-label micro t-mid" aria-hidden={info ? undefined : 'true'}>{label}{info}</div>}
     </div>
   )
 }

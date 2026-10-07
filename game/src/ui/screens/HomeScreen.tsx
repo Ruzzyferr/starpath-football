@@ -8,6 +8,10 @@ import { ageOf, ratingColor, seasonLabel } from '../format'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, activeEvent, data, gameState, heroClub, navigate, type ScreenId } from '../store'
+import { InfoTip } from '../tutorial/InfoTip'
+import { requestAdvance } from '../tutorial/MatchdayConfirm'
+import { LockChip, NewTag } from '../tutorial/UnlockGate'
+import { features } from '../tutorial/unlocks'
 
 type AttrKey = keyof Attributes
 
@@ -76,7 +80,7 @@ export function HomeScreen() {
           <Button variant="ghost" icon="skip" onClick={() => actions.advanceToMatch()} class="home-cta-auto">
             {t('home.autoToMatch')}
           </Button>
-          <Button variant="primary" size="lg" icon="fast-forward" class="home-cta-main" haptic="select" onClick={() => actions.advance()} title={t('home.advanceHint')}>
+          <Button variant="primary" size="lg" icon="fast-forward" class="home-cta-main" haptic="select" onClick={() => requestAdvance()} title={t('home.advanceHint')} data-tour="advance">
             {t('home.advance')}
           </Button>
         </div>
@@ -109,7 +113,7 @@ export function HomeScreen() {
             )}
 
             {fx ? (
-              <div class={`home-fixture${matchToday ? ' is-today' : ''}`}>
+              <div class={`home-fixture${matchToday ? ' is-today' : ''}`} data-tour="fixture">
                 <div class="home-fixture-head">
                   <span class="micro">{matchToday ? t('home.matchToday') : t('home.nextMatch')}</span>
                   <span class="t-xs home-fixture-comp truncate">{lt(fx.compName)}</span>
@@ -157,7 +161,7 @@ export function HomeScreen() {
                 )}
               </div>
             ) : (
-              <div class="home-fixture home-fixture-empty">
+              <div class="home-fixture home-fixture-empty" data-tour="fixture">
                 <Icon name="calendar" size={22} />
                 <div>
                   <div class="h3">{t('home.noMatch')}</div>
@@ -181,13 +185,16 @@ export function HomeScreen() {
           <section aria-labelledby="home-quick">
             <SectionTitle id="home-quick">{t('home.quick')}</SectionTitle>
             <div class="home-tiles">
-              {TILES.map((tile) => (
-                <button key={tile.id} type="button" class={`home-tile home-tile-${tile.id}`} onClick={() => navigate(tile.screen)}>
-                  <span class="home-tile-icon"><Icon name={tile.icon} size={22} /></span>
-                  <span class="home-tile-label">{t(`home.tiles.${tile.id}`)}</span>
-                  <span class="home-tile-sub truncate">{tileSub(tile.id)}</span>
-                </button>
-              ))}
+              {TILES.map((tile) => {
+                const locked = tile.id === 'casino' && !features.value.casino.unlocked
+                return (
+                  <button key={tile.id} type="button" class={`home-tile home-tile-${tile.id}${locked ? ' is-feature-locked' : ''}`} onClick={() => navigate(tile.screen)} data-tour={`tile-${tile.id}`}>
+                    <span class="home-tile-icon"><Icon name={locked ? 'lock' : tile.icon} size={22} /></span>
+                    <span class="home-tile-label">{t(`home.tiles.${tile.id}`)}{tile.id === 'casino' && <> <NewTag feature="casino" /></>}</span>
+                    {locked ? <LockChip feature="casino" /> : <span class="home-tile-sub truncate">{tileSub(tile.id)}</span>}
+                  </button>
+                )
+              })}
             </div>
           </section>
 
@@ -216,16 +223,16 @@ export function HomeScreen() {
         </div>
 
         <div class="home-col home-col-side">
-          <Card class="home-condition">
+          <Card class="home-condition" data-tour="condition">
             <div class="home-rings">
-              <MeterRing value={life.energy} size={84} label={t('common.energy')} color="var(--accent-gold)" icon="energy" />
-              <MeterRing value={life.happiness} size={84} label={t('common.happiness')} color="var(--brand-pitch)" icon={life.happiness >= 45 ? 'smile' : 'frown'} />
-              <MeterRing value={h.morale} size={84} label={t('home.morale')} color="var(--accent-violet)" icon="fire" />
+              <MeterRing value={life.energy} size={84} label={t('common.energy')} color="var(--accent-gold)" icon="energy" info={<InfoTip term="energy" />} />
+              <MeterRing value={life.happiness} size={84} label={t('common.happiness')} color="var(--brand-pitch)" icon={life.happiness >= 45 ? 'smile' : 'frown'} info={<InfoTip term="happiness" />} />
+              <MeterRing value={h.morale} size={84} label={t('home.morale')} color="var(--accent-violet)" icon="fire" info={<InfoTip term="morale" />} />
             </div>
             <div class="home-bars">
-              <StatBar label={t('home.form')} value={h.form} size="sm" color="var(--accent-blue)" />
-              <StatBar label={t('home.sharpness')} value={h.sharpness} size="sm" color="var(--brand-pitch)" />
-              <StatBar label={t('home.fatigue')} value={h.fatigue} size="sm" color={h.fatigue > 70 ? 'var(--state-danger)' : 'var(--state-warning)'} />
+              <StatBar label={t('home.form')} value={h.form} size="sm" color="var(--accent-blue)" info={<InfoTip term="form" />} />
+              <StatBar label={t('home.sharpness')} value={h.sharpness} size="sm" color="var(--brand-pitch)" info={<InfoTip term="sharpness" />} />
+              <StatBar label={t('home.fatigue')} value={h.fatigue} size="sm" color={h.fatigue > 70 ? 'var(--state-danger)' : 'var(--state-warning)'} info={<InfoTip term="fatigue" />} />
             </div>
             <div class="home-form">
               <div class="row-between">

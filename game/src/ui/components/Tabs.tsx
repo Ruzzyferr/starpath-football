@@ -8,6 +8,8 @@ export interface TabItem<K extends string = string> {
   label: string
   icon?: IconName
   badge?: number
+  /** Extra trailing element (e.g. a "New!" tag or a lock icon). */
+  extra?: ComponentChildren
 }
 
 /**
@@ -61,6 +63,7 @@ export function Tabs<K extends string>({
             {it.icon && <Icon name={it.icon} size={18} />}
             <span>{it.label}</span>
             {it.badge ? <span class="tab-badge">{it.badge}</span> : null}
+            {it.extra}
           </button>
         )
       })}

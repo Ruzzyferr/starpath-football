@@ -9,6 +9,7 @@ import { Icon } from '../icons'
 import { actions, gameState, heroClub, navigate, negotiation, type NegotiationView, type OfferTerms } from '../store'
 import { faceFor } from './career/attrs'
 import '../../styles/screens/contract.css'
+import { InfoTip } from '../tutorial/InfoTip'
 
 const ROLES: SquadRole[] = ['reserve', 'rotation', 'starter', 'star', 'captain']
 const ROLE_RANK: Record<SquadRole, number> = { youth: 0, reserve: 1, rotation: 2, starter: 3, star: 4, captain: 5 }
@@ -38,15 +39,15 @@ function CurrentContract() {
             <div class="grow">
               <div class="micro t-mid">{t('contract.current')}</div>
               <h2 class="h2">{club.name}</h2>
-              <Chip tone="gold" icon="star">{t(`data.role.${c.role}`)}</Chip>
+              <span class="label-with-tip"><Chip tone="gold" icon="star">{t(`data.role.${c.role}`)}</Chip><InfoTip term="squadRole" /></span>
             </div>
           </div>
           <dl class="ctr-dl">
-            <div><dt>{t('contract.terms.wage')}</dt><dd class="num">{formatMoney(c.wage)}{t('common.perWeek')}</dd></div>
+            <div><dt class="label-with-tip">{t('contract.terms.wage')}<InfoTip term="wage" /></dt><dd class="num">{formatMoney(c.wage)}{t('common.perWeek')}</dd></div>
             <div><dt>{t('profile.contract.until')}</dt><dd>{t('profile.contract.untilSeason', { s: seasonLabel(c.untilSeason) })}</dd></div>
-            <div><dt>{t('contract.terms.goalBonus')}</dt><dd class="num">{formatMoney(c.goalBonus)}</dd></div>
+            <div><dt class="label-with-tip">{t('contract.terms.goalBonus')}<InfoTip term="goalBonus" /></dt><dd class="num">{formatMoney(c.goalBonus)}</dd></div>
             <div><dt>{t('profile.contract.assistBonus')}</dt><dd class="num">{formatMoney(c.assistBonus)}</dd></div>
-            <div><dt>{t('contract.terms.releaseClause')}</dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('contract.terms.none')}</dd></div>
+            <div><dt class="label-with-tip">{t('contract.terms.releaseClause')}<InfoTip term="releaseClause" /></dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('contract.terms.none')}</dd></div>
           </dl>
           <div class="ctr-current-actions">
             <Button variant="primary" icon="handshake" onClick={() => actions.openNegotiation(club.id)}>{t('contract.renew')}</Button>

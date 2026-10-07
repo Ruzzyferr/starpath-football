@@ -11,6 +11,7 @@ import { LINES, faceFor, lineOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
 import { zonesFor } from './career/league'
 import '../../styles/screens/club.css'
+import { InfoTip } from '../tutorial/InfoTip'
 
 type TabId = 'squad' | 'fixtures' | 'table' | 'info'
 const TAB_IDS: TabId[] = ['squad', 'fixtures', 'table', 'info']
@@ -91,7 +92,7 @@ function Squad() {
               {c && <Chip tone="gold" icon="star">{t(`data.role.${c.role}`)}</Chip>}
             </div>
           </div>
-          <StatBar label={t('club.manager.trust')} value={h.managerTrust} color={h.managerTrust < 35 ? 'var(--state-danger)' : h.managerTrust < 60 ? 'var(--accent-gold)' : 'var(--brand-pitch)'} />
+          <StatBar label={t('club.manager.trust')} info={<InfoTip term="managerTrust" />} value={h.managerTrust} color={h.managerTrust < 35 ? 'var(--state-danger)' : h.managerTrust < 60 ? 'var(--accent-gold)' : 'var(--brand-pitch)'} />
           <Button variant="ghost" size="sm" icon="sign-out" onClick={() => setConfirm(true)}>{t('club.manager.request')}</Button>
         </Card>
       </div>

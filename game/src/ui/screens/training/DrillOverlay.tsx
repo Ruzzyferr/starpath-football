@@ -16,6 +16,8 @@ import { Button, Chip, DeltaList, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
+import { DrillHints } from '../../tutorial/ControlHint'
+import { emitHintEvent } from '../../tutorial/hints'
 
 const DIFFICULTY: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
@@ -65,6 +67,13 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
         difficulty: DIFFICULTY[s.meta.difficulty] ?? 1,
         variant: drill.variant,
       })
+      // Observe drill events for the first-run control hint (read-only tap).
+      const drain = d.drainEvents.bind(d)
+      d.drainEvents = () => {
+        const evs = drain()
+        for (const e of evs) emitHintEvent(e)
+        return evs
+      }
       setPhase('playing')
       handle.current = mod.startDrill(
         el,
@@ -121,6 +130,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
           <span>{t('training.drill.quit')}</span>
         </button>
       )}
+      <DrillHints active={phase === 'playing'} drill={drill?.kind} variant={drill?.variant} />
       {phase === 'loading' && (
         <div class="trn-drill-center">
           <Spinner />

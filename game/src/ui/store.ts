@@ -645,7 +645,7 @@ export type ScreenId =
   | 'title' | 'newCareer' | 'home' | 'planner' | 'training' | 'profile' | 'club' | 'world'
   | 'contract' | 'life' | 'casino' | 'blackjack' | 'roulette' | 'slots' | 'horses'
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
-  | 'settings' | 'saves' | 'credits' | 'menu'
+  | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
 
 export interface Route {
   id: ScreenId

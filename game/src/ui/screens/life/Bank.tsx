@@ -4,6 +4,7 @@ import { lt, t } from '../../../i18n'
 import { Button, Card, CardHeader, Chip, LineChart, MeterRing, Money, Segmented, Slider, Sparkline, toast } from '../../components'
 import { formatMoney, formatPercent } from '../../format'
 import { actions, data, gameState, type InvestKind } from '../../store'
+import { UnlockGate } from '../../tutorial/UnlockGate'
 
 const KINDS: InvestKind[] = ['index', 'bonds', 'property', 'startup', 'crypto']
 const step = (max: number) => (max > 1_000_000 ? 10_000 : max > 100_000 ? 1_000 : 100)
@@ -193,6 +194,7 @@ export function Bank() {
         )}
       </Card>
 
+      <UnlockGate feature="investments">
       <Card class="bank-invest">
         <CardHeader title={t('life.bank.investments')} icon="chart-line" />
         {bank.investments.length === 0 ? (
@@ -233,6 +235,7 @@ export function Bank() {
           </Button>
         </div>
       </Card>
+      </UnlockGate>
     </div>
   )
 }

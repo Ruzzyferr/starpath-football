@@ -10,6 +10,9 @@ import { Bank } from './life/Bank'
 import { Relations } from './life/Relations'
 import { Social } from './life/Social'
 import { Sponsors } from './life/Sponsors'
+import { InfoTip } from '../tutorial/InfoTip'
+import { LockChip, NewTag, UnlockGate } from '../tutorial/UnlockGate'
+import { features } from '../tutorial/unlocks'
 
 type LifeTab = 'relations' | 'assets' | 'bank' | 'social' | 'sponsors'
 const TABS: LifeTab[] = ['relations', 'assets', 'bank', 'social', 'sponsors']
@@ -28,13 +31,21 @@ export function LifeScreen() {
       sub={t('life.sub')}
       wide
       showBack={false}
-      actions={<Button size="sm" variant="ghost" icon="cards" onClick={() => navigate('casino')}>{t('life.casinoCta')}</Button>}
+      actions={
+        <span class="life-casino-cta">
+          <Button size="sm" variant="ghost" icon={features.value.casino.unlocked ? 'cards' : 'lock'} onClick={() => navigate('casino')}>
+            {t('life.casinoCta')}
+          </Button>
+          <NewTag feature="casino" />
+          <LockChip feature="casino" />
+        </span>
+      }
     >
       <div class="life-stats" role="group" aria-label={t('nav.statusBar')}>
         <MeterRing value={l.happiness} size={58} stroke={6} label={t('data.stat.happiness')} color="var(--brand-pitch)" />
         <MeterRing value={l.health} size={58} stroke={6} label={t('data.stat.health')} color="var(--accent-blue)" />
-        <MeterRing value={l.stress} size={58} stroke={6} label={t('data.stat.stress')} color={l.stress > 65 ? 'var(--state-danger)' : 'var(--accent-gold)'} />
-        <MeterRing value={l.discipline} size={58} stroke={6} label={t('data.stat.discipline')} color="var(--accent-violet)" />
+        <MeterRing value={l.stress} size={58} stroke={6} label={t('data.stat.stress')} color={l.stress > 65 ? 'var(--state-danger)' : 'var(--accent-gold)'} info={<InfoTip term="stress" />} />
+        <MeterRing value={l.discipline} size={58} stroke={6} label={t('data.stat.discipline')} color="var(--accent-violet)" info={<InfoTip term="discipline" />} />
         <div class="life-followers">
           <Icon name="instagram" size={20} />
           <span class="score-font">{formatCompact(l.followers, undefined, 1000)}</span>
@@ -46,14 +57,19 @@ export function LifeScreen() {
         idPrefix="life"
         value={tab}
         onChange={setTab}
-        items={TABS.map((id) => ({ id, label: t(`life.tabs.${id}`), icon: ICONS[id] }))}
+        items={TABS.map((id) => ({
+          id,
+          label: t(`life.tabs.${id}`),
+          icon: id === 'sponsors' && !features.value.sponsors.unlocked ? 'lock' : ICONS[id],
+          extra: id === 'sponsors' ? <NewTag feature="sponsors" /> : id === 'bank' ? <NewTag feature="investments" /> : undefined,
+        }))}
       />
       <TabPanel id={tab} idPrefix="life">
         {tab === 'relations' && <Relations />}
         {tab === 'assets' && <Assets />}
         {tab === 'bank' && <Bank />}
         {tab === 'social' && <Social />}
-        {tab === 'sponsors' && <Sponsors />}
+        {tab === 'sponsors' && <UnlockGate feature="sponsors"><Sponsors /></UnlockGate>}
       </TabPanel>
     </Page>
   )

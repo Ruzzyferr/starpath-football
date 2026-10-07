@@ -1,3 +1,4 @@
+import type { ComponentChildren } from 'preact'
 import { attrColor, clamp01 } from '../format'
 import { useMounted } from '../hooks/motion'
 
@@ -15,9 +16,11 @@ export interface StatBarProps {
   showValue?: boolean
   size?: 'sm' | 'md' | 'lg'
   suffix?: string
+  /** Trailing element after the label (e.g. an info tooltip). */
+  info?: ComponentChildren
 }
 
-export function StatBar({ label, value, max = 100, progress, preview, color, scale, showValue = true, size = 'md', suffix }: StatBarProps) {
+export function StatBar({ label, value, max = 100, progress, preview, color, scale, showValue = true, size = 'md', suffix, info }: StatBarProps) {
   const mounted = useMounted()
   const p = clamp01(value / max)
   const fill = color ?? (scale ? attrColor((value / max) * 100) : 'var(--brand-pitch)')
@@ -26,7 +29,7 @@ export function StatBar({ label, value, max = 100, progress, preview, color, sca
     <div class={`statbar statbar-${size}`}>
       {(label || showValue) && (
         <div class="statbar-top">
-          {label && <span class="statbar-label truncate">{label}</span>}
+          {label && (info ? <span class="label-with-tip"><span class="statbar-label truncate">{label}</span>{info}</span> : <span class="statbar-label truncate">{label}</span>)}
           {showValue && (
             <span class="statbar-value num" style={{ color: scale ? fill : undefined }}>
               {Math.round(value)}

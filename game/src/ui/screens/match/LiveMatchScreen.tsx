@@ -7,6 +7,7 @@ import { haptic } from '../../haptics'
 import { formatRating, ratingColor } from '../../format'
 import { actions, match, navigate, type LiveMatchView, type MatchEventView, type TeamView } from '../../store'
 import { CompareBar, EVENT_ICON, MOMENT_ICON, PitchLinesHorizontal } from './shared'
+import { MatchHints } from '../../tutorial/ControlHint'
 
 const SPEEDS: { id: 1 | 2 | 4; label: string }[] = [
   { id: 1, label: '1×' },
@@ -158,6 +159,7 @@ export function LiveMatchScreen() {
       <div class="lm-canvas-wrap" aria-hidden={!m.momentActive}>
         <div id="match-canvas" class={`match-canvas${m.momentActive ? ' is-active' : ''}`} />
         {m.momentActive && <div class="lm-canvas-label micro"><span class="lm-live-dot" /> {t('match.live.momentLive')}</div>}
+        <MatchHints active={m.momentActive} kind={moment?.kind} momentId={moment?.id} />
       </div>
 
       <div class="lm-grid">

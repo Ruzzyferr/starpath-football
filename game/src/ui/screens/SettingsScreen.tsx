@@ -5,6 +5,7 @@ import { t } from '../../i18n'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
 import { actions, gameState, navigate, settings, updateSettings } from '../store'
+import { HelpSettings } from '../tutorial/HelpSettings'
 
 function Group({ title, icon, children }: { title: string; icon: IconName; children: ComponentChildren }) {
   return (
@@ -116,6 +117,10 @@ export function SettingsScreen() {
             id="set-text"
           />
           <p class="set-preview">{t('settings.textPreview')}</p>
+        </Group>
+
+        <Group title={t('help.settings.title')} icon="question">
+          <HelpSettings />
         </Group>
 
         <Group title={t('settings.sections.data')} icon="floppy">

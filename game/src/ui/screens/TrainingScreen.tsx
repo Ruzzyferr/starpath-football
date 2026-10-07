@@ -11,6 +11,7 @@ import { DrillOverlay } from './training/DrillOverlay'
 import { GROUPS, groupAvg, keysOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
 import '../../styles/screens/training.css'
+import { InfoTip } from '../tutorial/InfoTip'
 
 type TabId = 'sessions' | 'growth' | 'perks' | 'trainer'
 const TAB_IDS: TabId[] = ['sessions', 'growth', 'perks', 'trainer']
@@ -86,7 +87,7 @@ function Sessions() {
   return (
     <div class="stack">
       <div class="trn-energy">
-        <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" />
+        <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" info={<InfoTip term="energy" />} />
       </div>
       <div class="trn-sessions stagger">
         {sessions.map((x) => <SessionCard key={x.id} s={x} onPlay={setPlaying} />)}
@@ -110,7 +111,7 @@ function Growth() {
   return (
     <div class="stack">
       <Card class="trn-ovr" pad="md">
-        <MeterRing value={data.heroOvr()} max={99} size={84} color="var(--accent-gold)" label={t('training.growth.ovr')} />
+        <MeterRing value={data.heroOvr()} max={99} size={84} color="var(--accent-gold)" label={t('training.growth.ovr')} info={<InfoTip term="ovr" />} />
         <div class="trn-ovr-groups">
           {groups.map((g) => (
             <div key={g} class="trn-ovr-group">
@@ -160,7 +161,7 @@ function PerkTree() {
       <Card class="trn-points" pad="sm">
         <span class="trn-points-icon" aria-hidden="true"><Icon name="rocket" size={22} /></span>
         <div class="grow">
-          <div class="micro t-mid">{t('training.perks.points')}</div>
+          <div class="micro t-mid label-with-tip">{t('training.perks.points')}<InfoTip term="perkPoints" /></div>
           <div class="score-font trn-points-num">{h.perkPoints}</div>
         </div>
         <p class="t-xs t-lo trn-points-hint">{t('training.perks.hint')}</p>

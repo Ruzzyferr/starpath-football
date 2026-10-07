@@ -9,6 +9,7 @@ import { haptic } from '../haptics'
 import { actions, back, data, navigate, type NewGameInput } from '../store'
 import { PitchPicker } from './newcareer/PitchPicker'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
+import { beginNewCareer } from '../tutorial/tour'
 
 type Step = 'identity' | 'nation' | 'position' | 'archetype' | 'background' | 'look' | 'summary'
 const STEPS: Step[] = ['identity', 'nation', 'position', 'archetype', 'background', 'look', 'summary']
@@ -110,6 +111,7 @@ export function NewCareerScreen() {
         nickname: (form.nickname.trim() || form.lastName.trim()),
       })
       haptic('success')
+      beginNewCareer()
       navigate('home', undefined, { tab: true })
     } catch {
       setBusy(false)

@@ -6,6 +6,8 @@ import { formatMoney, formatSigned } from '../../format'
 import { Icon } from '../../icons'
 import { actions, data, gameState } from '../../store'
 import { assetIcon, categoryIcon } from './util'
+import { NewTag, UnlockGate } from '../../tutorial/UnlockGate'
+import { features } from '../../tutorial/unlocks'
 
 type Cat = AssetCategory | 'all'
 
@@ -54,7 +56,8 @@ export function Assets() {
   const byId = new Map(catalog.map((a) => [a.id, a]))
   const cats = Array.from(new Set(catalog.map((a) => a.category)))
   const ownedIds = new Set(s.life.assets.map((o) => o.defId))
-  const list = (cat === 'all' ? catalog : catalog.filter((a) => a.category === cat)).slice().sort((a, b) => a.price - b.price)
+  const bizOpen = features.value.business.unlocked
+  const list = (cat === 'all' ? catalog.filter((a) => bizOpen || a.category !== 'business') : catalog.filter((a) => a.category === cat)).slice().sort((a, b) => a.price - b.price)
   const rep = s.hero.reputation
   const money = s.life.money
 
@@ -113,12 +116,16 @@ export function Assets() {
           onChange={setCat}
           items={[
             { id: 'all' as Cat, label: t('life.assets.all'), icon: 'grid' },
-            ...cats.map((c) => ({ id: c as Cat, label: t(`data.assetCat.${c}`), icon: categoryIcon(c) })),
+            ...cats.map((c) => ({ id: c as Cat, label: t(`data.assetCat.${c}`), icon: c === 'business' && !bizOpen ? 'lock' : categoryIcon(c), extra: c === 'business' ? <NewTag feature="business" /> : undefined })),
           ]}
         />
-        {list.length === 0 ? (
+        {cat === 'business' && !bizOpen ? (
+          <UnlockGate feature="business" compact>{null}</UnlockGate>
+        ) : list.length === 0 ? (
           <EmptyState icon="shopping-bag" text={t('life.assets.emptyShop')} />
         ) : (
+          <>
+          {cat === 'business' && <UnlockGate feature="business" compact>{null}</UnlockGate>}
           <div class="life-assets-grid">
             {list.map((a) => (
               <AssetCard
@@ -130,6 +137,7 @@ export function Assets() {
               />
             ))}
           </div>
+          </>
         )}
       </section>
 

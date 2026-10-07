@@ -9,6 +9,7 @@ import { data, gameState, heroClub, navigate } from '../store'
 import { RADAR_AXES, groupAvg, groupsFor, keyStatsFor, keysOf, radarValues } from './career/attrs'
 import { Radar } from './career/Radar'
 import '../../styles/screens/profile.css'
+import { InfoTip } from '../tutorial/InfoTip'
 
 function StatsTable({ season, career }: { season: SeasonStats; career: SeasonStats }) {
   const avg = (s: SeasonStats) => (s.apps ? formatRating(s.ratingSum / s.apps) : '—')
@@ -120,10 +121,10 @@ export function ProfileScreen() {
             </div>
           )}
           <div class="prof-rings">
-            <MeterRing value={h.form} size={68} label={t('profile.rings.form')} color="var(--brand-pitch)" />
-            <MeterRing value={h.morale} size={68} label={t('profile.rings.morale')} color="var(--accent-gold)" />
-            <MeterRing value={h.sharpness} size={68} label={t('profile.rings.sharpness')} color="var(--accent-blue)" />
-            <MeterRing value={h.fatigue} size={68} label={t('profile.rings.fatigue')} color={h.fatigue > 65 ? 'var(--state-danger)' : 'var(--accent-violet)'} />
+            <MeterRing value={h.form} size={68} label={t('profile.rings.form')} color="var(--brand-pitch)" info={<InfoTip term="form" />} />
+            <MeterRing value={h.morale} size={68} label={t('profile.rings.morale')} color="var(--accent-gold)" info={<InfoTip term="morale" />} />
+            <MeterRing value={h.sharpness} size={68} label={t('profile.rings.sharpness')} color="var(--accent-blue)" info={<InfoTip term="sharpness" />} />
+            <MeterRing value={h.fatigue} size={68} label={t('profile.rings.fatigue')} color={h.fatigue > 65 ? 'var(--state-danger)' : 'var(--accent-violet)'} info={<InfoTip term="fatigue" />} />
           </div>
           <div class="prof-quick">
             <div><span class="micro t-lo">{t('profile.stats.apps')}</span><span class="score-font">{ss.apps}</span></div>
@@ -160,7 +161,7 @@ export function ProfileScreen() {
           <Card pad="md" class="prof-radar-card">
             <Radar axes={RADAR_AXES.map((a) => ({ label: t(`profile.radar.${a}`), value: radar[a] }))} />
             <div class="prof-ovr-badge">
-              <span class="micro t-mid">{t('profile.ovr')}</span>
+              <span class="micro t-mid label-with-tip">{t('profile.ovr')}<InfoTip term="ovr" /></span>
               <span class="score-font">{ovr}</span>
             </div>
           </Card>
@@ -180,12 +181,12 @@ export function ProfileScreen() {
             />
             {c ? (
               <dl class="prof-dl">
-                <div><dt>{t('profile.contract.wage')}</dt><dd class="num">{formatMoney(c.wage)}{t('common.perWeek')}</dd></div>
+                <div><dt class="label-with-tip">{t('profile.contract.wage')}<InfoTip term="wage" /></dt><dd class="num">{formatMoney(c.wage)}{t('common.perWeek')}</dd></div>
                 <div><dt>{t('profile.contract.until')}</dt><dd>{t('profile.contract.untilSeason', { s: seasonLabel(c.untilSeason) })}</dd></div>
-                <div><dt>{t('profile.contract.role')}</dt><dd>{t(`data.role.${c.role}`)}{c.loan ? ` · ${t('profile.contract.loan')}` : ''}</dd></div>
+                <div><dt class="label-with-tip">{t('profile.contract.role')}<InfoTip term="squadRole" /></dt><dd>{t(`data.role.${c.role}`)}{c.loan ? ` · ${t('profile.contract.loan')}` : ''}</dd></div>
                 <div><dt>{t('profile.contract.goalBonus')}</dt><dd class="num">{formatMoney(c.goalBonus)}</dd></div>
                 <div><dt>{t('profile.contract.assistBonus')}</dt><dd class="num">{formatMoney(c.assistBonus)}</dd></div>
-                <div><dt>{t('profile.contract.release')}</dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('profile.contract.noRelease')}</dd></div>
+                <div><dt class="label-with-tip">{t('profile.contract.release')}<InfoTip term="releaseClause" /></dt><dd class="num">{c.releaseClause ? formatMoney(c.releaseClause, { compact: true }) : t('profile.contract.noRelease')}</dd></div>
               </dl>
             ) : (
               <p class="t-mid t-sm">{t('profile.contract.none')}</p>

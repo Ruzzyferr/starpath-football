@@ -12,6 +12,8 @@ import { haptic } from '../haptics'
 import { activeEvent, actions, data, gameState, heroClub, navigate, screen, type ScreenId } from '../store'
 import { Logo } from './Logo'
 import { seasonLabel } from '../format'
+import { requestAdvance } from '../tutorial/MatchdayConfirm'
+import { NewTag } from '../tutorial/UnlockGate'
 
 export type TabId = 'home' | 'career' | 'life' | 'world' | 'menu'
 
@@ -28,7 +30,7 @@ const TAB_OF: Partial<Record<ScreenId, TabId>> = {
   profile: 'career', training: 'career', club: 'career', contract: 'career', trophies: 'career',
   life: 'life', casino: 'life', blackjack: 'life', roulette: 'life', slots: 'life', horses: 'life',
   world: 'world',
-  menu: 'menu', settings: 'menu', saves: 'menu', credits: 'menu',
+  menu: 'menu', settings: 'menu', saves: 'menu', credits: 'menu', glossary: 'menu',
 }
 export function tabOf(id: ScreenId): TabId | null {
   return TAB_OF[id] ?? null
@@ -52,6 +54,7 @@ const SUB: Record<TabId, { screen: ScreenId; icon: IconName }[]> = {
   menu: [
     { screen: 'saves', icon: 'floppy' },
     { screen: 'settings', icon: 'gear' },
+    { screen: 'glossary', icon: 'question' },
   ],
 }
 
@@ -69,7 +72,7 @@ export function TopBar() {
   return (
     <header class="topbar" aria-label={t('nav.statusBar')}>
       <div class="topbar-brand"><Logo size="sm" sub={false} /></div>
-      <div class="topbar-stats">
+      <div class="topbar-stats" data-tour="status">
         <div class="tstat tstat-money" title={t('ui.topbar.money')}>
           <Icon name="coins" size={16} />
           <span class="sr-only">{t('ui.topbar.money')}</span>
@@ -94,6 +97,7 @@ export function TopBar() {
       <button
         type="button"
         class="icon-btn icon-btn-ghost topbar-bell"
+        data-tour="bell"
         aria-label={`${t('ui.topbar.events')}: ${pending}`}
         onClick={() => (pending ? (activeEvent.value = 0) : navigate('inbox'))}
       >
@@ -173,6 +177,7 @@ export function Sidebar() {
                       >
                         <Icon name={s.icon} size={18} />
                         <span class="sidebar-label">{tx(`nav.${s.screen}`)}</span>
+                        {s.screen === 'casino' && <NewTag feature="casino" />}
                       </button>
                     </li>
                   ))}
@@ -241,7 +246,7 @@ export function ContextPanel() {
         </button>
       )}
       <div class="ctx-advance">
-        <Button variant="primary" size="lg" block icon="fast-forward" onClick={() => actions.advance()} haptic="select">
+        <Button variant="primary" size="lg" block icon="fast-forward" onClick={() => requestAdvance()} haptic="select">
           {tx('home.advance', undefined, t('common.continue'))}
         </Button>
       </div>

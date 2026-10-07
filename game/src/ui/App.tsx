@@ -5,7 +5,7 @@
  */
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
-import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
+import { activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
 import { EventModalHost } from './screens/EventModal'
@@ -35,6 +35,10 @@ import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
+import { GlossaryScreen } from './screens/help/GlossaryScreen'
+import { CoachTour } from './tutorial/CoachTour'
+import { MatchdayConfirmHost, requestAdvance } from './tutorial/MatchdayConfirm'
+import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 
 export const SCREENS: Record<ScreenId, FunctionComponent> = {
   title: TitleScreen,
@@ -53,21 +57,22 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   world: WorldScreen,
   contract: ContractScreen,
   life: LifeScreen,
-  casino: CasinoScreen,
-  blackjack: BlackjackScreen,
-  roulette: RouletteScreen,
-  slots: SlotsScreen,
-  horses: HorsesScreen,
+  casino: gated('casino', CasinoScreen),
+  blackjack: gated('casino', BlackjackScreen),
+  roulette: gated('casino', RouletteScreen),
+  slots: gated('casino', SlotsScreen),
+  horses: gated('casino', HorsesScreen),
   preMatch: PreMatchScreen,
   liveMatch: LiveMatchScreen,
   postMatch: PostMatchScreen,
   seasonEnd: SeasonEndScreen,
   trophies: TrophiesScreen,
+  glossary: GlossaryScreen,
 }
 
 const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd'])
 /** Screens usable without a loaded career. */
-const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits'])
+const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary'])
 
 function isTyping(el: Element | null): boolean {
   if (!el) return false
@@ -99,7 +104,7 @@ function useKeyboardShortcuts() {
       }
       if (e.key === ' ' && (document.activeElement === document.body || document.activeElement?.id === 'main') && (id === 'home' || id === 'planner')) {
         e.preventDefault()
-        actions.advance()
+        requestAdvance()
       }
     }
     document.addEventListener('keydown', onKey)
@@ -162,6 +167,9 @@ export function App() {
     <>
       {immersive ? <main id="main" class="immersive">{view}</main> : <Shell>{view}</Shell>}
       {gameState.value && <EventModalHost />}
+      {gameState.value && <CoachTour />}
+      {gameState.value && <UnlockNotifier />}
+      <MatchdayConfirmHost />
       <ToastHost />
     </>
   )

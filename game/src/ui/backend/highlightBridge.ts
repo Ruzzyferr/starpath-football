@@ -11,6 +11,7 @@
 import type { Difficulty, KitColors, Lang } from '../../core/types'
 import type { Highlight, HighlightResult, Weather } from '../../sim/match'
 import type { UiSettings } from '../store'
+import { emitHintEvent } from '../tutorial/hints'
 
 export interface HighlightRequest {
   highlight: Highlight
@@ -55,6 +56,7 @@ export function playHighlight(
     queueMicrotask(() => { if (!stopped) onFallback('no-canvas') })
     return { stop: () => { stopped = true } }
   }
+  const heroId = req.highlight.scenario.players.find((p) => p.isHero)?.id ?? null
   import('../../game/MatchScene')
     .then((mod) => {
       if (stopped) return
@@ -79,6 +81,7 @@ export function playHighlight(
           importance: req.importance,
           replay: !req.settings.reducedMotion,
           gender: req.gender,
+          onEvent: (e) => emitHintEvent(e, heroId),
         },
         (r) => {
           clearWatchdog()
