@@ -16,6 +16,7 @@ import { Button, Chip, DeltaList, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
+import { drillFinished } from '../../backend/meta'
 import { DrillHints } from '../../tutorial/ControlHint'
 import { emitHintEvent } from '../../tutorial/hints'
 
@@ -93,6 +94,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
         (r) => {
           handle.current = null
           setResult(r)
+          drillFinished(r.kind, r.grade, r.performance)
           const o = actions.trainSession(session.id, r.performance)
           setOutcome(o)
           setPhase('result')

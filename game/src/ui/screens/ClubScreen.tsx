@@ -10,6 +10,7 @@ import { actions, data, gameState, heroClub, navigate, screen, type FixtureView,
 import { LINES, faceFor, lineOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
 import { zonesFor } from './career/league'
+import { ClubRecordsCard } from './legacy/CareerCards'
 import '../../styles/screens/club.css'
 import { InfoTip } from '../tutorial/InfoTip'
 
@@ -259,6 +260,7 @@ function Info() {
           <figure><Kit kit={club.awayColors} size={110} number={gameState.value?.hero.shirtNumber} /><figcaption>{t('club.info.away')}</figcaption></figure>
         </div>
       </Card>
+      <ClubRecordsCard clubId={club.id} />
     </div>
   )
 }

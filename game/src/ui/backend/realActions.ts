@@ -288,7 +288,7 @@ function negoView(s: GameState, st: NegotiationState, lines: LText[]): Negotiati
   return {
     club,
     kind: nego?.kind ?? (st.offer.kind === 'renewal' ? 'renewal' : st.offer.loan ? 'loan' : 'transfer'),
-    clubOffer: { wage: t.wage, years: t.years, signingBonus: t.signingBonus, goalBonus: t.goalBonus, releaseClause: t.releaseClause, role: t.role },
+    clubOffer: { wage: t.wage, years: t.years, signingBonus: t.signingBonus, goalBonus: t.goalBonus, releaseClause: t.releaseClause, role: t.role, ...(t.formGuarantee ? { formGuarantee: true } : {}) },
     ranges: {
       wage: [Math.round(t.wage * 0.5), Math.max(Math.round(t.wage * 2.2), st.hidden.maxWage)],
       years: [1, 5],
@@ -652,6 +652,7 @@ export const realActions: GameActions = {
     const ask: Partial<ContractTerms> = {
       wage: Math.round(terms.wage), years: terms.years, signingBonus: Math.round(terms.signingBonus), goalBonus: Math.round(terms.goalBonus),
       releaseClause: terms.releaseClause === null ? null : Math.round(terms.releaseClause), role: terms.role,
+      ...(terms.formGuarantee !== undefined ? { formGuarantee: terms.formGuarantee } : {}),
     }
     const r = G.counterNegotiation(s, ask)
     if (r.value) negotiation.value = negoView(s, r.value, r.lines)

@@ -8,6 +8,7 @@ import { Icon } from '../icons'
 import { data, gameState, heroClub, navigate } from '../store'
 import { RADAR_AXES, groupAvg, groupsFor, keyStatsFor, keysOf, radarValues } from './career/attrs'
 import { Radar } from './career/Radar'
+import { ProfileCareerExtras } from './legacy/CareerCards'
 import '../../styles/screens/profile.css'
 import { InfoTip } from '../tutorial/InfoTip'
 
@@ -206,6 +207,8 @@ export function ProfileScreen() {
           </Card>
         </section>
       </div>
+
+      <ProfileCareerExtras />
 
       <SectionTitle>{t('profile.stats.title')}</SectionTitle>
       <StatsTable season={h.seasonStats} career={h.careerStats} />

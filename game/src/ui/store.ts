@@ -213,6 +213,8 @@ export interface OfferTerms {
   goalBonus: number
   releaseClause: number | null
   role: SquadRole
+  /** Form-based playing-time guarantee clause (avg 7.5+ over 3 matches → start). */
+  formGuarantee?: boolean
 }
 export interface NegotiationView {
   club: TeamView
@@ -544,6 +546,10 @@ export interface NewGameInput {
   gender?: Gender
   difficulty: Difficulty
   seed?: number
+  /** Start with trial invitations instead of an automatic first contract. */
+  trials?: boolean
+  /** New Game+ Legacy: the hero is a Hall of Fame legend's child (sim/game/legacy LegacyStart). */
+  legacy?: { parentCareerId: string; parentName: string; parentGender: Gender; legacyScore: number; inheritance: number; reputationBonus: number }
 }
 
 // ───────────────────────── Backend interfaces ─────────────────────────
@@ -685,6 +691,7 @@ export type ScreenId =
   | 'contract' | 'life' | 'casino' | 'blackjack' | 'roulette' | 'slots' | 'horses'
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
   | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
+  | 'achievements' | 'hallOfFame' | 'retire' | 'documentary' | 'trials'
 
 export interface Route {
   id: ScreenId

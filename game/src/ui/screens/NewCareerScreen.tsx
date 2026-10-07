@@ -3,10 +3,11 @@ import '../../styles/screens/wizard.css'
 import type { Archetype, AttributeKey, Background, Country, Difficulty, Foot, Gender, Position } from '../../core/types'
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
-import { Button, Flag, PlayerCard, Segmented, TextField, toast, type PlayerCardStat } from '../components'
+import { Button, Chip, Flag, PlayerCard, Segmented, Switch, TextField, toast, type PlayerCardStat } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
-import { actions, back, data, navigate, type NewGameInput } from '../store'
+import { actions, back, data, navigate, screen, type NewGameInput } from '../store'
+import { legacyFor, summaryView } from '../backend/meta'
 import { PitchPicker } from './newcareer/PitchPicker'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 import { beginNewCareer } from '../tutorial/tour'
@@ -58,9 +59,13 @@ export function NewCareerScreen() {
   const [query, setQuery] = useState('')
   const [busy, setBusy] = useState(false)
   const [touched, setTouched] = useState(false)
+  // New Game+ Legacy: ?legacy=<careerId> pre-fills the surname / nation and carries the inheritance.
+  const legacyId = screen.value.params?.legacy
+  const legacy = typeof legacyId === 'string' ? legacyFor(legacyId) : null
+  const parent = typeof legacyId === 'string' ? summaryView(legacyId) : null
   const [form, setForm] = useState<NewGameInput>(() => ({
     firstName: '',
-    lastName: '',
+    lastName: parent?.lastName ?? '',
     nickname: '',
     nationality: countries.find((c) => c.id === 'TR')?.id ?? countries[0].id,
     birthYear: START_YEAR - 17,
@@ -71,6 +76,9 @@ export function NewCareerScreen() {
     appearance: randomAppearance(Date.now()),
     gender: 'male',
     difficulty: 'normal',
+    trials: false,
+    ...(legacy ? { legacy } : {}),
+    ...(parent && countries.some((c) => c.id === parent.nationality) ? { nationality: parent.nationality } : {}),
   }))
   const bodyRef = useRef<HTMLDivElement>(null)
   const set = <K extends keyof NewGameInput>(k: K, v: NewGameInput[K]) => setForm((f) => ({ ...f, [k]: v }))
@@ -363,6 +371,8 @@ export function NewCareerScreen() {
                     </div>
                   ))}
                 </dl>
+                {form.legacy && <Chip tone="gold" icon="users">{form.legacy.parentName}</Chip>}
+                <Switch checked={!!form.trials} onChange={(v) => set('trials', v)} label={t('meta.trials.wizard')} desc={t('meta.trials.wizardHint')} />
                 <span class="label t-mid">{t('wizard.difficulty')}</span>
                 <div class="wiz-diffs" role="radiogroup" aria-label={t('wizard.difficulty')}>
                   {DIFFS.map((d) => {

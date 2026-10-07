@@ -1,0 +1,239 @@
+/* Career end & depth screens: achievements, Hall of Fame, retirement, documentary, trials, records. */
+
+.lg-summary {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: linear-gradient(135deg, var(--surface-2), var(--surface-1));
+  border: 1px solid var(--border);
+}
+.lg-summary .lg-big {
+  font-size: 2rem;
+  font-weight: 800;
+  color: var(--accent-gold);
+  line-height: 1;
+}
+.lg-bar {
+  height: 8px;
+  border-radius: var(--r-pill);
+  background: var(--surface-3);
+  overflow: hidden;
+}
+.lg-bar > span {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--brand-pitch-deep), var(--brand-pitch));
+  border-radius: inherit;
+}
+.lg-bar.is-gold > span {
+  background: linear-gradient(90deg, var(--accent-gold-deep), var(--accent-gold));
+}
+
+/* Achievements grid */
+.ach-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+  gap: 10px;
+}
+.ach-card {
+  display: flex;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  min-width: 0;
+}
+.ach-card.is-unlocked {
+  border-color: var(--accent-gold-deep);
+  background: linear-gradient(150deg, rgba(255, 200, 61, 0.12), var(--surface-1) 60%);
+}
+.ach-icon {
+  flex: 0 0 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  font-size: 1.5rem;
+  border-radius: 12px;
+  background: var(--surface-3);
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.ach-card.is-unlocked .ach-icon {
+  filter: none;
+  opacity: 1;
+  background: var(--surface-2);
+}
+.ach-body {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ach-name {
+  font-weight: 700;
+  overflow-wrap: anywhere;
+}
+
+/* Hall of Fame */
+.hof-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.hof-rank {
+  font-weight: 800;
+  color: var(--accent-gold);
+  min-width: 2.2em;
+  text-align: center;
+}
+.hof-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 6px;
+}
+
+/* Retirement decision */
+.ret-card {
+  max-width: 560px;
+  margin: 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  padding: 20px 16px;
+}
+.ret-choice {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+
+/* Documentary */
+.doc-hero {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.doc-timeline {
+  list-style: none;
+  margin: 0;
+  padding: 0 0 0 14px;
+  border-left: 2px solid var(--border-strong);
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.doc-timeline li {
+  position: relative;
+}
+.doc-timeline li::before {
+  content: '';
+  position: absolute;
+  left: -20px;
+  top: 6px;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--brand-pitch);
+}
+.doc-kpis {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 8px;
+}
+.doc-kpi {
+  padding: 10px;
+  border-radius: var(--r-btn);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.doc-kpi b {
+  display: block;
+  font-size: 1.25rem;
+}
+
+/* Trials */
+.trial-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.trial-card {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.trial-card.kind-open {
+  border-color: var(--accent-violet);
+}
+.trial-card.kind-academy {
+  border-color: var(--accent-blue-deep);
+}
+.trial-wrap {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* Records & small cards */
+.rec-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.rec-list li {
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+  align-items: baseline;
+}
+.rec-list li > span:first-child {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.lg-stars {
+  color: var(--accent-gold);
+  letter-spacing: 1px;
+}
+.lg-warn {
+  padding: 10px 12px;
+  border-radius: var(--r-btn);
+  border: 1px solid var(--state-warning);
+  background: rgba(255, 210, 63, 0.08);
+}
+.mk-rows {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.mk-rows li {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}

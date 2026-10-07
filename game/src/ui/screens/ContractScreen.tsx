@@ -1,4 +1,5 @@
 import { useState } from 'preact/hooks'
+import { FormClauseSwitch, MarketPanel } from './legacy/CareerCards'
 import type { SquadRole } from '../../core/types'
 import { lt, t } from '../../i18n'
 import {
@@ -168,11 +169,13 @@ function Negotiation({ n }: { n: NegotiationView }) {
                 <span class="slider-label">{t('contract.terms.role')}</span>
                 <Segmented label={t('contract.terms.role')} options={ROLES.map((x) => ({ id: x, label: t(`data.role.${x}`) }))} value={terms.role} onChange={(v) => set({ role: v })} />
               </div>
+              <FormClauseSwitch value={!!terms.formGuarantee} onChange={(v) => set({ formGuarantee: v })} role={terms.role} />
             </div>
           </Card>
         </div>
 
         <div class="stack">
+          <MarketPanel wage={terms.wage} />
           <Card pad="none" class="ctr-compare">
             <table class="ctr-table">
               <thead>

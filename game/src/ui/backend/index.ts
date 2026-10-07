@@ -19,6 +19,7 @@ import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
 import { flushAutosave, refreshSlots, useStorage } from './persistence'
 import { persistNow } from './liveMatch'
+import * as meta from './meta'
 
 export const DEFAULT_CAREER: NewGameInput = {
   firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', birthYear: 2009,
@@ -103,11 +104,14 @@ function installDebugApi(): void {
     jump: (id: ScreenId) => devJump(id),
     flushAutosave,
     refreshSlots,
+    /** Career end / achievements bridge (ui/backend/meta). */
+    meta,
   }
 }
 
 export function installRealBackend(): void {
   installBackend({ actions: realActions, data: realData })
+  meta.installMeta()
   if (import.meta.env.DEV) installDebugApi()
   // &storage=memory: keep saves in memory (headless browsers without a working IndexedDB).
   if (globalThis.location?.search.includes('storage=memory')) useStorage(new MemoryStorage())

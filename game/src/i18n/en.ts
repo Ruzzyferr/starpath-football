@@ -23,6 +23,7 @@ import { en as inbox } from './sections/inbox'
 import { en as settings } from './sections/settings'
 import { en as saves } from './sections/saves'
 import { en as help } from './sections/help'
+import { en as meta } from './sections/meta'
 import { en as postmatch } from './sections/postmatch'
 
 export const en: Shape<typeof tr> = {
@@ -48,5 +49,6 @@ export const en: Shape<typeof tr> = {
   settings,
   saves,
   help,
+  meta,
   postmatch,
 }

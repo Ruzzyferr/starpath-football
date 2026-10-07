@@ -111,6 +111,8 @@ export function TitleScreen() {
   const items: { id: string; icon: IconName; label: string; to: ScreenId }[] = [
     { id: 'new', icon: 'plus', label: t('title.newCareer'), to: 'newCareer' },
     { id: 'load', icon: 'floppy', label: t('title.load'), to: 'saves' },
+    { id: 'hallOfFame', icon: 'crown', label: t('meta.menu.hallOfFame'), to: 'hallOfFame' },
+    { id: 'achievements', icon: 'medal', label: t('meta.menu.achievements'), to: 'achievements' },
     { id: 'settings', icon: 'gear', label: t('title.settings'), to: 'settings' },
     { id: 'credits', icon: 'star', label: t('title.creditsBtn'), to: 'credits' },
   ]
