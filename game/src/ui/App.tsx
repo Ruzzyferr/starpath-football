@@ -35,6 +35,8 @@ import { PreMatchScreen } from './screens/match/PreMatchScreen'
 import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
+import { PaywallScreen } from './screens/store/PaywallScreen'
+import { StoreScreen } from './screens/store/StoreScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
 import { NationalScreen } from './screens/national/NationalScreen'
 import { CupDrawScreen } from './screens/cup/CupDrawScreen'
@@ -87,9 +89,11 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   retire: RetireScreen,
   documentary: DocumentaryScreen,
   trials: TrialsScreen,
+  paywall: PaywallScreen,
+  store: StoreScreen,
 }
 
-const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials'])
+const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'paywall'])
 /** Screens usable without a loaded career. */
 const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary'])
 

@@ -20,6 +20,8 @@ export default defineConfig({
     __APP_VERSION__: JSON.stringify(pkg.version),
     __BUILD_COMMIT__: JSON.stringify(gitCommit()),
     __BUILD_TIME__: JSON.stringify(new Date().toISOString().slice(0, 10)),
+    /** trial | premium | auto (see src/store-iap/flavor.ts). */
+    __SP_FLAVOR__: JSON.stringify(process.env.SP_FLAVOR ?? 'auto'),
   },
   build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
   // The e2e suite (playwright.config.ts) runs without HMR so edits made while it runs cannot reload pages mid-test.

@@ -24,6 +24,7 @@ import { en as settings } from './sections/settings'
 import { en as saves } from './sections/saves'
 import { en as help } from './sections/help'
 import { en as meta } from './sections/meta'
+import { en as iap } from './sections/iap'
 import { en as postmatch } from './sections/postmatch'
 import { en as intl } from './sections/intl'
 
@@ -51,6 +52,7 @@ export const en: Shape<typeof tr> = {
   saves,
   help,
   meta,
+  iap,
   postmatch,
   intl,
 }

@@ -8,6 +8,7 @@ import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
 import { actions, gameState, navigate, settings, updateSettings } from '../store'
 import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
+import { PurchasesPanel } from './store/PurchasesPanel'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
 
@@ -152,6 +153,10 @@ export function SettingsScreen() {
 
         <Group title={t('help.settings.title')} icon="question">
           <HelpSettings />
+        </Group>
+
+        <Group title={t('iap.panel.title')} icon="star">
+          <PurchasesPanel />
         </Group>
 
         <Group title={t('settings.sections.about')} icon="info">

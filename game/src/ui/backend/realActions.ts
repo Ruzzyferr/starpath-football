@@ -41,6 +41,7 @@ import {
 } from './persistence'
 import { POSTS_FLAG, REVIEW_FLAG, handleOf, raceCardFor, type ReviewExtras, type StoredPost } from './realData'
 import { commit, current, get, notify, replaceState } from './session'
+import { careerLocked } from '../../store-iap'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 
@@ -49,6 +50,7 @@ const L = (tr: string, en: string): LText => ({ tr, en })
 /** Bookkeeping after time moved: history, season review, publish, autosave. */
 function afterTime(s: GameState, reports: (AdvanceReport | undefined)[]): void {
   for (const r of reports) {
+    if (r?.newSeason && careerLocked(s.calendar.season)) pendingNav.value = 'paywall'
     if (!r?.seasonEnded) continue
     const h = readHistory(s)
     const st = h.start
@@ -75,8 +77,20 @@ function earnedThisSeason(s: GameState): number | null {
 /** Today's hero match is due now (afternoon slot or later, unplayed, hero available). */
 const matchDueNow = (s: GameState): boolean => G.isHeroMatchday(s) && s.calendar.slot >= 1
 
+/**
+ * Trial paywall (WP-12): after the free first season the calendar is read-only until the
+ * Full Career unlock. Lives here (UI backend), never in the sim, so results are identical.
+ */
+function lockedOut(s: GameState): boolean {
+  if (!careerLocked(s.calendar.season)) return false
+  notify(L("Kariyerin duraklatıldı: devam etmek için Tam Kariyer kilidini aç.", 'Your career is paused: unlock the Full Career to continue.'), 'info')
+  pendingNav.value = 'paywall'
+  return true
+}
+
 function advance(): void {
   const s = get()
+  if (lockedOut(s)) return
   if (s.hero.retired) {
     notify(L('Kariyerin sona erdi.', 'Your career is over.'), 'info')
     return
@@ -119,6 +133,7 @@ function slotsOf(activityId: string): number {
 
 function advanceToMatch(): void {
   const s = get()
+  if (lockedOut(s)) return
   if (live.liveActive()) return
   if (G.isHeroMatchday(s)) {
     // Already matchday: just move to the match slot.
@@ -366,6 +381,7 @@ export const realActions: GameActions = {
   },
   doActivity(id) {
     const s = get()
+    if (lockedOut(s)) return []
     if (live.liveActive()) return []
     if (id === 'social_post') return runActivity(s, id, () => G.socialPost(s, 'training'))
     return runActivity(s, id, () => G.doActivity(s, id))
@@ -691,6 +707,7 @@ export const realActions: GameActions = {
 
   playMatch() {
     const s = get()
+    if (lockedOut(s)) return
     if (live.startMatch()) return
     const h = s.hero
     notify(h.injury

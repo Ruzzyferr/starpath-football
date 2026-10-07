@@ -165,3 +165,19 @@ iOS 15+; ikon (1024, alfasız) ve splash `npm run icons:native` ile üretilir.
 **Web / PWA**
 - [ ] HTTPS, `sw.js` ve `index.html` için `no-cache`
 - [ ] Lighthouse PWA/Installable kontrolü; itch.io HTML5 yüklemesi için `dist/` zip'i
+
+## 8. Monetizasyon ve mağaza politikası (WP-12)
+
+**Model:** para birimi yok, enerji yok, ganimet kutusu yok, reklam yok. Mobilde ilk tam sezon ücretsiz; sonrasında tek seferlik "Tam Kariyer" kilidi (`full_career`, non-consumable). Steam/masaüstü/web: premium, paywall hiç görünmez. İsteğe bağlı yalnızca kozmetik paketler (`pack_celebrations`, `pack_avatar`).
+
+**Kod:** `src/store-iap/` (katalog, `entitlements`, `PurchaseProvider { products, buy, restore }`, `DevProvider`, `CapacitorProvider` = `@capgo/native-purchases`, `npx cap sync` ile doğrulandı). Kilit yalnızca UI arka ucunda (`ui/backend/realActions.ts`: `lockedOut`) uygulanır; `sim/**` ve `core/**` store-iap'i içe aktaramaz (test var), dolayısıyla kilit simülasyon sonucunu etkilemez. Kayıt, kupalar ve Onur Listesi kilitliyken de görüntülenebilir ("şimdi değil" = salt okunur mod).
+
+**Build flavor:** `SP_FLAVOR=trial|premium|auto` (vite define `__SP_FLAVOR__`; `auto` = Android/iOS'ta trial, diğerlerinde premium). Dev'de `?flavor=trial|premium` ile geçersiz kılınır (e2e). Yeni ürün için `catalog.ts`'e ekle ve mağaza panelinde aynı id'yi aç. Kozmetik kapılar için `cosmeticUnlocked(kind, id)` / `hasEntitlement(id)` okunur (örn. maç sunumu: `cosmeticUnlocked('celebration', id)`).
+
+**Güven modeli:** haklar global anahtarda (`starpath.entitlements.v1`, kayıt slotlarının dışında) imzasız yerel olarak tutulur; gerçek kaynak mağazadır, "Satın alımları geri yükle" mağaza hesabından yeniden verir. GELECEK İŞ: sunucu tarafı makbuz doğrulaması (Google Play Developer API purchaseToken, App Store Server API) ve yerel kaydın imzalanması. Önkoşul: Play Console / App Store Connect'te `full_career`, `pack_celebrations`, `pack_avatar` ürünleri.
+
+**Politika uyumu**
+- Google Play Faturalandırma: dijital ürünler yalnızca Play Billing ile satılır (harici ödeme yok); fiyat mağazanın yerel para birimi dizgesiyle gösterilir (`priceString`); abonelik yok.
+- App Store 3.1.1: kilidi açan ürünler uygulama içi satın alma ile; **Satın alımları geri yükle** düğmesi hem paywall'da hem Ayarlar › Satın alımlar'da bulunur (zorunlu); karanlık örüntü yok (geri sayım, sahte kıtlık, gizli ücret yok; "Şimdi değil" her zaman açık, iptalde ücret alınmadığı belirtilir).
+- Gerçek parayla kumar yok: Kumarhane yalnızca oyun içi parayla simüle edilir; oyun parası satın alınamaz, gerçek paraya çevrilemez, ganimet kutusu/şans paketi yok. Kozmetik paketler içeriği açık gösterilen sabit içeriktir (rastgele değil).
+- Reklam ve izleme yok; çocuk/aile politikaları için kişisel veri toplanmaz (telemetri yerel ve isteğe bağlı).
