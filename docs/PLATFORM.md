@@ -85,9 +85,9 @@ Notlar:
 
 ### Steamworks (isteğe bağlı)
 
-`steamworks.js` bağımlılık **değildir**. Steam build'i için:
+`steamworks.js` `optionalDependencies` içindedir (kurulamazsa `npm install` yine başarılı olur; `npm ci --omit=optional` ile doğrulandı). `require` başarısız olursa veya app id yoksa Steam sessizce atlanır. Steam build'i için:
 
-1. `npm i steamworks.js` (native `.node` dosyaları `asarUnpack` ile asar dışında kalır).
+1. `npm install` (native `.node` dosyaları `asarUnpack` ile asar dışında kalır).
 2. App ID: `SP_STEAM_APP_ID` ortam değişkeni veya exe'nin yanında `steam_appid.txt` (yalnızca geliştirmede; Steam istemcisi üzerinden başlatıldığında gerekmez).
 3. Başarımlar Steamworks panelinde API adlarıyla (ör. `FIRST_GOAL`) tanımlanır; oyun `platform.achievements.unlock('FIRST_GOAL')` çağırır → IPC `steam:unlock` → `client.achievement.activate()`. Steam yoksa/başlatılamazsa her şey sessiz no-op.
 4. Steam overlay için `electronEnableSteamOverlay()` otomatik çağrılır.
@@ -181,3 +181,14 @@ iOS 15+; ikon (1024, alfasız) ve splash `npm run icons:native` ile üretilir.
 - App Store 3.1.1: kilidi açan ürünler uygulama içi satın alma ile; **Satın alımları geri yükle** düğmesi hem paywall'da hem Ayarlar › Satın alımlar'da bulunur (zorunlu); karanlık örüntü yok (geri sayım, sahte kıtlık, gizli ücret yok; "Şimdi değil" her zaman açık, iptalde ücret alınmadığı belirtilir).
 - Gerçek parayla kumar yok: Kumarhane yalnızca oyun içi parayla simüle edilir; oyun parası satın alınamaz, gerçek paraya çevrilemez, ganimet kutusu/şans paketi yok. Kozmetik paketler içeriği açık gösterilen sabit içeriktir (rastgele değil).
 - Reklam ve izleme yok; çocuk/aile politikaları için kişisel veri toplanmaz (telemetri yerel ve isteğe bağlı).
+
+
+---
+
+## Demo sürümü, yasal sayfalar, lisanslar (WP-20)
+
+- **Demo:** `SP_FLAVOR=demo npm run build` (dev'de `?flavor=demo`). Tamamen açık (premium gibi), açılışta sabit tohumlu (20261007) kariyer başlar; 90 sn girdi yoksa veya 15 dk sonunda kayıtlar silinip kariyer yeniden başlar (`src/store-iap/demo.ts`). Ayarlar > Satın alımlar'da demo notu görünür.
+- **Satın alma geçmişi:** Ayarlar > Satın alımlar, tarihli liste (yeniden eskiye).
+- **Yasal sayfalar:** kaynak `docs/legal/*.md` (TASLAK, hukuki inceleme gerekli) → `npm run legal` → `game/public/legal/*.html` (çevrimdışı, build'e paketlenir; Ayarlar > Hakkında'dan bağlantılı). Metni değiştirince `npm run legal` çalıştırıp çıktıyı commit'leyin.
+- **Lisanslar:** `npm run licenses` üretim bağımlılıklarından `THIRD_PARTY_LICENSES.md` + `public/legal/THIRD_PARTY_LICENSES.txt` üretir (ağ gerekmez); yeni bağımlılıktan sonra yeniden çalıştırın, `npm run licenses:check` bayatlığı denetler. Ses ve görsellerin özgün olduğu notu betiğin başlığındadır.
+- **Mağaza metinleri / yaş anketi:** `docs/store/LISTING.md`, `docs/store/AGE-RATING.md` (taslak, doğrulama gerekli).

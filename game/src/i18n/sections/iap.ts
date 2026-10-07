@@ -45,6 +45,17 @@ export const tr = {
     premium: 'Bu sürüm tamamen açık: satın alma gerekmiyor.',
     openStore: 'Mağazayı aç',
     build: 'Sürüm türü: {flavor}',
+    history: 'Satın alma geçmişi',
+    historyNone: 'Kayıtlı satın alma yok.',
+    historyLine: '{date} · {source}',
+    demo: 'Demo sürümü: kayıtlar kısa süre sonra otomatik sıfırlanır.',
+  },
+  legal: {
+    title: 'Yasal',
+    privacy: 'Gizlilik politikası (taslak)',
+    terms: 'Kullanım şartları (taslak)',
+    licenses: 'Açık kaynak lisansları',
+    draftNote: 'Bu metinler taslaktır ve hukuki incelemeden geçmemiştir.',
   },
 }
 
@@ -92,5 +103,16 @@ export const en: Shape<typeof tr> = {
     premium: 'This version is fully unlocked: nothing to buy.',
     openStore: 'Open store',
     build: 'Build flavor: {flavor}',
+    history: 'Purchase history',
+    historyNone: 'No purchases on record.',
+    historyLine: '{date} · {source}',
+    demo: 'Demo build: saves reset automatically after a short while.',
+  },
+  legal: {
+    title: 'Legal',
+    privacy: 'Privacy policy (draft)',
+    terms: 'Terms of use (draft)',
+    licenses: 'Open-source licences',
+    draftNote: 'These texts are drafts and have not had legal review.',
   },
 }

@@ -10,7 +10,16 @@ import { installRealBackend } from './ui/backend'
 import { initPlatform } from './platform'
 import { installAudioDirector } from './audio/director'
 import { installErrorLog } from './telemetry/errorLog'
-import { screen } from './ui/store'
+import { actions, navigate, screen } from './ui/store'
+import { DEFAULT_CAREER } from './ui/backend'
+import { DEMO_SEED, installDemoMode, isDemo } from './store-iap'
+
+/** Demo flavor: wipe everything and start the fixed-seed showcase career. */
+async function startDemoCareer(): Promise<void> {
+  await actions.resetAll()
+  actions.newGame({ ...DEFAULT_CAREER, seed: DEMO_SEED })
+  navigate('home', undefined, { tab: true })
+}
 
 /**
  * Backend selection: the real simulation by default; the mock backend (UI
@@ -31,6 +40,10 @@ async function boot(): Promise<void> {
   installAudioDirector()
   const root = document.getElementById('app')
   if (root) render(<App />, root)
+  if (isDemo() && params.get('mock') !== '1') {
+    await startDemoCareer()
+    installDemoMode(startDemoCareer)
+  }
 }
 
 void boot()

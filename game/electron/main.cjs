@@ -91,8 +91,8 @@ ipcMain.handle('saves:remove', (_e, key) => {
 ipcMain.handle('saves:dir', () => savesDir())
 
 // ───────────────────────── Steamworks (optional) ─────────────────────────
-// steamworks.js is NOT a dependency: install it (`npm i steamworks.js`) for the
-// Steam build and set the app id via SP_STEAM_APP_ID or a steam_appid.txt next
+// steamworks.js is an optionalDependency (package.json): `npm install` pulls it when
+// it can; a missing/broken install is tolerated. Set the app id via SP_STEAM_APP_ID or a steam_appid.txt next
 // to the executable. Without it every call is a harmless no-op.
 
 let steam = null

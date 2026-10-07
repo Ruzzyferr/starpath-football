@@ -1,8 +1,9 @@
 import { beforeEach, describe, expect, it } from 'vitest'
 import { START_YEAR } from '../core/config'
 import { COSMETIC_PRODUCTS, FULL_CAREER, PRODUCTS, packFor } from './catalog'
-import { _resetEntitlements, cosmeticUnlocked, emptyRecord, grantIn, hasEntitlement, isCareerLocked, parseRecord } from './entitlements'
-import { resolveFlavor } from './flavor'
+import { _resetEntitlements, cosmeticUnlocked, emptyRecord, grantIn, hasEntitlement, isCareerLocked, parseRecord, purchaseHistory } from './entitlements'
+import { isDemoFlag, resolveFlavor } from './flavor'
+import { DEMO_IDLE_MS, DEMO_SEED, DEMO_SESSION_MS, demoResetDue } from './demo'
 import { DevProvider, UnavailableProvider } from './provider'
 import { purchase, restorePurchases, setProvider } from './service'
 
@@ -84,3 +85,51 @@ describe('sim isolation', () => {
     for (const [f, src] of Object.entries(files)) expect(src, f).not.toMatch(/store-iap/)
   })
 })
+
+describe('purchase history', () => {
+  it('lists newest first with dates and sources, stable on ties', () => {
+    let rec = grantIn(emptyRecord(), [FULL_CAREER], 'google', 1000)
+    rec = grantIn(rec, [PRODUCTS[1]!.id, PRODUCTS[2]!.id], 'restore:google', 5000)
+    const h = purchaseHistory(rec)
+    expect(h.map((x) => x.at)).toEqual([5000, 5000, 1000])
+    expect(h[2]).toEqual({ id: FULL_CAREER, at: 1000, src: 'google' })
+    expect(h[0]!.id.localeCompare(h[1]!.id)).toBeLessThan(0)
+  })
+  it('is empty for a fresh record and ignores unknown ids', () => {
+    expect(purchaseHistory(emptyRecord())).toEqual([])
+    expect(purchaseHistory(grantIn(emptyRecord(), ['nope'], 'x'))).toEqual([])
+  })
+  it('a real purchase appears in the history', async () => {
+    _resetEntitlements()
+    setProvider(new DevProvider())
+    await purchase(FULL_CAREER)
+    const { entitlements } = await import('./entitlements')
+    expect(purchaseHistory(entitlements.value).map((x) => x.id)).toContain(FULL_CAREER)
+    setProvider(null)
+  })
+})
+
+describe('demo flavor', () => {
+  it('demo flag resolves to an unlocked (premium) build everywhere', () => {
+    expect(resolveFlavor('demo', 'android')).toBe('premium')
+    expect(resolveFlavor('demo', 'web')).toBe('premium')
+    expect(isCareerLockedFor('demo')).toBe(false)
+  })
+  it('isDemoFlag honours the build flag and a dev override', () => {
+    expect(isDemoFlag('demo')).toBe(true)
+    expect(isDemoFlag('auto')).toBe(false)
+    expect(isDemoFlag('auto', 'demo')).toBe(true)
+    expect(isDemoFlag('demo', 'trial')).toBe(false)
+  })
+  it('fixed seed, idle and session resets', () => {
+    expect(DEMO_SEED).toBe(20261007)
+    expect(demoResetDue(1000, 1000, 1000)).toBeNull()
+    expect(demoResetDue(DEMO_IDLE_MS, 0, 0)).toBe('idle')
+    expect(demoResetDue(DEMO_IDLE_MS - 1, 0, 0)).toBeNull()
+    expect(demoResetDue(DEMO_SESSION_MS, DEMO_SESSION_MS - 1, 0)).toBe('session')
+  })
+})
+
+function isCareerLockedFor(flag: 'demo'): boolean {
+  return isCareerLocked(resolveFlavor(flag, 'android'), false, START_YEAR + 1)
+}

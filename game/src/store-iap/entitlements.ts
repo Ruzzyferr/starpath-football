@@ -43,6 +43,20 @@ export function grantIn(rec: EntitlementRecord, ids: readonly string[], src: str
   return { v: 1, owned }
 }
 
+export interface PurchaseHistoryEntry {
+  id: string
+  at: number
+  /** Provider that granted it ("google", "dev", "restore:apple" ...). */
+  src: string
+}
+
+/** Dated purchase list, newest first (ties broken by id for a stable order). */
+export function purchaseHistory(rec: EntitlementRecord): PurchaseHistoryEntry[] {
+  return Object.entries(rec.owned)
+    .map(([id, e]) => ({ id, at: e.at, src: e.src }))
+    .sort((a, b) => b.at - a.at || a.id.localeCompare(b.id))
+}
+
 /** Trial gate: season 1 (START_YEAR) is free; later seasons need the unlock on trial builds. */
 export function isCareerLocked(flavor: Flavor, ownsFull: boolean, season: number): boolean {
   return flavor === 'trial' && !ownsFull && season > START_YEAR

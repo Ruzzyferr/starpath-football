@@ -1,4 +1,5 @@
 export { FULL_CAREER, PRODUCTS, PRODUCT_BY_ID, COSMETIC_PRODUCTS, packFor, type ProductDef, type CosmeticKind } from './catalog'
-export { careerLocked, cosmeticUnlocked, entitlements, grant, hasEntitlement } from './entitlements'
-export { getFlavor, type Flavor } from './flavor'
+export { careerLocked, cosmeticUnlocked, entitlements, grant, hasEntitlement, purchaseHistory, type PurchaseHistoryEntry } from './entitlements'
+export { getFlavor, isDemo, type Flavor } from './flavor'
 export { getProvider, loadProducts, purchase, restorePurchases, setProvider, storeAvailable } from './service'
+export { DEMO_IDLE_MS, DEMO_SEED, DEMO_SESSION_MS, demoResetDue, installDemoMode } from './demo'

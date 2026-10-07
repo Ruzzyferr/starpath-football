@@ -25,7 +25,10 @@
     "android:apk": "npm run cap:sync && node scripts/android-gradle.mjs assembleDebug",
     "android:bundle": "npm run cap:sync && node scripts/android-gradle.mjs bundleRelease",
     "icons:native": "node scripts/gen-native-res.mjs",
-    "ios:open": "cap open ios"
+    "ios:open": "cap open ios",
+    "licenses": "node scripts/gen-licenses.mjs",
+    "licenses:check": "node scripts/gen-licenses.mjs --check",
+    "legal": "node scripts/gen-legal.mjs"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
@@ -67,5 +70,8 @@
   },
   "description": "StarPath Football — futbol kariyeri ve yaşam simülasyonu",
   "author": "StarPath Football",
-  "main": "electron/main.cjs"
+  "main": "electron/main.cjs",
+  "optionalDependencies": {
+    "steamworks.js": "^0.4.0"
+  }
 }

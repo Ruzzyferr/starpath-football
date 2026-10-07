@@ -9,6 +9,7 @@ import { actions, gameState, navigate, settings, updateSettings } from '../store
 import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
 import { PurchasesPanel } from './store/PurchasesPanel'
+import { LegalLinks } from './store/LegalLinks'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
 import { ASSIST_REWARD } from '../../sim/match/rating'
@@ -211,6 +212,7 @@ export function SettingsScreen() {
 
         <Group title={t('settings.sections.about')} icon="info">
           <ErrorReportPanel />
+          <LegalLinks />
         </Group>
 
         <Group title={t('settings.sections.data')} icon="floppy">
