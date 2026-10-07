@@ -35,9 +35,9 @@ async function measure(page: Page, ms: number) {
   )
 }
 
-// High profile (worst case) for both kinds; the Low quality profile (WP-16) on the counter.
-for (const [kind, q] of [['counter', 'high'], ['corner', 'high'], ['counter', 'low']] as const) {
-  test(`highlight FPS: ${kind}${q === 'low' ? ' (low profile)' : ''}`, async ({ page, isMobile }) => {
+// Every quality profile (High / Medium / Low, WP-16) on both kinds.
+for (const [kind, q] of [['counter', 'high'], ['corner', 'high'], ['counter', 'medium'], ['corner', 'medium'], ['counter', 'low'], ['corner', 'low']] as const) {
+  test(`highlight FPS: ${kind}${q === 'high' ? '' : ` (${q} profile)`}`, async ({ page, isMobile }) => {
     if (isMobile) {
       const cdp = await page.context().newCDPSession(page)
       await cdp.send('Emulation.setCPUThrottlingRate', { rate: 4 })

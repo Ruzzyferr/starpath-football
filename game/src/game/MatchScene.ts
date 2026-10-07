@@ -118,6 +118,16 @@ interface SceneData {
 
 const SCENE_KEY = 'starpath-match'
 
+/** Pitch-space box (meters) a static Graphics fits in; `z` = tallest point drawn. */
+interface BakeBox {
+  x0: number
+  x1: number
+  y0: number
+  y1: number
+  z?: number
+}
+let bakeSeq = 0
+
 // ───────────────────────── Strings ─────────────────────────
 
 const T = {
@@ -279,6 +289,13 @@ export class MatchScene extends Phaser.Scene {
   /** Set-piece picker (corner delivery / wall) while the runtime waits for the hero. */
   private picker: { st: PickerState; dom: PickerDom; padPrev: boolean[]; onKey: (e: KeyboardEvent) => void } | null = null
   private pickerOut: HeroAction[] = []
+  /**
+   * Static Graphics cached into textures (perf): Phaser re-tessellates every
+   * Graphics command each frame, so the pitch, stands background, floodlights,
+   * goals and flags are drawn once into a DynamicTexture and shown as Images.
+   * The Graphics are kept (hidden) to re-bake on a big zoom change.
+   */
+  private baked: { g: Phaser.GameObjects.Graphics; key: string; box: BakeBox; img: Phaser.GameObjects.Image | null; scale: number }[] = []
   /** Swallows the taps/keys that closed the picker (real seconds left). */
   private pickerCooldown = 0
   /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
@@ -312,6 +329,7 @@ export class MatchScene extends Phaser.Scene {
     this.assistText = null
     this.inputRec = new InputRecorder()
     this.ring2 = null
+    this.baked = []
     this.paused = false
   }
 
@@ -470,6 +488,8 @@ export class MatchScene extends Phaser.Scene {
 
   private cleanup(): void {
     this.closePicker()
+    for (const e of this.baked) if (this.textures.exists(e.key)) this.textures.remove(e.key)
+    this.baked = []
     if (this.onKey) window.removeEventListener('keydown', this.onKey)
     this.onKey = null
     this.input0?.dispose()
@@ -504,6 +524,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Beyond the stands: tree line (small grounds) or city glow (big ones).
     const bg = this.addW(this.add.graphics().setDepth(-60))
+    this.bakeLater(bg, { x0: -14, x1: PITCH_LENGTH + 30, y0: -17.5, y1: PITCH_WIDTH + 17.5 })
     const far = project(PITCH_LENGTH + 6.2 + VIS_END * 0.9, spanY0)
     const topY = project(PITCH_LENGTH + 30, 0).y
     bg.fillStyle(night ? 0x03060b : look.tier === 'local' || look.tier === 'mid' ? 0x10241a : 0x0b1018, 1)
@@ -557,9 +578,11 @@ export class MatchScene extends Phaser.Scene {
 
     const pitch = this.addW(this.add.graphics().setDepth(-40))
     drawPitch(pitch, opts.weather)
+    this.bakeLater(pitch, { x0: -16.5, x1: PITCH_LENGTH + 9.5, y0: -6.5, y1: PITCH_WIDTH + 6.5 })
     if (opts.weather === 'rain' || opts.weather === 'snow') {
       const wg = this.addW(this.add.graphics().setDepth(-39.6))
       drawWeatherGround(wg, opts.weather, this.data0.highlight.id.length * 31 + 7, this.lowFx)
+      this.bakeLater(wg, { x0: -12, x1: PITCH_LENGTH + 12, y0: -12, y1: PITCH_WIDTH + 12 })
     }
 
     // Ad boards: painted boards at small grounds, LED strips at big ones.
@@ -591,6 +614,10 @@ export class MatchScene extends Phaser.Scene {
       drawGoal(this.netG[end], end, 'net', null)
       const fg = this.addW(this.add.graphics().setDepth(depthFor(gx, end === 'east' ? 0.5 : 4)))
       drawGoal(fg, end, 'frame', null)
+      const goalBox = { x0: gx - 4, x1: gx + 4, y0: GOAL_CENTER_Y - 6.5, y1: GOAL_CENTER_Y + 6.5, z: 3.5 }
+      this.bakeLater(fg, goalBox)
+      // The net is re-drawn only while it ripples (Graphics shown, baked image hidden).
+      this.bakeLater(this.netG[end], goalBox)
     }
 
     // Corner flags (they stream with the wind when there is any).
@@ -606,6 +633,7 @@ export class MatchScene extends Phaser.Scene {
       const dx = wdir ? wdir.x * 0.6 * PPM : (cy === 0 ? 1 : -1) * 0.55 * PPM
       const dy = wdir ? wdir.y * 0.3 * PPM : 0.18 * PPM
       fgx.fillTriangle(t.x, t.y, t.x + dx, t.y + dy + 0.18 * PPM, t.x, t.y + 0.4 * PPM)
+      this.bakeLater(fgx, { x0: cx - 1.5, x1: cx + 1.5, y0: cy - 1.5, y1: cy + 1.5, z: 2.2 })
     }
   }
 
@@ -614,6 +642,7 @@ export class MatchScene extends Phaser.Scene {
     const look = this.look
     const night = this.night
     const g = this.addW(this.add.graphics().setDepth(-45))
+    this.bakeLater(g, { x0: -8, x1: PITCH_LENGTH + 9, y0: -11, y1: PITCH_WIDTH + 11, z: 24 })
     const lamps: { x: number; y: number; r: number }[] = []
     const lampCol = night ? 0xfff6d8 : 0xb9c3d3
     if (look.lights === 'poles' || look.lights === 'pylons') {
@@ -859,6 +888,7 @@ export class MatchScene extends Phaser.Scene {
     // Always show enough pitch ahead of the play.
     z = Math.min(z, vh / (24 * PPM * TILT))
     this.cam.base = z
+    this.bakeStatics()
     this.vignette.setDisplaySize(w, h)
     this.flash.setSize(w, h)
     const top = this.safeTop
@@ -1354,9 +1384,12 @@ export class MatchScene extends Phaser.Scene {
       g.lineStyle(0.17 * PPM, colorNum(kit.secondary), 1)
       g.lineBetween(lx * 0.7, hip, footL.x, footL.y - 2)
       g.lineBetween(rx * 0.7, hip, footR.x, footR.y - 2)
+      // Boots as tiny squares: at ~5 px a circle reads the same but costs a
+      // tessellated 40-gon per foot per frame (22 players).
+      const fr = 0.1 * PPM
       g.fillStyle(0x161616, 1)
-      g.fillCircle(footL.x, footL.y - 1, 0.1 * PPM)
-      g.fillCircle(footR.x, footR.y - 1, 0.1 * PPM)
+      g.fillRect(footL.x - fr, footL.y - 1 - fr * 0.8, fr * 2, fr * 1.6)
+      g.fillRect(footR.x - fr, footR.y - 1 - fr * 0.8, fr * 2, fr * 1.6)
     }
   }
 
@@ -1558,7 +1591,66 @@ export class MatchScene extends Phaser.Scene {
       r.t += dt
       this.netG[end].clear()
       drawGoal(this.netG[end], end, 'net', r.t > 2 ? null : r)
+      const b = this.baked.find((e) => e.g === this.netG[end])
       if (r.t > 2) this.ripple[end] = null
+      // Live Graphics while rippling; back to the cached image once it settles.
+      this.netG[end].setVisible(!!this.ripple[end] || !b?.img)
+      if (b?.img) b.img.setVisible(!this.ripple[end])
+    }
+  }
+
+  // ───────────────────────── Static Graphics cache ─────────────────────────
+
+  private bakeLater(g: Phaser.GameObjects.Graphics, box: BakeBox): void {
+    this.baked.push({ g, key: `bake_${bakeSeq++}`, box, img: null, scale: 0 })
+  }
+
+  /**
+   * (Re)draws every static Graphics into its own texture at a resolution that
+   * matches the current zoom (with headroom for zoom punches / replays), then
+   * shows the texture instead of the Graphics. Runs at start and when the
+   * zoom changes a lot (resize / orientation).
+   */
+  private bakeStatics(): void {
+    const renderer = this.game.renderer as { getMaxTextureSize?: () => number }
+    const maxTex = Math.min(4096, renderer.getMaxTextureSize?.() ?? 4096)
+    const want = clampN(this.cam.base * 1.35, 0.3, 1)
+    for (const e of this.baked) {
+      if (e.img && Math.abs(e.scale - want) / Math.max(want, 1e-3) < 0.2) continue
+      const a = project(e.box.x1, e.box.y0, e.box.z ?? 0)
+      const b = project(e.box.x0, e.box.y1, 0)
+      const x0 = Math.floor(Math.min(a.x, b.x))
+      const y0 = Math.floor(Math.min(a.y, b.y))
+      const w = Math.ceil(Math.max(a.x, b.x)) - x0
+      const h = Math.ceil(Math.max(a.y, b.y)) - y0
+      const s = Math.min(want, maxTex / Math.max(w, h))
+      const tw = Math.max(2, Math.ceil(w * s))
+      const th = Math.max(2, Math.ceil(h * s))
+      if (e.img) {
+        e.img.destroy()
+        e.img = null
+      }
+      if (this.textures.exists(e.key)) this.textures.remove(e.key)
+      const tex = this.textures.addDynamicTexture(e.key, tw, th)
+      if (!tex) continue
+      const { g } = e
+      const alpha = g.alpha
+      g.setVisible(true).setAlpha(1).setScale(s)
+      tex.draw(g, -x0 * s, -y0 * s)
+      tex.render()
+      g.setPosition(0, 0).setScale(1).setAlpha(alpha).setVisible(false)
+      const img = this.add.image(x0, y0, e.key).setOrigin(0, 0).setScale(w / tw, h / th).setDepth(g.depth).setAlpha(alpha)
+      this.addW(img)
+      e.img = img
+      e.scale = s
+    }
+    // A net mid-ripple keeps its live Graphics.
+    for (const end of ['east', 'west'] as const) {
+      const b = this.baked.find((e) => e.g === this.netG[end])
+      if (b?.img && this.ripple[end]) {
+        b.img.setVisible(false)
+        this.netG[end].setVisible(true)
+      }
     }
   }
 
