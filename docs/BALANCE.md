@@ -375,6 +375,25 @@ Denenip bırakılanlar: `ASSIST_PULL.full` 0.6 → 0.72 (1v1'de etkisiz, %31 →
 global `KEEPER_REACH` 0.8/0.75 (kaleci drillerinin "beceri > özensiz oyun"
 testini bozuyor).
 
+### WP-13 kontrol şemaları sonrası (Ekim 2026)
+
+Varsayılan şemalarla (kaydır / basılı tut / Yarı nişan) N=120 normal tablo
+yukarıdaki güncel ölçümle **birebir aynı** çıktı (bot girdisi değişmedi; ver-kaç
+yalnızca pastan sonra ikinci dokunuşla devreye giriyor). Yeni şemalar
+(sapan, salınan güç çubuğu, analog gamepad) aynı `planKick` yolunu kullanır;
+güç aralığı 0–1.15 aynı kaldığı için bantlar etkilenmez.
+
+| Ayar | Değer | Not |
+|---|---|---|
+| `ASSIST_REWARD` (`src/sim/match/rating.ts`) | Tam 0.8× / Yarı 1.0× / Manuel 1.25× | Etkileşimli anın **pozitif** reyting payını (ve maç XP'sini) çarpar; hatalar büyütülmez. Ayarlarda ve maç HUD'unda yazılı. |
+| `ONE_TWO_WINDOW` (`src/game/runtime.ts`) | 2.2 s | Pastan sonra ikinci dokunuş penceresi; alıcı topu ilk dokunuşta koşuya geri verir (Vizyon'a göre isabet). |
+| `OSC_PERIOD` (`src/game/kick.ts`) | 1.1 s | Salınan güç çubuğu (min 0.15 → max 1.15); tatlı bölge %85–100 halkada işaretli. |
+| `SLING_FULL` | ekranın kısa kenarının 0.40'ı | Sapanda %100 güç için çekme uzunluğu (hızdan bağımsız). |
+| Zamanlama yardımı | 1.5× | Ağır çekim ve ver-kaç pencereleri, salınan çubuk periyodu (erişilebilirlik). |
+
+Mobil performans (4x CPU kısıtlama, 390x844 dpr3): counter ~52 fps, corner ~51 fps
+(WP-13 öncesi 52 / 50).
+
 ### Bilinen açıklar
 
 - **Savunma artık beceriye bağlı** (53 / 64 / 75 / 73). Eski ~%93 sorunu çözüldü;
