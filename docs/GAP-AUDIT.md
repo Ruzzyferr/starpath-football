@@ -8,7 +8,49 @@
 
 ---
 
-## 1. Özet Sayılar
+## 0. Durum özeti
+
+> **Yeniden denetim: 2026-10-07, WP-1..WP-12 sonrası.** İlk denetimde KISMİ ya da EKSİK olan her satır koda karşı yeniden kontrol edildi (graphify + hedefli grep). Testler ve e2e bu turda koşturulmadı (e2e başka süreçte koşuyor). Bölüm 1 ve bölüm 2'deki ilk tablolar **tarihsel taban** olarak olduğu gibi bırakıldı. Bir satırın güncel durumu için önce bölüm 2.0'a bakılır. Orada yoksa ilk tablodaki durum geçerlidir.
+
+### 0.1 ANALIZ-VE-PLAN [v1][P0]: önce / şimdi
+
+| Bölüm | TAMAM önce → şimdi | KISMİ önce → şimdi | EKSİK önce → şimdi |
+|---|---|---|---|
+| 2.1 Maç motoru, his, kontroller | 3 → 11 | 49 → 50 | 10 → 5 |
+| 2.2 Animasyon, kamera, sunum | 1 → 10 | 16 → 16 | 13 → 4 |
+| 2.3 Kariyer | 2 → 19 | 31 → 23 | 10 → 1 |
+| 2.4 Sosyal, olaylar | 5 → 14 | 25 → 20 | 9 → 5 |
+| 2.5 Ekonomi, monetizasyon | 11 → 15 | 21 → 24 | 17 → 10 |
+| 2.6 Dünya, kupalar, milli takım | 2 → 21 | 32 → 22 | 15 → 6 |
+| 2.7 UI/UX | 7 → 21 | 45 → 39 | 13 → 5 |
+| 2.8 Ses ve müzik | 0 → 10 | 9 → 4 | 10 → 5 |
+| 2.9 Platform ve teknik | 14 → 25 | 38 → 34 | 27 → 20 |
+| 2.10 Meta, online, canlı operasyon | 5 → 6 | 1 → 3 | 18 → 15 |
+| 2.11 Erişilebilirlik, yerelleştirme | 1 → 10 | 15 → 12 | 17 → 11 |
+| 2.12 Risk, hukuk, mağaza, QA | 9 → 17 | 13 → 13 | 15 → 7 |
+| **Toplam** | **60 → 179** (%11 → %31) | **295 → 260** | **174 → 94** (+ 40 N/A-süreç) |
+
+Not: Bölüm toplamları satır sayımından geldiği için eski toplam (569) ile yeni toplam (573) arasında ±4 sayım farkı var. Yön ve büyüklük etkilenmez.
+
+### 0.2 GDD [v1] (129 satırlık denetim listesi): önce / şimdi
+
+| | TAMAM | KISMİ | EKSİK |
+|---|---:|---:|---:|
+| Önce | 102 | 16 | 11 |
+| **Şimdi** | **117** | **10** | **2** |
+
+GDD bölümleri şimdi (TAMAM/KISMİ/EKSİK): 2 Karakter 20/4/2, 3 Maç 34/3/0, 4 Yaşam 19/1/0, 5 Olaylar 7/0/0, 6 Dünya 13/0/0, 7 Ekonomi 4/0/0, 8 Sunum 8/0/0, 9 Teknik 12/2/0. (Bölüm 1.2'deki eski "142 madde" farklı bir sayım yöntemiydi. Karşılaştırma için 129 satırlık liste kullanıldı.)
+
+### 0.3 Ana çıkarımlar
+
+- Büyük kapanışlar: oynanabilir milli takım ve turnuva, maç adaleti ve kalem kalem maç sonu, ses motoru, stadyum kademeleri ve kutlamalar, ödül töreni ve kupa kurası, başarım ve emeklilik akışı, tutorial, hukuki temizlik, kayıt yedekleri, erişilebilirlik ayarları, deneme/paywall.
+- Kalan açıkların büyük kısmı **cila ve derinlik** (kontrol şemaları, hakem kuralları, sim kalibrasyon testleri) ile **dış hizmet gerektirenler** (online, mağaza, Steam). Dış bağımlı olanlar bölüm 3.2'de ayrı listelendi.
+- Açık teknik borç: `newGame.ts:128,142` içinde `Date.now` var (sim determinizmi), ESLint kuralı yalnızca `warn`.
+- Bölüm 1.3'teki eski QA bulguları: maç günü onay penceresi **kapandı** (`ui/tutorial/MatchdayConfirm.tsx`). 390 px hız düğmesi düzeltmesi WP-6 commit'inde yapıldı. "New Star" ve "manevi halef" ifadeleri **temizlendi**, lig adı "Anadolu Ligi" oldu. Birim test kırmızısı (feel, backend) bu turda koşturulmadı. "feel bands green" commit'leri yeşile çekildiğini gösteriyor ama doğrulanmalı.
+
+---
+
+## 1. Özet Sayılar (ilk denetim tabanı, WP-1..12 öncesi)
 
 ### 1.1 ANALIZ-VE-PLAN §2, [v1][P0] maddeleri
 
@@ -56,6 +98,89 @@
 ---
 
 ## 2. Madde Bazında Denetim Tablosu
+
+### 2.0 Yeniden denetim: durumu değişen satırlar (WP-1..12 sonrası)
+
+Kanıt yolları `game/src/` köküne göredir; 2.9, 2.10, 2.12 satırlarında `game/...` ile başlayanlar depo köküne göredir. `~` işareti sembol düzeyinde doğrulandı, uçtan uca izlenmedi anlamına gelir.
+
+| Madde | Yeni durum | Kanıt | Not |
+|---|---|---|---|
+| 2.1#7 | TAMAM | sim/match/fairness.ts:23, engine.ts:1193 | 15 dk erken skor freni, 300 maçlık test |
+| 2.1#8 | TAMAM | sim/match/fairness.ts:15, engine.ts:1221 | %8 altı an yeniden üretiliyor |
+| 2.1#14 | TAMAM | sim/match/rating.ts:134, ui/screens/match/PostMatchScreen.tsx:150 | Kalem kalem döküm, 7,0 tabanı testli |
+| 2.1#60 | KISMİ | game/MatchScene.ts:1651,1748 | Ofsayt çerçevesi var; Vizyon'a göre pas hedefi vurgusu doğrulanamadı |
+| 2.1#68 | TAMAM | game/runtime.ts:759,787 | Kafa yönü kaydırma ile |
+| 2.1#86 | TAMAM~ | game/runtime.ts:963 | Uzanma penceresi Refleks'e bağlı |
+| 2.1#103 | TAMAM | game/MatchScene.ts:1546,1557 | Ofsayt çizgisi çiziliyor |
+| 2.1#121, #125 | TAMAM | sim/match/highlightGen.ts:598,603 | Kanatta ≥2 orta, stoperde ≥3 savunma anı, testli |
+| 2.2#25 | TAMAM | game/MatchScene.ts:1582 | Forma numarası ve isim etiketi |
+| 2.2#37 | TAMAM | game/presentation.ts:98,168 | Kutlama yönü, ilişkiye göre yanına gelenler |
+| 2.2#38 | KISMİ | game/presentation.ts:94-119 | 8 kutlama (hedef 12) |
+| 2.2#47, #49 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
+| 2.2#63 | KISMİ | game/MatchScene.ts:1609 | `lowFx` ölçekliyor, gerçek parçacık bütçesi yok |
+| 2.2#74 | TAMAM | game/MatchScene.ts:756 | Rüzgâr km/sa göstergesi |
+| 2.2#82 | TAMAM | game/presentation.ts:16 | 4 stadyum kademesi |
+| 2.2#102, #103 | TAMAM | PostMatchScreen.tsx:370,158, postFlow.ts:7 | Adım adım maç sonu, count-up reyting |
+| 2.2#118 | KISMİ | game/MatchScene.ts:304 | Tek `lowFx` profili, çok kademeli kalite yok |
+| 2.2#121 | TAMAM | game/MatchScene.ts:303 | Hareketi azalt sahnede ~26 yerde uygulanıyor |
+| 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
+| 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
+| 2.3#14 | TAMAM | sim/career/decay.ts:32 | Özellik erimesi + uyarı |
+| 2.3#26-#28 | TAMAM | game/training/drills/{crossing,heading,tackling}.ts | 3 yeni drill |
+| 2.3#40 | TAMAM | sim/career/matchPerks.ts:15 | Maç perkleri maça etki ediyor |
+| 2.3#62, #63 | TAMAM | sim/career/market.ts:39, contract.ts:474 | Piyasa referansı, son teklif kuralı |
+| 2.3#81, #83 | TAMAM | ui/screens/legacy/CareerCards.tsx:14, sim/career/squadRole.ts:200 | Beklenen dakika, form maddesi (≥7,5) |
+| 2.3#84 | TAMAM | PostMatchScreen.tsx:267 | Güven değişim nedenleri |
+| 2.3#91, #92 | TAMAM | sim/game/national.ts:33,116 | A/U21/U19, çağrı göstergesi |
+| 2.3#98, #99 | TAMAM | ui/screens/awards/AwardsScreen.tsx:79, sim/world/awards.ts:28 | Aday listesi, 100 gazeteci oylaması |
+| 2.3#106 | TAMAM | ui/screens/legacy/CareerCards.tsx:59 | Emeklilik girişi UI'da |
+| 2.4#2, #5 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
+| 2.4#60, #61 | TAMAM | sim/game/interview.ts:294,254 | 3 soruluk röportaj, etki tavanı, tuzak soru |
+| 2.4#65, #90 | TAMAM | sim/life/casino.ts:916,992 | Tek ziyaret manşet değil, yardım hattı |
+| 2.4#101, #111, #112 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
+| 2.5#90 | TAMAM | ui/screens/SettingsScreen.tsx:120 | Kumarhaneyi gizle |
+| 2.5#105 | KISMİ | docs/PLATFORM.md:148 | Yalnızca kontrol listesi |
+| 2.5#112-#114 | TAMAM | store-iap/entitlements.ts:46, catalog.ts:12, capacitorProvider.ts:38 | Deneme kilidi, kozmetikler, satın alma/geri yükleme |
+| 2.5#119, #120 | KISMİ | ui/screens/store/PurchasesPanel.tsx:20, StoreScreen.tsx:8 | Satın alma geçmişi ve mağaza varlıkları eksik |
+| 2.6#17, #32, #46, #55 | TAMAM | sim/world/quickSim.test.ts:21, ClubScreen.tsx:112, season.test.ts:211, gender.test.ts:30 | Testler, forma numarası |
+| 2.6#63, #76, #79, #84, #87 | TAMAM | sim/world/competitions.ts:429,311,299, ui/screens/cup/CupDrawScreen.tsx, sim/world/coefficients.ts:87 | Play-off, kura, ön eleme, çift maç, kupa kontenjanı, katsayı |
+| 2.6#68, #72 | TAMAM | ui/screens/national/NationalCard.tsx:29, ui/tutorial/MatchdayConfirm.tsx:31 | Turnuva geri sayımı, maç günü onayı |
+| 2.6#91-#94 | TAMAM | sim/world/national.ts:236,326,64 | Milli kadro, çağrı sayacı, eleme, turnuva |
+| 2.6#102, #103, #106, #107 | TAMAM | sim/world/awards.ts:156,335, CupsPanel.tsx:44, sim/game/records.ts | Ayın Oyuncusu, Altın Yıldız, krallıklar, rekorlar |
+| 2.7#14, #32, #44, #50, #67 | TAMAM | styles/fonts.css, input/gamepadNav.ts, Chip.tsx:42, Controls.tsx:41, MatchScene.ts:321 | Self-host font, gamepad menü, delta glifi, slider adımı, takım çizgisi |
+| 2.7#72, #82, #83, #85, #86, #87 | TAMAM~ | PostMatchScreen.tsx:174, Relations.tsx:55,124, StoreScreen.tsx, Assets.tsx:88, ResponsiblePanel.tsx:19 | Reyting dökümü, neden panelleri, mağaza, raf, günlük kayıp limiti |
+| 2.7#122, #123, #131 | TAMAM | ui/tutorial/CoachTour.tsx:47, UnlockGate.tsx, PaywallScreen.tsx | Rehber, kademeli açılış, paywall |
+| 2.8#1, #12, #13, #14 | TAMAM | audio/mixer.ts:14, crowd.ts:3,32, director.ts:37 | Mikser, kalabalık katmanları, kapasite, gerilim |
+| 2.8#23, #25, #26, #35, #45 | TAMAM | game/audio.ts:154,302,240, audio/music.ts:21, audio/uiSfx.ts:13 | Vuruş, direk, düdük, müzik, UI sesleri |
+| 2.8#51 | TAMAM~ | platform/capacitor.ts:20 | Haptics eşlemesi var; **gerçek cihazda doğrulanmadı** |
+| 2.9#5 | TAMAM | game/eslint.config.js:30 | sim/core kısıtları |
+| 2.9#27 | KISMİ | game/eslint.config.js:1 | `Date.now` yalnızca warn; newGame.ts:128,142 ihlal |
+| 2.9#46, #48, #49 | TAMAM | game/src/state/save.ts:147,193, ui/backend/persistence.ts:35 | Kota koruması, `.premigrate`, "oyunu güncelleyin" |
+| 2.9#65 | TAMAM | game/package.json:27 | @capgo/native-purchases |
+| 2.9#71 | TAMAM | game/src/styles/fonts.css:1 | Font self-host |
+| 2.9#77 | TAMAM | ui/backend/liveMatch.ts:335 | Arka planda otomatik duraklat |
+| 2.9#82, #83 | TAMAM | store-iap/service.ts:43, entitlements.ts:53 | Geri yükleme, yetki önbelleği |
+| 2.9#89, #95 | TAMAM | ui/backend/meta.ts:62, ui/App.tsx:176 | 79 başarım → platform sink, gamepad menü |
+| 2.9#107 | KISMİ | telemetry/errorLog.ts:1 | Yerel opt-in günlük, gönderim yok |
+| 2.10#3 | KISMİ | styles/fonts.css:1 | Font isteği yok; çevrimiçi anahtar yok |
+| 2.10#88 | KISMİ | telemetry/ErrorReportPanel.tsx:31 | Elle kopyalanan rapor |
+| 2.10#111 | TAMAM | sim/game/achievements.ts:140 | Başarım sistemi |
+| 2.11#1, #17, #19-#22 | TAMAM | styles/tokens.css:201, input/bindings.ts:103, i18n/sections/settings.ts:46,48, game/input.ts:166, SettingsScreen.tsx:92 | Renk körü paletleri, tuş atama, sol/tek el, dokunma ölçeği, maç hızı |
+| 2.11#31, #49, #50 | TAMAM | MatchScene.ts:1602, i18n/index.ts:78, ui/a11y/collate.ts:6 | Sarsıntı kapanıyor, tr-TR büyük harf, Collator('tr') |
+| 2.11#32 | KISMİ | i18n/sections/settings.ts:33 | Ayrı "flaşları kapat" yok |
+| 2.12#1, #2, #10 | TAMAM | game/public/manifest.webmanifest, game/src/data/world/countries.ts:21 | Marka ifadeleri temiz, "Anadolu Ligi" |
+| 2.12#32, #33 | TAMAM | styles/fonts.css, THIRD_PARTY_LICENSES.md | Self-host, lisans dosyası (yalnızca fontlar) |
+| 2.12#42 | KISMİ | core/contentFlags.ts:5 | Derleme bayrağı yok, oyuncu ayarı var |
+| 2.12#43, #45, #121 | TAMAM | SettingsScreen.tsx:120, casino/CasinoScreen.tsx:104, state/save.ts:193 | Kumarhane gizle, sorumlu oyun paneli, migrasyon öncesi kopya |
+| 2.12#70 | KISMİ | store-iap/flavor.ts:1 | Mobilde ilk sezon deneme, ayrı demo yok |
+
+Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci formülü yok), 2.3#60 (form maddesi var, garanti/sigorta/imaj hakkı yok), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
+
+**GDD (2.13), TAMAM'a dönenler:** gizli potansiyel yıldızı (`legacy/CareerCards.tsx:69`), emeklilik kararı ve Onur Listesi (`ui/backend/meta.ts:205`, `HallOfFameScreen.tsx:28`), ısı ve şut haritası (`PostMatchScreen.tsx:223`), kalabalık/tezahürat/ıslık/yuhalama (`audio/crowd.ts`), hukuk olayları (`events/content/legal.ts`), milli turnuva + Ayın Oyuncusu + Yılın Golü (`sim/game/national.ts`, `awards.ts`), deneme + Tam Kariyer kilidi + kozmetikler (`store-iap/catalog.ts`), menü sesleri ve dinamik müzik (`audio/uiSfx.ts`, `music.ts`).
+
+**GDD hâlâ açık (10 KISMİ + 2 EKSİK):** doğum şehri (EKSİK), emeklilik sonrası yollar (EKSİK), kaleci özellik grupları yalnız 2, sözleşme sigorta/süre garantisi, yedekte şikayet UI çağrısı yok, ilişki → pas sıklığı mesajı yok, yardım seviyesi ödül çarpanı yok (3.3 ve 9), takım arkadaşı el kaldırma/pas isteme yok, hakem avantaj ve sertlik yok, vadeli mevduat yok, `steamworks.js` bağımlılık değil (isteğe bağlı).
+
+---
 
 ### 2.1 Maç Motoru, Oyun Hissi ve Kontroller
 
@@ -821,154 +946,115 @@
 
 ---
 
-## 3. Önceliklendirilmiş Backlog: Paralel İş Paketleri
+## 3. Güncel Backlog: Kalan Boşluklar (WP-13+)
 
-**Sıralama ölçütü:** Bir NSS hayranının ilk saatlerde fark edeceği eksik önce gelir.
+WP-1..WP-12 teslim edildi (bölüm 0 ve 2.0). Aşağıdaki paketler **yalnızca kalan açıkları** kapsar. Sıralama oyuncu etkisine göredir. Her paket bağımsızdır ve yalnızca kendi dosyalarına yazar. Paylaşılan dosyalarda (`ui/store.ts`, `ui/App.tsx`, `i18n/tr.ts`, `i18n/en.ts`) yalnızca ekleme yapılır, metinler paketin kendi `i18n/sections/<paket>.ts` dosyasına konur. Satır numaraları ilk denetim tablosundaki madde kimlikleridir (bölüm 2 ve 2.0).
 
-**Dosya sahipliği kuralı:** Her paket yalnızca kendi listelediği dosyalara yazar. Paylaşılan dosyalar şunlar: `ui/store.ts` (yalnızca `ScreenId` birleşimine ekleme), `ui/App.tsx` (yalnızca ekran kaydı ve overlay montajı) ve `i18n/tr.ts` / `i18n/en.ts` (yalnızca yeni bölüm import'u). Bu dosyalarda **yalnızca ekleme** yapılır ve merge sırasında birleştirilir. Her paket metinlerini kendi yeni `i18n/sections/<paket>.ts` dosyasına koyar.
+### 3.1 Kod ile kapanabilir paketler
 
-**Ön koşul (P-0, tek kişi, ~0,5 gün):** Denge ajanının işi bitince `vitest` yeniden yeşile çekilmeli. Şu an kırmızı olanlar: `feel.test.ts` (3 test) ve `backend.test.ts:169`. Paketler kırmızı taban üzerinde başlamamalı.
+### WP-13 · Kontrol Şemaları ve Maç Hissi Derinliği  (en yüksek etki)
+Kalan hissiyat boşlukları: sapan şut, salınan güç çubuğu, PC tekerlek falsosu, analog gamepad, ver-kaç, Vizyon vurgusu.
+- **Dokunduğu dosyalar:** `game/src/game/kick.ts`, `game/src/game/input.ts`, `game/src/game/runtime.ts` (kontrol okuma noktaları), `game/src/game/MatchScene.ts` (yalnızca pas hedefi vurgusu ve orta kamerası), `game/src/i18n/sections/settings.ts`.
+- **Kabul kriterleri:**
+  1. Sapan (geri çekme) şut şeması ve dokun + salınan güç çubuğu şeması ayarlardan seçilebiliyor (2.1#18, #22).
+  2. PC'de tekerlekle falso; gamepad'de analog güç, sağ analog falso, ölü bölge ayarı (2.1#23, #24).
+  3. Ver-kaç: pas sonrası kısa süre içinde geri pas hedefi vurgulanıyor ve oynanıyor (2.1#59).
+  4. Vizyon özelliğine göre pas hedefi vurgusu (2.1#60), orta için yan kamera (2.1#62), kafa menzili 18 m sınırı (2.1#71).
+  5. Yardım seviyelerinin ödül çarpanı (Tam 0,8x, Yarı 1,0x, Manuel 1,25x gibi) ve ekranda yazılı olması (2.1#28, GDD 3.3).
+  6. 80 ms girdi örnekleme ve deterministik girdi kaydı/yeniden oynatma (2.1#18, #34). Birim test: kayıtlı girdi aynı sonucu veriyor.
+
+### WP-14 · Hakem, Faul, Kart ve Kaleci Kuralları
+- **Dokunduğu dosyalar:** `game/src/game/ai.ts`, `game/src/game/runtime.ts` (faul ve kaleci blokları), `game/src/sim/match/highlightGen.ts`, `game/src/sim/match/engine.ts` (yalnızca hakem parametresi).
+- **Kabul kriterleri:**
+  1. Hakem sertliği 1-5, avantaj kuralı, arkadan faul, kırmızı kart cezası 1-3 maç (2.1#73, #104, #105, GDD 3.4).
+  2. Kaleci yumruklama, penaltıda yön hafızası, baraj talimatı, korner yüksekliği ve kavis seçimi (2.1#82, #94, #95, #97).
+  3. Takım arkadaşı el kaldırma / pas isteme jesti (GDD 3.4, 2.1#112). İlişkisi düşük arkadaş az pas veriyor ve "Pas vermiyor" mesajı çıkıyor (GDD 2.5).
+  4. Ayrı an tipleri: top saklama, 1'e 1 savunma, blok (2.1#72, #120, #124).
+  5. Her kural için birim test (faul olasılığı, kart cezası, avantaj).
+
+### WP-15 · Kariyer, Sözleşme ve Ekonomi Boşlukları
+- **Dokunduğu dosyalar:** `game/src/sim/career/contract.ts`, `sim/career/squadRole.ts`, `sim/game/newGame.ts`, `sim/life/economy.ts`, `sim/life/sponsors.ts`, `core/types.ts` (yalnızca alan ekleme), `ui/screens/ContractScreen.tsx`, `ui/screens/wizard/**`, `ui/screens/life/Bank.tsx`, `i18n/sections/career3.ts`.
+- **Kabul kriterleri:**
+  1. Sözleşme maddeleri: sigorta, süre garantisi, imaj hakkı (2.3#60, GDD 2.4).
+  2. Doğum şehri alanı yaratma formunda; kaleci için 2'den fazla özellik grubu (GDD 2.1, 2.2).
+  3. Yedekte kalınca "şikayet et" kararı kullanıcı arayüzüne bağlı (GDD 2.5, `complainAboutBench`).
+  4. Kaleci primi, sezon sonu takım primi, personel sözleşmesi bitişi (2.5#4, #5, #11) ve vadeli mevduat (GDD 4.4).
+  5. Altın Eldiven için kaleci reyting formülü (2.3#2).
+  6. Kalan EKSİK satırlar tek tek değerlendirilir: 2.4#7, #37, #47, #79, #85; 2.5#24, #53, #71, #80, #84, #126; 2.3#118. Her biri ya kodlandı ya da gerekçeyle ertelendi.
+  7. Emeklilik sonrası yollar: en az antrenörlük ve punditlik seçeneği, yeni kariyer ya da miras akışına bağlanıyor (GDD 2.6).
+
+### WP-16 · Sunum Cilası, Kalite Profilleri ve Ayarlar
+- **Dokunduğu dosyalar:** `game/src/game/presentation.ts`, `game/src/game/MatchScene.ts` (kalite profili ve parçacık bütçesi), `game/src/ui/screens/SettingsScreen.tsx`, `game/src/ui/screens/match/PostMatchScreen.tsx` (kazanç dökümü adımı), `game/src/ui/screens/PreMatchScreen` (TD beklentisi), `game/src/i18n/sections/settings.ts`.
+- **Kabul kriterleri:**
+  1. Kutlama kataloğu 8'den 12'ye çıkıyor (2.2#38).
+  2. Düşük/Orta/Yüksek kalite profili ve sabit parçacık bütçesi; düşük profilde 60 fps hedefi ölçülüyor (2.2#63, #118).
+  3. Ayrı "Flaşları kapat" seçeneği (2.11#32).
+  4. Maç sonu kazanç dökümü adımı (2.7#73). Kadro ekranında kapasite ve TD beklentisi (2.7#71).
+  5. Ayarlarda Gizlilik ve Bulut bölümleri (Bulut yalnızca "yakında" olarak, bağlantısız) (2.7#99).
+  6. Kalan 2.2 EKSİK satırları: #4, #24, #26, #119 karara bağlanıyor.
+
+### WP-17 · Sim Kalibrasyon ve Test Altyapısı
+- **Dokunduğu dosyalar:** `game/src/sim/**/*.test.ts`, `game/src/sim/match/engine.ts` (yalnızca `fork('match:id')`), `game/src/sim/game/newGame.ts` (Date.now temizliği), `game/eslint.config.js`, `game/vitest.config.ts`, `.github/workflows/ci.yml`.
+- **Kabul kriterleri:**
+  1. 1.000 maçlık golden master ve `fork('match:id')` ile maç bağımsızlığı (2.1#1).
+  2. %70 an telemetri testi, %18/%6 güç farkı kalibrasyonu, %12 testi, 25-45 sezon gol bandı (2.1#2, #3, #6, #129).
+  3. 500 ofsayt, 200 direk, 1.000 şut tutarlılık testleri (2.1#51, #83, #102).
+  4. `newGame.ts:128,142` içindeki `Date.now` kaldırılıyor; ESLint kuralı `error` oluyor (2.9#27).
+  5. Coverage raporu ve sim için eşik; e2e spec sayısı 19'dan 30'a (2.9#112, 2.12#91).
+  6. Önceki birim test kırmızısı (feel, backend) yeşil ve CI'da bloklayan.
+
+### WP-18 · Dünya ve Ses Kalan Maddeleri
+- **Dokunduğu dosyalar:** `game/src/sim/world/**`, `game/src/ui/screens/WorldScreen.tsx`, `game/src/ui/screens/match/PreMatchScreen.tsx`, `game/src/audio/**`, `game/src/game/audio.ts`.
+- **Kabul kriterleri:**
+  1. 2.6 kalan satırlar: rakip kilit oyuncu forma/mevkiye göre seçiliyor (2.6#34), maç öncesi ceza ve sözleşme bilgisi (2.6#71), kalan 6 EKSİK karara bağlanıyor.
+  2. 2.8 kalan 5 EKSİK ve 4 KISMİ (ör. 2.8#2-#5, #24, #36, #52, #56, #57) tek tek kapatılıyor ya da gerekçeyle erteleniyor.
+  3. Her yeni ses `assets/LICENSES.csv` içinde ve CI lisans kontrolünden geçiyor.
+
+### WP-19 · Erişilebilirlik ve Yerelleştirme Kalanı
+- **Dokunduğu dosyalar:** `game/src/ui/components/**` (ARIA), `game/src/i18n/**`, `game/src/styles/**`, `game/e2e/a11y*.spec.ts`.
+- **Kabul kriterleri:**
+  1. 2.11 kalan 11 EKSİK ve 12 KISMİ satırları (ör. 2.11#2, #3, #5, #6, #10-#13, #15, #18, #23, #29, #38) kapatılıyor. En az: kritik ekranlarda ARIA rolleri, ekran okuyucu duyuruları, pseudo-locale modu, metin ölçeği.
+  2. Kontrast için ayrı birim test (2.7#1). axe taraması tüm ana ekranlarda 0 kritik hata.
+  3. Sözlük ve rehber metinleri İngilizce karşılıklarıyla tam (anahtar eşitliği testi).
+
+### WP-20 · Mağaza Hazırlığı ve Hukuk Belgeleri (kodla yapılabilen kısım)
+- **Dokunduğu dosyalar:** `docs/PLATFORM.md`, `game/src/store-iap/**` (satın alma geçmişi), `game/electron/main.cjs` ve `game/package.json` (`steamworks.js` isteğe bağlı bağımlılık), `docs/PRIVACY.md` (yeni), `THIRD_PARTY_LICENSES.md`.
+- **Kabul kriterleri:**
+  1. Satın alma geçmişi ve tarihli liste (2.5#119). Ayrı demo modu (2.12#70).
+  2. Gizlilik politikası taslağı, veri envanteri, yaş derecelendirme anketi yanıtları belgede hazır (2.9#111, 2.5#105).
+  3. `steamworks.js` bağımlılığı eklendi ve app id yokken sessizce atlanıyor.
+  4. Lisans dosyası fontlar dışında sesleri ve görselleri de kapsıyor (2.12#33).
 
 ---
 
-### WP-1 · Oynanabilir Milli Takım ve Dünya Turnuvası  ⭐ en yüksek etki
-NSS'nin en akılda kalan anı milli takımdır. Şu an çağrı geldiğinde maçlar zarla simüle ediliyor (`sim/game/season.ts:63`).
-- **Dokunduğu dosyalar:** `sim/world/national.ts` (yeni: milli kadrolar, eleme grupları, 2 yılda bir turnuva), `sim/game/season.ts` (yalnızca *National team* bloğu, satır ~35–80), `sim/game/internal.ts` (`heroFixtureOn` milli fikstürü de taramalı), `sim/world/fixtures.ts` (milli ara haftaları), `ui/screens/national/NationalScreen.tsx` (yeni), `ui/screens/HomeScreen.tsx` (milli takım ilgi kartı), `i18n/sections/national.ts`.
-- **Kabul kriterleri:**
-  1. U19, U21 ve A Milli kademeleri var. Her ülkenin NPC'lerden kurulmuş 23 kişilik kadrosu var. Çağrı ölçütü ekranda açıkça yazılı (2.3#91, 2.6#91).
-  2. Ana sayfada 0–100 milli ilgi göstergesi var. Kadro açıklanmadan 2 hafta önce "kesin / olası / sınırda / dışarıda" etiketi çıkıyor (2.3#92, 2.6#92).
-  3. Milli maçlar normal maç akışından geçiyor: PreMatch, canlı anlar, PostMatch. Cap ve gol, oynanan maçtan yazılıyor (2.6#93).
-  4. 2 yılda bir eleme grubu ve ardından "Dünya Turnuvası" ya da "Kıta Şampiyonası" oynanıyor: grup + eleme, ev sahibi ülke, kupa dolabına giriş (2.6#94, GDD 6.2).
-  5. Testler: 10 sezonluk deterministik simülasyonda en az 1 turnuva tamamlanıyor. Çağrılan kahraman en az 1 milli maçı highlight ile oynuyor.
+### 3.2 BLOCKED-EXTERNAL (dış hizmet, hesap ya da gerçek cihaz gerekir)
 
-### WP-2 · Maç Adaleti ve Şeffaf Maç Sonu  ⭐
-"Topa dokunmadan 4-0 gerideyim" ve "hat-trick yaptım, 6.5 aldım" NSS'nin en büyük şikâyetleri.
-- **Dokunduğu dosyalar:** `sim/match/engine.ts`, `sim/match/highlightGen.ts`, `sim/match/rating.ts`, `sim/match/teamModel.ts`, `ui/screens/match/PostMatchScreen.tsx`, `ui/screens/match/PreMatchScreen.tsx`, `ui/components/Charts.tsx` (ısı haritası ve şut haritası), `sim/career/matchOutcome.ts` (güven nedenleri), `i18n/sections/match.ts`.
-- **Kabul kriterleri:**
-  1. Erken skor freni: ilk 15 dk içinde ve kahramanın ilk anından önce fark en fazla 1 (2.1#7).
-  2. Başarı olasılığı %8'in altındaki an üretilmiyor; yerine geri pas veya top saklama anı geliyor (2.1#8).
-  3. Maç öncesi ekranda "beklenen an: X–Y" gösteriliyor (2.1#9).
-  4. 70. dakikadan sonra kondisyonu %40'ın altındaki oyuncularda Hız ve İlk Dokunuş −%10 (2.1#12).
-  5. Maç sonu adım akışı: skor → reyting count-up ile kalem kalem döküm → kazanç dökümü → TD güven nedenleri → röportaj. "Hepsini atla" düğmesi var. 1 gol + 2 asistle reyting asla 7,0'ın altına düşmüyor; birim testi var (2.1#14, 2.2#102–103, 2.7#72–73, 2.3#84, 2.5#3).
-  6. Kahraman için ısı haritası ve şut haritası (GDD 3.6).
-  7. Ayrı an tipleri: kafa, top sürme, pas arası/blok, kaleci çıkışı. Mevki garantileri var: stoper ≥3 savunma anı, kanat ≥2 orta (2.1#72, #85, #119–125).
-  8. Maç günü "İlerle" tuşu onay penceresi açıyor ("Maçı simüle et?"). Dosya: `ui/backend/realActions.ts` yalnızca `advance()` fonksiyonu.
+Bunlar kodla tek başına kapanmaz. Her biri için dışarıdan sağlanması gereken girdi yazıldı.
 
-### WP-3 · Ses ve Müzik  ⭐
-Oyunda hiç ses dosyası yok, müzik yok, menü sesleri yok. Müzik kaydırıcısı hiçbir şeye bağlı değil.
-- **Dokunduğu dosyalar:** `game/audio.ts`, `audio/` (yeni: `music.ts`, `uiSfx.ts`, `mixer.ts`), `public/audio/**` (yeni varlıklar), `platform/lifecycle.ts` (ses bölümü), `assets/LICENSES.csv` (yeni), `.github/workflows/ci.yml` (yalnızca lisans adımı).
-- **Kabul kriterleri:**
-  1. Lisanslı (CC0/satın alınmış) kalabalık katmanları var: uğultu, tezahürat, alkış, ıslık, yuhalama, gol patlaması. `setCrowdSize(capacity)` API'si ile seyirci sayısına göre ölçekleniyor. Skor ve son dakika gerilimine duyarlı (2.8#12–14, GDD 3.7).
-  2. Hub/menü müziği var: en az 3 parça, döngülü, sahneler arası crossfade. Ayarlardaki Müzik kaydırıcısı gerçekten etkili (2.8#1–2, #35).
-  3. UI sesleri: tık, onay, para, bildirim ve level-up (2.8#45, GDD 8).
-  4. Vuruş türüne göre şut sesi, 3 düdük deseni, 2 seviyeli direk sesi (2.8#23–26).
-  5. Mikser: Ana, Müzik, Efekt, Kalabalık, UI ve Anlatım kanalları (store'da). UI kısmını WP-9 yapar.
-  6. Her ses dosyası LICENSES.csv içinde; CI, NC ve SA lisanslarını reddediyor (2.8#56).
-- **Arayüz sözleşmesi:** WP-4 MatchScene içinden yalnızca `audio.*` API'sini çağırır. WP-3 MatchScene'e yazmaz.
-
-### WP-4 · Maç Sunumu: Kutlama, Tekrar, Stadyum, Görsel Geri Bildirim
-- **Dokunduğu dosyalar:** `game/MatchScene.ts`, `game/runtime.ts`, `game/art.ts`, `game/view.ts`, `ui/screens/match/LiveMatchScreen.tsx`.
-- **Kabul kriterleri:**
-  1. Gol kutlaması: yön seçimi (taraftara, takım arkadaşına, kameraya) ve ilişki etkisi. Şöhretle açılan en az 6 kutlama; plan hedefi 12 (2.2#37–38).
-  2. Kapasiteye göre 4 stadyum kademesi (2.2#82). `audio.setCrowdSize` çağrılıyor.
-  3. Maç içinde "Anlar" listesi ve maç sonu en iyi 3 an tekrarı (2.2#47).
-  4. Rüzgâr oku ve km/sa HUD'u; yağmur ikonu (2.2#73–74).
-  5. Ofsayt çizgisi ve Vizyon'a göre pas hedefi vurgusu (2.1#60, #103).
-  6. Hareketi azalt ayarı maç sahnesinde sarsıntı, vinyet ve flaşı kapatıyor. Renk körü modunda kahraman halkası çift çizgi oluyor. "Flaşları kapat" seçeneği var (2.2#121, 2.11#31–32, 2.7#67).
-  7. `MatchScene.ts:486` içinde `upper()` (tr-TR) kullanılıyor; İ/ı testi var (2.11#49).
-  8. 390 px'te hız düğmeleri ve "Sona kadar sim" kırpılmıyor.
-  9. Kahramanın başının üstünde forma numarası (2.2#25).
-
-### WP-5 · Ödüller, Tören ve Kupa Derinliği
-- **Dokunduğu dosyalar:** `sim/world/awards.ts` (yeni; ödül hesabı `sim/world/season.ts:215` bölgesinden buraya taşınır), `sim/game/awards.ts` (yeni; `sim/game/season.ts` içindeki ödül bloğu, satır ~236–260, ilk commit'te buraya taşınır, böylece WP-1 ile çakışma olmaz), `sim/world/competitions.ts`, `sim/world/coefficients.ts` (yeni), `ui/screens/SeasonEndScreen.tsx`, `ui/screens/awards/AwardsScreen.tsx` (yeni), `ui/screens/cup/CupDrawScreen.tsx` (yeni), `ui/screens/WorldScreen.tsx` (kupa sekmesi), `i18n/sections/awards.ts`.
-- **Kabul kriterleri:**
-  1. Ayın Oyuncusu, gerçek maç verisinden aylık hesaplanıyor; Inbox'a bildirim düşüyor (GDD 6.2, 2.6#102).
-  2. Altın Yıldız: şeffaf puan formülü, ilk 30 aday listesi, 100 gazeteci oylama simülasyonu, tören ekranı (sahne + sıralama açılışı) ve NPC kazanan tarihi (2.3#98–99, 2.6#103).
-  3. Yılın Golü, kahramanın gerçek gollerinden aday gösteriliyor (GDD 6.2).
-  4. Kaleciler için Altın Eldiven ödülü (2.3#2).
-  5. Kupalar: kura ekranı, çift maçlı tur, kıtasal ön eleme, yerel kupa galibine kıtasal kontenjan, katsayı tablosu, lig play-off'u (2.6#63, #76, #79, #84, #87).
-  6. Kupa ve kıtasal gol/asist krallıkları World ekranında (2.6#106).
-
-### WP-6 · Onboarding, Tutorial ve "Neden?" Katmanı
-NSS'yi bilmeyenler ilk 10 dakikada kayboluyor. Ortada hiç tutorial yok; `Tooltip` bileşeni var ama hiçbir yerde kullanılmıyor.
-- **Dokunduğu dosyalar:** `ui/tutorial/**` (yeni: koç adımları, ilk maç rehberi, ipucu sistemi), `ui/components/Feedback.tsx` (Tooltip), `ui/screens/help/GlossaryScreen.tsx` (yeni), `sim/game/unlocks.ts` (yeni; kademeli açılış bayrakları), `ui/layout/Shell.tsx` (kilitli menülerin gösterimi), `i18n/sections/tutorial.ts`.
-- **Kabul kriterleri:**
-  1. İlk kariyerde atlanabilir rehber: gün planlama → antrenman drili → ilk maçta kontroller (sürükle, şut, pas, bullet-time) → maç sonu → yaşam (2.7#122).
-  2. İlk maçta bağlamsal kontrol ipuçları; kontrol şeması mobil ve PC'ye göre farklı.
-  3. Kademeli açılış: kumarhane, yatırım ve işletme belirli hafta veya şöhret eşiğinde açılıyor. Kilitli öğe nedenini gösteriyor (2.7#123).
-  4. En az 25 terimlik sözlük (OVR, PA, form, TD güveni…). Kritik sayıların yanında ⓘ tooltip.
-  5. Ayarlarda "Tutorial'ı yeniden göster" seçeneği. e2e testi: yeni kariyerde rehber baştan sona tamamlanıyor.
-
-### WP-7 · Kariyer Sonu: Emeklilik, Onur Listesi, Başarımlar
-- **Dokunduğu dosyalar:** `sim/meta/achievements.ts` (yeni; en az 40 başarım ve tetikleyicileri), `sim/meta/hallOfFame.ts` (yeni; kayıt slotlarından bağımsız kalıcı depolama), `sim/game/actions.ts` (yalnızca `retire()`), `ui/screens/AchievementsScreen.tsx` (yeni), `ui/screens/HallOfFameScreen.tsx` (yeni), `ui/screens/retire/RetireFlow.tsx` (yeni), `ui/screens/MenuScreen.tsx`, `platform/index.ts` (çağrı tarafı), `i18n/sections/meta.ts`.
-- **Kabul kriterleri:**
-  1. 33 yaşından sonra her sezon sonunda "devam / bırak" kartı çıkıyor. Kariyer skoru dökümü ve emeklilik ekranı var; sonrasında Onur Listesi'ne yazılıyor (2.3#106, GDD 2.6).
-  2. Onur Listesi tüm kariyerleri kupalar ve rekorlarla gösteriyor. Kayıt silinse bile kalıyor.
-  3. Başarım seti oyunda görülebiliyor ve açılınca toast çıkıyor. Steam build'de `platform.achievements.unlock` çağrılıyor (2.9#89, 2.10#111).
-  4. Kulüp rekorları ve rekor kırma haberi (2.6#107).
-  5. Yedek kalınca "şikayet et" kararı UI'a bağlı (GDD 2.5).
-
-### WP-8 · Kariyer Derinliği: Antrenman, Perk Etkileri, Sözleşme, Kadro
-- **Dokunduğu dosyalar:** `game/training/**` (yeni driller: Orta, Kafa, Top Kapma, Falso Kapısı), `game/kick.ts` (yalnızca perk okuma noktaları), `sim/career/progression.ts`, `sim/career/contract.ts`, `sim/career/squadRole.ts`, `sim/career/transfers.ts`, `sim/game/newGame.ts`, `ui/screens/ContractScreen.tsx`, `ui/screens/ProfileScreen.tsx`, `ui/screens/TrainingScreen.tsx`, `i18n/sections/career2.ts`.
-- **Kabul kriterleri:**
-  1. Eksik 3 mini oyun var (2.3#26–28). Var olan 5 drill planın 0–100 puanlamasına çekiliyor (2.3#21–25).
-  2. Maç perkleri maçta gerçekten etki ediyor; Plase Uzmanı vb. birim testli (2.3#40).
-  3. Özellik erimesi ve 7 gün önceden uyarı (2.3#14).
-  4. Profilde potansiyel yıldızı ve scout belirsizlik bandı (2.3#12).
-  5. Sözleşmede piyasa referansı (5 NPC maaş aralığı, "piyasanın %X'i") ve son teklif kuralı (2.3#62–63).
-  6. Son 3 maç reyting ≥7,5 ise rotasyon garantisi. Rollerin beklenen dakikası yazılı (2.3#81–83).
-  7. Başlangıç kulübü: 3 deneme daveti, akademi ya da seçme. Deneme maçı tek "an paketi" (2.3#7).
-
-### WP-9 · Erişilebilirlik ve Ayarlar
-- **Dokunduğu dosyalar:** `ui/screens/SettingsScreen.tsx` (tamamı bu pakette), `styles/tokens.css`, `styles/screens/wizard.css`, `game/input.ts` (tuş atama, sol el ve dokunma alanı ölçeği), `ui/components/Modal.tsx`, `i18n/index.ts`, `ui/format.ts`, `i18n/sections/settings.ts`.
-- **Kabul kriterleri:**
-  1. 6 kanallı ses mikseri UI'ı (WP-3'ün store alanlarına bağlı) ve Kontroller grubu (2.7#99, 2.8#1).
-  2. Tuş yeniden atama, sol el modu, dokunma alanı ölçeği ve zamanlama penceresi genişletme (2.11#17–23).
-  3. 3 ayrı renk körü paleti, desen maskesi, rem tabanlı metin ölçeği ve sistem font ölçeği (2.11#1–6).
-  4. "Kumarhaneyi gizle" ayarı ve FEATURE_CASINO bayrağı (2.5#90, 2.12#42–43).
-  5. `wizard.css:99` odak halkası geri geliyor. axe-core e2e taraması 0 kritik hata veriyor (2.11#10–12).
-  6. `Intl.Collator('tr')` sıralamada kullanılıyor; pseudo-locale modu var (2.11#45, #50).
-  7. Menü gamepad navigasyonu (2.7#32, 2.9#95).
-
-### WP-10 · Yaşam ve Olay Derinliği
-- **Dokunduğu dosyalar:** `sim/life/relationships.ts`, `sim/life/events/content/**`, `sim/life/events/engine.ts`, `sim/game/interview.ts`, `sim/life/casino.ts` (manşet kuralı), `sim/life/economy.ts`, `sim/life/sponsors.ts`, `ui/screens/life/**`, `ui/screens/casino/CasinoScreen.tsx`, `ui/screens/EventModal.tsx`, `i18n/sections/life.ts`.
-- **Not:** Bu paket denge ajanının işi bittikten sonra başlamalı. Ekonomi ve kumarhane dosyaları şu an onun elinde.
-- **Kabul kriterleri:**
-  1. İlişki değişim defteri ve "Neden değişti?" paneli: son 10 değişim, tarih, olay ve miktar (2.4#5, 2.7#82–83).
-  2. Röportaj 3 soruluk; reytinge bağlı etki tavanı var (2.4#60–61). UI kısmı WP-2'nin PostMatch akışına bir bileşen olarak verilir.
-  3. Yeni olay kategorileri: hukuk, dolandırıcılık, transfer söylentisi ve iş. 4 adımlı zincirler. "Yabancı Ülkede Yalnız" zinciri. Toplam olay ≥230. "Kariyerde en fazla 2" kuralı (2.4#98–101, #111–112).
-  4. Tek kumarhane ziyareti manşet üretmiyor. Kumarhanede sorumlu oyun ve yardım hattı mesajı (2.4#65, 2.12#45).
-  5. Kaleci primi, sezon sonu takım primi ve personel sözleşmelerinde bitiş tarihi (2.5#4–5, #11).
-
-### WP-11 · Hukuk, Lisans ve Teknik Sağlamlık  (küçük ama **acil**: hukuki kısım ilk sprintte)
-- **Dokunduğu dosyalar:** `public/manifest.webmanifest`, `i18n/sections/title.ts`, `data/world/countries.ts` (yalnızca adlar), `index.html` ve `public/fonts/**` (font self-host), `state/save.ts`, `ui/screens/SavesScreen.tsx`, `game/MatchScene.ts` (yalnızca `webglcontextlost` dinleyicisi; WP-4 ile koordine edilir ya da WP-4 bitince yapılır), `electron/main.cjs`, `.github/workflows/*`, `eslint.config.js` (yeni).
-- **Kabul kriterleri:**
-  1. Repoda "New Star Soccer" ve "manevi halefi" ifadeleri yok; CI grep kontrolü var. "Anadolu Süper Ligi" yerine kurgusal bir ad (2.12#1–2, #10).
-  2. Fontlar self-host ediliyor, çevrimdışı açılış ağ isteği yapmıyor. OFL metni ve THIRD_PARTY_LICENSES dosyası var (2.12#32–33, 2.10#3).
-  3. Kayıt: migrasyon öncesi `.bak`, "Oyunu güncelleyin" mesajı, kota dolduğunda yedekler silinmiyor ve kullanıcı uyarılıyor, mobilde paylaşım sayfasıyla dışa aktarma (2.9#46–50).
-  4. ESLint (sim'de DOM, Phaser ve Date.now yasak), CI'da bloklayan e2e, çökme raporlama (opt-in) (2.9#27, #107, #112).
-  5. Electron `before-quit` anında kayıt alıyor; steamworks.js bağımlılığı ekleniyor (2.9#45, #87).
-  6. Uygulama arka plana geçince canlı maç otomatik duraklıyor (2.9#77).
-
-### WP-12 · Monetizasyon ve Online (son sırada)
-- **Dokunduğu dosyalar:** `platform/purchases.ts` (yeni), `sim/meta/entitlement.ts` (yeni), `ui/screens/store/**` (yeni), `game/package.json` (IAP eklentisi), `ui/screens/LeaderboardScreen.tsx` (yeni).
-- **Kabul kriterleri:**
-  1. 1 sezonluk deneme ve tek seferlik "Tam Kariyer" kilidi; satın almayı geri yükleme butonu; sim izolasyon testi: kilit, simülasyon sonucunu etkilemiyor (2.5#112–120, 2.9#82–83, #126–127).
-  2. Fiyatlar yerel para birimiyle şeffaf; karanlık örüntü yok (2.7#85, #131).
-  3. Çevrimiçi anahtar ve kariyer skoru lider tablosu (opsiyonel, opt-in) (2.10#2–8).
+| Konu | Neden bloklu | Kod tarafı (hazırsa) | İlgili madde |
+|---|---|---|---|
+| Steam app id ve gerçek Steamworks başarım/bulut doğrulaması | Steam partner hesabı ve app id gerekli | Başarımlar `platform.achievements.unlock`'a bağlı (2.9#89) | 2.9#87, 2.10#111 |
+| Apple App Store Connect ve Google Play Console | Geliştirici hesapları, ürün kimlikleri (IAP), imzalama anahtarları, mağaza sayfası, ekran görüntüleri, yaş derecelendirmesi, veri güvenliği formları | `capacitorProvider.ts` hazır, ürün kimlikleri bekliyor | 2.5#105, #120, 2.12 mağaza maddeleri |
+| Sunucu tarafı makbuz doğrulama | Backend ve mağaza API anahtarları | `TODO(server)` işareti `capacitorProvider.ts:5` | 2.5#117 |
+| Lider tablosu ve çevrimiçi anahtar | Backend (sunucu, veritabanı, kötüye kullanım önlemi) | Yok; sim izolasyonu hazır | 2.10#2-#8 |
+| Bulut kayıt | Backend ve hesap sistemi | Ayarlarda yalnızca yer tutucu (WP-16) | 2.7#99 |
+| Çökme raporunun gönderilmesi | Toplama uç noktası (Sentry vb.) | Yerel opt-in günlük var (`telemetry/errorLog.ts`) | 2.9#107, 2.10#88 |
+| Gerçek telefon testi | Fiziksel iOS ve Android cihazlar | 390 px e2e var; haptics (`platform/capacitor.ts:20`), performans, güvenli alan, dokunma ergonomisi, pil ve ısınma gerçek cihazda doğrulanmadı | 2.8#51, 2.2#63, 2.9 mobil maddeleri |
+| Gerçek gamepad ve Steam Deck testi | Donanım | Menü navigasyonu ve eşlemeler kodda | 2.9#95 |
+| Hukuk incelemesi (gizlilik politikası, kullanım şartları, marka taraması, yaş sınırı) | Avukat ve resmi başvurular | Taslak WP-20'de | 2.12 N/A-süreç maddeleri (39) |
+| Canlı operasyon (sezonluk etkinlik, topluluk, destek, analitik paneli) | Süreç, ekip ve altyapı | Yok | 2.10 EKSİK maddeleri (15) |
+| İmzalı masaüstü yayını (Windows sertifikası, macOS notarization) | Sertifikalar ve hesaplar | Electron build ve CI matrisi var | 2.9 platform maddeleri |
 
 ---
 
-### Önerilen sprint dağılımı (4 paralel mühendis)
+### 3.3 Önerilen sıra ve paralellik
 
 | Sprint | Mühendis A | Mühendis B | Mühendis C | Mühendis D |
 |---|---|---|---|---|
-| 1 | WP-1 Milli Takım | WP-2 Adalet + Maç Sonu | WP-3 Ses/Müzik | WP-11 Hukuk/Teknik (ilk gün hukuki temizlik) |
-| 2 | WP-5 Ödüller/Kupalar | WP-4 Maç Sunumu | WP-6 Onboarding | WP-7 Emeklilik/Başarımlar |
-| 3 | WP-8 Kariyer Derinliği | WP-10 Yaşam/Olaylar | WP-9 Erişilebilirlik | WP-12 Monetizasyon |
+| 1 | WP-13 Kontroller | WP-14 Hakem/Kaleci | WP-15 Kariyer/Ekonomi | WP-17 Test altyapısı |
+| 2 | WP-16 Sunum cilası | WP-18 Dünya/Ses | WP-19 Erişilebilirlik | WP-20 Mağaza hazırlığı |
 
 **Çakışma notları:**
-- WP-1 ve WP-5, `sim/game/season.ts` dosyasının farklı bloklarına dokunuyor. WP-5'in ilk commit'i ödül bloğunu yeni dosyaya taşır.
-- WP-2 ve WP-10'un PostMatch röportaj UI'ı WP-2'ye aittir; WP-10 yalnızca sim tarafını yapar.
-- WP-4 ve WP-11'in `MatchScene.ts` değişikliği sıralı yapılır: önce WP-4.
-- WP-3 ve WP-9'un ayarlar ekranı WP-9'a aittir; WP-3 yalnızca store alanlarını açar.
+- WP-13, WP-14 ve WP-16 `MatchScene.ts` / `runtime.ts` dosyalarına değiyor. Sıra: WP-13 → WP-14 → WP-16. WP-13 yalnızca kontrol okuma noktalarına, WP-14 yalnızca faul ve kaleci bloklarına, WP-16 yalnızca sahne efekt blokuna dokunur.
+- WP-17 sim dosyalarında yalnızca test ekler (`newGame.ts` ve `engine.ts` küçük istisnalar). WP-15 `newGame.ts` ile çakışabilir, `Date.now` temizliği WP-15'ten önce yapılmalı.
+- WP-16 ve WP-19 ayarlar ekranına dokunur. Ayarlar ekranı WP-16'ya aittir, WP-19 yalnızca ARIA/etiket ekler.
