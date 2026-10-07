@@ -294,6 +294,10 @@ export class HighlightRuntime {
   private heroDeliveryAt = -1
   /** The hero has had the ball under control this moment. */
   private heroControlled = false
+  /** Hero positions sampled twice a second (heat map). */
+  private readonly track: Vec2[] = []
+  /** Hero shots this moment (shot map). */
+  private readonly shotLog: NonNullable<HighlightResult['shotLog']> = []
   /** Team-mates of the last passer who were offside when the ball was played. */
   private offsideSnap: { team: Team; ids: Set<string> } | null = null
 
@@ -442,6 +446,12 @@ export class HighlightRuntime {
   /** Builds the HighlightResult for an outcome with current micro-stats. */
   buildResult(outcome: HighlightOutcome, extra: Partial<HighlightResult> = {}): HighlightResult {
     const r: HighlightResult = { outcome, ...this.stats, ...extra }
+    if (this.track.length) r.track = this.track.map((p) => ({ ...p }))
+    if (this.shotLog.length) {
+      const last = this.shotLog[this.shotLog.length - 1]
+      if (outcome === 'goal' || outcome === 'saved' || outcome === 'missed' || outcome === 'blocked' || outcome === 'woodwork') last.outcome = outcome
+      r.shotLog = this.shotLog.map((x) => ({ ...x, outcome: x.outcome ?? 'missed' }))
+    }
     if (this.card) r.card = this.card
     if (this.injured) r.injured = true
     return r
@@ -487,6 +497,7 @@ export class HighlightRuntime {
       this.checkEnd()
     }
     this.record()
+    if (this.phase === 'live' && Math.round(this.time / DT) % 30 === 0) this.track.push({ x: Math.round(this.hero.pos.x * 10) / 10, y: Math.round(this.hero.pos.y * 10) / 10 })
 
     if (this.phase === 'post') {
       this.postLeft -= DT
@@ -931,6 +942,14 @@ export class HighlightRuntime {
     }
 
     if (SHOT_KINDS.has(kind) && by.team === 'opp' && this.defending && !isKeeperKind(this.kind)) this.oppShotFree = true
+    if (SHOT_KINDS.has(kind) && by.isHero) {
+      // Settle the previous shot of the moment, then log this one.
+      const prev = this.shotLog[this.shotLog.length - 1]
+      if (prev && !prev.outcome && this.shot?.by.isHero) prev.outcome = this.shot.parried ? 'saved' : this.shot.blocked ? 'blocked' : this.shot.woodwork ? 'woodwork' : 'missed'
+      const e: NonNullable<HighlightResult['shotLog']>[number] = { x: Math.round(this.ball.x * 10) / 10, y: Math.round(this.ball.y * 10) / 10 }
+      if (kind === 'header') e.header = true
+      this.shotLog.push(e)
+    }
     if (SHOT_KINDS.has(kind)) {
       this.shot = { by, kind, t: this.time, woodwork: false, blocked: false, parried: false, beaten: new Set(), assistBy: !by.isHero && this.assistChain === by.id ? this.hero.id : null }
       const defTeam = other(by.team)

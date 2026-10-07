@@ -141,3 +141,17 @@ describe('new moment kinds in the runtime', () => {
     expect(conceded).toBeGreaterThan(6)
   })
 })
+
+describe('heat/shot map data from the runtime', () => {
+  it('records the hero track and logs his shots with outcomes', () => {
+    const rt = new HighlightRuntime(generatedHighlight('one_on_one', 3), { seed: 3 })
+    for (let i = 0; i < 40; i++) rt.stepOnce()
+    rt.queueAction({ kind: 'shoot', target: { x: PITCH_LENGTH, y: GOAL_CENTER_Y + 2 }, power: 0.85, curl: 0, chip: false })
+    while (!rt.finished) rt.update(1 / 60)
+    const r = rt.result!
+    expect(r.track?.length ?? 0).toBeGreaterThan(0)
+    expect(r.shotLog?.length).toBe(1)
+    expect(r.shotLog![0].x).toBeGreaterThan(70)
+    expect(['goal', 'saved', 'missed', 'blocked', 'woodwork']).toContain(r.shotLog![0].outcome)
+  })
+})
