@@ -244,6 +244,22 @@ export interface BlackjackView {
   result: 'win' | 'lose' | 'push' | 'blackjack' | 'bust' | null
   payout: number // net change to money
   canDouble: boolean
+  /** Every hand in play (two after a split). `player`/`playerTotal` mirror the active hand. */
+  hands: BlackjackHandView[]
+  /** Index of the hand acting now (== hands.length once the round is over). */
+  active: number
+  canSplit: boolean
+}
+export interface BlackjackHandView {
+  cards: CardView[]
+  total: number
+  soft?: boolean
+  stake: number
+  doubled: boolean
+  /** Per-hand outcome once the round is done. */
+  result: BlackjackView['result']
+  /** Net change to money from this hand once done (0 while playing). */
+  payout: number
 }
 export type RouletteBetKind = 'number' | 'red' | 'black' | 'odd' | 'even' | 'low' | 'high' | 'dozen'
 export interface RouletteBet {
@@ -438,6 +454,7 @@ export interface CasinoActions {
   blackjackHit(): BlackjackView
   blackjackStand(): BlackjackView
   blackjackDouble(): BlackjackView
+  blackjackSplit(): BlackjackView
   rouletteSpin(bets: RouletteBet[]): RouletteResult
   slotsSpin(bet: number): SlotsResult
   horseRace(bet: number, horse: number): HorseRaceResult

@@ -230,7 +230,25 @@
 .bj-stake .cas-chip { width: 30px; height: 30px; box-shadow: none; }
 .bj-empty { margin: auto; color: rgba(255, 255, 255, 0.75); font-family: var(--font-display); font-weight: 700; font-size: var(--fs-h3); text-align: center; }
 .bj-controls { display: flex; flex-direction: column; gap: var(--sp-4); }
-.bj-actions { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp-2); }
+.bj-actions { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); }
+/* Split: two hands side by side; cards overlap more so both fit on a phone. */
+.bj-split { position: relative; z-index: 1; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp-2); width: 100%; }
+.bj-split-hand {
+  padding: var(--sp-2) var(--sp-1); border-radius: var(--r-card); border: 2px solid transparent;
+  transition: border-color var(--dur-fast, 160ms) ease, box-shadow var(--dur-fast, 160ms) ease, opacity var(--dur-fast, 160ms) ease;
+}
+.bj-split-hand:not(.is-active) { opacity: 0.82; }
+.bj-split-hand.is-active { opacity: 1; border-color: var(--accent-gold); box-shadow: 0 0 0 3px rgba(255, 210, 63, 0.18), 0 0 22px rgba(255, 210, 63, 0.35); }
+.bj-split-hand.is-win, .bj-split-hand.is-blackjack { opacity: 1; border-color: var(--pos); }
+.bj-split-hand.is-lose, .bj-split-hand.is-bust { opacity: 0.9; border-color: var(--neg); }
+.bj-split .bj-cards .bj-card + .bj-card { margin-left: -34px; }
+.bj-active-tag { padding: 2px 8px; border-radius: var(--r-pill); background: var(--accent-gold); color: #1a1405; font-weight: 800; }
+.bj-hand-meta { display: flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: var(--sp-1); color: rgba(255, 255, 255, 0.85); }
+@media (max-width: 380px) {
+  .bj-split .bj-card { width: 50px; height: 74px; }
+  .bj-split .bj-cards { min-height: 74px; }
+  .bj-split .bj-cards .bj-card + .bj-card { margin-left: -30px; }
+}
 
 /* ── Roulette ── */
 .rl-layout { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }

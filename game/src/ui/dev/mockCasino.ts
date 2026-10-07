@@ -43,7 +43,8 @@ export function makeHorses(rng: Rng): HorseView[] {
 
 export function createCasino(host: CasinoHost, horses: () => HorseView[]): CasinoActions {
   let deck: CardView[] = []
-  let hand: { bet: number; player: CardView[]; dealer: CardView[]; doubled: boolean; done: boolean } | null = null
+  interface MockHand { cards: CardView[]; bet: number; doubled: boolean; done: boolean; result: BlackjackView['result']; net: number }
+  let round: { hands: MockHand[]; dealer: CardView[]; active: number; done: boolean } | null = null
 
   const draw = (faceDown = false): CardView => {
     if (deck.length < 15) {
@@ -54,68 +55,107 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
     const c = deck.pop() as CardView
     return faceDown ? { ...c, faceDown: true } : { ...c }
   }
+  const cardVal = (c: CardView): number => (c.rank === 'A' ? 11 : ['J', 'Q', 'K'].includes(c.rank) ? 10 : Number(c.rank))
+  const staked = (): number => (round ? round.hands.reduce((a, h) => a + h.bet, 0) : 0)
 
-  const view = (result: BlackjackView['result'] = null, payout = 0): BlackjackView => {
-    const h = hand as NonNullable<typeof hand>
+  const view = (): BlackjackView => {
+    const r = round as NonNullable<typeof round>
+    const act = r.hands[Math.min(r.active, r.hands.length - 1)]
+    const net = r.hands.reduce((a, h) => a + h.net, 0)
+    const free = !r.done && act.cards.length === 2 && host.canAfford(staked() + act.bet)
+    const result: BlackjackView['result'] = !r.done ? null
+      : r.hands.length === 1 ? r.hands[0].result
+      : net > 0 ? 'win' : net === 0 ? 'push' : r.hands.every((h) => h.result === 'bust') ? 'bust' : 'lose'
     const v: BlackjackView = {
-      bet: h.bet * (h.doubled ? 2 : 1),
-      player: h.player.map((c) => ({ ...c })),
-      dealer: h.dealer.map((c) => ({ ...c })),
-      playerTotal: handTotal(h.player),
-      dealerTotal: h.done ? handTotal(h.dealer) : null,
-      phase: h.done ? 'done' : 'player',
+      bet: staked(),
+      player: act.cards.map((c) => ({ ...c })),
+      dealer: r.dealer.map((c) => ({ ...c })),
+      playerTotal: handTotal(act.cards),
+      dealerTotal: r.done ? handTotal(r.dealer) : null,
+      phase: r.done ? 'done' : 'player',
       result,
-      payout,
-      canDouble: !h.done && h.player.length === 2 && host.canAfford(h.bet * 2),
+      payout: r.done ? net : 0,
+      canDouble: free,
+      hands: r.hands.map((h) => ({ cards: h.cards.map((c) => ({ ...c })), total: handTotal(h.cards), stake: h.bet, doubled: h.doubled, result: r.done ? h.result : null, payout: r.done ? h.net : 0 })),
+      active: r.done ? r.hands.length : r.active,
+      canSplit: free && r.hands.length === 1 && cardVal(act.cards[0]) === cardVal(act.cards[1]),
     }
     blackjack.value = v
     return v
   }
 
   const finish = (): BlackjackView => {
-    const h = hand as NonNullable<typeof hand>
-    h.done = true
-    h.dealer = h.dealer.map((c) => ({ ...c, faceDown: false }))
-    const stake = h.bet * (h.doubled ? 2 : 1)
-    const p = handTotal(h.player)
-    if (p > 21) { host.settle(-stake); return view('bust', -stake) }
-    while (handTotal(h.dealer) < 17) h.dealer.push(draw())
-    const dl = handTotal(h.dealer)
-    if (dl > 21 || p > dl) { host.settle(stake); return view('win', stake) }
-    if (p === dl) return view('push', 0)
-    host.settle(-stake)
-    return view('lose', -stake)
+    const r = round as NonNullable<typeof round>
+    r.done = true
+    r.dealer = r.dealer.map((c) => ({ ...c, faceDown: false }))
+    if (r.hands.some((h) => handTotal(h.cards) <= 21)) while (handTotal(r.dealer) < 17) r.dealer.push(draw())
+    const dl = handTotal(r.dealer)
+    for (const h of r.hands) {
+      const p = handTotal(h.cards)
+      if (p > 21) { h.result = 'bust'; h.net = -h.bet }
+      else if (dl > 21 || p > dl) { h.result = 'win'; h.net = h.bet }
+      else if (p === dl) { h.result = 'push'; h.net = 0 }
+      else { h.result = 'lose'; h.net = -h.bet }
+      host.settle(h.net)
+    }
+    return view()
   }
+
+  /** Mark the active hand done and move on (finishing the round after the last). */
+  const next = (): BlackjackView => {
+    const r = round as NonNullable<typeof round>
+    while (r.active < r.hands.length && r.hands[r.active].done) r.active++
+    return r.active >= r.hands.length ? finish() : view()
+  }
+  const live = (): MockHand | null => (round && !round.done ? round.hands[round.active] ?? null : null)
 
   return {
     blackjackDeal(bet) {
-      hand = { bet, player: [draw(), draw()], dealer: [draw(), draw(true)], doubled: false, done: false }
-      const pt = handTotal(hand.player)
-      if (pt === 21) {
-        hand.done = true
-        hand.dealer = hand.dealer.map((c) => ({ ...c, faceDown: false }))
-        if (handTotal(hand.dealer) === 21) return view('push', 0)
-        const win = Math.round(bet * 1.5)
-        host.settle(win)
-        return view('blackjack', win)
+      const hand: MockHand = { cards: [draw(), draw()], bet, doubled: false, done: false, result: null, net: 0 }
+      round = { hands: [hand], dealer: [draw(), draw(true)], active: 0, done: false }
+      if (handTotal(hand.cards) === 21) {
+        round.done = true
+        round.dealer = round.dealer.map((c) => ({ ...c, faceDown: false }))
+        if (handTotal(round.dealer) === 21) { hand.result = 'push'; return view() }
+        hand.result = 'blackjack'
+        hand.net = Math.round(bet * 1.5)
+        host.settle(hand.net)
+        return view()
       }
       return view()
     },
     blackjackHit() {
-      if (!hand || hand.done) return blackjack.value as BlackjackView
-      hand.player.push(draw())
-      if (handTotal(hand.player) >= 21) return finish()
-      return view()
+      const h = live()
+      if (!h) return blackjack.value as BlackjackView
+      h.cards.push(draw())
+      if (handTotal(h.cards) >= 21) h.done = true
+      return next()
     },
     blackjackStand() {
-      if (!hand || hand.done) return blackjack.value as BlackjackView
-      return finish()
+      const h = live()
+      if (!h) return blackjack.value as BlackjackView
+      h.done = true
+      return next()
     },
     blackjackDouble() {
-      if (!hand || hand.done) return blackjack.value as BlackjackView
-      hand.doubled = true
-      hand.player.push(draw())
-      return finish()
+      const h = live()
+      if (!h) return blackjack.value as BlackjackView
+      h.doubled = true
+      h.bet *= 2
+      h.cards.push(draw())
+      h.done = true
+      return next()
+    },
+    blackjackSplit() {
+      const h = live()
+      if (!h || !round || !view().canSplit) return blackjack.value as BlackjackView
+      const aces = h.cards[0].rank === 'A'
+      const second: MockHand = { cards: [h.cards[1], draw()], bet: h.bet, doubled: false, done: aces, result: null, net: 0 }
+      h.cards = [h.cards[0], draw()]
+      h.done = aces
+      round.hands.push(second)
+      for (const x of round.hands) if (handTotal(x.cards) >= 21) x.done = true
+      return next()
     },
     rouletteSpin(bets: RouletteBet[]): RouletteResult {
       const n = host.rng().int(0, 36)

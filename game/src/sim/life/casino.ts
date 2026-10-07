@@ -123,6 +123,17 @@ export interface BlackjackRound {
   payout: number
 }
 
+/**
+ * Amount returned for one settled hand (incl. its stake): natural 3:2,
+ * win 1:1, push refunds, lose/bust nothing.
+ */
+export function handReturn(outcome: BlackjackOutcome, stake: number): number {
+  return outcome === 'blackjack' ? stake * (1 + BLACKJACK_PAYS) : outcome === 'win' ? stake * 2 : outcome === 'push' ? stake : 0
+}
+
+/** Net result of one settled hand (return − stake). */
+export const handNet = (outcome: BlackjackOutcome, stake: number): number => handReturn(outcome, stake) - stake
+
 /** Max hands after splitting (one split). */
 export const MAX_SPLIT_HANDS = 2
 /** Natural blackjack pays 3:2 (returns 2.5× stake). */
@@ -253,7 +264,7 @@ function finishRound(rng: Rng, round: BlackjackRound, dealerPlays: boolean): voi
     else if (dTotal > 21 || total > dTotal) o = 'win'
     else if (total === dTotal) o = 'push'
     else o = 'lose'
-    payout += o === 'blackjack' ? h.stake * (1 + BLACKJACK_PAYS) : o === 'win' ? h.stake * 2 : o === 'push' ? h.stake : 0
+    payout += handReturn(o, h.stake)
     return o
   })
   round.payout = payout

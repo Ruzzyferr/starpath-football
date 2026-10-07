@@ -57,6 +57,21 @@ describe('mock backend', () => {
     expect(blackjack.value).not.toBeNull()
     if (bj.phase === 'player') A.casino.blackjackStand()
     expect(blackjack.value?.phase).toBe('done')
+    // Split: deal until a pair shows up, then both hands are played and settled.
+    let split = false
+    for (let i = 0; i < 300 && !split; i++) {
+      const v = A.casino.blackjackDeal(100)
+      if (v.phase !== 'player') continue
+      if (v.canSplit) {
+        let w = A.casino.blackjackSplit()
+        expect(w.hands).toHaveLength(2)
+        for (let k = 0; k < 5 && w.phase === 'player'; k++) w = A.casino.blackjackStand()
+        expect(w.phase).toBe('done')
+        expect(w.payout).toBe(w.hands.reduce((a, h) => a + h.payout, 0))
+        split = true
+      } else A.casino.blackjackStand()
+    }
+    expect(split).toBe(true)
     const race = A.casino.horseRace(100, 0)
     expect(race.timeline.length).toBe(60)
     expect(Math.max(...race.timeline[59])).toBe(1)

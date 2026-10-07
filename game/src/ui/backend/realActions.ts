@@ -14,7 +14,10 @@ import { renewalOffer } from '../../sim/career/contract'
 import { heroOvr } from '../../sim/career/progression'
 import type { TrainingType } from '../../sim/career/training'
 import { TRAINING_TYPES } from '../../sim/career/training'
-import { cardRank, cardSuit, availableActions, handValue, type BlackjackRound, type Card, type RouletteBetType } from '../../sim/life/casino'
+import {
+  cardRank, cardSuit, availableActions, blackjackTotalStake, handNet, handValue,
+  type BlackjackOutcome, type BlackjackRound, type Card, type RouletteBetType,
+} from '../../sim/life/casino'
 import { netWorth } from '../../sim/life/economy'
 import { changeRelation } from '../../sim/life/relationships'
 import type { PostType } from '../../sim/life/social'
@@ -24,7 +27,7 @@ import { getOffers, setOffers } from '../../sim/game/season'
 import type { AdvanceReport } from '../../sim/game'
 import {
   blackjack, negotiation, pendingNav,
-  type BlackjackView, type CardView, type Delta, type EventOutcomeView, type GameActions, type InteractionKind, type NegotiationView,
+  type BlackjackHandView, type BlackjackView, type CardView, type Delta, type EventOutcomeView, type GameActions, type InteractionKind, type NegotiationView,
   type OfferTerms, type PostKind, type Rank, type SocialPostView, type Suit,
 } from '../store'
 import { eventDeltas, diffSnapshots, snapshot, teamViewOr } from './mapping'
@@ -158,10 +161,24 @@ const SUITS: Suit[] = ['S', 'H', 'D', 'C']
 const cardView = (c: Card, faceDown = false): CardView => ({ rank: RANKS[cardRank(c) - 1], suit: SUITS[cardSuit(c)], ...(faceDown ? { faceDown: true } : {}) })
 
 function bjView(s: GameState, r: BlackjackRound): BlackjackView {
-  const hand = r.hands[Math.min(r.active, r.hands.length - 1)] ?? r.hands[0]
-  const stake = r.hands.reduce((a, h) => a + h.stake, 0)
-  const committed = stake
   const done = r.finished
+  const activeIdx = done ? r.hands.length : Math.min(r.active, r.hands.length - 1)
+  const hand = r.hands[Math.min(activeIdx, r.hands.length - 1)] ?? r.hands[0]
+  const stake = blackjackTotalStake(r)
+  const legal = done ? [] : availableActions(r, s.life.money - stake)
+  const hands: BlackjackHandView[] = r.hands.map((h, i) => {
+    const hv = handValue(h.cards)
+    const out = done ? (r.outcomes[i] ?? null) : null
+    return {
+      cards: h.cards.map((c) => cardView(c)),
+      total: hv.total,
+      ...(hv.soft && hv.total <= 21 ? { soft: true } : {}),
+      stake: h.stake,
+      doubled: h.doubled,
+      result: out,
+      payout: out ? Math.round(handNet(out, h.stake)) : 0,
+    }
+  })
   const v: BlackjackView = {
     bet: stake,
     player: hand.cards.map((c) => cardView(c)),
@@ -169,15 +186,26 @@ function bjView(s: GameState, r: BlackjackRound): BlackjackView {
     playerTotal: handValue(hand.cards).total,
     dealerTotal: done ? handValue(r.dealer).total : null,
     phase: done ? 'done' : 'player',
-    result: done ? (r.outcomes[0] ?? null) : null,
+    result: done ? overallResult(r.outcomes, Math.round(r.payout - stake)) : null,
     payout: done ? Math.round(r.payout - stake) : 0,
-    canDouble: !done && availableActions(r, s.life.money - committed).includes('double'),
+    canDouble: legal.includes('double'),
+    hands,
+    active: activeIdx,
+    canSplit: legal.includes('split'),
   }
   blackjack.value = v
   return v
 }
 
-const emptyBj = (): BlackjackView => ({ bet: 0, player: [], dealer: [], playerTotal: 0, dealerTotal: null, phase: 'done', result: null, payout: 0, canDouble: false })
+/** Headline result: the single hand's outcome, or a summary of a split by net result. */
+function overallResult(outcomes: BlackjackOutcome[], net: number): BlackjackView['result'] {
+  if (outcomes.length <= 1) return outcomes[0] ?? null
+  if (net > 0) return 'win'
+  if (net === 0) return 'push'
+  return outcomes.every((o) => o === 'bust') ? 'bust' : 'lose'
+}
+
+const emptyBj = (): BlackjackView => ({ bet: 0, player: [], dealer: [], playerTotal: 0, dealerTotal: null, phase: 'done', result: null, payout: 0, canDouble: false, hands: [], active: 0, canSplit: false })
 
 /** Games need a casino visit today (the evening activity); visit automatically when possible. */
 function ensureCasino(s: GameState): boolean {
@@ -527,6 +555,7 @@ export const realActions: GameActions = {
     blackjackHit: () => bjAct('hit'),
     blackjackStand: () => bjAct('stand'),
     blackjackDouble: () => bjAct('double'),
+    blackjackSplit: () => bjAct('split'),
     rouletteSpin(bets) {
       const s = get()
       if (!ensureCasino(s)) return { number: 0, color: 'green', net: 0 }
@@ -684,7 +713,7 @@ function afterNegotiation(s: GameState, st: NegotiationState | undefined): void 
   if (st?.status === 'agreed') scheduleAutosave(300)
 }
 
-function bjAct(action: 'hit' | 'stand' | 'double'): BlackjackView {
+function bjAct(action: 'hit' | 'stand' | 'double' | 'split'): BlackjackView {
   const s = get()
   const r = G.blackjackAct(s, action)
   if (!r.ok || !r.value) {

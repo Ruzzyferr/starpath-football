@@ -2,7 +2,7 @@ import { Rng } from '../../core/rng'
 import type { Hero, Life } from '../../core/types'
 import {
   PASS_LINE_WIN_P, RACE_OVERROUND, SEVENS_PAYOUT, availableActions, basicStrategyAction, blackjackAction,
-  blackjackTotalStake, canBet, cardValue, createRace, createShoe, handValue, isBlackjack, makeRouletteBet,
+  blackjackTotalStake, canBet, handNet, handReturn, cardValue, createRace, createShoe, handValue, isBlackjack, makeRouletteBet,
   playPassLine, playSevens, raceWinProbabilities, resetCasinoDay, rouletteExpectedValue, runRace, setLossLimit,
   settleBet, settleHorseBet, settleRoulette, slotExactRtp, spinRoulette, spinSlot, startBlackjack, visitCasino,
   weeklyCasinoTick, type RouletteBetType,
@@ -62,6 +62,66 @@ describe('blackjack', () => {
     expect(r.hands.every((h) => h.cards.length === 2 && h.done)).toBe(true)
     expect(r.finished).toBe(true)
     expect(blackjackTotalStake(r)).toBe(20)
+  })
+
+  it('split pairs play two independent hands settled per hand', () => {
+    const rng = new Rng(11)
+    const shoe = createShoe(rng, 1)
+    // Player 8, dealer 6, player 8, dealer 10 → split eights against a 16.
+    shoe.cards.splice(0, 4, 7, 5, 20, 9)
+    shoe.pos = 0
+    const r = startBlackjack(rng, shoe, 10)
+    expect(availableActions(r)).toContain('split')
+    expect(availableActions(r, 9)).not.toContain('split') // can't cover the second stake
+    expect(blackjackAction(rng, r, 'split')).toBe(true)
+    expect(r.hands).toHaveLength(2)
+    expect(r.hands.map((h) => cardValue(h.cards[0]))).toEqual([8, 8])
+    expect(r.hands.every((h) => h.fromSplit && h.stake === 10)).toBe(true)
+    expect(r.active).toBe(0)
+    // No re-split (max two hands) even if another eight comes.
+    expect(availableActions(r)).not.toContain('split')
+    expect(blackjackAction(rng, r, 'split')).toBe(false)
+    while (!r.finished) blackjackAction(rng, r, 'stand')
+    expect(r.outcomes).toHaveLength(2)
+    const sum = r.hands.reduce((a, h, i) => a + handReturn(r.outcomes[i], h.stake), 0)
+    expect(r.payout).toBe(sum)
+  })
+
+  it('21 on a split hand is not a natural', () => {
+    const rng = new Rng(3)
+    const shoe = createShoe(rng, 1)
+    // Player K, dealer 6, player K, dealer 10, then A for the first split hand, 2 for the second.
+    shoe.cards.splice(0, 6, 12, 5, 25, 9, 1, 0) // split deals the new hand's card first
+    shoe.pos = 0
+    const r = startBlackjack(rng, shoe, 10)
+    blackjackAction(rng, r, 'split')
+    expect(handValue(r.hands[0].cards).total).toBe(21)
+    expect(r.hands[0].done).toBe(true)
+    expect(r.active).toBe(1)
+    while (!r.finished) blackjackAction(rng, r, 'stand')
+    expect(r.outcomes[0]).not.toBe('blackjack')
+  })
+
+  it('double after split doubles only that hand', () => {
+    const rng = new Rng(4)
+    const shoe = createShoe(rng, 1)
+    shoe.cards.splice(0, 4, 7, 5, 20, 9)
+    shoe.pos = 0
+    const r = startBlackjack(rng, shoe, 10)
+    blackjackAction(rng, r, 'split')
+    if (!r.hands[0].done) blackjackAction(rng, r, 'double')
+    expect(r.hands[0].stake).toBe(20)
+    expect(r.hands[1].stake).toBe(10)
+  })
+
+  it('handReturn / handNet pay 3:2, 1:1, push and loss', () => {
+    expect(handReturn('blackjack', 10)).toBe(25)
+    expect(handReturn('win', 10)).toBe(20)
+    expect(handReturn('push', 10)).toBe(10)
+    expect(handReturn('lose', 10)).toBe(0)
+    expect(handReturn('bust', 10)).toBe(0)
+    expect(handNet('win', 20)).toBe(20)
+    expect(handNet('bust', 20)).toBe(-20)
   })
 
   it('basic strategy RTP is ~99.5% (house edge small but real)', () => {
