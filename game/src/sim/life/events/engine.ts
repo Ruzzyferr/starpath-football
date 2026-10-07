@@ -75,7 +75,7 @@ export const TAG_FIRE_CHANCE: Record<string, number> = {
  * matches. Gains are halved and shrink as fame grows (×0.45 at 0, ×0.18 at
  * 50, ×0.04 at 85); losses apply in full (scandals still hurt).
  */
-export const EVENT_REP_SCALE = 0.45
+export const EVENT_REP_SCALE = 0.33
 export const eventRepGain = (rep: number, amount: number): number =>
   amount > 0 ? amount * EVENT_REP_SCALE * Math.pow(Math.max(0, 1 - rep / 100), 1.3) : amount
 

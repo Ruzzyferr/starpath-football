@@ -69,7 +69,7 @@ export const NEUTRAL_RATING = 6.5
  * 90+ by 19 and 100 by 20 for nearly every career. Now a regular starter at a
  * small club gains ~5–8 a season, a star in a top league ~8–12 until fame saturates.
  */
-export const MATCH_REP_SCALE = 1.0
+export const MATCH_REP_SCALE = 0.62
 
 /** Form = EMA of a rating-derived target: ~last 5 matches matter (α = 0.35). */
 export const FORM_ALPHA = 0.35

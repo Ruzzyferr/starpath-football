@@ -119,6 +119,20 @@ kullanıldı.
 | `sim/life/events/engine.ts` | Olay sıklığı: `weekly` 0,55 → 0,9, `post_match` 0,3 → 0,4, galibiyet/mağlubiyet 0,35 → 0,45, `EXTRA_CARD_FACTOR` 0,3 → 0,5. Üst sınırlar (haftada 3, 2'si kendiliğinden) değişmedi. |
 | `sim/life/events/content/health.ts` | `minor_knock` bekleme süresi 10 → 16 hafta. |
 
+### İtibar eğrisi ayarı (fame pass)
+
+Ölçüm: 30 kariyer × 10 sezon, medyan itibar. Değişiklik: `MATCH_REP_SCALE` 1.0 → 0.62 (`sim/career/matchOutcome.ts`), `EVENT_REP_SCALE` 0.45 → 0.33 (`sim/life/events/engine.ts`).
+
+| Yaş | Önce | Sonra | Hedef |
+|---|---|---|---|
+| 18 | 16 | 14 | ~15 |
+| 21 | 59 | 50 | ~50 |
+| 25 | 85 | 80 | 75–85 |
+| İlk elit kulüp (itibar ≥ 80) yaşı | 23.5 | 24.0 | - |
+| İlk 1. kademe lig yaşı | 20.5 | 20.0 | 21–23 |
+| İflas eden kariyer | 20% | 17% | - |
+
+
 ### Kalan notlar
 
 - Potansiyeli yüksek gençler (pot ≥ 85) 80 OVR'ye ortalama 22 yaşında ulaşıyor.
