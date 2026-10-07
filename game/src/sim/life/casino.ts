@@ -27,6 +27,7 @@ import { absWeek, clamp, fill, fmtMoney, lt, meter, pushNews, type Lines } from 
 import type { LText } from '../../core/types'
 import { perkValue } from '../career/perks'
 import { addHappiness, addStress } from './wellbeing'
+import { changeRelation } from './relationships'
 
 // ═════════════════════════════ Blackjack ═════════════════════════════
 
@@ -751,11 +752,44 @@ export const CASINO_FLAGS = {
   lostToday: 'casino_lost_today',
   /** Consecutive losing bets (loss chasing). */
   lossStreak: 'casino_loss_streak',
+  /** Weeks left of a voluntary self-exclusion (0/absent = none). */
+  excludedWeeks: 'casino_excluded_weeks',
 } as const
 
 const numFlag = (life: Life, k: string): number => {
   const v = life.flags[k]
   return typeof v === 'number' && Number.isFinite(v) ? v : 0
+}
+
+/**
+ * Generic, fictional-safe support message (no real numbers or organisations):
+ * shown in the casino lobby and whenever the addiction meter gets high.
+ */
+export const HELPLINE_MESSAGE: LText = lt(
+  'Kumar eğlenceli olmaktan çıktıysa biriyle konuş. Yerel destek hatları var ve gizlilikle dinliyorlar.',
+  'If gambling stops being fun, talk to someone. Local support lines are available and they listen in confidence.',
+)
+
+/** Self-exclusion lengths offered in the UI (weeks). */
+export const SELF_EXCLUSION_OPTIONS: readonly number[] = [1, 4, 12, 26]
+
+/** Weeks left of a self-exclusion (0 = casino open). */
+export const casinoExclusion = (life: Life): number => Math.max(0, Math.round(numFlag(life, CASINO_FLAGS.excludedWeeks)))
+
+/**
+ * Voluntarily lock the casino for `weeks` (1..52). An active exclusion can be
+ * extended but never shortened: that is the point of it. Small relief:
+ * stress −3 and addiction −5 (taking the decision itself helps).
+ */
+export function selfExclude(life: Life, weeks: number): { ok: boolean; lines: Lines } {
+  const w = clamp(Math.round(Number.isFinite(weeks) ? weeks : 0), 0, 52)
+  if (w <= 0) return { ok: false, lines: [lt('Geçersiz süre.', 'Invalid length.')] }
+  const cur = casinoExclusion(life)
+  if (w <= cur) return { ok: false, lines: [fill(lt('Zaten {n} hafta daha kendini kumarhaneden uzak tutuyorsun. Süre kısaltılamaz.', 'You are already excluded for {n} more week(s). It cannot be shortened.'), { n: cur })] }
+  life.flags[CASINO_FLAGS.excludedWeeks] = w
+  life.casino.addiction = meter(life.casino.addiction - 5, 0)
+  addStress(life, null, -3)
+  return { ok: true, lines: [fill(lt('Kumarhane {n} hafta boyunca sana kapalı. İyi bir karar.', 'The casino is closed to you for {n} week(s). Good call.'), { n: w })] }
 }
 
 /** Set (or clear with 0) the responsible-gaming daily loss limit. */
@@ -770,6 +804,8 @@ export function setLossLimit(life: Life, amount: number): Lines {
 /** Can the hero place this stake now? Respects cash and the daily loss limit. */
 export function canBet(life: Life, stake: number): { ok: boolean; reason: LText | null } {
   if (!(stake > 0) || !Number.isFinite(stake)) return { ok: false, reason: lt('Geçersiz bahis tutarı.', 'Invalid stake.') }
+  const excl = casinoExclusion(life)
+  if (excl > 0) return { ok: false, reason: fill(lt('Kendini kumardan uzak tutma kararın sürüyor ({n} hafta kaldı).', 'Your self-exclusion is active ({n} week(s) left).'), { n: excl }) }
   if (stake > life.money) return { ok: false, reason: lt('Bu bahis için yeterli nakdin yok.', "You don't have enough cash for this bet.") }
   const limit = numFlag(life, CASINO_FLAGS.lossLimit)
   if (limit > 0 && numFlag(life, CASINO_FLAGS.lostToday) + stake > limit) {
@@ -851,13 +887,34 @@ export interface CasinoVisit {
   /** Tags for the event system: always 'casino' & 'nightlife'; 'gambling_seen' if spotted. */
   triggerTags: string[]
   spotted: boolean
+  /** True when the sighting made the papers (see {@link casinoHeadlineWorthy}). */
+  headline: boolean
+}
+
+/** life.flags key: absolute week of the last casino sighting (a pattern makes news, a one-off does not). */
+export const CASINO_SEEN_FLAG = 'casino_seen_week'
+
+/**
+ * Headline rule (GAP-AUDIT 2.4#65): a single, isolated visit never makes the
+ * papers. A sighting becomes news only when it is part of a pattern — the
+ * night before a match, the 2nd+ visit of the week, a second sighting within
+ * 6 weeks, or a visible habit (addiction ≥ 50).
+ */
+export function casinoHeadlineWorthy(life: Life, ctx: Pick<CasinoContext, 'calendar' | 'matchTomorrow'>): boolean {
+  if (ctx.matchTomorrow) return true
+  if (life.casino.visitsThisWeek >= 2) return true
+  if (life.casino.addiction >= 50) return true
+  const last = life.flags[CASINO_SEEN_FLAG]
+  const gap = typeof last === 'number' ? absWeek(ctx.calendar) - last : -1
+  return gap >= 0 && gap <= 6
 }
 
 /**
  * Enter the casino. Counts the visit (addiction), and during the season rolls
  * whether someone spots the hero:
  *   p = 0.10 + 0.05·(visits this week − 1) + 0.25 if match tomorrow, × fame (0.5..1.5)
- * Spotted → discipline −5 (−12 before a match), press −3, a negative headline.
+ * Spotted → discipline −5 (−12 before a match). Press −3 and a headline only
+ * when {@link casinoHeadlineWorthy} (a one-off visit is gossip, not news).
  */
 export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext): CasinoVisit {
   life.casino.visitsThisWeek++
@@ -867,6 +924,7 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
   addAddiction(life, hero, 1.5 + Math.max(0, v - 2) * 2)
   lines.push(lt('🎰 Kumarhanenin ışıkları seni içeri çekti.', '🎰 The casino lights pull you inside.'))
   let spotted = false
+  let headline = false
   if (ctx.inSeason) {
     const fame = 0.5 + clamp(hero.reputation, 0, 100) / 100
     const p = clamp((0.1 + 0.05 * Math.max(0, v - 1) + (ctx.matchTomorrow ? 0.25 : 0)) * fame, 0, 0.9)
@@ -875,20 +933,43 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
       triggerTags.push('gambling_seen')
       const hit = ctx.matchTomorrow ? 12 : 5
       life.discipline = meter(life.discipline - hit)
-      const press = life.relationships.press
-      if (press) press.value = clamp(press.value - 3, -100, 100)
-      lines.push(fill(lt('📸 Kumarhanede görüntülendin! Disiplin -{d}.', '📸 You were photographed at the casino! Discipline -{d}.'), { d: hit }))
-      const name = `${hero.firstName} ${hero.lastName}`
-      pushNews(
-        life, rng, ctx.calendar,
-        ctx.matchTomorrow
-          ? fill(lt('Maç öncesi gece {n} kumarhanede!', '{n} at the casino the night before a match!'), { n: name })
-          : fill(lt('{n} rulet masasında görüntülendi', '{n} spotted at the roulette table'), { n: name }),
-        -1, 'Gece Bekçisi',
-      )
+      headline = casinoHeadlineWorthy(life, ctx)
+      life.flags[CASINO_SEEN_FLAG] = absWeek(ctx.calendar)
+      if (!headline) {
+        lines.push(fill(lt('👀 Kumarhanede biri seni tanıdı. Şimdilik dedikodu, ama alışkanlık olursa manşet olur. Disiplin -{d}.', '👀 Someone recognised you at the casino. Just gossip for now, but make it a habit and it becomes a headline. Discipline -{d}.'), { d: hit }))
+      } else {
+        changeRelation(life, 'press', -3, { cause: 'casino', week: absWeek(ctx.calendar), why: lt('Kumarhane fotoğrafları', 'Casino photos') })
+        lines.push(fill(lt('📸 Kumarhanede görüntülendin! Disiplin -{d}.', '📸 You were photographed at the casino! Discipline -{d}.'), { d: hit }))
+        pushNews(life, rng, ctx.calendar, casinoHeadline(rng, hero, life, ctx), -1, 'Gece Bekçisi')
+      }
     }
   }
-  return { lines, triggerTags, spotted }
+  return { lines, triggerTags, spotted, headline }
+}
+
+/**
+ * Casino headline that matches what actually happened (no invented roulette
+ * table when the hero played cards): pre-match night, a weekly habit, or a
+ * repeat sighting. Never names a real venue or brand.
+ */
+export function casinoHeadline(rng: Rng, hero: Pick<Hero, 'firstName' | 'lastName' | 'nickname'>, life: Life, ctx: Pick<CasinoContext, 'matchTomorrow'>): LText {
+  const n = `${hero.firstName} ${hero.lastName}`
+  if (ctx.matchTomorrow) {
+    return fill(rng.pick([
+      lt('Maç öncesi gece {n} kumarhanede!', '{n} at the casino the night before a match!'),
+      lt('Erken yatması gereken gece: {n} fişlerle görüntülendi', 'The night for an early bed: {n} pictured with casino chips'),
+    ]), { n })
+  }
+  if (life.casino.visitsThisWeek >= 2) {
+    return fill(rng.pick([
+      lt('{n} bu hafta kumarhanenin müdavimi oldu', '{n} becomes a casino regular this week'),
+      lt('Bir haftada {v}. ziyaret: {n} kumarhaneden çıkmıyor', "Visit number {v} in a week: {n} can't stay away from the casino"),
+    ]), { n, v: life.casino.visitsThisWeek })
+  }
+  return fill(rng.pick([
+    lt('{n} yine kumarhanede: kulüpte soru işaretleri', '{n} back at the casino: questions at the club'),
+    lt('{n} için kumarhane gecesi alışkanlığa mı dönüşüyor?', 'Is the casino night becoming a habit for {n}?'),
+  ]), { n })
 }
 
 /** Reset the daily net-loss counter (call each morning). */
@@ -901,10 +982,16 @@ export function weeklyCasinoTick(life: Life): Lines {
   const visits = life.casino.visitsThisWeek
   life.casino.addiction = meter(life.casino.addiction - (visits === 0 ? 5 : 1), 0)
   life.casino.visitsThisWeek = 0
-  if (life.casino.addiction >= 70) {
-    return [lt('Kumar düşüncesi aklından çıkmıyor. Belki birinden yardım almalısın.', "You can't stop thinking about gambling. Maybe you should get help.")]
+  const lines: Lines = []
+  const excl = casinoExclusion(life)
+  if (excl > 0) {
+    life.flags[CASINO_FLAGS.excludedWeeks] = excl - 1
+    if (excl - 1 === 0) lines.push(lt('Kumarhane yasağın bitti. Gitmek zorunda değilsin.', 'Your casino self-exclusion has ended. You don\'t have to go back.'))
   }
-  return []
+  if (life.casino.addiction >= 70) {
+    lines.push(lt('Kumar düşüncesi aklından çıkmıyor. Belki birinden yardım almalısın.', "You can't stop thinking about gambling. Maybe you should get help."), HELPLINE_MESSAGE)
+  }
+  return lines
 }
 
 /** Absolute-week helper re-exported for callers that store casino cooldowns. */

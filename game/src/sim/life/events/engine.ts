@@ -21,7 +21,7 @@ import { clamp, type Rng } from '../../../core/rng'
 import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
 import { ADULT_AGE, absWeek, heroAge } from '../../career/common'
-import { teammateId } from '../relationships'
+import { recordRelationChange, teammateId } from '../relationships'
 import type {
   AppliedDelta,
   Delta,
@@ -624,6 +624,7 @@ function bump(r: Relationship, amount: number, memory: LText, abs: number): numb
   r.value = clamp(Math.round(r.value + amount), -100, 100)
   r.memory = [memory, ...r.memory].slice(0, 5)
   r.lastContactWeek = abs
+  recordRelationChange(r, r.value - before, 'event', memory, abs)
   return r.value - before
 }
 

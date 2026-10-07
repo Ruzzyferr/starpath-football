@@ -179,14 +179,14 @@ export function makePost(rng: Rng, hero: Hero, life: Life, type: PostType, ctx: 
   addHappiness(life, def.happiness)
   if (def.stress) addStress(life, hero, def.stress)
   life.discipline = meter(life.discipline + def.discipline)
-  if (def.fans) changeRelation(life, 'fans', def.fans, { hero })
-  if (def.press) changeRelation(life, 'press', def.press, { hero })
+  if (def.fans) changeRelation(life, 'fans', def.fans, { hero, cause: 'social', why: def.name, week: wk })
+  if (def.press) changeRelation(life, 'press', def.press, { hero, cause: 'social', why: def.name, week: wk })
 
   if (controversy) {
     tags.push('controversy')
     addStress(life, hero, 8)
-    changeRelation(life, 'press', -6, { memory: lt('Tartışmalı paylaşımı', 'Controversial post'), hero })
-    changeRelation(life, 'fans', -4, { hero })
+    changeRelation(life, 'press', -6, { memory: lt('Tartışmalı paylaşımı', 'Controversial post'), hero, cause: 'social', week: wk })
+    changeRelation(life, 'fans', -4, { hero, cause: 'social', why: lt('Tartışmalı paylaşımın', 'Your controversial post'), week: wk })
     life.discipline = meter(life.discipline - (type === 'provocation' ? 4 : 1))
     hero.reputation = meter(hero.reputation - 1)
     lines.push(lt('⚠️ Paylaşımın tepki çekti, basın üstüne geliyor.', '⚠️ Your post backfired; the press is all over it.'))

@@ -11,8 +11,8 @@ import {
 import { POSITION_WEIGHTS, applyXpBundle } from './progression'
 import { perkValue } from './perks'
 import { addFatigue, applyInjury, rollInjury } from './condition'
-import { MANAGER_REL, pushRecentRating, updateTrustFromMatch } from './squadRole'
-import { changeRelation, teammateId } from '../life/relationships'
+import { pushRecentRating, updateTrustFromMatch } from './squadRole'
+import { applyMatchRelations } from '../life/relationships'
 import { assetEffectTotal } from '../life/assetEffects'
 
 /** The hero's line from a finished match (produced by the match engine / UI). */
@@ -163,22 +163,10 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   life.followers = Math.max(0, life.followers + followersDelta)
 
   // ── Relationships ──
-  const fansD = (rating - NEUTRAL_RATING) * 2 + goals * 1.5 + (m.won ? 1 : m.drew ? 0 : -1) - (m.red ? 4 : 0)
-  changeRelation(life, 'fans', fansD, { hero, memory: Math.abs(fansD) >= 5 ? (fansD > 0 ? lt('Muhteşem bir maç çıkardın.', 'You put on a show.') : lt('Kötü bir maç geçirdin.', 'You had a poor game.')) : undefined })
+  // Fans, manager, assist partners, dressing room — with fair loss blame and a ledger (life/relationships).
+  applyMatchRelations(life, hero, { rating, goals, assists, won: m.won, drew: m.drew, red: m.red, motm: m.motm, assistedBy: m.assistedBy, assistedTo: m.assistedTo }, week)
   const trustD = updateTrustFromMatch(hero, rating, minutes)
   if (minutes > 0) pushRecentRating(life, rating) // form-guarantee clause (squadRole)
-  if (life.relationships[MANAGER_REL]) changeRelation(life, MANAGER_REL, (rating - NEUTRAL_RATING) * 1 - (m.red ? 5 : 0), { week, contact: true })
-  for (const npc of m.assistedBy ?? []) {
-    changeRelation(life, teammateId(npc), 3, { hero, week, contact: true, memory: lt('Golüne asist yaptı.', 'Set up your goal.') })
-  }
-  for (const npc of m.assistedTo ?? []) {
-    changeRelation(life, teammateId(npc), 4, { hero, week, contact: true, memory: lt('Ona asist yaptın.', hero.gender === 'female' ? 'You assisted her goal.' : 'You assisted his goal.') })
-  }
-  if (m.won || rating < 5) {
-    // Shared joy or shared frustration in the dressing room.
-    const d = m.won ? 0.6 : -0.6
-    for (const r of Object.values(life.relationships)) if (r.kind === 'teammate') changeRelation(life, r.id, d, { hero })
-  }
   if (Math.abs(trustD) >= 1) lines.push(fill(lt('Teknik direktör güveni {d}', 'Manager trust {d}'), { d: signed(trustD) }))
 
   // ── Discipline: cards ──

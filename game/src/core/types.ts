@@ -326,6 +326,25 @@ export interface Relationship {
   /** Recent memory lines (most recent first, max 5). */
   memory: LText[]
   lastContactWeek: number
+  /** Change ledger, most recent first (see sim/life/relationships). Missing on old saves. */
+  log?: RelationChange[]
+}
+
+/** What moved a relationship: shown in the "why did this change?" panel. */
+export type RelationCause =
+  | 'match' | 'event' | 'activity' | 'decay' | 'interview' | 'role' | 'social' | 'casino' | 'transfer' | 'business' | 'other'
+
+export interface RelationChange {
+  /** Absolute week (career/common absWeek). */
+  w: number
+  /** Applied change (after clamping / diminishing returns). */
+  d: number
+  /** Value after the change. */
+  v: number
+  cause: RelationCause
+  why: LText
+  /** Merged entries (e.g. several weeks of neglect decay). */
+  n?: number
 }
 
 export type AssetCategory =

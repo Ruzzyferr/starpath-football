@@ -16,6 +16,7 @@ import { applyXpBundle } from '../career/progression'
 import { fatigueEfficiency, runTraining, trainingEnergyCost, type TrainingIntensity, type TrainingType } from '../career/training'
 import { assetEffectTotal } from './assetEffects'
 import { changeRelation, teammateAverage } from './relationships'
+import { casinoExclusion } from './casino'
 import { makePost, type PostType } from './social'
 import { sponsorShootPay } from './sponsors'
 import { addHappiness, addHealth, addStress, energyCap, isBurnedOut, wellbeingXpMultiplier } from './wellbeing'
@@ -146,6 +147,9 @@ export function activityBlock(hero: Hero, life: Life, def: ActivityDef, ctx: Act
     const n = c.minAge - heroAge(hero, ctx.calendar.season)
     return fill(lt('{a} yaş sınırı var. {n} yıl sonra kapılar açılır.', 'Strictly {a}+. The doors open in {n} year(s).'), { a: c.minAge, n })
   }
+  if (def.special === 'casino' && casinoExclusion(life) > 0) {
+    return fill(lt('Kumarhaneyi kendine {n} hafta kapattın.', 'You locked yourself out of the casino for {n} more week(s).'), { n: casinoExclusion(life) })
+  }
   if (c.minReputation !== undefined && hero.reputation < c.minReputation) return lt('Henüz yeterince tanınmıyorsun.', "You're not famous enough yet.")
   if (c.minMoney !== undefined && life.money < c.minMoney) return lt('Yeterli paran yok.', 'Not enough money.')
   const cost = -activityMoney(def, hero, life)
@@ -235,7 +239,7 @@ export function performActivity(
       trainingReport = { type, performance: Math.max(0, Math.min(1, opts.performance ?? 0.6)), xp: r.xp, gains: r.gains, injured: r.injured }
       lines.push(...r.lines)
       if (r.injured) tags.push('injury')
-      if ((opts.performance ?? 0.6) >= 0.8 && ctx.inSeason) changeRelation(life, 'manager', 1, { hero })
+      if ((opts.performance ?? 0.6) >= 0.8 && ctx.inSeason) changeRelation(life, 'manager', 1, { hero, cause: 'activity', why: { tr: 'Antrenmanda göz doldurdun', en: 'You impressed in training' } })
       break
     }
     case 'gym': {
@@ -309,7 +313,7 @@ export function performActivity(
     if (r.target === 'manager' && !ctx.inSeason) continue
     for (const id of targetIds(life, r.target)) {
       const close = r.target === 'family' || r.target === 'partner' || r.target === 'bestFriend'
-      changeRelation(life, id, r.delta, { memory: close ? def.memory : undefined, week, contact: close || r.target === 'teammates', hero })
+      changeRelation(life, id, r.delta, { memory: close ? def.memory : undefined, week, contact: close || r.target === 'teammates', hero, cause: 'activity', why: def.name })
     }
   }
   if (def.triggerTags.includes('nightlife')) life.flags.nightlife_day = today

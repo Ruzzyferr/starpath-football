@@ -439,7 +439,7 @@ export const realActions: GameActions = {
     const gain = kind === 'apologize' && rel.value >= 0 ? 2 : cfg.rel
     // Public figures (fans/press) and bosses respond less to private gestures.
     const scale: Partial<Record<RelationKind, number>> = { fans: 0.5, press: 0.6, manager: 0.6, chairman: 0.6 }
-    changeRelation(s.life, relationshipId, gain * (scale[rel.kind] ?? 1), { memory: cfg.memory, week, contact: true, hero: s.hero })
+    changeRelation(s.life, relationshipId, gain * (scale[rel.kind] ?? 1), { memory: cfg.memory, week, contact: true, hero: s.hero, cause: 'activity' })
     s.life.money -= cfg.money
     s.life.energy = clamp(s.life.energy - cfg.energy, 0, 100)
     if (cfg.happiness) s.life.happiness = clamp(s.life.happiness + cfg.happiness, 0, 100)
