@@ -4,13 +4,20 @@ on:
   push:
     branches: [main]
   pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: game
 
 jobs:
   test-and-build:
+    name: Typecheck, unit tests, web build
     runs-on: ubuntu-latest
-    defaults:
-      run:
-        working-directory: game
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -26,3 +33,57 @@ jobs:
         with:
           name: web-build
           path: game/dist
+
+  e2e:
+    name: Playwright e2e (Chromium)
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    # Real-browser suite is informative on CI (software GL, shared runners); it does not block merges.
+    continue-on-error: true
+    timeout-minutes: 45
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - run: npm ci
+      # No Google Chrome channel on the runner: playwright.config.ts falls back to bundled Chromium when CI is set.
+      - run: npx playwright install --with-deps chromium
+      - run: npm run e2e
+        env:
+          CI: 'true'
+          E2E_SHOTS: test-results/shots
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: e2e-results
+          path: game/test-results
+          if-no-files-found: ignore
+
+  android-debug:
+    name: Android debug APK
+    runs-on: ubuntu-latest
+    needs: test-and-build
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+          cache: gradle
+      - run: npm ci
+      - run: npm run cap:sync
+      - name: assembleDebug
+        working-directory: game/android
+        run: chmod +x gradlew && ./gradlew assembleDebug --no-daemon
+      - uses: actions/upload-artifact@v4
+        with:
+          name: starpath-android-debug-apk
+          path: game/android/app/build/outputs/apk/debug/*.apk
