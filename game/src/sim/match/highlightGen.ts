@@ -73,6 +73,10 @@ const BANDS: Record<HighlightKind, readonly [number, number, number, number]> = 
   defend_1v1: [12, 50, 44, 86],
   // Opponents camped on the edge of our box.
   block: [6, 36, 50, 86],
+  // Hero's corner: both teams packed into the opponents' box.
+  corner_kick: [55, 96, 4, 22],
+  // Opposition free kick 18–28 m from our goal: everyone is back.
+  fk_wall: [4, 30, 56, 88],
 }
 
 /** Seconds before the moment auto-ends. */
@@ -95,6 +99,9 @@ export const TIME_LIMITS: Record<HighlightKind, number> = {
   hold_up: 10,
   defend_1v1: 10,
   block: 8,
+  // The delivery picker / wall setup does not count against the clock.
+  corner_kick: 9,
+  fk_wall: 8,
 }
 
 const SLOT_X_MIN = 16
@@ -356,6 +363,68 @@ const placeCorner: Placer = (l) => {
   return { ball: owned(bp, taker?.player.id ?? null), passerId: taker?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
 }
 
+/**
+ * corner_kick: the hero stands over the ball at the corner flag; the best
+ * headers attack the box, one team-mate offers a short option.
+ */
+const placeCornerKick: Placer = (l) => {
+  const rng = l.input.rng
+  const top = rng.chance(0.5)
+  const bp = { x: PITCH_LENGTH - 0.5, y: top ? 0.5 : PITCH_WIDTH - 0.5 }
+  set(l, l.input.heroId, { x: bp.x - 0.8, y: bp.y + (top ? -0.3 : 0.3) })
+  const gk = oppKeeper(l)
+  set(l, gk?.player.id, { x: 104, y: 34 + (top ? -2 : 2) })
+  const outfield = l.mates.filter((m) => m.player.id !== l.input.heroId && roleOf(m) !== 'GK')
+  const tall = [...outfield].sort((a, b) => b.player.attrs.heading - a.player.attrs.heading || (a.player.id < b.player.id ? -1 : 1)).slice(0, 5)
+  fillBox(l, tall, new Set([gk?.player.id ?? '']))
+  // Short option: a passer drifts toward the corner, 10 m in from the flag.
+  const short = pickMate(l, (m) => (tall.includes(m) ? 0.05 : 1) * relationWeight(m) * (m.player.attrs.passing + 1))
+  if (short) set(l, short.player.id, { x: PITCH_LENGTH - rng.range(9, 12), y: top ? rng.range(8, 11) : PITCH_WIDTH - rng.range(8, 11) })
+  const finisher = tall[0] ?? null
+  return { ball: owned(bp, l.input.heroId), passerId: null, finisherId: finisher?.player.id ?? null, opponentId: gk?.player.id ?? null }
+}
+
+/**
+ * fk_wall: the opponents have a direct free kick 18–28 m out; a wall of four
+ * stands by default (the hero re-sets it in the runtime). The hero is in goal
+ * (keeper) or in the wall (captain).
+ */
+const placeFkWall: Placer = (l) => {
+  const rng = l.input.rng
+  const bp = { x: rng.range(18, 27), y: rng.range(20, 48) }
+  const taker = l.input.rng.weighted(
+    l.opps.filter((o) => roleOf(o) !== 'GK'),
+    (o) => (o.player.attrs.setPieces + o.player.attrs.shooting + 1) ** 2,
+  )
+  set(l, taker?.player.id, { x: bp.x + 1.4, y: bp.y + 0.6 })
+  const keeper = mateKeeper(l)
+  const heroIsGk = roleOf(heroSlot(l)) === 'GK'
+  const gkId = heroIsGk ? l.input.heroId : keeper?.player.id
+  set(l, gkId, { x: 1, y: 34 + (bp.y - 34) * 0.15 })
+  // Default wall of four on the ball → near-post line.
+  const nearY = bp.y < 34 ? 32.2 : 35.8
+  const len = Math.hypot(bp.x, nearY - bp.y) || 1
+  const ux = -bp.x / len
+  const uy = (nearY - bp.y) / len
+  const skip = new Set([gkId ?? ''])
+  const wall = heroIsGk ? nearest(l, l.mates, bp, 4, skip) : [heroSlot(l), ...nearest(l, l.mates, bp, 3, new Set([...skip, l.input.heroId]))]
+  wall.forEach((w, i) => {
+    const off = (i - 1.5) * 0.62
+    set(l, w.player.id, { x: bp.x + ux * 9.15 - uy * off, y: bp.y + uy * 9.15 + ux * off })
+  })
+  // Their runners and our markers in the box.
+  const runners = l.opps.filter((o) => o !== taker && roleOf(o) !== 'GK').sort((a, b) => b.player.attrs.heading - a.player.attrs.heading).slice(0, 4)
+  const wallIds = new Set(wall.map((w) => w.player.id))
+  const markers = l.mates.filter((m) => !wallIds.has(m.player.id) && m.player.id !== gkId && roleOf(m) !== 'GK')
+  runners.forEach((r, i) => {
+    const p = { x: rng.range(7, 15), y: 24 + ((i * 6) % 20) + rng.range(-1.5, 1.5) }
+    set(l, r.player.id, p)
+    const m = markers[i]
+    if (m) set(l, m.player.id, { x: p.x - 1.1, y: p.y + rng.range(-0.8, 0.8) })
+  })
+  return { ball: owned(bp, taker?.player.id ?? null), passerId: null, finisherId: null, opponentId: taker?.player.id ?? null }
+}
+
 /** Opponent's most dangerous attacker (for defensive moments). */
 function oppAttacker(l: Layout): SlotPlayer | undefined {
   const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
@@ -596,6 +665,8 @@ const PLACERS: Record<HighlightKind, Placer> = {
   hold_up: placeHoldUp,
   defend_1v1: placeDefend1v1,
   block: placeBlock,
+  corner_kick: placeCornerKick,
+  fk_wall: placeFkWall,
 }
 
 function toScenarioPlayer(sp: SlotPlayer, side: Side, pos: Vec2): ScenarioPlayer {
@@ -626,7 +697,7 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
   ]
   const owner = actors.ball.ownerId ? layout.pos.get(actors.ball.ownerId) : undefined
   const ball = { ...actors.ball, pos: owner ? { ...owner } : actors.ball.pos }
-  if (input.kind === 'freekick' || input.kind === 'penalty' || input.kind === 'gk_penalty' || input.kind === 'corner' || input.kind === 'rebound') {
+  if (input.kind === 'freekick' || input.kind === 'penalty' || input.kind === 'gk_penalty' || input.kind === 'corner' || input.kind === 'rebound' || input.kind === 'corner_kick' || input.kind === 'fk_wall') {
     ball.pos = actors.ball.pos // set-piece ball sits on its spot, not on the taker
   }
   return {

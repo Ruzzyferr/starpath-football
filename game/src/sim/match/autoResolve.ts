@@ -35,6 +35,9 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   hold_up: { strength: 0.35, firstTouch: 0.25, composure: 0.2, passing: 0.2 },
   defend_1v1: { tackling: 0.35, pace: 0.25, positioning: 0.25, agility: 0.15 },
   block: { positioning: 0.4, strength: 0.2, tackling: 0.2, agility: 0.2 },
+  corner_kick: { crossing: 0.45, setPieces: 0.35, vision: 0.2 },
+  // Keeper or captain organising the wall: reading the taker and the angles.
+  fk_wall: { positioning: 0.45, leadership: 0.3, composure: 0.25 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -57,11 +60,15 @@ const BASE: Record<HighlightKind, Weights> = {
   hold_up: { goal: 0.02, assist: 0.03, pass_complete: 0.42, foul_won: 0.14, lost_ball: 0.32, missed: 0.03, foul_committed: 0.04 },
   defend_1v1: { defended: 0.48, shot_conceded: 0.16, conceded: 0.12, foul_committed: 0.12, lost_ball: 0.06, pass_complete: 0.06 },
   block: { defended: 0.45, shot_conceded: 0.3, conceded: 0.12, foul_committed: 0.07, timeout: 0.06 },
+  // A dangerous corner (the engine only stages the threatening ones): mostly cleared.
+  corner_kick: { assist: 0.08, goal: 0.02, pass_complete: 0.3, cleared: 0.55, lost_ball: 0.05 },
+  // Direct free kick from 18–28 m: the wall and the keeper keep most of them out.
+  fk_wall: { defended: 0.86, conceded: 0.14 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
 const GOOD: ReadonlySet<Outcome> = new Set<Outcome>(['goal', 'assist', 'pass_complete', 'defended', 'foul_won', 'woodwork'])
-const BAD: ReadonlySet<Outcome> = new Set<Outcome>(['lost_ball', 'missed', 'conceded', 'shot_conceded', 'foul_committed', 'blocked', 'timeout'])
+const BAD: ReadonlySet<Outcome> = new Set<Outcome>(['cleared', 'lost_ball', 'missed', 'conceded', 'shot_conceded', 'foul_committed', 'blocked', 'timeout'])
 
 /** Weighted hero skill for a kind, 0..100. */
 export function skillFor(kind: HighlightKind, attrs: Attributes): number {

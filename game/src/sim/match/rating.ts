@@ -36,6 +36,8 @@ const OUTCOME_DELTA: Record<HighlightResult['outcome'], number> = {
   defended: 0.25,
   conceded: -0.45,
   shot_conceded: -0.12,
+  // A corner delivered and dealt with by the defence: the cross itself is judged by passes.
+  cleared: -0.05,
   foul_won: 0.1,
   foul_committed: -0.2,
   timeout: -0.15,
@@ -49,6 +51,9 @@ function kindAdjustment(kind: HighlightKind, outcome: HighlightResult['outcome']
   if (kind === 'gk_penalty' && outcome === 'defended') return 0.55
   if (kind === 'gk_penalty' && outcome === 'conceded') return 0.4 // penalties usually go in
   if (kind === 'freekick' && outcome === 'goal') return 0.2
+  // Free kicks against usually do not go in: keeping one out is a smaller deed than a 1v1 stop.
+  if (kind === 'fk_wall' && outcome === 'defended') return -0.1
+  if (kind === 'fk_wall' && outcome === 'conceded') return 0.25
   return 0
 }
 

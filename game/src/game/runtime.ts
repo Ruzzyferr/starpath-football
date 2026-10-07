@@ -81,7 +81,21 @@ import { offsideSnapshot } from './offside'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
-import { buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
+import { arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
+import {
+  CHOICE_TIMEOUT,
+  DEFAULT_CORNER,
+  DEFAULT_WALL_CHOICE,
+  chooseFkShot,
+  cornerKick,
+  cornerRuns,
+  cornerZoneTarget,
+  isCornerChoice,
+  sanitizeWall,
+  type CornerChoice,
+  type FkShotLabel,
+  type WallChoice,
+} from './setPieceChoice'
 import {
   a01,
   accel,
@@ -176,6 +190,10 @@ export type HeroAction =
   | { kind: 'dive'; dir: Vec2 }
   /** Raise the hand: ask the team-mate on the ball to pass (optionally into space at `at`). */
   | { kind: 'call'; at?: Vec2 }
+  /** corner_kick: the delivery the hero picked (zone, height, curl). */
+  | ({ kind: 'corner' } & CornerChoice)
+  /** fk_wall: the wall the hero set (2–5 players, shifted `nudge` m along its line). */
+  | ({ kind: 'wall' } & WallChoice)
 
 /** Live aim state (while the player drags / holds) for previews. */
 export type AimState =
@@ -214,6 +232,8 @@ export type RuntimeEvent =
   | { type: 'oneTwo'; by: string }
   /** Assistant referee's flag: `by` touched the ball from an offside position. */
   | { type: 'offside'; by: string; team: Team; x: number; y: number }
+  /** The hero committed his set-piece choice (corner delivery / wall). */
+  | { type: 'setPieceChoice'; choice: 'corner' | 'wall' }
   | { type: 'end'; result: HighlightResult; reason: string }
 
 export type Phase = 'intro' | 'live' | 'post' | 'done'
@@ -231,6 +251,8 @@ export const STATE_CODES: readonly AgentState[] = ['run', 'slide', 'dive', 'jump
 
 const DT = PHYSICS_DT
 const REPLAY_SECONDS = 6
+/** fk_wall outcomes that all mean "the free kick was kept out". */
+const FK_WALL_HELD: ReadonlySet<HighlightOutcome> = new Set<HighlightOutcome>(['timeout', 'shot_conceded', 'saved', 'missed', 'blocked', 'woodwork', 'pass_complete', 'lost_ball'])
 const SHOT_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['shot', 'chip', 'header', 'penalty', 'freekick'])
 /** Deliveries that can put a team-mate offside (shots/clearances cannot). */
 const PASS_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['pass', 'lofted', 'through', 'cross'])
@@ -358,6 +380,24 @@ export class HighlightRuntime {
   private oneTwo: { id: string; t: number; armed: boolean; armedAt: number } | null = null
   /** Vision pass options cache (ids, best first). */
   private passOpts: { t: number; ids: string[] } = { t: -1, ids: [] }
+  /**
+   * Set-piece decision still to be made by the hero (corner delivery / wall).
+   * The clock is stopped while it is pending.
+   */
+  pendingChoice: 'corner' | 'wall' | null = null
+  /** Game seconds spent waiting for the choice (idle players get the default). */
+  private choiceWait = 0
+  /** The committed corner delivery and when the hero strikes it. */
+  cornerChoice: CornerChoice | null = null
+  private cornerKickAt = -1
+  /** Corner runs (team-mate id → target) and until when they hold. */
+  private runs: Map<string, Vec2> | null = null
+  private runsUntil = -1
+  /** The committed wall and when the opposition taker strikes. */
+  wallChoice: WallChoice | null = null
+  private fkKickAt = -1
+  /** What the opposition taker went for (fk_wall; diagnostics / commentary). */
+  fkShot: FkShotLabel | null = null
 
   /**
    * Penalty against an AI keeper who has studied the hero (keepers' book, WP-14):
@@ -400,6 +440,8 @@ export class HighlightRuntime {
     for (const a of this.agents) a.think = this.rng.range(0.05, 0.3)
     // block: how long the shooter shapes before he pulls the trigger.
     this.blockWindUp = this.kind === 'block' ? this.rng.range(0.9, 1.3) : 0
+    if (this.kind === 'corner_kick' && this.setPiece?.takerId === this.hero.id) this.pendingChoice = 'corner'
+    if (this.kind === 'fk_wall' && this.setPiece && this.setPiece.takerId !== this.hero.id) this.pendingChoice = 'wall'
   }
 
   // ───────────────────────── Public API ─────────────────────────
@@ -441,6 +483,48 @@ export class HighlightRuntime {
   /** Queues a discrete action (processed on the next step). */
   queueAction(a: HeroAction): void {
     if (this.actions.length < 8) this.actions.push(a)
+  }
+
+  /** The short-corner option (team-mate nearest the spot 10 m in from the flag). */
+  shortOption(): Agent | null {
+    const sp = this.setPiece
+    if (!sp || this.kind !== 'corner_kick') return null
+    const p = cornerZoneTarget('short', sp.spot)
+    let best: Agent | null = null
+    for (const a of this.agents) {
+      if (a.team !== 'hero' || a.isHero || a.isKeeper) continue
+      if (!best || dist(a.pos, p) < dist(best.pos, p)) best = a
+    }
+    return best
+  }
+
+  /** Ground point a corner choice is aimed at (picker preview). */
+  cornerTarget(zone: CornerChoice['zone']): Vec2 | null {
+    const sp = this.setPiece
+    if (!sp || this.kind !== 'corner_kick') return null
+    return cornerZoneTarget(zone, sp.spot, this.shortOption()?.pos ?? null)
+  }
+
+  /**
+   * Live wall preview while the hero is choosing (renderer / picker). Purely
+   * positional and deterministic: committing the same choice gives the same wall.
+   */
+  previewWall(c: WallChoice): void {
+    if (this.pendingChoice !== 'wall' || !this.setPiece) return
+    const w = sanitizeWall(c)
+    this.setPiece.wall = arrangeWall(this.agents, this.setPiece.spot, w.count, w.nudge, this.hero.isKeeper ? null : this.hero)
+    this.syncWall()
+  }
+
+  private syncWall(): void {
+    this.wallIds.clear()
+    for (const id of this.setPiece?.wall ?? []) this.wallIds.add(id)
+    for (const a of this.agents) {
+      a.prev.x = a.pos.x
+      a.prev.y = a.pos.y
+      a.prev.facing = a.facing
+      if (a.state === 'wall') a.vel = { x: 0, y: 0 }
+    }
   }
 
   /** Returns and clears pending events. */
@@ -561,6 +645,10 @@ export class HighlightRuntime {
   private bulletWindow = 1
 
   private step(): void {
+    if (this.pendingChoice && this.phase === 'live') {
+      this.waitChoice()
+      return
+    }
     this.time += DT
     for (const a of this.agents) {
       a.prev.x = a.pos.x
@@ -604,6 +692,60 @@ export class HighlightRuntime {
       this.postLeft -= DT
       if (this.postLeft <= 0) this.phase = 'done'
     }
+  }
+
+  /** Clock stopped: only the set-piece choice is accepted (default after {@link CHOICE_TIMEOUT}). */
+  private waitChoice(): void {
+    for (const a of this.agents) {
+      a.vel = { x: 0, y: 0 }
+      a.prev.x = a.pos.x
+      a.prev.y = a.pos.y
+      a.prev.z = a.z
+      a.prev.facing = a.facing
+    }
+    this.choiceWait += DT
+    let picked = false
+    while (this.actions.length && !picked) {
+      const act = this.actions.shift()!
+      if (this.pendingChoice === 'corner' && act.kind === 'corner' && isCornerChoice(act)) {
+        this.commitCorner({ zone: act.zone, height: act.height, curl: act.curl })
+        picked = true
+      } else if (this.pendingChoice === 'wall' && act.kind === 'wall') {
+        this.commitWall({ count: act.count, nudge: act.nudge })
+        picked = true
+      }
+    }
+    this.actions.length = 0
+    if (!picked && this.choiceWait >= CHOICE_TIMEOUT) {
+      if (this.pendingChoice === 'corner') this.commitCorner({ ...DEFAULT_CORNER })
+      else this.commitWall({ ...DEFAULT_WALL_CHOICE })
+    }
+  }
+
+  private commitCorner(c: CornerChoice): void {
+    const sp = this.setPiece
+    this.pendingChoice = null
+    this.cornerChoice = c
+    this.cornerKickAt = this.time + 0.55
+    this.events.push({ type: 'setPieceChoice', choice: 'corner' })
+    if (!sp) return
+    const runners = this.agents
+      .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
+      .map((a) => ({ id: a.id, pos: a.pos, heading: a.attrs.heading + a.attrs.jumping * 0.5 }))
+    this.runs = cornerRuns(c, sp.spot, runners)
+    this.runsUntil = this.cornerKickAt + 2.2
+  }
+
+  private commitWall(c: WallChoice): void {
+    const w = sanitizeWall(c)
+    this.pendingChoice = null
+    this.wallChoice = w
+    if (this.setPiece) {
+      this.setPiece.wall = arrangeWall(this.agents, this.setPiece.spot, w.count, w.nudge, this.hero.isKeeper ? null : this.hero)
+      this.syncWall()
+    }
+    this.fkKickAt = this.time + 0.9
+    this.events.push({ type: 'setPieceChoice', choice: 'wall' })
   }
 
   private goLive(): void {
@@ -663,6 +805,9 @@ export class HighlightRuntime {
   private handleAction(act: HeroAction): void {
     const hero = this.hero
     if (act.kind === 'call') return this.callForBall(act.at ?? null)
+    // Set-piece choices are only taken while the clock is stopped; the corner itself is struck by script.
+    if (act.kind === 'corner' || act.kind === 'wall') return
+    if (this.kind === 'corner_kick' && this.setPiece?.takerId === hero.id) return
     if (this.heroBusy()) return
     if (hero.isKeeper && this.owner !== hero) {
       this.keeperAction(act)
@@ -1123,10 +1268,13 @@ export class HighlightRuntime {
       if (keeper) {
         if (keeper.isHero) {
           // Reflex window for the hero keeper (penalties are a pure read — no slow motion).
-          if (wasSetPiece?.kind !== 'penalty') this.startBullet(0.3, 0.3 + a01(keeper.attrs.reflexes) * 0.55)
+          // A bigger wall screens the keeper: he sees the ball later (fk_wall).
+          const screen = wasSetPiece?.kind === 'freekick' && by.team === 'opp' ? (wasSetPiece.wall.length - 3) * 0.1 : 0
+          if (wasSetPiece?.kind !== 'penalty') this.startBullet(0.3, Math.max(0.2, 0.3 + a01(keeper.attrs.reflexes) * 0.55 - screen))
         } else {
           const isPen = wasSetPiece?.kind === 'penalty'
           let reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
+          if (wasSetPiece?.kind === 'freekick' && by.team === 'opp') reaction += Math.max(0, wasSetPiece.wall.length - 2) * 0.06
           // A keeper who knows the hero's favourite corner is quicker to it (open play).
           const shotHabit = by.isHero && !isPen ? bookHabit(this.highlight.keeperBook, false) : null
           if (shotHabit && goalZoneOf(plan.aim.y, GOAL_CENTER_Y) === shotHabit.zone) reaction *= 0.8
@@ -1207,7 +1355,7 @@ export class HighlightRuntime {
       return
     }
     if (hero.state === 'slide' || hero.state === 'dive' || hero.state === 'down' || hero.state === 'celebrate') return
-    const locked = this.setPiece !== null && this.setPiece.takerId === hero.id
+    const locked = (this.setPiece !== null && this.setPiece.takerId === hero.id) || hero.state === 'wall'
     if (locked || this.phase === 'post') {
       hero.vel = scale(hero.vel, 0.8)
       if (this.phase === 'post' && this.result?.outcome === 'goal') this.celebrate(hero)
@@ -1303,6 +1451,12 @@ export class HighlightRuntime {
       // A carrier running at a retreating defence attacks the space at pace.
       const chased = this.agents.some((o) => o.team !== a.team && !o.isKeeper && dist(o.pos, a.pos) < 6)
       speed = (chased || a.team === 'opp' ? topSpeed({ ...a, sprint: true }) * (0.8 + a01(a.attrs.dribbling) * 0.12) : speed) * 0.92
+    }
+    // corner_kick: team-mates attack the zones the hero picked.
+    const run = this.runs && this.time < this.runsUntil ? this.runs.get(a.id) : undefined
+    if (run && this.owner === null && a.team === 'hero') {
+      target = run
+      speed = topSpeed({ ...a, sprint: this.time > this.cornerKickAt - 0.3 })
     }
     // Respect set-piece distance.
     if (this.setPiece && !a.isKeeper && target && dist(target, this.setPiece.spot) < 9.15 && a.id !== this.setPiece.takerId) {
@@ -1629,7 +1783,36 @@ export class HighlightRuntime {
     const sp = this.setPiece
     if (!sp) return
     const taker = this.agents.find((a) => a.id === sp.takerId)
-    if (!taker || taker.isHero) return
+    if (!taker) return
+    if (taker.isHero) {
+      // corner_kick: strike the delivery the hero picked.
+      const c = this.cornerChoice
+      if (sp.kind !== 'corner' || !c || this.time < this.cornerKickAt) return
+      const k = cornerKick(c, sp.spot)
+      const short = c.zone === 'short' ? this.shortOption() : null
+      const target = cornerZoneTarget(c.zone, sp.spot, short?.pos ?? null)
+      const plan = planKick({ kind: k.kind, from: sp.spot, target, targetZ: k.kind === 'cross' ? k.targetZ : undefined, power: k.power, curl: k.curl, attrs: taker.attrs, pressure: 0, assist: this.assist, env: this.env }, this.rng)
+      this.ball.x = sp.spot.x
+      this.ball.y = sp.spot.y
+      this.kickBall(taker, plan, k.kind, k.power, short?.id ?? null)
+      return
+    }
+    if (sp.kind === 'freekick' && this.kind === 'fk_wall') {
+      if (this.fkKickAt < 0 || this.time < this.fkKickAt) return
+      const keeper = this.agents.find((a) => a.team === 'hero' && a.isKeeper)
+      const wall = sp.wall.map((id) => this.agents.find((a) => a.id === id)).filter((a): a is Agent => !!a).map((a) => a.pos)
+      const skill = a01(taker.attrs.setPieces) * 0.7 + a01(taker.attrs.shooting) * 0.3
+      const runners = this.agents.filter((a) => a.team === 'opp' && !a.isKeeper && a !== taker).map((a) => ({ id: a.id, pos: a.pos }))
+      const markers = this.agents.filter((a) => a.team === 'hero' && !a.isKeeper && a.state !== 'wall').map((a) => a.pos)
+      const shot = chooseFkShot({ spot: sp.spot, wall, keeper: keeper?.pos ?? null, skill, runners, markers }, this.rng)
+      this.fkShot = shot.label
+      const kind: KickKind = shot.label === 'cross' ? 'cross' : 'freekick'
+      const plan = planKick({ kind, from: sp.spot, target: shot.target, targetZ: shot.z, power: shot.power, curl: shot.curl, attrs: taker.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 1.3 / this.difficulty }, this.rng)
+      this.ball.x = sp.spot.x
+      this.ball.y = sp.spot.y
+      this.kickBall(taker, plan, kind, shot.power, shot.passTo ?? null)
+      return
+    }
     if (sp.kind === 'corner' && this.time >= 1.4) {
       // Aim at the hero (relationship + crossing decide accuracy), else best header.
       const heroC = { id: this.hero.id, pos: this.hero.pos, vel: this.hero.vel }
@@ -2480,7 +2663,12 @@ export class HighlightRuntime {
     // Stopping the attacker means stopping the shot: a save by our keeper or a miss after the
     // hero was beaten is a chance conceded, unless the hero himself won the ball back.
     let outcome = outcomeIn
-    if (outcome === 'defended' && this.oppShotFree && !(this.owner?.isHero)) outcome = 'shot_conceded'
+    if (outcome === 'defended' && this.oppShotFree && !(this.owner?.isHero) && this.kind !== 'fk_wall') outcome = 'shot_conceded'
+    // fk_wall: anything but a goal means the wall and the keeper did their job.
+    // (A long clearance the hero hits that ends with their keeper is the same.)
+    if (this.kind === 'fk_wall' && FK_WALL_HELD.has(outcome)) outcome = 'defended'
+    // corner_kick: a delivery the defence dealt with is "cleared", not a lost ball.
+    if (this.kind === 'corner_kick' && this.cornerChoice && !extra.offside && (outcome === 'lost_ball' || outcome === 'timeout')) outcome = 'cleared'
     this.result = this.buildResult(outcome, extra)
     this.endReason = reason
     this.phase = 'post'

@@ -21,8 +21,8 @@ function Gesture({ kind, group }: { kind: 'swipe' | 'tap' | 'click' | 'keys'; gr
   if (kind === 'keys') {
     const pad = inputPlatform.value === 'pad'
     const keys = pad
-      ? (group === 'pass' || group === 'defend' || group === 'fitness' || group === 'cross' || group === 'tackleDuel' ? ['A'] : group === 'move' ? ['L', 'RT'] : ['B'])
-      : group === 'move' || group === 'tackleDuel' ? ['W', 'A', 'S', 'D'] : group === 'fitness' ? ['␣'] : ['␣']
+      ? (group === 'pass' || group === 'defend' || group === 'fitness' || group === 'cross' || group === 'tackleDuel' || group === 'cornerPick' || group === 'wallSet' ? ['A'] : group === 'move' ? ['L', 'RT'] : ['B'])
+      : group === 'move' || group === 'tackleDuel' || group === 'wallSet' ? ['W', 'A', 'S', 'D'] : group === 'cornerPick' ? ['1', '2', '3', '4'] : group === 'fitness' ? ['␣'] : ['␣']
     return (
       <div class={`hint-gesture hint-keys${pad ? ' is-pad' : ''}`} role="img" aria-label={label}>
         {keys.map((k, i) => <span key={k + i} class="hint-key" style={{ ['--i' as string]: i }}>{k}</span>)}

@@ -458,10 +458,10 @@ export function interviewOptions(won: boolean): { question: { tr: string; en: st
 
 const MOCK_KINDS: Record<string, string[]> = {
   ST: ['one_on_one', 'cross', 'edge_of_box', 'counter', 'hold_up'],
-  W: ['cross', 'counter', 'one_on_one', 'edge_of_box', 'build_up'],
+  W: ['cross', 'counter', 'one_on_one', 'edge_of_box', 'corner_kick'],
   M: ['build_up', 'edge_of_box', 'counter', 'defend', 'cross'],
   D: ['defend', 'interception', 'defend_1v1', 'block', 'corner'],
-  GK: ['gk_save'],
+  GK: ['gk_save', 'fk_wall'],
 }
 const kindPool = (p: Position): string[] =>
   p === 'GK' ? MOCK_KINDS.GK : p === 'ST' ? MOCK_KINDS.ST : p === 'LW' || p === 'RW' ? MOCK_KINDS.W : p === 'CB' || p === 'LB' || p === 'RB' ? MOCK_KINDS.D : MOCK_KINDS.M

@@ -3,7 +3,7 @@
  * Lets you play a fake Highlight of every kind and tweak settings.
  * Run `npx vite` and open /match-demo.html.
  */
-import type { Difficulty, KitColors, Lang } from '../core/types'
+import type { Difficulty, KitColors, Lang, Position } from '../core/types'
 import type { HighlightKind, Weather } from '../sim/match/types'
 import type { AimAssist } from './kick'
 import { ALL_KINDS, makeDemoHighlight } from './demoHighlights'
@@ -37,6 +37,9 @@ const lowFx = params.get('lowfx') === '1'
 const qParam = params.get('q')
 const quality = isQualityChoice(qParam) && qParam !== 'auto' ? qParam : undefined
 let handle: HighlightHandle | null = null
+/** ?hero=CB: play the moment as another position (fk_wall as the captain in the wall). */
+const HERO_POSITIONS: readonly Position[] = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST']
+const heroPosParam = HERO_POSITIONS.find((p) => p === params.get('hero'))
 
 const buttons = new Map<HighlightKind, HTMLButtonElement>()
 for (const k of ALL_KINDS) {
@@ -75,7 +78,7 @@ function play(): void {
   handle?.stop()
   for (const [k, b] of buttons) b.classList.toggle('on', k === current)
   const lang = $<HTMLSelectElement>('lang').value as Lang
-  const hl = makeDemoHighlight(current, seed, lang)
+  const hl = makeDemoHighlight(current, seed, lang, 72, heroPosParam)
   resultEl.textContent = '…'
   // Blur selects so keyboard controls reach the game.
   ;(document.activeElement as HTMLElement | null)?.blur?.()

@@ -45,6 +45,9 @@ import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder } from './inputReplay'
+import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './setPiecePicker'
+import { wallGeometry } from './setup'
+import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
 import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
@@ -120,7 +123,7 @@ const SCENE_KEY = 'starpath-match'
 const T = {
   en: {
     goal: 'GOAL!', assist: 'ASSIST!', saved: 'SAVED', missed: 'MISSED', blocked: 'BLOCKED', woodwork: 'OFF THE WOODWORK!',
-    pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', shot_conceded: 'CHANCE CONCEDED', foul_won: 'FOUL WON',
+    pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', shot_conceded: 'CHANCE CONCEDED', foul_won: 'FOUL WON', cleared: 'CLEARED',
     foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', paused: 'PAUSED', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
     header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
@@ -133,7 +136,7 @@ const T = {
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
-    pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', shot_conceded: 'RAKİP ŞUT BULDU', foul_won: 'FAUL ALDIN',
+    pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', shot_conceded: 'RAKİP ŞUT BULDU', foul_won: 'FAUL ALDIN', cleared: 'UZAKLAŞTIRILDI',
     foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', paused: 'DURAKLATILDI', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
     header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
@@ -273,6 +276,11 @@ export class MatchScene extends Phaser.Scene {
   private replay: { frames: ReplayFrame[]; t: number; t0: number; t1: number; keyT: number; goal: boolean; endX: number } | null = null
   private finished = false
   private lastIntent: FrameIntent | null = null
+  /** Set-piece picker (corner delivery / wall) while the runtime waits for the hero. */
+  private picker: { st: PickerState; dom: PickerDom; padPrev: boolean[]; onKey: (e: KeyboardEvent) => void } | null = null
+  private pickerOut: HeroAction[] = []
+  /** Swallows the taps/keys that closed the picker (real seconds left). */
+  private pickerCooldown = 0
   /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
   private inputRec = new InputRecorder()
   private assistText: Phaser.GameObjects.Text | null = null
@@ -453,10 +461,15 @@ export class MatchScene extends Phaser.Scene {
       celebration: this.celeb?.id ?? null,
       replayAngle: this.replay ? this.currentAngle() : null,
       heroCallAt: rt.heroCallAt,
+      pendingChoice: rt.pendingChoice,
+      cornerChoice: rt.cornerChoice,
+      wallChoice: rt.wallChoice,
+      wall: rt.setPiece?.wall.length ?? 0,
     }
   }
 
   private cleanup(): void {
+    this.closePicker()
     if (this.onKey) window.removeEventListener('keydown', this.onKey)
     this.onKey = null
     this.input0?.dispose()
@@ -904,6 +917,7 @@ export class MatchScene extends Phaser.Scene {
     if (this.mode === 'play' && this.paused) {
       this.renderLive(0)
     } else if (this.mode === 'play') {
+      this.updatePicker(dt, intent)
       if (this.auto) {
         autopilotStep(rt, this.auto)
         rt.update(dt)
@@ -921,6 +935,121 @@ export class MatchScene extends Phaser.Scene {
     }
     this.drawOverlay(dt)
     this.updateHud(dt, intent)
+  }
+
+  // ───────────────────────── Set-piece picker ─────────────────────────
+
+  /** Opens / feeds / closes the corner or wall picker and merges its choice into this frame's input. */
+  private updatePicker(dt: number, intent: FrameIntent): void {
+    const rt = this.rt
+    this.pickerCooldown = Math.max(0, this.pickerCooldown - dt)
+    if (rt.pendingChoice && !this.auto && !this.picker && rt.phase === 'live') this.openPicker(rt.pendingChoice)
+    if (this.picker) {
+      this.pollPickerPad()
+      this.framePicker()
+      // The choice (if any) is the only input the stopped clock takes.
+      intent.actions = this.pickerOut.splice(0, this.pickerOut.length)
+      if (!rt.pendingChoice) {
+        this.closePicker()
+        this.pickerCooldown = 0.35
+      }
+    } else if (this.pickerCooldown > 0) {
+      intent.actions = []
+    }
+  }
+
+  private openPicker(mode: 'corner' | 'wall'): void {
+    const host = this.game.canvas.parentElement
+    if (!host) return
+    if (getComputedStyle(host).position === 'static') host.style.position = 'relative'
+    const st = new PickerState(mode, this.wallRightIsPlus())
+    const pad = typeof navigator !== 'undefined' && !!navigator.getGamepads && Array.from(navigator.getGamepads()).some((p) => p && p.connected)
+    const dom = new PickerDom(host, st, this.data0.opts.lang, pad, (a) => this.pickerOut.push(a), () => {
+      if (st.mode === 'wall') this.rt.previewWall(st.wall)
+    })
+    const onKey = (e: KeyboardEvent) => {
+      const tgt = e.target as HTMLElement | null
+      if (tgt && (tgt.tagName === 'INPUT' || tgt.tagName === 'TEXTAREA' || tgt.tagName === 'SELECT')) return
+      // Buttons handle their own Enter/Space when focused.
+      if (tgt && tgt.tagName === 'BUTTON' && dom.root.contains(tgt) && (e.code === 'Enter' || e.code === 'Space' || e.code === 'NumpadEnter')) return
+      if (e.repeat) return
+      const input = keyToPickerInput(e.code, st.mode)
+      if (!input) return
+      e.preventDefault()
+      dom.feed(input)
+    }
+    window.addEventListener('keydown', onKey)
+    this.picker = { st, dom, padPrev: [], onKey }
+  }
+
+  private closePicker(): void {
+    const p = this.picker
+    if (!p) return
+    window.removeEventListener('keydown', p.onKey)
+    p.dom.dispose()
+    this.picker = null
+  }
+
+  private pollPickerPad(): void {
+    const p = this.picker
+    if (!p || typeof navigator === 'undefined' || !navigator.getGamepads) return
+    const gp = Array.from(navigator.getGamepads()).find((x) => x && x.connected)
+    if (!gp) return
+    const now = gp.buttons.map((b) => b.pressed || b.value > 0.4)
+    for (const input of padToPickerInputs(p.padPrev, now, p.st.mode)) p.dom.feed(input)
+    p.padPrev = now
+  }
+
+  /**
+   * Camera while choosing: ball, target (corner zone / wall) and goal in one
+   * frame, kept clear of the picker (bottom for corners, top for the wall,
+   * since our goal is at the bottom of the screen).
+   */
+  private framePicker(): void {
+    const p = this.picker
+    const rt = this.rt
+    const sp = rt.setPiece
+    if (!p || !sp) return
+    const fk = p.st.mode === 'wall'
+    const canvas = this.game.canvas
+    const rect = canvas.getBoundingClientRect()
+    const k = this.scale.height / Math.max(1, rect.height)
+    p.dom.place(fk ? (this.hudTop / k) + 8 : null)
+    const ph = (p.dom.root.offsetHeight + 16) * k
+    const land = fk ? wallGeometry(sp.spot).anchor : rt.cornerTarget(p.st.corner.zone) ?? sp.spot
+    const goal = { x: fk ? 0 : PITCH_LENGTH, y: GOAL_CENTER_Y, halfWidth: 3.66, height: 2.44 }
+    const vh = this.scale.height - this.hudTop
+    const f = crossCamFit(sp.spot, land, goal, { w: this.scale.width, h: Math.max(120, vh - ph) }, this.cam.base)
+    const zoom = this.cam.base * f.zoomMult
+    this.crossCam = { fx: f.x, fy: f.y + ((fk ? -1 : 1) * ph) / (2 * zoom), zoomMult: f.zoomMult, until: rt.time + 1 }
+  }
+
+  /** True when "→" on screen moves the wall toward the middle of the goal (+ nudge). */
+  private wallRightIsPlus(): boolean {
+    const sp = this.rt.setPiece
+    if (!sp) return true
+    const { anchor, across } = wallGeometry(sp.spot)
+    const a = project(anchor.x, anchor.y)
+    const b = project(anchor.x + across.x, anchor.y + across.y)
+    return Math.abs(b.x - a.x) > 1e-3 ? b.x > a.x : b.y > a.y
+  }
+
+  /** Picker preview on the pitch: the corner's target zone. */
+  private drawPickerPreview(g: Phaser.GameObjects.Graphics): void {
+    const p = this.picker
+    if (!p || p.st.mode !== 'corner') return
+    const t = this.rt.cornerTarget(p.st.corner.zone)
+    const sp = this.rt.setPiece
+    if (!t || !sp) return
+    const pulse = this.rm ? 0.8 : 0.6 + 0.4 * Math.abs(Math.sin(this.elapsed * 4))
+    const c = project(t.x, t.y)
+    const from = project(sp.spot.x, sp.spot.y)
+    g.lineStyle(0.1 * PPM, 0xffd23f, 0.55)
+    g.lineBetween(from.x, from.y, c.x, c.y)
+    g.fillStyle(0xffd23f, 0.18 * pulse)
+    g.fillEllipse(c.x, c.y, 3.2 * PPM, 3.2 * PPM * TILT)
+    g.lineStyle(0.12 * PPM, 0xffd23f, pulse)
+    g.strokeEllipse(c.x, c.y, 3.2 * PPM, 3.2 * PPM * TILT)
   }
 
   /** Team-mate positions (meter scheme: tapping a team-mate stays a pass). */
@@ -1718,6 +1847,7 @@ export class MatchScene extends Phaser.Scene {
         g.lineBetween(c.x, c.y, d.x, d.y)
       }
     }
+    this.drawPickerPreview(g)
     this.drawLabels()
   }
 

@@ -87,6 +87,8 @@ export const tr = {
     hold_up: 'Top saklama',
     defend_1v1: '1’e 1 savunma',
     block: 'Şut bloğu',
+    corner_kick: 'Korner kullanımı',
+    fk_wall: 'Baraj kurma',
   },
   post: {
     title: 'Maç Sonu',
@@ -205,6 +207,8 @@ export const en: Shape<typeof tr> = {
     hold_up: 'Hold-up play',
     defend_1v1: '1v1 defending',
     block: 'Shot block',
+    corner_kick: 'Corner delivery',
+    fk_wall: 'Setting the wall',
   },
   post: {
     title: 'Full Time',

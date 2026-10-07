@@ -11,7 +11,7 @@ import { PITCH_LENGTH } from '../sim/match/types'
 import { GOAL_CENTER_Y } from './physics'
 
 const OUTCOMES: HighlightOutcome[] = [
-  'goal', 'assist', 'saved', 'missed', 'blocked', 'woodwork', 'pass_complete', 'lost_ball', 'defended', 'conceded', 'shot_conceded', 'foul_won', 'foul_committed', 'timeout',
+  'goal', 'assist', 'saved', 'missed', 'blocked', 'woodwork', 'pass_complete', 'lost_ball', 'defended', 'conceded', 'shot_conceded', 'foul_won', 'foul_committed', 'timeout', 'cleared',
 ]
 
 function play(kind: (typeof ALL_KINDS)[number], seed: number, auto: boolean, opts: RuntimeOptions = {}) {

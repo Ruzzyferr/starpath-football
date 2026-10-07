@@ -92,6 +92,8 @@ export interface HumanBotState {
   looseSince: number
   /** block: how far off the shooting line this player ends up (m, drawn once; NaN = not yet). */
   blockErr: number
+  /** Real time the set-piece choice will be made (−1 = not yet planned). */
+  choiceAt: number
 }
 
 export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
@@ -119,6 +121,7 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     engaged: '',
     looseSince: -1,
     blockErr: Number.NaN,
+    choiceAt: -1,
   }
 }
 
@@ -229,6 +232,19 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   st.real += realDt
   if (rt.phase !== 'live') {
     rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+    return
+  }
+  // Set-piece choices: a person takes a second or two to decide.
+  if (rt.pendingChoice) {
+    rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+    if (st.choiceAt < 0) st.choiceAt = st.real + st.rng.range(0.8, 2.2)
+    if (st.real < st.choiceAt) return
+    if (rt.pendingChoice === 'corner') {
+      const zone = st.rng.weighted(['near', 'far', 'spot', 'short'] as const, (z) => ({ near: 0.3, far: 0.35, spot: 0.25, short: 0.1 })[z])
+      rt.queueAction({ kind: 'corner', zone, height: st.rng.chance(0.5) ? 'driven' : 'floated', curl: st.rng.chance(0.6) ? 'in' : 'out' })
+    } else {
+      rt.queueAction({ kind: 'wall', count: st.rng.weighted([3, 4, 5], (n) => (n === 4 ? 2 : 1)), nudge: st.rng.pick([-0.5, 0, 0, 0.5]) })
+    }
     return
   }
   const hero = rt.hero

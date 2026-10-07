@@ -29,6 +29,10 @@ const BANDS: Record<FeelKind, [number, number]> = {
   hold_up: [0.45, 0.8],
   defend_1v1: [0.5, 0.85],
   block: [0.3, 0.65],
+  // Set-piece choices (2.1#95 / #97). Hero corner: assist or goal (measured N=200 ~0.13);
+  // free kick against with the hero in goal: kept out (measured N=60 ~0.72).
+  corner_kick: [0.06, 0.25],
+  fk_wall: [0.58, 0.88],
 }
 
 const N = 60
@@ -39,7 +43,7 @@ describe('match feel (average human, normal)', () => {
   for (const kind of FEEL_KINDS) {
     it(`${kind} converts within band`, () => {
       // Low-rate kinds need a bigger sample for a stable estimate.
-      const r = feelRate(kind, 'average', 'normal', kind === 'cross' || kind === 'corner' ? 200 : N)
+      const r = feelRate(kind, 'average', 'normal', kind === 'cross' || kind === 'corner' || kind === 'corner_kick' ? 200 : N)
       expect(r).toBeGreaterThanOrEqual(BANDS[kind][0])
       expect(r).toBeLessThanOrEqual(BANDS[kind][1])
     }, 60_000)

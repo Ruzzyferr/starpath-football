@@ -33,7 +33,7 @@ const OUTCOME: Record<string, { tr: string; en: string }> = {
   blocked: { tr: 'Blok', en: 'Blocked' }, woodwork: { tr: 'Direk', en: 'Woodwork' }, pass_complete: { tr: 'İyi oyun', en: 'Good play' },
   lost_ball: { tr: 'Top kaybı', en: 'Lost it' }, defended: { tr: 'Savunma', en: 'Defended' }, conceded: { tr: 'Gol yedik', en: 'Conceded' },
   shot_conceded: { tr: 'Şut verdik', en: 'Chance conceded' }, foul_won: { tr: 'Faul alındı', en: 'Foul won' }, foul_committed: { tr: 'Faul', en: 'Foul' },
-  timeout: { tr: 'Süre bitti', en: "Time's up" },
+  timeout: { tr: 'Süre bitti', en: "Time's up" }, cleared: { tr: 'Uzaklaştırıldı', en: 'Cleared' },
 }
 
 function MomentRow({ m, onWatch }: { m: MomentRecording; onWatch: (m: MomentRecording) => void }) {

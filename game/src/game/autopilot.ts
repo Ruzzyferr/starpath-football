@@ -28,6 +28,15 @@ export function autopilotStep(rt: HighlightRuntime, st: AutopilotState): void {
     rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
     return
   }
+  // Set-piece choices: a varied but sensible default.
+  if (rt.pendingChoice === 'corner') {
+    rt.queueAction({ kind: 'corner', zone: st.side > 0 ? 'far' : 'near', height: 'floated', curl: 'in' })
+    return
+  }
+  if (rt.pendingChoice === 'wall') {
+    rt.queueAction({ kind: 'wall', count: 4, nudge: 0 })
+    return
+  }
   const hero = rt.hero
   const ball = { x: rt.ball.x, y: rt.ball.y }
   const t = rt.time

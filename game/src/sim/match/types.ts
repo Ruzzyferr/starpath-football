@@ -69,6 +69,8 @@ export interface MatchSetup {
   referee?: Referee
   /** Keepers' book on the hero from earlier matches (WP-14). */
   keeperBook?: ShotBook
+  /** The hero wears the armband: he organises the wall at opposition free kicks. */
+  heroCaptain?: boolean
 }
 
 export type MatchEventType =
@@ -107,9 +109,11 @@ export type HighlightKind =
   | 'hold_up' // back to goal under a tight marker: shield it until support arrives, then lay it off
   | 'defend_1v1' // isolated against a dribbler with space behind: jockey, show him wide, tackle on the heavy touch
   | 'block' // an opponent winds up a shot from the edge: get in the line and block it
+  | 'corner_kick' // the hero takes a corner: pick delivery zone, height and curl, team-mates attack it
+  | 'fk_wall' // opposition free kick near our box: the hero (keeper or captain) sets the wall, then the kick
 
 /** Kinds where the hero's team is defending (WP-14 adds defend_1v1 and block). */
-export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block'])
+export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall'])
 
 export interface Vec2 {
   x: number
@@ -160,6 +164,7 @@ export type HighlightOutcome =
   | 'defended' // successful defensive action / GK save
   | 'conceded' // defensive moment failed → goal against
   | 'shot_conceded' // defensive moment: the opponent got a shot away (saved / wide), no goal
+  | 'cleared' // the hero's corner was delivered but the defence (or keeper) dealt with it
   | 'foul_won' | 'foul_committed'
   | 'timeout'
 

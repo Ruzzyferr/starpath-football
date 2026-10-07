@@ -241,6 +241,8 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       // WP-14: the referee (stable per-country pool, picked by fixture) and the keepers' book on the hero.
       referee: refereeFor(state.meta.seed, home.countryId, fixture.id),
       ...(state.hero.keeperBook ? { keeperBook: copyBook(state.hero.keeperBook) } : {}),
+      // The armband: the hero organises the wall at free kicks against (club matches).
+      ...(!national && state.hero.contract?.role === 'captain' ? { heroCaptain: true } : {}),
     }
     const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
     writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts, ...(national ? { national } : {}) } satisfies ActiveMatchBlob)

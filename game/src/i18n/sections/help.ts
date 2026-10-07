@@ -63,6 +63,8 @@ export const tr = {
       cross: 'Bölgeye dokun ya da kaydır: orta. Top, koşucu varırken bölgeye insin.',
       headMachine: 'Sahaya çık, sonra kale hedefine dokun: zıpla ve kafa vur. Zamanlama topu havada yakalar.',
       tackleDuel: 'Rakibe yaklaş ve dokun: top kapma. Topa doğru kaydırırsan kayarak girersin. Top açıkken gir.',
+      cornerPick: 'Bölgeye dokun: yakın direk, arka direk, penaltı noktası ya da kısa. Önce alttaki düğmelerle yüksekliği (sert/havalı) ve kavisi (içe/dışa) seç.',
+      wallSet: '+ / − ile barajdaki oyuncu sayısını (2–5), oklarla barajın yerini ayarla ve onayla. Büyük baraj açıyı kapatır ama kaleciyi kör eder, ceza sahasında adam azalır.',
     },
     mouse: {
       shoot: 'Fareyi kaleye tut, sol tuşu basılı tut ve bırak: şut. Basılı tutma süresi gücü belirler.',
@@ -76,6 +78,8 @@ export const tr = {
       cross: 'Işıklı bölgeye tıkla ya da ORTA/Boşluk: orta. Koşucu varırken bırak.',
       headMachine: 'WASD ile noktaya çık, sonra kalede hedefe tıkla ya da Boşluk: zıpla ve kafa vur.',
       tackleDuel: 'WASD ile rakibin önünde kal, Boşluk ile top kap. Top açılınca (halka yeşil) gir.',
+      cornerPick: '1–4 ya da tıkla: bölge (yakın, arka, nokta, kısa). Z: sert/havalı, X: içe/dışa kavis. Boşluk/Enter: kullan.',
+      wallSet: 'W/S ya da ↑/↓: baraj sayısı (2–5). A/D ya da ←/→: barajı kaydır. Boşluk/Enter: onayla. Büyük baraj kaleciyi kör eder.',
     },
     pad: {
       shoot: 'B’yi basılı tut ve bırak: şut. Sol analog nişanı belirler; LB ile aşırtma.',
@@ -89,6 +93,8 @@ export const tr = {
       cross: 'Sol analogla bölgeyi seç, A ile ortala. Koşucu varırken bas.',
       headMachine: 'Sol analogla noktaya çık, B ile zıpla ve kafa vur.',
       tackleDuel: 'Sol analogla rakibin önünde kal, A ile top kap. Halka yeşilken gir.',
+      cornerPick: 'Yön tuşlarıyla bölgeyi seç; X: sert/havalı, Y: içe/dışa kavis; A: kullan.',
+      wallSet: 'Yön ↑/↓: baraj sayısı, ←/→: barajı kaydır, A: onayla.',
     },
     gesture: {
       swipe: 'Kaydırma hareketi',
@@ -265,6 +271,8 @@ export const en: Shape<typeof tr> = {
       cross: 'Tap or swipe to the lit zone to cross. Drop it in as the runner arrives.',
       headMachine: 'Move onto the spot, then tap the target in goal: jump and head it. Time the jump to meet the ball in the air.',
       tackleDuel: 'Get close to the dribbler and tap to tackle. Swipe toward the ball to slide. Go in when the ball is exposed.',
+      cornerPick: 'Tap a zone: near post, far post, penalty spot or short. Set the height (driven/floated) and curl (in/out) with the buttons below first.',
+      wallSet: 'Use + / − for the number in the wall (2–5) and the arrows to shift it, then confirm. A big wall covers the angle but screens your keeper and leaves fewer markers.',
     },
     mouse: {
       shoot: 'Point at the goal, hold the left button and release to shoot. Hold longer for more power.',
@@ -278,6 +286,8 @@ export const en: Shape<typeof tr> = {
       cross: 'Click the lit zone or press Space to cross. Release as the runner arrives.',
       headMachine: 'Use WASD to reach the spot, then click a target in goal or press Space: jump and head it.',
       tackleDuel: 'Stay goal-side with WASD and press Space to tackle. Go in when the ring turns green.',
+      cornerPick: '1–4 or click: zone (near, far, spot, short). Z: driven/floated, X: inswinger/outswinger. Space/Enter: take it.',
+      wallSet: 'W/S or ↑/↓: players in the wall (2–5). A/D or ←/→: shift the wall. Space/Enter: confirm. A big wall screens your keeper.',
     },
     pad: {
       shoot: 'Hold B and release to shoot. The left stick aims; LB chips.',
@@ -291,6 +301,8 @@ export const en: Shape<typeof tr> = {
       cross: 'Aim with the left stick and press A to cross. Time it with the runner.',
       headMachine: 'Reach the spot with the left stick, then press B to jump and head it.',
       tackleDuel: 'Stay goal-side with the left stick and press A to tackle. Go in when the ring is green.',
+      cornerPick: 'D-pad picks the zone; X: driven/floated, Y: in/outswinger; A: take it.',
+      wallSet: 'D-pad ↑/↓: players in the wall, ←/→: shift it, A: confirm.',
     },
     gesture: {
       swipe: 'Swipe gesture',

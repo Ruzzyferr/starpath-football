@@ -11,14 +11,14 @@ import { PITCH_LENGTH } from '../sim/match/types'
 
 export const ALL_KINDS: readonly HighlightKind[] = [
   'build_up', 'counter', 'one_on_one', 'cross', 'edge_of_box', 'freekick', 'penalty', 'corner', 'defend', 'gk_save', 'gk_penalty',
-  'counter_2v1', 'long_ball_control', 'rebound', 'interception', 'hold_up', 'defend_1v1', 'block',
+  'counter_2v1', 'long_ball_control', 'rebound', 'interception', 'hold_up', 'defend_1v1', 'block', 'corner_kick', 'fk_wall',
 ]
 
 /** Typical hero position for a kind (generated scenarios). */
 export const KIND_HERO_POS: Record<HighlightKind, Position> = {
   build_up: 'CM', counter: 'AM', one_on_one: 'ST', cross: 'LW', edge_of_box: 'AM', freekick: 'AM', penalty: 'ST', corner: 'CB',
   defend: 'CB', gk_save: 'GK', gk_penalty: 'GK', counter_2v1: 'ST', long_ball_control: 'ST', rebound: 'ST', interception: 'CB',
-  hold_up: 'ST', defend_1v1: 'RB', block: 'CB',
+  hold_up: 'ST', defend_1v1: 'RB', block: 'CB', corner_kick: 'LW', fk_wall: 'GK',
 }
 
 /**
@@ -123,10 +123,11 @@ const LAYOUTS: Partial<Record<HighlightKind, KindLayout>> = {
  * @param seed RNG seed (attributes vary)
  * @param lang prompt language
  * @param heroOvr hero rating
+ * @param heroPos hero position override (generated scenario), e.g. a captain CB for fk_wall
  */
-export function makeDemoHighlight(kind: HighlightKind, seed = 1, lang: Lang = 'en', heroOvr = 72): Highlight {
+export function makeDemoHighlight(kind: HighlightKind, seed = 1, lang: Lang = 'en', heroOvr = 72, heroPos?: Position): Highlight {
   const L = LAYOUTS[kind]
-  if (!L) return { ...generatedHighlight(kind, seed, { heroOvr, lang }), id: `demo_${kind}_${seed}` }
+  if (!L || heroPos) return { ...generatedHighlight(kind, seed, { heroOvr, lang, ...(heroPos ? { heroPos } : {}) }), id: `demo_${kind}_${seed}` }
   const rng = new Rng(`${kind}:${seed}`)
   const players: ScenarioPlayer[] = []
   const heroShape = L.heroAttacks ? ATTACK_SHAPE : DEFEND_SHAPE.map((s) => ({ role: s.role, pos: mirror(s.pos) }))

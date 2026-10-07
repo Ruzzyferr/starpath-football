@@ -53,6 +53,7 @@ import {
   computeRatings,
   FOUL_WEIGHT,
   freekickSkill,
+  cornerSkill,
   HEAD_WEIGHT,
   penaltySkill,
   positionGroup,
@@ -817,8 +818,11 @@ export class MatchSim {
   private corner(att: Side, takerId: string | null): void {
     this.s.teams[att].corners++
     const taker = takerId ? this.player(takerId) : this.pickFrom(att, (p) => p.attrs.crossing + p.attrs.setPieces + 1, { excludeHero: true })
-    this.emit('corner', att, this.say('corner', { ...this.teamVars(att), player: taker?.name ?? '' }))
+    // The hero takes the dangerous corners when he is the designated taker (2.1#97).
+    const heroTakes = !takerId && this.heroTakes(att, (p) => cornerSkill(p.attrs))
+    this.emit('corner', att, this.say('corner', { ...this.teamVars(att), player: heroTakes ? this.name(this.s.hero.id) : taker?.name ?? '' }))
     if (!this.rng.chance(0.22)) return
+    if (heroTakes && this.canSetPieceHighlight()) return this.createHighlight('corner_kick', 'setpiece')
     const header = this.pickShooter(att, true)
     if (!header) return
     this.emit('commentary', att, this.say('cornerHeader', { ...this.teamVars(att), player: header.name }), { playerId: header.id })
@@ -887,6 +891,12 @@ export class MatchSim {
     return !!hero && this.s.hero.side === side && this.heroOnPitch() && hero.position === 'GK'
   }
 
+  /** The hero sets the wall for his team: he is the keeper, or the captain on the pitch. */
+  private heroOrganisesWall(side: Side): boolean {
+    if (this.heroIsKeeperFor(side)) return true
+    return !!this.s.setup.heroCaptain && this.s.hero.side === side && this.heroOnPitch()
+  }
+
   private canSetPieceHighlight(): boolean {
     const h = this.s.hero
     const remaining = h.plan.filter((m) => m > this.s.clock).length
@@ -936,6 +946,8 @@ export class MatchSim {
     if (this.heroTakes(att, (p) => freekickSkill(p.attrs)) && this.canSetPieceHighlight()) {
       return this.createHighlight('freekick', 'setpiece')
     }
+    // Free kick against: the hero in goal, or the captain, sets the wall (2.1#95).
+    if (this.heroOrganisesWall(def) && this.canSetPieceHighlight()) return this.createHighlight('fk_wall', 'setpiece')
     const taker = this.bestBy(att, (p) => (this.isHero(p.id) ? -1 : freekickSkill(p.attrs)))
     if (taker) this.resolveShot(att, taker, SHOT_XG.fk * this.rng.range(0.7, 1.3), 'fk')
   }
@@ -1345,7 +1357,7 @@ export class MatchSim {
       case 'assist': {
         team.shots++
         team.onTarget++
-        const scorer = this.validMate(r.scorerId) ?? this.validMate(p.finisherId) ?? this.pickShooter(side, kind === 'corner' || kind === 'cross')?.id
+        const scorer = this.validMate(r.scorerId) ?? this.validMate(p.finisherId) ?? this.pickShooter(side, kind === 'corner' || kind === 'cross' || kind === 'corner_kick')?.id
         if (scorer) return this.applyGoal(side, scorer, heroId, {})
         return
       }
@@ -1364,6 +1376,8 @@ export class MatchSim {
         return this.emit('commentary', side, this.say('heroPass', vars), { playerId: heroId })
       case 'foul_won':
         return this.heroFoulWon(p, vars)
+      case 'cleared':
+        return this.emit('commentary', side, this.say('heroCornerCleared', vars), { playerId: heroId })
       case 'foul_committed':
         return this.emit('commentary', side, this.say('foulCommitted', vars), { playerId: heroId })
       default:
@@ -1419,6 +1433,10 @@ export class MatchSim {
           oppTeam.shots++
           return this.emit('shot', opp, this.say('heroBlocked', vars), { playerId: heroId })
         }
+        if (kind === 'fk_wall') {
+          oppTeam.shots++
+          return this.emit('shot', opp, this.say('heroWallHeld', vars), { playerId: heroId })
+        }
         // Outfield defending (tackle, interception, 1v1): no shot, no save.
         if (kind !== 'gk_save' && kind !== 'gk_penalty') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
         oppTeam.shots++
@@ -1429,7 +1447,7 @@ export class MatchSim {
         oppTeam.shots++
         oppTeam.onTarget++
         if (attacker) {
-          const assist = kind === 'gk_penalty' ? null : this.pickAssist(opp, attacker.id, 'open')
+          const assist = kind === 'gk_penalty' || kind === 'fk_wall' ? null : this.pickAssist(opp, attacker.id, 'open')
           this.applyGoal(opp, attacker.id, assist, { penalty: kind === 'gk_penalty' })
         }
         return

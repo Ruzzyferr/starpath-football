@@ -198,6 +198,11 @@ export function freekickSkill(a: Attributes): number {
   return a.setPieces * 0.7 + a.shooting * 0.3
 }
 
+/** Corner delivery skill (designated corner taker). */
+export function cornerSkill(a: Attributes): number {
+  return a.crossing * 0.6 + a.setPieces * 0.4
+}
+
 /** Scales an attribute-like value (0..100) into a ~0.6..1.4 multiplier around 60. */
 export function skillMult(v: number): number {
   return clamp(0.6 + 0.8 * ((v - 30) / 60), 0.45, 1.5)

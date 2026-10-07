@@ -232,6 +232,40 @@ export function buildCast(h: Highlight, rng: Rng, names?: Record<string, string>
       setPiece = { kind: 'corner', takerId: taker.id, spot, wall: [] }
       break
     }
+    case 'corner_kick': {
+      // The hero stands over the ball at the flag; the delivery is chosen in the runtime.
+      const top = ball.y < GOAL_CENTER_Y
+      const spot = { x: PITCH_LENGTH - 0.6, y: top ? 0.6 : PITCH_WIDTH - 0.6 }
+      Object.assign(ball, { x: spot.x, y: spot.y, z: 0, vx: 0, vy: 0 })
+      setPos(hero, { x: spot.x + 0.3 - 1.2, y: spot.y + (top ? -0.4 : 0.4) })
+      faceTo(hero, { x: PITCH_LENGTH - 11, y: GOAL_CENTER_Y })
+      setPos(oppKeeper, { x: PITCH_LENGTH - 0.9, y: GOAL_CENTER_Y + (top ? -1 : 1) })
+      clearRadius(agents, spot, SET_PIECE_DISTANCE, new Set([hero.id]))
+      ownerId = null
+      setPiece = { kind: 'corner', takerId: hero.id, spot, wall: [] }
+      break
+    }
+    case 'fk_wall': {
+      // Opposition direct free kick at our goal (x = 0). The wall is (re)set by the hero.
+      const spot = { x: clampY(ball.x, 16.5, 32), y: ball.y }
+      Object.assign(ball, { x: spot.x, y: spot.y, z: 0, vx: 0, vy: 0 })
+      let taker = agents.find((a) => a.id === sc.ball.ownerId && a.team === 'opp' && !a.isKeeper)
+      if (!taker) taker = nearest(agents.filter((a) => a.team === 'opp' && !a.isKeeper), spot)
+      if (!taker) throw new Error('fk_wall needs an opposition taker')
+      const goal = { x: 0, y: GOAL_CENTER_Y }
+      setPos(taker, add(spot, scale(norm(sub(spot, goal)), 1.6)))
+      faceTo(taker, goal)
+      const ourKeeper = agents.find((a) => a.team === 'hero' && a.isKeeper)
+      if (ourKeeper) {
+        setPos(ourKeeper, { x: 0.9, y: GOAL_CENTER_Y + (spot.y - GOAL_CENTER_Y) * 0.12 })
+        faceTo(ourKeeper, spot)
+      }
+      clearRadius(agents, spot, SET_PIECE_DISTANCE, new Set([taker.id]))
+      const wall = arrangeWall(agents, spot, DEFAULT_WALL, 0, hero.isKeeper ? null : hero)
+      ownerId = null
+      setPiece = { kind: 'freekick', takerId: taker.id, spot, wall }
+      break
+    }
     case 'hold_up': {
       // Back to goal: the hero has it, facing his own half, the marker on his back.
       ownerId = hero.id
@@ -288,6 +322,80 @@ export function buildCast(h: Highlight, rng: Rng, names?: Record<string, string>
 }
 
 const clampY = (y: number, lo: number, hi: number) => (y < lo ? lo : y > hi ? hi : y)
+
+/** Where each player stood before the first wall was set (stable wall picks). */
+const WALL_HOME = new WeakMap<Agent, Vec2>()
+
+/** Wall size the defence lines up by default (fk_wall). */
+export const DEFAULT_WALL = 4
+export const WALL_MIN = 2
+export const WALL_MAX = 5
+/** Wall shift along its line (m): + toward the middle of the goal, − outside the near post. */
+export const WALL_NUDGE_MAX = 1.5
+/** Spacing between wall players (m). */
+export const WALL_GAP = 0.62
+
+/** Where the wall stands for a free kick at our goal (x = 0): the line and its across direction. */
+export function wallGeometry(spot: Vec2): { anchor: Vec2; across: Vec2; nearPostY: number } {
+  const nearSide = spot.y < GOAL_CENTER_Y ? -1 : 1
+  const nearPostY = GOAL_CENTER_Y + nearSide * 3.66
+  // The end man lines up just outside the near post; the wall runs in toward the middle.
+  const dir = norm(sub({ x: 0, y: nearPostY + nearSide * 0.35 }, spot))
+  const anchor = add(spot, scale(dir, SET_PIECE_DISTANCE))
+  let across = { x: -dir.y, y: dir.x }
+  if (across.y * -nearSide < 0) across = { x: -across.x, y: -across.y }
+  return { anchor, across, nearPostY }
+}
+
+/** Positions of an n-man wall shifted by `nudge` (m), near-post end first. */
+export function wallSpots(spot: Vec2, count: number, nudge: number): Vec2[] {
+  const { anchor, across } = wallGeometry(spot)
+  const n = Math.round(clampY(count, WALL_MIN, WALL_MAX))
+  const out: Vec2[] = []
+  for (let i = 0; i < n; i++) out.push(add(anchor, scale(across, 0.3 + i * WALL_GAP + clampY(nudge, -WALL_NUDGE_MAX, WALL_NUDGE_MAX))))
+  return out
+}
+
+/**
+ * Lines up the hero's team in a wall for an opposition free kick (fk_wall).
+ * Deterministic in its inputs: the same count/nudge always picks the same
+ * players (nearest outfielders by id-stable order) and the same spots, so
+ * a live preview and the committed choice agree. Players released from a
+ * previous wall drop into the box to mark. Returns the wall ids.
+ * @param captain the hero when he organises from inside the wall (else null)
+ */
+export function arrangeWall(agents: Agent[], spot: Vec2, count: number, nudge: number, captain: Agent | null): string[] {
+  const spots = wallSpots(spot, count, nudge)
+  const { anchor } = wallGeometry(spot)
+  const home = (a: Agent): Vec2 => {
+    let h = WALL_HOME.get(a)
+    if (!h) {
+      h = { ...a.pos }
+      WALL_HOME.set(a, h)
+    }
+    return h
+  }
+  // Candidates by distance from where they stood before any wall was set (stable).
+  const pool = agents
+    .filter((a) => a.team === 'hero' && !a.isKeeper && a !== captain)
+    .sort((p, q) => dist(home(p), anchor) - dist(home(q), anchor) || (p.id < q.id ? -1 : 1))
+    .slice(0, WALL_MAX)
+  if (captain) home(captain)
+  const members = captain ? [captain, ...pool.slice(0, spots.length - 1)] : pool.slice(0, spots.length)
+  const ids = new Set(members.map((m) => m.id))
+  // Candidates left out drop into the box to mark (fixed spot per candidate).
+  pool.forEach((a, i) => {
+    if (ids.has(a.id)) return
+    a.state = 'run'
+    setPos(a, { x: 7 + (i % 2) * 3, y: GOAL_CENTER_Y + (i % 2 === 0 ? -1 : 1) * (2 + i * 1.4) })
+  })
+  members.forEach((m, i) => {
+    setPos(m, spots[i])
+    faceTo(m, spot)
+    m.state = 'wall'
+  })
+  return members.map((m) => m.id)
+}
 
 function nearest(list: Agent[], p: Vec2): Agent | undefined {
   let best: Agent | undefined

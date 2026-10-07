@@ -681,6 +681,30 @@ const LINES = {
       'Like a wall! {hero} ends the threat.',
     ],
   },
+  heroCornerCleared: {
+    tr: [
+      '{hero} korneri kullandı, savunma uzaklaştırdı.',
+      '{hero:gen} ortası ceza sahasında karşılandı.',
+      'Korner {hero:abl}, ama kafayı rakip vurdu.',
+    ],
+    en: [
+      '{hero} whips the corner in, but it is cleared.',
+      'The defence deals with the corner from {hero}.',
+      'Corner from {hero}, headed away.',
+    ],
+  },
+  heroWallHeld: {
+    tr: [
+      '{hero} barajı iyi kurdu, serbest vuruş sonuçsuz.',
+      'Baraj yerinde! {hero:gen} talimatı işe yaradı.',
+      'Serbest vuruş tehlike yaratmadı, {hero} barajı doğru dizdi.',
+    ],
+    en: [
+      '{hero} sets the wall well and the free kick comes to nothing.',
+      'The wall holds! The organisation from {hero} pays off.',
+      'No danger from the free kick, {hero} lined the wall up right.',
+    ],
+  },
   heroGkSave: {
     tr: [
       'HARİKA KURTARIŞ! {hero} kalesinde devleşiyor!',
@@ -951,6 +975,8 @@ export const HIGHLIGHT_PROMPTS = {
   hold_up: { tr: 'Sırtın kaleye dönük! Topu sakla, destek gelince pası ver!', en: 'Back to goal! Shield it, then lay it off when support arrives!' },
   defend_1v1: { tr: 'Bire bir! Kaleyle arasında kal, kanada yönlendir, top açılınca gir!', en: 'One against one! Stay goal-side, show him wide, tackle on the heavy touch!' },
   block: { tr: 'Şut geliyor! Şut yoluna gir ve blokla!', en: 'He is winding up! Get in the line and block it!' },
+  corner_kick: { tr: 'Korner sende! Bölgeyi, yüksekliği ve kavisi seç, arkadaşların koşuya çıksın!', en: 'Your corner! Pick the zone, height and curl, your team-mates will attack it!' },
+  fk_wall: { tr: 'Tehlikeli serbest vuruş! Barajı kur: kaç oyuncu, nereye. Sonra vuruşu karşıla!', en: 'Dangerous free kick! Set the wall: how many and where. Then deal with the kick!' },
 } as const satisfies Record<string, Record<Lang, string>>
 
 const PLACEHOLDER = /\{(\w+)(?::(gen|dat|acc|loc|abl|ins))?\}/g
