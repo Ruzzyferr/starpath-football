@@ -577,7 +577,10 @@ export function interpretSwipe(
       const raw = { x: ball.x + sw.dir.x * reach, y: ball.y + sw.dir.y * reach }
       if (assist === 'manual') return { kind: 'cross', point: raw }
       // Assisted: snap to the delivery zone the swipe points at (full) or halfway toward it (half).
-      const zone = nearestZone(crossZones(ball.y), raw)
+      // …preferring a zone a team-mate is arriving at.
+      const zones = crossZones(ball.y)
+      const mateGap = (z: CrossZone) => Math.min(12, ...mates.map((m) => dist(leadPosition(ball, m, 20, 4), z.point)))
+      const zone = zones.reduce((best, z) => (dist(raw, z.point) + mateGap(z) * 0.8 < dist(raw, best.point) + mateGap(best) * 0.8 ? z : best), nearestZone(zones, raw))
       const point = assist === 'full' ? zone.point : { x: (raw.x + zone.point.x) / 2, y: (raw.y + zone.point.y) / 2 }
       return { kind: 'cross', point, zone }
     }

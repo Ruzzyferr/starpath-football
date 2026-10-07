@@ -22,7 +22,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   defend: [0.48, 0.75],
   gk_save: [0.5, 0.85],
   counter_2v1: [0.12, 0.45],
-  long_ball_control: [0.06, 0.4],
+  long_ball_control: [0.15, 0.6],
   rebound: [0.06, 0.4],
   interception: [0.42, 0.8],
 }
@@ -34,7 +34,8 @@ const ENV = (globalThis as { process?: { env: Record<string, string | undefined>
 describe('match feel (average human, normal)', () => {
   for (const kind of FEEL_KINDS) {
     it(`${kind} converts within band`, () => {
-      const r = feelRate(kind, 'average', 'normal', N)
+      // Low-rate kinds need a bigger sample for a stable estimate.
+      const r = feelRate(kind, 'average', 'normal', kind === 'cross' || kind === 'corner' ? 200 : N)
       expect(r).toBeGreaterThanOrEqual(BANDS[kind][0])
       expect(r).toBeLessThanOrEqual(BANDS[kind][1])
     }, 60_000)

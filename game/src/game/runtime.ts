@@ -1241,7 +1241,7 @@ export class HighlightRuntime {
     // final third away from the flanks (wide areas keep the crossing logic).
     const toGoal = dist(a.pos, { x: attackDir(a.team) > 0 ? PITCH_LENGTH : 0, y: GOAL_CENTER_Y })
     const wide = a.pos.y < 14 || a.pos.y > PITCH_WIDTH - 14
-    const smart = a.team === 'opp' ? this.kind !== 'gk_save' : toGoal < 30 && !wide
+    const smart = a.team === 'opp' ? true : toGoal < 30 && !wide
     if (smart && this.smartCarrier(a, heldFor, minHold)) return
     let dec = carrierDecision(a, w, this.rng, { heldFor })
     if (this.kind === 'gk_save' && a.team === 'opp' && heldFor > 0.9 && dec.kind !== 'shoot') {
@@ -1292,14 +1292,16 @@ export class HighlightRuntime {
     const w = this.aiWorld()
     const noise = clampN(0.35 - a01(a.attrs.vision) * 0.25, 0.05, 0.35) / (a.team === 'opp' ? this.difficulty : 1)
     const heroBias = a.team === 'hero' ? 0.02 + (a.relationToHero / 100) * 0.04 + a01(a.attrs.vision) * 0.02 : 0
-    const dec = evaluateCarrier(a, w, this.rng, { heldFor, noise, heroBias })
+    // In a keeper moment the striker is set on shooting: he only picks his moment and corner.
+    const shotBias = this.kind === 'gk_save' ? 0.6 + heldFor * 0.6 : 0
+    const dec = evaluateCarrier(a, w, this.rng, { heldFor, noise, heroBias, shotBias })
     const from = { x: this.ball.x, y: this.ball.y }
     const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env }
     const oppNoise = a.team === 'opp' ? 1.15 / this.difficulty : 1
     switch (dec.kind) {
       case 'shoot': {
         // Only pull the trigger on a real chance (or when time is up / swamped).
-        const late = this.time > this.timeLimit - 2.5
+        const late = this.time > this.timeLimit - 2.5 || (this.kind === 'gk_save' && heldFor > 1.4)
         if (heldFor < minHold || (dec.value < 0.13 && !late && heldFor < 2.6)) break
         const power = this.rng.range(0.72, 0.95)
         const plan = planKick({ ...base, kind: 'shot', target: dec.target, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
@@ -1641,7 +1643,7 @@ export class HighlightRuntime {
         let reachD = d
         // Off his line closing down a shooter, a keeper spreads himself (bigger, lower barrier).
         const off = Math.abs(a.pos.x - ownGoalX(a.team))
-        const spread = off > 3 && a.state === 'run' && !!this.shot && this.shot.by.team !== a.team
+        const spread = !a.isHero && off > 3 && a.state === 'run' && !!this.shot && this.shot.by.team !== a.team && this.time - this.shot.t < 0.25
         let reachR = spread ? 0.95 : 0.6
         let reachZ = spread ? 1.9 : 2.45 + a.z
         if (a.state === 'dive') {
