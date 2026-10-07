@@ -14,6 +14,9 @@ import {
 import { buildLineup, createMatchEngine, interviewOptions, mockExpectedMoments, mockPostDetails, weatherFor } from './mockMatch'
 import { makeHorses } from './mockCasino'
 import { computeOvr } from './mockState'
+import { emptyObjectives, objectivesUi } from '../backend/objectivesFeed'
+import { OBJECTIVES_FLAG } from '../../sim/game'
+import { objectivesWeekly } from '../../sim/game/objectives'
 import { refereeFor } from '../../sim/world/referees'
 import { COUNTRIES } from './mockNames'
 
@@ -383,6 +386,15 @@ export const mockData: GameData = {
     const key = s ? `${s.calendar.season}-${s.calendar.week}-${s.calendar.day}` : 'none'
     if (!horseCache || horseCache.key !== key) horseCache = { key, horses: makeHorses(new Rng(hashString(key))) }
     return horseCache.horses
+  },
+  objectives() {
+    const s = getState()
+    if (!s) return emptyObjectives()
+    // Mock careers start without objectives: hand out a few once so the UI has content.
+    if (!s.life.flags[OBJECTIVES_FLAG]) {
+      for (let w = 1; w <= 8 && objectivesUi(s).short.length < 2; w++) objectivesWeekly({ ...s, calendar: { ...s.calendar, week: w } }, [])
+    }
+    return objectivesUi(s)
   },
   seasonSummary(): SeasonSummaryView | null {
     const s = getState()

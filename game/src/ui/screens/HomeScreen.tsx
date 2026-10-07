@@ -1,4 +1,5 @@
 import '../../styles/screens/home.css'
+import { ObjectivesCard } from './objectives/ObjectivesCard'
 import { NationalCard } from './national/NationalCard'
 import { CeremonyBanner } from './awards/CeremonyBanner'
 import type { Attributes, Hero, Position } from '../../core/types'
@@ -183,6 +184,8 @@ export function HomeScreen() {
               <span class="home-decisions-go">{t('home.decide')}<Icon name="chevron-right" size={18} /></span>
             </button>
           )}
+
+          <ObjectivesCard />
 
           <section aria-labelledby="home-quick">
             <SectionTitle id="home-quick">{t('home.quick')}</SectionTitle>

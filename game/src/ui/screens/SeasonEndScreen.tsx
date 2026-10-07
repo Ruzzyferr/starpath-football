@@ -1,3 +1,4 @@
+import '../../styles/screens/objectives.css'
 import { CeremonyBanner } from './awards/CeremonyBanner'
 import '../../styles/screens/season.css'
 import { useEffect, useState } from 'preact/hooks'
@@ -18,6 +19,7 @@ function finish() {
 
 export function SeasonEndScreen() {
   const s = data.seasonSummary()
+  const obj = data.objectives()
   void currentLang.value
   const total = s ? 5 + s.awards.length : 0
   const [stage, setStage] = useState(() => (prefersReducedMotion() ? 99 : 0))
@@ -155,6 +157,32 @@ export function SeasonEndScreen() {
                 ),
               )}
             </ul>
+          </section>
+        )}
+
+        {stage >= total && (
+          <section class="se-card se-objectives se-reveal" aria-label={t('objectives.review')}>
+            <h2 class="se-h">{t('objectives.review')}</h2>
+            <p class="se-obj-sum">
+              <span class="t-pos">{t('objectives.statusDone')}: {obj.seasonDone}</span>
+              <span class="t-mid">{t('objectives.statusMissed')}: {obj.seasonFailed}</span>
+            </p>
+            {obj.seasonDone + obj.seasonFailed === 0 ? (
+              <p class="t-sm t-lo">{t('objectives.reviewNone')}</p>
+            ) : (
+              <ul class="obj-history">
+                {obj.recent.slice(0, obj.seasonDone + obj.seasonFailed).map((r, i) => (
+                  <li key={i} class={`obj-hist obj-hist-${r.status}`} data-testid="objective-result">
+                    <span class="obj-avatar obj-avatar-sm" aria-hidden="true">{r.icon}</span>
+                    <span class="grow">{lt(r.title)}</span>
+                    <span class="obj-hist-status">
+                      <Icon name={r.status === 'done' ? 'check' : 'hourglass'} size={14} />
+                      {r.status === 'done' ? t('objectives.statusDone') : t('objectives.statusMissed')}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
           </section>
         )}
 

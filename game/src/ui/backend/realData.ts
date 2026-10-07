@@ -43,6 +43,7 @@ import { readHistory } from './history'
 import { postMatchView, preMatchView } from './liveMatch'
 import { slotInfos } from './persistence'
 import { cached } from './session'
+import { emptyObjectives, objectivesUi } from './objectivesFeed'
 import { contentFlags } from '../../core/contentFlags'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
@@ -716,6 +717,10 @@ export const realData: GameData = {
   horses() {
     const s = S()
     return s ? horsesView(s) : []
+  },
+  objectives() {
+    const s = S()
+    return s ? cached(s, 'objectives', () => objectivesUi(s)) : emptyObjectives()
   },
   seasonSummary() {
     const s = S()

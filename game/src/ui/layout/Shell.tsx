@@ -26,7 +26,7 @@ export const TABS: { id: TabId; icon: IconName; screen: ScreenId; key: string }[
 ]
 
 const TAB_OF: Partial<Record<ScreenId, TabId>> = {
-  home: 'home', planner: 'home', inbox: 'home', careerLog: 'home',
+  home: 'home', planner: 'home', inbox: 'home', careerLog: 'home', objectives: 'home',
   profile: 'career', training: 'career', club: 'career', contract: 'career', trophies: 'career',
   life: 'life', casino: 'life', blackjack: 'life', roulette: 'life', slots: 'life', horses: 'life',
   world: 'world',

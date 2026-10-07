@@ -20,6 +20,7 @@ import { HomeScreen } from './screens/HomeScreen'
 import { PlannerScreen } from './screens/PlannerScreen'
 import { InboxScreen } from './screens/InboxScreen'
 import { CareerLogScreen } from './screens/CareerLogScreen'
+import { ObjectivesScreen } from './screens/ObjectivesScreen'
 import { TrainingScreen } from './screens/TrainingScreen'
 import { ProfileScreen } from './screens/ProfileScreen'
 import { ClubScreen } from './screens/ClubScreen'
@@ -64,6 +65,7 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   planner: PlannerScreen,
   inbox: InboxScreen,
   careerLog: CareerLogScreen,
+  objectives: ObjectivesScreen,
   training: TrainingScreen,
   profile: ProfileScreen,
   club: ClubScreen,

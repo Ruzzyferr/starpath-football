@@ -22,6 +22,7 @@ import type {
 import { currentLang } from '../i18n'
 import { setControlPrefs } from '../input/prefs'
 import { contentFlags } from '../core/contentFlags'
+import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { DrillKind, DrillVariant } from '../game/training/types'
@@ -690,6 +691,8 @@ export interface GameData {
   casinoStatus(): CasinoStatus
   horses(): HorseView[]
   seasonSummary(): SeasonSummaryView | null
+  /** Active / recent objectives for the Home card, detail screen and season review. */
+  objectives(): ObjectivesUi
   saveSlots(): SaveSlotInfo[]
   team(clubId: string): TeamView | null
   /** Sorted league table of the current (or upcoming) season, null if none. */
@@ -718,7 +721,7 @@ export type ScreenId =
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
   | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
   | 'achievements' | 'hallOfFame' | 'retire' | 'documentary' | 'trials'
-  | 'national' | 'cupDraw' | 'awards' | 'paywall' | 'store'
+  | 'objectives' | 'national' | 'cupDraw' | 'awards' | 'paywall' | 'store'
 
 export interface Route {
   id: ScreenId

@@ -6,6 +6,7 @@ import { tr as ui } from './sections/ui'
 import { tr as title } from './sections/title'
 import { tr as wizard } from './sections/wizard'
 import { tr as home } from './sections/home'
+import { tr as objectives } from './sections/objectives'
 import { tr as planner } from './sections/planner'
 import { tr as event } from './sections/event'
 import { tr as training } from './sections/training'
@@ -34,6 +35,7 @@ export const tr = {
   title,
   wizard,
   home,
+  objectives,
   planner,
   event,
   training,

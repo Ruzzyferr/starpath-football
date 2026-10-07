@@ -8,6 +8,7 @@ import { en as ui } from './sections/ui'
 import { en as title } from './sections/title'
 import { en as wizard } from './sections/wizard'
 import { en as home } from './sections/home'
+import { en as objectives } from './sections/objectives'
 import { en as planner } from './sections/planner'
 import { en as event } from './sections/event'
 import { en as training } from './sections/training'
@@ -36,6 +37,7 @@ export const en: Shape<typeof tr> = {
   title,
   wizard,
   home,
+  objectives,
   planner,
   event,
   training,

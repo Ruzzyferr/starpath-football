@@ -20,6 +20,7 @@ import { MemoryStorage } from '../../state/save'
 import { checkSaveIntegrity, flushAutosave, refreshSlots, useStorage } from './persistence'
 import { persistNow } from './liveMatch'
 import * as meta from './meta'
+import { flushObjectiveToasts, forceCompleteObjective, installObjectivesFeed } from './objectivesFeed'
 
 export const DEFAULT_CAREER: NewGameInput = {
   firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', birthYear: 2009,
@@ -106,12 +107,19 @@ function installDebugApi(): void {
     refreshSlots,
     /** Career end / achievements bridge (ui/backend/meta). */
     meta,
+    /** Force-complete the first active objective (fires the completion toast). */
+    completeObjective: () => (gameState.value ? forceCompleteObjective(gameState.value) : false),
   }
 }
 
 export function installRealBackend(): void {
   installBackend({ actions: realActions, data: realData })
   meta.installMeta()
+  installObjectivesFeed()
+  effect(() => {
+    void screen.value
+    flushObjectiveToasts()
+  })
   if (import.meta.env.DEV) installDebugApi()
   // &storage=memory: keep saves in memory (headless browsers without a working IndexedDB).
   if (globalThis.location?.search.includes('storage=memory')) useStorage(new MemoryStorage())
