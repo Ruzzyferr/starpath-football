@@ -275,7 +275,7 @@ function store(key: string, value: string | null): void {
     if (value === null) globalThis.localStorage?.removeItem(key)
     else globalThis.localStorage?.setItem(key, value)
   } catch (e) {
-    throw new Error(`save failed: ${(e as Error).message}`)
+    throw new Error(`save failed: ${(e as Error).message}`, { cause: e })
   }
 }
 function read(key: string): string | null {

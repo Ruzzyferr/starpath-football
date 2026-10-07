@@ -27,6 +27,7 @@ jobs:
           cache-dependency-path: game/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run lint
       - run: npm test
       - run: npm run build
       - uses: actions/upload-artifact@v4
@@ -38,8 +39,7 @@ jobs:
     name: Playwright e2e (Chromium)
     runs-on: ubuntu-latest
     needs: test-and-build
-    # Real-browser suite is informative on CI (software GL, shared runners); it does not block merges.
-    continue-on-error: true
+    # Blocking: a red e2e run fails the workflow.
     timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
