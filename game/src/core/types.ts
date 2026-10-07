@@ -243,6 +243,8 @@ export interface Contract {
   releaseClause: number | null
   role: SquadRole
   loan?: boolean
+  /** Form clause: avg rating ≥ 7.5 over the last 3 matches guarantees a start (career/squadRole). */
+  formGuarantee?: boolean
 }
 
 export interface Injury {
@@ -303,6 +305,8 @@ export interface Hero {
   trophies: { season: number; name: LText }[]
   awards: Award[]
   retired: boolean
+  /** Consecutive inactive weeks (injury / no match fitness) driving skill decay (career/condition). */
+  inactiveWeeks?: number
 }
 
 // ───────────────────────── Life ─────────────────────────

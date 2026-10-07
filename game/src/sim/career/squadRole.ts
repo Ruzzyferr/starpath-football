@@ -175,7 +175,48 @@ export function startProbability(hero: Hero, life: Life): number {
   if (hero.fatigue > 60) p -= ((hero.fatigue - 60) / 40) * 0.3
   if (hero.sharpness < 40) p -= 0.1
   if (life.flags.promised_start === true) p += 0.15
+  if (formGuaranteeActive(hero, life)) p = Math.max(p, FORM_GUARANTEE_START)
   return clamp(p, 0, 0.99)
+}
+
+// ───────────────────────── Form guarantee & expected minutes (WP-8) ─────────────────────────
+
+/** life.flags key: JSON number[] of the hero's last match ratings (most recent last, max 5). */
+export const RECENT_RATINGS_FLAG = 'c:recentRatings'
+/** Average rating over the last 3 matches that triggers the form guarantee. */
+export const FORM_GUARANTEE_RATING = 7.5
+/** Start probability while the guarantee is active. */
+export const FORM_GUARANTEE_START = 0.99
+
+/** Last match ratings (oldest first). */
+export function recentRatings(life: Life): number[] {
+  const raw = life.flags[RECENT_RATINGS_FLAG]
+  if (typeof raw !== 'string') return []
+  try {
+    const v = JSON.parse(raw) as unknown
+    return Array.isArray(v) ? v.filter((x): x is number => typeof x === 'number' && Number.isFinite(x)) : []
+  } catch {
+    return []
+  }
+}
+
+/** Record a played match rating (called by career/matchOutcome). */
+export function pushRecentRating(life: Life, rating: number): void {
+  if (!(rating > 0)) return
+  life.flags[RECENT_RATINGS_FLAG] = JSON.stringify([...recentRatings(life), Math.round(rating * 10) / 10].slice(-5))
+}
+
+/** Contract has the form clause and the last 3 ratings average ≥ 7.5. */
+export function formGuaranteeActive(hero: Hero, life: Life): boolean {
+  if (!hero.contract?.formGuarantee) return false
+  const last = recentRatings(life).slice(-3)
+  if (last.length < 3) return false
+  return last.reduce((a, b) => a + b, 0) / 3 >= FORM_GUARANTEE_RATING
+}
+
+/** Typical minutes per match for each role (shown in contract / profile). */
+export const ROLE_EXPECTED_MINUTES: Readonly<Record<SquadRole, [number, number]>> = {
+  youth: [0, 10], reserve: [5, 25], rotation: [35, 60], starter: [70, 85], star: [80, 90], captain: [85, 90],
 }
 
 /** Roll selection for the next match and update bench-streak bookkeeping. */

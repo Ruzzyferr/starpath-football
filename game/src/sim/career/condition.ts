@@ -8,6 +8,7 @@ import type { Rng } from '../../core/rng'
 import { clamp, fill, lt, meter, type Lines } from './common'
 import { perkValue } from './perks'
 import { assetEffectTotal } from '../life/assetEffects'
+import { weeklySkillDecay } from './decay'
 
 /** Add fatigue; positive deltas are reduced by `stamina_drain` perks (Marathon). */
 export function addFatigue(hero: Hero, delta: number): number {
@@ -89,6 +90,12 @@ export function applyInjury(hero: Hero, life: Life, injury: Injury): Lines {
  * shave ~1/3 week off: three physio visits ≈ one week saved.
  */
 export function weeklyInjuryTick(hero: Hero, physioSessions = 0): Lines {
+  // Also the weekly hook for inactivity skill decay (career/decay), checked before the countdown.
+  const decay = weeklySkillDecay(hero)
+  return [...decay, ...injuryCountdown(hero, physioSessions)]
+}
+
+function injuryCountdown(hero: Hero, physioSessions: number): Lines {
   if (!hero.injury) return []
   const progress = 1 + Math.min(1, physioSessions / 3)
   hero.injury.weeksLeft = Math.max(0, Math.round((hero.injury.weeksLeft - progress) * 10) / 10)

@@ -11,7 +11,7 @@ import {
 import { POSITION_WEIGHTS, applyXpBundle } from './progression'
 import { perkValue } from './perks'
 import { addFatigue, applyInjury, rollInjury } from './condition'
-import { MANAGER_REL, updateTrustFromMatch } from './squadRole'
+import { MANAGER_REL, pushRecentRating, updateTrustFromMatch } from './squadRole'
 import { changeRelation, teammateId } from '../life/relationships'
 import { assetEffectTotal } from '../life/assetEffects'
 
@@ -166,6 +166,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   const fansD = (rating - NEUTRAL_RATING) * 2 + goals * 1.5 + (m.won ? 1 : m.drew ? 0 : -1) - (m.red ? 4 : 0)
   changeRelation(life, 'fans', fansD, { hero, memory: Math.abs(fansD) >= 5 ? (fansD > 0 ? lt('Muhteşem bir maç çıkardın.', 'You put on a show.') : lt('Kötü bir maç geçirdin.', 'You had a poor game.')) : undefined })
   const trustD = updateTrustFromMatch(hero, rating, minutes)
+  if (minutes > 0) pushRecentRating(life, rating) // form-guarantee clause (squadRole)
   if (life.relationships[MANAGER_REL]) changeRelation(life, MANAGER_REL, (rating - NEUTRAL_RATING) * 1 - (m.red ? 5 : 0), { week, contact: true })
   for (const npc of m.assistedBy ?? []) {
     changeRelation(life, teammateId(npc), 3, { hero, week, contact: true, memory: lt('Golüne asist yaptı.', 'Set up your goal.') })

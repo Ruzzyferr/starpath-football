@@ -47,6 +47,8 @@ export interface ContractTerms {
   assistBonus: number
   releaseClause: number | null
   role: SquadRole
+  /** Form-based playing-time guarantee clause (see career/squadRole startProbability). */
+  formGuarantee?: boolean
 }
 
 export type OfferKind = 'new' | 'renewal' | 'transfer' | 'loan' | 'freeAgent'
@@ -172,6 +174,7 @@ export function toContract(offer: ContractOffer): Contract {
     releaseClause: t.releaseClause,
     role: t.role,
     ...(offer.loan ? { loan: true } : {}),
+    ...(t.formGuarantee ? { formGuarantee: true } : {}),
   }
 }
 
@@ -411,6 +414,15 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
     }
   }
 
+  // Form guarantee clause: clubs grant it to players they see in the rotation or better.
+  let guaranteeOk = false
+  if (ask.formGuarantee === true && !cur.formGuarantee) {
+    wantsMore = true
+    guaranteeOk = h.maxRoleRank >= roleRank('rotation')
+    if (guaranteeOk) fraction = Math.max(fraction, 0.4)
+    else excess += 0.35
+  }
+
   const lines: Lines = []
   const record = (response: NegotiationRound['response']) =>
     s.history.push({ round: s.round, ask: { ...ask }, response, patienceAfter: s.patience })
@@ -454,6 +466,7 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
   if (ask.releaseClause !== undefined && ask.releaseClause !== null && cur.releaseClause !== null) {
     cur.releaseClause = roundNice(Math.max(h.minReleaseClause, (ask.releaseClause + cur.releaseClause) / 2))
   }
+  if (guaranteeOk) cur.formGuarantee = true
 
   if (s.round >= s.maxRounds) {
     s.status = 'expired'
@@ -477,6 +490,7 @@ function applyAsk(s: NegotiationState, ask: Partial<ContractTerms>): void {
   if (ask.years !== undefined) t.years = clamp(Math.round(ask.years), 1, 5)
   if (ask.role !== undefined) t.role = ask.role
   if (ask.releaseClause !== undefined) t.releaseClause = ask.releaseClause
+  if (ask.formGuarantee !== undefined) t.formGuarantee = ask.formGuarantee
 }
 
 /** Accept the club's current offer (valid while open or after it became final). */
