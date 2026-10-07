@@ -14,7 +14,7 @@ import {
   type InterviewDef, type InterviewEffect, type InterviewTone,
 } from '../../sim/game'
 import { readJson, writeJson } from '../../sim/game/internal'
-import { HIGHLIGHT_PROMPTS, MatchSim, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
+import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
 import { playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
 import { match, settings } from '../store'
@@ -23,6 +23,7 @@ import type {
 } from '../store'
 import { RELATION_LABEL, diffSnapshots, fixtureView, snapshot } from './mapping'
 import { playHighlight, type HighlightSession } from './highlightBridge'
+import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 
@@ -181,6 +182,24 @@ export function preMatchView(s: GameState): PreMatchView | null {
     tacticHint: HINTS[oppClub?.style ?? 'balanced'] ?? HINTS.balanced,
     heroStarting: blob.starts,
     odds: { home: ODDS(pHome * (1 - pDraw)), draw: ODDS(pDraw), away: ODDS((1 - pHome) * (1 - pDraw)) },
+    expectedMoments: expectedFor(s, blob),
+  }
+}
+
+/** Expected moments for the hero (a bench player gets the cameo estimate). */
+function expectedFor(s: GameState, blob: MatchBlob): PreMatchView['expectedMoments'] {
+  const side = blob.setup.heroSide
+  if (!side) return null
+  const team = side === 'home' ? blob.setup.home : blob.setup.away
+  const hero = [...team.lineup, ...team.bench].find((p) => p.isHero)
+  const position = hero?.position ?? s.hero.position
+  const mates = team.lineup.filter((p) => !p.isHero)
+  const relationAvg = mates.length ? mates.reduce((a, p) => a + p.relationToHero, 0) / mates.length : 0
+  try {
+    const e = expectedMomentsFor({ position, relationAvg, morale: team.morale, form: s.hero.form, minutes: blob.starts ? 90 : 25 })
+    return { min: e.min, max: e.max, kinds: e.kinds.map((k) => ({ kind: k.kind, share: k.share })) }
+  } catch {
+    return null
   }
 }
 
@@ -388,6 +407,8 @@ function finalize(): void {
   const engine = JSON.parse(l.sim.serialize()) as EngineState
   const snap = l.sim.snapshot()
   const before = snapshot(s)
+  const trustBefore = s.hero.managerTrust
+  const relBefore = relationValues(s.life.relationships)
   let report: ReturnType<typeof finishHeroMatch>
   try {
     report = finishHeroMatch(s, l.sim)
@@ -439,6 +460,7 @@ function finalize(): void {
       : { name: motmId ? nameOf(motmId) : '—', isHero: false, rating: motmRating, ...(motmNpc ? { appearance: motmNpc.appearance } : {}) },
     scorers: res.scorers.map((g) => ({ minute: g.minute, name: nameOf(g.playerId) + (g.ownGoal ? ' (o.g.)' : ''), side: g.team })),
     deltas: diffSnapshots(before, after).filter((d) => d.key !== 'energy'),
+    ...postDetails(s, snap, report, trustBefore, relBefore),
   }
   const opp = side === 'home' ? l.setup.away : l.setup.home
   const interview = report.minutes > 0 || blob.starts
@@ -451,6 +473,33 @@ function finalize(): void {
   match.value = { ...liveView(l), finished: true, paused: true }
   commit(s)
   scheduleAutosave(300)
+}
+
+/** Rating breakdown, maps, trust reasons and relationship rows for the post-match flow. */
+function postDetails(
+  s: GameState, snap: MatchSnapshot, report: ReturnType<typeof finishHeroMatch>, trustBefore: number, relBefore: Record<string, number>,
+): Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'relations'> {
+  const out: Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'relations'> = {}
+  try {
+    const log = ratingLogView(snap.heroLog)
+    if (report.minutes > 0) {
+      out.ratingBase = RATING_BASE
+      out.ratingLog = log
+    }
+    const map = heroMapView(snap.heroMap)
+    if (map && report.minutes > 0) out.heroMap = map
+    const h = snap.heroStats
+    const resultLine = log.find((e) => e.source === 'final' && e.key === 'result')
+    out.trust = buildTrustReasons({
+      before: trustBefore, after: s.hero.managerTrust, rating: report.minutes > 0 ? report.rating : 0, minutes: report.minutes,
+      goals: h.goals, assists: h.assists, yellow: h.yellow, red: h.red, won: report.won, drew: report.drew,
+      ...(resultLine ? { resultPts: resultLine.delta } : {}),
+    })
+    out.relations = buildRelationChanges(relBefore, s.life.relationships)
+  } catch (e) {
+    console.error('[StarPath] post-match details failed', e)
+  }
+  return out
 }
 
 /** Apply an interview answer; returns the chips that actually landed. */

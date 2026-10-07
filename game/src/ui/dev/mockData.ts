@@ -11,7 +11,7 @@ import { ACTIVITIES, ASSETS, EVENTS, PERKS, SPONSOR_OFFERS, TRAINERS, TRAINING }
 import {
   L, absDay, fixtureView, heroClubId, heroFixtures, netWorth, nextHeroFixture, series, teamView,
 } from './mockCore'
-import { buildLineup, createMatchEngine, interviewOptions, weatherFor } from './mockMatch'
+import { buildLineup, createMatchEngine, interviewOptions, mockExpectedMoments, mockPostDetails, weatherFor } from './mockMatch'
 import { makeHorses } from './mockCasino'
 import { computeOvr } from './mockState'
 import { COUNTRIES } from './mockNames'
@@ -133,6 +133,7 @@ function preMatch(s: GameState): PreMatchView | null {
     tacticHint: hints[hashString(oppId) % hints.length],
     heroStarting: starting,
     odds: { home: odds(ph * 0.75), draw: odds(0.25), away: odds((1 - ph) * 0.75) },
+    expectedMoments: mockExpectedMoments(s.hero.position, starting),
   }
 }
 
@@ -168,6 +169,7 @@ function postMatch(s: GameState): PostMatchView | null {
     scorers: m.scorers.map(({ minute, name, side }) => ({ minute, name, side })),
     interview: m.interviewAnswered ? null : interviewOptions(won),
     deltas,
+    ...mockPostDetails(m, s),
   }
 }
 

@@ -69,6 +69,10 @@ export const tr = {
     defend: 'Savunma anı',
     gk_save: 'Kurtarış anı',
     gk_penalty: 'Penaltı kurtarma',
+    counter_2v1: '2’ye 1 kontra',
+    long_ball_control: 'Uzun top kontrolü',
+    rebound: 'Dönen top',
+    interception: 'Pas arası',
   },
   post: {
     title: 'Maç Sonu',
@@ -169,6 +173,10 @@ export const en: Shape<typeof tr> = {
     defend: 'Defensive moment',
     gk_save: 'Save moment',
     gk_penalty: 'Penalty save',
+    counter_2v1: '2-on-1 break',
+    long_ball_control: 'Long ball control',
+    rebound: 'Rebound',
+    interception: 'Interception',
   },
   post: {
     title: 'Full Time',

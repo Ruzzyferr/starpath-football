@@ -1,11 +1,13 @@
 import '../../../styles/screens/match.css'
-import { useState } from 'preact/hooks'
-import { t, lt, currentLang } from '../../../i18n'
-import { Avatar, Button, Crest, DeltaList, EmptyState, MeterRing } from '../../components'
+import { useEffect, useRef, useState } from 'preact/hooks'
+import { t, lt, tx, currentLang } from '../../../i18n'
+import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRing, ShotMap, ShotMarker } from '../../components'
 import { Icon, type IconName } from '../../icons'
 import { formatRating, ratingColor } from '../../format'
-import { actions, data, navigate, type Delta, type InterviewOption } from '../../store'
-import { CompareBar } from './shared'
+import { useCountUp } from '../../hooks/motion'
+import { actions, data, navigate, type Delta, type InterviewOption, type PostMatchView, type RatingLineView } from '../../store'
+import { CompareBar, MOMENT_ICON } from './shared'
+import { postSteps, ratingExtremes, ratingGroups, signedDelta, type PostStep } from './postFlow'
 
 const TONE_ICON: Record<InterviewOption['tone'], IconName> = {
   humble: 'hand-heart',
@@ -14,33 +16,54 @@ const TONE_ICON: Record<InterviewOption['tone'], IconName> = {
   deflect: 'shuffle',
 }
 
+const STEP_ICON: Record<PostStep, IconName> = {
+  result: 'whistle',
+  rating: 'chart-bar',
+  map: 'map-pin',
+  trust: 'handshake',
+  relations: 'users',
+  interview: 'megaphone',
+}
+
 function done() {
   actions.finishMatch()
   navigate('home', undefined, { tab: true })
 }
 
-export function PostMatchScreen() {
-  const pm = data.postMatch()
-  void currentLang.value
-  const [answer, setAnswer] = useState<{ id: string; deltas: Delta[] } | null>(null)
+const deltaClass = (v: number) => (v > 0 ? 'is-pos' : v < 0 ? 'is-neg' : 'is-zero')
 
-  if (!pm) {
-    return (
-      <div class="post-root post-empty">
-        <EmptyState icon="whistle" title={t('match.post.noData')} action={<Button variant="primary" icon="home" onClick={done}>{t('match.post.continue')}</Button>} />
-      </div>
-    )
+/** Label of one rating log line. */
+function lineLabel(l: RatingLineView): string {
+  switch (l.source) {
+    case 'moment': {
+      const kind = l.kind ? tx(`match.kind.${l.kind}`, undefined, l.kind) : t('postmatch.rating.group.moment')
+      const out = l.outcome ? tx(`postmatch.outcome.${l.outcome}`, undefined, '') : ''
+      return out ? `${kind} · ${out}` : kind
+    }
+    case 'team':
+      return tx(`postmatch.rating.team.${l.key}`, undefined, t('postmatch.rating.other'))
+    case 'background':
+      return tx(`postmatch.rating.background.${l.key}`, undefined, t('postmatch.rating.other'))
+    default:
+      return tx(`postmatch.rating.finalKey.${l.key}`, undefined, t('postmatch.rating.other'))
   }
+}
 
-  const { fixture: fx, score, heroSide, stats: s, team, motm } = pm
-  const mine = heroSide === 'home' ? score[0] : score[1]
-  const theirs = heroSide === 'home' ? score[1] : score[0]
-  const res = mine > theirs ? 'win' : mine < theirs ? 'loss' : 'draw'
+function lineIcon(l: RatingLineView): IconName {
+  if (l.source === 'moment') return (l.kind && MOMENT_ICON[l.kind]) || 'star'
+  if (l.source === 'team') return 'ball'
+  if (l.source === 'background') return 'run'
+  return 'whistle'
+}
+
+// ───────────────────────── Steps ─────────────────────────
+
+function ResultStep({ pm }: { pm: PostMatchView }) {
+  const { fixture: fx, score, stats: s, team, motm } = pm
   const passPct = s.passes ? Math.round((s.passesCompleted / s.passes) * 100) : 0
   const rc = ratingColor(pm.rating)
   const homeGoals = pm.scorers.filter((g) => g.side === 'home')
   const awayGoals = pm.scorers.filter((g) => g.side === 'away')
-
   const statCells: { label: string; value: string; icon: IconName }[] = [
     { label: t('match.post.minutes'), value: String(s.minutes), icon: 'stopwatch' },
     { label: t('match.live.goals'), value: String(s.goals), icon: 'ball' },
@@ -51,12 +74,9 @@ export function PostMatchScreen() {
     { label: t('match.post.dribbles'), value: String(s.dribbles), icon: 'run' },
     ...(s.saves ? [{ label: t('match.post.saves'), value: String(s.saves), icon: 'shield-check' as IconName }] : []),
   ]
-
   return (
-    <div class={`post-root post-${res}`} style={{ ['--home' as string]: fx.home.kit.primary, ['--away' as string]: fx.away.kit.primary }}>
-      <div class="post-bg" aria-hidden="true" />
+    <>
       <header class="post-head">
-        <div class="post-result-strip"><span>{t(`match.post.${res}`)}</span></div>
         <div class="post-score">
           <div class="post-team"><Crest crest={fx.home.crest} size={64} label={fx.home.name} /><span class="post-team-name truncate">{fx.home.shortName}</span></div>
           <div class="post-score-num score-font" aria-label={`${score[0]} – ${score[1]}`}>
@@ -121,48 +141,319 @@ export function PostMatchScreen() {
           <CompareBar label={t('match.post.corners')} home={team.corners[0]} away={team.corners[1]} />
           <CompareBar label={t('match.post.fouls')} home={team.fouls[0]} away={team.fouls[1]} />
         </section>
+      </div>
+    </>
+  )
+}
 
-        {pm.deltas.length > 0 && (
-          <section class="post-card post-impact">
-            <h2 class="post-h micro t-mid">{t('match.post.impact')}</h2>
-            <DeltaList deltas={pm.deltas} />
-          </section>
-        )}
+function RatingStep({ pm }: { pm: PostMatchView }) {
+  const base = pm.ratingBase ?? 6
+  const log = pm.ratingLog ?? []
+  const [target, setTarget] = useState(base)
+  useEffect(() => {
+    const id = setTimeout(() => setTarget(pm.rating), 250)
+    return () => clearTimeout(id)
+  }, [pm.rating])
+  const [shown] = useCountUp(target, 1400)
+  const { groups, other } = ratingGroups(base, pm.rating, log)
+  const { best, worst } = ratingExtremes(log)
+  const maxAbs = Math.max(0.3, ...log.map((l) => Math.abs(l.delta)), Math.abs(other))
+  const rc = ratingColor(pm.rating)
+  let row = 0
+  const Line = ({ label, delta, icon, minute, auto }: { label: string; delta: number; icon: IconName; minute?: number; auto?: boolean }) => (
+    <li class={`prb-line ${deltaClass(delta)}`} style={{ ['--i' as string]: String(row++) }}>
+      <span class="prb-min num t-lo">{minute !== undefined ? `${minute}'` : ''}</span>
+      <Icon name={icon} size={16} class="prb-ico" />
+      <span class="prb-label">{label}{auto && <span class="prb-auto micro">{t('postmatch.rating.auto')}</span>}</span>
+      <span class="prb-bar" aria-hidden="true"><span style={{ ['--w' as string]: String(Math.min(1, Math.abs(delta) / maxAbs)) }} /></span>
+      <b class="prb-delta num">{signedDelta(delta, Math.abs(delta) < 0.1 ? 2 : 1)}</b>
+    </li>
+  )
+  return (
+    <section class="post-card post-step-card prb" aria-labelledby="post-step-h">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}>{t('postmatch.rating.title')}</h2>
+      <div class="prb-top">
+        <div class="prb-from"><span class="micro t-lo">{t('postmatch.rating.base')}</span><b class="score-font num">{base.toFixed(1)}</b></div>
+        <Icon name="arrow-right" size={22} class="t-lo" />
+        <div class="prb-to" data-testid="post-rating-final">
+          <span class="micro t-lo">{t('postmatch.rating.final')}</span>
+          <b class="score-font num" style={{ color: rc }} aria-live="polite">{formatRating(Math.round(shown * 10) / 10)}</b>
+        </div>
+      </div>
+      {(best || worst) && (
+        <div class="prb-why">
+          {best && <span class="prb-chip is-pos"><Icon name="trend-up" size={14} /> {lineLabel(best)} <b class="num">{signedDelta(best.delta)}</b></span>}
+          {worst && <span class="prb-chip is-neg"><Icon name="trend-down" size={14} /> {lineLabel(worst)} <b class="num">{signedDelta(worst.delta)}</b></span>}
+        </div>
+      )}
+      {log.length === 0 && <p class="t-sm t-mid">{t('postmatch.rating.noLog')}</p>}
+      {groups.map((g) => (
+        <div class="prb-group" key={g.source}>
+          <div class="prb-group-h micro t-mid">
+            <span>{t(`postmatch.rating.group.${g.source}`)}</span>
+            <b class={`num ${deltaClass(g.total)}`}>{signedDelta(g.total, 2)}</b>
+          </div>
+          <ul class="prb-list" data-testid={`post-rating-${g.source}`}>
+            {g.lines.map((l, i) => <Line key={i} label={lineLabel(l)} delta={l.delta} icon={lineIcon(l)} minute={l.source === 'final' ? undefined : l.minute} auto={l.auto} />)}
+          </ul>
+        </div>
+      ))}
+      {other !== 0 && (
+        <ul class="prb-list">
+          <Line label={t('postmatch.rating.other')} delta={other} icon="sparkle" />
+        </ul>
+      )}
+      <p class="t-xs t-lo">{t('postmatch.rating.clamped')}</p>
+    </section>
+  )
+}
 
-        {pm.interview && (
-          <section class="post-card post-interview" aria-labelledby="post-iv-q">
-            <h2 class="post-h micro t-mid"><Icon name="megaphone" size={14} /> {t('match.post.interview')}</h2>
-            <p class="post-iv-q" id="post-iv-q">“{lt(pm.interview.question)}”</p>
-            {answer ? (
-              <div class="post-iv-done">
-                <div class="row"><Icon name="check" size={18} class="t-pos" /> <span>{t('match.post.interviewDone')}</span></div>
-                <p class="post-iv-chosen">{lt(pm.interview.options.find((o) => o.id === answer.id)?.label)}</p>
-                <DeltaList deltas={answer.deltas} />
-              </div>
-            ) : (
-              <div class="post-iv-options">
-                {pm.interview.options.map((o) => (
-                  <button
-                    key={o.id}
-                    type="button"
-                    class={`post-iv-opt tone-${o.tone}`}
-                    onClick={() => setAnswer({ id: o.id, deltas: actions.answerInterview(o.id) })}
-                  >
-                    <span class="post-iv-tone micro"><Icon name={TONE_ICON[o.tone]} size={14} /> {t(`match.post.tone.${o.tone}`)}</span>
-                    <span class="post-iv-label">{lt(o.label)}</span>
-                    {o.preview.length > 0 && <DeltaList deltas={o.preview} compact />}
-                  </button>
-                ))}
-              </div>
-            )}
-          </section>
+function MapStep({ pm }: { pm: PostMatchView }) {
+  const map = pm.heroMap
+  if (!map) return null
+  const goals = map.shots.filter((s) => s.outcome === 'goal').length
+  const estimated = map.shots.some((s) => s.source === 'auto')
+  const outcomes = ['goal', 'saved', 'missed', 'blocked', 'woodwork'] as const
+  return (
+    <section class="post-card post-step-card pmaps" aria-labelledby="post-step-h">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}>{t('postmatch.map.title')}</h2>
+      <div class="pmaps-attack micro t-lo"><span>{t('postmatch.map.attack')}</span><Icon name="arrow-right" size={14} /></div>
+      <div class="pmaps-grid">
+        <figure class="pmaps-fig" data-testid="post-heatmap">
+          <HeatMap heat={map.heat} cols={map.cols} rows={map.rows} label={t('postmatch.map.heat')} />
+          <figcaption class="micro t-mid">{t('postmatch.map.heat')}</figcaption>
+        </figure>
+        <figure class="pmaps-fig" data-testid="post-shotmap">
+          <ShotMap shots={map.shots} label={t('postmatch.map.shots')} />
+          <figcaption class="micro t-mid">
+            {t('postmatch.map.shots')} · {map.shots.length ? t('postmatch.map.count', { n: map.shots.length, g: goals }) : t('postmatch.map.noShots')}
+          </figcaption>
+        </figure>
+      </div>
+      <ul class="pmaps-legend t-xs">
+        {outcomes.map((o) => (
+          <li key={o} class={`shot shot-${o}`}>
+            <svg viewBox="-3 -3 6 6" width="14" height="14" aria-hidden="true"><ShotMarker outcome={o} x={0} y={0} r={2.2} /></svg>
+            {t(`postmatch.outcome.${o}`)}
+          </li>
+        ))}
+        <li class="shot"><svg viewBox="-4 -4 8 8" width="14" height="14" aria-hidden="true"><circle class="shot-header" cx="0" cy="0" r="3" /></svg>{t('postmatch.map.header')}</li>
+      </ul>
+      {estimated && <p class="t-xs t-lo">{t('postmatch.map.estimated')}</p>}
+    </section>
+  )
+}
+
+function TrustStep({ pm }: { pm: PostMatchView }) {
+  const tr = pm.trust
+  if (!tr) return null
+  const d = Math.round((tr.after - tr.before) * 10) / 10
+  const lo = Math.min(tr.before, tr.after)
+  const hi = Math.max(tr.before, tr.after)
+  return (
+    <section class="post-card post-step-card ptrust" aria-labelledby="post-step-h">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="handshake" size={14} /> {t('postmatch.trust.title')}</h2>
+      <div class="ptrust-nums">
+        <div><span class="micro t-lo">{t('postmatch.trust.before')}</span><b class="score-font num">{Math.round(tr.before)}</b></div>
+        <b class={`ptrust-delta score-font num ${deltaClass(d)}`} data-testid="post-trust-delta">{signedDelta(d)}</b>
+        <div><span class="micro t-lo">{t('postmatch.trust.after')}</span><b class="score-font num">{Math.round(tr.after)}</b></div>
+      </div>
+      <div class="ptrust-bar" role="img" aria-label={`${t('postmatch.trust.title')}: ${Math.round(tr.before)} → ${Math.round(tr.after)}`}>
+        <span class="ptrust-fill" style={{ ['--w' as string]: `${lo}%` }} />
+        <span class={`ptrust-change ${deltaClass(d)}`} style={{ left: `${lo}%`, ['--w' as string]: `${hi - lo}%` }} />
+      </div>
+      <h3 class="micro t-mid">{t('postmatch.trust.why')}</h3>
+      {tr.reasons.length === 0 ? (
+        <p class="t-sm t-mid">{t('postmatch.trust.none')}</p>
+      ) : (
+        <ul class="ptrust-list">
+          {tr.reasons.map((r, i) => (
+            <li key={i} class={deltaClass(r.value)} style={{ ['--i' as string]: String(i) }}>
+              <span>{lt(r.label)}</span>
+              <b class="num">{signedDelta(r.value)}</b>
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function RelationsStep({ pm }: { pm: PostMatchView }) {
+  const rows = pm.relations ?? []
+  const name = (r: (typeof rows)[number]) =>
+    r.kind === 'squad' ? t('postmatch.relations.squad', { n: r.name }) : r.kind === 'fans' ? t('postmatch.relations.fans') : r.kind === 'press' ? t('postmatch.relations.press') : r.name
+  return (
+    <section class="post-card post-step-card prel" aria-labelledby="post-step-h">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="users" size={14} /> {t('postmatch.relations.title')}</h2>
+      {rows.length === 0 ? (
+        <p class="t-sm t-mid">{t('postmatch.relations.none')}</p>
+      ) : (
+        <ul class="prel-list" data-testid="post-relations">
+          {rows.map((r, i) => {
+            const d = r.after - r.before
+            return (
+              <li key={r.id} class="prel-row" style={{ ['--i' as string]: String(i) }}>
+                <div class="prel-main">
+                  <span class="prel-name truncate">{name(r)}</span>
+                  {r.why && <span class="t-xs t-mid prel-why">{lt(r.why)}</span>}
+                </div>
+                <Hearts value={r.after} size={12} />
+                <b class={`num prel-delta ${deltaClass(d)}`}>{d > 0 ? '+' : d < 0 ? '−' : ''}{Math.abs(d)}</b>
+              </li>
+            )
+          })}
+        </ul>
+      )}
+    </section>
+  )
+}
+
+function SummaryStep({ pm }: { pm: PostMatchView }) {
+  const [answer, setAnswer] = useState<{ id: string; deltas: Delta[] } | null>(null)
+  return (
+    <div class="post-grid post-summary">
+      <section class="post-card post-summary-head">
+        <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}>{t('postmatch.summary.title')}</h2>
+        <div class="post-summary-row">
+          <span class="score-font num post-summary-score">{pm.score[0]}–{pm.score[1]}</span>
+          <span class="score-font num post-summary-rating" style={{ color: ratingColor(pm.rating) }}>{formatRating(pm.rating)}</span>
+        </div>
+      </section>
+      {pm.deltas.length > 0 && (
+        <section class="post-card post-impact">
+          <h2 class="post-h micro t-mid">{t('match.post.impact')}</h2>
+          <DeltaList deltas={pm.deltas} />
+        </section>
+      )}
+      {pm.interview && (
+        <section class="post-card post-interview" aria-labelledby="post-iv-q" data-testid="post-interview">
+          <h2 class="post-h micro t-mid"><Icon name="megaphone" size={14} /> {t('match.post.interview')}</h2>
+          <p class="post-iv-q" id="post-iv-q">“{lt(pm.interview.question)}”</p>
+          {answer ? (
+            <div class="post-iv-done">
+              <div class="row"><Icon name="check" size={18} class="t-pos" /> <span>{t('match.post.interviewDone')}</span></div>
+              <p class="post-iv-chosen">{lt(pm.interview.options.find((o) => o.id === answer.id)?.label)}</p>
+              <DeltaList deltas={answer.deltas} />
+            </div>
+          ) : (
+            <div class="post-iv-options">
+              {pm.interview.options.map((o) => (
+                <button key={o.id} type="button" class={`post-iv-opt tone-${o.tone}`} onClick={() => setAnswer({ id: o.id, deltas: actions.answerInterview(o.id) })}>
+                  <span class="post-iv-tone micro"><Icon name={TONE_ICON[o.tone]} size={14} /> {t(`match.post.tone.${o.tone}`)}</span>
+                  <span class="post-iv-label">{lt(o.label)}</span>
+                  {o.preview.length > 0 && <DeltaList deltas={o.preview} compact />}
+                </button>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+    </div>
+  )
+}
+
+// ───────────────────────── Screen ─────────────────────────
+
+export function PostMatchScreen() {
+  const pm = data.postMatch()
+  void currentLang.value
+  const [idx, setIdx] = useState(0)
+  const bodyRef = useRef<HTMLDivElement>(null)
+  const first = useRef(true)
+  const steps = pm ? postSteps(pm) : []
+  const last = steps.length - 1
+  const step = steps[Math.min(idx, last)] ?? 'result'
+
+  const go = (i: number) => setIdx(Math.max(0, Math.min(last, i)))
+
+  useEffect(() => {
+    if (first.current) {
+      first.current = false
+      return
+    }
+    // New step: scroll to the top and move focus to its heading for screen readers.
+    bodyRef.current?.closest('.post-root')?.scrollTo?.({ top: 0 })
+    const h = bodyRef.current?.querySelector<HTMLElement>('#post-step-h')
+    h?.focus({ preventScroll: true })
+  }, [idx])
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const el = e.target as HTMLElement | null
+      if (el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable)) return
+      if (e.key === 'ArrowRight') setIdx((i) => Math.min(last, i + 1))
+      else if (e.key === 'ArrowLeft') setIdx((i) => Math.max(0, i - 1))
+    }
+    document.addEventListener('keydown', onKey)
+    return () => document.removeEventListener('keydown', onKey)
+  }, [last])
+
+  if (!pm) {
+    return (
+      <div class="post-root post-empty">
+        <EmptyState icon="whistle" title={t('match.post.noData')} action={<Button variant="primary" icon="home" onClick={done}>{t('match.post.continue')}</Button>} />
+      </div>
+    )
+  }
+
+  const { fixture: fx, score, heroSide } = pm
+  const mine = heroSide === 'home' ? score[0] : score[1]
+  const theirs = heroSide === 'home' ? score[1] : score[0]
+  const res = mine > theirs ? 'win' : mine < theirs ? 'loss' : 'draw'
+  const atEnd = idx >= last
+
+  return (
+    <div class={`post-root post-${res}`} data-step={step} style={{ ['--home' as string]: fx.home.kit.primary, ['--away' as string]: fx.away.kit.primary }}>
+      <div class="post-bg" aria-hidden="true" />
+      <div class="post-topbar">
+        <div class="post-result-strip"><span>{t(`match.post.${res}`)}</span></div>
+        {!atEnd && (
+          <button type="button" class="post-skip" data-testid="post-skip" onClick={() => go(last)}>
+            {t('postmatch.skipAll')} <Icon name="fast-forward" size={14} />
+          </button>
         )}
+      </div>
+      <nav class="post-stepper" aria-label={t('postmatch.stepOf', { n: idx + 1, total: steps.length })}>
+        <ol>
+          {steps.map((s, i) => (
+            <li key={s} class={`${i === idx ? 'is-current' : ''}${i < idx ? ' is-done' : ''}`}>
+              <button type="button" onClick={() => go(i)} aria-current={i === idx ? 'step' : undefined} aria-label={t(`postmatch.step.${s}`)} data-testid={`post-step-${s}`}>
+                <Icon name={STEP_ICON[s]} size={14} />
+                <span class="post-stepper-label">{t(`postmatch.step.${s}`)}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+        <span class="post-stepper-count micro t-lo" aria-live="polite">{t('postmatch.stepOf', { n: idx + 1, total: steps.length })}</span>
+      </nav>
+
+      <div class="post-step" key={step} ref={bodyRef}>
+        {step === 'result' && <ResultStep pm={pm} />}
+        {step === 'rating' && <RatingStep pm={pm} />}
+        {step === 'map' && <MapStep pm={pm} />}
+        {step === 'trust' && <TrustStep pm={pm} />}
+        {step === 'relations' && <RelationsStep pm={pm} />}
+        {step === 'interview' && <SummaryStep pm={pm} />}
       </div>
 
       <footer class="post-footer">
-        <Button variant="primary" size="lg" block iconRight="arrow-right" onClick={done}>
-          {t('match.post.continue')}
-        </Button>
+        <div class="post-nav">
+          {idx > 0 && (
+            <Button variant="ghost" size="lg" icon="arrow-left" onClick={() => go(idx - 1)}>
+              {t('postmatch.back')}
+            </Button>
+          )}
+          {atEnd ? (
+            <Button variant="primary" size="lg" block iconRight="arrow-right" onClick={done}>
+              {t('match.post.continue')}
+            </Button>
+          ) : (
+            <Button variant="primary" size="lg" block iconRight="arrow-right" onClick={() => go(idx + 1)} data-testid="post-next">
+              {t('postmatch.next')}
+            </Button>
+          )}
+        </div>
       </footer>
     </div>
   )

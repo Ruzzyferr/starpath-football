@@ -453,3 +453,95 @@ export function interviewOptions(won: boolean): { question: { tr: string; en: st
     ],
   }
 }
+
+// ───────────────────────── Post-match details (mock) ─────────────────────────
+
+const MOCK_KINDS: Record<string, string[]> = {
+  ST: ['one_on_one', 'cross', 'edge_of_box', 'counter', 'build_up'],
+  W: ['cross', 'counter', 'one_on_one', 'edge_of_box', 'build_up'],
+  M: ['build_up', 'edge_of_box', 'counter', 'defend', 'cross'],
+  D: ['defend', 'interception', 'corner', 'build_up', 'counter'],
+  GK: ['gk_save'],
+}
+const kindPool = (p: Position): string[] =>
+  p === 'GK' ? MOCK_KINDS.GK : p === 'ST' ? MOCK_KINDS.ST : p === 'LW' || p === 'RW' ? MOCK_KINDS.W : p === 'CB' || p === 'LB' || p === 'RB' ? MOCK_KINDS.D : MOCK_KINDS.M
+
+/** Mock "expected moments" preview. */
+export function mockExpectedMoments(position: Position, starting: boolean): NonNullable<PreMatchView['expectedMoments']> {
+  const pool = kindPool(position)
+  const w = pool.map((_, i) => 1 / (i + 1.2))
+  const tot = w.reduce((a, b) => a + b, 0)
+  return { min: starting ? 4 : 1, max: starting ? 7 : 3, kinds: pool.map((kind, i) => ({ kind, share: w[i] / tot })) }
+}
+
+const L2 = (tr: string, en: string) => ({ tr, en })
+const MOCK_DELTA = { saved: 0.12, missed: -0.15, lost_ball: -0.25, pass_complete: 0.08, defended: 0.25 } as const
+
+/** Mock rating breakdown, heat/shot map, trust and relationship rows for a finished mock match. */
+export function mockPostDetails(m: FinishedMatch, s: GameState): Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'relations'> {
+  const rng = new Rng(hashString(`post:${m.fixture.home.name}:${m.fixture.away.name}:${m.score.join("-")}`))
+  const st = m.stats
+  if (st.minutes <= 0) return {}
+  const pool = kindPool(s.hero.position)
+  const log: NonNullable<PostMatchView['ratingLog']> = []
+  for (const minute of m.heroGoalMinutes) log.push({ minute, source: 'moment', key: 'goal', kind: pool[0], outcome: 'goal', delta: 1.0 })
+  for (let i = 0; i < st.assists; i++) log.push({ minute: rng.int(5, 88), source: 'moment', key: 'assist', kind: 'cross', outcome: 'assist', delta: 0.7 })
+  const extra = ['saved', 'missed', 'lost_ball', 'pass_complete', 'defended'] as const
+  for (let i = 0; i < 3; i++) {
+    const outcome = extra[rng.int(0, extra.length - 1)]
+    log.push({ minute: rng.int(3, 89), source: 'moment', key: outcome, kind: pool[rng.int(0, pool.length - 1)], outcome, delta: MOCK_DELTA[outcome], ...(i === 2 ? { auto: true } : {}) })
+  }
+  const my = m.heroSide === 'home' ? 0 : 1
+  for (const g of m.scorers) log.push({ minute: g.minute, source: 'team', key: g.side === m.heroSide ? 'goalFor' : 'goalAgainst', delta: g.side === m.heroSide ? 0.1 : -0.05 })
+  const gf = m.score[my]
+  const ga = m.score[1 - my]
+  if (gf !== ga) log.push({ minute: 90, source: 'final', key: 'result', delta: gf > ga ? 0.3 : -0.3 })
+  if (st.passes >= 8) log.push({ minute: 90, source: 'final', key: 'passing', delta: Math.round((st.passesCompleted / st.passes - 0.78) * 1.5 * 100) / 100 })
+  log.sort((a, b) => a.minute - b.minute)
+
+  // Heat: a blob around the position's zone plus noise; shots near the box.
+  const cols = 12
+  const rows = 8
+  const pos = s.hero.position
+  const cx = pos === 'GK' ? 0.5 : pos === 'ST' ? 9.5 : pos === 'CB' || pos === 'LB' || pos === 'RB' ? 3 : 6.5
+  const cy = pos === 'LW' || pos === 'LB' ? 1.5 : pos === 'RW' || pos === 'RB' ? 6.5 : 3.5
+  const heat: number[] = []
+  for (let r = 0; r < rows; r++) {
+    for (let c = 0; c < cols; c++) heat.push(Math.max(0, Math.round((Math.exp(-((c - cx) ** 2) / 8 - (r - cy) ** 2 / 4) * 10 + rng.range(-0.5, 1)) * 10) / 10))
+  }
+  const shots: NonNullable<PostMatchView['heroMap']>['shots'] = []
+  let goals = st.goals
+  const misses = ['missed', 'blocked', 'woodwork'] as const
+  for (let i = 0; i < st.shots; i++) {
+    const outcome = goals > 0 ? 'goal' : i < st.shotsOnTarget ? 'saved' : misses[rng.int(0, 2)]
+    if (outcome === 'goal') goals--
+    const x = clamp(rng.range(0.74, 0.95), 0, 1)
+    const y = clamp(rng.range(0.3, 0.7), 0, 1)
+    shots.push({ minute: rng.int(3, 89), x, y, outcome, xg: Math.round(clamp((x - 0.7) * 2, 0.03, 0.6) * 100) / 100, source: i % 3 === 2 ? 'auto' : 'moment', ...(rng.chance(0.2) ? { header: true } : {}) })
+  }
+
+  const before = Math.round(s.hero.managerTrust)
+  const w = clamp(st.minutes / 90, 0.3, 1.2)
+  const change = Math.round((st.rating - 6.3) * 3 * w * 10) / 10
+  const reasons: NonNullable<PostMatchView['trust']>['reasons'] = []
+  const perf = Math.round(change * 7) / 10
+  const res = Math.round(change * 3) / 10
+  if (perf) reasons.push({ key: 'rating', value: perf, label: L2(`Maç notun ${st.rating.toFixed(1)} (beklenen 6.3)`, `Your rating ${st.rating.toFixed(1)} (expected 6.3)`) })
+  if (res) reasons.push({ key: 'result', value: res, label: gf > ga ? L2('Galibiyet', 'Win') : gf === ga ? L2('Beraberlik', 'Draw') : L2('Mağlubiyet', 'Defeat') })
+  const shownChange = Math.round((perf + res) * 10) / 10
+  const rels = Object.values(s.life.relationships)
+  const fans = rels.find((r) => r.kind === 'fans')
+  const mgr = rels.find((r) => r.kind === 'manager')
+  const relations: NonNullable<PostMatchView['relations']> = []
+  const d = Math.round((st.rating - 6.5) * 4)
+  if (fans && d) relations.push({ id: fans.id, name: fans.name, kind: 'fans', before: Math.round(fans.value), after: Math.round(fans.value + d), why: L2('Maç performansın', 'Your match performance') })
+  if (mgr && d) relations.push({ id: mgr.id, name: mgr.name, kind: 'manager', before: Math.round(mgr.value), after: Math.round(mgr.value + Math.sign(d)), why: L2('Maç notun', 'Your rating') })
+  if (gf > ga) relations.push({ id: 'squad', name: '6', kind: 'squad', before: 20, after: 22, why: L2('Galibiyet sevinci', 'Shared joy of a win') })
+  return {
+    ratingBase: 6,
+    ratingLog: log,
+    heroMap: { cols, rows, heat, shots },
+    trust: { before, after: Math.round((before + shownChange) * 10) / 10, reasons },
+    relations,
+  }
+}

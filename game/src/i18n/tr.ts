@@ -21,6 +21,7 @@ import { tr as inbox } from './sections/inbox'
 import { tr as settings } from './sections/settings'
 import { tr as saves } from './sections/saves'
 import { tr as help } from './sections/help'
+import { tr as postmatch } from './sections/postmatch'
 
 export const tr = {
   common,
@@ -45,4 +46,5 @@ export const tr = {
   settings,
   saves,
   help,
+  postmatch,
 }

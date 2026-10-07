@@ -4,8 +4,8 @@ import { Button, Crest, EmptyState, FormDots, IconButton } from '../../component
 import { Icon } from '../../icons'
 import { formatNumber } from '../../format'
 import { onColor } from '../../art/svg'
-import { back, data, navigate, type LineupPlayer, type TeamView } from '../../store'
-import { PitchLinesVertical, WEATHER_ICON } from './shared'
+import { back, data, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
+import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 
 function Disc({ p, team, side }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away' }) {
   // Home occupies the bottom half (own goal at the bottom), away the top half.
@@ -20,6 +20,31 @@ function Disc({ p, team, side }: { p: LineupPlayer; team: TeamView; side: 'home'
     >
       <span class="pm-disc-num num">{p.number}</span>
       <span class="pm-disc-name truncate">{p.isHero ? t('match.pre.you') : p.name.split(' ').slice(-1)[0]}</span>
+    </div>
+  )
+}
+
+/** "Expected moments" preview: how many interactive moments and which kinds to expect. */
+function ExpectedMomentsCard({ em, starting }: { em: NonNullable<PreMatchView['expectedMoments']>; starting: boolean }) {
+  const kinds = em.kinds.filter((k) => k.share >= 0.08).slice(0, 4)
+  return (
+    <div class="pm-card pm-moments" data-testid="pm-expected-moments">
+      <div class="pm-moments-head">
+        <h3 class="micro t-mid">{t('postmatch.pre.expected')}{starting ? '' : ` · ${t('postmatch.pre.benchNote')}`}</h3>
+        <b class="score-font num pm-moments-range">{em.min === em.max ? t('postmatch.pre.one', { min: em.min }) : t('postmatch.pre.range', { min: em.min, max: em.max })}</b>
+      </div>
+      {kinds.length > 0 && (
+        <ul class="pm-moment-kinds" aria-label={t('postmatch.pre.types')}>
+          {kinds.map((k) => (
+            <li class="pm-moment-kind" key={k.kind}>
+              <Icon name={MOMENT_ICON[k.kind] ?? 'star'} size={16} class="t-lo" />
+              <span class="truncate">{tx(`match.kind.${k.kind}`, undefined, k.kind)}</span>
+              <span class="pm-mk-bar" aria-hidden="true"><span style={{ ['--w' as string]: `${Math.round(k.share * 100)}%` }} /></span>
+              <span class="num pm-mk-pct">{Math.round(k.share * 100)}%</span>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   )
 }
@@ -113,6 +138,8 @@ export function PreMatchScreen() {
               <div class="t-sm t-mid">{pm.heroStarting ? t('match.pre.startingDesc') : t('match.pre.benchDesc')}</div>
             </div>
           </div>
+
+          {pm.expectedMoments && pm.expectedMoments.max > 0 && <ExpectedMomentsCard em={pm.expectedMoments} starting={pm.heroStarting} />}
 
           <div class="pm-card">
             <h3 class="micro t-mid">{t('match.pre.opponentForm')}</h3>
