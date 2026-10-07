@@ -340,7 +340,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#2 | KISMİ | sim/life/relationships.ts:12 | 5 anı tutuluyor; UI yalnızca sonuncuyu gösteriyor |
 | 2.4#3 | KISMİ | sim/life/relationships.ts:176 | Bantlar farklı; bant etkisi yazılmıyor |
 | 2.4#4 | KISMİ | sim/life/relationships.ts:77 | Sönüm sabit; %2 ve tavan kuralı yok |
-| 2.4#5 | EKSİK | - | İlişki değişim defteri yok |
+| 2.4#5 | TAMAM | sim/life/relationLedger.test.ts; relationships.ts:47 | WP-sweep: ilişki değişim defteri (son 10, ardışık sönüm birleşir) |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
 | 2.4#7 | EKSİK | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL değişikliği gerekir |
 | 2.4#11 | KISMİ | ui/screens/life/Relations.tsx:24 | Hızlı aksiyon var; 3 seçenekli sahne yok |
@@ -355,19 +355,19 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#47 | EKSİK | - | Ertelendi: WP-16 (TD beklentisi, 2.7#71) ile birlikte yapılacak |
 | 2.4#52 | KISMİ | sim/life/events/content/teammates.ts:92 | Penaltıcı olay kartı var; maç içi seçim yok |
 | 2.4#53 | KISMİ | sim/life/events/content/teammates.ts:128 | Kaptanlık zinciri var; sezon başı oylama yok |
-| 2.4#60 | EKSİK | sim/game/interview.ts:106 | Röportaj etkisinde tavan yok |
+| 2.4#60 | TAMAM | sim/game/interview.ts:296 IV_CAP; interview3.test.ts:95 | Oturum başı fans/itibar tavanı |
 | 2.4#61 | KISMİ | sim/game/interview.ts:14 | Tek soru ve 4 ton; 3 soru ve tuzak yok |
-| 2.4#65 | EKSİK | sim/life/casino.ts:874 | Tek ziyaret bile manşet olabiliyor |
-| 2.4#69 | KISMİ | sim/life/social.ts:112 | Paylaşım limiti yok |
+| 2.4#65 | TAMAM | sim/life/casino.ts:903 casinoHeadlineWorthy; casinoRg.test.ts:28 | Tek ziyaret manşet olmaz, örüntü olur |
+| 2.4#69 | TAMAM | sim/life/social.ts:153 SPAM_DECAY (haftalık paylaşım sayacı) | Haftada tekrar eden paylaşımın getirisi üstel düşer |
 | 2.4#70 | KISMİ | sim/life/social.ts:24 | 2 paylaşım tipi eksik |
 | 2.4#79 | EKSİK | - | Ertelendi: içerik işi (olay + ilişki grubu), WP-15 kapsamı dışı |
-| 2.4#84 | KISMİ | sim/life/events/content/casino.ts:23 | Şike teklifinde reddetmek cezalandırılıyor |
+| 2.4#84 | TAMAM | sim/life/events/content/casino.ts:51 | Reddetmek yalnız stres; ceza yok |
 | 2.4#85 | TAMAM | sim/life/sponsors.ts (ScandalLevel 1-4) | WP-15: seviye 4 tüm sponsorları bitirir |
-| 2.4#90 | KISMİ | sim/life/events/content/health.ts:146 | Yardım hattı bilgisi yok |
+| 2.4#90 | TAMAM | sim/life/events/content/health.ts:health.burnout + casino.ts HELPLINE_MESSAGE | Destek hattı bilgisi metinde |
 | 2.4#98 | KISMİ | sim/life/events/content/friends.ts:10 | Zincir 2 adım (plan 4) |
 | 2.4#99 | KISMİ | sim/life/events/content/teammates.ts:92 | Bağlı 4 adımlı zincir yok |
 | 2.4#100 | KISMİ | sim/life/events/content/nightlife.ts:47 | Paparazzi var; görev yok |
-| 2.4#101 | EKSİK | - | "Yurt dışında yalnız" zinciri yok |
+| 2.4#101 | TAMAM | sim/life/events/content/abroad.ts friends.abroad_lonely/homesick/language/settled | Yurt dışı zinciri var |
 | 2.4#102 | TAMAM | sim/life/events/content/casino.ts:23 | Bahis çetesi zinciri tam |
 | 2.4#110 | KISMİ | sim/life/events/types.ts:150 | TS şeması var; Zod yok |
 | 2.4#111 | KISMİ | sim/life/events/types.ts:13 | ~199 olay; hukuk, dolandırıcılık ve iş kategorileri eksik |
@@ -383,13 +383,13 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.5#1 | KISMİ | sim/career/contract.ts:5 | Haftalık ölçek var; para birimi € |
 | 2.5#2 | KISMİ | sim/life/events/engine.ts:83 | Simgesiz fiyat lint kuralı yok |
 | 2.5#3 | KISMİ | sim/career/matchOutcome.ts:196 | Kazanç dökümü ekranı yok |
-| 2.5#4 | EKSİK | sim/career/contract.ts:149 | Kalecinin primi 0 |
-| 2.5#5 | EKSİK | - | Sezon sonu takım primi yok |
+| 2.5#4 | TAMAM | sim/career/matchPay.ts:matchBonuses cleanSheet | Kaleci temiz kasa primi |
+| 2.5#5 | TAMAM | sim/game/season.ts:paySeasonEndBonuses | Kupa başına 4 haftalık takım primi |
 | 2.5#8 | KISMİ | sim/life/economy.ts:22 | Sabit %35 vergi; ülkeye göre değil |
 | 2.5#10 | KISMİ | sim/life/economy.ts:362 | Komisyon yalnızca maaştan |
 | 2.5#11 | EKSİK | core/types.ts:416 | Personel sözleşmesinde bitiş tarihi yok |
 | 2.5#15 | KISMİ | sim/game/balanceSim.ts:76 | Temel yaşam gideri yok |
-| 2.5#16 | KISMİ | data/activities.ts:210 | Enerji içeceği yok |
+| 2.5#16 | TAMAM | data/activities.ts energy_drink; activities.test.ts | Enerji içeceği aktivitesi (hızlı enerji, yorgunluk bedeli) |
 | 2.5#17 | TAMAM | data/activities.ts:2 | Günde 3 dilim |
 | 2.5#18 | KISMİ | sim/life/activities.ts:337 | Ev kalitesine bağlı enerji yok |
 | 2.5#19 | KISMİ | data/activities.ts | Enflasyon ayarı yok |
@@ -414,9 +414,9 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.5#92 | KISMİ | sim/life/casino.ts:513 | RTP testi var; 10M spin yok |
 | 2.5#99 | KISMİ | sim/life/casino.ts:772 | Bağımlılık göstergesi var; sızıntı kuralı yok |
 | 2.5#102 | KISMİ | sim/life/events/content/casino.ts:301 | Men süreleri plandan farklı |
-| 2.5#103 | KISMİ | sim/life/events/content/casino.ts:36 | Sessiz ret cezalandırılıyor |
+| 2.5#103 | TAMAM | sim/life/events/content/casino.ts:51 | Sessiz ret cezasız |
 | 2.5#105 | EKSİK | - | Mağaza beyanı yok |
-| 2.5#109 | KISMİ | sim/life/economy.ts:432 | Zorunlu satış var; uyarı yok |
+| 2.5#109 | TAMAM | sim/life/economy.ts lowCashRisk/lowCashWarning; economy.test.ts | Zorunlu satıştan önce 4 haftada bir uyarı |
 | 2.5#112 | EKSİK | - | Deneme / tam sürüm kilidi yok |
 | 2.5#113 | EKSİK | - | Kozmetik IAP yok |
 | 2.5#114 | EKSİK | - | Satın alma ve geri yükleme yok |
@@ -669,13 +669,13 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.10#1 | TAMAM | game/src/platform/index.ts:96 | Hesap gerekmiyor |
 | 2.10#2 | EKSİK | - | Platform kimliği yok |
 | 2.10#3 | EKSİK | game/index.html:20 | Çevrimiçi anahtarı yok; font isteği hep gidiyor |
-| 2.10#8 | EKSİK | - | Kariyer skoru tablosu yok |
+| 2.10#8 | TAMAM | sim/game/localMeta.ts, ui/screens/board/BoardScreen.tsx | Yerel kariyer sıralaması (5 ölçüt) ve kişisel rekorlar; çevrimiçi tablo BLOCKED-EXTERNAL |
 | 2.10#15 | EKSİK | - | Modlu/resmi ayrımı yok |
-| 2.10#17 | EKSİK | - | Haftalık senaryo yok |
-| 2.10#18 | EKSİK | - | Meydan okuma profili yok |
+| 2.10#17 | TAMAM | sim/game/localMeta.ts challengeFor, localMeta.test.ts | Tohumlu haftalık görev rotasyonu, seri; yerel |
+| 2.10#18 | TAMAM | ui/screens/board/BoardScreen.tsx | Yerel meydan okuma profili: seri, en iyi seri, geçmiş. Çevrimiçi paylaşım BLOCKED-EXTERNAL |
 | 2.10#19 | EKSİK | - | Deneme hakkı tablosu yok |
 | 2.10#34 | KISMİ | game/src/game/MatchScene.ts:35 | Tekrar seed+girdi olarak saklanmıyor |
-| 2.10#40 | EKSİK | game/package.json:27 | Klip paylaşımı yok |
+| 2.10#40 | KISMİ | ui/share/cards.ts, ShareButtons.tsx, e2e/board.spec.ts | Maç sonu ve kariyer PNG kartı (paylaşım sayfası/indirme) TAMAM; video klip ve fotoğraf modu ertelendi (maç tekrarı seed+girdi yok) |
 | 2.10#60 | EKSİK | - | Mod sistemi yok |
 | 2.10#62 | EKSİK | - | Mod imzası yok |
 | 2.10#70 | N/A-süreç | - | Yol haritası taahhüdü |
@@ -685,7 +685,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.10#83 | TAMAM | - | Baskı bildirimi yok (kısıt sağlanıyor) |
 | 2.10#86 | TAMAM | game/src/sim/world/fixtures.ts:66 | Gerçek zaman cezası yok |
 | 2.10#88 | EKSİK | - | "Hata bildir" formu yok |
-| 2.10#93 | EKSİK | - | "Yenilikler" ekranı yok |
+| 2.10#93 | TAMAM | ui/screens/board/WhatsNewScreen.tsx | Menüden Yenilikler; görüldü bilgisi meta depoda |
 | 2.10#101 | EKSİK | - | Sunucu seed'i yok |
 | 2.10#102 | EKSİK | - | Girdi günlüğü gönderimi yok |
 | 2.10#103 | EKSİK | - | Sunucuda yeniden oynatma yok |

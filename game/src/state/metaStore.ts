@@ -6,6 +6,7 @@
  */
 import { emptyAchStore, type AchStore } from '../sim/game/achievements'
 import type { HallOfFameEntry } from '../sim/game/hallOfFame'
+import { emptyLocalMeta, type LocalMeta } from '../sim/game/localMeta'
 
 export const META_KEY = 'starpath.meta.v1'
 /** Hall of Fame cap (oldest low scores are dropped first). */
@@ -15,6 +16,8 @@ export interface MetaData {
   version: 1
   achievements: AchStore
   hallOfFame: HallOfFameEntry[]
+  /** Weekly challenges, personal bests, What's New marker (local-first, GAP 2.10). */
+  local: LocalMeta
 }
 
 export interface KeyValue {
@@ -36,7 +39,7 @@ class MemoryKV implements KeyValue {
   }
 }
 
-const emptyMeta = (): MetaData => ({ version: 1, achievements: emptyAchStore(), hallOfFame: [] })
+const emptyMeta = (): MetaData => ({ version: 1, achievements: emptyAchStore(), hallOfFame: [], local: emptyLocalMeta() })
 
 function defaultKV(): KeyValue {
   try {
@@ -72,6 +75,7 @@ export class MetaStore {
           version: 1,
           achievements: { ...emptyAchStore(), ...(p.achievements ?? {}) },
           hallOfFame: Array.isArray(p.hallOfFame) ? p.hallOfFame : [],
+          local: { ...emptyLocalMeta(), ...(p.local ?? {}), bests: { ...emptyLocalMeta().bests, ...(p.local?.bests ?? {}) } },
         }
         data.achievements.counters = { ...emptyAchStore().counters, ...(p.achievements?.counters ?? {}) }
       }

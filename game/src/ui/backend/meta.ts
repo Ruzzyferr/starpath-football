@@ -13,7 +13,7 @@
  */
 import { effect, signal } from '@preact/signals'
 import type { GameState, LText } from '../../core/types'
-import { lt as render } from '../../i18n'
+import { lt as render, t } from '../../i18n'
 import { absDayOf, GFLAG } from '../../sim/game/internal'
 import { heroOvr } from '../../sim/career/progression'
 import { potentialView, type PotentialView } from '../../sim/career/scouting'
@@ -32,6 +32,7 @@ import {
 } from '../../sim/game/records'
 import { careerSummaryOf, continueCareer as continueFn, retireHero, retirementStatus, type RetirementStatus } from '../../sim/game/retirement'
 import { autoTrialPerformance, hasPendingTrials, pendingTrials, resolveTrial, type TrialInvite } from '../../sim/game/trials'
+import { applyMatch, challengeFor, weekKey, type ChallengeDef, type ChallengeDone, type MatchMetaResult } from '../../sim/game/localMeta'
 import { MetaStore, type KeyValue, type MetaData } from '../../state/metaStore'
 import { toast } from '../components/Toast'
 import { screen, type ScreenId } from '../store'
@@ -53,7 +54,7 @@ export function useMetaStorage(kv: KeyValue): void {
 
 function publish(): void {
   const d = store.read()
-  metaData.value = { ...d, achievements: { ...d.achievements }, hallOfFame: [...d.hallOfFame] }
+  metaData.value = { ...d, achievements: { ...d.achievements }, hallOfFame: [...d.hallOfFame], local: { ...d.local } }
 }
 
 // ───────────────────────── Achievements ─────────────────────────
@@ -117,6 +118,53 @@ export function achievementEvent(ev: AchEvent, s: GameState | null = current()):
   return unlocked
 }
 
+// ───────────────────────── Local meta: weekly challenge + bests ─────────────────────────
+
+/** Fold a hero match into the weekly challenge / personal bests and celebrate. */
+export function recordLocalMeta(feats: Parameters<typeof applyMatch>[1]): MatchMetaResult {
+  let res: MatchMetaResult = { completed: null, newBests: [] }
+  store.update((d) => {
+    res = applyMatch(d.local, feats)
+  })
+  publish()
+  if (res.completed) toast(t('board.toast.done', { n: render(res.completed.title) }), 'reward', 'trophy')
+  else if (res.newBests.length) toast(t('board.toast.best'), 'success', 'star')
+  return res
+}
+
+export interface WeeklyChallengeView {
+  def: ChallengeDef
+  key: string
+  done: ChallengeDone | null
+  streak: number
+  bestStreak: number
+  total: number
+}
+
+/** The current in-game week's challenge for the active career. */
+export function weeklyChallengeView(): WeeklyChallengeView | null {
+  const s = current()
+  if (!s) return null
+  const m = metaData.value.local
+  const key = weekKey(s.calendar.season, s.calendar.week)
+  return {
+    def: challengeFor(s.calendar.season, s.calendar.week, s.hero.position === 'GK'),
+    key,
+    done: m.challenges[key] ?? null,
+    streak: m.streak,
+    bestStreak: m.bestStreak,
+    total: Object.keys(m.challenges).length,
+  }
+}
+
+/** Remember that the player has read What's New for this version. */
+export function markWhatsNewSeen(version: string): void {
+  store.update((d) => {
+    d.local.seenVersion = version
+  })
+  publish()
+}
+
 // Commit-diff tracking → events.
 let seenCareer: string | null = null
 let seenMatch: string | null = null
@@ -151,6 +199,7 @@ export function onStateCommitted(s: GameState): void {
   if (feats && feats.fixtureId !== seenMatch) {
     seenMatch = feats.fixtureId
     events.push({ type: 'match', feats })
+    recordLocalMeta(feats)
   }
   const rc = heroRecordCount(s)
   if (rc > heroClubRecords && heroClubRecords >= 0) events.push({ type: 'records', broken: rc - heroClubRecords })

@@ -4,6 +4,7 @@ import { Button, Card, CardHeader, EmptyState, Page } from '../../components'
 import { formatCompact, formatMoney, formatNumber, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate, screen } from '../../store'
 import { legacyFor, summaryView } from '../../backend/meta'
+import { ExportCsvButton, ShareCareerButton } from '../../share/ShareButtons'
 import { legacyTier, POST_CAREER } from '../../../sim/game/hallOfFame'
 
 /** Career summary "documentary": timeline, stats, trophies, best moments, net worth, legacy score. */
@@ -96,6 +97,8 @@ export function DocumentaryScreen() {
 
       <div class="row wrap" style={{ gap: '8px' }}>
         <Button variant="secondary" icon="crown" onClick={() => navigate('hallOfFame')}>{t('meta.doc.hof')}</Button>
+        <ShareCareerButton sum={sum} size="md" />
+        <ExportCsvButton sum={sum} size="md" />
         {leg && <Button variant="gold" icon="users" onClick={() => navigate('newCareer', { legacy: sum.careerId })} data-testid="doc-legacy">{t('meta.doc.newLegacy')}</Button>}
         <Button variant="ghost" icon="sign-out" onClick={() => navigate(gameState.value ? 'home' : 'title', undefined, { tab: true })}>{t('meta.doc.mainMenu')}</Button>
       </div>

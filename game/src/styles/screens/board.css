@@ -1,0 +1,144 @@
+/* Records, weekly challenge and release notes (GAP 2.10 local-first). Tokens only. */
+.bd-hero {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  flex-wrap: wrap;
+  padding: 16px;
+  border-radius: var(--r-card);
+  background: linear-gradient(150deg, var(--surface-2), var(--surface-1));
+  border: 1px solid var(--border-strong);
+}
+.bd-hero.is-done {
+  border-color: var(--brand-pitch-deep);
+  background: linear-gradient(150deg, color-mix(in srgb, var(--brand-pitch) 16%, var(--surface-2)), var(--surface-1));
+}
+.bd-badge {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 68px;
+  height: 68px;
+  border-radius: 50%;
+  color: var(--text-on-gold);
+  background: var(--tier-gold-grad);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-gold) 25%, transparent);
+}
+.is-done .bd-badge {
+  color: var(--text-on-pitch);
+  background: linear-gradient(150deg, var(--brand-pitch-hi), var(--brand-pitch-deep));
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--brand-pitch) 28%, transparent);
+}
+.bd-badge-sm {
+  width: 44px;
+  height: 44px;
+  box-shadow: none;
+}
+.bd-kpis,
+.bd-tiles {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.bd-tiles {
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+}
+.bd-kpi,
+.bd-tile {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  padding: 12px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.bd-kpi b,
+.bd-tile b {
+  font-size: 2rem;
+  line-height: 1;
+  color: var(--accent-gold);
+}
+.bd-board {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bd-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.bd-rank {
+  min-width: 1.6em;
+  text-align: center;
+  font-size: 1.6rem;
+  color: var(--text-lo);
+}
+.bd-top-1 {
+  border-color: var(--accent-gold-deep);
+  background: linear-gradient(90deg, color-mix(in srgb, var(--accent-gold) 14%, var(--surface-1)), var(--surface-1));
+}
+.bd-top-1 .bd-rank {
+  color: var(--accent-gold);
+}
+.bd-top-2 .bd-rank {
+  color: var(--tier-silver);
+}
+.bd-top-3 .bd-rank {
+  color: var(--tier-bronze);
+}
+.bd-val {
+  font-size: 1.9rem;
+  color: var(--accent-gold);
+}
+.bd-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  margin-top: 4px;
+}
+.bd-news {
+  list-style: none;
+  margin: 0 0 16px;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.bd-news-item {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 14px;
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+@media (max-width: 480px) {
+  .bd-hero {
+    align-items: flex-start;
+  }
+  .bd-kpi b {
+    font-size: 1.6rem;
+  }
+}
+.post-share {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 8px;
+}
+.bd-page .rec-list li svg {
+  display: inline-block;
+  vertical-align: -2px;
+}
+.bd-actions {
+  align-items: center;
+}

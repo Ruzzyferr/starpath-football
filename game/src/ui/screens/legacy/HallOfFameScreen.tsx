@@ -11,7 +11,7 @@ export function HallOfFameScreen() {
   void currentLang.value
   const list = hallOfFame()
   return (
-    <Page title={t('meta.hof.title')} sub={t('meta.hof.sub')} class="hof-page">
+    <Page title={t('meta.hof.title')} sub={t('meta.hof.sub')} class="hof-page" actions={<Button size="sm" variant="secondary" icon="flag" onClick={() => navigate('board')}>{t('board.menu.title')}</Button>}>
       {list.length === 0 && (
         <div class="hof-empty">
           {/* Ghost podium: three unclaimed plinths waiting for retired careers. */}

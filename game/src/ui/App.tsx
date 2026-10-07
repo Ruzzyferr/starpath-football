@@ -44,6 +44,8 @@ import { CupDrawScreen } from './screens/cup/CupDrawScreen'
 import { AwardsScreen } from './screens/awards/AwardsScreen'
 import { AchievementsScreen } from './screens/legacy/AchievementsScreen'
 import { HallOfFameScreen } from './screens/legacy/HallOfFameScreen'
+import { BoardScreen } from './screens/board/BoardScreen'
+import { WhatsNewScreen } from './screens/board/WhatsNewScreen'
 import { RetireScreen } from './screens/legacy/RetireScreen'
 import { DocumentaryScreen } from './screens/legacy/DocumentaryScreen'
 import { TrialsScreen } from './screens/legacy/TrialsScreen'
@@ -88,6 +90,8 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   glossary: GlossaryScreen,
   achievements: AchievementsScreen,
   hallOfFame: HallOfFameScreen,
+  board: BoardScreen,
+  whatsNew: WhatsNewScreen,
   retire: RetireScreen,
   documentary: DocumentaryScreen,
   trials: TrialsScreen,
@@ -97,7 +101,7 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
 
 const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'paywall'])
 /** Screens usable without a loaded career. */
-const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary'])
+const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary', 'board', 'whatsNew'])
 
 function isTyping(el: Element | null): boolean {
   if (!el) return false

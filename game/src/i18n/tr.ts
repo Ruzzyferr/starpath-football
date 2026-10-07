@@ -23,6 +23,7 @@ import { tr as settings } from './sections/settings'
 import { tr as saves } from './sections/saves'
 import { tr as help } from './sections/help'
 import { tr as meta } from './sections/meta'
+import { tr as board } from './sections/board'
 import { tr as iap } from './sections/iap'
 import { tr as postmatch } from './sections/postmatch'
 import { tr as intl } from './sections/intl'
@@ -52,6 +53,7 @@ export const tr = {
   saves,
   help,
   meta,
+  board,
   iap,
   postmatch,
   intl,

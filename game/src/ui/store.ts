@@ -723,7 +723,7 @@ export type ScreenId =
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
   | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
   | 'achievements' | 'hallOfFame' | 'retire' | 'documentary' | 'trials'
-  | 'objectives' | 'national' | 'cupDraw' | 'awards' | 'paywall' | 'store'
+  | 'board' | 'whatsNew' | 'objectives' | 'national' | 'cupDraw' | 'awards' | 'paywall' | 'store'
 
 export interface Route {
   id: ScreenId

@@ -22,6 +22,8 @@ const TILES: Tile[] = [
   { id: 'trophies', icon: 'trophy', title: 'settings.menu.trophies', desc: 'settings.menu.trophiesDesc', to: 'trophies', tone: 'gold' },
   { id: 'achievements', icon: 'medal', title: 'meta.menu.achievements', desc: 'meta.menu.achievementsDesc', to: 'achievements', tone: 'gold' },
   { id: 'hallOfFame', icon: 'crown', title: 'meta.menu.hallOfFame', desc: 'meta.menu.hallOfFameDesc', to: 'hallOfFame', tone: 'violet' },
+  { id: 'board', icon: 'flag', title: 'board.menu.title', desc: 'board.menu.desc', to: 'board', tone: 'pitch' },
+  { id: 'whatsNew', icon: 'sparkle', title: 'board.menuNew.title', desc: 'board.menuNew.desc', to: 'whatsNew' },
   { id: 'careerLog', icon: 'history', title: 'settings.menu.careerLog', desc: 'settings.menu.careerLogDesc', to: 'careerLog', tone: 'violet' },
   { id: 'inbox', icon: 'newspaper', title: 'settings.menu.inbox', desc: 'settings.menu.inboxDesc', to: 'inbox' },
   { id: 'glossary', icon: 'question', title: 'help.glossary.title', desc: 'help.glossary.sub', to: 'glossary', tone: 'blue' },

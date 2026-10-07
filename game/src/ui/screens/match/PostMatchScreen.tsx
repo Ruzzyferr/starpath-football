@@ -1,6 +1,7 @@
 import '../../../styles/screens/match.css'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { t, lt, tx, currentLang } from '../../../i18n'
+import { ShareMatchButton } from '../../share/ShareButtons'
 import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRing, Money, ShotMap, ShotMarker } from '../../components'
 import { Icon, type IconName } from '../../icons'
 import { formatRating, ratingColor } from '../../format'
@@ -361,6 +362,7 @@ function SummaryStep({ pm, iv, answer, setAnswer }: { pm: PostMatchView; iv: Int
           <span class="score-font num post-summary-score">{pm.score[0]}–{pm.score[1]}</span>
           <span class="score-font num post-summary-rating" style={{ color: ratingColor(pm.rating) }}>{formatRating(pm.rating)}</span>
         </div>
+        <div class="post-share"><ShareMatchButton pm={pm} /></div>
       </section>
       {pm.deltas.length > 0 && (
         <section class="post-card post-impact">
