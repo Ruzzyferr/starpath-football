@@ -6,7 +6,8 @@ import {
 } from '../components'
 import { formatMoney } from '../format'
 import { Icon, type IconName } from '../icons'
-import { actions, data, gameState, screen, type PerkView, type TrainingSessionView } from '../store'
+import { actions, data, gameState, screen, type PerkView, type TrainingOutcomeView, type TrainingSessionView } from '../store'
+import { DrillOverlay } from './training/DrillOverlay'
 import { GROUPS, groupAvg, keysOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
 import '../../styles/screens/training.css'
@@ -18,10 +19,23 @@ const GROUP_ICON: Record<TrainingSessionView['group'], IconName> = {
   physical: 'run', technical: 'ball', mental: 'brain', goalkeeping: 'shield', recovery: 'heartbeat', tactical: 'tactics',
 }
 
-function SessionCard({ s, energy }: { s: TrainingSessionView; energy: number }) {
-  const short = energy < s.energy
+/** Toast for a finished session: "+38 XP · +1 Shooting, −20 Energy". */
+function announce(o: TrainingOutcomeView): void {
+  const rest = o.deltas.filter((d) => d.key !== 'xp')
+  const xp = t('training.result.xp', { n: o.xp })
+  toast(rest.length ? `${xp} · ${deltaText(rest)}` : xp, o.injured ? 'warning' : 'success', 'barbell')
+}
+
+function SessionCard({ s, onPlay }: { s: TrainingSessionView; onPlay: (s: TrainingSessionView) => void }) {
+  const locked = !s.available
+  const reason = locked ? lt(s.lockedReason) || t('training.session.locked') : undefined
+  const runAuto = () => {
+    const o = actions.trainSession(s.id)
+    if (o.ok) announce(o)
+    else toast(lt(o.error) || t('training.result.notApplied'), 'warning')
+  }
   return (
-    <Card class={`trn-session trn-g-${s.group}`} pad="md">
+    <Card class={`trn-session trn-g-${s.group}${locked ? ' is-locked' : ''}`} pad="md">
       <div class="trn-session-head">
         <span class="trn-session-icon" aria-hidden="true"><Icon name={GROUP_ICON[s.group]} size={22} /></span>
         <div class="grow">
@@ -38,20 +52,27 @@ function SessionCard({ s, energy }: { s: TrainingSessionView; energy: number }) 
       )}
       <div class="trn-session-foot">
         <span class="trn-meta"><Icon name="energy" size={16} class="t-gold" />{t('training.session.energy', { n: s.energy })}</span>
-        <span class="trn-meta trn-xp"><Icon name="sparkle" size={16} />{t('training.session.xp', { n: s.xp })}</span>
-        <Button
-          variant="primary"
-          size="sm"
-          icon="barbell"
-          disabled={short}
-          title={short ? t('training.session.lowEnergy') : undefined}
-          onClick={() => {
-            const d = actions.train(s.id)
-            toast(d.length ? t('training.session.doneWith', { list: deltaText(d) }) : t('training.session.done'), 'success', 'barbell')
-          }}
-        >
-          {t('training.session.train')}
-        </Button>
+        <span class="trn-meta trn-xp" title={t('training.session.xpAuto', { n: s.xp })}>
+          <Icon name="sparkle" size={16} />
+          {s.drill ? t('training.session.xpRange', { a: s.xp, b: s.xpMax }) : t('training.session.xp', { n: s.xp })}
+        </span>
+      </div>
+      {locked && <p class="t-xs trn-warn trn-session-lock"><Icon name="lock" size={13} /> {reason}</p>}
+      <div class="trn-session-actions">
+        {s.drill ? (
+          <>
+            <Button variant="secondary" size="sm" disabled={locked} title={reason} onClick={runAuto}>
+              {t('training.session.auto')}
+            </Button>
+            <Button variant="primary" size="sm" icon="play" disabled={locked} title={reason} onClick={() => onPlay(s)}>
+              {t('training.session.play')}
+            </Button>
+          </>
+        ) : (
+          <Button variant="primary" size="sm" icon="barbell" disabled={locked} title={reason} onClick={runAuto}>
+            {t('training.session.autoOnly')}
+          </Button>
+        )}
       </div>
     </Card>
   )
@@ -60,6 +81,7 @@ function SessionCard({ s, energy }: { s: TrainingSessionView; energy: number }) 
 function Sessions() {
   const s = gameState.value!
   const sessions = data.trainingSessions()
+  const [playing, setPlaying] = useState<TrainingSessionView | null>(null)
   if (!sessions.length) return <EmptyState icon="barbell" title={t('training.session.empty')} />
   return (
     <div class="stack">
@@ -67,8 +89,17 @@ function Sessions() {
         <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" />
       </div>
       <div class="trn-sessions stagger">
-        {sessions.map((x) => <SessionCard key={x.id} s={x} energy={s.life.energy} />)}
+        {sessions.map((x) => <SessionCard key={x.id} s={x} onPlay={setPlaying} />)}
       </div>
+      {playing && (
+        <DrillOverlay
+          session={playing}
+          onClose={(o) => {
+            setPlaying(null)
+            if (o) announce(o)
+          }}
+        />
+      )}
     </div>
   )
 }
@@ -272,15 +303,19 @@ function Trainer() {
                 <div><span class="micro t-lo">{t('training.trainer.fee')}</span><span class="num">{formatMoney(o.weeklyFee)}{t('common.perWeek')}</span></div>
                 <div><span class="micro t-lo">XP</span><span class="num t-pos">{t('training.trainer.bonus', { n: Math.round(o.bonus * 100) })}</span></div>
               </div>
+              {!o.available && !o.current && o.lockedReason && <p class="t-xs trn-warn">{lt(o.lockedReason)}</p>}
               <Button
-                variant="secondary"
+                variant={o.current ? 'ghost' : 'secondary'}
                 size="sm"
                 block
-                icon="handshake"
-                disabled={s.life.money < o.weeklyFee}
-                onClick={() => { actions.hireTrainer(o.id); toast(t('training.trainer.hired', { name: o.name }), 'success', 'whistle') }}
+                icon={o.current ? 'check' : 'handshake'}
+                disabled={!o.available}
+                title={o.lockedReason ? lt(o.lockedReason) : undefined}
+                onClick={() => {
+                  if (actions.hireTrainer(o.id)) toast(t('training.trainer.hired', { name: o.name }), 'success', 'whistle')
+                }}
               >
-                {t('training.trainer.hire')}
+                {o.current ? t('training.trainer.current') : t('training.trainer.hire')}
               </Button>
             </Card>
           ))}

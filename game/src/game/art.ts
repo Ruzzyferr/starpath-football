@@ -137,7 +137,8 @@ export function kitTexture(scene: Phaser.Scene, key: string, kit: KitColors, num
     c.lineWidth = Math.max(2, w * 0.035)
     c.strokeStyle = 'rgba(0,0,0,0.65)'
     c.stroke()
-    // Number with contrasting fill + outline.
+    // Number with contrasting fill + outline (none for 0, e.g. training mannequins).
+    if (num <= 0) return
     const light = luminance(kit.primary) > 0.55
     c.font = `900 ${Math.round(w * 0.46)}px system-ui, 'Segoe UI', Roboto, Arial, sans-serif`
     c.textAlign = 'center'

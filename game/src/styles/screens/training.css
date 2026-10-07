@@ -234,3 +234,109 @@
   border-radius: var(--r-chip);
 }
 .trn-stars { display: inline-flex; gap: 1px; color: var(--accent-gold); }
+
+/* Session actions (Play drill / Auto) */
+.trn-session.is-locked { opacity: 0.82; }
+.trn-session-lock { display: flex; align-items: center; gap: 4px; margin: 0; }
+.trn-warn { color: var(--state-warning); }
+.trn-session-actions { display: flex; gap: var(--sp-2); justify-content: flex-end; flex-wrap: wrap; }
+.trn-session-actions .btn { flex: 1 1 auto; min-width: 0; }
+@media (min-width: 520px) { .trn-session-actions .btn { flex: 0 0 auto; } }
+
+/* Drill overlay: full-screen, the Phaser canvas fills it */
+html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
+.trn-drill {
+  position: fixed;
+  inset: 0;
+  z-index: var(--z-modal);
+  background: var(--bg-0);
+  display: grid;
+  place-items: center;
+  overscroll-behavior: contain;
+  touch-action: none;
+}
+.trn-drill-stage { position: absolute; inset: 0; }
+.trn-drill-stage canvas { display: block; }
+.trn-drill.is-intro .trn-drill-stage,
+.trn-drill.is-result .trn-drill-stage,
+.trn-drill.is-error .trn-drill-stage {
+  background:
+    radial-gradient(120% 90% at 50% 0%, rgba(31, 212, 122, 0.18), transparent 60%),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.025) 0 36px, transparent 36px 72px),
+    var(--bg-1);
+}
+.trn-drill-card {
+  position: relative;
+  width: min(460px, calc(100vw - 32px));
+  max-height: calc(100dvh - 32px);
+  overflow: auto;
+  padding: var(--sp-5);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  box-shadow: 0 18px 60px rgba(0, 0, 0, 0.55), inset 0 0 0 1px var(--hairline);
+  animation: trn-pop var(--dur-screen, 240ms) var(--ease-out, ease-out);
+  touch-action: auto;
+}
+@keyframes trn-pop { from { transform: translateY(14px) scale(0.98); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .trn-drill-card { animation: none; } }
+html[data-motion='reduced'] .trn-drill-card { animation: none; }
+.trn-drill-center { position: relative; display: grid; justify-items: center; gap: var(--sp-3); }
+.trn-drill-controls { display: grid; gap: var(--sp-2); }
+.trn-drill-controls > div {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-btn);
+  background: var(--surface-2);
+  opacity: 0.75;
+}
+.trn-drill-controls > div.is-primary { opacity: 1; box-shadow: inset 0 0 0 1px var(--border-strong); }
+.trn-drill-controls .micro { display: flex; align-items: center; gap: 4px; }
+.trn-drill-controls p { margin: 2px 0 0; }
+.trn-drill-actions { justify-content: flex-end; gap: var(--sp-2); }
+.trn-drill-quit {
+  position: absolute;
+  top: calc(8px + env(safe-area-inset-top, 0px));
+  right: 10px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 40px;
+  padding: 6px 12px;
+  border: 0;
+  border-radius: 999px;
+  background: rgba(7, 11, 20, 0.72);
+  color: var(--text-hi);
+  font: inherit;
+  font-size: var(--fs-sm);
+  cursor: pointer;
+}
+.trn-drill-quit:focus-visible { outline: 2px solid var(--accent-gold); outline-offset: 2px; }
+
+/* Result card */
+.trn-result-top { display: flex; align-items: center; gap: var(--sp-4); }
+.trn-grade {
+  display: grid;
+  place-items: center;
+  width: 84px;
+  height: 84px;
+  flex: none;
+  border-radius: 22px;
+  font-size: 54px;
+  font-weight: 900;
+  line-height: 1;
+  color: var(--text-hi);
+  background: var(--surface-3);
+  box-shadow: inset 0 0 0 2px var(--border-strong);
+}
+.trn-grade-S { color: var(--text-on-gold); background: var(--tier-gold-grad); }
+.trn-grade-A { color: var(--text-on-pitch); background: var(--brand-pitch); }
+.trn-grade-B { color: #fff; background: var(--accent-blue-deep); }
+.trn-grade-D { color: var(--neg); }
+.trn-result-nums { flex: 1; gap: var(--sp-2); min-width: 0; }
+.trn-result-score { font-size: 30px; color: var(--accent-gold); }
+.trn-perf { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--sp-2); }
+.trn-perf-bar { position: relative; height: 8px; border-radius: 4px; background: var(--surface-3); overflow: visible; }
+.trn-perf-bar > span { position: absolute; inset: 0 auto 0 0; border-radius: 4px; background: linear-gradient(90deg, var(--accent-violet), var(--brand-pitch)); }
+.trn-perf-bar > i { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--text-mid); opacity: 0.7; }
+.trn-attr-xp { display: flex; flex-wrap: wrap; gap: var(--sp-1) var(--sp-3); }
+.trn-attr-xp-item { display: inline-flex; gap: 4px; align-items: baseline; }

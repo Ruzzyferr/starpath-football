@@ -324,7 +324,8 @@ export class TrainingScene extends Phaser.Scene {
     this.flash.setSize(w, h)
     this.titleText.setPosition(14 * u, 13 * u)
     this.pointsText.setPosition(14 * u, 34 * u)
-    this.clockText.setPosition(w - 14 * u, 26 * u)
+    // Leave room for the DOM Quit button at the top right of the band.
+    this.clockText.setPosition(w - 104 * u, 26 * u)
     this.promptText.setPosition(w / 2, this.hudTop() + 22 * u)
     this.promptText.setWordWrapWidth(w * 0.9)
     this.countText.setPosition(w / 2, h * 0.42)
@@ -335,6 +336,8 @@ export class TrainingScene extends Phaser.Scene {
   private baseZoom(span: number): number {
     const w = this.scale.width
     const h = this.scale.height - this.hudTop()
+    // Fit `span` meters across the shorter side (portrait: the width, so the
+    // whole goal mouth / course stays visible; the thumbs get open grass below).
     return Math.min(w, h / TILT) / (span * PPM)
   }
 

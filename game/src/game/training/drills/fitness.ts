@@ -205,7 +205,7 @@ export class FitnessDrill extends DrillBase {
     ])
     const interval = beepInterval(this.level)
     const beat = this.phase === 'live' ? clampN(1 - (this.nextBeep - this.clock) / interval, 0, 1) : 0
-    const eta = this.run === 'running' ? Math.abs(this.targetX - h.pos.x) / Math.max(0.5, Math.abs(h.vel.x) || this.jogSpeed) : 0
+    const eta = this.run === 'running' ? Math.abs(this.targetX - h.pos.x) / Math.max(Math.abs(h.vel.x), this.jogSpeed) : 0
     const behind = this.run === 'running' && eta > this.nextBeep - this.clock
     return {
       focus: { x: (LINE_A + LINE_B) / 2, y: LANE_Y },

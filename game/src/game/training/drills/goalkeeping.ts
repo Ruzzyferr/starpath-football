@@ -253,8 +253,8 @@ export class GoalkeepingDrill extends DrillBase {
 
   view(): DrillView {
     return {
-      focus: { x: 9, y: (GOAL_CENTER_Y * 2 + this.spot.y) / 3 },
-      span: 24,
+      focus: { x: 10.5, y: (GOAL_CENTER_Y * 2 + this.spot.y) / 3 },
+      span: 30,
       goals: ['west'],
       hero: actorView(this.hero, 'hero'),
       actors: [actorView(this.shooter, 'opp')],
