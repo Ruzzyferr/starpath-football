@@ -40,6 +40,23 @@ test('an achievement unlock shows a toast and lands on the achievements screen',
   await shot('l2-achievements')
 })
 
+test('unlock toasts are held back during the match flow and shown afterwards', async ({ page }) => {
+  // No user gesture in this headless flow: keep haptics off (the browser blocks vibrate() before a tap).
+  await page.addInitScript(() => localStorage.setItem('starpath.settings.v1', JSON.stringify({ lang: 'en', vibration: false })))
+  await page.goto('/?autostart=1&seed=315&dev=postMatch')
+  await waitForApp(page)
+  await expect(page.locator('#main')).toBeVisible()
+  expect(await sp<string>(page, `sp.screen().id`)).toBe('postMatch')
+  // Let toasts from before the match expire, then unlock "50 goals" on the post-match screen.
+  await expect(page.locator('.toast-reward')).toHaveCount(0, { timeout: 12_000 })
+  await sp(page, `(() => { sp.state().hero.careerStats.goals = 50; sp.actions.planSlot(0, null) })()`)
+  expect(await sp<number>(page, `sp.meta.queuedToasts.value.length`)).toBeGreaterThan(0)
+  await expect(page.locator('.toast-reward')).toHaveCount(0)
+  await sp(page, `sp.navigate('home', undefined, { tab: true })`)
+  await expect(page.locator('.toast-reward').first()).toContainText('🏆', { timeout: 10_000 })
+  expect(await sp<number>(page, `sp.meta.queuedToasts.value.length`)).toBe(0)
+})
+
 test('retire → documentary → Hall of Fame → legacy career as the child', async ({ page, shot }) => {
   await page.goto('/?autostart=1&seed=2718')
   await waitForApp(page)

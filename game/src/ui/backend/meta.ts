@@ -11,7 +11,7 @@
  *  - Actions & views for the retirement flow, documentary, Hall of Fame,
  *    Legacy New Game+, trials, records, potential, market reference.
  */
-import { signal } from '@preact/signals'
+import { effect, signal } from '@preact/signals'
 import type { GameState, LText } from '../../core/types'
 import { lt as render } from '../../i18n'
 import { absDayOf, GFLAG } from '../../sim/game/internal'
@@ -33,6 +33,7 @@ import { careerSummaryOf, continueCareer as continueFn, retireHero, retirementSt
 import { autoTrialPerformance, hasPendingTrials, pendingTrials, resolveTrial, type TrialInvite } from '../../sim/game/trials'
 import { MetaStore, type KeyValue, type MetaData } from '../../state/metaStore'
 import { toast } from '../components/Toast'
+import { screen, type ScreenId } from '../store'
 import { readHistory } from './history'
 import { saveState, scheduleAutosave } from './persistence'
 import { commit, current, get, notify, onCommit } from './session'
@@ -67,13 +68,34 @@ export function setUnlockSink(fn: (id: string) => void): void {
 /** Unlocks of this session (newest last), for tests / debug. */
 export const recentUnlocks = signal<string[]>([])
 
+/**
+ * Screens where an unlock toast would cover the action (match flow): unlock
+ * toasts are queued there and shown once the player is back in the shell.
+ */
+export const TOAST_QUIET_SCREENS: ReadonlySet<ScreenId> = new Set<ScreenId>(['preMatch', 'liveMatch', 'postMatch', 'seasonEnd'])
+/** Toasts waiting for a non-match screen. */
+export const queuedToasts = signal<AchievementDef[]>([])
+
+function showToast(d: AchievementDef): void {
+  try {
+    toast(`🏆 ${render(d.name)} — ${render(d.desc)}`, 'reward', 'trophy', 5000)
+  } catch {
+    /* no DOM */
+  }
+}
+
+/** Show queued unlock toasts when leaving the match flow. */
+export function flushQueuedToasts(): void {
+  if (TOAST_QUIET_SCREENS.has(screen.value.id) || queuedToasts.value.length === 0) return
+  const list = queuedToasts.value
+  queuedToasts.value = []
+  for (const d of list) showToast(d)
+}
+
 function announce(defs: AchievementDef[]): void {
   for (const d of defs) {
-    try {
-      toast(`🏆 ${render(d.name)} — ${render(d.desc)}`, 'reward', 'trophy', 5000)
-    } catch {
-      /* no DOM */
-    }
+    if (TOAST_QUIET_SCREENS.has(screen.value.id)) queuedToasts.value = [...queuedToasts.value, d]
+    else showToast(d)
     try {
       unlockSink(d.id)
     } catch {
@@ -150,6 +172,10 @@ export function installMeta(): void {
   if (installed) return
   installed = true
   onCommit((s) => onStateCommitted(s))
+  effect(() => {
+    void screen.value
+    flushQueuedToasts()
+  })
 }
 
 export function achievementsView(): { rows: AchievementProgress[]; unlocked: number; total: number } {
