@@ -17,6 +17,7 @@ import { applyMatchToHero, type HeroMatchInput } from '../career/matchOutcome'
 import { heroOvr } from '../career/progression'
 import { rollSelection } from '../career/squadRole'
 import { heroMatchAttributes } from '../career/matchPerks'
+import { LAST_MATCH_FLAG, heroGoalKinds, updateRecordsAfterMatch, type MatchFeats } from './records'
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
 import { deriveAttributes } from '../world/attributes'
@@ -95,8 +96,8 @@ function teamMorale(avgMorale: number): number {
   return clamp(0.85 + (avgMorale / 100) * 0.3, 0.8, 1.2)
 }
 
-/** Build a MatchTeam; for the hero's club the hero takes the best-fitting slot (or a bench seat). */
-function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
+/** Build a MatchTeam; for the hero's club the hero takes the best-fitting slot (or a bench seat). Exported for testimonial matches (sim/game/retirement). */
+export function buildTeam(state: GameState, club: Club, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
   const w = state.world
   const lineup = selectLineup(w, club.id, club.formation)
   const ids = [...lineup.playerIds]
@@ -298,6 +299,20 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
     }
     const applied = applyMatchToHero(state, input, rng)
     lines.push(...applied.lines)
+
+    // ── Feats & records (sim/game/records; the achievement checker reads c:lastMatch) ──
+    const kinds = heroGoalKinds(snap.events, side, HERO_ID)
+    const comp = state.world.competitions[blob.compId]
+    const feats: MatchFeats = {
+      fixtureId: blob.fixtureId, season: state.calendar.season, week: state.calendar.week, compType: comp?.type ?? 'league',
+      final: blob.setup.neutralVenue, opponent: opp.name, opponentReputation: oppClub?.reputation ?? 50, minutes: st.minutes,
+      started: blob.starts, goals: st.goals, assists: st.assists, freeKickGoals: kinds.freeKick,
+      penaltyGoals: result.scorers.filter((x) => x.playerId === HERO_ID && x.penalty).length, headerGoals: kinds.header,
+      rating: st.minutes > 0 ? st.rating : 0, motm: !!input.motm, won, drew, goalsFor: gf, goalsAgainst: ga, cleanSheet: ga === 0,
+      saves: st.saves, isKeeper: state.hero.position === 'GK', red: !!input.red, injured,
+    }
+    writeJson(state.life, LAST_MATCH_FLAG, feats)
+    updateRecordsAfterMatch(state, feats)
 
     // ── Counters & flags ──
     const wk = weekCounters(state.life)

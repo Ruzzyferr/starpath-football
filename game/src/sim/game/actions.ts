@@ -499,12 +499,16 @@ export function firstEnabledChoice(state: GameState, index: number): number {
   return i < 0 ? 0 : i
 }
 
-/** End the career (from 33+, or any age after a serious injury). */
-export function retire(state: GameState): ActionResult {
+/**
+ * End the career (from 33+, or any age after a serious injury). The full flow
+ * (decision card, testimonial, documentary, Hall of Fame) is sim/game/retirement;
+ * `force` skips the age check for forced retirements decided there.
+ */
+export function retire(state: GameState, opts: { force?: boolean } = {}): ActionResult {
   const h = state.hero
   if (h.retired) return fail(lt('Zaten emeklisin.', 'You are already retired.'))
   const age = state.calendar.season - h.birthYear
-  if (age < 33 && !(h.injury && h.injury.severity === 3)) return fail(lt('Emeklilik için henüz çok gençsin (33+).', 'You are too young to retire (33+).'))
+  if (!opts.force && age < 33 && !(h.injury && h.injury.severity === 3)) return fail(lt('Emeklilik için henüz çok gençsin (33+).', 'You are too young to retire (33+).'))
   h.retired = true
   h.contract = null
   h.nationalTeam.called = false
