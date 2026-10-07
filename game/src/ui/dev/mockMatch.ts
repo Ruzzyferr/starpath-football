@@ -457,10 +457,10 @@ export function interviewOptions(won: boolean): { question: { tr: string; en: st
 // ───────────────────────── Post-match details (mock) ─────────────────────────
 
 const MOCK_KINDS: Record<string, string[]> = {
-  ST: ['one_on_one', 'cross', 'edge_of_box', 'counter', 'build_up'],
+  ST: ['one_on_one', 'cross', 'edge_of_box', 'counter', 'hold_up'],
   W: ['cross', 'counter', 'one_on_one', 'edge_of_box', 'build_up'],
   M: ['build_up', 'edge_of_box', 'counter', 'defend', 'cross'],
-  D: ['defend', 'interception', 'corner', 'build_up', 'counter'],
+  D: ['defend', 'interception', 'defend_1v1', 'block', 'corner'],
   GK: ['gk_save'],
 }
 const kindPool = (p: Position): string[] =>

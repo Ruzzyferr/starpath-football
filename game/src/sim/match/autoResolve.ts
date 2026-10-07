@@ -10,6 +10,7 @@ import type { Rng } from '../../core/rng'
 import { clamp } from '../../core/rng'
 import type { AttributeKey, Attributes } from '../../core/types'
 import type { HighlightKind, HighlightOutcome, HighlightResult } from './types'
+import { DEFENSIVE_KINDS } from './types'
 
 type Outcome = HighlightOutcome
 type Weights = Partial<Record<Outcome, number>>
@@ -31,6 +32,9 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   long_ball_control: { firstTouch: 0.4, strength: 0.2, composure: 0.2, jumping: 0.1, agility: 0.1 },
   rebound: { finishing: 0.35, agility: 0.25, positioning: 0.2, composure: 0.2 },
   interception: { positioning: 0.4, vision: 0.2, pace: 0.2, tackling: 0.2 },
+  hold_up: { strength: 0.35, firstTouch: 0.25, composure: 0.2, passing: 0.2 },
+  defend_1v1: { tackling: 0.35, pace: 0.25, positioning: 0.25, agility: 0.15 },
+  block: { positioning: 0.4, strength: 0.2, tackling: 0.2, agility: 0.2 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -50,6 +54,9 @@ const BASE: Record<HighlightKind, Weights> = {
   long_ball_control: { goal: 0.02, assist: 0.02, pass_complete: 0.2, lost_ball: 0.6, missed: 0.04, saved: 0.03, blocked: 0.02, foul_won: 0.05, foul_committed: 0.02 },
   rebound: { goal: 0.2, saved: 0.16, missed: 0.12, blocked: 0.08, woodwork: 0.02, lost_ball: 0.36, foul_committed: 0.06 },
   interception: { defended: 0.5, shot_conceded: 0.12, conceded: 0.08, foul_committed: 0.06, lost_ball: 0.09, timeout: 0.15 },
+  hold_up: { goal: 0.02, assist: 0.03, pass_complete: 0.42, foul_won: 0.14, lost_ball: 0.32, missed: 0.03, foul_committed: 0.04 },
+  defend_1v1: { defended: 0.48, shot_conceded: 0.16, conceded: 0.12, foul_committed: 0.12, lost_ball: 0.06, pass_complete: 0.06 },
+  block: { defended: 0.45, shot_conceded: 0.3, conceded: 0.12, foul_committed: 0.07, timeout: 0.06 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
@@ -101,7 +108,7 @@ function emptyResult(outcome: Outcome): HighlightResult {
 
 /** Fills consistent micro-stats for a sampled outcome. */
 function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
-  const attacking = kind !== 'defend' && kind !== 'gk_save' && kind !== 'gk_penalty' && kind !== 'interception'
+  const attacking = !DEFENSIVE_KINDS.has(kind)
   if (attacking && kind !== 'penalty' && kind !== 'freekick' && kind !== 'corner' && kind !== 'rebound') {
     const p = rng.int(0, 2)
     r.passes += p
@@ -128,7 +135,7 @@ function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
       if (rng.chance(0.5)) r.passes += 1
       break
     case 'defended':
-      if (kind === 'defend' || kind === 'interception') r.tackles += 1
+      if (DEFENSIVE_KINDS.has(kind) && kind !== 'gk_save' && kind !== 'gk_penalty') r.tackles += 1
       break
     case 'foul_won':
       r.dribbles += 1

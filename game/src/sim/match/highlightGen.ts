@@ -15,7 +15,7 @@ import type { Formation, Lang, Position } from '../../core/types'
 import { HIGHLIGHT_PROMPTS } from './commentary'
 import { formationSlots } from './formations'
 import type { ExpectedMoments, HighlightKind, HighlightScenario, MatchPlayer, ScenarioPlayer, Side, Vec2 } from './types'
-import { PITCH_LENGTH, PITCH_WIDTH } from './types'
+import { DEFENSIVE_KINDS, PITCH_LENGTH, PITCH_WIDTH } from './types'
 
 export { formationSlots, assignSlots, type FormationSlot } from './formations'
 
@@ -67,6 +67,12 @@ const BANDS: Record<HighlightKind, readonly [number, number, number, number]> = 
   long_ball_control: [30, 72, 20, 50],
   rebound: [44, 90, 4, 26],
   interception: [10, 40, 50, 80],
+  // Back to goal 30 m out: the opponents' back line is deep and tight.
+  hold_up: [26, 66, 18, 44],
+  // Isolated: the rest of both teams is upfield of the duel.
+  defend_1v1: [12, 50, 44, 86],
+  // Opponents camped on the edge of our box.
+  block: [6, 36, 50, 86],
 }
 
 /** Seconds before the moment auto-ends. */
@@ -86,6 +92,9 @@ export const TIME_LIMITS: Record<HighlightKind, number> = {
   long_ball_control: 10,
   rebound: 8,
   interception: 10,
+  hold_up: 10,
+  defend_1v1: 10,
+  block: 8,
 }
 
 const SLOT_X_MIN = 16
@@ -493,6 +502,81 @@ const placeInterception: Placer = (l) => {
   return { ball: owned(cp, carrier?.player.id ?? null), passerId: null, finisherId: null, opponentId: runner?.player.id ?? null }
 }
 
+const placeHoldUp: Placer = (l) => {
+  const rng = l.input.rng
+  const hp = { x: rng.range(64, 76), y: rng.range(20, 48) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  const skip = new Set([gk?.player.id ?? ''])
+  // A centre-back tight on his back (goal-side), a second defender closing from the side.
+  const [marker, closer] = nearest(l, l.opps, hp, 2, skip)
+  if (marker) set(l, marker.player.id, { x: hp.x + rng.range(0.9, 1.3), y: hp.y + rng.range(-0.5, 0.5) })
+  const side = hp.y > 34 ? -1 : 1
+  if (closer) set(l, closer.player.id, { x: hp.x + rng.range(3, 5), y: hp.y + side * rng.range(3, 5) })
+  // Support arriving: a midfielder for the lay-off, a runner going beyond.
+  const support = pickMate(l, (m) => relationWeight(m) * (['CM', 'AM', 'DM'].includes(roleOf(m)) ? 3 : 0.4))
+  if (support) set(l, support.player.id, { x: hp.x - rng.range(9, 13), y: hp.y + rng.range(-8, 8) })
+  const runner = l.mates.find((m) => m !== support && m.player.id !== l.input.heroId && ATTACKERS.has(roleOf(m)))
+  if (runner) set(l, runner.player.id, { x: hp.x + rng.range(-2, 3), y: hp.y + side * rng.range(12, 16) })
+  return { ball: owned(hp, l.input.heroId), passerId: support?.player.id ?? null, finisherId: runner?.player.id ?? null, opponentId: marker?.player.id ?? null }
+}
+
+const placeDefend1v1: Placer = (l) => {
+  const rng = l.input.rng
+  // A wide forward / winger isolated against the hero with space behind him.
+  const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
+  const att = pool.length ? rng.weighted(pool, (o) => (['LW', 'RW', 'ST'].includes(roleOf(o)) ? 3 : 0.3) * (o.player.attrs.dribbling + 10)) : undefined
+  const ap = { x: rng.range(30, 40), y: rng.range(14, 54) }
+  set(l, att?.player.id, ap)
+  const hp = { x: ap.x - rng.range(4.5, 6.5), y: ap.y + (34 - ap.y) * 0.25 }
+  set(l, l.input.heroId, hp)
+  const keeper = mateKeeper(l)
+  set(l, keeper?.player.id, { x: 3, y: 34 + (ap.y - 34) * 0.15 })
+  // Nobody else near: team-mates recovering from upfield, opponents' support trailing.
+  const skip = new Set([l.input.heroId, keeper?.player.id ?? '', att?.player.id ?? ''])
+  for (const m of l.mates) {
+    if (skip.has(m.player.id) || roleOf(m) === 'GK') continue
+    const p = l.pos.get(m.player.id)
+    if (p) set(l, m.player.id, { x: Math.max(p.x, ap.x + rng.range(10, 24)), y: p.y })
+  }
+  for (const o of l.opps) {
+    if (skip.has(o.player.id) || roleOf(o) === 'GK') continue
+    const p = l.pos.get(o.player.id)
+    if (p) set(l, o.player.id, { x: Math.max(p.x, ap.x + rng.range(8, 20)), y: p.y })
+  }
+  return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
+}
+
+const placeBlock: Placer = (l) => {
+  const rng = l.input.rng
+  // A shooter with the ball on the edge of our box, lining one up.
+  const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
+  const att = pool.length ? rng.weighted(pool, (o) => (ATTACKERS.has(roleOf(o)) || roleOf(o) === 'CM' ? 3 : 0.4) * (o.player.attrs.shooting + 10)) : undefined
+  const ap = { x: rng.range(18, 24), y: rng.range(22, 46) }
+  set(l, att?.player.id, ap)
+  // The hero a few meters off the shooting line (goal-side): he must step across.
+  const toGoal = { x: -ap.x, y: 34 - ap.y }
+  const n = Math.hypot(toGoal.x, toGoal.y) || 1
+  const along = rng.range(2.5, 4)
+  const off = rng.range(2.2, 3.6) * (rng.chance(0.5) ? 1 : -1)
+  set(l, l.input.heroId, { x: ap.x + (toGoal.x / n) * along - (toGoal.y / n) * off, y: ap.y + (toGoal.y / n) * along + (toGoal.x / n) * off })
+  const keeper = mateKeeper(l)
+  set(l, keeper?.player.id, { x: 2.5, y: 34 + (ap.y - 34) * 0.2 })
+  // Bodies in the box: a couple of defenders marking runners.
+  const skip = new Set([l.input.heroId, keeper?.player.id ?? '', att?.player.id ?? ''])
+  const runners = l.opps.filter((o) => !skip.has(o.player.id) && ATTACKERS.has(roleOf(o))).slice(0, 2)
+  runners.forEach((r, i) => {
+    const rp = { x: rng.range(8, 14), y: 34 + (i ? 1 : -1) * rng.range(4, 9) }
+    set(l, r.player.id, rp)
+    const m = nearest(l, l.mates, rp, 1, skip)[0]
+    if (m) {
+      set(l, m.player.id, { x: rp.x - 1, y: rp.y + rng.range(-0.8, 0.8) })
+      skip.add(m.player.id)
+    }
+  })
+  return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
+}
+
 const PLACERS: Record<HighlightKind, Placer> = {
   build_up: placeBuildUp,
   counter: placeCounter,
@@ -509,6 +593,9 @@ const PLACERS: Record<HighlightKind, Placer> = {
   long_ball_control: placeLongBall,
   rebound: placeRebound,
   interception: placeInterception,
+  hold_up: placeHoldUp,
+  defend_1v1: placeDefend1v1,
+  block: placeBlock,
 }
 
 function toScenarioPlayer(sp: SlotPlayer, side: Side, pos: Vec2): ScenarioPlayer {
@@ -560,15 +647,15 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
 
 /** How often each highlight kind occurs for a hero playing a given position. */
 const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
-  ST: { build_up: 0.8, counter: 1.6, one_on_one: 2.3, cross: 2, edge_of_box: 1.8, corner: 1, defend: 0.3, counter_2v1: 1, long_ball_control: 1, rebound: 1.2 },
-  LW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4 },
-  RW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4 },
-  AM: { build_up: 2.3, counter: 1.3, one_on_one: 1.1, cross: 0.6, edge_of_box: 2.3, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6 },
-  CM: { build_up: 2.8, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8 },
-  DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5 },
-  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1 },
-  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1 },
-  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.6, rebound: 0.3, interception: 2 },
+  ST: { build_up: 0.8, counter: 1.6, one_on_one: 2.3, cross: 2, edge_of_box: 1.8, corner: 1, defend: 0.3, counter_2v1: 1, long_ball_control: 1, rebound: 1.2, hold_up: 1.1 },
+  LW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4, hold_up: 0.3 },
+  RW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4, hold_up: 0.3 },
+  AM: { build_up: 2.3, counter: 1.3, one_on_one: 1.1, cross: 0.6, edge_of_box: 2.3, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6 },
+  CM: { build_up: 2.8, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3 },
+  DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5, block: 0.9, defend_1v1: 0.6 },
+  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1, defend_1v1: 1.4, block: 0.5 },
+  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1, defend_1v1: 1.4, block: 0.5 },
+  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.6, rebound: 0.3, interception: 2, defend_1v1: 1.2, block: 1.1 },
   GK: { gk_save: 1 },
 }
 
@@ -588,7 +675,7 @@ export function kindWeights(pos: Position): Partial<Record<HighlightKind, number
 
 /** Kinds where the hero's team is defending. */
 export function isDefensiveKind(kind: HighlightKind): boolean {
-  return kind === 'defend' || kind === 'gk_save' || kind === 'gk_penalty' || kind === 'interception'
+  return DEFENSIVE_KINDS.has(kind)
 }
 
 /**
@@ -601,7 +688,7 @@ export function isDefensiveKind(kind: HighlightKind): boolean {
 export function guaranteedKind(pos: Position, counts: Partial<Record<HighlightKind, number>>, slotsLeft: number, rng: Rng): HighlightKind | null {
   const need = (kinds: HighlightKind[], n: number) => Math.max(0, n - kinds.reduce((a, k) => a + (counts[k] ?? 0), 0))
   if (pos === 'CB') {
-    const missing = need(['defend', 'interception'], 3)
+    const missing = need(['defend', 'interception', 'defend_1v1', 'block'], 3)
     if (missing > 0 && slotsLeft <= missing) return rng.chance(0.5) ? 'defend' : 'interception'
   }
   if (pos === 'LW' || pos === 'RW') {

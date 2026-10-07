@@ -9,7 +9,7 @@
 import type { Attributes } from '../../core/types'
 import { outcomeProbabilities } from './autoResolve'
 import type { HighlightKind, HighlightScenario, Vec2 } from './types'
-import { PITCH_LENGTH } from './types'
+import { DEFENSIVE_KINDS, PITCH_LENGTH } from './types'
 
 /** Moments estimated below this success chance are not generated. */
 export const MIN_MOMENT_CHANCE = 0.08
@@ -24,7 +24,7 @@ export function earlyBrake(clock: number, heroMoments: number, heroOnPitch: bool
   return heroOnPitch && heroMoments === 0 && clock <= EARLY_BRAKE_MINUTE && goalsAtt + 1 - goalsDef > 1
 }
 
-const DEFENSIVE: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception'])
+const DEFENSIVE: ReadonlySet<HighlightKind> = DEFENSIVE_KINDS
 
 const d2 = (a: Vec2, b: Vec2) => Math.hypot(a.x - b.x, a.y - b.y)
 

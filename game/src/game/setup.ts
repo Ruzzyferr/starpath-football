@@ -6,7 +6,7 @@
 import type { Attributes, Position } from '../core/types'
 import type { Rng } from '../core/rng'
 import type { Highlight, HighlightKind, ScenarioPlayer } from '../sim/match/types'
-import { PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { DEFENSIVE_KINDS, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import { GOAL_CENTER_Y } from './physics'
 import { add, dist, norm, scale, sub, type Agent, type Team, type Vec2 } from './model'
 
@@ -33,7 +33,7 @@ export interface Cast {
   defending: boolean
 }
 
-export const isDefendingKind = (k: HighlightKind) => k === 'defend' || k === 'gk_save' || k === 'gk_penalty' || k === 'interception'
+export const isDefendingKind = (k: HighlightKind) => DEFENSIVE_KINDS.has(k)
 export const isKeeperKind = (k: HighlightKind) => k === 'gk_save' || k === 'gk_penalty'
 
 /** Neutral attribute block used when synthesising extra players. */
@@ -232,7 +232,16 @@ export function buildCast(h: Highlight, rng: Rng, names?: Record<string, string>
       setPiece = { kind: 'corner', takerId: taker.id, spot, wall: [] }
       break
     }
-    case 'defend': {
+    case 'hold_up': {
+      // Back to goal: the hero has it, facing his own half, the marker on his back.
+      ownerId = hero.id
+      hero.facing = Math.PI
+      hero.prev.facing = Math.PI
+      break
+    }
+    case 'defend':
+    case 'defend_1v1':
+    case 'block': {
       const owner = agents.find((a) => a.id === ownerId)
       if (!owner || owner.team !== 'opp' || owner.isKeeper) {
         const n = nearest(agents.filter((a) => a.team === 'opp' && !a.isKeeper), { x: ball.x, y: ball.y })

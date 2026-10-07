@@ -135,6 +135,11 @@ export const ADVANTAGE_GAIN_M = 7
 export const DEFAULT_ADVANTAGE = 0.5
 /** Penalty tell-tale: meters an AI keeper cheats toward the hero's habit (× the habit share). */
 export const KEEPER_LEAN = 0.7
+/** hold_up: seconds of shielding under pressure that count as the job done. */
+export const HOLD_UP_SECONDS = 2.6
+/** block: the hero's body (and stretched leg when sliding) blocks within this radius (m). */
+export const HERO_BLOCK_R = 0.62
+export const HERO_BLOCK_SLIDE_R = 0.9
 
 export interface RuntimeOptions {
   aimAssist?: AimAssist
@@ -302,6 +307,7 @@ export class HighlightRuntime {
   private readonly frames: ReplayFrame[] = []
   private readonly stats = { passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 }
   private card: 'yellow' | 'red' | undefined
+  private readonly blockWindUp: number
   private redReason: HighlightResult['redReason']
   /** Referee strictness (1..5) / advantage tendency for this moment (WP-14). */
   readonly refStrictness: number | undefined
@@ -392,6 +398,8 @@ export class HighlightRuntime {
     this.events.push({ type: 'whistle', long: false })
     // Stagger AI thinking so they don't all decide on the same frame.
     for (const a of this.agents) a.think = this.rng.range(0.05, 0.3)
+    // block: how long the shooter shapes before he pulls the trigger.
+    this.blockWindUp = this.kind === 'block' ? this.rng.range(0.9, 1.3) : 0
   }
 
   // ───────────────────────── Public API ─────────────────────────
@@ -1164,6 +1172,8 @@ export class HighlightRuntime {
     if (this.heroPassTo && a.team === 'hero' && !a.isHero && (this.heroPassTo.id === a.id || this.heroPassTo.id === '*')) {
       this.stats.passesCompleted++
       this.assistChain = a.id
+      // hold_up: the lay-off found a team-mate: job done.
+      if (this.kind === 'hold_up' && this.phase === 'live') this.finish('pass_complete', 'laid off')
     } else if (a.id !== this.assistChain) {
       this.assistChain = null
       if (a.team === 'hero' && !a.isHero && !a.isKeeper) this.heroDeliveryAt = -1
@@ -1412,16 +1422,23 @@ export class HighlightRuntime {
       }
     }
     // Shooting wait for drama in keeper moments; in gk_save the attacker always pulls the trigger.
-    const minHold = this.kind === 'gk_save' ? 0.7 : 0.3
+    // block: the shooter on the edge of the box shapes, then always pulls the trigger.
+    const blockShooter = this.kind === 'block' && a.team === 'opp'
+    const minHold = this.kind === 'gk_save' || blockShooter ? 0.7 : 0.3
     // Tactical carrier: opponents everywhere (except the scripted gk moments), team-mates in the
     // final third away from the flanks (wide areas keep the crossing logic).
     const toGoal = dist(a.pos, { x: attackDir(a.team) > 0 ? PITCH_LENGTH : 0, y: GOAL_CENTER_Y })
     const wide = a.pos.y < 14 || a.pos.y > PITCH_WIDTH - 14
-    const smart = a.team === 'opp' ? true : toGoal < 30 && !wide
+    const smart = blockShooter ? false : a.team === 'opp' ? true : toGoal < 30 && !wide
     if (smart && this.smartCarrier(a, heldFor, minHold)) return
     let dec = carrierDecision(a, w, this.rng, { heldFor })
-    if (this.kind === 'gk_save' && a.team === 'opp' && heldFor > 0.9 && dec.kind !== 'shoot') {
+    if ((this.kind === 'gk_save' || (blockShooter && heldFor > this.blockWindUp)) && a.team === 'opp' && heldFor > 0.9 && dec.kind !== 'shoot') {
       dec = { kind: 'shoot', target: { x: -0.2, y: GOAL_CENTER_Y + (this.rng.chance(0.5) ? 1 : -1) * this.rng.range(0.8, 3.1) } }
+    } else if (blockShooter && heldFor <= this.blockWindUp) {
+      // Setting himself: a short touch to open the angle, then the strike.
+      const dir = norm({ x: -0.8, y: a.pos.y > GOAL_CENTER_Y ? -0.35 : 0.35 })
+      a.intent = { kind: 'run', to: inField(add(a.pos, scale(dir, 1.2)), 1), until: this.time + 0.3 }
+      return
     }
     const from = { x: this.ball.x, y: this.ball.y }
     const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env }
@@ -1839,7 +1856,8 @@ export class HighlightRuntime {
         continue
       }
       // Shot blocks by opponents of the shooter (bodies in the way, incl. jumping wall).
-      if (this.shot && this.shot.by.team !== a.team && speed > 12 && d < 0.46 && b.z < 1.8 + a.z) {
+      const blockR = a.isHero && this.kind === 'block' ? (a.state === 'slide' ? HERO_BLOCK_SLIDE_R : HERO_BLOCK_R) : 0.46
+      if (this.shot && this.shot.by.team !== a.team && speed > 12 && d < blockR && b.z < 1.8 + a.z) {
         if (d < bestD) {
           best = a
           bestD = d
@@ -1967,6 +1985,8 @@ export class HighlightRuntime {
     }
     if (this.shot) this.shot.blocked = true
     this.events.push({ type: 'block', by: a.id, x: b.x, y: b.y })
+    // block: the hero got his body in the way: that is the moment won.
+    if (a.isHero && this.kind === 'block') this.finish('defended', 'shot blocked')
   }
 
   private headerContact(a: Agent): void {
@@ -2400,6 +2420,8 @@ export class HighlightRuntime {
     const o = this.owner
     // Long ball brought down and shielded under pressure: the job is done.
     if (this.kind === 'long_ball_control' && o === this.hero && this.time - this.ownerSince > 1.0) return this.finish('pass_complete', 'held up')
+    // hold_up: kept it under the marker long enough for the team to come up.
+    if (this.kind === 'hold_up' && o === this.hero && this.time - this.ownerSince > HOLD_UP_SECONDS) return this.finish('pass_complete', 'held up')
     if (!this.defending) {
       if (o && o.team === 'opp' && !o.isKeeper) {
         this.lossT += DT

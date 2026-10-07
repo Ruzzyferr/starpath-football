@@ -198,6 +198,9 @@ export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number
   }
 }
 
+/** Maximum carry of a header (m), GDD 2.1#71. */
+export const HEADER_RANGE = 18
+
 /** Max side-spin (rad/s) a kicker can impart for a kick kind. */
 export function maxSpin(kind: KickKind, at: Attributes): number {
   const curve = kind === 'freekick' || kind === 'cross' ? at.setPieces * 0.6 + at.crossing * 0.4 : at.setPieces * 0.4 + at.shooting * 0.3 + at.passing * 0.3
@@ -386,8 +389,19 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
     target = as.target
     targetZ = as.z
   }
+  let power = req.power
+  if (req.kind === 'header') {
+    // Heading range (2.1#71): nobody heads it further than HEADER_RANGE; beyond that the
+    // header drops short (a cushioned knock-down rather than a shot).
+    const hd = dist(req.from, target)
+    if (hd > HEADER_RANGE) {
+      target = { x: req.from.x + ((target.x - req.from.x) * HEADER_RANGE) / hd, y: req.from.y + ((target.y - req.from.y) * HEADER_RANGE) / hd }
+      targetZ = 0
+      power = Math.min(power, 0.55)
+    }
+  }
   const spinSide = clampN(req.curl, -1, 1) * maxSpin(req.kind, req.attrs)
-  const solved = solveLaunch({ ...req, target, targetZ }, spinSide)
+  const solved = solveLaunch({ ...req, power, target, targetZ }, spinSide)
 
   let { vx, vy, vz } = solved
   const spin = { ...solved.spin }

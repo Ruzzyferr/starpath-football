@@ -27,6 +27,9 @@ const MATCH_GROUPS: Record<string, HintGroup[]> = {
   long_ball_control: ['move', 'shoot'],
   rebound: ['shoot'],
   interception: ['defend'],
+  hold_up: ['move', 'pass'],
+  defend_1v1: ['defend'],
+  block: ['defend'],
 }
 
 const DRILL_GROUPS: Record<string, HintGroup> = {

@@ -9,6 +9,7 @@ import {
   pickPassTarget,
   planKick,
   shotHeightForPower,
+  HEADER_RANGE,
   type GesturePoint,
   type KickRequest,
 } from './kick'
@@ -194,5 +195,33 @@ describe('targeting', () => {
 
   it('posts are symmetric around goal centre', () => {
     expect(GOAL_CENTER_Y - POST_Y_LOW).toBeCloseTo(POST_Y_HIGH - GOAL_CENTER_Y)
+  })
+})
+
+describe('heading range (WP-13 #4, 2.1#71)', () => {
+  /** Distance from `from` at which the ball first comes down to the grass. */
+  function carry(fromX: number): number {
+    const from = { x: fromX, y: GOAL_CENTER_Y }
+    const plan = planKick(shotReq({ kind: 'header', from, fromZ: 2, target: { x: PITCH_LENGTH, y: GOAL_CENTER_Y + 1 }, targetZ: 0.6, power: 1 }))
+    const b = landing(plan, from, 2)
+    const tr = createTracker()
+    for (let i = 0; i < 600; i++) {
+      stepBall(b, DEFAULT_ENV, tr, 1 / 120)
+      if (b.z <= 0.12 && b.vz <= 0.5) break
+    }
+    return Math.hypot(b.x - from.x, b.y - from.y)
+  }
+
+  it('a header never carries further than HEADER_RANGE', () => {
+    expect(HEADER_RANGE).toBe(18)
+    expect(carry(PITCH_LENGTH - 26)).toBeLessThan(HEADER_RANGE + 1)
+    expect(carry(PITCH_LENGTH - 34)).toBeLessThan(HEADER_RANGE + 1)
+  })
+
+  it('inside the range a header still reaches the goal', () => {
+    const from = { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+    const plan = planKick(shotReq({ kind: 'header', from, fromZ: 2, target: { x: PITCH_LENGTH, y: GOAL_CENTER_Y + 1 }, targetZ: 0.6, power: 1 }))
+    const c = predictPlaneCrossing(landing(plan, from, 2), DEFAULT_ENV, PITCH_LENGTH)
+    expect(c).not.toBeNull()
   })
 })

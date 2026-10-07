@@ -25,6 +25,10 @@ const BANDS: Record<FeelKind, [number, number]> = {
   long_ball_control: [0.15, 0.6],
   rebound: [0.06, 0.4],
   interception: [0.42, 0.8],
+  // WP-14 kinds (measured N=120 average: hold-up ~0.62, 1v1 ~0.70, block ~0.45).
+  hold_up: [0.45, 0.8],
+  defend_1v1: [0.5, 0.85],
+  block: [0.3, 0.65],
 }
 
 const N = 60

@@ -1415,7 +1415,12 @@ export class MatchSim {
     switch (r.outcome) {
       case 'defended':
         if (r.offside) return this.emitHighlightOffside(opp, r.offside.playerId, attacker?.id ?? null)
-        if (kind === 'defend') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
+        if (kind === 'block') {
+          oppTeam.shots++
+          return this.emit('shot', opp, this.say('heroBlocked', vars), { playerId: heroId })
+        }
+        // Outfield defending (tackle, interception, 1v1): no shot, no save.
+        if (kind !== 'gk_save' && kind !== 'gk_penalty') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
         oppTeam.shots++
         oppTeam.onTarget++
         this.recordSave(side, heroId)
@@ -1442,7 +1447,8 @@ export class MatchSim {
       case 'foul_committed':
         this.s.teams[side].fouls++
         this.emit('freekick', opp, this.say('foulCommitted', vars), { playerId: heroId })
-        if (kind === 'defend' && this.rng.chance(0.2)) {
+        // A foul in or near the box can be a penalty (the block is right on its edge).
+        if ((kind === 'defend' || kind === 'defend_1v1' || kind === 'block') && this.rng.chance(kind === 'block' ? 0.3 : 0.2)) {
           this.s.periodEvents++
           this.emit('penalty', opp, this.say('penaltyAwarded', { ...this.teamVars(opp), player: attacker?.name ?? '' }), { playerId: attacker?.id })
           if (this.heroIsKeeperFor(side) && this.canSetPieceHighlight()) return this.createHighlight('gk_penalty', 'setpiece')

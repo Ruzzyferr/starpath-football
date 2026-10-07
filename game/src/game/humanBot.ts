@@ -90,6 +90,8 @@ export interface HumanBotState {
   engaged: string
   /** Real time the ball last became loose (−1 = someone has it). */
   looseSince: number
+  /** block: how far off the shooting line this player ends up (m, drawn once; NaN = not yet). */
+  blockErr: number
 }
 
 export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
@@ -116,6 +118,7 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     waitSince: -1,
     engaged: '',
     looseSince: -1,
+    blockErr: Number.NaN,
   }
 }
 
@@ -141,6 +144,15 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   }
   const ownGoal = { x: 0, y: GOAL_CENTER_Y }
   const toGoal = norm(sub(ownGoal, owner.pos))
+
+  // Shot block: a composed defender gets his body into the shooting line ~1.7 m off the ball
+  // and stays on his feet; how exactly he finds the line depends on skill. A rash one dives in.
+  if (rt.kind === 'block' && !st.rusher) {
+    if (Number.isNaN(st.blockErr)) st.blockErr = st.rng.normal(0, st.skill.aimSd * 0.45)
+    const spot = { x: owner.pos.x + toGoal.x * 1.7 - toGoal.y * st.blockErr, y: owner.pos.y + toGoal.y * 1.7 + toGoal.x * st.blockErr }
+    moveTo(spot, dist(hero.pos, spot) > 0.3)
+    return
+  }
 
   // Not engaged yet and a reader: cut the lane to the most dangerous runner.
   // Close to goal there is no time to wait: engage and get in the shooting lane.
@@ -283,6 +295,22 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
         act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0, chip: false, isTap: false } })
       }
       moveTo({ x: PITCH_LENGTH - 6, y: hero.pos.y }, true)
+      return
+    }
+    if (rt.kind === 'hold_up') {
+      // Back to goal: a patient player stands firm (body between marker and ball) and lays it
+      // off once support is free; an impatient one tries to turn and run at goal.
+      if (!st.reader) {
+        moveTo(goal, true)
+        if (held > 1.2) act({ kind: 'shoot', target: aimPoint(st, 0.9), power: power(st), curl: 0, chip: false })
+        return
+      }
+      rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+      const free = (a: Agent) => !rt.agents.some((o) => o.team === 'opp' && !o.isKeeper && dist(o.pos, a.pos) < 3)
+      const mate = rt.agents
+        .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && dist(a.pos, hero.pos) > 5 && dist(a.pos, hero.pos) < 20 && free(a))
+        .sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      if (mate && held > 0.9 + st.skill.reaction) act({ kind: 'pass', target: { x: mate.pos.x + st.rng.normal(0, st.skill.aimSd), y: mate.pos.y + st.rng.normal(0, st.skill.aimSd) } })
       return
     }
     if (rt.kind === 'long_ball_control' && held > 3) {

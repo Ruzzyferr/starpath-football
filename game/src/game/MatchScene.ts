@@ -437,6 +437,7 @@ export class MatchScene extends Phaser.Scene {
       night: this.night,
       celebration: this.celeb?.id ?? null,
       replayAngle: this.replay ? this.currentAngle() : null,
+      heroCallAt: rt.heroCallAt,
     }
   }
 

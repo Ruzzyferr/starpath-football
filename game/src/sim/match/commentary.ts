@@ -647,6 +647,18 @@ const LINES = {
       'Not this time, {hero} gives the ball away.',
     ],
   },
+  heroBlocked: {
+    tr: [
+      '{hero} kendini şutun önüne attı! Blok!',
+      'Vücuduyla kapattı: {hero} şutu blokladı.',
+      '{hero} şut yolunu kesti, top seyirciye.',
+    ],
+    en: [
+      '{hero} throws himself in front of it! Blocked!',
+      'Body on the line: {hero} blocks the shot.',
+      '{hero} gets in the way of the strike.',
+    ],
+  },
   heroDefended: {
     tr: [
       'Harika müdahale! {hero} topu temiz şekilde aldı.',
@@ -936,6 +948,9 @@ export const HIGHLIGHT_PROMPTS = {
   long_ball_control: { tr: 'Uzun top geliyor! Göğsüne al, sırtındaki adamı koru ve oyunu sürdür!', en: 'Long ball incoming! Bring it down, shield it and play on!' },
   rebound: { tr: 'Kaleci çeldi! Dönen topa herkesten önce yetiş!', en: 'The keeper parries! Be first to the rebound!' },
   interception: { tr: 'Pası oku! Pas yoluna gir ve topu kes!', en: 'Read the pass! Step into the lane and cut it out!' },
+  hold_up: { tr: 'Sırtın kaleye dönük! Topu sakla, destek gelince pası ver!', en: 'Back to goal! Shield it, then lay it off when support arrives!' },
+  defend_1v1: { tr: 'Bire bir! Kaleyle arasında kal, kanada yönlendir, top açılınca gir!', en: 'One against one! Stay goal-side, show him wide, tackle on the heavy touch!' },
+  block: { tr: 'Şut geliyor! Şut yoluna gir ve blokla!', en: 'He is winding up! Get in the line and block it!' },
 } as const satisfies Record<string, Record<Lang, string>>
 
 const PLACEHOLDER = /\{(\w+)(?::(gen|dat|acc|loc|abl|ins))?\}/g

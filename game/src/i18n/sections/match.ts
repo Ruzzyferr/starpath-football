@@ -84,6 +84,9 @@ export const tr = {
     long_ball_control: 'Uzun top kontrolü',
     rebound: 'Dönen top',
     interception: 'Pas arası',
+    hold_up: 'Top saklama',
+    defend_1v1: '1’e 1 savunma',
+    block: 'Şut bloğu',
   },
   post: {
     title: 'Maç Sonu',
@@ -199,6 +202,9 @@ export const en: Shape<typeof tr> = {
     long_ball_control: 'Long ball control',
     rebound: 'Rebound',
     interception: 'Interception',
+    hold_up: 'Hold-up play',
+    defend_1v1: '1v1 defending',
+    block: 'Shot block',
   },
   post: {
     title: 'Full Time',

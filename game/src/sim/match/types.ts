@@ -104,6 +104,12 @@ export type HighlightKind =
   | 'long_ball_control' // a long diagonal to bring down under pressure, then play on
   | 'rebound' // keeper parries a team-mate's shot: react first to the loose ball
   | 'interception' // defensive: read the opponent's pass and cut it out
+  | 'hold_up' // back to goal under a tight marker: shield it until support arrives, then lay it off
+  | 'defend_1v1' // isolated against a dribbler with space behind: jockey, show him wide, tackle on the heavy touch
+  | 'block' // an opponent winds up a shot from the edge: get in the line and block it
+
+/** Kinds where the hero's team is defending (WP-14 adds defend_1v1 and block). */
+export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block'])
 
 export interface Vec2 {
   x: number

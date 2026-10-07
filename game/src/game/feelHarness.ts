@@ -12,13 +12,14 @@ import { HighlightRuntime } from './runtime'
 
 export const FEEL_KINDS = [
   'one_on_one', 'penalty', 'freekick', 'edge_of_box', 'cross', 'corner', 'defend', 'gk_save',
-  'counter_2v1', 'long_ball_control', 'rebound', 'interception',
+  'counter_2v1', 'long_ball_control', 'rebound', 'interception', 'hold_up', 'defend_1v1', 'block',
 ] as const
 export type FeelKind = (typeof FEEL_KINDS)[number]
 
 const HERO_POS: Record<FeelKind, Position> = {
   one_on_one: 'ST', penalty: 'ST', freekick: 'AM', edge_of_box: 'AM', cross: 'LW', corner: 'CB', defend: 'CB', gk_save: 'GK',
   counter_2v1: 'ST', long_ball_control: 'ST', rebound: 'ST', interception: 'CB',
+  hold_up: 'ST', defend_1v1: 'RB', block: 'CB',
 }
 
 /** What counts as a "success" for the hero in each kind. */
@@ -30,9 +31,12 @@ export function isSuccess(kind: HighlightKind, o: HighlightOutcome): boolean {
     case 'counter_2v1':
       return o === 'goal' || o === 'assist'
     case 'long_ball_control':
+    case 'hold_up':
       return o === 'goal' || o === 'assist' || o === 'pass_complete' || o === 'foul_won'
     case 'defend':
     case 'interception':
+    case 'defend_1v1':
+    case 'block':
       return o === 'defended' || o === 'foul_won'
     case 'gk_save':
     case 'gk_penalty':
