@@ -28,6 +28,12 @@ export const STAT_ICONS: Partial<Record<StatKey, IconName>> = {
   managerTrust: 'whistle', xp: 'sparkle', relation: 'heart', addiction: 'dice', perkPoints: 'rocket',
 }
 
+/** Chip icon per relationship kind (relation deltas). */
+export const REL_ICONS: Record<string, IconName> = {
+  manager: 'whistle', fans: 'megaphone', chairman: 'building', teammate: 'users', press: 'newspaper', agent: 'phone',
+  mother: 'hand-heart', father: 'hand-heart', sibling: 'hand-heart', family: 'hand-heart', partner: 'heart', bestFriend: 'handshake',
+}
+
 export function statLabel(key: StatKey, override?: LText | string): string {
   if (override) return lt(override)
   return tx(`data.stat.${key}`, undefined, tx(`data.attr.${key}`, undefined, key))
@@ -36,7 +42,7 @@ export function statLabel(key: StatKey, override?: LText | string): string {
 /** "+5 Mutluluk" / "−€2.000" chip, coloured by whether the change is good. */
 export function DeltaChip({ delta, compact }: { delta: Delta; compact?: boolean }) {
   const tone = deltaTone(delta.key, delta.value)
-  const icon = STAT_ICONS[delta.key] ?? (delta.key in STAT_ICONS ? undefined : 'sparkle')
+  const icon = (delta.key === 'relation' && delta.rel ? REL_ICONS[delta.rel] : undefined) ?? STAT_ICONS[delta.key] ?? (delta.key in STAT_ICONS ? undefined : 'sparkle')
   const label = statLabel(delta.key, delta.label)
   const value = formatDelta(delta.key, delta.value)
   const glyph = tone === 'pos' ? '▲' : tone === 'neg' ? '▼' : ''

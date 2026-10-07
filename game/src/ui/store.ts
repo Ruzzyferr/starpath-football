@@ -17,7 +17,7 @@ import { signal, computed, effect } from '@preact/signals'
 import type {
   AssetDef, AttributeGroup, AttributeKey, CrestSpec, Difficulty, Foot, Formation, GameState,
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
-  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender,
+  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender, RelationKind,
 } from '../core/types'
 import { currentLang } from '../i18n'
 import { setControlPrefs } from '../input/prefs'
@@ -41,6 +41,8 @@ export interface Delta {
   value: number
   /** Override label (e.g. a relationship's name for key 'relation'). */
   label?: LText | string
+  /** Relationship kind for key 'relation' (picks the chip icon). */
+  rel?: RelationKind
   /** Shown as "?" — outcome not guaranteed. */
   uncertain?: boolean
 }

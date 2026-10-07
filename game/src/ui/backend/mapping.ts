@@ -13,7 +13,7 @@ const L = (tr: string, en: string): LText => ({ tr, en })
 
 export const RELATION_LABEL: Record<RelationKind, LText> = {
   mother: L('Annen', 'Mum'), father: L('Baban', 'Dad'), sibling: L('Kardeşin', 'Sibling'), partner: L('Sevgilin', 'Partner'),
-  bestFriend: L('Kanka', 'Best mate'), manager: L('Hocan', 'Manager'), teammate: L('Takım', 'Squad'), agent: L('Menajerin', 'Agent'),
+  bestFriend: L('Kanka', 'Best mate'), manager: L('TD ilişkisi', 'Manager relation'), teammate: L('Takım', 'Squad'), agent: L('Menajerin', 'Agent'),
   fans: L('Taraftar', 'Fans'), press: L('Basın', 'Press'), chairman: L('Başkan', 'Chairman'),
 }
 
@@ -69,11 +69,11 @@ export function diffSnapshots(a: StatSnapshot, b: StatSnapshot): Delta[] {
     if (after.kind === 'teammate') {
       squadSum += d
       squadN++
-    } else out.push({ key: 'relation', value: d, label: after.kind === 'fans' || after.kind === 'press' ? RELATION_LABEL[after.kind] : after.name })
+    } else out.push({ key: 'relation', value: d, rel: after.kind, label: after.kind === 'fans' || after.kind === 'press' || after.kind === 'manager' || after.kind === 'chairman' ? RELATION_LABEL[after.kind] : after.name })
   }
   if (squadN > 0) {
     const avg = Math.round(squadSum / squadN) || Math.sign(squadSum)
-    if (avg !== 0) out.push({ key: 'relation', value: avg, label: RELATION_LABEL.teammate })
+    if (avg !== 0) out.push({ key: 'relation', value: avg, rel: 'teammate', label: RELATION_LABEL.teammate })
   }
   return out
 }
@@ -89,8 +89,8 @@ export function eventDeltas(s: GameState, deltas: readonly AppliedDelta[], uncer
       case 'money': out.push({ key: 'money', value: Math.round(d.amount), ...u }); break
       case 'relation': {
         const r = d.npcId ? Object.values(s.life.relationships).find((x) => x.npcId === d.npcId) : undefined
-        const label: LText | string = d.label ?? d.name ?? r?.name ?? (d.target === 'teammate' && !d.npcId ? RELATION_LABEL.teammate : RELATION_LABEL[d.target])
-        out.push({ key: 'relation', value: Math.round(d.amount), label, ...u })
+        const label: LText | string = d.label ?? (d.target === 'manager' ? RELATION_LABEL.manager : undefined) ?? d.name ?? r?.name ?? (d.target === 'teammate' && !d.npcId ? RELATION_LABEL.teammate : RELATION_LABEL[d.target])
+        out.push({ key: 'relation', value: Math.round(d.amount), rel: d.target, label, ...u })
         break
       }
       case 'stat': out.push({ key: d.key, value: Math.round(d.amount), ...u }); break
@@ -100,7 +100,7 @@ export function eventDeltas(s: GameState, deltas: readonly AppliedDelta[], uncer
       case 'discipline': out.push({ key: 'discipline', value: Math.round(d.amount), ...u }); break
       case 'injury': out.push({ key: 'health', value: -Math.max(1, Math.round(d.weeks)), label: { tr: `Sakatlık (${d.weeks} hf)`, en: `Injury (${d.weeks} wk)` }, ...u }); break
       case 'suspension': out.push({ key: 'discipline', value: -d.matches, label: { tr: `Ceza (${d.matches} maç)`, en: `Ban (${d.matches} match)` }, ...u }); break
-      case 'endRelation': out.push({ key: 'relation', value: -100, label: RELATION_LABEL[d.target], ...u }); break
+      case 'endRelation': out.push({ key: 'relation', value: -100, rel: d.target, label: RELATION_LABEL[d.target], ...u }); break
       case 'brand': out.push({ key: 'reputation', value: Math.round(d.amount), label: { tr: `Marka${d.label ? `: ${d.label}` : ''}`, en: `Brand${d.label ? `: ${d.label}` : ''}` }, ...u }); break
     }
   })

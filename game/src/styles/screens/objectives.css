@@ -35,3 +35,4 @@
 .obj-chips { min-width: 0; max-width: 100%; }
 .obj-chips .chip { white-space: normal; height: auto; min-height: 24px; max-width: 100%; padding-block: 3px; text-align: left; line-height: 1.25; }
 .obj-foot { align-items: flex-start; }
+.obj-chip-group { display: inline-flex; align-items: center; flex-wrap: wrap; gap: 4px; color: var(--text-lo); }

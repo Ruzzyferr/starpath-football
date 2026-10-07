@@ -212,14 +212,14 @@ function expectedFor(s: GameState, blob: MatchBlob): PreMatchView['expectedMomen
   }
 }
 
-function interviewOptions(s: GameState, def: InterviewDef): InterviewOption[] {
+function interviewOptions(def: InterviewDef): InterviewOption[] {
   const toDelta = (x: InterviewEffect): Delta => {
     const u = x.chance < 1 ? { uncertain: true } : {}
     switch (x.key) {
-      case 'teammates': return { key: 'relation', value: x.value, label: RELATION_LABEL.teammate, ...u }
-      case 'manager': return { key: 'relation', value: x.value, label: s.life.relationships.manager?.name ?? RELATION_LABEL.manager, ...u }
-      case 'press': return { key: 'relation', value: x.value, label: RELATION_LABEL.press, ...u }
-      case 'fans': return { key: 'relation', value: x.value, label: RELATION_LABEL.fans, ...u }
+      case 'teammates': return { key: 'relation', value: x.value, rel: 'teammate', label: RELATION_LABEL.teammate, ...u }
+      case 'manager': return { key: 'relation', value: x.value, rel: 'manager', label: RELATION_LABEL.manager, ...u }
+      case 'press': return { key: 'relation', value: x.value, rel: 'press', label: RELATION_LABEL.press, ...u }
+      case 'fans': return { key: 'relation', value: x.value, rel: 'fans', label: RELATION_LABEL.fans, ...u }
       default: return { key: x.key, value: x.value, ...u }
     }
   }
@@ -231,7 +231,7 @@ export function postMatchView(s: GameState): PostMatchView | null {
   if (!rec) return null
   return {
     ...rec.view,
-    interview: rec.interview && !rec.answered ? { question: rec.interview.question, options: interviewOptions(s, rec.interview) } : null,
+    interview: rec.interview && !rec.answered ? { question: rec.interview.question, options: interviewOptions(rec.interview) } : null,
   }
 }
 
