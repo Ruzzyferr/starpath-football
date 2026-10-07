@@ -1,4 +1,6 @@
 import '../../styles/screens/home.css'
+import { NationalCard } from './national/NationalCard'
+import { CeremonyBanner } from './awards/CeremonyBanner'
 import type { Attributes, Hero, Position } from '../../core/types'
 import { lt, t, tx } from '../../i18n'
 import {
@@ -246,6 +248,9 @@ export function HomeScreen() {
               <Sparkline values={form} width={280} height={44} min={4} max={10} color="var(--brand-pitch)" />
             </div>
           </Card>
+
+          <CeremonyBanner />
+          <NationalCard />
 
           <Card class="home-cardteaser" variant="raised">
             <div class="home-cardteaser-body">

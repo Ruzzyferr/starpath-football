@@ -1,3 +1,4 @@
+import { NationalCard } from './national/NationalCard'
 import type { SeasonStats } from '../../core/types'
 import { lt, t } from '../../i18n'
 import {
@@ -193,6 +194,8 @@ export function ProfileScreen() {
               <p class="t-mid t-sm">{t('profile.contract.none')}</p>
             )}
           </Card>
+
+          <NationalCard detailed />
 
           <Card pad="md">
             <CardHeader title={t('profile.national.title')} icon="flag" />

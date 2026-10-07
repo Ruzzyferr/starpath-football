@@ -1,3 +1,4 @@
+import { CeremonyBanner } from './awards/CeremonyBanner'
 import '../../styles/screens/season.css'
 import { useEffect, useState } from 'preact/hooks'
 import { t, lt, currentLang } from '../../i18n'
@@ -166,6 +167,7 @@ export function SeasonEndScreen() {
       </div>
 
       <footer class="se-footer">
+        {stage >= total && <CeremonyBanner />}
         <Button variant="gold" size="lg" block iconRight="arrow-right" onClick={finish} disabled={stage < total}>
           {t('season.continue')}
         </Button>

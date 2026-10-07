@@ -7,6 +7,7 @@ import { DAYS_PER_WEEK } from '../../core/config'
 import type { AppliedDelta } from '../../sim/life/events/types'
 import { SEASON_WEEKS } from '../../sim/world/fixtures'
 import type { Delta, FixtureView, StatKey, TeamView } from '../store'
+import { nationTeamView } from './nationView'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 
@@ -110,7 +111,7 @@ export function eventDeltas(s: GameState, deltas: readonly AppliedDelta[], uncer
 
 export function teamView(s: GameState, id: string): TeamView | null {
   const c = s.world.clubs[id]
-  if (!c) return null
+  if (!c) return nationTeamView(id)
   return { id: c.id, name: c.name, shortName: c.shortName, crest: c.crest, kit: c.colors, reputation: c.reputation }
 }
 

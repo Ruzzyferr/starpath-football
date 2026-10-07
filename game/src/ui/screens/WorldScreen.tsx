@@ -10,9 +10,10 @@ import { actions, data, gameState, heroClub, navigate, screen } from '../store'
 import { zonesForLeague } from './career/league'
 import { pickTab } from './career/util'
 import '../../styles/screens/world.css'
+import { CupsPanel } from './cup/CupsPanel'
 
-type TabId = 'leagues' | 'scorers' | 'transfers' | 'clubs' | 'interest'
-const TAB_IDS: TabId[] = ['leagues', 'scorers', 'transfers', 'clubs', 'interest']
+type TabId = 'leagues' | 'scorers' | 'transfers' | 'clubs' | 'interest' | 'cups'
+const TAB_IDS: TabId[] = ['leagues', 'scorers', 'transfers', 'clubs', 'interest', 'cups']
 
 /** Country chips + league pills, shared by leagues/scorers/clubs tabs. */
 function LeaguePicker({ countryId, leagueId, onCountry, onLeague }: { countryId: string; leagueId: string; onCountry: (id: string) => void; onLeague: (id: string) => void }) {
@@ -197,6 +198,17 @@ export function WorldScreen() {
         </div>
       </div>
     )
+  } else if (tab === 'cups') {
+    body = (
+      <div class="stack">
+        <div class="row" style={{ gap: 'var(--sp-2)', flexWrap: 'wrap' }}>
+          <Button variant="secondary" size="sm" icon="flag" onClick={() => navigate('national')}>{t('intl.national.title')}</Button>
+          <Button variant="secondary" size="sm" icon="medal" onClick={() => navigate('awards')}>{t('intl.awards.title')}</Button>
+          <Button variant="secondary" size="sm" icon="shuffle" onClick={() => navigate('cupDraw')}>{t('intl.cups.viewDraw')}</Button>
+        </div>
+        <CupsPanel />
+      </div>
+    )
   } else {
     const list = data.interest()
     body = list.length === 0 ? (
@@ -251,6 +263,7 @@ export function WorldScreen() {
           { id: 'transfers', label: t('world.tabs.transfers'), icon: 'handshake' },
           { id: 'clubs', label: t('world.tabs.clubs'), icon: 'shield' },
           { id: 'interest', label: t('world.tabs.interest'), icon: 'eye', badge: data.interest().length },
+          { id: 'cups', label: t('intl.cups.tab'), icon: 'trophy' },
         ]}
       />
       <TabPanel id={tab} idPrefix="world">{body}</TabPanel>

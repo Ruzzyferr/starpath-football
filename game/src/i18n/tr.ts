@@ -23,6 +23,7 @@ import { tr as saves } from './sections/saves'
 import { tr as help } from './sections/help'
 import { tr as meta } from './sections/meta'
 import { tr as postmatch } from './sections/postmatch'
+import { tr as intl } from './sections/intl'
 
 export const tr = {
   common,
@@ -49,4 +50,5 @@ export const tr = {
   help,
   meta,
   postmatch,
+  intl,
 }

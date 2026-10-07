@@ -35,6 +35,9 @@ import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
+import { NationalScreen } from './screens/national/NationalScreen'
+import { CupDrawScreen } from './screens/cup/CupDrawScreen'
+import { AwardsScreen } from './screens/awards/AwardsScreen'
 import { AchievementsScreen } from './screens/legacy/AchievementsScreen'
 import { HallOfFameScreen } from './screens/legacy/HallOfFameScreen'
 import { RetireScreen } from './screens/legacy/RetireScreen'
@@ -74,6 +77,9 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   postMatch: PostMatchScreen,
   seasonEnd: SeasonEndScreen,
   trophies: TrophiesScreen,
+  national: NationalScreen,
+  cupDraw: CupDrawScreen,
+  awards: AwardsScreen,
   glossary: GlossaryScreen,
   achievements: AchievementsScreen,
   hallOfFame: HallOfFameScreen,

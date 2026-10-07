@@ -78,6 +78,11 @@ export function TrophiesScreen() {
         ))}
       </section>
 
+      <section class="cab-awards" aria-label={t('intl.awards.natCareer')} data-testid="cabinet-national">
+        <h2 class="cab-h"><Icon name="flag" size={18} /> {t('intl.awards.natCareer')}</h2>
+        <p class="t-sm t-mid">{t('intl.national.caps', { c: s.hero.nationalTeam.caps, g: s.hero.nationalTeam.goals })} · {t('intl.national.youthCaps', { c: s.world.national?.hero.youthCaps ?? 0, g: s.world.national?.hero.youthGoals ?? 0 })}</p>
+      </section>
+
       <section class="cab-awards" aria-label={t('season.cabinet.awardsH')}>
         <h2 class="cab-h"><Icon name="medal" size={18} /> {t('season.cabinet.awardsH')}</h2>
         {aList.length === 0 ? (
