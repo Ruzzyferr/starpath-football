@@ -25,6 +25,8 @@ export interface HighlightRequest {
   difficulty: Difficulty | number
   lang: Lang
   settings: UiSettings
+  /** Players' gender for the head sprites (missing = male). */
+  gender?: 'male' | 'female'
 }
 
 export interface HighlightSession {
@@ -76,6 +78,7 @@ export function playHighlight(
           teamNames: { hero: req.heroTeamShort, opp: req.oppTeamShort },
           importance: req.importance,
           replay: !req.settings.reducedMotion,
+          gender: req.gender,
         },
         (r) => {
           clearWatchdog()

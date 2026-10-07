@@ -64,6 +64,8 @@ export interface StartHighlightOptions {
   replay?: boolean
   /** Let the built-in autopilot play the hero (attract mode / dev). */
   autopilot?: boolean
+  /** Players' gender (the world follows the hero): female heads get ponytails/buns. */
+  gender?: 'male' | 'female'
 }
 
 /** Handle returned by {@link startHighlight}. */
@@ -384,7 +386,7 @@ export class MatchScene extends Phaser.Scene {
       const key = kitTexture(this, `kit_${a.team}_${a.isKeeper ? 'gk' : 'of'}_${a.number}_${a.id}`, kit, a.number)
       let h = 0
       for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) >>> 0
-      const head = headTexture(this, h)
+      const head = headTexture(this, h, 56, this.data0.opts.gender === 'female')
       const c = this.add.container(0, 0)
       const shadow = this.add.image(0, 0, 'fx_shadow').setScale((0.9 * PPM) / 64, (0.9 * PPM * TILT) / 32 * 0.5)
       let ring: Phaser.GameObjects.Image | null = null

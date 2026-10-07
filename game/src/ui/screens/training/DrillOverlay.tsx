@@ -79,6 +79,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
             reducedMotion: settings.value.reducedMotion,
           },
           title,
+          gender: s.hero.gender === 'female' ? 'female' : 'male',
         },
         (r) => {
           handle.current = null

@@ -7,6 +7,7 @@
  */
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { GameState, LText } from '../../core/types'
+import { worldGender } from '../../core/gender'
 import { currentLang } from '../../i18n'
 import {
   GFLAG, HERO_ID, answerInterview, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
@@ -354,7 +355,7 @@ export function playMoment(): void {
     {
       highlight: hl, heroColors: heroTeam.colors, oppColors: oppTeam.colors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
       heroName: s.hero.nickname || s.hero.lastName, names, weather: l.setup.weather, importance: l.setup.importance,
-      difficulty: s.meta.difficulty, lang: currentLang.value, settings: settings.value,
+      difficulty: s.meta.difficulty, lang: currentLang.value, settings: settings.value, gender: worldGender(s.world),
     },
     (result) => done(() => l.sim.resolveHighlight(result)),
     () => done(() => l.sim.skipHighlight()),

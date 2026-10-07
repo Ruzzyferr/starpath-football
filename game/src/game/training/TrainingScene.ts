@@ -28,6 +28,8 @@ export interface DrillSceneOptions {
   settings: { sound: number; vibration: boolean; aimAssist: AimAssist; reducedMotion?: boolean }
   /** Short title shown in the HUD (e.g. "Şut Antrenmanı"). */
   title?: string
+  /** Players' gender (female heads get ponytails/buns; dummies stay plain). */
+  gender?: 'male' | 'female'
 }
 
 export interface DrillHandle {
@@ -412,7 +414,7 @@ export class TrainingScene extends Phaser.Scene {
     const key = kitTexture(this, `tkit_${a.role}_${a.id}_${a.number}`, kit, a.number)
     let h = 0
     for (let i = 0; i < a.id.length; i++) h = (h * 31 + a.id.charCodeAt(i)) >>> 0
-    const head = headTexture(this, a.role === 'dummy' ? 3 : h)
+    const head = headTexture(this, a.role === 'dummy' ? 3 : h, 56, a.role !== 'dummy' && this.data0.opts.gender === 'female')
     const c = this.add.container(0, 0)
     const shadow = this.add.image(0, 0, 'fx_shadow').setScale((0.9 * PPM) / 64, ((0.9 * PPM * TILT) / 32) * 0.5)
     let ring: Phaser.GameObjects.Image | null = null

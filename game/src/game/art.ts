@@ -154,14 +154,32 @@ export function kitTexture(scene: Phaser.Scene, key: string, kit: KitColors, num
 const SKINS = ['#f1c9a5', '#e0ac7e', '#c68c5c', '#a86b3f', '#7a4a2a', '#56331c']
 const HAIRS = ['#1b1209', '#3b2412', '#6b4423', '#a8763e', '#d9b36c', '#222222', '#8c2f12']
 
-/** Head (skin + hair cap) texture variant chosen by an index. */
-export function headTexture(scene: Phaser.Scene, idx: number, size = 56): string {
-  const key = `head_${idx % 42}`
+/**
+ * Head (skin + hair cap) texture variant chosen by an index. Female heads add
+ * a ponytail (or a bun for every third variant) in a wider margin: the canvas
+ * grows but the head keeps the same radius, so callers scale by `size` alike.
+ */
+export function headTexture(scene: Phaser.Scene, idx: number, size = 56, female = false): string {
+  const v = idx % 42
+  const key = female ? `headf_${v}` : `head_${v}`
   if (scene.textures.exists(key)) return key
   const skin = SKINS[idx % SKINS.length]
   const hair = HAIRS[Math.floor(idx / SKINS.length) % HAIRS.length]
-  return canvasTexture(scene, key, size, size, (c, w) => {
-    const r = w / 2 - 2
+  const pad = female ? Math.round(size * 0.2) : 0
+  const W = size + pad * 2
+  return canvasTexture(scene, key, W, W, (c, w) => {
+    const r = size / 2 - 2
+    if (female) {
+      // Tail/bun sits behind the head, drawn first; dark rim for readability.
+      c.fillStyle = hair
+      c.strokeStyle = 'rgba(0,0,0,0.55)'
+      c.lineWidth = 2
+      c.beginPath()
+      if (v % 3 === 2) c.arc(w / 2, w / 2 - r * 0.95, r * 0.42, 0, Math.PI * 2)
+      else c.ellipse(w / 2 + r * 0.82, w / 2 + r * 0.78, r * 0.32, r * 0.66, -0.6, 0, Math.PI * 2)
+      c.fill()
+      c.stroke()
+    }
     c.beginPath()
     c.arc(w / 2, w / 2, r, 0, Math.PI * 2)
     c.fillStyle = skin
@@ -170,9 +188,21 @@ export function headTexture(scene: Phaser.Scene, idx: number, size = 56): string
     c.clip()
     c.fillStyle = hair
     c.beginPath()
-    c.ellipse(w / 2, w * 0.22, r * 1.05, r * 0.72, 0, 0, Math.PI * 2)
+    c.ellipse(w / 2, w / 2 - r * 0.6, r * 1.05, r * 0.72, 0, 0, Math.PI * 2)
     c.fill()
-    const g = c.createRadialGradient(w * 0.35, w * 0.3, 1, w / 2, w / 2, r)
+    if (female) {
+      // Longer sides framing the face + a light hair band.
+      c.beginPath()
+      c.ellipse(w / 2 - r * 0.92, w / 2 + r * 0.05, r * 0.3, r * 0.75, 0, 0, Math.PI * 2)
+      c.ellipse(w / 2 + r * 0.92, w / 2 + r * 0.05, r * 0.3, r * 0.75, 0, 0, Math.PI * 2)
+      c.fill()
+      c.strokeStyle = 'rgba(255,255,255,0.55)'
+      c.lineWidth = Math.max(1.5, r * 0.09)
+      c.beginPath()
+      c.arc(w / 2, w / 2 + r * 0.25, r * 0.98, Math.PI * 1.2, Math.PI * 1.8)
+      c.stroke()
+    }
+    const g = c.createRadialGradient(w / 2 - r * 0.3, w / 2 - r * 0.4, 1, w / 2, w / 2, r)
     g.addColorStop(0, 'rgba(255,255,255,0.25)')
     g.addColorStop(1, 'rgba(0,0,0,0.3)')
     c.fillStyle = g
