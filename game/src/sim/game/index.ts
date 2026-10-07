@@ -22,4 +22,8 @@ export { saveGame, loadGame, packState, unpackState, packedSize, isPacked } from
 export {
   interviewFor, answerInterview, boldFollowers, INTERVIEW_TONES,
   type InterviewContext, type InterviewDef, type InterviewOptionDef, type InterviewEffect, type InterviewEffectKey, type InterviewTone, type InterviewAnswer,
+  interviewQuestions, preMatchQuestions, pressConferenceQuestions, canHoldPressConference, startInterview, interviewSession, sessionHeadline,
+  JOURNALISTS, JOURNALIST_STYLE_NAME, IV_BUZZ_FLAG,
+  type Question, type QuestionOption, type QuestionTopic, type Journalist, type JournalistStyle, type InterviewKind, type InterviewReport,
+  type InterviewSession, type InterviewAnswerV2, type AnswerTone,
 } from './interview'
