@@ -1,8 +1,9 @@
-import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
+import { readFileSync } from 'node:fs'
 import { contrast, parseTokens, resolveColor } from './contrast'
 
 const css = readFileSync(new URL('../../styles/tokens.css', import.meta.url), 'utf8')
+
 const base = parseTokens(css, /^:root$/)
 const withMode = (sel: RegExp) => ({ ...base, ...parseTokens(css, sel) })
 const modes: Record<string, Record<string, string>> = {

@@ -121,6 +121,8 @@ export function SettingsScreen() {
           <Switch label={t('settings.highContrast')} desc={t('settings.highContrastDesc')} checked={s.highContrast} onChange={(highContrast) => updateSettings({ highContrast })} />
           <Switch label={t('settings.reducedMotion')} desc={t('settings.reducedMotionDesc')} checked={s.reducedMotion} onChange={(reducedMotion) => updateSettings({ reducedMotion })} />
           <Switch label={t('settings.lowFx')} desc={t('settings.lowFxDesc')} checked={s.lowFx} onChange={(lowFx) => updateSettings({ lowFx })} />
+          <Switch label={t('settings.reduceFlashes')} desc={t('settings.reduceFlashesDesc')} checked={s.reduceFlashes} onChange={(reduceFlashes) => updateSettings({ reduceFlashes })} />
+          <Switch label={t('settings.soundCaptions')} desc={t('settings.soundCaptionsDesc')} checked={s.soundCaptions} onChange={(soundCaptions) => updateSettings({ soundCaptions })} />
           <Slider
             label={t('settings.textSize')}
             value={Math.round(s.textScale * 100)}

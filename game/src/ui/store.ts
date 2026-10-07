@@ -218,6 +218,13 @@ export interface OfferTerms {
   role: SquadRole
   /** Form-based playing-time guarantee clause (avg 7.5+ over 3 matches → start). */
   formGuarantee?: boolean
+  /** Extra clauses (sim/career/contract). */
+  insurance?: boolean
+  minutesGuarantee?: boolean
+  imageRights?: boolean
+  appearanceBonus?: number
+  promotionBonus?: number
+  loyaltyBonus?: number
 }
 export interface NegotiationView {
   club: TeamView
@@ -229,6 +236,9 @@ export interface NegotiationView {
     signingBonus: [number, number]
     goalBonus: [number, number]
     releaseClause: [number, number]
+    appearanceBonus?: [number, number]
+    promotionBonus?: [number, number]
+    loyaltyBonus?: [number, number]
   }
   patience: number // 0..100
   round: number
@@ -752,6 +762,10 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   /** Touch button scale 0.8..1.5. */
   touchScale: number
   hideCasino: boolean
+  /** Never flash the screen (goal/celebration/offside flashes); stricter than reduced motion for photosensitivity. */
+  reduceFlashes: boolean
+  /** Show on-screen captions for key match sounds (whistle, crowd roar). */
+  soundCaptions: boolean
 }
 
 export type ColorblindMode = 'off' | 'protanopia' | 'deuteranopia' | 'tritanopia'
@@ -774,6 +788,8 @@ export const DEFAULT_SETTINGS: UiSettings = {
   oneHand: false,
   touchScale: 1,
   hideCasino: false,
+  reduceFlashes: false,
+  soundCaptions: false,
   ...DEFAULT_AUDIO_SETTINGS,
 }
 
@@ -818,6 +834,7 @@ export function bindSettingsToDocument(): () => void {
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'
     root.dataset.motion = s.reducedMotion ? 'reduced' : 'full'
     root.dataset.fx = s.lowFx ? 'low' : 'full'
+    root.dataset.flash = s.reduceFlashes ? 'off' : 'on'
     root.style.setProperty('--text-scale', String(s.textScale))
   })
 }

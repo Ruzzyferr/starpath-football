@@ -9,6 +9,7 @@ import { actions, match, navigate, type LiveMatchView, type MatchEventView, type
 import { CompareBar, EVENT_ICON, MOMENT_ICON, PitchLinesHorizontal } from './shared'
 import { MatchHints } from '../../tutorial/ControlHint'
 import { MomentsPanel } from './Moments'
+import { SoundCaption, captionKeyFor } from '../../a11y/Captions'
 
 const SPEEDS: { id: 1 | 2 | 4; label: string }[] = [
   { id: 1, label: '1×' },
@@ -149,6 +150,7 @@ export function LiveMatchScreen() {
   const hs = m.heroStats
   const passPct = hs.passes ? Math.round((hs.passesCompleted / hs.passes) * 100) : 0
   const feed = [...m.events].reverse()
+  const lastCue = feed.find((e) => captionKeyFor(e.type) !== null)
   const keyEvent = feed.find((e) => e.type === 'goal' || e.type === 'red')
   const moment = m.pendingMoment
   const kindLabel = moment ? tx(`match.kind.${moment.kind}`, undefined, moment.kind) : ''
@@ -202,6 +204,7 @@ export function LiveMatchScreen() {
         <div class="sr-only" role="alert" aria-live="assertive" aria-atomic="true" data-testid="lm-announce">
           {keyEvent ? `${keyEvent.minute}' ${keyEvent.score[0]}–${keyEvent.score[1]} ${keyEvent.text}` : ''}
         </div>
+        <SoundCaption eventType={lastCue?.type ?? null} stamp={m.events.length} />
         <section class="lm-feed-wrap" aria-label={t('match.live.feed')}>
           <h2 class="micro t-mid lm-feed-title">{t('match.live.feed')}</h2>
           <ol class="lm-feed" role="log" aria-live="polite" aria-relevant="additions">

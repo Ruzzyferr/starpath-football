@@ -293,3 +293,9 @@ html[data-input='kb'] :focus-visible {
   outline-offset: 2px;
   box-shadow: var(--focus-ring);
 }
+
+/* Reduce flashes: no colour-flash animations on tickers or overlays. */
+:root[data-flash='off'] .ticker.flash-pos,
+:root[data-flash='off'] .ticker.flash-neg { animation: none; }
+:root[data-flash='off'] .lm-goal-flash,
+:root[data-flash='off'] .goal-flash { display: none; }

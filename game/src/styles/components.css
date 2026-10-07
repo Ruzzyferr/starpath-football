@@ -845,3 +845,7 @@
 :root:not([data-cb='off']) .league-table tr.zone-releg .c-pos::before,
 :root:not([data-cb='off']) .league-table tr.zone-playoff .c-pos::before { background-image: repeating-linear-gradient(0deg, transparent 0 3px, rgba(0, 0, 0, 0.5) 3px 5px); }
 :root:not([data-cb='off']) .zone-key::before { background-image: repeating-linear-gradient(45deg, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 3px); }
+
+/* Sound captions (2.11#29) */
+.sound-caption { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; pointer-events: none; max-width: min(92vw, 520px); }
+.sound-caption-text { display: inline-block; padding: 6px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.82); color: #fff; font-size: var(--fs-md); font-weight: 600; text-align: center; }

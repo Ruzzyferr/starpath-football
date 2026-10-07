@@ -10,6 +10,11 @@ export function prefersReducedMotion(): boolean {
   }
 }
 
+/** True when screen flashes must be suppressed (photosensitivity). Game scenes should honour this too. */
+export function flashesReduced(): boolean {
+  return settings.value.reduceFlashes || prefersReducedMotion()
+}
+
 const easeOut = (t: number) => 1 - Math.pow(1 - t, 3)
 
 /**
