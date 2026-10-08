@@ -36,6 +36,8 @@ export type ObjectiveSource = 'manager' | 'fans' | 'sponsor' | 'family' | 'agent
 export type ObjectiveKind =
   | 'goals' | 'assists' | 'cleanSheets' | 'rating' | 'apps' | 'wins' | 'followers' | 'familyVisit' | 'noCards'
   | 'leaguePos' | 'seasonGoals' | 'seasonCleanSheets' | 'seasonApps' | 'press' | 'teamPlay'
+  // Career-phase pools (youth / rising / peak / veteran / defender / keeper).
+  | 'streak' | 'headGoals' | 'captainApps' | 'mentor' | 'bigGame' | 'bigCleanSheet' | 'contGoals' | 'motm' | 'saves'
 
 export interface ObjectiveReward {
   money?: number
@@ -59,8 +61,10 @@ export interface Objective {
   progress: number
   /** For `rating`: sum of ratings so far (progress = matches counted). */
   sum?: number
-  /** Baseline for state-derived kinds (followers). */
+  /** Baseline for state-derived kinds (followers, mentee relation). */
   base?: number
+  /** Relationship id for the `mentor` kind. */
+  ref?: string
   startWeek: number
   /** Absolute week the objective expires at its start (inclusive deadline = previous week). */
   deadlineWeek: number
@@ -208,7 +212,7 @@ export function objectivesDaily(state: GameState, out: LText[]): void {
   const feats = readJson<MatchFeats | null>(state.life, LAST_MATCH_FLAG, null)
   if (feats && feats.fixtureId !== st.seen) {
     st.seen = feats.fixtureId
-    if (feats.minutes > 0) for (const o of st.active) countMatch(o, feats)
+    if (feats.minutes > 0) for (const o of st.active) countMatch(o, feats, state.hero.contract?.role ?? 'reserve')
   }
   for (const o of st.active) refreshState(state, o)
   settle(state, st, out, false)
@@ -314,7 +318,7 @@ export function objectivesSeasonEnd(state: GameState, out: LText[]): void {
   save(state, st)
 }
 
-function countMatch(o: Objective, f: MatchFeats): void {
+function countMatch(o: Objective, f: MatchFeats, role: string): void {
   switch (o.kind) {
     case 'goals': o.progress += f.goals; break
     case 'assists': o.progress += f.assists; break
@@ -325,9 +329,20 @@ function countMatch(o: Objective, f: MatchFeats): void {
     case 'rating': o.progress++; o.sum = (o.sum ?? 0) + f.rating; break
     case 'press': o.progress += f.tackles ?? 0; break
     case 'teamPlay': o.progress += f.passesCompleted ?? 0; break
+    case 'streak': if (f.minutes >= 60) o.progress = f.cleanSheet ? o.progress + 1 : 0; break
+    case 'headGoals': o.progress += f.headerGoals; break
+    case 'captainApps': if (role === 'captain') o.progress++; break
+    case 'bigGame': if (f.opponentReputation >= BIG_OPPONENT && (f.goals + f.assists > 0 || f.rating >= 7)) o.progress++; break
+    case 'bigCleanSheet': if (f.opponentReputation >= BIG_OPPONENT && f.cleanSheet && f.minutes >= 60) o.progress++; break
+    case 'contGoals': if (f.compType === 'continental') o.progress += f.goals; break
+    case 'motm': if (f.motm) o.progress++; break
+    case 'saves': o.progress += f.saves; break
     default: break
   }
 }
+
+/** Opponent reputation that counts as a "big" side for the career-phase goals. */
+const BIG_OPPONENT = 70
 
 function refreshState(state: GameState, o: Objective): void {
   const h = state.hero
@@ -341,6 +356,11 @@ function refreshState(state: GameState, o: Objective): void {
     case 'seasonGoals': if (h.seasonStats) o.progress = h.seasonStats.goals; break
     case 'seasonCleanSheets': if (h.seasonStats) o.progress = h.seasonStats.cleanSheets; break
     case 'seasonApps': if (h.seasonStats) o.progress = h.seasonStats.apps; break
+    case 'mentor': {
+      const r = o.ref ? state.life.relationships[o.ref] : undefined
+      if (r) o.progress = Math.max(0, r.value - (o.base ?? r.value))
+      break
+    }
     default: break
   }
 }
@@ -553,8 +573,189 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
       lt('Menajerin: "Gözlemciler tribünde. Şimdi parlama zamanı."', 'Your agent: "Scouts are in the stands. Time to shine."'),
       3, 5, { buzz: 3, rel: { agent: 5 } }, undefined, { base: 66, sum: 0 }) })
   }
+  // Career-phase pools (youth / rising star / peak star / veteran, defender and keeper roles).
+  const freshSelf = !st.active.some((o) => o.source === 'self' && !seasonal(o)) && now - (st.lastBy.self ?? -99) >= 5
+  const mgrOk = fresh('manager', 3)
+  if (freshSelf || mgrOk) {
+    for (const c of phaseCandidates(state, st, freshSelf, mgrOk, fresh('agent', 8))) cands.push(c)
+  }
   if (!cands.length) return null
   return rng.weighted(cands, (c) => c.w).make()
+}
+
+/** Where the hero stands in a career. Drives which objective pool the people around him draw from. */
+export type CareerPhase = 'youth' | 'rising' | 'peak' | 'veteran'
+
+export function careerPhase(state: GameState): CareerPhase {
+  const h = state.hero
+  const age = heroAge(h, state.calendar.season)
+  const role = h.contract?.role ?? 'reserve'
+  if (age >= 31) return 'veteran'
+  if (age <= 19 || ((role === 'youth' || role === 'reserve') && age <= 22)) return 'youth'
+  return h.reputation >= 70 ? 'peak' : 'rising'
+}
+
+type Cand = { w: number; make: () => Objective }
+
+/**
+ * Phase and role specific objectives. Each pool is meant to feel like a
+ * different stage of the career: a teenager fights for minutes, a rising
+ * player for big nights, a star for the Golden Star and Europe, a veteran for
+ * leadership and passing the torch; defenders and keepers get their own
+ * (clean-sheet streaks, duels, set-piece headers, saves).
+ */
+export function phaseCandidates(state: GameState, st: Store, selfOk: boolean, mgrOk: boolean, agentOk: boolean): Cand[] {
+  const h = state.hero
+  const wage = h.contract?.wage ?? 500
+  const pos = h.position
+  const role = h.contract?.role ?? 'reserve'
+  const phase = careerPhase(state)
+  const out: Cand[] = []
+  const gk = isGk(pos)
+  const def = isDef(pos)
+  const money = (k: number): number => Math.round(wage * k)
+
+  if (phase === 'youth') {
+    if (selfOk) {
+      out.push({ w: 3, make: () => mk(state, st, 'self', 'apps',
+        lt('İlk onbir hayali: 5 haftada 3 maçta süre al', 'First-team dream: get minutes in 3 matches within 5 weeks'),
+        lt('Akademiden gelen çocuk artık kadroda. Sıra, forma için ısrarcı olmakta.', 'The academy kid is in the squad now. Time to push for a shirt.'),
+        3, 5, { morale: 6, happiness: 3, rel: { manager: 3 } }) })
+      if (!gk) {
+        out.push({ w: 2, make: () => mk(state, st, 'self', 'teamPlay',
+          fill(lt('Akademi disiplini: 5 haftada {n} isabetli pas', 'Academy discipline: complete {n} passes within 5 weeks'), { n: 25 }),
+          lt('Basit oyna, topu kaybetme. Hoca bunu görüyor.', 'Keep it simple, don’t lose the ball. The manager notices.'),
+          25, 5, { morale: 4, rel: { manager: 3 } }) })
+      }
+    }
+    if (mgrOk && (def || gk)) {
+      out.push({ w: 2, make: () => mk(state, st, 'manager', 'cleanSheets',
+        lt('Gençlerin gücü: 5 hafta içinde bir maçta kaleni gole kapat', 'Young blood: keep a clean sheet within 5 weeks'),
+        lt('Hoca: "Genç olman umurumda değil, sıfır çek."', 'The manager: "I don’t care that you’re young. Keep it clean."'),
+        1, 5, { trust: 5, rel: { manager: 4 }, money: money(0.3) }) })
+    }
+  }
+
+  if (phase === 'rising') {
+    if (selfOk) {
+      out.push({ w: 3, make: () => mk(state, st, 'self', 'motm',
+        lt('Adını duyur: 6 haftada bir kez maçın adamı seçil', 'Make a name: be named man of the match within 6 weeks'),
+        lt('Yükselen oyuncular tek maçla konuşulur. Sıra sende.', 'Rising players get talked about for one match. Your turn.'),
+        1, 6, { reputation: 1, morale: 5, money: money(0.4) }) })
+      out.push({ w: 3, make: () => mk(state, st, 'self', 'bigGame',
+        lt('Büyüklerle hesaplaşma: güçlü bir rakibe karşı gol, asist ya da 7.0+ reyting', 'Face the big sides: a goal, assist or 7.0+ rating against a top opponent'),
+        lt('Büyük takımlara karşı oynadığın maçlar kapıları açar.', 'Games against the big sides open doors.'),
+        1, 8, { reputation: 1, morale: 5, rel: { fans: 3 } }) })
+    }
+    if (agentOk && state.life.agent) {
+      out.push({ w: 1.5, make: () => mk(state, st, 'agent', 'bigGame',
+        lt('Menajer sahnesi: büyük bir rakibe karşı öne çık', 'Agent’s stage: stand out against a top opponent'),
+        lt('Menajerin: "Bir büyük maç, bir iyi gece. Telefonlar susmaz."', 'Your agent: "One big game, one good night. The phones won’t stop."'),
+        1, 8, { buzz: 2, rel: { agent: 4 } }) })
+    }
+  }
+
+  if (phase === 'peak') {
+    if (agentOk || selfOk) {
+      const src = agentOk ? 'agent' : 'self'
+      out.push({ w: 3, make: () => mk(state, st, src, 'rating',
+        lt('Altın Yıldız adaylığı: 5 maçta ortalama 7.3+ reyting', 'Golden Star shortlist: average 7.3+ over 5 matches'),
+        lt('Ödül listeleri sezonun ikinci yarısında şekillenir. Şimdi istikrar zamanı.', 'The award shortlists take shape in the second half. Time for consistency.'),
+        5, 8, { reputation: 1, morale: 4, ...(agentOk ? { buzz: 2, rel: { agent: 4 } } : { rel: { fans: 3 } }) }, undefined, { base: 73, sum: 0 }) })
+    }
+    if (selfOk && !gk && !def) {
+      out.push({ w: 3, make: () => mk(state, st, 'self', 'contGoals',
+        lt('Kıtasal gecenin adamı: kıtasal turnuvada gol at', 'Continental night: score in the continental competition'),
+        lt('Büyük sahnede adın ışıldasın. Bu turnuva futbolun en parlak vitrini.', 'Shine on the big stage. This competition is football’s brightest shop window.'),
+        1, 12, { reputation: 2, money: money(0.8), rel: { fans: 4 } }) })
+    }
+    if (selfOk && (gk || def)) {
+      out.push({ w: 3, make: () => mk(state, st, 'self', 'bigCleanSheet',
+        lt('Kale kilitli: güçlü bir rakibe karşı gol yeme', 'Lock the door against a top opponent: keep a clean sheet'),
+        lt('Şampiyonlar, en iyileri sıfırla geçenlerle anılır.', 'Champions are remembered for shutting the best out.'),
+        1, 10, { reputation: 2, money: money(0.8), rel: { fans: 4 } }) })
+    }
+    if (selfOk) {
+      out.push({ w: 2, make: () => mk(state, st, 'self', 'motm',
+        lt('Yıldız işi: 6 haftada 2 kez maçın adamı', 'Star business: man of the match twice within 6 weeks'),
+        lt('Yıldızlar farkı belli eder: iki maç, iki imza.', 'Stars make the difference: two games, two signatures.'),
+        2, 6, { reputation: 1, morale: 5, money: money(0.6) }) })
+    }
+  }
+
+  if (phase === 'veteran') {
+    const kid = youngTeammate(state)
+    if (kid && selfOk) {
+      const base = state.life.relationships[kid.rel]!.value
+      out.push({ w: 3.5, make: () => mk(state, st, 'self', 'mentor',
+        fill(lt('Çırağını yetiştir: genç {n} ile bağını güçlendir (+12)', 'Mentor a youngster: grow your bond with {n} (+12)'), { n: kid.name }),
+        fill(lt('{n} gelecek vaat ediyor. Soyunma odasında yanında ol, ona yol göster; ilk büyük maçına sen hazırla.', '{n} shows real promise. Be there in the dressing room, show the way, get them ready for the big day.'), { n: kid.name }),
+        12, 12, { happiness: 6, reputation: 1, rel: { [kid.rel]: 8, manager: 3 } }, undefined, { ref: kid.rel, base }) })
+    }
+    if (mgrOk) {
+      if (role === 'captain') {
+        out.push({ w: 3.5, make: () => mk(state, st, 'manager', 'captainApps',
+          lt('Pazubandın hakkını ver: kaptan olarak 6 maça çık', 'Do the armband justice: lead the side in 6 matches as captain'),
+          lt('Hoca: "Soyunma odası sana bakıyor. Önde ol."', 'The manager: "The dressing room looks to you. Lead from the front."'),
+          6, 8, { trust: 4, rel: { manager: 5, fans: 3 } }, { trust: -2 }) })
+      } else if (role === 'starter' || role === 'star') {
+        out.push({ w: 2.5, make: () => mk(state, st, 'manager', 'rating',
+          lt('Kaptanlığa aday ol: 4 maçta ortalama 6.9+ reyting', 'Captaincy candidate: average 6.9+ over 4 matches'),
+          lt('Hoca pazubandı kimin taşıyacağını düşünüyor. Tecrüben konuşsun.', 'The manager is weighing who wears the armband. Let experience talk.'),
+          4, 6, { trust: 5, rel: { manager: 5 } }, { trust: -2 }, { base: 69, sum: 0 }) })
+      }
+    }
+    if (selfOk) {
+      out.push({ w: 2, make: () => mk(state, st, 'self', 'wins',
+        lt('Son raddeler: 4 haftada 3 galibiyet', 'Last pushes: 3 wins in 4 weeks'),
+        lt('Yıllar geçti ama kazanma isteği ilk günkü gibi.', 'Years have passed, but the hunger is the same as day one.'),
+        3, 4, { happiness: 4, morale: 6, rel: { fans: 5 } }) })
+    }
+  }
+
+  // Role pools: defenders and keepers, any phase.
+  if (selfOk && (def || gk)) {
+    out.push({ w: 3, make: () => mk(state, st, 'self', 'streak',
+      lt('Duvar ördün: üst üste 3 maçta gol yeme', 'Brick wall: keep 3 clean sheets in a row'),
+      lt('Tek temiz sayfa kolay, üç tanesi bir savunma felsefesi.', 'One clean sheet is easy. Three in a row is a philosophy.'),
+      3, 9, { morale: 6, reputation: 1, money: money(0.6), rel: { fans: 4 } }) })
+  }
+  if (def && !gk) {
+    if (mgrOk) {
+      out.push({ w: 2.5, make: () => mk(state, st, 'manager', 'press',
+        lt('İkili mücadele ustası: 4 haftada 10 top kapma', 'Duel specialist: win the ball 10 times within 4 weeks'),
+        lt('Hoca: "Hem havada hem yerde rakibi bırakma."', 'The manager: "Win the duels in the air and on the ground."'),
+        10, 4, { trust: 4, rel: { manager: 4 } }, { trust: -1 }) })
+    }
+    if (selfOk) {
+      out.push({ w: 2, make: () => mk(state, st, 'self', 'headGoals',
+        lt('Duran top golü: kafayla gol at', 'Set-piece threat: score with a header'),
+        lt('Korner ve frikikte rakip sana ancak ceza sahasını bırakır.', 'On corners and free kicks the box is the only space they leave you.'),
+        1, 10, { reputation: 1, morale: 5, money: money(0.4), rel: { fans: 3 } }) })
+    }
+  }
+  if (gk && selfOk) {
+    out.push({ w: 2.5, make: () => mk(state, st, 'self', 'saves',
+      lt('Eldivenler konuşsun: 4 haftada 14 kurtarış', 'Gloves talk: make 14 saves in 4 weeks'),
+      lt('Kaleci formu sezonu belirler. Her şut yeni bir şans.', 'Keeper form defines a season. Every shot is a chance.'),
+      14, 4, { morale: 5, reputation: 1, money: money(0.4) }) })
+  }
+  return out
+}
+
+/** Youngest teammate (21 or under) the hero has a relationship with, for the veteran mentor goal. */
+function youngTeammate(state: GameState): { rel: string; name: string } | null {
+  const season = state.calendar.season
+  let best: { rel: string; name: string; age: number } | null = null
+  for (const r of Object.values(state.life.relationships)) {
+    if (r.kind !== 'teammate' || !r.npcId) continue
+    const p = state.world.players[r.npcId]
+    if (!p) continue
+    const age = season - p.birthYear
+    if (age > 21 || r.value > 80) continue
+    if (!best || age < best.age || (age === best.age && r.id < best.rel)) best = { rel: r.id, name: r.name, age }
+  }
+  return best
 }
 
 function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
@@ -587,6 +788,10 @@ function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
     const target = role === 'youth' || role === 'reserve' ? 10 : 18
     o = mk(state, st, 'self', 'seasonApps', fill(lt('Kişisel hedef: sezonda {n} maça çık', 'Personal goal: {n} appearances this season'), { n: target }),
       lt('İlk adım: sahada olmak.', 'Step one: be on the pitch.'), target, 60, { morale: 6, reputation: 1, rel: { manager: 3 } })
+  } else if (age >= 31) {
+    const target = 30
+    o = mk(state, st, 'self', 'seasonApps', fill(lt('Tecrübe sahada: sezonda {n} maça çık', 'Experience on the pitch: make {n} appearances this season'), { n: target }),
+      lt('Yaş sadece bir sayı. Forma hâlâ senin, bunu kanıtla.', 'Age is just a number. The shirt is still yours: prove it.'), target, 60, { morale: 6, reputation: 1, happiness: 3, rel: { manager: 3 } })
   } else if (isGk(h.position) || isDef(h.position)) {
     const prev = last && last.stats.apps >= 10 ? last.stats.cleanSheets : 6
     const target = clamp(Math.round(prev * 1.1) + 1, 5, 20)
