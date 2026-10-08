@@ -6,7 +6,7 @@
  * count as official, every other pack makes the career "modded".
  */
 import type { CountryDef } from '../../data/world/countries'
-import { NAME_STYLES, type NameStyle } from '../../data/world/names'
+import { NAME_STYLES, isRealClubName, type NameStyle } from '../../data/world/names'
 import { validateCountryDef, validateNameList } from '../../data/world/validate'
 
 export const MOD_FORMAT = 'starpath-mod'
@@ -28,6 +28,33 @@ export interface ModNames {
   last?: string[]
 }
 
+/** Rename of a generated league (id like "TR1"). */
+export interface ModLeague {
+  id: string
+  name: string
+}
+
+/** Identity override of a generated club (id like "TR-01"); every field but id is optional. */
+export interface ModClub {
+  id: string
+  name?: string
+  /** Three capital letters. */
+  shortName?: string
+  city?: string
+  primary?: string
+  secondary?: string
+  stadium?: string
+}
+
+/** Data-only overrides applied to the world of NEW careers (sim/game/modWorld.ts). */
+export interface ModWorld {
+  leagues?: ModLeague[]
+  clubs?: ModClub[]
+}
+
+export const MOD_MAX_WORLD_CLUBS = 200
+export const MOD_MAX_WORLD_LEAGUES = 40
+
 export interface ModPack {
   format: typeof MOD_FORMAT
   id: string
@@ -37,6 +64,7 @@ export interface ModPack {
   description?: string
   countries?: ModCountry[]
   names?: ModNames[]
+  world?: ModWorld
 }
 
 /** What the meta store keeps per imported mod. */
@@ -61,8 +89,12 @@ export interface ModCheck {
 
 const ID = /^[a-z0-9][a-z0-9-]{1,39}$/
 const VERSION = /^\d{1,4}\.\d{1,4}\.\d{1,4}$/
-const TOP_KEYS = new Set(['format', 'id', 'version', 'name', 'author', 'description', 'countries', 'names', 'signature'])
+const TOP_KEYS = new Set(['format', 'id', 'version', 'name', 'author', 'description', 'countries', 'names', 'world', 'signature'])
 const COUNTRY_KEYS = new Set(['id', 'name', 'adjective', 'flag', 'reputation', 'nameStyle', 'leagueNames', 'cupName', 'cities'])
+const WORLD_KEYS = new Set(['leagues', 'clubs'])
+const LEAGUE_KEYS = new Set(['id', 'name'])
+const CLUB_KEYS = new Set(['id', 'name', 'shortName', 'city', 'primary', 'secondary', 'stadium'])
+const HEX6 = /^#[0-9a-fA-F]{6}$/
 const NAMES_KEYS = new Set(['style', 'first', 'firstFemale', 'last'])
 const isStr = (v: unknown, max = 120): v is string => typeof v === 'string' && v.trim().length > 0 && v.length <= max
 const isObj = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v)
@@ -95,7 +127,7 @@ export function validateModPack(text: string, existingCountryIds: readonly strin
   if (!Array.isArray(countries) || countries.length > MOD_MAX_COUNTRIES) errors.push(`countries must be a list of at most ${MOD_MAX_COUNTRIES}`)
   if (!Array.isArray(names) || names.length > NAME_STYLES.length) errors.push('names must be a list with one entry per style at most')
   if (Array.isArray(countries) && Array.isArray(names)) {
-    if (countries.length + names.length === 0) errors.push('pack changes nothing: add countries or names')
+    if (countries.length + names.length === 0 && raw.world === undefined) errors.push('pack changes nothing: add countries, names or world')
     const seen = new Set<string>()
     for (const c of countries) {
       if (!isObj(c)) { errors.push('country entry must be an object'); continue }
@@ -119,10 +151,47 @@ export function validateModPack(text: string, existingCountryIds: readonly strin
       }
     }
   }
+  if (raw.world !== undefined) errors.push(...validateModWorld(raw.world))
   if (errors.length) return { ok: false, errors: errors.slice(0, 12), pack: null }
   const { signature: _sig, ...rest } = raw
   void _sig
   return { ok: true, errors: [], pack: rest as unknown as ModPack }
+}
+
+/** Schema check of the world-override section: whitelisted keys, shapes, no real-world names. */
+function validateModWorld(w: unknown): string[] {
+  const errors: string[] = []
+  if (!isObj(w)) return ['world must be an object']
+  errors.push(...unknownKeys(w, WORLD_KEYS, 'world'))
+  const leagues = w.leagues === undefined ? [] : w.leagues
+  const clubs = w.clubs === undefined ? [] : w.clubs
+  if (!Array.isArray(leagues) || leagues.length > MOD_MAX_WORLD_LEAGUES) errors.push(`world.leagues must be a list of at most ${MOD_MAX_WORLD_LEAGUES}`)
+  if (!Array.isArray(clubs) || clubs.length > MOD_MAX_WORLD_CLUBS) errors.push(`world.clubs must be a list of at most ${MOD_MAX_WORLD_CLUBS}`)
+  if (errors.length) return errors
+  const seenL = new Set<string>()
+  for (const l of leagues as unknown[]) {
+    if (!isObj(l)) { errors.push('world.leagues entry must be an object'); continue }
+    errors.push(...unknownKeys(l, LEAGUE_KEYS, `league ${String(l.id)}`))
+    if (typeof l.id !== 'string' || !/^[A-Z]{2,3}[1-9]$/.test(l.id)) errors.push(`league id "${String(l.id)}" must look like TR1`)
+    else if (seenL.has(l.id)) errors.push(`league "${l.id}" listed twice`)
+    else seenL.add(l.id)
+    if (!isStr(l.name, 40) || isRealClubName(l.name)) errors.push(`league ${String(l.id)}: name blank, too long or looks real`)
+  }
+  const seenC = new Set<string>()
+  for (const c of clubs as unknown[]) {
+    if (!isObj(c)) { errors.push('world.clubs entry must be an object'); continue }
+    errors.push(...unknownKeys(c, CLUB_KEYS, `club ${String(c.id)}`))
+    const id = String(c.id)
+    if (!/^[A-Z]{2,3}-[0-9]{2}$/.test(id)) errors.push(`club id "${id}" must look like TR-01`)
+    else if (seenC.has(id)) errors.push(`club "${id}" listed twice`)
+    else seenC.add(id)
+    if (c.name !== undefined && (!isStr(c.name, 40) || isRealClubName(c.name))) errors.push(`club ${id}: name blank, too long or looks real`)
+    if (c.shortName !== undefined && !(typeof c.shortName === 'string' && /^[A-Z]{3}$/.test(c.shortName))) errors.push(`club ${id}: shortName must be 3 capital letters`)
+    if (c.city !== undefined && !isStr(c.city, 30)) errors.push(`club ${id}: city must be short text`)
+    if (c.stadium !== undefined && !isStr(c.stadium, 40)) errors.push(`club ${id}: stadium must be short text`)
+    for (const k of ['primary', 'secondary'] as const) if (c[k] !== undefined && !(typeof c[k] === 'string' && HEX6.test(c[k] as string))) errors.push(`club ${id}: ${k} must be a #RRGGBB colour`)
+  }
+  return errors
 }
 
 // ───────────────────────── Signatures (Ed25519) ─────────────────────────

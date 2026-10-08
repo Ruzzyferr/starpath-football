@@ -40,6 +40,7 @@ import {
   deleteAll, deleteSlot, exportSlot, flushAutosave, importSlot, loadState, pickSlotForNewCareer, saveState, scheduleAutosave,
 } from './persistence'
 import { POSTS_FLAG, REVIEW_FLAG, handleOf, raceCardFor, type ReviewExtras, type StoredPost } from './realData'
+import { metaData } from './meta'
 import { commit, current, get, notify, replaceState } from './session'
 import { careerLocked } from '../../store-iap'
 
@@ -353,7 +354,7 @@ export const realActions: GameActions = {
     resetTransient()
     const slot = pickSlotForNewCareer()
     const seed = input.seed ?? (hashString(`${input.firstName}|${input.lastName}|${Date.now()}`) >>> 0)
-    const s = G.newGame({ ...input, slot }, seed, Date.now())
+    const s = G.newGame({ ...input, slot, mods: metaData.value.local.mods }, seed, Date.now())
     s.meta.slot = slot
     recordWeek(s)
     replaceState(s)

@@ -2,6 +2,8 @@
  * New career: world generation (save-size aware), hero creation, first club,
  * relationships, calendar, opening log/news and the first decision card.
  */
+import { applyWorldMods } from './modWorld'
+import type { InstalledMod } from './mods'
 import type { Appearance, Archetype, Background, CustomDifficulty, Difficulty, Foot, GameState, Gender, Position, SquadRole } from '../../core/types'
 import { Rng } from '../../core/rng'
 import { normalizeCustom } from '../../core/customDifficulty'
@@ -59,6 +61,8 @@ export interface NewGameInput {
    * (sim/game/trials). The hero is unattached until `resolveTrial` signs one.
    */
   trials?: boolean
+  /** Installed data mods (already validated); their world section renames the generated world of this NEW career. */
+  mods?: readonly InstalledMod[]
   /** New Game+ "Legacy": the hero is a retired legend's child (sim/game/legacy). */
   legacy?: LegacyStart
 }
@@ -144,6 +148,7 @@ export function newGame(input: NewGameInput, seed: number, now: number = determi
   const countryIds = input.countryIds ? [...new Set([input.nationality, ...input.countryIds])] : defaultCountryIds(input.nationality)
   const gender: Gender = input.gender === 'female' ? 'female' : 'male'
   const world = generateWorld(rng.fork('world'), { season, heroCountryId: input.nationality, countryIds, gender })
+  if (input.mods?.length) applyWorldMods(world, input.mods, seed)
 
   const hero = createHero(rng, {
     firstName: input.firstName, lastName: input.lastName, nickname: input.nickname, nationality: input.nationality,
