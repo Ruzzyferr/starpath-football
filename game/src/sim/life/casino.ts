@@ -801,12 +801,19 @@ export function setLossLimit(life: Life, amount: number): Lines {
     : lt('Günlük kayıp limiti kaldırıldı.', 'Daily loss limit removed.')]
 }
 
+/** Table stake limit scales with the bankroll: 1.5% of cash (floor 500), so one bet never moves a career. */
+export const maxStakeFor = (life: Life): number => Math.max(500, Math.floor(Math.max(0, life.money) * 0.015))
+
 /** Can the hero place this stake now? Respects cash and the daily loss limit. */
 export function canBet(life: Life, stake: number): { ok: boolean; reason: LText | null } {
   if (!(stake > 0) || !Number.isFinite(stake)) return { ok: false, reason: lt('Geçersiz bahis tutarı.', 'Invalid stake.') }
   const excl = casinoExclusion(life)
   if (excl > 0) return { ok: false, reason: fill(lt('Kendini kumardan uzak tutma kararın sürüyor ({n} hafta kaldı).', 'Your self-exclusion is active ({n} week(s) left).'), { n: excl }) }
   if (stake > life.money) return { ok: false, reason: lt('Bu bahis için yeterli nakdin yok.', "You don't have enough cash for this bet.") }
+  const cap = maxStakeFor(life)
+  if (stake > cap) {
+    return { ok: false, reason: fill(lt('Masa limiti: kasanın %1,5\'ine ({m}) kadar bahis alınır.', 'Table limit: bets up to 1.5% of your bankroll ({m}).'), { m: fmtMoney(cap) }) }
+  }
   const limit = numFlag(life, CASINO_FLAGS.lossLimit)
   if (limit > 0 && numFlag(life, CASINO_FLAGS.lostToday) + stake > limit) {
     return { ok: false, reason: fill(lt('Günlük kayıp limitine ({m}) ulaştın. Bugünlük bu kadar.', 'You have hit your daily loss limit ({m}). That is enough for today.'), { m: fmtMoney(limit) }) }

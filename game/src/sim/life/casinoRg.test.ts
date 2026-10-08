@@ -3,7 +3,7 @@ import { Rng } from '../../core/rng'
 import { makeHeroLife } from '../career/testFixtures'
 import { START_YEAR } from '../../core/config'
 import {
-  CASINO_FLAGS, CASINO_SEEN_FLAG, HELPLINE_MESSAGE, canBet, casinoExclusion, casinoHeadlineWorthy, selfExclude, visitCasino, weeklyCasinoTick,
+  CASINO_FLAGS, CASINO_SEEN_FLAG, HELPLINE_MESSAGE, canBet, maxStakeFor, casinoExclusion, casinoHeadlineWorthy, selfExclude, visitCasino, weeklyCasinoTick,
 } from './casino'
 
 const cal = { season: START_YEAR, week: 10, day: 3, slot: 2 }
@@ -81,5 +81,18 @@ describe('responsible gaming', () => {
     life.flags[CASINO_FLAGS.lostToday] = 450
     expect(canBet(life, 100).ok).toBe(false)
     expect(canBet(life, 50).ok).toBe(true)
+  })
+})
+
+describe('table stake limit scales with wealth', () => {
+  it('caps a single bet at 1.5% of the bankroll (floor 500)', () => {
+    const { life } = makeHeroLife()
+    life.money = 1_000_000
+    expect(maxStakeFor(life)).toBe(15_000)
+    expect(canBet(life, 15_000).ok).toBe(true)
+    expect(canBet(life, 15_001).ok).toBe(false)
+    life.money = 2_000
+    expect(maxStakeFor(life)).toBe(500)
+    expect(canBet(life, 500).ok).toBe(true)
   })
 })

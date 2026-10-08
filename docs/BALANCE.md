@@ -489,3 +489,11 @@ Değişiklikler (oyun içi atış oranlarına dokunulmadı; sayı ve karışım 
 - `matchOutcome.ts` (itibar telafisi): gol 0,3→0,45, asist 0,2→0,25, `MATCH_REP_SCALE` 0,62→0,72; itibar eğrisi 18 yaş 15, 21 yaş ~48 kaldı, 25 yaş 71–73 (hedef alt sınırına yakın).
 - Rapor: `balance.test.ts` artık pozisyon × OVR bandı gol tablosunu ve kademeye göre NPC gol kralını basıyor.
 - Not: kumarhane payı (kumarbaz) bu ölçümlerde tohum gürültüsüyle 28–56% arasında oynuyor (5 kumarbaz); golden.json bilinçli olarak yenilendi.
+
+## Kumarhane payı ayarı (casino spending share)
+
+Sorun: kumarhane payı bütün kariyerlerde %5-12, kumarbaz personada %28-56 arasında sallanıyordu (hedef: genel <=%5, kumarbaz <=%30). Neden: bahis büyüklüğü zenginliğe göre değil bot kasasının %1-5'iyle 250K tavanına kadar ölçekleniyordu, yani gelirden bağımsız hacim; ev avantajı hacimle çarpılınca zengin kariyerlerde haftalık gelirin büyük kısmı masaya gidiyordu.
+
+Çözüm (sim/life/casino.ts `maxStakeFor`, `canBet`): masa limiti tek bahis için kasanın %1,5'i (taban 500). Tüm oyunlar `canBet` kapısından geçtiği için oyuncu ve bot aynı kuralı görür; limit aşıldığında "Masa limiti" mesajı çıkar. Kumarhane düşük kasalarda (taban 500) ve sürekli oyunda hâlâ anlamlıdır; yalnızca tek elde servet riske atmak engellenir.
+
+Sonuç (BALANCE=1, 30 kariyer x 10 sezon): tohum 1000'de kumarbaz payı %40 -> %9, genel %7 -> %1. İkinci tohum (2024): kumarbaz %2, genel %0 (hedefler tutuyor).
