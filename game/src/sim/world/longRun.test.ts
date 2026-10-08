@@ -19,6 +19,13 @@ describe(`${SEASONS} simulated seasons`, () => {
     const sizes = Object.fromEntries(Object.values(world.leagues).map((l) => [l.id, l.clubIds.length]))
     const pop0 = Object.keys(world.players).length
     const ovr0 = meanAbility(world)
+    // Top end (playtest Tur 2): the mean anchor alone let p95 82 -> 90 and the max 92 -> 95 while the mean held.
+    const top = () => {
+      const o = Object.values(world.players).filter((p) => p.clubId).map((p) => p.ovr).sort((a, b) => b - a)
+      return { p95: o[Math.floor(o.length * 0.05)], top20: o.slice(0, 20).reduce((a, b) => a + b, 0) / 20, max: o[0] }
+    }
+    const top0 = top()
+    let topHi = { p95: 0, top20: 0, max: 0 }
     let minPop = pop0, maxPop = pop0
     for (let i = 0; i < SEASONS; i++) {
       endOfSeason(world, rng, 2026 + i)
@@ -26,6 +33,8 @@ describe(`${SEASONS} simulated seasons`, () => {
       minPop = Math.min(minPop, pop)
       maxPop = Math.max(maxPop, pop)
       if (i % 10 === 9) {
+        const t = top()
+        topHi = { p95: Math.max(topHi.p95, t.p95), top20: Math.max(topHi.top20, t.top20), max: Math.max(topHi.max, t.max) }
         for (const l of Object.values(world.leagues)) expect(l.clubIds.length, `${l.id} @${i}`).toBe(sizes[l.id])
         for (const c of Object.values(world.clubs)) {
           expect(c.squad.length, `${c.id} @${i}`).toBeGreaterThanOrEqual(SQUAD_MIN)
@@ -37,6 +46,10 @@ describe(`${SEASONS} simulated seasons`, () => {
     }
     for (const p of Object.values(world.players)) { expect(Number.isFinite(p.ovr)).toBe(true); expect(p.ovr).toBeGreaterThanOrEqual(25) }
     expect(Math.abs(meanAbility(world) - ovr0)).toBeLessThan(1.5)
+    expect(topHi.p95 - top0.p95, 'p95 drift').toBeLessThanOrEqual(2)
+    expect(topHi.top20 - top0.top20, 'top-20 drift').toBeLessThanOrEqual(2.5)
+    expect(topHi.max - top0.max, 'max drift').toBeLessThanOrEqual(2)
+    expect(Math.abs(top().p95 - top0.p95)).toBeLessThanOrEqual(2)
     expect(maxPop / pop0).toBeLessThan(1.08)
     expect(minPop / pop0).toBeGreaterThan(0.92)
     const seen = new Set<string>()

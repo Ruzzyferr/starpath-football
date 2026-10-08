@@ -30,7 +30,7 @@ import {
   advanceNationalCompetition, createNationalCompetitions, ensureNational, playNationalFixture, recordInternationalStats, resetInternationalStats,
 } from './national'
 import type { GoldenStarResult, SeasonAwardRecord } from './worldTypes'
-import { anchorAbility } from './anchor'
+import { anchorAbility, recordAbilityReference } from './anchor'
 import { effectsOf } from './profiles'
 import { slotCount } from './formations'
 import { FREE_AGENT_COUNT, generateFreeAgents } from './generate'
@@ -764,6 +764,7 @@ export interface EndOfSeasonOptions {
 
 export function endOfSeason(world: World, rng: Rng, season: number, opts: EndOfSeasonOptions = {}): { world: World; summary: EndOfSeasonSummary } {
   const next = season + 1
+  recordAbilityReference(world) // before this season's development: the reference is the world as it was made
   ensureNational(world)
   // Last summer's national finals (normally already played in the off-season weeks).
   simulateRemainingFixtures(world, rng, season - 1)

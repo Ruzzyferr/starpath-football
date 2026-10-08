@@ -260,6 +260,8 @@ export interface World {
   legends?: Legend[]
   /** Mean ability of club players when the world was first measured; keeps long careers from inflating (see sim/world/anchor.ts). */
   abilityAnchor?: number
+  /** OVR quantiles of club players when first measured (0..100% in 0.5% steps); keeps the top end from stretching (sim/world/anchor.ts). */
+  abilityShape?: number[]
   /** Version of the static data pack this world was made from (2.6#127). */
   dataVersion?: number
   /** Free agents are NpcPlayers with clubId null. */

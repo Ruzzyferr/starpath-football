@@ -2,7 +2,8 @@ name: Nightly soak
 
 # 10,000 simulated career seasons (1,000 careers x 10 seasons) with the economy guard-rails from
 # src/sim/game/balance.test.ts (<= 5% bankruptcies, only reckless personas may go under), plus the
-# full unit suite and the size budgets (GAP-AUDIT 2.12#86).
+# full unit suite and the size budgets (GAP-AUDIT 2.12#86). The balance tables, a 100-season world
+# ability report (mean / p95 / p99 / max) and the drift guard are uploaded as artifacts and summarised on the run page (2.5#125).
 on:
   schedule:
     - cron: '17 2 * * *'
@@ -26,19 +27,41 @@ jobs:
           cache-dependency-path: game/package-lock.json
       - run: npm ci
       - name: Balance report (1000 careers x 10 seasons)
-        run: npx vitest run src/sim/game/balance.test.ts | tee balance-report.txt
+        run: npx vitest run src/sim/game/balance.test.ts --reporter=verbose | tee balance-report.txt
         env:
           BALANCE: '1'
           BALANCE_N: '1000'
           BALANCE_SEASONS: '10'
+      - name: World ability report (2 seeds x 100 seasons; mean, p95, p99, max)
+        if: always()
+        run: npx vitest run src/sim/world/worldReport.test.ts
+        env:
+          WORLD_REPORT: '1'
+          WORLD_REPORT_OUT: world-report.md
+      - name: Long-run world stability (100 seasons; mean and top end within limits)
+        run: npx vitest run src/sim/world/longRun.test.ts
+        env:
+          LONGRUN: '1'
+      - name: Balance summary on the run page
+        if: always()
+        run: |
+          {
+            echo '# Nightly balance report'
+            echo
+            sed -n '/^| Alan\|^| Ölçüt\|^### \|^| /p' balance-report.txt | grep -v '^| [0-9]* | \(pro\|spender\|gambler\|party\) ' | head -150 || true
+            echo
+            cat world-report.md 2>/dev/null || true
+          } >> "$GITHUB_STEP_SUMMARY"
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: balance-report
-          path: game/balance-report.txt
+          path: |
+            game/balance-report.txt
+            game/world-report.md
           if-no-files-found: ignore
       - name: Stats drift guard (fails beyond src/sim/game/statsGuard.ts tolerances)
-        run: npx vitest run src/sim/game/statsGuard.test.ts | tee stats-guard.txt
+        run: npx vitest run src/sim/game/statsGuard.test.ts --reporter=verbose | tee stats-guard.txt
         env:
           STATS_GUARD: '1'
           STATS_GUARD_N: '200'
