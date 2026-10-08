@@ -844,6 +844,9 @@ export const mockActions: GameActions = {
   matchSimToEnd() {
     engine.simToEnd()
   },
+  matchSkipToMoment() {
+    engine.skipToMoment()
+  },
   answerInterview(optionId) {
     const s = get()
     const post = mockData.postMatch()

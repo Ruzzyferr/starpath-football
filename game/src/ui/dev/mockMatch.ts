@@ -397,7 +397,7 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
       else startTimer()
       publish()
     },
-    setSpeed(s: 1 | 2 | 4) {
+    setSpeed(s: 0.5 | 1 | 2 | 4) {
       if (!rt) return
       rt.view.speed = s
       if (!rt.view.paused) startTimer()
@@ -414,6 +414,16 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
       r.momentTimer = setTimeout(() => {
         if (rt === r) resolveMoment()
       }, 2500)
+    },
+    skipToMoment() {
+      if (!rt || rt.view.pendingMoment || rt.view.momentActive) return
+      stop()
+      const wasPaused = rt.view.paused
+      rt.view.paused = false
+      let guard = 0
+      while (rt && !rt.view.finished && !rt.view.pendingMoment && guard++ < 400) tick()
+      if (rt) rt.view.paused = wasPaused
+      publish()
     },
     simToEnd() {
       if (!rt) return

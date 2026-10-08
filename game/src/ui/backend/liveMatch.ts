@@ -32,8 +32,11 @@ import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapVie
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 
+/** Live text-feed speeds (2.2#106: 0.5x–4x). */
+export type MatchSpeed = 0.5 | 1 | 2 | 4
+
 /** Milliseconds per simulated minute by speed. */
-export const MS_PER_MINUTE: Record<1 | 2 | 4, number> = { 1: 600, 2: 300, 4: 150 }
+export const MS_PER_MINUTE: Record<MatchSpeed, number> = { 0.5: 1200, 1: 600, 2: 300, 4: 150 }
 
 /** Prepared-match blob as stored by sim/game/match.ts (fields we read). */
 interface MatchBlob {
@@ -59,7 +62,7 @@ interface Live {
   fixture: FixtureView
   setup: MatchSetup
   heroSide: Side
-  speed: 1 | 2 | 4
+  speed: MatchSpeed
   paused: boolean
   momentActive: boolean
   timer: ReturnType<typeof setInterval> | null
@@ -334,7 +337,7 @@ export function resumeAfterLoad(s: GameState): void {
   else publish()
 }
 
-export function setSpeed(speed: 1 | 2 | 4): void {
+export function setSpeed(speed: MatchSpeed): void {
   if (!live) return
   live.speed = speed
   if (live.timer) startTimer()
@@ -367,6 +370,24 @@ export function installAutoPause(): void {
     autoPaused = false
     if (live?.paused) notify({ tr: 'Maç duraklatıldı. Devam etmek için oynat tuşuna bas.', en: 'Match paused. Press play to resume.' }, 'info')
   })
+}
+
+/**
+ * "Skip to next moment" (2.2#106): run the minutes straight through to the
+ * hero's next moment (or the final whistle) without waiting on the ticker.
+ */
+export function skipToMoment(): void {
+  const l = live
+  if (!l || l.finalized || l.momentActive || l.sim.pendingHighlight) return
+  stopTimer()
+  let guard = 0
+  while (!l.sim.finished && !l.sim.pendingHighlight && guard++ < 200) l.sim.step()
+  if (l.sim.finished) {
+    finalize()
+    return
+  }
+  persistProgress(true)
+  publish()
 }
 
 /** Let the sim resolve the pending highlight. */

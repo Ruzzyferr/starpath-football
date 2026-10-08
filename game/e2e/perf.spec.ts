@@ -9,7 +9,7 @@ import { test, expect } from './fixtures'
 async function measure(page: Page, ms: number) {
   return page.evaluate(
     (dur) =>
-      new Promise<{ fps: number; p95: number; worst: number; phaserFps: number; renderer: string }>((resolve) => {
+      new Promise<{ fps: number; p95: number; worst: number; slowShare: number; phaserFps: number; renderer: string }>((resolve) => {
         const deltas: number[] = []
         let last = performance.now()
         const t0 = last
@@ -24,6 +24,8 @@ async function measure(page: Page, ms: number) {
               fps: (deltas.length / (now - t0)) * 1000,
               p95: sorted[Math.floor(sorted.length * 0.95)] ?? 0,
               worst: sorted[sorted.length - 1] ?? 0,
+              // Share of frames slower than 30 fps (2.2#119 low-end acceptance: < 2 %).
+              slowShare: deltas.length ? deltas.filter((d) => d > 1000 / 30).length / deltas.length : 0,
               phaserFps: scene?.game.loop.actualFps ?? 0,
               renderer: scene?.game.renderer.type === 2 ? 'WebGL' : 'Canvas',
             })
@@ -55,8 +57,11 @@ for (const [kind, q] of [['counter', 'high'], ['corner', 'high'], ['counter', 'm
       return c ? `${c.width}x${c.height}` : '-'
     })
     console.log(
-      `[perf] ${isMobile ? 'mobile 390x844 dpr' + dpr + ' cpu/4' : 'desktop 1440x900'} ${kind} [${q}]: ${r.fps.toFixed(1)} fps (phaser ${r.phaserFps.toFixed(1)}), p95 frame ${r.p95.toFixed(1)} ms, worst ${r.worst.toFixed(1)} ms, ${r.renderer}, canvas ${canvas}`,
+      `[perf] ${isMobile ? 'mobile 390x844 dpr' + dpr + ' cpu/4' : 'desktop 1440x900'} ${kind} [${q}]: ${r.fps.toFixed(1)} fps (phaser ${r.phaserFps.toFixed(1)}), p95 frame ${r.p95.toFixed(1)} ms, worst ${r.worst.toFixed(1)} ms, <30fps frames ${(r.slowShare * 100).toFixed(1)}%, ${r.renderer}, canvas ${canvas}`,
     )
     expect(r.fps).toBeGreaterThan(isMobile ? 20 : 30)
+    // Low profile acceptance (2.2#119): fewer than 2 % of frames below 30 fps. Asserted on desktop Low only
+    // (the throttled mobile run is logged; the real 2 GB / Mali-G52 device check needs hardware).
+    if (!isMobile && q === 'low') expect(r.slowShare).toBeLessThan(0.02)
   })
 }

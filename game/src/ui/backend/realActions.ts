@@ -762,6 +762,7 @@ export const realActions: GameActions = {
   simMoment: () => live.simMoment(),
   playMoment: () => live.playMoment(),
   matchSimToEnd: () => live.simToEnd(),
+  matchSkipToMoment: () => live.skipToMoment(),
   answerInterview(optionId) {
     const d = live.answer(optionId)
     scheduleAutosave()

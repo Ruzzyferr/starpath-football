@@ -11,7 +11,8 @@ import { MatchHints } from '../../tutorial/ControlHint'
 import { MomentsPanel } from './Moments'
 import { SoundCaption, captionKeyFor } from '../../a11y/Captions'
 
-const SPEEDS: { id: 1 | 2 | 4; label: string }[] = [
+const SPEEDS: { id: 0.5 | 1 | 2 | 4; label: string }[] = [
+  { id: 0.5, label: '½×' },
   { id: 1, label: '1×' },
   { id: 2, label: '2×' },
   { id: 4, label: '4×' },
@@ -232,12 +233,15 @@ export function LiveMatchScreen() {
               onClick={() => actions.matchPause(!m.paused)}
               disabled={!!moment || m.momentActive}
             />
-            <Segmented<1 | 2 | 4>
+            <Segmented<0.5 | 1 | 2 | 4>
               label={t('match.live.speed')}
               value={m.speed}
               onChange={(v) => actions.matchSetSpeed(v)}
               options={SPEEDS}
             />
+            <Button variant="ghost" size="sm" icon="fast-forward" onClick={() => actions.matchSkipToMoment()} disabled={!!moment || m.momentActive || m.finished} aria-label={t('match.live.skipToMoment')}>
+              <span class="lm-hide-xs">{t('match.live.skipToMoment')}</span>
+            </Button>
             <Button variant="ghost" size="sm" icon="skip" onClick={() => actions.matchSimToEnd()} disabled={!!moment || m.momentActive}>
               <span class="lm-hide-xs">{t('match.live.simToEnd')}</span>
             </Button>
