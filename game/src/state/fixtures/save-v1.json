@@ -1,0 +1,15 @@
+{
+ "version": 1,
+ "savedAt": 1700000000000,
+ "checksum": "eb326bf7:2d",
+ "summary": {
+  "heroName": "Ali Test",
+  "clubName": "FC Fixture",
+  "season": 2026,
+  "week": 1,
+  "ovr": 50,
+  "money": 0,
+  "playTimeSec": 0
+ },
+ "data": "{\"version\":1,\"hero\":{\"firstName\":\"Ali\",\"lastName\":\"Test\"},\"meta\":{\"id\":\"fixture-v1\"}}"
+}

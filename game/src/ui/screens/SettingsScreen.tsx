@@ -5,12 +5,13 @@ import { t } from '../../i18n'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
 import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
-import { actions, detectQuality, effectiveQuality, gameState, navigate, settings, updateSettings } from '../store'
+import { actions, detectQuality, effectiveQuality, gameState, settings, updateSettings } from '../store'
 import type { QualityChoice, QualityProfile } from '../../game/quality'
 import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
 import { PurchasesPanel } from './store/PurchasesPanel'
 import { LegalLinks } from './store/LegalLinks'
+import { buildDataExport, wipeLocalData } from '../../state/privacy'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
 import { ASSIST_REWARD } from '../../sim/match/rating'
@@ -46,13 +47,39 @@ export function SettingsScreen() {
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
 
+  const doExportAll = async () => {
+    setBusy(true)
+    try {
+      const saves: Record<string, string> = {}
+      for (const slot of [1, 2, 3]) {
+        try { saves[`slot${slot}`] = await actions.exportSave(slot) } catch { /* empty slot */ }
+      }
+      const data = buildDataExport(localStorage, saves)
+      const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
+      const a = document.createElement('a')
+      a.href = url
+      a.download = 'starpath-my-data.json'
+      document.body.appendChild(a)
+      a.click()
+      a.remove()
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      toast(t('settings.exportedAll'), 'success', 'download')
+    } catch {
+      toast(t('common.error'), 'error')
+    } finally {
+      setBusy(false)
+    }
+  }
+
   const doReset = async () => {
     setBusy(true)
     try {
       await actions.resetAll()
+      await wipeLocalData() // settings, key bindings, achievements, logs, offline cache: really everything
       toast(t('settings.resetDone'), 'success')
       setConfirm(false)
-      navigate('title', undefined, { tab: true })
+      // Reload so in-memory settings/meta cannot write the old values back.
+      setTimeout(() => location.reload(), 700)
     } catch {
       toast(t('common.error'), 'error')
     } finally {
@@ -280,6 +307,12 @@ export function SettingsScreen() {
         </Group>
 
         <Group title={t('settings.sections.data')} icon="floppy">
+          <p class="t-sm t-mid">{t('settings.exportAllDesc')}</p>
+          <div>
+            <Button variant="ghost" icon="download" loading={busy} onClick={() => void doExportAll()} data-testid="export-all">
+              {t('settings.exportAll')}
+            </Button>
+          </div>
           <p class="t-sm t-mid">{t('settings.resetDesc')}</p>
           <div>
             <Button variant="danger" icon="trash" onClick={() => setConfirm(true)} haptic="warning">

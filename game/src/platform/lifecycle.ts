@@ -64,21 +64,35 @@ async function suspendOne(c: AudioContext): Promise<void> {
   }
 }
 
+/** Time given to the audio engine to fade out before contexts are suspended (2.8#4). */
+export const SUSPEND_FADE_MS = 140
+let suspendTimer: ReturnType<typeof setTimeout> | null = null
+
 export function setBackgrounded(hidden: boolean): void {
   if (hidden === backgrounded) return
   backgrounded = hidden
-  for (const c of contexts) {
-    if (c.state === 'closed') {
-      contexts.delete(c)
-      continue
-    }
-    if (hidden) void suspendOne(c)
-    else if (suspendedByUs.has(c)) {
-      suspendedByUs.delete(c)
-      void c.resume().catch(() => undefined)
+  if (suspendTimer) {
+    clearTimeout(suspendTimer)
+    suspendTimer = null
+  }
+  // Event first so the engine can ramp its master gain down; suspension follows after the fade.
+  window.dispatchEvent(new Event(hidden ? 'sp:app-pause' : 'sp:app-resume'))
+  const apply = () => {
+    suspendTimer = null
+    for (const c of contexts) {
+      if (c.state === 'closed') {
+        contexts.delete(c)
+        continue
+      }
+      if (hidden) void suspendOne(c)
+      else if (suspendedByUs.has(c)) {
+        suspendedByUs.delete(c)
+        void c.resume().catch(() => undefined)
+      }
     }
   }
-  window.dispatchEvent(new Event(hidden ? 'sp:app-pause' : 'sp:app-resume'))
+  if (hidden) suspendTimer = setTimeout(apply, SUSPEND_FADE_MS)
+  else apply()
 }
 
 export function isBackgrounded(): boolean {

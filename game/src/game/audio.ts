@@ -281,21 +281,38 @@ export class Sfx {
     lfo.stop(t + dur + 0.02)
   }
 
-  /** Net ripple swish. */
+  /**
+   * Net: a soft low "bulge" as the ball is caught, then a two-stage rustle (cord
+   * ripple, then settling) whose weight follows shot speed (2.8#24).
+   */
   net(speed = 15): void {
-    if (!this.ready || !this.voice(0.5)) return
+    if (!this.ready || !this.voice(0.6)) return
     const ctx = this.ctx!
     const t = ctx.currentTime
-    const n = this.noise()
-    const bp = ctx.createBiquadFilter()
-    bp.type = 'bandpass'
-    bp.Q.value = 1.5
-    bp.frequency.setValueAtTime(4200, t)
-    bp.frequency.exponentialRampToValueAtTime(1400, t + 0.35)
-    const g = ctx.createGain()
-    this.env(g, t, Math.min(0.45, 0.15 + speed * 0.012), 0.01, 0.42)
-    n.connect(bp).connect(g).connect(this.out!)
-    this.startNoise(n, t, 0.5)
+    const power = Math.min(1, speed / 32)
+    // Bulge: filtered noise thump under 300 Hz.
+    const nb = this.noise()
+    const lp = ctx.createBiquadFilter()
+    lp.type = 'lowpass'
+    lp.frequency.setValueAtTime(320 + power * 260, t)
+    lp.frequency.exponentialRampToValueAtTime(110, t + 0.18)
+    const gb = ctx.createGain()
+    this.env(gb, t, 0.1 + power * 0.22, 0.004, 0.2)
+    nb.connect(lp).connect(gb).connect(this.out!)
+    this.startNoise(nb, t, 0.25)
+    // Ripple: bright band sweeping down, then a quieter settle burst.
+    for (const [delay, level, f0, f1, len] of [[0.015, 0.14 + power * 0.3, 4600, 1500, 0.36], [0.2, 0.05 + power * 0.1, 2600, 900, 0.3]] as const) {
+      const n = this.noise()
+      const bp = ctx.createBiquadFilter()
+      bp.type = 'bandpass'
+      bp.Q.value = 1.8
+      bp.frequency.setValueAtTime(f0, t + delay)
+      bp.frequency.exponentialRampToValueAtTime(f1, t + delay + len)
+      const g = ctx.createGain()
+      this.env(g, t + delay, level, 0.008, len)
+      n.connect(bp).connect(g).connect(this.out!)
+      this.startNoise(n, t + delay, len + 0.1)
+    }
   }
 
   /**

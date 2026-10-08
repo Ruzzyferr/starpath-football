@@ -98,7 +98,7 @@ export function installAudioDirector(): void {
     const hasCareer = !!gameState.peek()
     const track = trackForScreen(id, hasCareer)
     if (track === 'keep') return
-    if (track) engine.playMusic(track, { fade: track === 'tension' ? 1.2 : 2 })
+    if (track && !(track === 'tension' && id === 'liveMatch' && settings.peek().matchMusic === false)) engine.playMusic(track, { fade: track === 'tension' ? 1.2 : 2 })
     else engine.stopMusic(2)
     if (id === 'preMatch' || id === 'liveMatch') engine.holdCrowd('match')
     else engine.releaseCrowd('match')
@@ -149,7 +149,7 @@ export function installAudioDirector(): void {
           engine.stopMusic(0.5)
           engine.sting(h > a ? 'victory' : h < a ? 'defeat' : 'draw')
         }
-      } else if (m.pendingMoment && !m.momentActive) {
+      } else if (m.pendingMoment && !m.momentActive && settings.peek().matchMusic !== false) {
         engine.setMusicIntensity(t)
         engine.playMusic('tension', { fade: 1, intensity: t })
       } else engine.stopMusic(m.momentActive ? 0.6 : 2.5)

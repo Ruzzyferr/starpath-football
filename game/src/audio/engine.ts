@@ -94,10 +94,14 @@ export class AudioEngine {
     this.installed = true
     const onGesture = () => this.unlock()
     for (const ev of ['pointerdown', 'touchend', 'keydown', 'click']) window.addEventListener(ev, onGesture, { capture: true, passive: true })
-    window.addEventListener('sp:app-pause', () => this.rig?.scheduler.stop())
+    window.addEventListener('sp:app-pause', () => {
+      this.safe((r) => r.mixer.fadeMaster(true)) // lifecycle suspends the context ~FADE_MS later
+      this.rig?.scheduler.stop()
+    })
     window.addEventListener('sp:app-resume', () => {
       if (this.rig) {
         this.rig.scheduler.start()
+        this.safe((r) => r.mixer.fadeMaster(false, 0.08))
         if (this.rig.ctx.state !== 'running') void this.rig.ctx.resume().catch(() => undefined)
       }
     })

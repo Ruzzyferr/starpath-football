@@ -1,0 +1,10 @@
+{
+  "_comment": "gzip KB unless stated. Measured 2026-10: jsTotal 1094, jsLargest 524 (Phaser/MatchScene), jsInitial 686, css 44, dist 4420 KB. ~15% headroom; raise deliberately, never silently.",
+  "jsTotalGzKB": 1260,
+  "jsLargestGzKB": 600,
+  "jsInitialGzKB": 790,
+  "cssTotalGzKB": 55,
+  "distTotalKB": 5100,
+  "audioFileBytes": 2000000,
+  "jsChunks": 40
+}

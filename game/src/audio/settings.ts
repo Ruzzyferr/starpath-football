@@ -16,6 +16,8 @@ export interface AudioSettingsFields {
   voiceVolume: number
   muted: boolean
   reducedSound: boolean
+  /** Tension music while a live-match moment waits (2.8#36). Off = the crowd owns the match soundscape. */
+  matchMusic: boolean
 }
 
 export const DEFAULT_AUDIO_SETTINGS: Omit<AudioSettingsFields, 'sound' | 'music'> = {
@@ -25,6 +27,7 @@ export const DEFAULT_AUDIO_SETTINGS: Omit<AudioSettingsFields, 'sound' | 'music'
   voiceVolume: 0.8,
   muted: false,
   reducedSound: false,
+  matchMusic: true,
 }
 
 export function mixFromSettings(s: Partial<AudioSettingsFields>): MixSettings {

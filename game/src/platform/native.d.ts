@@ -13,6 +13,8 @@ export interface StarpathNativeBridge {
     unlock(id: string): Promise<boolean>
   }
   quit(): void
+  /** Registers the flush handler run when the desktop window is about to close. */
+  onBeforeQuit(cb: () => void | Promise<void>): void
 }
 
 declare global {

@@ -1,0 +1,42 @@
+name: Nightly soak
+
+# 10,000 simulated career seasons (1,000 careers x 10 seasons) with the economy guard-rails from
+# src/sim/game/balance.test.ts (<= 5% bankruptcies, only reckless personas may go under), plus the
+# full unit suite and the size budgets (GAP-AUDIT 2.12#86).
+on:
+  schedule:
+    - cron: '17 2 * * *'
+  workflow_dispatch:
+
+defaults:
+  run:
+    working-directory: game
+
+jobs:
+  balance-10k:
+    name: 10,000 season balance soak
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: game/package-lock.json
+      - run: npm ci
+      - name: Balance report (1000 careers x 10 seasons)
+        run: npx vitest run src/sim/game/balance.test.ts | tee balance-report.txt
+        env:
+          BALANCE: '1'
+          BALANCE_N: '1000'
+          BALANCE_SEASONS: '10'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: balance-report
+          path: game/balance-report.txt
+          if-no-files-found: ignore
+      - run: npm test
+      - run: npm run build
+      - run: npm run budgets

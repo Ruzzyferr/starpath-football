@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
+import { QuickMute } from '../audio/ui/QuickMute'
 import { EventModalHost } from './screens/EventModal'
 import { TitleScreen } from './screens/TitleScreen'
 import { NewCareerScreen } from './screens/NewCareerScreen'
@@ -218,6 +219,7 @@ export function App() {
       {gameState.value && <UnlockNotifier />}
       <MatchdayConfirmHost />
       <ShortcutsModal />
+      <QuickMute />
       <ToastHost />
     </>
   )

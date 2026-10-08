@@ -19,6 +19,9 @@ import { knownSaveKeys } from './keys'
 import { trackAudioContexts, watchVisibility } from './lifecycle'
 import { ElectronFileStorage, migrateMissing } from './storage'
 import { handleBack } from './back'
+import { installGlRecovery } from './glRecovery'
+import { flushAutosave } from '../ui/backend/persistence'
+import { recordError } from '../telemetry/errorLog'
 import { registerServiceWorker } from './sw-register'
 import { createWebWakeLock } from './wakeLock'
 import './platform.css'
@@ -86,6 +89,18 @@ async function migrateFromIdb(target: SaveStorage): Promise<void> {
 
 let started = false
 
+/** The Electron shell reloads a crashed renderer with ?recovered=<reason>; count it in the opt-in log (2.9#69, 2.12#119). */
+function noteRecovery(): void {
+  try {
+    const u = new URL(location.href)
+    const reason = u.searchParams.get('recovered')
+    if (!reason) return
+    recordError(`Renderer recovered after ${reason.slice(0, 40)}`, 'recovered')
+    u.searchParams.delete('recovered')
+    history.replaceState(null, '', u.pathname + u.search + u.hash)
+  } catch { /* ignore */ }
+}
+
 export async function initPlatform(): Promise<PlatformId> {
   if (started) return id
   started = true
@@ -95,6 +110,10 @@ export async function initPlatform(): Promise<PlatformId> {
 
   trackAudioContexts()
   watchVisibility()
+  installGlRecovery()
+  noteRecovery()
+  // Desktop: the shell asks us to flush the autosave before the window closes (2.9#45).
+  if (id === 'electron') window.starpathNative?.onBeforeQuit(() => flushAutosave())
 
   if (isMobileNative(id)) {
     try {

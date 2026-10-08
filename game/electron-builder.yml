@@ -17,6 +17,13 @@ files:
 asarUnpack:
   - "**/*.node"
 artifactName: StarPath-Football-${version}-${os}-${arch}.${ext}
+# Electron Fuses (2.9#86): flipped at package time. The shell never needs Node-as-runtime, NODE_OPTIONS or --inspect.
+electronFuses:
+  runAsNode: false
+  enableCookieEncryption: true
+  enableNodeOptionsEnvironmentVariable: false
+  enableNodeCliInspectArguments: false
+  onlyLoadAppFromAsar: true
 win:
   icon: build-resources/icon.png
   target:

@@ -169,6 +169,11 @@ export class Mixer {
     for (const b of BUSES) this.input[b].gain.setTargetAtTime(busGain(this.mix, b), t, RAMP)
   }
 
+  /** Quick fade of the whole output to silence (app backgrounded) and back; the saved mix is untouched. */
+  fadeMaster(silent: boolean, tau = 0.05): void {
+    this.master.gain.setTargetAtTime(silent ? 0 : masterGain(this.mix), this.ctx.currentTime, tau)
+  }
+
   /** Temporarily pulls a bus down (music under a goal roar, crowd under a sting). */
   duck(bus: 'music' | 'crowd', depthDb: number, opts: { attack?: number; hold?: number; release?: number; at?: number } = {}): void {
     const node = this.duckNodes[bus]

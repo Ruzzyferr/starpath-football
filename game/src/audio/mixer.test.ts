@@ -88,3 +88,16 @@ describe('Mixer graph (fake context)', () => {
     expect(ev[ev.length - 1].value).toBe(1)
   })
 })
+
+describe('mixer background fade (2.8#4)', () => {
+  it('fadeMaster ramps to silence and back without touching the saved mix', () => {
+    const ctx = fakeCtx()
+    const m = new Mixer(ctx, DEFAULT_MIX)
+    const events = () => (m.master.gain as unknown as FakeParam).events
+    m.fadeMaster(true)
+    expect(events().at(-1)?.value).toBe(0)
+    m.fadeMaster(false)
+    expect(events().at(-1)?.value).toBeCloseTo(masterGain(DEFAULT_MIX), 6)
+    expect(m.settings).toEqual(DEFAULT_MIX)
+  })
+})

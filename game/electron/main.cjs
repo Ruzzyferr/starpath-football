@@ -4,8 +4,9 @@
 // IPC surface (see preload.cjs, exposed as window.starpathNative):
 //   saves:get / saves:set / saves:remove / saves:dir  file-based save storage
 //   steam:available / steam:unlock                    optional Steamworks
-//   app:quit
-const { app, BrowserWindow, shell, Menu, ipcMain } = require('electron')
+//   app:quit / app:flushed (renderer finished flushing the autosave before the window closes)
+const { app, BrowserWindow, shell, Menu, ipcMain, session, screen } = require('electron')
+const { CSP } = require('./csp.cjs')
 const fs = require('node:fs')
 const fsp = require('node:fs/promises')
 const path = require('node:path')
@@ -128,12 +129,55 @@ ipcMain.handle('steam:unlock', (_e, id) => {
 
 ipcMain.on('app:quit', () => app.quit())
 
+// ───────────────────────── Window state (2.9#92) ─────────────────────────
+// Bounds / maximized / fullscreen survive restarts; a saved rectangle that no longer fits any display is dropped.
+
+function stateFile() {
+  return path.join(app.getPath('userData'), 'window.json')
+}
+
+function loadWindowState() {
+  try {
+    const s = JSON.parse(fs.readFileSync(stateFile(), 'utf8'))
+    const num = (v) => typeof v === 'number' && Number.isFinite(v)
+    const out = { fullscreen: s.fullscreen === true, maximized: s.maximized === true }
+    if (num(s.width) && num(s.height) && s.width >= 960 && s.height >= 600) {
+      out.width = Math.round(s.width)
+      out.height = Math.round(s.height)
+      if (num(s.x) && num(s.y)) {
+        const visible = screen.getAllDisplays().some((d) => {
+          const b = d.workArea
+          return s.x + 100 > b.x && s.x < b.x + b.width - 100 && s.y >= b.y - 10 && s.y < b.y + b.height - 100
+        })
+        if (visible) {
+          out.x = Math.round(s.x)
+          out.y = Math.round(s.y)
+        }
+      }
+    }
+    return out
+  } catch {
+    return {}
+  }
+}
+
+function saveWindowState(win) {
+  try {
+    const b = win.getNormalBounds()
+    fs.writeFileSync(stateFile(), JSON.stringify({ ...b, maximized: win.isMaximized(), fullscreen: win.isFullScreen() }))
+  } catch { /* best effort */ }
+}
+
 // ───────────────────────── Window ─────────────────────────
 
+let crashReloads = []
+
 function createWindow() {
+  const saved = loadWindowState()
   const win = new BrowserWindow({
-    width: 1440,
-    height: 900,
+    width: saved.width ?? 1440,
+    height: saved.height ?? 900,
+    ...(saved.x !== undefined ? { x: saved.x, y: saved.y } : {}),
     minWidth: 960,
     minHeight: 600,
     backgroundColor: '#0B1220',
@@ -150,7 +194,40 @@ function createWindow() {
     },
   })
   Menu.setApplicationMenu(null)
-  win.once('ready-to-show', () => win.show())
+  win.once('ready-to-show', () => {
+    if (saved.maximized) win.maximize()
+    if (saved.fullscreen) win.setFullScreen(true)
+    win.show()
+  })
+
+  // Close handshake: give the renderer a moment to flush the autosave (2.9#45).
+  let flushed = false
+  win.on('close', (e) => {
+    saveWindowState(win)
+    if (flushed || win.webContents.isDestroyed() || win.webContents.isCrashed()) return
+    e.preventDefault()
+    const finish = () => {
+      if (flushed) return
+      flushed = true
+      if (!win.isDestroyed()) win.close()
+    }
+    ipcMain.once('app:flushed', finish)
+    setTimeout(finish, 2000)
+    win.webContents.send('app:before-quit')
+  })
+
+  // Renderer crash / kill: reload (at most 3 times a minute) so the player lands back on the title
+  // screen with the autosave intact instead of a dead window (2.9#69).
+  win.webContents.on('render-process-gone', (_e, details) => {
+    if (details.reason === 'clean-exit') return
+    const now = Date.now()
+    crashReloads = crashReloads.filter((t) => now - t < 60_000)
+    if (crashReloads.length >= 3) return app.quit()
+    crashReloads.push(now)
+    console.error('[StarPath] renderer gone:', details.reason)
+    if (isDev) win.loadURL(process.env.SP_DEV_URL)
+    else win.loadFile(path.join(__dirname, '..', 'dist', 'index.html'), { query: { recovered: details.reason } })
+  })
 
   // Never navigate away from the game; open external links in the browser.
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -161,7 +238,8 @@ function createWindow() {
 
   // F11 toggles fullscreen like most PC games.
   win.webContents.on('before-input-event', (_e, input) => {
-    if (input.type === 'keyDown' && input.key === 'F11') win.setFullScreen(!win.isFullScreen())
+    if (input.type !== 'keyDown') return
+    if (input.key === 'F11' || (input.alt && input.key === 'Enter')) win.setFullScreen(!win.isFullScreen())
   })
 
   if (isDev) win.loadURL(process.env.SP_DEV_URL)
@@ -180,6 +258,17 @@ if (!app.requestSingleInstanceLock()) {
   })
 
   app.whenReady().then(() => {
+    // Lock the renderer down: CSP on every response, no device/notification permissions, no <webview>.
+    if (!isDev) {
+      session.defaultSession.webRequest.onHeadersReceived((details, cb) => {
+        cb({ responseHeaders: { ...details.responseHeaders, 'Content-Security-Policy': [CSP] } })
+      })
+    }
+    session.defaultSession.setPermissionRequestHandler((_wc, _perm, cb) => cb(false))
+    session.defaultSession.setPermissionCheckHandler(() => false)
+    app.on('web-contents-created', (_e, contents) => {
+      contents.on('will-attach-webview', (ev) => ev.preventDefault())
+    })
     initSteam()
     createWindow()
     app.on('activate', () => {

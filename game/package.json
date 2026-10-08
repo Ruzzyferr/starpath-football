@@ -26,6 +26,7 @@
     "android:bundle": "npm run cap:sync && node scripts/android-gradle.mjs bundleRelease",
     "icons:native": "node scripts/gen-native-res.mjs",
     "ios:open": "cap open ios",
+    "budgets": "node scripts/check-budgets.mjs",
     "licenses": "node scripts/gen-licenses.mjs",
     "licenses:check": "node scripts/gen-licenses.mjs --check",
     "legal": "node scripts/gen-legal.mjs"

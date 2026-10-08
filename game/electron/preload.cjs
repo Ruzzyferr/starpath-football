@@ -16,4 +16,13 @@ contextBridge.exposeInMainWorld('starpathNative', {
     unlock: (id) => ipcRenderer.invoke('steam:unlock', String(id)),
   },
   quit: () => ipcRenderer.send('app:quit'),
+  /** Main asks the renderer to flush before the window closes; call the returned ack when done. */
+  onBeforeQuit: (cb) => {
+    ipcRenderer.on('app:before-quit', () => {
+      Promise.resolve()
+        .then(() => cb())
+        .catch(() => undefined)
+        .finally(() => ipcRenderer.send('app:flushed'))
+    })
+  },
 })

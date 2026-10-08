@@ -134,6 +134,9 @@ export const tr = {
   resetConfirmText: 'Üç kayıt yuvasının tamamı ve tüm ayarlar kalıcı olarak silinecek.',
   resetConfirm: 'Evet, sıfırla',
   resetDone: 'Oyun sıfırlandı',
+  exportAll: 'Tüm verilerimi indir',
+  exportAllDesc: 'Kayıtlar, ayarlar, başarımlar ve yerel günlük tek bir JSON dosyasında.',
+  exportedAll: 'Veriler dışa aktarıldı',
   menu: {
     title: 'Menü',
     sub: 'Kayıt, ayarlar ve kariyer arşivi',
@@ -293,6 +296,9 @@ export const en: Shape<typeof tr> = {
   resetConfirmText: 'All three save slots and every setting will be permanently deleted.',
   resetConfirm: 'Yes, reset',
   resetDone: 'Game reset',
+  exportAll: 'Download all my data',
+  exportAllDesc: 'Saves, settings, achievements and the local log in one JSON file.',
+  exportedAll: 'Data exported',
   menu: {
     title: 'Menu',
     sub: 'Saves, settings and career archive',

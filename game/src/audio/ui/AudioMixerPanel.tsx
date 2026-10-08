@@ -11,12 +11,14 @@ import { settings, updateSettings } from '../../ui/store'
 import { audio, engine, sfx } from '../index'
 import type { MixKey } from '../settings'
 
-const L: Record<'master' | 'crowd' | 'ui' | 'voice' | 'voiceHint' | 'mute' | 'muteDesc' | 'reduced' | 'reducedDesc', LText> = {
+const L: Record<'master' | 'crowd' | 'ui' | 'voice' | 'voiceHint' | 'matchMusic' | 'matchMusicDesc' | 'mute' | 'muteDesc' | 'reduced' | 'reducedDesc', LText> = {
   master: { tr: 'Ana ses', en: 'Master volume' },
   crowd: { tr: 'Taraftar', en: 'Crowd' },
   ui: { tr: 'Arayüz sesleri', en: 'Interface sounds' },
   voice: { tr: 'Anlatım', en: 'Commentary' },
   voiceHint: { tr: 'Anlatım sesi ileride eklenecek.', en: 'Commentary is coming in a later update.' },
+  matchMusic: { tr: 'Maç müziği', en: 'Match music' },
+  matchMusicDesc: { tr: 'Kritik anlar beklerken gerilim müziği çalar. Kapalıyken yalnızca taraftar duyulur.', en: 'Tension music plays while a key moment waits. When off, only the crowd is heard.' },
   mute: { tr: 'Tüm sesleri kapat', en: 'Mute all audio' },
   muteDesc: { tr: 'Müzik, efekt ve taraftar dahil.', en: 'Music, effects and crowd included.' },
   reduced: { tr: 'Sade ses', en: 'Reduced sound' },
@@ -67,6 +69,7 @@ export function AudioMixerPanel() {
       {row('uiVolume', tx('ui'), 'set-ui')}
       {row('voiceVolume', tx('voice'), 'set-voice', tx('voiceHint'))}
       <Switch label={tx('mute')} desc={tx('muteDesc')} checked={s.muted} onChange={(muted) => updateSettings({ muted })} />
+      <Switch label={tx('matchMusic')} desc={tx('matchMusicDesc')} checked={s.matchMusic !== false} onChange={(matchMusic) => updateSettings({ matchMusic })} />
       <Switch label={tx('reduced')} desc={tx('reducedDesc')} checked={s.reducedSound} onChange={(reducedSound) => updateSettings({ reducedSound })} />
     </>
   )

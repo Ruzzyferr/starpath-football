@@ -14,6 +14,8 @@ import type { CrestSpec, GameState } from '../core/types'
 
 export const SLOT_COUNT = 3
 export const BACKUP_COUNT = 3
+/** Season-start milestone copies kept per slot (2.9#42). */
+export const MILESTONE_COUNT = 3
 
 /** Minimal async key-value store. Implemented by IndexedDB, Capacitor Filesystem, or memory (tests). */
 export interface SaveStorage {
@@ -58,6 +60,9 @@ const stagingKey = (slot: number) => `sp.save.${slot}.staging`
 const backupKey = (slot: number, i: number) => `sp.save.${slot}.bak${i}`
 /** Verbatim copy of the envelope as it was before an older-schema save was migrated. */
 const premigrateKey = (slot: number) => `sp.save.${slot}.premigrate`
+/** One verified copy per season (the first save seen in that season); the manifest lists the seasons held. */
+const milestoneKey = (slot: number, season: number) => `sp.save.${slot}.ms.${season}`
+const milestoneManifestKey = (slot: number) => `sp.save.${slot}.ms`
 
 /** Envelope whose checksum is valid but which was written by a newer build (cannot be read here). */
 export function isNewerEnvelope(raw: string | null): boolean {
@@ -163,6 +168,7 @@ export class SaveManager {
     // If this throws, the verified staging copy (newer than live) remains and load() prefers it.
     await this.storage.set(liveKey(slot), raw)
     await this.storage.remove(stagingKey(slot)).catch(() => {})
+    await this.recordMilestone(slot, summary.season, raw)
     if (skipped && !this.degraded) this.notice({ kind: 'backups-skipped', slot })
     this.degraded = skipped
   }
@@ -186,7 +192,51 @@ export class SaveManager {
       const b = openEnvelope(await this.storage.get(backupKey(slot, i)))
       if (b) return { ok: true, state: b.state, recoveredFromBackup: i }
     }
+    // Last resort: the newest intact season milestone (loses at most a season, beats losing the career).
+    for (const season of await this.listMilestones(slot)) {
+      const m = openEnvelope(await this.storage.get(milestoneKey(slot, season)))
+      if (m) return { ok: true, state: m.state, recoveredFromBackup: BACKUP_COUNT }
+    }
     return { ok: false, reason: live ? 'corrupt' : 'empty' }
+  }
+
+  private async milestones(slot: number): Promise<number[]> {
+    try {
+      const a = JSON.parse((await this.storage.get(milestoneManifestKey(slot))) ?? '[]') as unknown
+      return Array.isArray(a) ? a.filter((n): n is number => Number.isInteger(n)) : []
+    } catch {
+      return []
+    }
+  }
+
+  /** Seasons for which a milestone copy exists, newest first. */
+  async listMilestones(slot: number): Promise<number[]> {
+    return (await this.milestones(slot)).sort((a, b) => b - a)
+  }
+
+  /**
+   * First verified save of a season is kept as a milestone, the oldest beyond {@link MILESTONE_COUNT}
+   * is pruned. Best-effort: when storage is full the milestone is simply skipped (live save wins).
+   */
+  private async recordMilestone(slot: number, season: number, raw: string): Promise<void> {
+    if (!Number.isInteger(season)) return
+    try {
+      const seasons = await this.milestones(slot)
+      if (seasons.includes(season)) return
+      await this.storage.set(milestoneKey(slot, season), raw)
+      const next = [...seasons, season].sort((a, b) => a - b)
+      const drop = next.splice(0, Math.max(0, next.length - MILESTONE_COUNT))
+      await this.storage.set(milestoneManifestKey(slot), JSON.stringify(next))
+      for (const s of drop) await this.storage.remove(milestoneKey(slot, s))
+    } catch { /* quota: skip */ }
+  }
+
+  /** Restore a milestone copy into the live slot (returns false when it is missing or damaged). */
+  async restoreMilestone(slot: number, season: number): Promise<boolean> {
+    const raw = await this.storage.get(milestoneKey(slot, season))
+    if (!raw || !openEnvelope(raw)) return false
+    await this.storage.set(liveKey(slot), raw)
+    return true
   }
 
   /** Keep the untouched pre-migration envelope under its own key (first one per version wins). Best-effort. */
@@ -246,6 +296,8 @@ export class SaveManager {
     await this.storage.remove(stagingKey(slot))
     await this.storage.remove(premigrateKey(slot))
     for (let i = 0; i < BACKUP_COUNT; i++) await this.storage.remove(backupKey(slot, i))
+    for (const season of await this.milestones(slot)) await this.storage.remove(milestoneKey(slot, season))
+    await this.storage.remove(milestoneManifestKey(slot))
   }
 
   /** Portable export (the raw envelope) for manual backup / moving devices. */
