@@ -30,7 +30,7 @@
   border: 2px solid var(--hairline);
   pointer-events: none;
 }
-.prof-hero-card { width: min(260px, 72vw); }
+.prof-hero-card { width: min(260px, 62vw); } /* phones: name and club peek above the fold */
 .prof-hero-info {
   display: flex;
   flex-direction: column;
