@@ -105,11 +105,39 @@ export function squadCutoff(state: GameState, level: NationalLevel, position: Po
   return cut
 }
 
-/** The hero's selection score on the same scale as {@link selectionScore}. */
+/** Most the season's numbers can add to the hero's selection score (OVR points). */
+export const PERFORMANCE_BONUS_MAX = 10
+
+/**
+ * What the national coach sees beyond OVR (playtest round 2): a 336-goal striker
+ * with 95 reputation was never called up because the world's best OVRs outgrew
+ * his 80. Average rating, goal involvement (or clean sheets for keepers and
+ * defenders) and fame now count. Uses this season once 6 games are in, else
+ * blends in last season's record. −2 … +{@link PERFORMANCE_BONUS_MAX}.
+ */
+export function heroPerformanceBonus(state: GameState): number {
+  const h = state.hero
+  const cur = h.seasonStats
+  const last = h.history[h.history.length - 1]?.stats
+  const st = cur.apps >= 6 || !last ? cur : {
+    apps: cur.apps + last.apps, ratingSum: cur.ratingSum + last.ratingSum, goals: cur.goals + last.goals,
+    assists: cur.assists + last.assists, cleanSheets: cur.cleanSheets + last.cleanSheets,
+  }
+  if (st.apps < 4) return 0
+  const avg = st.ratingSum / st.apps
+  let b = clamp((avg - 6.7) * 4, -2, 5)
+  const g = positionGroup(h.position)
+  if (g === 'FWD' || g === 'MID') b += clamp(((st.goals + st.assists) / st.apps - (g === 'FWD' ? 0.4 : 0.25)) * 5, 0, 4)
+  else b += clamp((st.cleanSheets / st.apps - 0.25) * 8, 0, 3)
+  b += clamp((h.reputation - 60) / 10, 0, 3)
+  return clamp(b, -2, PERFORMANCE_BONUS_MAX)
+}
+
+/** The hero's selection score on the same scale as {@link selectionScore}, plus the season's numbers. */
 export function heroSelectionScore(state: GameState): number {
   const h = state.hero
   const club = h.contract ? state.world.clubs[h.contract.clubId] : undefined
-  return heroOvr(h) + (h.form - 50) * 0.05 + (club ? (club.reputation - 50) * 0.03 : -2) + Math.min(h.seasonStats.apps, 20) * 0.05
+  return heroOvr(h) + (h.form - 50) * 0.05 + (club ? (club.reputation - 50) * 0.03 : -2) + Math.min(h.seasonStats.apps, 20) * 0.05 + heroPerformanceBonus(state)
 }
 
 /** Call-up meter for one level. */
@@ -207,6 +235,8 @@ export function announceHeroSquad(state: GameState, rng: Rng, out: LText[]): voi
   const eventBoost = state.life.flags.nt_called === true && !wasSenior ? 10 : 0
   let chosen: CallupView | null = null
   for (const level of eligibleLevels(state)) {
+    // Retired from international football (card national.international_retirement).
+    if (level === 'A' && state.life.flags.nt_retired === true) continue
     const v = callupFor(state, level)
     const m = v.meter + (level === 'A' ? eventBoost : 0)
     if (!teamPlaysInWindow(state, v.teamId, cal.week)) continue
@@ -216,9 +246,12 @@ export function announceHeroSquad(state: GameState, rng: Rng, out: LText[]): voi
   evaluateCallupMeter(state)
   const country = NATION_BY_ID[h.nationality]?.name ?? lt('?', '?')
   if (!chosen) {
+    // A provisional-squad phone call (card national.first_callup) gets closure instead of silence.
+    const provisional = state.life.flags.nt_called === true && !wasSenior && !h.injury
     delete state.life.flags.nt_called
     state.life.flags[GFLAG.ntSeen] = false
     if (wasCalled) log(state, out, fill(lt('{c} kadrosu açıklandı: bu kez listede yoksun.', '{c} squad announced: you are not in it this time.'), { c: country }), 'career', '🎽')
+    else if (provisional) log(state, out, fill(lt('{c} kadrosu açıklandı: aday listesindeydin ama son kadroya giremedin. Hoca "Kapı açık" dedi.', '{c} squad announced: you were on the provisional list but missed the final cut. The coach says "the door is open".'), { c: country }), 'career', '🎽')
     return
   }
   insertHero(state, chosen.teamId)
@@ -235,7 +268,17 @@ export function announceHeroSquad(state: GameState, rng: Rng, out: LText[]): voi
   log(state, out, fill(first
     ? lt('🎽 İlk kez A Milli Takım\'a çağrıldın: {t}! Teknik direktör {m}.', '🎽 First senior call-up: {t}! Head coach {m}.')
     : lt('🎽 Kadro açıklandı: {t} kadrosundasın (çağrı puanı {v}).', '🎽 Squad announced: you are in the {t} squad (call-up meter {v}).'), { t: team, m: coach, v: chosen.meter }), 'career', '🎽')
-  if (senior) pushNews(state.life, rng, cal, fill(lt('{n}, {t} kadrosunda', '{n} named in the {t} squad'), { n: `${h.firstName} ${h.lastName}`, t: team }), 1, rng.pick(NEWS_SOURCES))
+  // Headline only when the call-up is news (first call or a recall), not every window (playtest round 2: ×15 identical).
+  if (senior && !wasSenior) {
+    const tpl = h.nationalTeam.caps === 0
+      ? lt('{n}, {t} kadrosunda', '{n} named in the {t} squad')
+      : rng.pick([
+        lt('{n} yeniden {t} kadrosunda', '{n} recalled to the {t} squad'),
+        lt('Milli takımda {n} sürprizi yok: yine listede', 'No surprise: {n} back in the {t} squad'),
+        lt('{t} hocası {n} ismini yeniden yazdı', 'The {t} coach writes {n} back in'),
+      ])
+    pushNews(state.life, rng, cal, fill(tpl, { n: `${h.firstName} ${h.lastName}`, t: team }), 1, rng.pick(NEWS_SOURCES))
+  }
 }
 
 /** True when this week is an international break or finals week and the hero is on senior duty. */
@@ -387,7 +430,19 @@ export function applyNationalMatchToHero(state: GameState, rng: Rng, m: National
   lines.unshift(fill(lt('{t}: {gf}-{ga} · Puanın {r} · {g} gol', '{t}: {gf}-{ga} · Rating {r} · {g} goal(s)'), { t: team, gf: m.gf, ga: m.ga, r: rating.toFixed(1), g: m.goals }))
   if (debut) lines.push(lt('🎖️ A Milli Takım\'da ilk maçına çıktın!', '🎖️ You made your senior international debut!'))
   if (level === 'A' && m.goals > 0) {
-    pushNews(life, rng, cal, fill(lt('{n}, {t} formasıyla {g} gol attı', '{n} scores {g} for {t}'), { n: `${h.firstName} ${h.lastName}`, t: team, g: m.goals }), 1, rng.pick(NEWS_SOURCES))
+    // Varied (playtest round 2: one template ×25 in a 38-cap career); the first goal is its own story.
+    const intlGoals = h.nationalTeam.goals
+    const tpl = intlGoals <= m.goals
+      ? lt('{n} milli formayla ilk golünü attı', '{n} scores a first international goal')
+      : m.goals >= 2
+        ? rng.pick([lt('{n} milli maçta {g} gol attı', '{n} hits {g} for {t}'), lt('{t} gecesi {n} gecesiydi: {g} gol', '{t} night belonged to {n}: {g} goals')])
+        : rng.pick([
+          lt('{n}, {t} formasıyla yine sahnede', '{n} on target again for {t}'),
+          lt('{n} milli takımda {i}. golüne ulaştı', '{n} reaches {i} international goals'),
+          lt('{t} attı, {n} sevindi', '{t} score and {n} celebrates'),
+          lt('Milli arada {n} farkı', 'The {n} factor in the international break'),
+        ])
+    pushNews(life, rng, cal, fill(tpl, { n: `${h.firstName} ${h.lastName}`, t: team, g: m.goals, i: intlGoals }), 1, rng.pick(NEWS_SOURCES))
   }
   return lines
 }

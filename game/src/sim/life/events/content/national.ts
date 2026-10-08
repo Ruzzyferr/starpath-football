@@ -14,7 +14,8 @@ export const nationalEvents: EventDef[] = [
     cooldownWeeks: 0,
     once: true,
     triggers: ['national_break', 'weekly', 'match_win'],
-    conditions: ({ state }) => !called(state) && state.hero.reputation >= 40,
+    // Provisional-squad call: only when the senior coach is really looking (meter 48+); the flag adds +10 at the next announcement.
+    conditions: ({ state }) => !called(state) && state.hero.reputation >= 40 && state.world.national?.hero.level === 'A' && (state.world.national?.hero.meter ?? 0) >= 48 && state.life.flags.nt_retired !== true,
     title: t('Telefon Çaldı', 'The Phone Rings'),
     text: t(
       'Bilinmeyen numara. "Milli takım teknik heyetinden arıyoruz. Aday kadrodasın." Elin titriyor; annen arka odadan "Kim o?" diye sesleniyor.',
