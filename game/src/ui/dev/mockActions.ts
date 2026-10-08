@@ -734,6 +734,9 @@ export const mockActions: GameActions = {
     view.agentLine = agentLine(s, view, lim)
     negotiation.value = view
   },
+  previewTerms() {
+    return null
+  },
   proposeTerms(terms) {
     const s = get()
     const n = negotiation.value

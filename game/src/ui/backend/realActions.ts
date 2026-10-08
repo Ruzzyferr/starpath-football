@@ -31,6 +31,7 @@ import {
   type BlackjackHandView, type BlackjackView, type CardView, type Delta, type EventOutcomeView, type GameActions, type InteractionKind, type NegotiationView,
   type OfferTerms, type PostKind, type TrainingOutcomeView, type Rank, type SocialPostView, type Suit,
 } from '../store'
+import { previewPatience } from '../../sim/game/patienceEstimate'
 import { captureSale, undoSale, type SaleReceipt } from '../../sim/game/undoSale'
 import { INTERACT_COST } from '../../sim/game/interactCost'
 import { eventDeltas, diffSnapshots, snapshot, teamViewOr } from './mapping'
@@ -299,6 +300,21 @@ function extraOf(t: ContractTerms): Partial<OfferTerms> {
     ...(t.appearanceBonus ? { appearanceBonus: t.appearanceBonus } : {}),
     ...(t.promotionBonus ? { promotionBonus: t.promotionBonus } : {}),
     ...(t.loyaltyBonus ? { loyaltyBonus: t.loyaltyBonus } : {}),
+  }
+}
+
+/** Counter-proposal record for the negotiation sim. */
+function askOf(terms: OfferTerms): Partial<ContractTerms> {
+  return {
+    wage: Math.round(terms.wage), years: terms.years, signingBonus: Math.round(terms.signingBonus), goalBonus: Math.round(terms.goalBonus),
+    releaseClause: terms.releaseClause === null ? null : Math.round(terms.releaseClause), role: terms.role,
+    ...(terms.formGuarantee !== undefined ? { formGuarantee: terms.formGuarantee } : {}),
+    ...(terms.insurance !== undefined ? { insurance: terms.insurance } : {}),
+    ...(terms.minutesGuarantee !== undefined ? { minutesGuarantee: terms.minutesGuarantee } : {}),
+    ...(terms.imageRights !== undefined ? { imageRights: terms.imageRights } : {}),
+    ...(terms.appearanceBonus !== undefined ? { appearanceBonus: Math.round(terms.appearanceBonus) } : {}),
+    ...(terms.promotionBonus !== undefined ? { promotionBonus: Math.round(terms.promotionBonus) } : {}),
+    ...(terms.loyaltyBonus !== undefined ? { loyaltyBonus: Math.round(terms.loyaltyBonus) } : {}),
   }
 }
 
@@ -708,21 +724,16 @@ export const realActions: GameActions = {
     negotiation.value = negoView(s, r.value, [])
     commit(s)
   },
+  previewTerms(terms: OfferTerms) {
+    const s = current()
+    const cur = s ? G.currentNegotiation(s) : null
+    return cur ? previewPatience(cur.state, askOf(terms)) : null
+  },
   proposeTerms(terms: OfferTerms) {
     const s = get()
     const cur = G.currentNegotiation(s)
     if (!cur) return
-    const ask: Partial<ContractTerms> = {
-      wage: Math.round(terms.wage), years: terms.years, signingBonus: Math.round(terms.signingBonus), goalBonus: Math.round(terms.goalBonus),
-      releaseClause: terms.releaseClause === null ? null : Math.round(terms.releaseClause), role: terms.role,
-      ...(terms.formGuarantee !== undefined ? { formGuarantee: terms.formGuarantee } : {}),
-      ...(terms.insurance !== undefined ? { insurance: terms.insurance } : {}),
-      ...(terms.minutesGuarantee !== undefined ? { minutesGuarantee: terms.minutesGuarantee } : {}),
-      ...(terms.imageRights !== undefined ? { imageRights: terms.imageRights } : {}),
-      ...(terms.appearanceBonus !== undefined ? { appearanceBonus: Math.round(terms.appearanceBonus) } : {}),
-      ...(terms.promotionBonus !== undefined ? { promotionBonus: Math.round(terms.promotionBonus) } : {}),
-      ...(terms.loyaltyBonus !== undefined ? { loyaltyBonus: Math.round(terms.loyaltyBonus) } : {}),
-    }
+    const ask = askOf(terms)
     const r = G.counterNegotiation(s, ask)
     if (r.value) negotiation.value = negoView(s, r.value, r.lines)
     else notify(r.error)

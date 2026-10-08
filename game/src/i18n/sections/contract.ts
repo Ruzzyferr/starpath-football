@@ -9,6 +9,9 @@ export const tr = {
   kind: { renewal: 'Yenileme', transfer: 'Transfer', loan: 'Kiralık' },
   round: 'Tur {n}/{max}',
   patience: 'Kulübün sabrı',
+  patienceCost: 'Bu teklif sabırdan yaklaşık {n} puan götürür',
+  patienceFree: 'Bu teklif kulübün sabrını azaltmaz',
+  patienceWalk: 'Bu teklifle kulüp masadan kalkar',
   compare: { term: 'Madde', club: 'Kulüp teklifi', you: 'Senin teklifin' },
   terms: {
     wage: 'Haftalık maaş',
@@ -67,6 +70,9 @@ export const en: Shape<typeof tr> = {
   kind: { renewal: 'Renewal', transfer: 'Transfer', loan: 'Loan' },
   round: 'Round {n}/{max}',
   patience: 'Club patience',
+  patienceCost: 'This offer costs about {n} points of patience',
+  patienceFree: 'This offer does not reduce their patience',
+  patienceWalk: 'The club would walk away on this offer',
   compare: { term: 'Term', club: 'Club offer', you: 'Your ask' },
   terms: {
     wage: 'Weekly wage',

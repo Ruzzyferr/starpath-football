@@ -234,6 +234,18 @@ function Negotiation({ n }: { n: NegotiationView }) {
               </tbody>
             </table>
           </Card>
+          {n.status === 'open' && (() => {
+            const pv = actions.previewTerms(terms)
+            if (!pv) return null
+            const tone = pv.walk ? 'neg' : pv.drain === 0 ? 'pos' : pv.drain >= 15 ? 'warning' : 'info'
+            return (
+              <p class="ctr-preview" data-testid="patience-preview" aria-live="polite">
+                <Chip tone={tone} icon="hourglass">
+                  {pv.walk ? t('contract.patienceWalk') : pv.drain === 0 ? t('contract.patienceFree') : t('contract.patienceCost', { n: pv.drain })}
+                </Chip>
+              </p>
+            )
+          })()}
           <div class="ctr-actions">
             <Button variant="primary" size="lg" block icon="handshake" disabled={n.status !== 'open'} onClick={() => actions.proposeTerms(terms)}>
               {t('contract.propose')}

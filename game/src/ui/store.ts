@@ -654,6 +654,8 @@ export interface GameActions {
   // contract
   openNegotiation(clubId: string): void
   proposeTerms(terms: OfferTerms): void
+  /** Estimated patience cost of sending these terms (2.7#88); null when there is no open negotiation. */
+  previewTerms(terms: OfferTerms): { drain: number; walk: boolean } | null
   acceptOffer(): void
   walkAway(): void
   requestTransfer(): void

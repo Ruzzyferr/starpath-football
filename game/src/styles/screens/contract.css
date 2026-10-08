@@ -123,3 +123,6 @@
 .ctr-seasons span { flex: 1; height: 6px; border-radius: var(--r-pill); background: var(--brand-pitch); opacity: 0.55; }
 .ctr-seasons span.is-now { opacity: 1; box-shadow: 0 0 8px rgba(31, 212, 122, 0.6); }
 @media (max-width: 420px) { .ctr-hero { grid-template-columns: 1fr; } }
+
+/* WP-U 2.7#88: patience cost preview */
+.ctr-preview { margin: 0; }
