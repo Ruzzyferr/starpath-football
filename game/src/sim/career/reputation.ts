@@ -28,11 +28,11 @@ export const STANDING_CONTINENTAL = 1.5
 
 /**
  * Club stage multiplier: a regular at a big club (reputation 90) is noticed far
- * more than the same numbers at a mid-table side (65). 0.1 .. 1.5.
+ * more than the same numbers at a mid-table side (65). 0.1 .. 1.8.
  */
 export function stageForClub(clubReputation: number | null | undefined): number {
   if (clubReputation == null) return 1
-  return clamp((clubReputation - 60) / 20, 0.1, 1.5)
+  return clamp((clubReputation - 60) / 20, 0.1, 1.8)
 }
 
 /** League stage multiplier by tier (1 = top flight). */

@@ -497,3 +497,24 @@ Sorun: kumarhane payı bütün kariyerlerde %5-12, kumarbaz personada %28-56 ara
 Çözüm (sim/life/casino.ts `maxStakeFor`, `canBet`): masa limiti tek bahis için kasanın %1,5'i (taban 500). Tüm oyunlar `canBet` kapısından geçtiği için oyuncu ve bot aynı kuralı görür; limit aşıldığında "Masa limiti" mesajı çıkar. Kumarhane düşük kasalarda (taban 500) ve sürekli oyunda hâlâ anlamlıdır; yalnızca tek elde servet riske atmak engellenir.
 
 Sonuç (BALANCE=1, 30 kariyer x 10 sezon): tohum 1000'de kumarbaz payı %40 -> %9, genel %7 -> %1. İkinci tohum (2024): kumarbaz %2, genel %0 (hedefler tutuyor).
+
+## İtibar telafisi: gol dışı kaynaklar (S21)
+
+Sorun: gol dengesinden sonra 25 yaşında medyan itibar 71–73 (hedef 75–85). Gollere dokunmadan, oturmuş oyunculara yarayan kaynak eklendi.
+Ölçüm: 30 kariyer × 10 sezon (`BALANCE=1`), medyan itibar.
+
+| Yaş | Önce | Sonra | Hedef |
+|---|---|---|---|
+| 18 | 16 | 15 | ~15 |
+| 21 | 49 | 52 | ~50 |
+| 25 | 73 | 79 | 75–85 |
+| 26 | 76 | 83 | - |
+
+Değişiklik: `sim/career/reputation.ts` `seasonStandingFame`, sezon sonunda (`sim/game/season.ts` endSeasonForHero) `fameGain` ile (azalan getiri):
+- İstikrar: ≥12 maç, ortalama reyting 6,6 üstü her 0,1 için 0,6 (en çok 4).
+- Maçın adamı: ilk 12 MOTM için 0,22.
+- Sahne: lig kademesi (1: ×1, 2: ×0,5, 3: ×0,28, 4+: ×0,18) × kulüp itibarı ((itibar−60)/20, 0,1–1,8), kıtasal kupa +1,5.
+Lig 3. kademede genç oyuncu çok az kazanıyor, büyük kulüpte düzenli oynayan çok; 18/21 eğrisi yerinde kaldı.
+
+Aynı koşuda diğer hedefler: gol kralı (NPC) 1. kademe 27, ST 71–76 25, 77–82 30 (66–70 grubu n=4, 24); sezonda 1,3 sakatlık / 2,9 hafta (alt sınırda, 2.3#55 gün bazlı süreler); 3. sezon net servet medyanı 185K; ilk elit kulüp 23,0 yaş. S21 an tipleri (`dribble`, `header`) otomatik çözümde gol oranı 0,04 / 0,09 ile gol tablosunu taşımayacak şekilde ayarlandı.
+

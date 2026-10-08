@@ -70,8 +70,8 @@ const BASE: Record<HighlightKind, Weights> = {
   // Direct free kick from 18–28 m: the wall and the keeper keep most of them out.
   fk_wall: { defended: 0.86, conceded: 0.14 },
   // Take-on: beat the man, then the chance; most end in a lost ball or a pass on.
-  dribble: { goal: 0.06, assist: 0.05, saved: 0.1, missed: 0.12, blocked: 0.05, pass_complete: 0.22, lost_ball: 0.32, foul_won: 0.08 },
-  header: { goal: 0.11, saved: 0.24, missed: 0.36, blocked: 0.08, lost_ball: 0.18, woodwork: 0.03 },
+  dribble: { goal: 0.04, assist: 0.05, saved: 0.1, missed: 0.13, blocked: 0.06, pass_complete: 0.22, lost_ball: 0.32, foul_won: 0.08 },
+  header: { goal: 0.09, saved: 0.25, missed: 0.37, blocked: 0.08, lost_ball: 0.18, woodwork: 0.03 },
   gk_1v1: { defended: 0.6, conceded: 0.4 },
   gk_sweep: { defended: 0.78, conceded: 0.1, foul_committed: 0.04, shot_conceded: 0.08 },
   back_post: { defended: 0.52, shot_conceded: 0.2, conceded: 0.13, foul_committed: 0.05, lost_ball: 0.1 },
