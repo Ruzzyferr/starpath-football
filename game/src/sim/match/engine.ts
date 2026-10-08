@@ -62,6 +62,9 @@ import {
   STYLES,
   type TeamRatings,
   unitSkills,
+  momentumFactor,
+  isLateTired,
+  lateFatigueAttrs,
   type UnitSkills,
   WEATHER,
 } from './teamModel'
@@ -152,6 +155,8 @@ export class MatchSim {
   private rng!: Rng
   private lookup!: Map<string, MatchPlayer>
   private skills!: Map<string, UnitSkills>
+  /** Unit skills with the late-fatigue cut (see {@link lateFatigueAttrs}); built lazily. */
+  private tiredSkills!: Map<string, UnitSkills>
   private out: MatchEvent[] = []
   /** Transient: the highlight being resolved came from skipHighlight(). */
   private resolvingAuto = false
@@ -377,6 +382,7 @@ export class MatchSim {
   private indexPlayers(): void {
     this.lookup = new Map()
     this.skills = new Map()
+    this.tiredSkills = new Map()
     for (const side of ['home', 'away'] as const) {
       const t = this.s.setup[side]
       for (const p of [...t.lineup, ...t.bench]) {
@@ -482,10 +488,22 @@ export class MatchSim {
 
   // ───────────────────────── Strength ─────────────────────────
 
+  /** Unit skills for this minute: after 70', players under 40% condition run on tired legs (GAP 2.1#12). */
+  private unitSkillsNow(id: string): UnitSkills {
+    if (!isLateTired(this.s.clock, this.s.players[id].fatigue)) return this.skills.get(id) as UnitSkills
+    let t = this.tiredSkills.get(id)
+    if (!t) {
+      const p = this.player(id)
+      t = unitSkills({ ...p, attrs: lateFatigueAttrs(p.attrs) })
+      this.tiredSkills.set(id, t)
+    }
+    return t
+  }
+
   private ratings(side: Side): TeamRatings {
     const rated = this.s.teams[side].onPitch.map((id) => ({
       position: this.player(id).position,
-      skills: this.skills.get(id) as UnitSkills,
+      skills: this.unitSkillsNow(id),
       fatigue: this.s.players[id].fatigue,
     }))
     const r = computeRatings(rated)
@@ -682,7 +700,8 @@ export class MatchSim {
       STYLES[this.team(def).style].concede *
       WEATHER[this.s.setup.weather].passing *
       this.gameStateFactor(att) *
-      this.heroFactor(att)
+      this.heroFactor(att) *
+      momentumFactor(this.s.momentum, att, this.s.clock)
     )
   }
 
@@ -1204,10 +1223,7 @@ export class MatchSim {
   private slotPlayers(side: Side, tired = false): SlotPlayer[] {
     return this.s.teams[side].onPitch.map((id) => {
       const p = this.player(id)
-      const fat = this.s.players[id].fatigue
-      const player = tired && this.s.clock >= 70 && fat > 0.6
-        ? { ...p, attrs: { ...p.attrs, pace: Math.round(p.attrs.pace * 0.9), firstTouch: Math.round(p.attrs.firstTouch * 0.9) } }
-        : p
+      const player = tired && isLateTired(this.s.clock, this.s.players[id].fatigue) ? { ...p, attrs: lateFatigueAttrs(p.attrs) } : p
       return { player, slot: Math.max(0, this.s.players[id].slot) }
     })
   }
@@ -1315,9 +1331,15 @@ export class MatchSim {
     this.rate(highlightRatingDelta(kind, r), entry)
     this.recordMomentMap(p, r)
     this.noteHeroShots(r)
+    const before: [number, number] = [this.s.score[0], this.s.score[1]]
     if (p.context === 'shootout') this.applyShootoutHighlight(p, r)
     else if (isDefensiveKind(kind)) this.applyDefensiveOutcome(p, r)
     else this.applyAttackingOutcome(p, r)
+    if (p.context !== 'shootout') {
+      // A goal in the hero's moment swings the next minutes (GAP 2.1#2).
+      if (this.s.score[0] > before[0]) this.s.momentum = { side: 'home', from: this.s.clock }
+      else if (this.s.score[1] > before[1]) this.s.momentum = { side: 'away', from: this.s.clock }
+    }
     this.applyHeroCardAndInjury(r)
   }
 

@@ -137,4 +137,6 @@ export interface EngineState {
   seq: number
   motmId?: string
   heroFinalRating?: number
+  /** Momentum after a goal in a hero moment (GAP 2.1#2): side and the minute it started. */
+  momentum?: { side: Side; from: number } | null
 }

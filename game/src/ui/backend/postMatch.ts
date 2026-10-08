@@ -153,3 +153,39 @@ export function topKinds(e: ExpectedMoments, minShare = 0.08, max = 4): Expected
 
 /** Relation kinds whose row label comes from i18n rather than the person's name. */
 export const GROUP_RELATIONS: ReadonlySet<RelationKind | 'squad'> = new Set<RelationKind | 'squad'>(['fans', 'press', 'squad'])
+
+// ───────────────────────── Chances vs result (GAP 2.1#2) ─────────────────────────
+
+const MISSED_OUTCOMES = new Set(['saved', 'missed', 'blocked', 'woodwork'])
+
+export interface ChanceReport {
+  /** Shooting chances the hero had in his moments. */
+  chances: number
+  scored: number
+  missed: number
+  /** Goals short of a draw / a win (0 when already there). */
+  toDraw: number
+  toWin: number
+  /** 'draw' / 'win' when the missed chances alone would have changed the result, else null. */
+  couldHave: 'draw' | 'win' | null
+}
+
+/**
+ * "I had 3–4 chances and still lost": the hero's own moment chances next to
+ * the result, and whether the missed ones would have turned it.
+ */
+export function chanceReport(log: readonly Pick<RatingLineView, 'source' | 'outcome'>[] | undefined, mine: number, theirs: number): ChanceReport | null {
+  let scored = 0
+  let missed = 0
+  for (const l of log ?? []) {
+    if (l.source !== 'moment' || !l.outcome) continue
+    if (l.outcome === 'goal') scored++
+    else if (MISSED_OUTCOMES.has(l.outcome)) missed++
+  }
+  const chances = scored + missed
+  if (chances === 0) return null
+  const toDraw = Math.max(0, theirs - mine)
+  const toWin = Math.max(0, theirs - mine + 1)
+  const couldHave = toWin > 0 && missed >= toWin ? 'win' : toDraw > 0 && missed >= toDraw ? 'draw' : null
+  return { chances, scored, missed, toDraw, toWin, couldHave }
+}

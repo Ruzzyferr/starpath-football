@@ -9,6 +9,7 @@ import { useCountUp } from '../../hooks/motion'
 import { actions, data, navigate, type Delta, type InterviewOption, type PostMatchView, type RatingLineView } from '../../store'
 import { CompareBar, MOMENT_ICON } from './shared'
 import { MomentsPanel } from './Moments'
+import { chanceReport } from '../../backend/postMatch'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta, type PostStep } from './postFlow'
 
 const TONE_ICON: Record<InterviewOption['tone'], IconName> = {
@@ -60,6 +61,22 @@ function lineIcon(l: RatingLineView): IconName {
 }
 
 // ───────────────────────── Steps ─────────────────────────
+
+/** The hero's moment chances next to the result (GAP 2.1#2). */
+function ChanceLine({ pm }: { pm: PostMatchView }) {
+  const mine = pm.heroSide === 'home' ? pm.score[0] : pm.score[1]
+  const theirs = pm.heroSide === 'home' ? pm.score[1] : pm.score[0]
+  const r = chanceReport(pm.ratingLog, mine, theirs)
+  if (!r) return null
+  const tail = r.couldHave === 'win' ? t('postmatch.chances.win', { k: r.toWin })
+    : r.couldHave === 'draw' ? t('postmatch.chances.draw', { k: r.toDraw })
+    : r.scored > 0 && mine > theirs ? t('postmatch.chances.clinical') : ''
+  return (
+    <p class="t-sm t-mid post-chances" data-testid="post-chances">
+      {t('postmatch.chances.line', { n: r.chances, g: r.scored, m: r.missed })}{tail ? ` ${tail}` : ''}
+    </p>
+  )
+}
 
 function ResultStep({ pm }: { pm: PostMatchView }) {
   const { fixture: fx, score, stats: s, team, motm } = pm
@@ -130,6 +147,7 @@ function ResultStep({ pm }: { pm: PostMatchView }) {
               </div>
             ))}
           </div>
+          <ChanceLine pm={pm} />
         </section>
 
         <section class="post-card post-team-stats">

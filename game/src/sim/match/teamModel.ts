@@ -75,6 +75,34 @@ export interface RatedPlayer {
   fatigue: number
 }
 
+/** After this minute, players under {@link LATE_TIRED_CONDITION} condition lose pace and first touch. */
+export const LATE_TIRED_MINUTE = 70
+/** Condition (1 − fatigue) below which the late cut applies (40%). */
+export const LATE_TIRED_CONDITION = 0.4
+/** Pace / first-touch multiplier for late-tired players (−10%). */
+export const LATE_TIRED_MULT = 0.9
+
+/** True when a player is running on empty late on (GAP 2.1#12). */
+export function isLateTired(minute: number, fatigue: number): boolean {
+  return minute >= LATE_TIRED_MINUTE && 1 - fatigue < LATE_TIRED_CONDITION
+}
+
+/** Pace and first touch −10% (used both by the sim ratings and the live moment's players). */
+export function lateFatigueAttrs<A extends { pace: number; firstTouch: number }>(a: A): A {
+  return { ...a, pace: Math.round(a.pace * LATE_TIRED_MULT), firstTouch: Math.round(a.firstTouch * LATE_TIRED_MULT) }
+}
+
+/** Chance-rate boost for the side that just scored in a hero moment, fading linearly over MOMENTUM_MINUTES. */
+export const MOMENTUM_BOOST = 0.15
+export const MOMENTUM_MINUTES = 10
+
+/** Momentum multiplier for `att` (1 when none or faded). */
+export function momentumFactor(m: { side: 'home' | 'away'; from: number } | null | undefined, att: 'home' | 'away', clock: number): number {
+  if (!m || m.side !== att) return 1
+  const left = 1 - (clock - m.from) / MOMENTUM_MINUTES
+  return left > 0 ? 1 + MOMENTUM_BOOST * Math.min(1, left) : 1
+}
+
 /** Multiplier from fatigue: fresh 1.0, exhausted ≈ 0.82. */
 export function fatigueFactor(f: number): number {
   return 1 - 0.18 * clamp(f, 0, 1)

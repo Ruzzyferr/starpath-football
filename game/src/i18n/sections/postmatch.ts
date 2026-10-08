@@ -15,6 +15,12 @@ export const tr = {
   next: 'İleri',
   back: 'Geri',
   skipAll: 'Hepsini atla',
+  chances: {
+    line: 'Anlarında {n} fırsatın vardı: {g} gol, {m} kaçan.',
+    win: 'Kaçanlardan {k} tanesi gol olsaydı maçı kazanırdın.',
+    draw: 'Kaçanlardan {k} tanesi gol olsaydı beraberlik gelirdi.',
+    clinical: 'Bitiricilik maçı belirledi.',
+  },
   rating: {
     title: 'Notun nasıl oluştu?',
     base: 'Başlangıç',
@@ -119,6 +125,12 @@ export const en: Shape<typeof tr> = {
   next: 'Next',
   back: 'Back',
   skipAll: 'Skip all',
+  chances: {
+    line: 'You had {n} chances in your moments: {g} scored, {m} missed.',
+    win: 'Had {k} of the misses gone in, you would have won.',
+    draw: 'Had {k} of the misses gone in, you would have drawn.',
+    clinical: 'Your finishing decided this one.',
+  },
   rating: {
     title: 'How your rating was built',
     base: 'Starting point',
