@@ -21,5 +21,5 @@ Context: Electron 44, current WebViews (Android 7+ via Chromium updates, iOS 16+
 ## ADR-006 Electron renderer is locked down by default (2026-10)
 Context: the shell loads only local files. Decision: contextIsolation + sandbox, no Node in the renderer, strict CSP (`electron/csp.cjs`), all permission requests denied, security fuses flipped at package time (`electron-builder.yml`), crashed renderer reloads at most 3 times per minute. Consequences: any feature needing a remote origin must amend the CSP and this record.
 
-## ADR-007 `noUncheckedIndexedAccess` is deferred (2026-10)
-Context: enabling it today yields ~1,700 type errors concentrated in `src/sim` and `src/ui`. Decision: not enabled; new code is written index-safe, the flag is turned on per directory when a sweep touches it. Consequences: tracked as ERTELENDİ in GAP-AUDIT 2.9#2.
+## ADR-007 `noUncheckedIndexedAccess` is enabled app-wide (2026-10)
+Context: the flag initially yielded ~1,900 errors in sim/ui/game/audio. Decision: enabled in `tsconfig.app.json` after a runtime-neutral sweep (guards where an index may be absent, `!` where the loop or table guarantees it); golden master byte-identical. Consequences: new code must be index-safe; GAP-AUDIT 2.9#2 is TAMAM.

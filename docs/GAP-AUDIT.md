@@ -233,7 +233,7 @@ Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-
 | 2.8#51 | ERTELENDİ | - | BLOCKED-EXTERNAL: gerçek iOS/Android cihaz (haptics eşlemesi kodda) |
 | 2.8#57 | ERTELENDİ | - | Kayıtlı ses gerekir; ADR-002: tüm sesler WebAudio sentezi, lisans kapısı (`LICENSES.csv` + test) hazır, `audioFileBytes` bütçesi 2 MB |
 | 2.9#1 | ERTELENDİ | - | v2: tek paket yeterli, monorepo faydası yok |
-| 2.9#2 | ERTELENDİ | docs/ADR.md ADR-007 | `noUncheckedIndexedAccess` 1.714 hata veriyor (çoğu sim/ui, başka süpürmelerin dosyaları); dizin dizin açılacak |
+| 2.9#2 | TAMAM | game/tsconfig.app.json | `noUncheckedIndexedAccess` tüm uygulamada açık (core/state/platform/sim/ui/game/audio/input/data); ayrı strict-index projesi kaldırıldı, `typecheck:strict-index` = uygulama typecheck; golden master değişmedi |
 | 2.9#3 | TAMAM | docs/ADR.md ADR-005 | Hedef kararı yazıldı (es2022 derleme, Electron 44 / güncel WebView) |
 | 2.9#4 | TAMAM | package.json, package-lock.json | Phaser `4.2.1` sabitlendi |
 | 2.9#6 | ERTELENDİ | - | IAP var (2.9#65), paylaşım kartı var; bulut BLOCKED-EXTERNAL (backend) |
