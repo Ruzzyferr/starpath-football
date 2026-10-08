@@ -2,7 +2,7 @@ import { Rng } from '../../core/rng'
 import type { Calendar, Contract } from '../../core/types'
 import { heroOvr } from './progression'
 import {
-  ROLE_ORDER, benchComplaint, changeTrust, evaluateRoleChange, startProbability, targetRole, trackSelection,
+  ROLE_ORDER, TRUST_BAND_CUTS, benchComplaint, changeTrust, evaluateRoleChange, startProbability, targetRole, trackSelection, trustBand,
   updateTrustFromMatch, weeklyTrustTick,
 } from './squadRole'
 import { makeHeroLife } from './testFixtures'
@@ -133,5 +133,31 @@ describe('bench complaints', () => {
     const before = startProbability(hero, life)
     life.flags.promised_start = true
     expect(startProbability(hero, life)).toBeGreaterThan(before)
+  })
+})
+
+describe('trust bands (2.3#82)', () => {
+  it('bands switch at 40 / 60 / 80', () => {
+    expect([39, 40, 59, 60, 79, 80].map(trustBand)).toEqual(['distrust', 'rotation', 'rotation', 'starter', 'starter', 'key'])
+    expect(TRUST_BAND_CUTS).toEqual({ rotation: 40, starter: 60, key: 80 })
+  })
+  it('low trust caps a merit starter at rotation; 80+ trust lowers the bar for star', () => {
+    const { hero, life } = setup('starter')
+    const ovr = heroOvr(hero)
+    hero.managerTrust = 60
+    expect(targetRole(hero, life, { squadAvgOvr: ovr - 5, season: 2026 })).toBe('starter')
+    hero.managerTrust = 30
+    expect(targetRole(hero, life, { squadAvgOvr: ovr - 5, season: 2026 })).toBe('rotation')
+    expect(targetRole(hero, life, { squadAvgOvr: ovr - 12, season: 2026 })).toBe('rotation')
+    // score 7.3 + trust bonus: below the usual star bar (8) but a key player at trust 90
+    hero.managerTrust = 90
+    expect(targetRole(hero, life, { squadAvgOvr: ovr - 4, season: 2026 })).toBe('star')
+  })
+  it('trust never moves the start chance by more than 25% of the swing (2.4#46)', () => {
+    const { hero, life } = setup('starter')
+    hero.managerTrust = 0
+    const lo = startProbability(hero, life)
+    hero.managerTrust = 100
+    expect(startProbability(hero, life) - lo).toBeLessThanOrEqual(0.161)
   })
 })

@@ -126,6 +126,19 @@ export function roleScore(hero: Hero, ctx: SquadContext): number {
   return heroOvr(hero) - ctx.squadAvgOvr + (hero.managerTrust - 50) * 0.15 + youthTrustBonus(ctx.youthTrust, heroAge(hero, ctx.season))
 }
 
+/**
+ * Manager-trust bands (2.3#82): <40 the manager does not rely on you, 40-59
+ * rotation, 60-79 first-XI, 80+ key player. Resolution with 2.4#46 (trust
+ * never decides alone): the band gates the *role ladder* (low trust caps the
+ * role at rotation, 80+ lowers the bar to "star"), while the weekly selection
+ * roll keeps form+ratings at 75% and trust at most 25% (`trustTerm`).
+ */
+export type TrustBand = 'distrust' | 'rotation' | 'starter' | 'key'
+export const TRUST_BAND_CUTS = { rotation: 40, starter: 60, key: 80 } as const
+export function trustBand(trust: number): TrustBand {
+  return trust >= TRUST_BAND_CUTS.key ? 'key' : trust >= TRUST_BAND_CUTS.starter ? 'starter' : trust >= TRUST_BAND_CUTS.rotation ? 'rotation' : 'distrust'
+}
+
 /** The role the hero's current merit deserves (no hysteresis). */
 export function targetRole(hero: Hero, life: Life, ctx: SquadContext): SquadRole {
   const s = roleScore(hero, ctx)
@@ -134,8 +147,10 @@ export function targetRole(hero: Hero, life: Life, ctx: SquadContext): SquadRole
   if (s < -9) r = age <= 19 ? 'youth' : 'reserve'
   else if (s < -3) r = 'reserve'
   else if (s < 1.5) r = 'rotation'
-  else if (s < 8) r = 'starter'
+  else if (s < (trustBand(hero.managerTrust) === 'key' ? 6 : 8)) r = 'starter'
   else r = 'star'
+  // Low trust: the manager will not hand over a first-XI shirt on merit alone.
+  if (trustBand(hero.managerTrust) === 'distrust' && roleIndex(r) > roleIndex('rotation')) r = 'rotation'
   const captainMaterial =
     ctx.captaincyOpen === true && roleIndex(r) >= roleIndex('starter') && hero.attrs.leadership >= 65 &&
     hero.managerTrust >= 75 && age >= 23 && (life.relationships[MANAGER_REL]?.value ?? 0) >= 20
