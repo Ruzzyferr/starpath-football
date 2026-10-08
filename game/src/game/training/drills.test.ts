@@ -241,7 +241,15 @@ describe('training drills (headless)', () => {
     const d = make('finishing', 5, 'setPiece') as FinishingDrill
     expect(d.wall.length).toBe(4)
     const r = play(d, finishingGood)
-    expect(r.stats.shots).toBeGreaterThan(4)
+    // Curl gate (2.3#25): five kicks, 20 points per kick between the posts, wind on the HUD.
+    expect(r.stats.shots).toBe(5)
+    expect(r.points % 20).toBe(0)
+    expect(r.points).toBe((r.stats.gates ?? 0) * 20)
+    expect(r.points).toBeGreaterThanOrEqual(40)
+    const v = make('finishing', 6, 'setPiece').view()
+    expect(v.hud.wind).toBeDefined()
+    expect(v.hud.wind!.kmh).toBeGreaterThanOrEqual(0)
+    expect(v.hud.wind!.kmh).toBeLessThanOrEqual(26)
   })
 
   for (const kind of NEW_KINDS) {

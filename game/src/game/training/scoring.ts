@@ -52,9 +52,19 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
   recovery: null,
 }
 
+/** Variants with their own scoring scale (curl gate: 5 × 20 points). */
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 80 }
+
+/** Curl gate (2.3#25): 5 free kicks over the wall, 20 points per kick between the posts. */
+export const CURL_GATE_ATTEMPTS = 5
+export const CURL_GATE_POINTS = 20
+/** Wind for a curl-gate attempt: up to 7 m/s (≈ 25 km/h). */
+export const CURL_GATE_MAX_WIND = 7
+export const msToKmh = (ms: number): number => Math.round(ms * 3.6)
+
 /** Raw points → 0..1 performance. */
-export function performanceFromPoints(kind: DrillKind, points: number): number {
-  const r = Math.max(0, points) / DRILL_PAR[kind]
+export function performanceFromPoints(kind: DrillKind, points: number, variant: DrillVariant = 'standard'): number {
+  const r = Math.max(0, points) / (VARIANT_PAR[variant] ?? DRILL_PAR[kind])
   return Math.round(clamp01(Math.pow(clamp01(r), 0.85)) * 1000) / 1000
 }
 

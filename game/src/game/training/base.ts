@@ -204,7 +204,7 @@ export abstract class DrillBase implements Drill {
   }
 
   result(): DrillResult {
-    const performance = performanceFromPoints(this.kind, this.points)
+    const performance = performanceFromPoints(this.kind, this.points, this.variant)
     return {
       kind: this.kind,
       points: Math.max(0, Math.round(this.points)),

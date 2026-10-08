@@ -6,14 +6,18 @@
  * goal mouth; beat the keeper for a goal, hit a lit target for a big bonus,
  * keep the streak going for a multiplier. Shots use the match kick model
  * (swipe / hold-release / pad) and the AI keeper reacts like in a highlight.
+ *
+ * Set-piece variant = curl gate (2.3#25): 5 free kicks; each one that clears
+ * the wall and is struck between the two posts (on target, saved or not)
+ * scores 20. Every kick gets its own wind, shown in km/h with an arrow.
  */
 import { PITCH_LENGTH } from '../../../sim/match/types'
-import { createTracker, GOAL_CENTER_Y, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
+import { createTracker, GOAL_CENTER_Y, isOnTarget, predictPlaneCrossing, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { add, dist, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { aiKeeperReact, integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave } from '../keeper'
-import { inTarget, shotPoints } from '../scoring'
+import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_POINTS, inTarget, msToKmh, shotPoints } from '../scoring'
 import { distanceToGoal, planIntent, previewPath, shotIntent } from '../shooting'
 import type { DrillConfig, DrillInput, DrillView, GoalTargetView } from '../types'
 
@@ -52,6 +56,8 @@ export class FinishingDrill extends DrillBase {
   private touched: 'held' | 'parried' | 'blocked' | null = null
   private woodwork = false
   private attempt = 0
+  /** Curl gate: the kick was struck between the posts (predicted at the strike). */
+  private onTarget = false
   private shotFrom = 18
   private aim: DrillInput['aim'] = null
 
@@ -91,6 +97,14 @@ export class FinishingDrill extends DrillBase {
       t.lit = i === pick || i === pick2
     })
     if (this.wall.length) this.buildWall(toGoal)
+    if (sp) {
+      // Fresh wind every kick, never hidden (2.3#25).
+      const ws = this.rng.range(0, CURL_GATE_MAX_WIND)
+      const wa = this.rng.range(0, Math.PI * 2)
+      this.env.wind = { x: Math.cos(wa) * ws, y: Math.sin(wa) * ws }
+      this.targets.forEach((t) => { t.lit = false })
+    }
+    this.onTarget = false
     this.keeper.noTouch = 0
     place(this.keeper, this.keeper.pos, Math.PI)
     this.keeperHome = keeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty))
@@ -126,6 +140,10 @@ export class FinishingDrill extends DrillBase {
       this.ball.spin = { ...plan.spin }
       this.state = 'flight'
       this.stateT = 0
+      if (this.variant === 'setPiece') {
+        const c = predictPlaneCrossing(this.ball, this.env, PITCH_LENGTH, 3)
+        this.onTarget = !!c && isOnTarget(c.y, c.z)
+      }
       this.stat('shots')
       this.events.push({ type: 'kick', power: intent.power, hero: true, x: this.spot.x, y: this.spot.y })
       const dir = norm({ x: plan.vx, y: plan.vy })
@@ -146,6 +164,13 @@ export class FinishingDrill extends DrillBase {
     this.state = 'resolved'
     this.stateT = 0
     const at = { x: Math.min(this.ball.x, PITCH_LENGTH), y, z }
+    if (this.variant === 'setPiece') {
+      const through = kind === 'goal' || (kind === 'saved' && this.onTarget)
+      if (through) this.stat('gates')
+      if (kind === 'goal') this.stat('goals')
+      this.award(through ? CURL_GATE_POINTS : 0, through, { label: through ? 'gate' : kind === 'blocked' ? 'blocked' : 'gateMissed', ...at })
+      return
+    }
     if (kind === 'goal') {
       const hit = this.targets.some((t) => t.lit && inTarget(y, z, this.targetPos(t)))
       if (hit) {
@@ -168,6 +193,11 @@ export class FinishingDrill extends DrillBase {
 
   protected busy(): boolean {
     return this.state === 'flight'
+  }
+
+  /** Curl gate ends after the fifth kick. */
+  protected forceEnd(): boolean {
+    return this.variant === 'setPiece' && this.attempt >= CURL_GATE_ATTEMPTS && this.state === 'resolved' && this.stateT > 0.6
   }
 
   protected tick(dt: number, input: DrillInput, live: boolean): void {
@@ -271,6 +301,8 @@ export class FinishingDrill extends DrillBase {
 
   /** Lit target centres (bots/tests). */
   litTargets(): { y: number; z: number }[] {
+    // Curl gate: the far-post top corner is the natural aim.
+    if (this.variant === 'setPiece') return [{ y: GOAL_CENTER_Y + (this.spot.y < GOAL_CENTER_Y ? 2.6 : -2.6), z: 1.7 }]
     return this.targets.filter((t) => t.lit).map((t) => this.targetPos(t))
   }
 
@@ -311,6 +343,9 @@ export class FinishingDrill extends DrillBase {
         meters: [],
         level: this.attempt,
         countdown: this.countdown,
+        ...(this.variant === 'setPiece'
+          ? { wind: { kmh: msToKmh(Math.hypot(this.env.wind.x, this.env.wind.y)), dir: { x: this.env.wind.x, y: this.env.wind.y } } }
+          : {}),
       },
       heroOnBall: this.state === 'ready',
       heroIsKeeper: false,

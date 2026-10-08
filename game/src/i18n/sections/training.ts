@@ -43,7 +43,7 @@ export const tr = {
     touch: 'Dokunmatik',
     goal: {
       finishing: 'Kaleciyi geç, yanan köşe hedeflerini vur. Gol serisi çarpan verir.',
-      setPiece: 'Baraj var! Topu barajın üstünden ya da yanından yanan köşeye gönder.',
+      setPiece: 'Falso kapısı: 5 serbest vuruş. Barajı aşıp iki direğin arasına giden her vuruş 20 puan. Rüzgâr ekranda yazıyor.',
       passing: 'Yanan arkadaşına doğru pası at: YERDEN kapıdan geçir, HAVADAN mankenlerin üstünden aşırt.',
       dribbling: 'Kapılardan sırayla geç, kon’lara çarpma; mankene 1,5–2,5 m kala çalım yap.',
       fitness: 'Her mekiği bipten önce bitir. Bip’te çık, depar dayanıklılığı tüketir.',
@@ -165,7 +165,7 @@ export const en: Shape<typeof tr> = {
     touch: 'Touch',
     goal: {
       finishing: 'Beat the keeper and hit the lit corner targets. Scoring streaks multiply.',
-      setPiece: 'There is a wall! Get it over or round the wall into a lit corner.',
+      setPiece: 'Curl gate: 5 free kicks. Each one over the wall and between the posts scores 20. The wind is shown on screen.',
       passing: 'Find the lit team-mate: GROUND passes through the gate, LOFTED balls over the mannequins.',
       dribbling: 'Take the gates in order without clipping cones; skill past mannequins at 1.5–2.5 m.',
       fitness: 'Finish every shuttle before the beep. Leave on the beep; sprinting burns stamina.',

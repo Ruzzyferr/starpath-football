@@ -152,6 +152,8 @@ export interface DrillHud {
   level?: number
   /** Countdown before the start (3,2,1 → 0). */
   countdown: number
+  /** Wind shown to the player (2.3#25): speed in km/h and the pitch direction it blows to. */
+  wind?: { kmh: number; dir: Vec2 }
 }
 
 export interface DrillView {

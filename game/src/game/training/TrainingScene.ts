@@ -52,7 +52,7 @@ const SCENE_KEY = 'starpath-training'
 type Strings = {
   prompt: Record<DrillPrompt, string>
   label: Record<DrillLabel, string>
-  hud: { combo: string; level: string; stamina: string; beat: string; power: string; timing: string; go: string; grade: string; points: string }
+  hud: { combo: string; level: string; stamina: string; beat: string; power: string; timing: string; go: string; grade: string; points: string; wind: string }
   buttons: { sprint: string; skill: string; loft: string; go: string; dive: string; cross: string; head: string; tackle: string }
 }
 
@@ -60,7 +60,7 @@ const T: Record<Lang, Strings> = {
   tr: {
     prompt: {
       finishing: 'Kaydır / basılı tutup bırak: şut. Yanan köşeleri vur!',
-      setPiece: 'Serbest vuruş: barajın üstünden ya da yanından yanan köşeye!',
+      setPiece: 'Falso kapısı: barajı aş, iki direğin arasına gönder!',
       passGround: 'YERDEN: arkadaşına dokun / tıkla — topu kapıdan geçir',
       passLoft: 'HAVADAN: kaydır / basılı tutup bırak — mankenlerin üstünden aşırt',
       dribble: 'Kapılardan sırayla geç, kon\'lara çarpma',
@@ -86,13 +86,13 @@ const T: Record<Lang, Strings> = {
       save: 'KURTARIŞ!', held: 'YAKALADI!', conceded: 'GOL YEDİN', wide: 'DIŞARI',
       delivery: 'İYİ ORTA', won: 'KAPTIN!', foul: 'FAUL', beaten: 'GEÇİLDİN', whiff: 'BOŞA',
     },
-    hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', timing: 'ZAMANLAMA', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN' },
+    hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', timing: 'ZAMANLAMA', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN', wind: 'RÜZGÂR {n} KM/SA' },
     buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
   },
   en: {
     prompt: {
       finishing: 'Swipe / hold & release to shoot. Hit the lit corners!',
-      setPiece: 'Free kick: over or round the wall into a lit corner!',
+      setPiece: 'Curl gate: over the wall and between the posts!',
       passGround: 'GROUND: tap / click your team-mate — through the gate',
       passLoft: 'LOFT: swipe / hold & release — over the mannequins',
       dribble: 'Take the gates in order, don\'t clip the cones',
@@ -118,7 +118,7 @@ const T: Record<Lang, Strings> = {
       save: 'SAVE!', held: 'HELD!', conceded: 'CONCEDED', wide: 'WIDE',
       delivery: 'GOOD BALL', won: 'WON IT!', foul: 'FOUL', beaten: 'BEATEN', whiff: 'MISSED',
     },
-    hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', timing: 'TIMING', go: 'GO!', grade: 'GRADE', points: 'PTS' },
+    hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', timing: 'TIMING', go: 'GO!', grade: 'GRADE', points: 'PTS', wind: 'WIND {n} KM/H' },
     buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
   },
 }
@@ -200,6 +200,7 @@ export class TrainingScene extends Phaser.Scene {
   private pointsText!: Phaser.GameObjects.Text
   private comboText!: Phaser.GameObjects.Text
   private clockText!: Phaser.GameObjects.Text
+  private windText!: Phaser.GameObjects.Text
   private promptText!: Phaser.GameObjects.Text
   private countText!: Phaser.GameObjects.Text
   private gradeText!: Phaser.GameObjects.Text
@@ -329,6 +330,7 @@ export class TrainingScene extends Phaser.Scene {
     this.pointsText = this.text(26, '#ffd23f').setOrigin(0, 0.5)
     this.comboText = this.text(13, '#5dff8a').setOrigin(0, 0.5)
     this.clockText = this.text(20, '#ffffff').setOrigin(1, 0.5)
+    this.windText = this.text(12, '#9fe8ff').setOrigin(1, 0.5).setAlpha(0)
     this.promptText = this.text(15, '#ffffff', false)
     this.countText = this.text(72, '#ffd23f').setAlpha(0)
     this.gradeText = this.text(96, '#ffd23f').setAlpha(0)
@@ -854,6 +856,27 @@ export class TrainingScene extends Phaser.Scene {
     const ctl = CONTROLS[this.drill.kind]
     if (hud.level !== undefined && ctl.level) {
       this.titleText.setText(`${(this.data0.opts.title ?? '').toLocaleUpperCase(this.data0.opts.lang === 'tr' ? 'tr-TR' : 'en-US')} · ${this.s.hud.level} ${hud.level}`)
+    }
+
+    // Wind (curl gate, 2.3#25): km/h and an arrow in screen space, never hidden.
+    if (hud.wind) {
+      const wx = w - 104 * u
+      const wy = top + 22 * u
+      this.windText.setText(this.s.hud.wind.replace('{n}', String(hud.wind.kmh))).setPosition(wx - 30 * u, wy).setAlpha(0.95)
+      const d = pitchDirToScreen(hud.wind.dir.x, hud.wind.dir.y)
+      if (hud.wind.kmh > 0 && (d.x !== 0 || d.y !== 0)) {
+        const cx = wx - 12 * u
+        const L = 11 * u
+        const tip = { x: cx + d.x * L, y: wy + d.y * L }
+        g.lineStyle(3 * u, 0x9fe8ff, 1)
+        g.lineBetween(cx - d.x * L, wy - d.y * L, tip.x, tip.y)
+        const px = -d.y
+        const py = d.x
+        g.fillStyle(0x9fe8ff, 1)
+        g.fillTriangle(tip.x + d.x * 5 * u, tip.y + d.y * 5 * u, tip.x + px * 5 * u, tip.y + py * 5 * u, tip.x - px * 5 * u, tip.y - py * 5 * u)
+      }
+    } else {
+      this.windText.setAlpha(0)
     }
 
     this.promptText.setText(this.s.prompt[hud.prompt])
