@@ -22,8 +22,8 @@
 | 2.1 Maç motoru | 62 | 0 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 0 | 0 | 1 | 0 | 0 | 30 |
 | 2.3 Kariyer | 40 | 0 | 0 | 0 | 3 | 0 | 43 |
-| 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
-| 2.5 Ekonomi | 36 | 0 | 0 | 4 | 9 | 0 | 49 |
+| 2.4 Sosyal, olaylar | 36 | 0 | 0 | 0 | 3 | 0 | 39 |
+| 2.5 Ekonomi | 44 | 0 | 0 | 4 | 1 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 57 | 0 | 0 | 1 | 7 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 2 | 0 | 0 | 19 |
@@ -31,7 +31,7 @@
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 32 | 0 | 0 | 2 | 3 | 39 | 76 |
-| **Toplam** | **451 (%79)** | 1 | 0 | 34 | 43 | 40 | **569** |
+| **Toplam** | **471 (%83)** | 1 | 0 | 34 | 23 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -472,42 +472,42 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.4#1 | TAMAM | sim/life/relationships.ts:125 | Her takım arkadaşı ayrı −100..100 |
 | 2.4#2 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
 | 2.4#3 | TAMAM | ui/screens/life/Relations.tsx (rel-band, rel-effect, rel-trend), sim/game/relationView.ts, relationView.test.ts, e2e/wpu.spec.ts | 5 bant x 40 puan, her bantın yazılı oynanış etkisi (takım arkadaşı için pas sıklığı %), 4 haftalık eğilim oku |
-| 2.4#4 | ERTELENDİ-INT | sim/life/relationships.ts:77 | Ertelendi: sönüm sabit/hafta ayarlı; %2 oranına geçiş denge ve golden değişikliği gerektirir, BALANCE turu ile v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.4#4 | TAMAM | sim/life/relationships.ts neglectStep, relationships.test.ts | Ihmal sonumu haftada deger yuzde 2 (aile yarisi, ortak ayrik 3 kat), tek tikte en fazla 3 puan; yakin arkadas yarisi hizinda soner. golden yenilendi. |
 | 2.4#5 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
-| 2.4#7 | ERTELENDİ-INT | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL yeniden yazımı gerekir (v2) |
-| 2.4#11 | ERTELENDİ-INT | ui/screens/life/Relations.tsx:24 | Ertelendi: 3 seçenekli sahne yeni içerik ve UI akışı; v2 |
-| 2.4#14 | ERTELENDİ-INT | sim/career/createHero.ts:208 | Ertelendi: başlangıç ailesi çeşitliliği createHero + hikâye şablonları + UI metni; v2 |
+| 2.4#7 | TAMAM | sim/life/events/dilemma.test.ts | Etkiler fonksiyon oldugundan linter her secenegi ornek durumlarda calistirip iliski deltalarini olcer: bir tarafin kaybi toplam kazancin 1,5 katini asarsa test (CI) kirilir; 17 dengesiz secenek duzeltildi. DSL yeniden yazimi gerekmedi. |
+| 2.4#11 | TAMAM | sim/life/scenes.ts, events/content/scenes.ts, ui/screens/life/Relations.tsx, e2e/lifeplus.spec.ts | Kisi kartinda Sohbet et (3 cevap: dinle/espri/tavsiye) ve Birlikte vakit (antrenman/yemek/oyun gecesi) sahneleri; tek dokunusla biter, sicakliga gore sonuc, kisi basi gunluk bir kullanim. |
+| 2.4#14 | TAMAM | sim/career/createHero.ts rollFamily, sim/career/family.test.ts, ui/screens/life/Relations.tsx | Gecmis hikayesine gore prosedurel aile: cift ebeveyn / tek anne / tek baba / koruyucu aile (ebeveynsiz), 0-2 kardes, cocukluk arkadasi; akademi ve futbol ailesi cift ebeveyn ve en az 1 kardes. Iliskiler ekraninda hane satiri. golden yenilendi. |
 | 2.4#15 | TAMAM | sim/life/relationships.ts:189 | Yakın çevre etkisi tavanlı |
 | 2.4#23 | TAMAM | sim/life/wellbeing.ts:67 | Partner yokluğu ceza vermiyor |
 | 2.4#24 | TAMAM | ui/screens/SettingsScreen.tsx (partnerPref), sim/game/partnerPref.ts, partnerPref.test.ts, ui/backend/prefsSync.ts | Ayarlarda Fark etmez/Kadınlar/Erkekler; kariyere yansır, flört olayı adı havuzdan seçer. Mevcut partner değişmez; "Fark etmez" eski seçimi byte-aynı korur |
 | 2.4#25 | TAMAM | sim/life/events/content/romance.ts:415 | TD etkisi −4 (tavan −5) |
-| 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Ertelendi: maç içi ikon sim/match ve match UI (başka ajanın alanı) |
-| 2.4#37 | ERTELENDİ-INT | - | Ertelendi: Sosyal ekranı yakın arkadaş listesi; v2 |
+| 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Maç ici pas ikonu ve maç sonu X sana N pas verdi raporu, src/game runtime HUD ve cift bazli pas telemetrisi ister; ayri maç-sunumu paketi (v1.1). |
+| 2.4#37 | TAMAM | sim/life/closeFriends.ts, closeFriends.test.ts, ui/screens/life/Relations.tsx, e2e/lifeplus.spec.ts | En fazla 3 yakin arkadas: kriz haftasinda destek (mutluluk +6, stres -5, 4 haftada bir), transfer soylentisinde iceriden bilgi olayi (rumour.insider_tip), takim arkadasiysa ~%10 pas bonusu (maç motoru relationToHero), ihmal yarisi hizda soner. |
 | 2.4#46 | TAMAM | sim/career/squadRole.ts formTerm/ratingTerm/trustTerm; life/sweep2.test.ts | Form+reyting %75, güven/ilişki en çok %25 |
-| 2.4#47 | ERTELENDİ-INT | - | Ertelendi: TD beklenti sistemi 2.7#71 ile birlikte (UI ajanı) |
-| 2.4#52 | ERTELENDİ-INT | sim/life/events/content/teammates.ts:92 | Ertelendi: maç içi penaltı seçimi match motoru (başka ajanın alanı) |
-| 2.4#53 | ERTELENDİ-INT | sim/life/events/content/teammates.ts:128 | Ertelendi: sezon başı oylama yeni akış + UI; v2 |
+| 2.4#47 | TAMAM | sim/game/objectives.ts objectivesAfterMatch, PostMatchScreen.tsx, objectives.test.ts | Hoca beklentileri: pres (top kapma) ve takim oyunu (isabetli pas) hedefleri; hedefler maçtan hemen sonra kapanir (+4 guven, odul aninda), maç sonu raporunda Karsilandi isaretli. |
+| 2.4#52 | ERTELENDİ-INT | sim/life/events/content/teammates.ts | Maç ici penalti secimi, canli maçi duraklatan karar penceresi (src/game runtime + LiveMatchScreen) ister; ayri maç-sunumu paketi (v1.1). |
+| 2.4#53 | TAMAM | sim/life/events/content/teammates.ts, sim/life/relationships.ts, relationships.test.ts | Sezon basi kaptanlik yarisi: kidemlilerle yemek kampanyasi secenegi (oy + iliski etkisi), oylamada kaybedince kazanan ile 40 hafta suren rekabet bayragi (iliski her 3 haftada -1). |
 | 2.4#60 | TAMAM | sim/game/interview.ts:294,254 | 3 soruluk röportaj, etki tavanı, tuzak soru |
 | 2.4#61 | TAMAM | sim/game/interview.ts:294,254 | 3 soruluk röportaj, etki tavanı, tuzak soru |
 | 2.4#65 | TAMAM | sim/life/casino.ts:916,992 | Tek ziyaret manşet değil, yardım hattı |
 | 2.4#69 | TAMAM | sim/life/social.ts:153 SPAM_DECAY (haftalık paylaşım sayacı) | Haftada tekrar eden paylaşımın getirisi üstel düşer |
 | 2.4#70 | TAMAM | sim/life/social.ts POST_TYPES.thanks/rival; Social.tsx | Taraftara teşekkür ve rakibe gönderme eklendi |
-| 2.4#79 | ERTELENDİ-INT | - | Ertelendi: taraftar grupları içerik + ilişki grubu; v2 |
+| 2.4#79 | TAMAM | sim/life/fanGroups.ts, fanGroups.test.ts, events/content/community.ts, Relations.tsx | Uc taraftar grubu (ultralar, aile tribunu, yerel dernek) farkli beklentilerle: maç ve haftalik guncelleme, 2 olay karti (ultra mektubu, aile tribunu gunu), Iliskiler ekraninda bolum. |
 | 2.4#84 | TAMAM | sim/life/events/content/casino.ts:51 | Reddetmek yalnız stres; ceza yok |
 | 2.4#85 | TAMAM | sim/life/sponsors.ts (ScandalLevel 1-4) | WP-15: seviye 4 tüm sponsorları bitirir |
 | 2.4#90 | TAMAM | sim/life/casino.ts:916,992 | Tek ziyaret manşet değil, yardım hattı |
 | 2.4#98 | TAMAM | sim/life/events/content/friends.ts debt_trouble>aftermath>debt_press>debt_reunion | 4 adımlı zincir |
-| 2.4#99 | ERTELENDİ-INT | sim/life/events/content/teammates.ts:92 | Ertelendi: penaltı zinciri maç içi kanca gerektirir (match motoru, başka ajan) |
-| 2.4#100 | ERTELENDİ-INT | sim/life/events/content/nightlife.ts:47 | Ertelendi: paparazzi görevi yeni mini görev UI; v2 |
+| 2.4#99 | ERTELENDİ-INT | sim/life/events/content/teammates.ts | Penalti tartismasi zinciri 2.4#52 canli maç karar kancasina bagli; kaptanlik oylamasi kismi (2.4#53) hazir. |
+| 2.4#100 | TAMAM | sim/life/events/content/nightlife.ts, sim/game/objectives.ts startPresetObjective, events/proveYourself.test.ts | Gece zinciri: parti, fotograf, gazete, disiplin gorusmesi (yeni), PR secimi ve Kendini kanitla gorevi (bir maçta 7,5+ puan, 5 hafta), sonucta degerlendirme karti. |
 | 2.4#101 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.4#102 | TAMAM | sim/life/events/content/casino.ts:23 | Bahis çetesi zinciri tam |
-| 2.4#110 | ERTELENDİ-INT | sim/life/events/types.ts:150 | Ertelendi: Zod yeni bağımlılık; TS şeması + content.test.ts doğrulaması yeterli, v2 |
+| 2.4#110 | TAMAM | sim/life/events/types.ts, content.test.ts, dilemma.test.ts | Zod yerine (yeni bagimlilik yok) TS tipli EventDef sema + content.test.ts (iki dilli metin, 2-4 secenek, yer tutucu, etkileri calistirma, zincir erisilebilirligi) + linter; CI derlemesinde dogrulanir. Bilincli sapma. |
 | 2.4#111 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.4#112 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.4#113 | TAMAM | ui/screens/EventModal.tsx, ui/components/Chip.tsx (DeltaChip direction), SettingsScreen eventTransparency | Ayarlarda Tam şeffaflık / Yön çipleri. Varsayılan Tam şeffaflık (mevcut davranış korunur); zorluk ekranına taşıma gerekmedi |
-| 2.4#114 | ERTELENDİ-INT | sim/life/events/types.ts:118 | Ertelendi: geçmiş hatırlatma tüm gecikmeli olay metinlerinin yeniden yazımı; v2 |
-| 2.4#118 | ERTELENDİ-INT | sim/life/events/engine.ts:180 | Ertelendi: ICU select i18n altyapı değişikliği; mevcut {g:} kalıbı çalışıyor, v2 |
+| 2.4#114 | TAMAM | sim/life/events/engine.ts recallLine, events/proveYourself.test.ts, styles/screens/event.css | Gecikmeli (2+ hafta) her olay karti, tetikleyen eski karari ve secimi metnin basinda hatirlatir (N hafta once ... sectin); yasam gunlugune zaten kayitli. |
+| 2.4#118 | TAMAM | sim/life/events/gender.test.ts, content.test.ts | Tum olay metinleri {g:he|she} kalibiyla yazili; kadin kariyerinde butun olaylar taranip yanlis zamir yok testi var. ICU select soz dizimi yerine esdeger kalip kullaniliyor (bilincli sapma). |
 
 ### 2.5 Ekonomi, Lüks, Yatırım, Kumarhane, Monetizasyon
 
@@ -521,32 +521,32 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.5#8 | TAMAM | sim/life/economy.ts COUNTRY_TAX/incomeTaxRate; sweep2.test.ts | Kulüp ülkesine göre %27–40 vergi |
 | 2.5#10 | TAMAM | sim/life/economy.ts agentFee (maaş+sponsor); matchPay.ts | Komisyon sponsor gelirinden de kesilir |
 | 2.5#11 | TAMAM | sim/life/economy.ts tickTrainerContract; sweep2.test.ts | Antrenör sözleşmesi 44 hafta, 4 hafta kala uyarı, bitince ayrılır (UI çubuğu: TrainingScreen, UI ajanı) |
-| 2.5#15 | ERTELENDİ-INT | sim/game/balanceSim.ts:76 | Ertelendi: temel yaşam gideri denge değişikliği, BALANCE turu gerektirir; v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.5#15 | TAMAM | sim/life/economy.ts livingCost, economy.test.ts, financeHistory.ts | Temel yasam gideri (kira/yemek/ulasim/bakim: maasin %6si, 25-3000/hf) haftalik tabloda ayri kalem; her sozlesmede vergi+menajer sonrasi pozitif kalir (test), BALANCE: 20 kariyer x 10 sezon iflas %0, nakdin eksiye dustugu hafta 0,1. golden yenilendi. |
 | 2.5#16 | TAMAM | data/activities.ts energy_drink; activities.test.ts | Enerji içeceği aktivitesi (hızlı enerji, yorgunluk bedeli) |
 | 2.5#17 | TAMAM | data/activities.ts:2 | Günde 3 dilim |
-| 2.5#18 | ERTELENDİ-INT | sim/life/activities.ts:337 | Ertelendi: uyku %70–100 ev kalitesi tüm erken kariyerlere ceza olur; denge turu gerektirir (sleep varlık bonusu mevcut); WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.5#18 | TAMAM | sim/life/activities.ts sleepQuality, activities.test.ts, ui/screens/life/Assets.tsx | Gece uykusu eksik enerjinin %75ini (duz konak) ile %100unu (premium yatak/ev, sleep etkisi) doldurur; Varliklar ekraninda uyku kalitesi satiri; yorgunluk ayri deger olarak kaldi. |
 | 2.5#19 | TAMAM | data/activities.ts, data/assets.ts | Fiyatlar sabit tasarım gereği; enflasyon yok |
 | 2.5#22 | TAMAM | data/assets.ts:143 | Para ile hızlandırma satılmıyor |
 | 2.5#23 | TAMAM | sim/life/economy.ts:124 | Gider varlık bakımından |
-| 2.5#24 | ERTELENDİ-INT | sim/career/wp15.test.ts | Ertelendi: tam harcama eğrisi telemetri ile; v1.1 denge turu; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.5#24 | ERTELENDİ-INT | sim/game/balanceSim.ts, sim/game/balance.test.ts | BALANCE telemetrisi harcama/gelir oranini yazar (25/33/46% ilk 3 sezon, zirvede %56-66; hedef %40-60 / %50-70): ilk sezonlar bandin altinda. Emeklilik net serveti 18+ sezonluk kosu ister (CI icin cok uzun). Erken harcamayi yukseltmek ayri bir yasam-tarzi denge turu; v1.1. |
 | 2.5#29 | TAMAM | sim/life/projects.ts, events/content/projects.ts, projects.test.ts | Geç oyun para yutucuları: akademi (3 aşama), hayır stadyumu (2 aşama), kulüp hissesi (%25'e kadar, temettü), miras fonu (Legacy çocuğuna, tavanlı); gerçek etki: bakım, mezun, taraftar, itibar, Hall of Fame puanı |
 | 2.5#42 | TAMAM | sim/game/internal.ts:93 | Piyasa kayıtlı RNG ile |
 | 2.5#53 | TAMAM | sim/life/business.ts (businessRevenueCap) | WP-15: haftalık gelir 3x tavan |
 | 2.5#54 | TAMAM | sim/life/sponsors.ts (10 kategori, 6 anlaşma tavanı); sponsors.test.ts | 4 yeni kategori |
-| 2.5#55 | ERTELENDİ-INT | core/types.ts:365 | Ertelendi: performans bonusu şablonu sözleşme UI; v2 |
-| 2.5#60 | ERTELENDİ-INT | sim/life/sponsors.ts:68 | Ertelendi: sponsor formülü (rep+takipçi) denge testli; plan formülüne geçiş v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.5#55 | TAMAM | core/types.ts SponsorDeal.perfBonus, sim/life/sponsors.ts, ui/screens/life/Sponsors.tsx, e2e/lifeplus.spec.ts | Sponsor teklifi tek tabloda: sure, haftalik ucret, performans primi (gol/asist basina), sohret esigi, davranis maddesi, munhasirlik; prim haftalik tickte net odenir. |
+| 2.5#60 | TAMAM | sim/life/sponsors.ts sponsorImage, sponsors.test.ts | Sponsor degeri %70 performans/sohret + %30 imaj (takipci %60, davranis %40; luks en fazla imajin %20si); luks esyasiz kahraman da sponsor alir. BALANCE hedefleri tuttu, golden yenilendi. |
 | 2.5#62 | TAMAM | sim/life/sponsors.ts:16 | Bahis sponsoru yok |
 | 2.5#63 | TAMAM | data/assets.ts (`collector`), sim/life/assetEffects.ts, projects.test.ts | Koleksiyon eşyaları: değer kazanır, Hall of Fame'e `collector` puanı verir (tavan 12) |
 | 2.5#64 | TAMAM | data/assets.ts | Sanat kategorisi 7'den 15'e: 8 koleksiyon eşyası (15 bin-15 milyon); en pahalı basamaklar da dolu |
-| 2.5#71 | ERTELENDİ-INT | - | Ertelendi: ayrı yıpranma modeli denge riski; v2 |
+| 2.5#71 | TAMAM | sim/game/assetView.ts WEAR_PER_YEAR, assetWear.test.ts | Yalniz mekanik/kullanilan esyalar (arac, tekne, jet, teknoloji, giyim, tesis) yipranir; sanat, saat, ev, ada, evcil hayvan yipranmaz (test). |
 | 2.5#80 | TAMAM | ui/screens/life/Assets.tsx | WP-15: satın alma onayında "net maaşın ~N haftası" |
 | 2.5#84 | TAMAM | events/content/casinoCareer.ts (`casino.horse_offer` → `horse_race_day` → `horse_retirement`) | Yarış atı sahipliği: 3 adımlı zincir, ödül havuzu, emeklilik kararı |
 | 2.5#89 | TAMAM | - | Fiş/IAP satışı yok |
 | 2.5#90 | TAMAM | ui/screens/SettingsScreen.tsx:120 | Kumarhaneyi gizle |
 | 2.5#91 | TAMAM | ui/backend/casinoView.ts:47 | 18 yaş kilidi |
-| 2.5#92 | ERTELENDİ-INT | sim/life/casino.ts:513 | Ertelendi: 200k spin testi CI süresi için yeterli; 10M yerel betik olarak v1.1 |
-| 2.5#99 | ERTELENDİ-INT | sim/life/casino.ts:772 | Ertelendi: sızıntı kuralı casino.ts bağımlılık modeli ayarı, v1.1 |
-| 2.5#102 | ERTELENDİ-INT | sim/life/events/content/casino.ts:301 | Ertelendi: men süreleri olay içeriği ve denge; v1.1 |
+| 2.5#92 | TAMAM | sim/life/casino.test.ts (10M spin), slotExactRtp | Slot RTP hem tam sayimla hem 10 milyon spin Monte Carlo ile her CI kosusunda dogrulanir (~1 sn): RTP %92-96 disinda ise build kirilir. |
+| 2.5#99 | TAMAM | sim/life/casino.ts weeklyCasinoTick LEAK_CHANCE, casino.test.ts | Bagimlilik 60 ve uzeri iken haftalik %15 basina sizma: basin iliskisi -4, disiplin -3, haber; test oran ve esigi dogrular. |
+| 2.5#102 | TAMAM | sim/life/events/content/casinoCareer.ts, sim/life/events/engine.ts sponsorLoss, events/ownBet.test.ts | Kendi maçina bahis: kartta Agir yasal risk etiketi, %35 aciga cikma: 25 maç men, tum sponsorlar fesih (davranis maddesi bagli), disiplin/sohret/taraftar kaybi. Sapma: sohret -12 (plan -40; 0-100 olcekte kariyer bitirirdi), men 6 ay yerine 25 maç. |
 | 2.5#103 | TAMAM | sim/life/events/content/casino.ts:51 | Sessiz ret cezasız |
 | 2.5#105 | ERTELENDİ-EXT | docs/PLATFORM.md:148 | BLOCKED-EXTERNAL: Mağaza beyanı (veri güvenliği/IAP) mağaza hesabı ister (Ertelendi: monetizasyon: store-iap ajanı) |
 | 2.5#109 | TAMAM | sim/life/economy.ts lowCashRisk/lowCashWarning; economy.test.ts | Zorunlu satıştan önce 4 haftada bir uyarı |
