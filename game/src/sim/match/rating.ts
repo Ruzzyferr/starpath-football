@@ -127,8 +127,25 @@ export function finalRatingParts(ctx: FinalRatingContext): FinalRatingPart[] {
   push('result', ctx.goalsFor > ctx.goalsAgainst ? 0.3 : ctx.goalsFor < ctx.goalsAgainst ? -0.3 : 0)
   if (ctx.goalsAgainst === 0 && isDefensive(ctx.position)) push('cleanSheet', ctx.position === 'GK' ? 0.5 : 0.35)
   if (ctx.passes >= 8) push('passing', (ctx.passesCompleted / ctx.passes - 0.78) * 1.5)
-  if (ctx.position === 'GK') push('saves', Math.min(1, ctx.saves * 0.12))
+  if (ctx.position === 'GK') push('saves', keeperSaveScore(ctx.saves, ctx.goalsAgainst))
   return parts
+}
+
+/** Average xG of a shot on target a keeper faces (for "goals prevented"). */
+export const XG_PER_ON_TARGET = 0.3
+
+/**
+ * Keeper rating term (2.3#2): saves (0.12 each, ≤ 1) plus save percentage and
+ * goals prevented against the expected goals of the shots on target faced
+ * (≥ 3 on target needed; ±0.6).
+ */
+export function keeperSaveScore(saves: number, conceded: number): number {
+  const base = Math.min(1, saves * 0.12)
+  const faced = saves + conceded
+  if (faced < 3) return base
+  const prevented = faced * XG_PER_ON_TARGET - conceded
+  const pct = saves / faced
+  return base + Math.max(-0.6, Math.min(0.6, (pct - 0.7) * 0.8 + prevented * 0.1))
 }
 
 /**

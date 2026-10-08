@@ -70,19 +70,8 @@ export const INJURY_TABLE: readonly InjuryTemplate[] = [
 /** Days → lay-off weeks in half-week steps (at least half a week). */
 export const injuryWeeks = (days: number): number => Math.max(0.5, Math.round((days / 7) * 2) / 2)
 
-/**
- * Injury risk multiplier (2.3#55) from the plan's factors: fatigue over 80
- * doubles it; the player's proneness (1 = average); the surface (wet/frozen
- * pitch ×1.2); the opponent's tackling aggression (0..100, 50 = neutral,
- * ±30%).
- */
-export function injuryRiskMultiplier(f: { fatigue: number; proneness?: number; surface?: 'dry' | 'wet' | 'frozen'; oppTackling?: number }): number {
-  const fat = f.fatigue > 80 ? 2 : 1
-  const prone = clamp(f.proneness ?? 1, 0.5, 2.5)
-  const surface = f.surface === 'wet' || f.surface === 'frozen' ? 1.2 : 1
-  const opp = 1 + clamp(((f.oppTackling ?? 50) - 50) / 50, -1, 1) * 0.3
-  return fat * prone * surface * opp
-}
+/** Injury risk multiplier (2.3#55), shared with the match engine. */
+export { injuryRiskMultiplier } from '../match/injuryRisk'
 
 /**
  * Roll an injury. `severityWeights` default [0.7, 0.25, 0.05] (most knocks are

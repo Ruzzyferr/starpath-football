@@ -19,6 +19,7 @@
 import { clamp, Rng } from '../../core/rng'
 import type { Lang, MatchResultSummary, Position } from '../../core/types'
 import { autoResolve, outcomeProbabilities } from './autoResolve'
+import { injuryRiskMultiplier } from './injuryRisk'
 import { commentary, type CommentaryKey, type CommentaryVars, formatScore } from './commentary'
 import type { EngineState, HeroRuntime, MatchSimOptions, PendingRuntime, PlayerRuntime, TeamRuntime } from './engineState'
 import { assignSlots } from './formations'
@@ -232,7 +233,7 @@ export class MatchSim {
     if (!pending) return []
     const hero = this.heroPlayer()
     if (!hero) return this.resolveHighlight({ outcome: 'timeout', passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 })
-    const r = autoResolve(pending.highlight.kind, hero.attrs, this.s.setup.difficulty, this.rng)
+    const r = autoResolve(pending.highlight.kind, hero.attrs, this.s.setup.difficulty, this.rng, this.heroInjuryRisk())
     this.resolvingAuto = true
     try {
       return this.resolveHighlight(r)
@@ -422,6 +423,18 @@ export class MatchSim {
     const p = this.lookup.get(id)
     if (!p) throw new Error(`MatchSim: unknown player ${id}`)
     return p
+  }
+
+  /** Hero injury-risk multiplier (2.3#55): late fatigue, wet/frozen pitch, the opponents' tackling. */
+  private heroInjuryRisk(): number {
+    const id = this.s.hero.id
+    const side = this.s.setup.heroSide
+    if (!id || !side) return 1
+    const ot = this.team(side === 'home' ? 'away' : 'home')
+    const opp = [...ot.lineup, ...ot.bench].filter((p) => this.s.players[p.id]?.onPitch)
+    const oppTackling = opp.length ? opp.reduce((t, p) => t + p.attrs.tackling, 0) / opp.length : 50
+    const w = this.s.setup.weather
+    return injuryRiskMultiplier({ fatigue: (this.s.players[id]?.fatigue ?? 0) * 100, surface: w === 'rain' ? 'wet' : w === 'snow' ? 'frozen' : 'dry', oppTackling })
   }
 
   private heroPlayer(): MatchPlayer | null {

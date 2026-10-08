@@ -7,8 +7,9 @@ import type { Award, GameState, LText, SeasonRecord, SeasonStats } from '../../c
 import type { Rng } from '../../core/rng'
 import { absWeek, emptyStats, fameGain, fill, fmtMoney, lt, meter } from '../career/common'
 import { renewalOffer } from '../career/contract'
+import { seasonStandingFame } from '../career/reputation'
 import { heroOvr } from '../career/progression'
-import { endLoan, freeAgentOffers, generateLoanOffers, generateTransferOffers, TRANSFER_REQUEST_FLAG } from '../career/transfers'
+import { endLoan, expireTransferRequest, freeAgentOffers, generateLoanOffers, generateTransferOffers, TRANSFER_REQUEST_FLAG } from '../career/transfers'
 import type { CandidateClub, TransferOffer } from '../career/transfers'
 import { ensureRelation, ensureTeammates } from '../life/relationships'
 import { sponsorOffers, type SponsorOffer } from '../life/sponsors'
@@ -136,6 +137,8 @@ export function syncEventFlags(state: GameState): LText[] {
   const out: LText[] = []
   const f = state.life.flags
   const h = state.hero
+  // A transfer request lasts one window (2.3#74).
+  expireTransferRequest(state.life, state.calendar)
   const raise = f.contract_extension_agreed
   if (raise !== undefined) {
     delete f.contract_extension_agreed
@@ -214,6 +217,13 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
   const league = club ? w.leagues[club.leagueId] : null
   const table = club ? leagueTableFor(w, club.id, season) : null
   const s = h.seasonStats
+
+  // ── Season standing: consistency, Man of the Match and the stage (non-goal fame) ──
+  if (!h.retired && club) {
+    const continental = Object.values(w.competitions).some((c) => c.season === season && c.type === 'continental' && c.participantIds.includes(club.id))
+    const standing = seasonStandingFame({ stats: s, leagueTier: league?.tier, clubReputation: club.reputation, continental })
+    if (standing.total > 0) h.reputation = meter(h.reputation + fameGain(h.reputation, standing.total))
+  }
 
   // ── Awards that need NPC stats (endOfSeason resets them) ──
   const pre = preSeasonAwards(state)

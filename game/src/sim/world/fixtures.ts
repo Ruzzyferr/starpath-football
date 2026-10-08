@@ -97,7 +97,7 @@ export const CALENDAR_LAYOUT = {
   playoffWeeks: PLAYOFF_WEEKS,
   endOfSeasonWeek: END_OF_SEASON_WEEK,
   offseasonWeeks: OFFSEASON_WEEKS,
-  transferWindows: { summer: [...OFFSEASON_WEEKS, PRESEASON_WEEK], winter: [WINTER_WINDOW_WEEK] },
+  transferWindows: { summer: [...OFFSEASON_WEEKS, PRESEASON_WEEK], winter: [WINTER_WINDOW_WEEK - 1, WINTER_WINDOW_WEEK, WINTER_WINDOW_WEEK + 1, WINTER_WINDOW_WEEK + 2] },
   description: {
     tr: 'Hafta 0 hazırlık dönemi. Lig maçları 1–41. haftalarda Cumartesi (alt ligler 39. haftada biter, 40–41. haftalarda play-off); kupa maçları Çarşamba, kıtasal kupa Perşembe (eleme turları çift maç). 11, 24 ve 35. haftalar milli ara: milli maçlar Perşembe ve Pazar. 42. haftada sezon kapanır; 42–43 sezon arası, yaz transfer dönemi ve milli turnuva finalleri.',
     en: 'Week 0 is pre-season. League games are on Saturdays in weeks 1–41 (lower tiers end in week 39, play-offs in weeks 40–41); cup ties on Wednesdays, continental games on Thursdays (two-legged knockout ties). Weeks 11, 24 and 35 are international breaks with national games on Thursday and Sunday. The season closes in week 42; weeks 42–43 are the off-season, the summer transfer window and the national finals tournament.',

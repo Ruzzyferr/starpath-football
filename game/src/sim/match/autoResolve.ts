@@ -159,12 +159,15 @@ function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
  * Auto-resolves a highlight probabilistically from the hero's attributes and
  * difficulty. Scorer/assist ids are left for the engine to fill.
  */
-export function autoResolve(kind: HighlightKind, attrs: Attributes, difficulty: number, rng: Rng): HighlightResult {
+/** Base injury chance of an auto-resolved outfield moment (scaled by injuryRiskMultiplier, 2.3#55). */
+export const AUTO_INJURY_CHANCE = 0.004
+
+export function autoResolve(kind: HighlightKind, attrs: Attributes, difficulty: number, rng: Rng, injuryMult = 1): HighlightResult {
   const probs = outcomeProbabilities(kind, attrs, difficulty)
   const outcomes = Object.keys(probs) as Outcome[]
   const outcome = rng.weighted(outcomes, (o) => probs[o] ?? 0)
   const r = emptyResult(outcome)
   fillStats(kind, r, rng)
-  if (kind !== 'gk_save' && kind !== 'gk_penalty' && rng.chance(0.004)) r.injured = true
+  if (kind !== 'gk_save' && kind !== 'gk_penalty' && rng.chance(AUTO_INJURY_CHANCE * injuryMult)) r.injured = true
   return r
 }
