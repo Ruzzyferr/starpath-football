@@ -39,6 +39,7 @@ import { compactFrames, recordMoment, type MomentRecording } from './moments'
 import {
   CELEBRATION_BY_ID, celebrationJoiners, celebrationPose, celebrationSeconds, dominantAngle, replayAngleWeights, replayRate, resolveCelebration,
   stadiumLook, upper, windReadout, type CelebrationChoice, type CelebrationId, type CelebrationPose, type ReplayAngle, type ReplayAngleChoice, type StadiumLook,
+  pitchGrip,
 } from './presentation'
 import type { AimAssist } from './kick'
 import { shotSpeed } from './kick'
@@ -157,6 +158,7 @@ const T = {
     refuseRelation: "WON'T PASS", refuseLane: 'NO LANE',
     aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
+    grip_slick: 'SLICK', grip_heavy: 'HEAVY',
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
@@ -170,6 +172,7 @@ const T = {
     refuseRelation: 'PAS VERMİYOR', refuseLane: 'PAS YOLU KAPALI',
     aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
+    grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
   },
 } as const
 type Strings = { [K in keyof (typeof T)['en']]: string }
@@ -950,7 +953,10 @@ export class MatchScene extends Phaser.Scene {
     if (wind || opts.weather === 'rain' || opts.weather === 'snow') {
       this.windText = this.text(13, '#dfe9ff', '700', 'display', false).setOrigin(1, 0.5)
       const icon = opts.weather === 'rain' ? '☂' : opts.weather === 'snow' ? '❄' : ''
-      this.windText.setText(`${icon}${icon && wind ? '  ' : ''}${wind ? `${wind.kmh} km/h` : ''}`)
+      // The weather icon also says what it does to the ball (2.2#73): wet = skids on, snow = dies.
+      const grip = pitchGrip(this.rt.env)
+      const gripTag = grip === 'slick' ? ` ${this.s.grip_slick}` : grip === 'heavy' ? ` ${this.s.grip_heavy}` : ''
+      this.windText.setText(`${icon}${gripTag}${(icon || gripTag) && wind ? '  ' : ''}${wind ? `${wind.kmh} km/h` : ''}`)
     }
     this.promptText.setText(this.data0.highlight.scenario.prompt)
     this.promptT = 0
@@ -995,6 +1001,23 @@ export class MatchScene extends Phaser.Scene {
           quantity: rain ? (this.lowFx ? 2 : 3) : 2,
         }),
       )
+      // Second, background rain layer (2.2#73): fine, faint, slower streaks behind the main sheet. Not on Low.
+      if (rain && this.q.profile !== 'low' && !this.lowFx) {
+        this.addH(
+          this.add.particles(0, 0, 'fx_streak', {
+            x: { min: -50, max: 4000 },
+            y: -20,
+            lifespan: 1100,
+            speedY: { min: 800, max: 1000 },
+            speedX: { min: -150, max: -110 },
+            scale: { min: 0.25 * this.ui, max: 0.42 * this.ui },
+            alpha: { min: 0.1, max: 0.2 },
+            rotate: 8,
+            frequency: 10 / this.q.weatherRate,
+            quantity: 2,
+          }).setDepth(-1),
+        )
+      }
     }
   }
 
@@ -2308,6 +2331,8 @@ export class MatchScene extends Phaser.Scene {
           this.sfx.kick(e.power, e.kick)
           const p = project(e.x, e.y)
           this.burst(this.grassFx, this.fxN(e.hero ? 10 : 5), p.x, p.y)
+          // Water kicks up off a wet pitch on contact (2.2#73).
+          if (this.data0.opts.weather === 'rain') this.burst(this.puffFx, this.fxN(e.hero ? 5 : 3, 760), p.x, p.y)
           const shot = e.kick === 'shot' || e.kick === 'chip' || e.kick === 'penalty' || e.kick === 'freekick' || e.kick === 'header'
           if (e.hero) {
             this.cam.punch = this.rm ? 0 : shot ? 0.14 : 0.05

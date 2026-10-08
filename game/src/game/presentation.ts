@@ -7,6 +7,7 @@
  */
 
 import { QUALITY, type QualityProfile } from './quality'
+import { DEFAULT_ENV } from './physics'
 
 /** Locale-correct upper case for HUD labels (Turkish dotted/dotless i: "izmir" → "İZMİR", "ılgaz" → "ILGAZ"). */
 export function upper(s: string, lang: string): string {
@@ -299,4 +300,14 @@ export function replayRate(t: number, keyT: number, reducedMotion = false): numb
   if (reducedMotion) return 0.6
   const d = Math.abs(t - keyT)
   return d < 0.55 ? 0.28 + d * 0.4 : 0.55
+}
+
+/**
+ * How the pitch treats a rolling ball compared with a dry pitch (HUD weather
+ * tag beside the ☂/❄ icon, 2.2#73): 'slick' = it skids on (rain), 'heavy' =
+ * it dies (snow). Read from the same physics env the ball uses.
+ */
+export function pitchGrip(env: { rollDecel: number }): 'normal' | 'slick' | 'heavy' {
+  const r = env.rollDecel / DEFAULT_ENV.rollDecel
+  return r < 0.85 ? 'slick' : r > 1.25 ? 'heavy' : 'normal'
 }

@@ -137,3 +137,13 @@ describe('moments store', () => {
     expect(recordMoment({ matchKey: 'm3', minute: 6, kind: 'counter', outcome: 'goal', highlight: hl('x'), frames: frames.slice(0, 3), keyTime: 0, view: { ...view } })).toBeNull()
   })
 })
+
+describe('pitch grip tag (2.2#73)', () => {
+  it('rain = slick, snow = heavy, dry = normal', async () => {
+    const { pitchGrip } = await import('./presentation')
+    const { envForWeather } = await import('./physics')
+    expect(pitchGrip(envForWeather('rain'))).toBe('slick')
+    expect(pitchGrip(envForWeather('snow'))).toBe('heavy')
+    expect(pitchGrip(envForWeather('clear'))).toBe('normal')
+  })
+})
