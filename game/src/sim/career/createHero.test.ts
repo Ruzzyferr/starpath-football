@@ -75,9 +75,12 @@ describe('createLife', () => {
       const h = createHero(rng, input('poacher', 'ST', bg))
       const life = createLife(rng, h, bg, { mother: 'Leyla' })
       expect(life.money).toBe(BACKGROUNDS[bg].money)
-      expect(life.relationships.mother.name).toBe('Leyla')
-      for (const id of ['mother', 'father', 'sibling', 'bestFriend', 'fans', 'press']) expect(life.relationships[id]).toBeDefined()
-      expect(life.relationships.mother.value).toBeGreaterThan(40)
+      for (const id of ['bestFriend', 'fans', 'press']) expect(life.relationships[id]).toBeDefined()
+      // Family structure is background-dependent (2.4#14); a present mother carries the given name.
+      if (life.relationships.mother) {
+        expect(life.relationships.mother.name).toBe('Leyla')
+        expect(life.relationships.mother.value).toBeGreaterThan(40)
+      }
       expect(life.energy).toBe(100)
     }
   })

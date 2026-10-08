@@ -6,7 +6,7 @@ import type {
   Appearance, Archetype, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship,
 } from '../../core/types'
 import { ATTRIBUTE_KEYS } from '../../core/types'
-import type { Rng } from '../../core/rng'
+import { Rng, hashString } from '../../core/rng'
 import { clamp, emptyStats } from './common'
 import { POSITION_WEIGHTS, checkPerkUnlock, heroOvr } from './progression'
 import { grantInnatePerk } from './perks'
@@ -218,6 +218,31 @@ export function makeRelation(id: string, kind: Relationship['kind'], name: strin
   return { id, kind, name, value: clamp(Math.round(value), -100, 100), memory: [], lastContactWeek: week, ...(npcId ? { npcId } : {}) }
 }
 
+/** Household the hero grows up in (2.4#14). */
+export type FamilyStructure = 'both' | 'single_mother' | 'single_father' | 'foster'
+export interface FamilyPlan {
+  structure: FamilyStructure
+  /** Siblings, 0-2. */
+  siblings: number
+}
+
+/**
+ * Procedural starting family from the background story. Uses its own
+ * deterministic generator (hero identity + background), so the main RNG stream
+ * is untouched. Academy and football families keep both parents and at least
+ * one sibling; the street and late-bloomer stories can start with a single
+ * parent or in foster care (no parents).
+ */
+export function rollFamily(hero: Pick<Hero, 'firstName' | 'lastName' | 'birthYear'>, background: Background): FamilyPlan {
+  const r = new Rng(hashString(`family|${hero.firstName}|${hero.lastName}|${hero.birthYear}|${background}`))
+  const x = r.next()
+  let structure: FamilyStructure = 'both'
+  if (background === 'street') structure = x < 0.12 ? 'foster' : x < 0.42 ? 'single_mother' : x < 0.5 ? 'single_father' : 'both'
+  else if (background === 'lateBloomer') structure = x < 0.18 ? 'single_mother' : x < 0.22 ? 'single_father' : 'both'
+  const siblings = background === 'street' ? r.int(0, 2) : background === 'footballFamily' ? r.int(1, 2) : background === 'academy' ? r.int(1, 2) : r.int(0, 2)
+  return { structure, siblings }
+}
+
 /**
  * Create the starting Life. Relationships: mother, father, sibling, best friend,
  * fans and press (fans/press start neutral: nobody knows you yet). Manager,
@@ -228,10 +253,12 @@ export function createLife(rng: Rng, hero: Hero, background: Background, names: 
   const pool = GENERIC_NAMES[hero.nationality] ?? GENERIC_NAMES._
   const jitter = () => rng.int(-5, 5)
   const sibName = names.sibling ?? (rng.chance(0.5) ? rng.pick(pool.f) : rng.pick(pool.m))
+  const plan = rollFamily(hero, background)
   const relationships: Record<string, Relationship> = {
-    mother: makeRelation('mother', 'mother', names.mother ?? rng.pick(pool.f), bg.relations.mother + jitter()),
-    father: makeRelation('father', 'father', names.father ?? rng.pick(pool.m), bg.relations.father + jitter()),
-    sibling: makeRelation('sibling', 'sibling', sibName, bg.relations.sibling + jitter()),
+    ...(plan.structure === 'both' || plan.structure === 'single_mother' ? { mother: makeRelation('mother', 'mother', names.mother ?? rng.pick(pool.f), bg.relations.mother + jitter()) } : {}),
+    ...(plan.structure === 'both' || plan.structure === 'single_father' ? { father: makeRelation('father', 'father', names.father ?? rng.pick(pool.m), bg.relations.father + jitter()) } : {}),
+    ...(plan.siblings >= 1 ? { sibling: makeRelation('sibling', 'sibling', sibName, bg.relations.sibling + jitter()) } : {}),
+    ...(plan.siblings >= 2 ? { sibling2: makeRelation('sibling2', 'sibling', rng.pick([...pool.f, ...pool.m]), bg.relations.sibling + jitter()) } : {}),
     bestFriend: makeRelation('bestFriend', 'bestFriend', names.bestFriend ?? rng.pick(hero.gender === 'female' ? pool.f : pool.m), bg.relations.bestFriend + jitter()),
     fans: makeRelation('fans', 'fans', 'Taraftarlar / Fans', 0),
     press: makeRelation('press', 'press', 'Basın / Press', 0),
@@ -251,7 +278,7 @@ export function createLife(rng: Rng, hero: Hero, background: Background, names: 
     sponsors: [],
     trainer: null,
     casino: { addiction: 0, won: 0, lost: 0, visitsThisWeek: 0 },
-    flags: { background },
+    flags: { background, family_structure: plan.structure, family_siblings: plan.siblings },
     eventHistory: {},
     log: [], // the game layer logs the opening line with the real calendar
     news: [],

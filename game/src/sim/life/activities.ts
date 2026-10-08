@@ -190,7 +190,7 @@ export function availableActivities(hero: Hero, life: Life, ctx: ActivityContext
 /** Relationship ids for a target. */
 function targetIds(life: Life, t: RelationTarget): string[] {
   switch (t) {
-    case 'family': return ['mother', 'father', 'sibling'].filter((id) => life.relationships[id])
+    case 'family': return ['mother', 'father', 'sibling', 'sibling2'].filter((id) => life.relationships[id])
     case 'teammates': return Object.values(life.relationships).filter((r) => r.kind === 'teammate').map((r) => r.id)
     default: return life.relationships[t] ? [t] : []
   }
@@ -418,7 +418,7 @@ const FOCUS: Readonly<Record<Position, readonly TrainingType[]>> = {
  */
 export function autoPlanDay(hero: Hero, life: Life, ctx: ActivityContext): PlannedActivity[] {
   const plan: PlannedActivity[] = []
-  const fam = ['mother', 'father', 'sibling'].map((id) => life.relationships[id]?.value).filter((v): v is number => v !== undefined)
+  const fam = ['mother', 'father', 'sibling', 'sibling2'].map((id) => life.relationships[id]?.value).filter((v): v is number => v !== undefined)
   const famAvg = fam.length ? fam.reduce((a, b) => a + b, 0) / fam.length : 50
   const focus = FOCUS[hero.position]
   const evening = (): PlannedActivity => {

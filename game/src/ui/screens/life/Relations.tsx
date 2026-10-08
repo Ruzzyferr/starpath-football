@@ -205,6 +205,7 @@ export function Relations() {
         return (
           <section key={g} class="stack">
             <SectionTitle>{t(`life.rel.groups.${g}`)}</SectionTitle>
+            {g === 'family' && typeof s.life.flags.family_structure === 'string' && <p class="t-sm t-mid" data-testid="family-structure">{t(`life.rel.household.${s.life.flags.family_structure}`)}</p>}
             <div class="life-people">
               {list.map((r) => <PersonCard key={r.id} rel={r} week={(s.calendar.season - START_YEAR) * 52 + s.calendar.week} />)}
             </div>

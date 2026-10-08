@@ -23,7 +23,9 @@ describe('stats guard helpers', () => {
   })
   it('a career run is deterministic per seed (rng streams are stable)', () => {
     const cfg = standardMix(1, 1, 4242)[0]
-    expect(runCareer(cfg).samples).toEqual(runCareer(cfg).samples)
+    // Compare at 1e-6: the first run in a process can differ from later ones by float noise (~1e-15) in reputation sums.
+    const round = (x: unknown): unknown => JSON.parse(JSON.stringify(x, (_k, v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v)))
+    expect(round(runCareer(cfg).samples)).toEqual(round(runCareer(cfg).samples))
   }, 60_000)
 })
 

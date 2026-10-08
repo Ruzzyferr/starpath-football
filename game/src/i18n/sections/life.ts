@@ -10,6 +10,9 @@ export const tr = {
   rel: {
     groups: { family: 'Aile', love: 'Aşk ve dostluk', team: 'Takım', pro: 'Profesyonel çevre' },
     lastContact: 'Son görüşme {n} hafta önce',
+    household: {
+      both: 'Anne ve babanla büyüdün.', single_mother: 'Seni annen tek başına büyüttü.', single_father: 'Seni baban tek başına büyüttü.', foster: 'Ebeveynsiz büyüdün: koruyucu aile ve arkadaşların senin ailen.',
+    },
     friend: {
       title: 'Yakın arkadaşlar',
       perks: 'En fazla {n} kişi seçebilirsin. İlişki {min} üstündeyken zor zamanda yanında durur, transfer söylentisinde içeriden bilgi verir, takım arkadaşıysa sana %10 daha çok pas atar ve ihmale daha geç küser.',
@@ -349,6 +352,9 @@ export const en: Shape<typeof tr> = {
   rel: {
     groups: { family: 'Family', love: 'Love & friends', team: 'Team', pro: 'Professional circle' },
     lastContact: 'Last contact {n} {n|week|weeks} ago',
+    household: {
+      both: 'You grew up with both parents.', single_mother: 'Your mother raised you on her own.', single_father: 'Your father raised you on his own.', foster: 'You grew up without parents: foster care and friends are your family.',
+    },
     friend: {
       title: 'Close friends',
       perks: 'Pick up to {n}. While the bond stays above {min}, they stand by you in a crisis, tip you off about transfer rumours, pass to you about 10% more if they are a teammate, and forgive neglect for longer.',

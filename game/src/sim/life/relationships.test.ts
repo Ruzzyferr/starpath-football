@@ -96,7 +96,7 @@ describe('relationships', () => {
     expect(relationLabel(-90).en).toBe('Enemy')
     expect(relationLabel(90).en).toBe('Inseparable')
     const { life } = makeHeroLife()
-    for (const id of ['mother', 'father', 'sibling', 'bestFriend']) life.relationships[id].value = 100
+    for (const r of Object.values(life.relationships)) if (['mother', 'father', 'sibling', 'bestFriend'].includes(r.kind)) r.value = 100
     expect(closeCircleMood(life)).toBe(15)
   })
 
