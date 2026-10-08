@@ -59,7 +59,7 @@ type Strings = {
 const T: Record<Lang, Strings> = {
   tr: {
     prompt: {
-      finishing: 'Kaydır / basılı tutup bırak: şut. Yanan köşeleri vur!',
+      finishing: 'Kaydır / basılı tutup bırak: şut. Yanan bölgeyi vur!',
       setPiece: 'Falso kapısı: barajı aş, iki direğin arasına gönder!',
       passGround: 'YERDEN: arkadaşına dokun / tıkla — topu kapıdan geçir',
       passLoft: 'HAVADAN: kaydır / basılı tutup bırak — mankenlerin üstünden aşırt',
@@ -91,7 +91,7 @@ const T: Record<Lang, Strings> = {
   },
   en: {
     prompt: {
-      finishing: 'Swipe / hold & release to shoot. Hit the lit corners!',
+      finishing: 'Swipe / hold & release to shoot. Hit the lit zone!',
       setPiece: 'Curl gate: over the wall and between the posts!',
       passGround: 'GROUND: tap / click your team-mate — through the gate',
       passLoft: 'LOFT: swipe / hold & release — over the mannequins',

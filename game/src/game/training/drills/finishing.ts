@@ -1,10 +1,10 @@
 /**
  * Finishing drill (shooting / set-piece sessions).
  *
- * The ball is laid at a new spot 13–24 m out (19–27 m with a defensive wall
- * in the set-piece variant). Two corner targets light up and drift on the
- * goal mouth; beat the keeper for a goal, hit a lit target for a big bonus,
- * keep the streak going for a multiplier. Shots use the match kick model
+ * Target grid (2.3#23): 10 shots from new spots 13–24 m out. One of the 9
+ * zones of a 3×3 goal grid lights up per shot, in a shuffled sequence: the
+ * zone centre scores 10, the rest of the zone 6, any other goal 2. The keeper
+ * joins from shot 3 (moving keeper). Shots use the match kick model
  * (swipe / hold-release / pad) and the AI keeper reacts like in a highlight.
  *
  * Set-piece variant = curl gate (2.3#25): 5 free kicks; each one that clears
@@ -17,8 +17,8 @@ import { flatAttrs } from '../../setup'
 import { add, dist, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { aiKeeperReact, integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave } from '../keeper'
-import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_POINTS, inTarget, msToKmh, shotPoints } from '../scoring'
-import { distanceToGoal, planIntent, previewPath, shotIntent } from '../shooting'
+import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_POINTS, GRID_CENTRE_R, GRID_KEEPER_FROM, GRID_SHOTS, GRID_ZONE_R, gridShotPoints, msToKmh } from '../scoring'
+import { planIntent, previewPath, shotIntent } from '../shooting'
 import type { DrillConfig, DrillInput, DrillView, GoalTargetView } from '../types'
 
 type AttemptState = 'ready' | 'flight' | 'resolved'
@@ -38,6 +38,8 @@ const CORNERS: readonly [number, number][] = [
   [GOAL_CENTER_Y + 2.85, 1.8],
 ]
 const TARGET_R = 0.78
+/** 3×3 goal grid zone centres (y, z), row by row from the bottom. */
+const GRID: readonly [number, number][] = [0.45, 1.22, 1.99].flatMap((z) => [-2.44, 0, 2.44].map((dy): [number, number] => [GOAL_CENTER_Y + dy, z]))
 const WALL_GAP = 9.15
 
 export class FinishingDrill extends DrillBase {
@@ -58,7 +60,8 @@ export class FinishingDrill extends DrillBase {
   private attempt = 0
   /** Curl gate: the kick was struck between the posts (predicted at the strike). */
   private onTarget = false
-  private shotFrom = 18
+  /** Shuffled 3×3 zone sequence (standard variant). */
+  private readonly sequence: number[] = []
   private aim: DrillInput['aim'] = null
 
   constructor(cfg: DrillConfig) {
@@ -68,7 +71,15 @@ export class FinishingDrill extends DrillBase {
     this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(kq, true), { number: 1 })
     this.keeperHome = { ...this.keeper.pos }
     this.ball = { x: 80, y: GOAL_CENTER_Y, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
-    this.targets = CORNERS.map(([y, z], i) => ({ baseY: y, baseZ: z, phase: i * 1.7, lit: false, hitT: -9 }))
+    this.targets = (this.variant === 'setPiece' ? CORNERS : GRID).map(([y, z], i) => ({ baseY: y, baseZ: z, phase: i * 1.7, lit: false, hitT: -9 }))
+    if (this.variant !== 'setPiece') {
+      const seq = GRID.map((_, i) => i)
+      for (let i = seq.length - 1; i > 0; i--) {
+        const j = this.rng.int(0, i)
+        ;[seq[i], seq[j]] = [seq[j], seq[i]]
+      }
+      this.sequence.push(...seq)
+    }
     if (this.variant === 'setPiece') {
       for (let i = 0; i < 4; i++) this.wall.push(makeActor(`w${i}`, 'opp', 'CB', { x: 90, y: GOAL_CENTER_Y }, flatAttrs(60), { number: 2 + i }))
     }
@@ -83,18 +94,15 @@ export class FinishingDrill extends DrillBase {
     const d = sp ? this.rng.range(19, 27) : this.rng.range(13, 24)
     const th = (this.rng.chance(0.5) ? 1 : -1) * this.rng.range(0, sp ? 0.45 : 0.62)
     this.spot = { x: PITCH_LENGTH - d * Math.cos(th), y: GOAL_CENTER_Y + d * Math.sin(th) }
-    this.shotFrom = distanceToGoal(this.spot)
     this.tracker = createTracker()
     Object.assign(this.ball, { x: this.spot.x, y: this.spot.y, z: 0, vx: 0, vy: 0, vz: 0 })
     this.ball.spin = { side: 0, top: 0 }
     const toGoal = norm(sub({ x: PITCH_LENGTH, y: GOAL_CENTER_Y }, this.spot))
     place(this.hero, sub(this.spot, scale(toGoal, 0.75)), Math.atan2(toGoal.y, toGoal.x))
-    // Two lit corners, never the same pair twice in a row.
-    const pick = this.rng.int(0, 3)
-    let pick2 = this.rng.int(0, 3)
-    if (pick2 === pick) pick2 = (pick + 1 + this.rng.int(0, 2)) % 4
+    // The next zone of the shuffled sequence lights up.
+    const lit = this.sequence.length ? this.sequence[(this.attempt - 1) % this.sequence.length] : -1
     this.targets.forEach((t, i) => {
-      t.lit = i === pick || i === pick2
+      t.lit = i === lit
     })
     if (this.wall.length) this.buildWall(toGoal)
     if (sp) {
@@ -106,7 +114,7 @@ export class FinishingDrill extends DrillBase {
     }
     this.onTarget = false
     this.keeper.noTouch = 0
-    place(this.keeper, this.keeper.pos, Math.PI)
+    place(this.keeper, this.keeperLive ? this.keeper.pos : { x: PITCH_LENGTH - 0.4, y: GOAL_CENTER_Y + 5.2 }, Math.PI)
     this.keeperHome = keeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty))
     this.react = null
     this.touched = null
@@ -154,7 +162,7 @@ export class FinishingDrill extends DrillBase {
         w.state = 'jump'
         w.stateT = 0
       }
-      this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty), this.difficulty)
+      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty), this.difficulty)
       return
     }
   }
@@ -171,16 +179,14 @@ export class FinishingDrill extends DrillBase {
       this.award(through ? CURL_GATE_POINTS : 0, through, { label: through ? 'gate' : kind === 'blocked' ? 'blocked' : 'gateMissed', ...at })
       return
     }
-    if (kind === 'goal') {
-      const hit = this.targets.some((t) => t.lit && inTarget(y, z, this.targetPos(t)))
-      if (hit) {
-        this.stat('targets')
-        for (const t of this.targets) if (t.lit && inTarget(y, z, this.targetPos(t))) t.hitT = this.time
-      }
-      this.stat('goals')
-      this.award(shotPoints({ goal: true, targetHit: hit, distance: this.shotFrom, combo: this.combo }), true, { label: hit ? 'target' : 'goal', ...at })
-      return
+    const zone = this.targets.find((t) => t.lit)
+    const pts = zone ? gridShotPoints(kind === 'goal', y, z, this.targetPos(zone)) : 0
+    if (kind === 'goal') this.stat('goals')
+    if (pts >= 6) {
+      this.stat('targets')
+      if (zone) zone.hitT = this.time
     }
+    if (kind === 'goal' || pts > 0) return this.award(pts, pts >= 6, { label: pts >= 6 ? 'target' : 'goal', ...at })
     this.stat(kind === 'saved' ? 'saves' : kind === 'blocked' ? 'blocked' : kind === 'woodwork' ? 'woodwork' : 'misses')
     this.award(0, false, { label: kind === 'saved' ? 'saved' : kind === 'blocked' ? 'blocked' : kind === 'woodwork' ? 'post' : 'miss', ...at })
   }
@@ -195,9 +201,15 @@ export class FinishingDrill extends DrillBase {
     return this.state === 'flight'
   }
 
-  /** Curl gate ends after the fifth kick. */
+  /** Curl gate ends after the fifth kick, the target grid after the tenth shot. */
   protected forceEnd(): boolean {
-    return this.variant === 'setPiece' && this.attempt >= CURL_GATE_ATTEMPTS && this.state === 'resolved' && this.stateT > 0.6
+    const n = this.variant === 'setPiece' ? CURL_GATE_ATTEMPTS : GRID_SHOTS
+    return this.attempt >= n && this.state === 'resolved' && this.stateT > 0.6
+  }
+
+  /** Target grid: keeper joins from shot 3; the curl gate always has one. */
+  private get keeperLive(): boolean {
+    return this.variant === 'setPiece' || this.attempt >= GRID_KEEPER_FROM
   }
 
   protected tick(dt: number, input: DrillInput, live: boolean): void {
@@ -287,6 +299,7 @@ export class FinishingDrill extends DrillBase {
   }
 
   private targetPos(t: Target): { y: number; z: number; r: number } {
+    if (this.variant !== 'setPiece') return { y: t.baseY, z: t.baseZ, r: GRID_ZONE_R }
     return {
       y: t.baseY + Math.sin(this.time * 0.9 + t.phase) * 0.35,
       z: Math.max(0.35, t.baseZ + Math.cos(this.time * 0.7 + t.phase) * 0.2),
@@ -311,10 +324,13 @@ export class FinishingDrill extends DrillBase {
   }
 
   view(): DrillView {
-    const goalTargets: GoalTargetView[] = this.targets.map((t) => {
+    const goalTargets: GoalTargetView[] = this.variant === 'setPiece' ? [] : this.targets.map((t) => {
       const p = this.targetPos(t)
       return { end: 'east', y: p.y, z: p.z, r: p.r, tone: this.time - t.hitT < 0.8 ? 'green' : t.lit ? 'gold' : 'dim' }
     })
+    // The lit zone's 10-point centre.
+    const lit = this.targets.find((t) => t.lit)
+    if (lit && this.variant !== 'setPiece') goalTargets.push({ end: 'east', y: lit.baseY, z: lit.baseZ, r: GRID_CENTRE_R, tone: 'white' })
     let preview: DrillView['preview'] = null
     if (this.aim && this.state === 'ready') {
       const intent = shotIntent(this.aim, this.spot)

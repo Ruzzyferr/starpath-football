@@ -42,7 +42,7 @@ export const tr = {
     pc: 'Bilgisayar',
     touch: 'Dokunmatik',
     goal: {
-      finishing: 'Kaleciyi geç, yanan köşe hedeflerini vur. Gol serisi çarpan verir.',
+      finishing: '10 şut: 9 bölgeli kalede sırayla yanan bölgeyi vur. Merkez 10, bölge 6, başka yere gol 2 puan. 3. şuttan itibaren kaleci var.',
       setPiece: 'Falso kapısı: 5 serbest vuruş. Barajı aşıp iki direğin arasına giden her vuruş 20 puan. Rüzgâr ekranda yazıyor.',
       passing: 'Yanan arkadaşına doğru pası at: YERDEN kapıdan geçir, HAVADAN mankenlerin üstünden aşırt.',
       dribbling: 'Kapılardan sırayla geç, kon’lara çarpma; mankene 1,5–2,5 m kala çalım yap.',
@@ -164,7 +164,7 @@ export const en: Shape<typeof tr> = {
     pc: 'Desktop',
     touch: 'Touch',
     goal: {
-      finishing: 'Beat the keeper and hit the lit corner targets. Scoring streaks multiply.',
+      finishing: '10 shots: hit the zone that lights up on a 9-zone goal. Centre 10, zone 6, any other goal 2. A keeper joins from shot 3.',
       setPiece: 'Curl gate: 5 free kicks. Each one over the wall and between the posts scores 20. The wind is shown on screen.',
       passing: 'Find the lit team-mate: GROUND passes through the gate, LOFTED balls over the mannequins.',
       dribbling: 'Take the gates in order without clipping cones; skill past mannequins at 1.5–2.5 m.',

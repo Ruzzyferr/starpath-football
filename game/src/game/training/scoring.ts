@@ -15,7 +15,7 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v)
 
 /** Drill length in seconds. */
 export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
-  finishing: 30,
+  finishing: 40,
   passing: 35,
   dribbling: 30,
   fitness: 40,
@@ -27,7 +27,7 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
 
 /** Points that count as a top session (performance ≈ 1). Calibrated with scripted bots (drills.test.ts). */
 export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
-  finishing: 1600,
+  finishing: 55,
   passing: 1900,
   dribbling: 2300,
   fitness: 1500,
@@ -98,6 +98,19 @@ export function shotPoints(i: ShotScoreInput): number {
   if (!i.goal) return 0
   const base = 100 + Math.max(0, Math.min(12, i.distance - 14)) * 5
   return Math.round((base + (i.targetHit ? 150 : 0)) * comboMultiplier(i.combo))
+}
+
+/** Target grid (2.3#23): 10 shots at the lit zone of a 3×3 goal grid. */
+export const GRID_SHOTS = 10
+export const GRID_CENTRE_R = 0.4
+export const GRID_ZONE_R = 0.85
+/** From this shot on the keeper is live (2.3#23: moving keeper from level 3). */
+export const GRID_KEEPER_FROM = 3
+/** Points: zone centre 10, rest of the zone 6, anywhere else in the goal 2, no goal 0. */
+export function gridShotPoints(goal: boolean, y: number, z: number, zone: { y: number; z: number }): number {
+  if (!goal) return 0
+  const d = Math.hypot(y - zone.y, z - zone.z)
+  return d <= GRID_CENTRE_R ? 10 : d <= GRID_ZONE_R ? 6 : 2
 }
 
 /** Is a goal-plane crossing (y, z) inside a target circle? */

@@ -231,6 +231,15 @@ describe('training drills (headless)', () => {
     })
   }
 
+  it('finishing target grid: 10 shots, points made of 10 / 6 / 2 (2.3#23)', () => {
+    const r = play(make('finishing', 7), finishingGood)
+    expect(r.stats.shots).toBe(10)
+    expect(r.points).toBeLessThanOrEqual(100)
+    expect(r.points).toBeGreaterThan(0)
+    const v = make('finishing', 7).view()
+    expect(v.goalTargets.filter((t) => t.tone === 'dim').length).toBe(8)
+  })
+
   it('goalkeeping reflex wall: exactly 12 shots within the drill time (2.3#29)', () => {
     const r = play(make('goalkeeping', 4), BOTS.goalkeeping.good)
     expect(r.stats.shots).toBe(12)
