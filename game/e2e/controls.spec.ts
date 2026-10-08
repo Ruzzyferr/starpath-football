@@ -13,8 +13,8 @@ test('settings: control schemes persist and reach the input layer; assist multip
   await page.goto('/?autostart=1&seed=4242')
   await waitForApp(page)
   await sp(page, `sp.navigate('settings')`)
-  await expect(page.getByRole('radio', { name: /Full ×0\.8/ })).toBeVisible()
-  await expect(page.getByRole('radio', { name: /Manual ×1\.25/ })).toBeVisible()
+  await expect(page.getByRole('radio', { name: /Full ×0\.85/ })).toBeVisible()
+  await expect(page.getByRole('radio', { name: /Manual ×1\.2/ })).toBeVisible()
   await page.getByRole('radio', { name: 'Sling-shot' }).click()
   // PC power is the first "Oscillating" group, gamepad the second.
   await page.getByRole('radio', { name: 'Oscillating' }).first().click()
