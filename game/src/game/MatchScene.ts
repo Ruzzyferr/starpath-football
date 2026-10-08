@@ -164,7 +164,7 @@ const T = {
     pass_complete: 'GOOD PLAY', lost_ball: 'LOST IT', defended: 'DEFENDED!', conceded: 'CONCEDED', shot_conceded: 'CHANCE CONCEDED', foul_won: 'FOUL WON', cleared: 'CLEARED',
     foul_committed: 'FOUL', timeout: "TIME'S UP", replay: 'REPLAY', skip: 'tap to skip', paused: 'PAUSED', focus: 'FOCUS', sprint: 'SPRINT',
     skill: 'SKILL', you: 'YOU', yellow: 'YELLOW CARD', red: 'RED CARD', skillOk: 'SKILL!', skillBad: 'TACKLED', call: 'PASS!',
-    header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
+    holdHint: 'IN HANDS - swipe to throw or kick', header: 'NOW!', shootHint: 'Swipe / hold & release to shoot', woodHit: 'POST!', save: 'SAVE!',
     offside: 'OFFSIDE', offsideFlag: 'FLAG UP!', oneTwo: 'ONE-TWO!',
     advantage: 'ADVANTAGE!', advantagePlayed: 'PLAY ON', advantageBack: 'BACK FOR THE FOUL',
     punch: 'PUNCHED!', keeperRead: 'HE KNOWS YOUR SPOT', keeperReadMid: 'HE EXPECTS THE MIDDLE',
@@ -178,7 +178,7 @@ const T = {
     pass_complete: 'İYİ OYUN', lost_ball: 'TOP KAYBI', defended: 'SAVUNDUN!', conceded: 'GOL YEDİK', shot_conceded: 'RAKİP ŞUT BULDU', foul_won: 'FAUL ALDIN', cleared: 'UZAKLAŞTIRILDI',
     foul_committed: 'FAUL', timeout: 'SÜRE BİTTİ', replay: 'TEKRAR', skip: 'geçmek için dokun', paused: 'DURAKLATILDI', focus: 'ODAK', sprint: 'DEPAR',
     skill: 'ÇALIM', you: 'SEN', yellow: 'SARI KART', red: 'KIRMIZI KART', skillOk: 'ÇALIM!', skillBad: 'KAPTIRDIN', call: 'PAS!',
-    header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
+    holdHint: 'ELİNDE - atmak ya da vurmak için kaydır', header: 'ŞİMDİ!', shootHint: 'Şut için kaydır / basılı tutup bırak', woodHit: 'DİREK!', save: 'KURTARIŞ!',
     offside: 'OFSAYT', offsideFlag: 'BAYRAK HAVADA!', oneTwo: 'VER-KAÇ!',
     advantage: 'AVANTAJ!', advantagePlayed: 'DEVAM', advantageBack: 'FAUL ÇALINDI',
     punch: 'YUMRUKLADI!', keeperRead: 'KÖŞENİ BİLİYOR', keeperReadMid: 'ORTAYI BEKLİYOR',
@@ -1775,6 +1775,14 @@ export class MatchScene extends Phaser.Scene {
       }
     }
 
+    // Keeper holds the ball: six-second rule countdown, swipe to distribute.
+    if (rt.keeperHoldLeft > 0) {
+      const tick = Math.ceil(rt.keeperHoldLeft)
+      if (tick !== this.holdTick) {
+        this.holdTick = tick
+        this.floatText(`${this.s.holdHint} ${tick}`, hero.pos.x, hero.pos.y, '#ffd166', 0.9, 2.8)
+      }
+    } else this.holdTick = -1
     // Header timing ring.
     if (rt.headerChance && hero.state !== 'jump') {
       const eta = dist(rt.ball, hero.pos) / Math.max(4, Math.hypot(rt.ball.vx, rt.ball.vy))
@@ -2583,6 +2591,8 @@ export class MatchScene extends Phaser.Scene {
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && r.outcome !== 'woodwork') this.shake(100, 0.002)
   }
+
+  private holdTick = -1
 
   private floatText(text: string, x: number, y: number, color: string, life: number, zOff: number): void {
     // Avoid stacking the same message.
