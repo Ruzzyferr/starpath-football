@@ -15,3 +15,17 @@ export function collator(lang: string = currentLang.value): Intl.Collator {
 
 /** Compare two display strings using the active language. */
 export const compareText = (a: string, b: string, lang?: string): number => collator(lang).compare(a, b)
+
+/**
+ * Accent- and case-insensitive key for search boxes: "tur" finds "Türkiye",
+ * "istanbul" finds "İstanbul", "cagla" finds "Çağla" — players often type
+ * without Turkish letters on a foreign keyboard.
+ */
+export function foldSearch(text: string): string {
+  return text
+    .toLocaleLowerCase('tr')
+    .replace(/ı/g, 'i')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .trim()
+}
