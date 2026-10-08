@@ -137,9 +137,10 @@ describe('Vision pass options', () => {
     const low = rankPassOptions(from, 30, mates, [])
     const mid = rankPassOptions(from, 60, mates, [])
     const high = rankPassOptions(from, 95, mates, [])
-    expect(low.length).toBe(1)
-    expect(mid.length).toBe(2)
-    expect(high.length).toBe(3)
+    // Plan 2.1#60: Vision 30 → 2, 60 → 4, 85+ → all (here 3 mates within range of a low-Vision scan).
+    expect(low.length).toBe(2)
+    expect(mid.length).toBe(3)
+    expect(high.length).toBe(4)
     expect(low).not.toContain('far')
     // 42 m away: only a high-Vision player sees it.
     expect(rankPassOptions(from, 95, [mates[3]], [])).toEqual(['far'])

@@ -140,7 +140,12 @@ const keeperReach = (k: Pick<Agent, 'team'>): number => (k.team === 'opp' ? OPP_
 /** Balls within 0.55 m of the keeper below this height are taken standing (was 1.7: keepers flung themselves past head-high shots). */
 export const KEEPER_STAND_MAX_Z = 2.2
 /** One-two: after a hero pass, a second tap within this many seconds asks the receiver to return it. */
-export const ONE_TWO_WINDOW = 2.2
+export const ONE_TWO_WINDOW = 1.5
+/** Return-pass gate (plan 2.1#59): Passing ≥ 55 returns first time. */
+export const ONE_TWO_FIRST_TIME_PASSING = 55
+/** A weaker passer's settling touch (s) before the return. */
+export const ONE_TWO_SET_TOUCH = 0.45
+export const oneTouchReturn = (passing: number): boolean => passing >= ONE_TWO_FIRST_TIME_PASSING
 /** An armed one-two the receiver could not play is dropped after this long. */
 export const ONE_TWO_ARMED_MAX = 3
 
@@ -292,6 +297,13 @@ const zoneY = (z: GoalZone): number => (z === 1 ? GOAL_CENTER_Y : GOAL_CENTER_Y 
  * rt.queueAction({ kind: 'shoot', target: { x: 105, y: 32 }, power: 0.8, curl: 0, chip: false })
  * while (!rt.finished) rt.update(1 / 60)
  */
+const EMPTY_SET: ReadonlySet<string> = new Set()
+
+/** A hero pass is completed when it reaches any outfield team-mate (sekme dahil, plan 2.1#58). */
+export function passCompletedBy(receiver: { team: string; isHero: boolean }): boolean {
+  return receiver.team === 'hero' && !receiver.isHero
+}
+
 /** Ball distance at the carrier's feet (m) between knock-ons. */
 export const DRIBBLE_FOOT = 0.42
 
@@ -609,6 +621,12 @@ export class HighlightRuntime {
    * 0.15 s of game time. Count and scan range grow with Vision. Empty when the
    * hero is not on the ball.
    */
+  /** Team-mates standing offside right now (pass targets drawn with a red frame, plan 2.1#60). */
+  offsideMates(): ReadonlySet<string> {
+    if (!this.heroOnBall || this.setPiece?.kind === 'corner') return EMPTY_SET
+    return offsideSnapshot(this.agents, this.ball.x, this.hero)
+  }
+
   passOptions(): readonly string[] {
     if (!this.heroOnBall || this.hero.isKeeper || this.phase !== 'live' || this.setPiece?.kind === 'penalty') return []
     if (this.passOpts.t >= 0 && this.time - this.passOpts.t < 0.15) return this.passOpts.ids
@@ -1106,8 +1124,9 @@ export class HighlightRuntime {
   private tryArmOneTwo(act: HeroAction): boolean {
     const o = this.oneTwo
     if (!o || o.armed || this.time - o.t > ONE_TWO_WINDOW * this.timingMult) return false
-    const tap = act.kind === 'action' || act.kind === 'tapAt' || act.kind === 'pass' || act.kind === 'skill' || (act.kind === 'swipe' && act.swipe.isTap)
-    if (!tap) return false
+    // A tap, or (plan 2.1#59) a swipe into space: run and ask for it back.
+    const trigger = act.kind === 'action' || act.kind === 'tapAt' || act.kind === 'pass' || act.kind === 'skill' || act.kind === 'swipe'
+    if (!trigger) return false
     const mate = this.agents.find((a) => a.id === o.id)
     if (!mate) return false
     // The ball must be with the receiver or still on its way to him.
@@ -1372,7 +1391,8 @@ export class HighlightRuntime {
     if (a.isHero) this.heroControlled = true
 
     // Pass completion bookkeeping: a team-mate receiving the hero's pass may score → assist.
-    if (this.heroPassTo && a.team === 'hero' && !a.isHero && (this.heroPassTo.id === a.id || this.heroPassTo.id === '*')) {
+    // Plan 2.1#58: any team-mate receiving it counts (deflections included), not only the target.
+    if (this.heroPassTo && passCompletedBy(a)) {
       this.stats.passesCompleted++
       this.assistChain = a.id
       // hold_up: the lay-off found a team-mate: job done.
@@ -1618,7 +1638,11 @@ export class HighlightRuntime {
     const w = this.aiWorld()
     const heldFor = this.time - this.ownerSince
     // One-two requested: first-time return into the hero's run.
-    if (a.team === 'hero' && this.oneTwo?.armed && this.oneTwo.id === a.id) return this.playOneTwo(a)
+    // Passing ≥ 55 plays it first time (plan 2.1#59); a weaker passer needs a touch to set it.
+    if (a.team === 'hero' && this.oneTwo?.armed && this.oneTwo.id === a.id) {
+      if (oneTouchReturn(a.attrs.passing) || heldFor > ONE_TWO_SET_TOUCH) this.playOneTwo(a)
+      return
+    }
     // Hero called for the ball.
     if (a.team === 'hero' && this.heroRequest && this.time - this.heroRequest.t < 1.6 && heldFor > (this.heroRequest.explicit ? 0.05 : 0.2)) {
       const req = this.heroRequest

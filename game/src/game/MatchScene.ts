@@ -1707,12 +1707,14 @@ export class MatchScene extends Phaser.Scene {
     // Vision: the best pass options the hero sees (count/range grow with Vision), when not aiming.
     if (!pv && getControlPrefs().visionHints) {
       const ids = rt.passOptions()
+      const offs = ids.length ? rt.offsideMates() : null
       for (let i = 0; i < ids.length; i++) {
         const a = this.agentById(ids[i])
         if (!a) continue
         const bp = project(a.pos.x, a.pos.y)
-        const r = (0.95 - i * 0.12) * PPM
-        g.lineStyle(0.08 * PPM, 0x5dff8a, 0.75 - i * 0.18)
+        const r = Math.max(0.55, 0.95 - i * 0.12) * PPM
+        // Offside target: red frame (2.1#60).
+        g.lineStyle(0.08 * PPM, offs?.has(ids[i]) ? 0xff3b3b : 0x5dff8a, Math.max(0.3, 0.75 - i * 0.12))
         g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT, 20)
       }
     }

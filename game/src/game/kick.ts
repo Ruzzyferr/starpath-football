@@ -809,10 +809,15 @@ export function analogShotTarget(stickY: number): Vec2 {
  * comfortable distance. Deterministic.
  * @param vision hero vision attribute 0..100
  */
+/** Pass options shown by Vision (plan 2.1#60): 30 → 2, 60 → 4, 85+ → every team-mate. */
+export function visionOptionCount(vision: number): number {
+  return vision >= 85 ? Infinity : vision >= 60 ? 4 : vision >= 45 ? 3 : 2
+}
+
 export function rankPassOptions(from: Vec2, vision: number, mates: readonly PassCandidate[], opponents: readonly Vec2[], attackX = 1): string[] {
   const v = clampN(vision, 0, 100)
   const range = 22 + v * 0.3
-  const count = v < 45 ? 1 : v < 70 ? 2 : 3
+  const count = visionOptionCount(v)
   const scored: { id: string; s: number }[] = []
   for (const m of mates) {
     const d = dist(from, m.pos)
