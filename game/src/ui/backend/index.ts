@@ -19,7 +19,7 @@ import { realActions } from './realActions'
 import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
 import { checkSaveIntegrity, flushAutosave, refreshSlots, useStorage } from './persistence'
-import { persistNow } from './liveMatch'
+import { debugOpenDecision, persistNow } from './liveMatch'
 import * as meta from './meta'
 import { flushObjectiveToasts, forceCompleteObjective, installObjectivesFeed } from './objectivesFeed'
 
@@ -105,6 +105,8 @@ function installDebugApi(): void {
     toSeasonEnd: () => devJump('seasonEnd'),
     jump: (id: ScreenId) => devJump(id),
     flushAutosave,
+    /** Open an in-match decision window now (2.4#36/#52/#99). */
+    openDecision: debugOpenDecision,
     refreshSlots,
     /** Career end / achievements bridge (ui/backend/meta). */
     meta,

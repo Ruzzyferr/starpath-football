@@ -815,6 +815,7 @@ export const realActions: GameActions = {
     commit(s)
   },
   matchPause: (paused) => live.setPaused(paused),
+  matchDecide: (optionId) => live.decide(optionId),
   simMoment: () => live.simMoment(),
   playMoment: () => live.playMoment(),
   matchSimToEnd: () => live.simToEnd(),

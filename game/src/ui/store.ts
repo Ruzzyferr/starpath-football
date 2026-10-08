@@ -454,6 +454,23 @@ export interface MomentView {
   kind: string // HighlightKind
   prompt: string
 }
+export interface DecisionOptionView {
+  id: string
+  label: LText
+  hint: LText
+  /** Coin-flip choice (shown with a risk tag). */
+  risky: boolean
+}
+/** In-match decision window (GAP 2.4#36/#52/#99): the match is paused while this is set. */
+export interface DecisionView {
+  kind: string
+  title: LText
+  prompt: LText
+  options: DecisionOptionView[]
+  /** Option taken when the timer runs out. */
+  fallback: string
+  seconds: number
+}
 export interface LiveMatchView {
   fixture: FixtureView
   minute: number
@@ -471,6 +488,7 @@ export interface LiveMatchView {
   pendingMoment: MomentView | null
   /** True while the Phaser scene owns the screen for a moment. */
   momentActive: boolean
+  decision: DecisionView | null
   speed: 0.5 | 1 | 2 | 4
   paused: boolean
   finished: boolean
@@ -677,6 +695,8 @@ export interface GameActions {
   /** Pre-match focus (attack / balance / defend) for the coming matches (GAP 2.1#9). */
   setMatchFocus(focus: 'attack' | 'balance' | 'defend'): void
   matchPause(paused: boolean): void
+  /** Take an option of the in-match decision window (GAP 2.4#36/#52/#99). */
+  matchDecide(optionId: string): void
   /** Let the sim resolve the pending moment. */
   simMoment(): void
   /** Hand the pending moment to the Phaser scene (#match-canvas). */
@@ -797,6 +817,8 @@ export const activeEvent = signal<number | null>(null)
 /** Audio mixer fields (WP-3): `sound` = SFX channel, `music` = music channel, the rest below. */
 export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' | 'music'> {
   reducedMotion: boolean
+  /** Offer timed in-match decision windows (off = never; the match never waits on a timer). */
+  matchDecisions: boolean
   highContrast: boolean
   /** Colour theme: dark (default), light, or follow the OS. */
   theme: 'dark' | 'light' | 'system'
@@ -848,6 +870,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   colorblind: false,
   textScale: 1,
   reducedMotion: false,
+  matchDecisions: true,
   highContrast: false,
   theme: 'dark',
   lowFx: false,

@@ -1615,6 +1615,18 @@ export class MatchSim {
 
   // ───────────────────────── Hero rating log & map ─────────────────────────
 
+  /**
+   * In-match decision window result (sim/match/decisions): nudges the hero's rating
+   * and may book him. Draws no engine RNG. No-op while the hero is off the pitch.
+   */
+  applyHeroDecision(ratingDelta: number, book: boolean): void {
+    const id = this.s.hero.id
+    const side = this.s.hero.side
+    if (!id || !side || !this.heroOnPitch() || this.finished) return
+    if (ratingDelta) this.rate(ratingDelta, { source: 'final', key: 'decision' })
+    if (book && !this.s.players[id].red) this.book(side, id)
+  }
+
   /** Moves the hero's running rating and records why. */
   private rate(delta: number, entry: Omit<RatingLogEntry, 'minute' | 'delta'>): void {
     const h = this.s.hero

@@ -853,6 +853,7 @@ export const mockActions: GameActions = {
   matchPause(paused) {
     engine.pause(paused)
   },
+  matchDecide() {},
   simMoment() {
     engine.simMoment()
   },

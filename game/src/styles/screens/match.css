@@ -1531,3 +1531,20 @@
     overflow-wrap: anywhere;
   }
 }
+
+/* ───────────── In-match decision window ───────────── */
+.lm-dec-top { display: flex; align-items: center; gap: var(--sp-2); }
+.lm-dec-icon { display: grid; place-items: center; width: 36px; height: 36px; border-radius: 50%; background: var(--brand-pitch); color: var(--text-on-pitch); }
+.lm-dec-tag { color: var(--brand-pitch); }
+.lm-dec-prompt { margin: var(--sp-3) 0; }
+.lm-dec-opts { display: grid; gap: var(--sp-2); }
+.lm-dec-opt { display: grid; text-align: left; gap: 2px; width: 100%; }
+.lm-dec-opt small { font-weight: 400; opacity: 0.85; white-space: normal; overflow-wrap: anywhere; }
+.lm-decision .btn { height: auto; min-height: 56px; white-space: normal; padding-block: var(--sp-2); }
+.lm-dec-timer { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
+.lm-dec-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
+.lm-dec-bar i { display: block; height: 100%; background: var(--brand-pitch); transition: width 1s linear; }
+.lm-dec-secs { min-width: 4.5ch; }
+.lm-dec-note { margin-top: var(--sp-2); }
+@media (prefers-reduced-motion: reduce) { .lm-dec-bar i { transition: none; } }
+:root[data-motion='reduced'] .lm-dec-bar i { transition: none; }

@@ -9,6 +9,7 @@ import { actions, match, navigate, type LiveMatchView, type MatchEventView, type
 import { CompareBar, EVENT_ICON, MOMENT_ICON, PitchLinesHorizontal } from './shared'
 import { MatchHints } from '../../tutorial/ControlHint'
 import { MomentsPanel } from './Moments'
+import { DecisionCard } from './DecisionCard'
 import { SoundCaption, captionKeyFor } from '../../a11y/Captions'
 
 const SPEEDS: { id: 0.5 | 1 | 2 | 4; label: string }[] = [
@@ -231,7 +232,7 @@ export function LiveMatchScreen() {
               icon={m.paused ? 'play' : 'pause'}
               label={m.paused ? t('match.live.play') : t('match.live.pause')}
               onClick={() => actions.matchPause(!m.paused)}
-              disabled={!!moment || m.momentActive}
+              disabled={!!moment || m.momentActive || !!m.decision}
             />
             <Segmented<0.5 | 1 | 2 | 4>
               label={t('match.live.speed')}
@@ -271,6 +272,8 @@ export function LiveMatchScreen() {
           </div>
         </div>
       )}
+
+      {m.decision && <DecisionCard key={m.decision.kind + m.minute} d={m.decision} />}
 
       {goalKey !== null && (
         <div class="lm-goal-banner" key={goalKey} aria-hidden="true">

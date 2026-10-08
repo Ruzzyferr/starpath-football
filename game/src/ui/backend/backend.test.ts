@@ -111,7 +111,8 @@ describe('real backend end to end', () => {
       if (match.value!.pendingMoment) {
         A.simMoment()
         moments++
-      } else vi.advanceTimersByTime(MS_PER_MINUTE[4])
+      } else if (match.value!.decision) A.matchDecide(match.value!.decision.fallback)
+      else vi.advanceTimersByTime(MS_PER_MINUTE[4])
     }
     const m = match.value!
     expect(m.finished).toBe(true)

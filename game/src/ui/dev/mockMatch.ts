@@ -382,6 +382,7 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
           heroStats: emptyHeroStats(),
           pendingMoment: null,
           momentActive: false,
+          decision: null,
           speed: settings.value.matchSpeed,
           paused: true,
           finished: false,

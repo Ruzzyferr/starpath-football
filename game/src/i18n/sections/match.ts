@@ -42,6 +42,7 @@ export const tr = {
     title: 'Canlı Maç',
     phase: { first: 'İlk Yarı', second: 'İkinci Yarı', extra: 'Uzatmalar', shootout: 'Penaltılar', done: 'Maç Sonu' },
     fullTime: 'Maç sona erdi',
+    decision: { tag: 'Karar anı', timer: '{s} sn', timerHold: 'Süre durdu', hold: 'Süreyi durdur', resume: 'Süreyi sürdür', risky: 'Riskli', auto: 'Süre dolunca varsayılan seçenek uygulanır', note: 'Seçimin sonuçları maç sonunda işlenir.' },
     pause: 'Duraklat',
     play: 'Devam et',
     speed: 'Maç hızı',
@@ -167,6 +168,7 @@ export const en: Shape<typeof tr> = {
   live: {
     title: 'Live Match',
     phase: { first: 'First Half', second: 'Second Half', extra: 'Extra Time', shootout: 'Penalties', done: 'Full Time' },
+    decision: { tag: 'Decision time', timer: '{s} s', timerHold: 'Timer stopped', hold: 'Stop timer', resume: 'Resume timer', risky: 'Risky', auto: 'The default is picked when time runs out', note: 'The consequences are applied at full time.' },
     fullTime: 'Full time',
     pause: 'Pause',
     play: 'Resume',

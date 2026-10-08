@@ -32,6 +32,9 @@ import { matchExpectations } from '../../sim/game/objectives'
 import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
+import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
+import { DECISION_FLAG, applyPendingDecisions, pendingDecisions, recordDecision } from '../../sim/game/matchDecisions'
+import { heroOvr } from '../../sim/career/progression'
 
 /** Live text-feed speeds (2.2#106: 0.5x–4x). */
 export type MatchSpeed = 0.5 | 1 | 2 | 4
@@ -70,6 +73,9 @@ interface Live {
   session: HighlightSession | null
   lastSaved: number
   finalized: boolean
+  /** In-match decision window currently open (match paused), 2.4#36/#52/#99. */
+  decision: DecisionDef | null
+  decisionMinute: number
 }
 
 let live: Live | null = null
@@ -123,6 +129,12 @@ function liveView(l: Live): LiveMatchView {
     heroStats: heroStatsView(snap),
     pendingMoment: hl ? { id: hl.id, minute: hl.minute, kind: hl.kind, prompt: HIGHLIGHT_PROMPTS[hl.kind]?.[lang] ?? hl.scenario.prompt } : null,
     momentActive: l.momentActive,
+    decision: l.decision
+      ? {
+        kind: l.decision.kind, title: l.decision.title, prompt: l.decision.prompt, fallback: l.decision.fallback, seconds: DECISION_SECONDS,
+        options: l.decision.options.map((o) => ({ id: o.id, label: o.label, hint: o.hint, risky: !!o.gamble })),
+      }
+      : null,
     speed: l.speed,
     paused: l.paused,
     finished: snap.finished,
@@ -261,7 +273,7 @@ function stopTimer(): void {
 function startTimer(): void {
   stopTimer()
   const l = live
-  if (!l || l.paused || l.finalized || l.momentActive || l.sim.pendingHighlight || l.sim.finished) return
+  if (!l || l.paused || l.finalized || l.momentActive || l.decision || l.sim.pendingHighlight || l.sim.finished) return
   l.timer = setInterval(tick, MS_PER_MINUTE[l.speed])
 }
 
@@ -278,7 +290,7 @@ function persistProgress(force = false): void {
 /** One simulated minute (ticker callback). */
 export function tick(): void {
   const l = live
-  if (!l || l.paused || l.momentActive || l.finalized) return
+  if (!l || l.paused || l.momentActive || l.decision || l.finalized) return
   if (l.sim.pendingHighlight) {
     stopTimer()
     publish()
@@ -292,8 +304,60 @@ export function tick(): void {
   if (l.sim.pendingHighlight) {
     stopTimer()
     persistProgress(true)
-  } else persistProgress()
+  } else {
+    persistProgress()
+    maybeOpenDecision(l)
+  }
   publish()
+}
+
+/** Open the in-match decision window when the pure rules say so (pauses the ticker). */
+function maybeOpenDecision(l: Live): void {
+  if (l.decision || l.finalized || settings.value.matchDecisions === false) return
+  const s = current()
+  if (!s) return
+  const snap = l.sim.snapshot()
+  const ev = snap.events[snap.events.length - 1]
+  const side = l.heroSide
+  const diff = side === 'home' ? snap.score[0] - snap.score[1] : snap.score[1] - snap.score[0]
+  const kind = pickDecision({
+    seed: l.fixtureId, minute: snap.minute, shown: pendingDecisions(s).length, lastMinute: l.decisionMinute,
+    heroOnPitch: snap.heroOnPitch, diff,
+    last: ev ? { type: ev.type, own: ev.side ? ev.side === side : null, minute: ev.minute } : null,
+    isCaptain: s.hero.contract?.role === 'captain', heroOvr: heroOvr(s.hero), heroYellow: snap.heroStats.yellow,
+  })
+  if (!kind) return
+  l.decision = decisionDef(kind, heroOvr(s.hero))
+  l.decisionMinute = snap.minute
+  stopTimer()
+}
+
+/** Dev/e2e only (`__sp.openDecision`): open a decision window right now. */
+export function debugOpenDecision(kind: DecisionKind): boolean {
+  const l = live
+  const s = current()
+  if (!l || !s || l.decision || l.finalized || l.momentActive) return false
+  l.decision = decisionDef(kind, heroOvr(s.hero))
+  l.decisionMinute = l.sim.snapshot().minute
+  stopTimer()
+  publish()
+  return true
+}
+
+/** Take a choice of the open decision window (or its default when the timer ran out). */
+export function decide(optionId: string): void {
+  const l = live
+  const s = current()
+  if (!l || !s || !l.decision) return
+  const def = l.decision
+  const out = resolveDecision(def, optionId, `${l.fixtureId}:${l.decisionMinute}`)
+  l.decision = null
+  recordDecision(s, out)
+  l.sim.applyHeroDecision(out.effects.rating, out.effects.book)
+  commit(s, { silent: true })
+  persistProgress(true)
+  publish()
+  startTimer()
 }
 
 function newLive(s: GameState, sim: MatchSim, paused: boolean): Live | null {
@@ -305,6 +369,7 @@ function newLive(s: GameState, sim: MatchSim, paused: boolean): Live | null {
   return {
     sim, fixtureId, fixture, setup: blob.setup, heroSide: blob.setup.heroSide ?? 'home',
     speed: settings.value.matchSpeed, paused, momentActive: false, timer: null, session: null, lastSaved: 0, finalized: false,
+    decision: null, decisionMinute: -99,
   }
 }
 
@@ -322,6 +387,7 @@ export function startMatch(): boolean {
   if (!live) return false
   // Clear any stale post-match record from an earlier game.
   writeJson(s.life, POST_FLAG, null)
+  writeJson(s.life, DECISION_FLAG, [])
   publish()
   commit(s, { silent: true })
   return true
@@ -379,7 +445,7 @@ export function installAutoPause(): void {
  */
 export function skipToMoment(): void {
   const l = live
-  if (!l || l.finalized || l.momentActive || l.sim.pendingHighlight) return
+  if (!l || l.finalized || l.momentActive || l.decision || l.sim.pendingHighlight) return
   stopTimer()
   let guard = 0
   while (!l.sim.finished && !l.sim.pendingHighlight && guard++ < 200) l.sim.step()
@@ -465,6 +531,7 @@ export function playMoment(): void {
 export function simToEnd(): void {
   const l = live
   if (!l || l.finalized) return
+  if (l.decision) decide(l.decision.fallback)
   l.session?.stop()
   l.momentActive = false
   stopTimer()
@@ -503,6 +570,7 @@ function finalize(): void {
   const before = snapshot(s)
   const trustBefore = s.hero.managerTrust
   const relBefore = relationValues(s.life.relationships)
+  applyPendingDecisions(s)
   let report: ReturnType<typeof finishHeroMatch>
   try {
     report = finishHeroMatch(s, l.sim)

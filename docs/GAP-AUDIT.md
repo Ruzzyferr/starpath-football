@@ -22,7 +22,7 @@
 | 2.1 Maç motoru | 62 | 0 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 0 | 0 | 1 | 0 | 0 | 30 |
 | 2.3 Kariyer | 40 | 0 | 0 | 0 | 3 | 0 | 43 |
-| 2.4 Sosyal, olaylar | 36 | 0 | 0 | 0 | 3 | 0 | 39 |
+| 2.4 Sosyal, olaylar | 38 | 0 | 0 | 0 | 1 | 0 | 39 |
 | 2.5 Ekonomi | 44 | 0 | 0 | 4 | 1 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 57 | 0 | 0 | 1 | 7 | 0 | 65 |
@@ -31,7 +31,7 @@
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 33 | 0 | 0 | 2 | 2 | 39 | 76 |
-| **Toplam** | **472 (%83)** | 1 | 0 | 34 | 22 | 40 | **569** |
+| **Toplam** | **474 (%83)** | 1 | 0 | 34 | 20 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -482,11 +482,11 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.4#23 | TAMAM | sim/life/wellbeing.ts:67 | Partner yokluğu ceza vermiyor |
 | 2.4#24 | TAMAM | ui/screens/SettingsScreen.tsx (partnerPref), sim/game/partnerPref.ts, partnerPref.test.ts, ui/backend/prefsSync.ts | Ayarlarda Fark etmez/Kadınlar/Erkekler; kariyere yansır, flört olayı adı havuzdan seçer. Mevcut partner değişmez; "Fark etmez" eski seçimi byte-aynı korur |
 | 2.4#25 | TAMAM | sim/life/events/content/romance.ts:415 | TD etkisi −4 (tavan −5) |
-| 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Maç içi pas ikonu ve maç sonu X sana N pas verdi raporu, src/game runtime HUD ve çift bazlı pas telemetrisi ister; ayrı maç-sunumu paketi (v1.1). |
+| 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Karar penceresi (Canlı Maç Merkezi) hazır; yine de maç içi pas ikonu ve maç sonu X sana N pas verdi raporu çift bazlı pas telemetrisi ister, ayrı maç-sunumu paketi (v1.1). |
 | 2.4#37 | TAMAM | sim/life/closeFriends.ts, closeFriends.test.ts, ui/screens/life/Relations.tsx, e2e/lifeplus.spec.ts | En fazla 3 yakın arkadaş: kriz haftasında destek (mutluluk +6, stres -5, 4 haftada bir), transfer söylentisinde içeriden bilgi olayı (rumour.insider_tip), takım arkadaşıysa ~%10 pas bonusu (maç motoru relationToHero), ihmal yarısı hızda söner. |
 | 2.4#46 | TAMAM | sim/career/squadRole.ts formTerm/ratingTerm/trustTerm; life/sweep2.test.ts | Form+reyting %75, güven/ilişki en çok %25 |
 | 2.4#47 | TAMAM | sim/game/objectives.ts objectivesAfterMatch, PostMatchScreen.tsx, objectives.test.ts | Hoca beklentileri: pres (top kapma) ve takım oyunu (isabetli pas) hedefleri; hedefler maçtan hemen sonra kapanır (+4 güven, ödül anında), maç sonu raporunda Karşılandı işaretli. |
-| 2.4#52 | ERTELENDİ-INT | sim/life/events/content/teammates.ts | Maç içi penaltı seçimi, canlı maçı duraklatan karar penceresi (src/game runtime + LiveMatchScreen) ister; ayrı maç-sunumu paketi (v1.1). |
+| 2.4#52 | TAMAM | sim/match/decisions.ts | Maç içi karar penceresi: anlar arasında sim duraklar, 2-3 seçenek + 12 sn sayaç (durdurulabilir), penaltı/frikik kullanan, kışkırtma, sevinç, kaptan-hakem, taktik çıkış; en fazla 2 pencere, 20 dk bekleme, ayarlardan kapatılır; sonuçlar maç sonunda ilişki/moral/güven/not (+kart) olarak işlenir. |
 | 2.4#53 | TAMAM | sim/life/events/content/teammates.ts, sim/life/relationships.ts, relationships.test.ts | Sezon başı kaptanlık yarışı: kıdemlilerle yemek kampanyası seçeneği (oy + ilişki etkisi), oylamada kaybedince kazanan ile 40 hafta süren rekabet bayrağı (ilişki her 3 haftada -1). |
 | 2.4#60 | TAMAM | sim/game/interview.ts:294,254 | 3 soruluk röportaj, etki tavanı, tuzak soru |
 | 2.4#61 | TAMAM | sim/game/interview.ts:294,254 | 3 soruluk röportaj, etki tavanı, tuzak soru |
@@ -498,7 +498,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.4#85 | TAMAM | sim/life/sponsors.ts (ScandalLevel 1-4) | WP-15: seviye 4 tüm sponsorları bitirir |
 | 2.4#90 | TAMAM | sim/life/casino.ts:916,992 | Tek ziyaret manşet değil, yardım hattı |
 | 2.4#98 | TAMAM | sim/life/events/content/friends.ts debt_trouble>aftermath>debt_press>debt_reunion | 4 adımlı zincir |
-| 2.4#99 | ERTELENDİ-INT | sim/life/events/content/teammates.ts | Penaltı tartışması zinciri 2.4#52 canlı maç karar kancasına bağlı; kaptanlık oylaması kısmı (2.4#53) hazır. |
+| 2.4#99 | TAMAM | sim/match/decisions.ts | Penaltı tartışması 2.4#52 karar penceresine bağlandı (penaltı kullanan seçimi ve kaptan hakem çıkışı); kaptanlık oylaması 2.4#53 hazır. |
 | 2.4#100 | TAMAM | sim/life/events/content/nightlife.ts, sim/game/objectives.ts startPresetObjective, events/proveYourself.test.ts | Gece zinciri: parti, fotoğraf, gazete, disiplin görüşmesi (yeni), PR seçimi ve Kendini kanıtla görevi (bir maçta 7,5+ puan, 5 hafta), sonuçta değerlendirme kartı. |
 | 2.4#101 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.4#102 | TAMAM | sim/life/events/content/casino.ts:23 | Bahis çetesi zinciri tam |

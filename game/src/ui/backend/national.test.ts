@@ -79,6 +79,7 @@ describe('international through the real backend', () => {
     A.matchPause(false)
     for (let guard = 0; guard < 400 && !match.value!.finished; guard++) {
       if (match.value!.pendingMoment) A.simMoment()
+      else if (match.value!.decision) A.matchDecide(match.value!.decision.fallback)
       else vi.advanceTimersByTime(MS_PER_MINUTE[4])
     }
     expect(match.value!.finished).toBe(true)
