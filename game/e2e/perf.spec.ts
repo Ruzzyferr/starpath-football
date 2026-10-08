@@ -60,6 +60,10 @@ for (const [kind, q] of [['counter', 'high'], ['corner', 'high'], ['counter', 'm
       `[perf] ${isMobile ? 'mobile 390x844 dpr' + dpr + ' cpu/4' : 'desktop 1440x900'} ${kind} [${q}]: ${r.fps.toFixed(1)} fps (phaser ${r.phaserFps.toFixed(1)}), p95 frame ${r.p95.toFixed(1)} ms, worst ${r.worst.toFixed(1)} ms, <30fps frames ${(r.slowShare * 100).toFixed(1)}%, ${r.renderer}, canvas ${canvas}`,
     )
     expect(r.fps).toBeGreaterThan(isMobile ? 20 : 30)
+    // WP-P budgets: under 4x CPU throttle Low holds 60 fps and Medium 55 (measured ~140-155), High stays above 45;
+    // desktop p95 frame time stays inside a 30 fps frame on every profile.
+    if (isMobile) expect(r.fps).toBeGreaterThan(q === 'low' ? 60 : q === 'medium' ? 55 : 45)
+    else expect(r.p95).toBeLessThan(1000 / 30)
     // Low profile acceptance (2.2#119): fewer than 2 % of frames below 30 fps. Asserted on desktop Low only
     // (the throttled mobile run is logged; the real 2 GB / Mali-G52 device check needs hardware).
     if (!isMobile && q === 'low') expect(r.slowShare).toBeLessThan(0.02)

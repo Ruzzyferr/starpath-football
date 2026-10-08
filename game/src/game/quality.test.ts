@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { BENCH_MS, ParticleBudget, QUALITY, QUALITY_PROFILES, profileFromProbe, resolveQuality } from './quality'
+import { BENCH_MS, ParticleBudget, QUALITY, QUALITY_PROFILES, PIXEL_BUDGET, profileFromProbe, renderScale, resolveQuality } from './quality'
 import { stadiumLook } from './presentation'
 
 describe('quality profiles', () => {
@@ -64,5 +64,26 @@ describe('particle budget', () => {
       expect(b.alive(t + 5000)).toBe(0)
       expect(b.take(10, 600, t + 5000)).toBeGreaterThan(0)
     }
+  })
+})
+
+describe('render scale (DPR profile, WP-P 2.9#13)', () => {
+  it('is the device ratio when it fits the budget', () => {
+    expect(renderScale({ dpr: 2, cssW: 390, cssH: 844, coarse: true })).toBe(2)
+    expect(renderScale({ dpr: 1, cssW: 1440, cssH: 900, coarse: false })).toBe(1)
+  })
+  it('caps at 2 and never goes below 1', () => {
+    expect(renderScale({ dpr: 3, cssW: 300, cssH: 300, coarse: false })).toBe(2)
+    expect(renderScale({ dpr: 0.5, cssW: 300, cssH: 300, coarse: false })).toBe(1)
+    expect(renderScale({ dpr: Number.NaN, cssW: 300, cssH: 300, coarse: false })).toBe(1)
+  })
+  it('lowers the scale on big touch screens to stay inside the pixel budget', () => {
+    const s = renderScale({ dpr: 2, cssW: 1024, cssH: 768, coarse: true })
+    expect(s).toBeLessThan(2)
+    expect(1024 * 768 * s * s).toBeLessThanOrEqual(PIXEL_BUDGET.coarse)
+    expect(renderScale({ dpr: 2, cssW: 1024, cssH: 768, coarse: false })).toBe(2)
+  })
+  it('the Low profile never renders above 1.25x', () => {
+    expect(renderScale({ dpr: 2, cssW: 390, cssH: 844, coarse: true, profile: 'low' })).toBe(1.25)
   })
 })

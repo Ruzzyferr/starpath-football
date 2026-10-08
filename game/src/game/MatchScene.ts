@@ -52,14 +52,15 @@ import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './s
 import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
-import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
+import { ParticleBudget, QUALITY, renderScale, type QualityProfile, type QualitySpec } from './quality'
 import { IDLE_FRAMES, WALK_FRAMES, kickStyleFor, type KickStyle } from './figureAnim'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
 import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from './netCloth'
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
-import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
+import { ObjectPool } from './pool'
+import { PPM, TILT, ZS, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -285,6 +286,7 @@ export class MatchScene extends Phaser.Scene {
   private vignette!: Phaser.GameObjects.Image
   private flash!: Phaser.GameObjects.Rectangle
   private floaters: Floater[] = []
+  private floatPool: ObjectPool<Phaser.GameObjects.Text> | null = null
 
   private cam = { x: 0, y: 0, zoom: 1, base: 1, punch: 0 }
   /** Cross camera: a still frame (world px) fitted at delivery, its zoom multiplier, and when it ends (sim time). */
@@ -377,6 +379,7 @@ export class MatchScene extends Phaser.Scene {
     this.views = []
     this.hudTexts = []
     this.floaters = []
+    this.floatPool = null
     this.trail = []
     this.mode = 'play'
     this.finished = false
@@ -1044,11 +1047,8 @@ export class MatchScene extends Phaser.Scene {
     const vh = Math.max(1, h - this.hudTop)
     this.cameras.main.setViewport(0, this.hudTop, w, vh)
     this.uiCam.setSize(w, h)
-    // Portrait phones frame a little tighter so players (and their numbers) stay readable.
-    const metersAcross = landscape ? 38 : 21
-    let z = w / (metersAcross * PPM)
-    // Always show enough pitch ahead of the play.
-    z = Math.min(z, vh / (24 * PPM * TILT))
+    // FIT design area (view.ts): portrait frames tighter, always enough pitch ahead of the play.
+    const z = fitZoom(w, vh, landscape)
     this.cam.base = z
     this.bakeStatics()
     this.vignette.setDisplaySize(w, h)
@@ -2546,12 +2546,20 @@ export class MatchScene extends Phaser.Scene {
   private floatText(text: string, x: number, y: number, color: string, life: number, zOff: number): void {
     // Avoid stacking the same message.
     if (this.floaters.some((f) => f.text.text === text && f.t < 0.2)) return
-    const t = this.text(16, color, '900')
-    t.setText(text)
-    this.floaters.push({ text: t, wx: x, wy: y - 0.01 * zOff, t: 0, life })
+    // Pooled (WP-P, 2.9#16): recycled Text objects, no per-event create/destroy.
+    this.floatPool ??= new ObjectPool<Phaser.GameObjects.Text>(
+      () => this.text(16, '#ffffff', '900'),
+      () => {},
+      (o) => o.setVisible(false).setAlpha(0),
+      12,
+      (o) => {
+        if (o.active) o.destroy()
+      },
+    )
+    const t = this.floatPool.acquire()
+    t.setColor(color).setText(text).setVisible(true)
     const p = project(x, y, zOff)
-    this.floaters[this.floaters.length - 1].wx = p.x
-    this.floaters[this.floaters.length - 1].wy = p.y
+    this.floaters.push({ text: t, wx: p.x, wy: p.y, t: 0, life })
   }
 
   // ───────────────────────── HUD ─────────────────────────
@@ -2701,7 +2709,7 @@ export class MatchScene extends Phaser.Scene {
       const sp = this.worldToScreen(f.wx, f.wy)
       f.text.setPosition(sp.x, sp.y - f.t * 30 * u).setAlpha(clampN((f.life - f.t) / 0.3, 0, 1)).setScale(1 + Math.max(0, 0.25 - f.t) * 1.5)
       if (f.t >= f.life) {
-        f.text.destroy()
+        this.floatPool?.release(f.text)
         this.floaters.splice(i, 1)
       }
     }
@@ -2802,10 +2810,12 @@ function safeAreaTop(canvas: HTMLCanvasElement): number {
  */
 export function createMatchGame(parent: HTMLElement): Phaser.Game {
   // Capped at 2: a 3x backing store costs ~2.25x the fill rate for no visible gain on phones.
-  const dpr = Math.min(2, Math.max(1, typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1))
   const rect = parent.getBoundingClientRect()
   const cssW = Math.max(1, Math.floor(rect.width || parent.clientWidth || 800))
   const cssH = Math.max(1, Math.floor(rect.height || parent.clientHeight || 450))
+  // DPR profile (WP-P, 2.9#13): device ratio capped by a pixel budget, tighter on touch-first devices.
+  const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
+  const dpr = renderScale({ dpr: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, cssW, cssH, coarse })
   const hiDpi = dpr > 1.01
   const game = new Phaser.Game({
     type: Phaser.AUTO,

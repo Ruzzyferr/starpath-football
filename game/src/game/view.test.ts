@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { CROSS_CAM_ZOOM, CROSS_FIT_MIN_ZOOM, PPM, TILT, crossCamFit, crossCamFrame, project } from './view'
+import { CROSS_CAM_ZOOM, CROSS_FIT_MIN_ZOOM, FIT_METERS_ACROSS, FIT_METERS_AHEAD, PPM, TILT, crossCamFit, crossCamFrame, fitZoom, project } from './view'
 
 describe('cross camera (WP-13 #4)', () => {
   it('frames between the ball and the drop point, nearer the box, and pulls back', () => {
@@ -34,5 +34,22 @@ describe('cross camera framing (WP-16)', () => {
         if (v.w > v.h) expect(inView(project(from.x, from.y))).toBe(true)
       }
     }
+  })
+})
+
+describe('FIT design area (WP-P 2.9#12)', () => {
+  it('keeps the design window visible on every aspect ratio', () => {
+    for (const [w, vh] of [[1280, 720], [2560, 720], [800, 800], [390, 780], [1920, 400]] as const) {
+      const z = fitZoom(w, vh)
+      // At least 24 m of pitch length is always visible ...
+      expect(vh / (z * PPM * TILT)).toBeGreaterThanOrEqual(FIT_METERS_AHEAD - 1e-6)
+      // ... and never more than the design width across.
+      const across = w >= vh ? FIT_METERS_ACROSS.landscape : FIT_METERS_ACROSS.portrait
+      expect(w / (z * PPM)).toBeGreaterThanOrEqual(across - 1e-6)
+    }
+  })
+  it('frames the standard landscape and portrait windows by width', () => {
+    expect(fitZoom(1520, 900)).toBeCloseTo(1520 / (38 * PPM), 6)
+    expect(fitZoom(390, 780)).toBeCloseTo(390 / (21 * PPM), 6)
   })
 })

@@ -142,3 +142,26 @@ export class ParticleBudget {
     return grant
   }
 }
+
+// ───────────────────────── Render resolution (DPR profile) ─────────────────────────
+
+/** Backing-store pixel budget per device class (width × height, in device px). */
+export const PIXEL_BUDGET = { desktop: 5_200_000, coarse: 1_900_000 } as const
+/** Highest device-pixel ratio ever rendered at (a 3x store costs ~2.25x fill for no visible gain). */
+export const DPR_CAP = 2
+
+/**
+ * Render scale for the match canvas (WP-P, 2.9#13). Starts from the device
+ * ratio (capped at {@link DPR_CAP}), then lowers it so the backing store stays
+ * inside a pixel budget: far tighter on touch-first devices (heat, battery,
+ * mid-range GPUs), and the Low profile never renders above 1.25x. Never below
+ * 1, never above the device ratio. Result is rounded to 0.05 steps.
+ */
+export function renderScale(opts: { dpr: number; cssW: number; cssH: number; coarse: boolean; profile?: QualityProfile }): number {
+  let s = Math.min(DPR_CAP, Math.max(1, Number.isFinite(opts.dpr) ? opts.dpr : 1))
+  if (opts.profile === 'low') s = Math.min(s, 1.25)
+  const area = Math.max(1, opts.cssW) * Math.max(1, opts.cssH)
+  const budget = opts.coarse ? PIXEL_BUDGET.coarse : PIXEL_BUDGET.desktop
+  s = Math.min(s, Math.sqrt(budget / area))
+  return Math.max(1, Math.floor(s * 20) / 20)
+}

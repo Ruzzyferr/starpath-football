@@ -104,3 +104,19 @@ export function crossCamFit(
   const zoomMult = Math.min(1, Math.max(CROSS_FIT_MIN_ZOOM, fit / Math.max(1e-6, baseZoom)))
   return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, zoomMult }
 }
+
+/**
+ * FIT design area (WP-P, 2.9#12). The live camera is not a fixed zoom: it
+ * guarantees a minimum pitch window on every aspect ratio. Landscape frames
+ * 38 m across, portrait phones 21 m (so figures and numbers stay readable),
+ * and in both the view always shows at least 24 m of pitch length ahead of the
+ * play. Whichever bound is tighter wins, so an ultra-wide or a squat window
+ * never crops the design area. `w` / `vh` are the camera viewport in px.
+ */
+export const FIT_METERS_ACROSS = { landscape: 38, portrait: 21 } as const
+export const FIT_METERS_AHEAD = 24
+export function fitZoom(w: number, vh: number, landscape = w >= vh): number {
+  const across = landscape ? FIT_METERS_ACROSS.landscape : FIT_METERS_ACROSS.portrait
+  const z = w / (across * PPM)
+  return Math.min(z, vh / (FIT_METERS_AHEAD * PPM * TILT))
+}
