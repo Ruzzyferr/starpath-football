@@ -4,7 +4,8 @@
  *  - detects web / electron / android / ios and tags <html> (platform-<id>),
  *  - picks the SaveStorage (Electron: userData/saves files over IPC; Capacitor:
  *    Filesystem files; web: IndexedDB default) and migrates IndexedDB saves once,
- *  - installs native haptics, status bar, Android back button, keep-awake
+ *  - installs viewport chrome (safe areas, keyboard, zoom guards: viewport.ts),
+ *  - installs native haptics, status bar, keyboard, Android back button, keep-awake
  *    during matches, and audio pause while the app is in the background,
  *  - registers the offline service worker on the web production build.
  *
@@ -24,6 +25,7 @@ import { flushAutosave } from '../ui/backend/persistence'
 import { recordError } from '../telemetry/errorLog'
 import { registerServiceWorker } from './sw-register'
 import { createWebWakeLock } from './wakeLock'
+import { installViewport, setKeyboard, markNativeKeyboard } from './viewport'
 import './platform.css'
 
 export type { PlatformId } from './detect'
@@ -108,6 +110,7 @@ export async function initPlatform(): Promise<PlatformId> {
   document.documentElement.classList.add(`platform-${id}`)
   if (id !== 'web') document.documentElement.classList.add('platform-native')
 
+  installViewport(isMobileNative(id))
   trackAudioContexts()
   watchVisibility()
   installGlRecovery()
@@ -121,6 +124,7 @@ export async function initPlatform(): Promise<PlatformId> {
       cap.installHaptics()
       cap.setupLifecycle(() => handleBack(() => platform.exit()))
       void cap.setupChrome()
+      if (await cap.setupKeyboard((open) => setKeyboard(open))) markNativeKeyboard()
     } catch (e) {
       console.warn('[StarPath] Capacitor plugins unavailable', e)
     }

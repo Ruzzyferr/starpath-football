@@ -14,7 +14,7 @@
     "preferredContentMode": "mobile"
   },
   "plugins": {
-    "SystemBars": { "insetsHandling": "css", "style": "DARK" },
+    "SystemBars": { "insetsHandling": "css", "style": "DARK", "initialViewportFitValueHint": "cover" },
     "SplashScreen": {
       "launchShowDuration": 1500,
       "launchAutoHide": true,
@@ -23,6 +23,6 @@
       "androidScaleType": "CENTER_CROP"
     },
     "StatusBar": { "style": "DARK", "overlaysWebView": true, "backgroundColor": "#00000000" },
-    "Keyboard": { "resize": "native" }
+    "Keyboard": { "resize": "native", "style": "DARK" }
   }
 }

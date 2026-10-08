@@ -3,6 +3,7 @@
  * native shell, so the web/PWA and Electron bundles never execute plugin code.
  */
 import { App } from '@capacitor/app'
+import { Keyboard, KeyboardStyle } from '@capacitor/keyboard'
 import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { StatusBar, Style } from '@capacitor/status-bar'
@@ -44,6 +45,23 @@ export async function setupChrome(): Promise<void> {
   await StatusBar.setStyle({ style: Style.Dark }).catch(() => undefined)
   await StatusBar.setBackgroundColor({ color: '#00000000' }).catch(() => undefined)
   requestAnimationFrame(() => void SplashScreen.hide({ fadeOutDuration: 200 }).catch(() => undefined))
+}
+
+/**
+ * Software keyboard. The WebView is resized natively (config Keyboard.resize:
+ * "native"; on Android SystemBars pads the WebView by the IME inset), so the UI
+ * only needs to know it is up (hide the tab bar, keep the focused field visible).
+ * Resolves true when the plugin is listening.
+ */
+export async function setupKeyboard(onChange: (open: boolean) => void): Promise<boolean> {
+  try {
+    await Keyboard.addListener('keyboardWillShow', () => onChange(true))
+    await Keyboard.addListener('keyboardWillHide', () => onChange(false))
+    await Keyboard.setStyle({ style: KeyboardStyle.Dark }).catch(() => undefined)
+    return true
+  } catch {
+    return false
+  }
 }
 
 export function setupLifecycle(onBack: () => void): void {
