@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { qualityFactor, TRAINING_TYPES } from '../../sim/career/training'
 import {
   DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
-  passPoints, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
+  gkReactionWindow, passPoints, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
   BEATEN_PENALTY, CROSS_ZONE_R, FOUL_PENALTY, crossPoints, crossTiming, headerPoints, jumpTiming, tacklePoints,
 } from './scoring'
 import { DRILL_KINDS } from './types'
@@ -100,10 +100,15 @@ describe('drill scoring', () => {
     expect(staminaRecovery(0.5, true)).toBeGreaterThan(staminaRecovery(0.5, false))
   })
 
-  it('scores saves: held, stretch and pace add up', () => {
+  it('scores saves: held 10, parried 6 (2.3#29)', () => {
     expect(savePoints({ saved: false, held: true, stretch: 1, speed: 30, combo: 0 })).toBe(0)
-    expect(savePoints({ saved: true, held: false, stretch: 0, speed: 10, combo: 0 })).toBe(100)
-    expect(savePoints({ saved: true, held: true, stretch: 1, speed: 40, combo: 0 })).toBe(180)
+    expect(savePoints({ saved: true, held: false, stretch: 0, speed: 10, combo: 0 })).toBe(6)
+    expect(savePoints({ saved: true, held: true, stretch: 1, speed: 40, combo: 3 })).toBe(10)
+  })
+
+  it('keeper reaction window is 220 ms + Reflexes × 2 ms', () => {
+    expect(gkReactionWindow(0)).toBeCloseTo(0.22, 5)
+    expect(gkReactionWindow(80)).toBeCloseTo(0.38, 5)
   })
 
   it('XP preview mirrors the sim quality factor', () => {

@@ -1,8 +1,10 @@
 /**
  * Goalkeeping reflex drill (GK heroes).
  *
- * A shooter lines up from a new angle every few seconds (11–20 m), runs in
- * and strikes for a corner. Step across with the stick/WASD and dive with a
+ * Reflex wall (2.3#29): 12 shots from new angles (11–20 m). The shooter's
+ * last strides are the tell: they last the reaction window
+ * (220 ms + Reflexes × 2 ms), so better reflexes read the strike earlier.
+ * Held saves score 10, parried saves 6. Step across with the stick/WASD and dive with a
  * swipe / click-hold / tap toward the ball (aim assist bends the dive toward
  * the real crossing like in a match). Saves score more when held, at full
  * stretch and against fast shots; a streak multiplies. Shots that miss the
@@ -16,7 +18,7 @@ import { a01, add, clampN, dist, dot, len, norm, scale, sub, type Agent, type Ve
 import { arriveTo } from '../vec'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave, startDive } from '../keeper'
-import { savePoints } from '../scoring'
+import { GK_SHOTS, gkReactionWindow, savePoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView } from '../types'
 import type { HeroAction } from '../../runtime'
 
@@ -52,7 +54,7 @@ export class GoalkeepingDrill extends DrillBase {
     this.spot = { x: d * Math.cos(th), y: GOAL_CENTER_Y + d * Math.sin(th) }
     const toGoal = norm(sub({ x: 0, y: GOAL_CENTER_Y }, this.spot))
     this.runFrom = sub(this.spot, scale(toGoal, this.rng.range(2.2, 3.4)))
-    this.runTime = this.rng.range(0.55, 0.9)
+    this.runTime = this.rng.range(0.33, 0.48) + gkReactionWindow(this.attrs.reflexes)
     place(this.shooter, this.runFrom, Math.atan2(toGoal.y, toGoal.x))
     this.tracker = createTracker()
     Object.assign(this.ball, { x: this.spot.x, y: this.spot.y, z: 0, vx: 0, vy: 0, vz: 0 })
@@ -159,6 +161,11 @@ export class GoalkeepingDrill extends DrillBase {
 
   protected busy(): boolean {
     return this.cycle === 'flight'
+  }
+
+  /** Ends after the 12th shot is resolved. */
+  protected forceEnd(): boolean {
+    return this.shotNo >= GK_SHOTS && this.cycle === 'resolved' && this.cycleT > 0.6
   }
 
   protected tick(dt: number, input: DrillInput, live: boolean): void {

@@ -231,6 +231,12 @@ describe('training drills (headless)', () => {
     })
   }
 
+  it('goalkeeping reflex wall: exactly 12 shots within the drill time (2.3#29)', () => {
+    const r = play(make('goalkeeping', 4), BOTS.goalkeeping.good)
+    expect(r.stats.shots).toBe(12)
+    expect(r.played).toBeLessThanOrEqual(40)
+  })
+
   it('set-piece finishing builds a wall and still rewards good strikes', () => {
     const d = make('finishing', 5, 'setPiece') as FinishingDrill
     expect(d.wall.length).toBe(4)

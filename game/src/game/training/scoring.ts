@@ -19,7 +19,7 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
   passing: 35,
   dribbling: 30,
   fitness: 40,
-  goalkeeping: 30,
+  goalkeeping: 40,
   crossing: 35,
   heading: 30,
   tackling: 30,
@@ -31,7 +31,7 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   passing: 1900,
   dribbling: 2300,
   fitness: 1500,
-  goalkeeping: 1000,
+  goalkeeping: 66,
   crossing: 1900,
   heading: 1700,
   tackling: 1150,
@@ -189,12 +189,19 @@ export interface SaveScoreInput {
   combo: number
 }
 
-/** Points for a shot faced on target. */
+/** Reflex wall (2.3#29): 12 shots, held 10 points, parried 6. */
+export const GK_SHOTS = 12
+export const GK_HELD_POINTS = 10
+export const GK_PARRY_POINTS = 6
+
+/** Points for a shot faced on target (2.3#29: held 10, parried 6). */
 export function savePoints(i: SaveScoreInput): number {
   if (!i.saved) return 0
-  const base = 100 + (i.held ? 30 : 0) + Math.round(clamp01(i.stretch) * 30) + Math.max(0, Math.min(20, i.speed - 18))
-  return Math.round(base * comboMultiplier(i.combo))
+  return i.held ? GK_HELD_POINTS : GK_PARRY_POINTS
 }
+
+/** Reaction window before each strike (2.3#29): 220 ms + Reflexes × 2 ms. */
+export const gkReactionWindow = (reflexes: number): number => 0.22 + Math.max(0, Math.min(100, reflexes)) * 0.002
 
 // ───────────────────────── Crossing ─────────────────────────
 
