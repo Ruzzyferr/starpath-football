@@ -32,7 +32,7 @@ export const tr = {
     stopper: 'Agresif Stoper', aerialDefender: 'Hava Hakimi', ballPlayingDefender: 'Oyun Kurucu Stoper',
     anchor: 'Ön Libero', boxToBox: 'Box-to-Box', playmaker: 'Oyun Kurucu',
     touchlineWinger: 'Çizgi Kanadı', invertedWinger: 'Ters Kanat', freeWinger: 'Serbest Kanat', dribbler: 'Teknik Çalımcı',
-    targetForward: 'Hedef Forvet', runner: 'Sarkan Forvet', pivot: 'Pivot Santrfor',
+    targetForward: 'Hedef Forvet', runner: 'Derinlik Forveti', pivot: 'Pivot Santrfor',
   },
   playRoleDesc: {
     reflexKeeper: 'Çizgide bir kedi: en yakından gelen şutlara bile anında tepki verir. Refleks ve çeviklik bonusu.',
