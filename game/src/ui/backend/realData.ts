@@ -392,7 +392,7 @@ function squadView(s: GameState): SquadMemberView[] {
 }
 
 /** Scouting interest is costly (club strength for ~90 clubs): cache per career-week. */
-const scoutCache = new Map<string, { clubId: string; level: number; label: LText }[]>()
+const scoutCache = new Map<string, { clubId: string; level: number; label: LText; reason: LText }[]>()
 
 function interestView(s: GameState): InterestView[] {
   return cached(s, 'interest', () => {
@@ -420,7 +420,7 @@ function interestView(s: GameState): InterestView[] {
       const rng = new Rng(hashString(key))
       const cands = candidateClubs(s, rng)
       scouts = scoutInterest(rng, s.hero, cands, { season: s.calendar.season, currentClubId: own?.id ?? null, life: s.life })
-        .slice(0, 6).map((x) => ({ clubId: x.clubId, level: x.level, label: x.label }))
+        .slice(0, 6).map((x) => ({ clubId: x.clubId, level: x.level, label: x.label, reason: x.reason }))
       if (scoutCache.size > 20) scoutCache.clear()
       scoutCache.set(key, scouts)
     }
@@ -429,7 +429,7 @@ function interestView(s: GameState): InterestView[] {
       const c = s.world.clubs[x.clubId]
       if (!c) continue
       seen.add(c.id)
-      out.push({ club: teamViewOr(s, c.id), level: Math.min(80, x.level), note: x.label, leagueName: leagueName(c) })
+      out.push({ club: teamViewOr(s, c.id), level: Math.min(80, x.level), note: x.reason, leagueName: leagueName(c) })
     }
     return out
   })

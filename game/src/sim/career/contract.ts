@@ -136,15 +136,38 @@ export function fairWage(hero: Hero, club: ClubContext, season: number): number 
  *   (+4% per point of potential gap until 23), veterans lose 15%/year after 29,
  *   fame adds up to +50%, and an expiring deal halves the fee (Bosman effect).
  */
-export function heroMarketValue(hero: Hero, season: number): number {
+/** One factor of the market value formula (2.3#73): `mult` multiplies the running value. */
+export interface MarketValuePart {
+  key: 'ovr' | 'potential' | 'age' | 'reputation' | 'form' | 'contract'
+  mult: number
+}
+export interface MarketValueBreakdown {
+  /** Value from OVR alone. */
+  base: number
+  parts: MarketValuePart[]
+  total: number
+}
+
+/**
+ * Market value with its formula visible (2.3#73): OVR base, then age/potential,
+ * reputation, form and contract length multipliers.
+ */
+export function marketValueBreakdown(hero: Hero, season: number): MarketValueBreakdown {
   const ovr = heroOvr(hero)
-  let v = Math.min(250e6, 500_000 * Math.exp(0.18 * (ovr - 60)))
+  const base = Math.min(250e6, 500_000 * Math.exp(0.18 * (ovr - 60)))
   const age = heroAge(hero, season)
-  if (age <= 23) v *= 1 + Math.max(0, hero.potential - ovr) * 0.04
-  if (age >= 30) v *= Math.max(0.2, 1 - (age - 29) * 0.15)
-  v *= 1 + clamp(hero.reputation, 0, 100) / 200
-  if (hero.contract && hero.contract.untilSeason <= season) v *= 0.5
-  return roundNice(v)
+  const parts: MarketValuePart[] = []
+  if (age <= 23) parts.push({ key: 'potential', mult: 1 + Math.max(0, hero.potential - ovr) * 0.04 })
+  if (age >= 30) parts.push({ key: 'age', mult: Math.max(0.2, 1 - (age - 29) * 0.15) })
+  parts.push({ key: 'reputation', mult: 1 + clamp(hero.reputation, 0, 100) / 200 })
+  parts.push({ key: 'form', mult: 0.9 + clamp(hero.form, 0, 100) / 500 })
+  if (hero.contract && hero.contract.untilSeason <= season) parts.push({ key: 'contract', mult: 0.5 })
+  const total = roundNice(parts.reduce((v, p) => v * p.mult, base))
+  return { base: roundNice(base), parts, total }
+}
+
+export function heroMarketValue(hero: Hero, season: number): number {
+  return marketValueBreakdown(hero, season).total
 }
 
 /** Role a club offers from the hero's OVR vs. their squad average. */

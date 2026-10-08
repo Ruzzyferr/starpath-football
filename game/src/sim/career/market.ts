@@ -5,6 +5,7 @@
  */
 import type { Hero, NpcPlayer, Position, World } from '../../core/types'
 import { heroAge } from './common'
+import { marketValueBreakdown, type MarketValueBreakdown } from './contract'
 import { heroOvr } from './progression'
 
 export interface MarketSample {
@@ -24,6 +25,8 @@ export interface MarketReference {
   median: number
   /** Offer wage as a percentage of the median (null without samples or offer). */
   pctOfMarket: number | null
+  /** The hero's own transfer value with its formula (2.3#73). */
+  value: MarketValueBreakdown
 }
 
 const FAMILY: Readonly<Record<Position, string>> = {
@@ -49,7 +52,8 @@ export function marketReference(world: World, hero: Hero, season: number, offerW
       id: p.id, name: `${p.firstName} ${p.lastName}`, clubId: p.clubId, position: p.position, age: season - p.birthYear, ovr: p.ovr, wage: p.wage,
     }))
     .sort((a, b) => a.wage - b.wage)
-  if (samples.length === 0) return { samples, min: 0, max: 0, median: 0, pctOfMarket: null }
+  const value = marketValueBreakdown(hero, season)
+  if (samples.length === 0) return { samples, min: 0, max: 0, median: 0, pctOfMarket: null, value }
   const wages = samples.map((s) => s.wage)
   const median = wages[Math.floor(wages.length / 2)]
   return {
@@ -58,5 +62,6 @@ export function marketReference(world: World, hero: Hero, season: number, offerW
     max: wages[wages.length - 1],
     median,
     pctOfMarket: offerWage !== undefined && median > 0 ? Math.round((offerWage / median) * 100) : null,
+    value,
   }
 }

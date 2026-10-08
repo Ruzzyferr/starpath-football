@@ -133,10 +133,13 @@ export const absDayOf = (state: GameState): number => absWeek(state.calendar) * 
 
 export type WindowKind = 'summer' | 'winter' | null
 
-/** Transfer window open in a given week: summer = off-season + preseason, winter = weeks 22–24. */
+/**
+ * Transfer window open in a given week: summer = off-season + preseason, winter = weeks 22–25
+ * (4 weeks, 2.3#70). Any league may buy in either window (no "same league only in winter").
+ */
 export function transferWindow(week: number): WindowKind {
   if (week >= END_OF_SEASON_WEEK || week === 0) return 'summer'
-  if (Math.abs(week - WINTER_WINDOW_WEEK) <= 1) return 'winter'
+  if (week - WINTER_WINDOW_WEEK >= -1 && week - WINTER_WINDOW_WEEK <= 2) return 'winter'
   return null
 }
 

@@ -22,6 +22,7 @@ export const tr = {
   interest: {
     title: 'Seni izleyen kulüpler',
     level: 'İlgi seviyesi',
+    stars: 'İlgi {n}/5',
     talk: 'Görüş',
     empty: 'Şu an seni izleyen kulüp yok',
     emptyHint: 'İyi maçlar çıkar, scoutlar mutlaka fark edecek.',
@@ -51,6 +52,7 @@ export const en: Shape<typeof tr> = {
   interest: {
     title: 'Clubs scouting you',
     level: 'Interest level',
+    stars: 'Interest {n}/5',
     talk: 'Talk',
     empty: 'No clubs are watching you right now',
     emptyHint: 'Keep performing — the scouts will notice.',

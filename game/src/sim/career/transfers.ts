@@ -41,6 +41,41 @@ export interface ClubInterest {
   level: number
   stage: InterestStage
   label: LText
+  /** 1..5 interest scale (2.3#71): `ceil(level / 20)`; bids need ≥ 3. */
+  stars: number
+  /** Why they are watching (the dominant factor of the level). */
+  reason: LText
+}
+
+/** 1..5 interest scale shown to the player (2.3#71). Offers only come at ≥ 3 (level ≥ 55). */
+export const interestStars = (level: number): number => clamp(Math.ceil(level / 20), 1, 5)
+
+/** Max OVR gap below a club's squad average at which it may bid at all (2.3#72). */
+export const BID_MAX_GAP = 6
+/** A "giant leap": the buyer's reputation is this much above the current club's. */
+export const GIANT_LEAP_REP = 25
+/** Exceptional season that unlocks a giant leap below the squad average (2.3#72). */
+export const EXCEPTIONAL_GOALS = 40
+export const EXCEPTIONAL_GAP = 3
+
+/**
+ * Realistic step-up gate (2.3#72): no bid when OVR is more than 6 below the
+ * club's squad average. A giant leap (club rep ≥ current + 25) needs OVR at
+ * the club's level (≥ avg − 1), or an exceptional season (40+ goals and
+ * OVR ≥ avg − 3).
+ */
+export function canBid(ovr: number, squadAvgOvr: number, clubRep: number, currentRep: number, seasonGoals: number): boolean {
+  if (ovr < squadAvgOvr - BID_MAX_GAP) return false
+  if (clubRep >= currentRep + GIANT_LEAP_REP && ovr < squadAvgOvr - SCOUT_FIT_MARGIN) {
+    return seasonGoals >= EXCEPTIONAL_GOALS && ovr >= squadAvgOvr - EXCEPTIONAL_GAP
+  }
+  return true
+}
+
+/** Best goal tally of the current or the last finished season (summer window runs after the reset). */
+export function recentSeasonGoals(hero: Hero): number {
+  const last = hero.history[hero.history.length - 1]
+  return Math.max(hero.seasonStats.goals, last?.stats.goals ?? 0)
 }
 
 export type TransferWindow = 'summer' | 'winter' | null
@@ -107,18 +142,37 @@ export function scoutInterest(
   for (const c of candidates) {
     if (c.clubId === (ctx.currentClubId ?? hero.contract?.clubId)) continue
     const d = ovr - (c.squadAvgOvr - SCOUT_FIT_MARGIN)
-    let level = d >= 0 ? 60 + Math.min(25, d * 2) : 60 + d * 8
-    level += clamp((hero.reputation - 0.6 * c.reputation) * 0.3, -15, 15)
-    if (age <= 21) level += (potentialStars(hero.potential, rng.normal(0, 4)) - 2.5) * 8
-    level += (hero.form - 50) * 0.3
+    const fit = d >= 0 ? Math.min(25, d * 2) : d * 8
+    const fame = clamp((hero.reputation - 0.6 * c.reputation) * 0.3, -15, 15)
+    const stars = age <= 21 ? potentialStars(hero.potential, rng.normal(0, 4)) : 0
+    const youth = age <= 21 ? (stars - 2.5) * 8 : 0
+    const form = (hero.form - 50) * 0.3
+    let level = 60 + fit + fame + youth + form
     if (requested) level += 10
     level += rng.normal(0, 6)
     level = Math.round(clamp(level, 0, 100))
     if (level < WATCH_AT) continue
     const stage: InterestStage = level >= BID_AT ? 'bidding' : level >= INTEREST_AT ? 'interested' : 'watching'
-    out.push({ clubId: c.clubId, name: c.name, level, stage, label: STAGE_LABEL[stage] })
+    const reason = interestReason(hero, { fit, fame, youth, form, requested }, { ovr, avg: c.squadAvgOvr, stars })
+    out.push({ clubId: c.clubId, name: c.name, level, stage, label: STAGE_LABEL[stage], stars: interestStars(level), reason })
   }
   return out.sort((a, b) => b.level - a.level)
+}
+
+/** The dominant reason behind a club's interest, in the player's words (2.3#71). */
+function interestReason(
+  hero: Hero, f: { fit: number; fame: number; youth: number; form: number; requested: boolean }, x: { ovr: number; avg: number; stars: number },
+): LText {
+  const st = hero.seasonStats
+  const best = Math.max(f.fit, f.fame, f.youth, f.form)
+  if (f.requested && best < 10) return lt('Transfer talebini duydular.', 'They heard about your transfer request.')
+  if (best === f.form && st.apps >= 3 && st.goals + st.assists >= 3) {
+    return fill(lt('Bu sezon {n} maçta {g} gol, {a} asist.', '{g} goals and {a} assists in {n} games this season.'), { n: String(st.apps), g: String(st.goals), a: String(st.assists) })
+  }
+  if (best === f.form) return lt('Son haftalardaki formun dikkat çekiyor.', 'Your recent form has caught their eye.')
+  if (best === f.youth) return fill(lt('Genç ve potansiyelli: {s} yıldız.', 'Young with potential: {s} stars.'), { s: String(x.stars) })
+  if (best === f.fame) return fill(lt('Adın büyüyor: itibar {r}.', 'Your name is growing: reputation {r}.'), { r: String(Math.round(hero.reputation)) })
+  return fill(lt('Kadrolarına hemen katkı verirsin (GEN {o}, ortalama {a}).', 'You would fit their squad right away (OVR {o}, average {a}).'), { o: String(Math.round(x.ovr)), a: String(Math.round(x.avg)) })
 }
 
 /** Context for offer generation. */
@@ -136,7 +190,7 @@ const MAX_OFFERS = 4
 
 /**
  * Transfer bids during an open window. Bidding clubs bid 50% of the time,
- * interested ones 15% (+25 points each after a transfer request). Fee =
+ * interested ones 15% (×1.4 + 10 points after a transfer request, 2.3#74). Fee =
  * market value × 0.8..1.2 (big clubs pay a premium, +0.2% per rep point).
  * A club clearly bigger than yours (+10 rep) that can afford the release
  * clause triggers it 30% of the time — those bids cannot be refused by the
@@ -152,12 +206,15 @@ export function generateTransferOffers(
   const value = heroMarketValue(hero, ctx.season)
   const clause = hero.contract.releaseClause
   const curRep = ctx.currentClub?.reputation ?? 0
+  const ovr = heroOvr(hero)
+  const goals = recentSeasonGoals(hero)
   const offers: TransferOffer[] = []
   for (const i of interest) {
     if (offers.length >= MAX_OFFERS) break
     const c = byId.get(i.clubId)
     if (!c || i.stage === 'watching') continue
-    const p = (i.stage === 'bidding' ? 0.5 : 0.15) + (requested ? 0.25 : 0)
+    if (!canBid(ovr, c.squadAvgOvr, c.reputation, curRep, goals)) continue
+    const p = Math.min(0.9, (i.stage === 'bidding' ? 0.5 : 0.15) * (requested ? REQUEST_SELL_BOOST : 1) + (requested ? 0.1 : 0))
     if (!rng.chance(p)) continue
     const budget = c.transferBudget ?? Infinity
     let fee = roundNice(value * rng.range(0.8, 1.2) * (1 + c.reputation * 0.002))
@@ -251,13 +308,36 @@ export function freeAgentOffers(
  * relationship −15. Benefit: +10 scout interest and +25% bid chance until a
  * move happens. Idempotent while a request is active.
  */
+/** Transfer request costs and effect (2.3#74): manager trust −10, fans −15, clubs' willingness to sell +40%. */
+export const REQUEST_TRUST_COST = 10
+export const REQUEST_FANS_COST = 15
+export const REQUEST_SELL_BOOST = 1.4
+
+/** Last absolute week (see `absWeek`) a request made at `madeAt` stays valid: it lasts one window (2.3#74). */
+export function transferRequestExpiry(madeAt: number): number {
+  const season = Math.floor(madeAt / 52)
+  const week = madeAt - season * 52
+  // Winter window closes after week 25; the summer window closes after preseason week 0.
+  return week <= 25 ? season * 52 + 25 : (season + 1) * 52
+}
+
+/** Drop a transfer request once the window it was aimed at has closed. Returns true when it expired. */
+export function expireTransferRequest(life: Life, calendar: Calendar): boolean {
+  const at = life.flags[TRANSFER_REQUEST_FLAG]
+  if (typeof at !== 'number' || absWeek(calendar) <= transferRequestExpiry(at)) return false
+  delete life.flags[TRANSFER_REQUEST_FLAG]
+  delete life.flags.transfer_listed
+  pushLog(life, calendar, lt('Transfer talebinin süresi doldu; pencere kapandı.', 'Your transfer request lapsed with the window.'), 'career', '📝')
+  return true
+}
+
 export function requestTransfer(hero: Hero, life: Life, calendar: Calendar): Lines {
   if (!hero.contract) return [lt('Sözleşmen yok; zaten serbestsin.', 'You have no contract; you are already free.')]
   if (life.flags[TRANSFER_REQUEST_FLAG] !== undefined) return [lt('Transfer talebin zaten masada.', 'Your transfer request is already on the table.')]
   life.flags[TRANSFER_REQUEST_FLAG] = absWeek(calendar)
-  hero.managerTrust = meter(hero.managerTrust - 15)
+  hero.managerTrust = meter(hero.managerTrust - REQUEST_TRUST_COST)
   const fans = life.relationships.fans
-  if (fans) fans.value = clamp(fans.value - 10, -100, 100)
+  if (fans) fans.value = clamp(fans.value - REQUEST_FANS_COST, -100, 100)
   const mgr = life.relationships.manager
   if (mgr) mgr.value = clamp(mgr.value - 15, -100, 100)
   return [pushLog(life, calendar, lt('Transfer talebinde bulundun. Teknik direktör ve taraftarlar bundan hoşlanmadı.', 'You handed in a transfer request. The manager and fans are not pleased.'), 'career', '📝')]

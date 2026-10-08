@@ -97,7 +97,7 @@ describe('transfer offers', () => {
       const lb = createLife(new Rng(s), b, 'street')
       const trust = b.managerTrust
       requestTransfer(b, lb, cal)
-      expect(b.managerTrust).toBe(trust - 15)
+      expect(b.managerTrust).toBe(trust - 10)
       expect(lb.flags[TRANSFER_REQUEST_FLAG]).toBeDefined()
       req += generateTransferOffers(new Rng(s), b, lb, clubs, { window: 'summer', season: SEASON }).length
     }

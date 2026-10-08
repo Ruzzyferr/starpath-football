@@ -90,6 +90,9 @@ function ClubSheet({ club, onClose }: { club: Club | null; onClose: () => void }
   )
 }
 
+/** 1..5 interest scale (same as sim/career/transfers `interestStars`; bids from 3). */
+const interestStars = (n: number): number => Math.max(1, Math.min(5, Math.ceil(n / 20)))
+
 function interestLevel(n: number): 'low' | 'mid' | 'high' {
   return n >= 70 ? 'high' : n >= 40 ? 'mid' : 'low'
 }
@@ -229,7 +232,7 @@ export function WorldScreen() {
                   </div>
                   <Chip tone={lv === 'high' ? 'gold' : lv === 'mid' ? 'info' : 'neutral'} icon="eye">{t(`world.interest.levels.${lv}`)}</Chip>
                 </div>
-                <StatBar label={t('world.interest.level')} value={it.level} color={lv === 'high' ? 'var(--accent-gold)' : 'var(--accent-blue)'} size="sm" />
+                <StatBar label={t('world.interest.stars', { n: interestStars(it.level) })} value={it.level} color={lv === 'high' ? 'var(--accent-gold)' : 'var(--accent-blue)'} size="sm" />
                 <p class="t-sm t-mid world-int-note">{lt(it.note)}</p>
                 <Button
                   variant="secondary"

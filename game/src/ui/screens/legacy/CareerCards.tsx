@@ -165,6 +165,18 @@ export function MarketPanel({ wage }: { wage: number }) {
       </ul>
       <p class="t-xs t-lo">{t('meta.market.range', { a: formatMoney(m.min), b: formatMoney(m.max) })}</p>
       {m.pctOfMarket !== null && <p class={`t-sm ${m.pctOfMarket >= 100 ? 't-pos' : 't-mid'}`}><b>{t('meta.market.pct', { p: m.pctOfMarket })}</b></p>}
+      {m.value && (
+        <div data-testid="market-value" class="stack" style={{ gap: '2px', marginTop: '8px' }}>
+          <p class="t-sm"><b>{t('career4.value.title')}</b></p>
+          <ul class="mk-rows">
+            <li class="t-xs"><span>{t('career4.value.base')}</span><b class="num">{formatMoney(m.value.base)}</b></li>
+            {m.value.parts.map((p) => (
+              <li key={p.key} class="t-xs"><span>{t(`career4.value.parts.${p.key}`)}</span><b class="num">×{p.mult.toFixed(2)}</b></li>
+            ))}
+          </ul>
+          <p class="t-sm"><b>{t('career4.value.total', { v: formatMoney(m.value.total) })}</b></p>
+        </div>
+      )}
     </Card>
   )
 }

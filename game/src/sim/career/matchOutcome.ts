@@ -90,6 +90,42 @@ export const formTarget = (rating: number): number => clamp(50 + (rating - NEUTR
  */
 export const MATCH_XP_PER_90 = 16
 
+/**
+ * XP per successful in-match action (2.3#15, plan range 0.2–1.0). Example from
+ * the plan: 3 key passes (assists) → Vision +1.5.
+ */
+export const ACTION_XP: Readonly<Record<'goals' | 'assists' | 'shotsOnTarget' | 'passesCompleted' | 'tackles' | 'dribbles' | 'saves', Partial<Record<AttributeKey, number>>>> = {
+  goals: { finishing: 1.0, composure: 0.3 },
+  assists: { vision: 0.5, passing: 0.5 },
+  shotsOnTarget: { shooting: 0.4 },
+  passesCompleted: { passing: 0.04 },
+  tackles: { tackling: 0.5 },
+  dribbles: { dribbling: 0.5, agility: 0.2 },
+  saves: { reflexes: 0.6, handling: 0.3 },
+}
+/** Action XP may take at most this share of the match XP budget. */
+export const ACTION_XP_MAX_SHARE = 0.45
+
+/** Action XP bundle for a match line, scaled to fit `ACTION_XP_MAX_SHARE` of `budget`. */
+export function matchActionXp(m: Pick<HeroMatchInput, 'goals' | 'assists' | 'shotsOnTarget' | 'passesCompleted' | 'tackles' | 'dribbles' | 'saves'>, budget: number): { bundle: Partial<Record<AttributeKey, number>>; total: number } {
+  const raw: Partial<Record<AttributeKey, number>> = {}
+  let total = 0
+  for (const key of Object.keys(ACTION_XP) as (keyof typeof ACTION_XP)[]) {
+    const n = Math.max(0, m[key] ?? 0)
+    if (!n) continue
+    for (const [attr, xp] of Object.entries(ACTION_XP[key])) {
+      const v = n * (xp ?? 0)
+      raw[attr as AttributeKey] = (raw[attr as AttributeKey] ?? 0) + v
+      total += v
+    }
+  }
+  const cap = Math.max(0, budget) * ACTION_XP_MAX_SHARE
+  const scale = total > cap && total > 0 ? cap / total : 1
+  const bundle: Partial<Record<AttributeKey, number>> = {}
+  for (const k in raw) bundle[k as AttributeKey] = (raw[k as AttributeKey] ?? 0) * scale
+  return { bundle, total: total * scale }
+}
+
 /** Fatigue per 90 minutes before stamina; stamina 80 → ×0.88, stamina 40 → ×1.04. */
 export const FATIGUE_PER_90 = 30
 /** Extra fatigue from an away trip (reduced by private-jet `travel_fatigue`). */
@@ -208,8 +244,13 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   const w = POSITION_WEIGHTS[hero.position]
   const wsum = Object.values(w).reduce((a, b) => a + (b ?? 0), 0)
   const totalXp = MATCH_XP_PER_90 * (minutes / 90) * (0.6 + rating / 10) * (1 + imp * 0.3)
+  // In-match actions are training too (2.3#15): each success sends a small XP to its own
+  // attribute, carved out of the same budget (the total match XP is unchanged).
+  const action = matchActionXp(m, totalXp)
+  const lump = totalXp - action.total
   const bundle: Partial<Record<AttributeKey, number>> = {}
-  for (const k in w) bundle[k as AttributeKey] = (totalXp * (w[k as AttributeKey] ?? 0)) / wsum
+  for (const k in w) bundle[k as AttributeKey] = (lump * (w[k as AttributeKey] ?? 0)) / wsum
+  for (const k in action.bundle) bundle[k as AttributeKey] = (bundle[k as AttributeKey] ?? 0) + (action.bundle[k as AttributeKey] ?? 0)
   lines.push(...applyXpBundle(hero, bundle, cal.season).lines.filter((l) => l.en.startsWith('Overall') || l.en.startsWith('🌟')))
 
   // ── Injury ──

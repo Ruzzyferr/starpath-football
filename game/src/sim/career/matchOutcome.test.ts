@@ -133,3 +133,14 @@ describe('applyMatchToHero', () => {
     expect(formTarget(9)).toBe(100)
   })
 })
+
+describe('in-match action XP (2.3#15)', () => {
+  it('3 assists give Vision +1.5 and the total never exceeds the budget share', async () => {
+    const { matchActionXp, ACTION_XP_MAX_SHARE } = await import('./matchOutcome')
+    const a = matchActionXp({ goals: 0, assists: 3 }, 100)
+    expect(a.bundle.vision).toBeCloseTo(1.5, 5)
+    const b = matchActionXp({ goals: 4, assists: 3, shotsOnTarget: 8, passesCompleted: 60, tackles: 6, dribbles: 8 }, 20)
+    expect(b.total).toBeCloseTo(20 * ACTION_XP_MAX_SHARE, 5)
+    expect(matchActionXp({ goals: 0, assists: 0 }, 20).total).toBe(0)
+  })
+})
