@@ -49,6 +49,8 @@
   cursor: not-allowed;
 }
 .btn:disabled::after { background: none; }
+/* A disabled ghost stays a ghost: no slab, just quieter. */
+.btn-ghost:disabled { --btn-bg: transparent; --btn-bevel: 0 0 0 transparent; opacity: 0.55; }
 .btn-label { overflow: hidden; text-overflow: ellipsis; }
 .btn-block { display: flex; width: 100%; }
 .btn-sm { --btn-h: 44px; padding: 0 var(--sp-3); font-size: var(--fs-md); border-radius: 9px; }

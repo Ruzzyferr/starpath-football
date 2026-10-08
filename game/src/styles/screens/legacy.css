@@ -83,11 +83,11 @@
 }
 .ach-medal.is-secret { color: var(--accent-violet); }
 .ach-card.is-unlocked .ach-medal {
-  color: var(--text-on-gold);
-  background: linear-gradient(160deg, var(--accent-gold-hi), var(--accent-gold-deep));
+  color: #231500;
+  background: linear-gradient(160deg, #ffe38a, #b8860b);
 }
 .ach-card.is-unlocked .ach-medal::before {
-  background: radial-gradient(circle at 40% 30%, #ffe9a8, var(--accent-gold) 55%, var(--accent-gold-deep));
+  background: radial-gradient(circle at 40% 30%, #ffe9a8, #ffc83d 55%, #b8860b);
 }
 .ach-summary { gap: var(--sp-4); }
 .ach-pct { font-size: 1.75rem; line-height: 1; color: var(--accent-gold); }
@@ -287,3 +287,6 @@
 .hof-plinth-2 .hof-step { height: 70px; color: var(--tier-silver); }
 .hof-plinth-3 .hof-step { height: 52px; color: var(--tier-bronze); }
 .hof-plinth-1 .hof-ghost { width: 64px; stroke: rgba(255, 200, 61, 0.5); fill: rgba(255, 200, 61, 0.1); }
+
+/* Inline trophy glyph inside running text (replaces the emoji). */
+.doc-inline-ico { display: inline-block; vertical-align: -1px; }
