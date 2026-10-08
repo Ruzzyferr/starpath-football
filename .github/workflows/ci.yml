@@ -29,6 +29,9 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run lint:i18n
+      # docs/GAP-AUDIT.md summary counts are generated from the per-row tables (WP-S): regeneration may not change the file.
+      - run: npm run audit:counts
+      - run: git diff --exit-code -- ../docs/GAP-AUDIT.md
       # THIRD_PARTY_LICENSES.md must match package-lock (2.12#28); audio files must be listed in assets/LICENSES.csv (unit test).
       - run: npm run licenses:check
       # Unit tests with v8 coverage; thresholds for src/sim/** live in vite.config.ts (blocking).

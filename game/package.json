@@ -29,7 +29,9 @@
     "budgets": "node scripts/check-budgets.mjs",
     "licenses": "node scripts/gen-licenses.mjs",
     "licenses:check": "node scripts/gen-licenses.mjs --check",
-    "legal": "node scripts/gen-legal.mjs"
+    "legal": "node scripts/gen-legal.mjs",
+    "audit:counts": "node scripts/audit-counts.mjs --write",
+    "audit:counts:check": "node scripts/audit-counts.mjs --check"
   },
   "dependencies": {
     "@capacitor-community/keep-awake": "^8.0.1",
