@@ -21,6 +21,7 @@ import {
 import { netWorth } from '../../sim/life/economy'
 import type { TrainingReport } from '../../sim/life/activities'
 import { changeRelation } from '../../sim/life/relationships'
+import { toggleCloseFriend } from '../../sim/life/closeFriends'
 import type { PostType } from '../../sim/life/social'
 import * as G from '../../sim/game'
 import { GFLAG, absDayOf, clubContextOf, log, readJson, withRng, writeJson } from '../../sim/game/internal'
@@ -469,6 +470,13 @@ export const realActions: GameActions = {
     const r = G.fireTrainer(s)
     if (!r.ok) notify(r.error)
     commit(s)
+  },
+
+  toggleCloseFriend(relationshipId) {
+    const s = get()
+    const r = toggleCloseFriend(s.life, relationshipId)
+    if (r !== 'invalid') commit(s)
+    return r
   },
 
   interact(relationshipId, kind) {

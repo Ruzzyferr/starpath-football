@@ -22,6 +22,7 @@ import { autoPlanDay, performActivity, physioSessionsThisWeek, startDay } from '
 import { resetCasinoDay, weeklyCasinoTick } from '../life/casino'
 import { assetHappiness, incomeTaxRate, weeklyEconomy } from '../life/economy'
 import { weeklyRelationDecay } from '../life/relationships'
+import { weeklyCloseFriendSupport } from '../life/closeFriends'
 import { weeklySocialTick } from '../life/social'
 import { weeklySponsorTick } from '../life/sponsors'
 import { weeklyWellbeing } from '../life/wellbeing'
@@ -141,6 +142,7 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
       calendar: cal, avgRating: wk.rated > 0 ? wk.ratingSum / wk.rated : undefined, goalContributions: wk.contributions,
     }), 'event', '📱')
     logAll(state, out, weeklyRelationDecay(life, absWeek(cal), hero), 'relation')
+    logAll(state, out, weeklyCloseFriendSupport(life, hero, absWeek(cal)), 'relation')
     weeklyTrustTick(hero, life)
     logAll(state, out, weeklyInjuryTick(hero, physioSessionsThisWeek(life, cal)), 'injury', '🩺')
     logAll(state, out, weeklyAging(hero, cal.season), 'career')

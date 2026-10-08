@@ -286,6 +286,44 @@ export const rumourEvents: EventDef[] = [
       },
     ],
   },
+  // ───────────── Close-friend insider tip (2.4#37) ─────────────
+  {
+    id: 'rumour.insider_tip',
+    category: 'rumour',
+    weight: (ctx) => 0.6 + flagNum(ctx.state, 'transfer_buzz') * 0.1,
+    cooldownWeeks: 26,
+    maxPerCareer: 4,
+    triggers: ['weekly', 'transfer_window'],
+    conditions: ({ state }) =>
+      hasClub(state) && state.hero.reputation >= 15 &&
+      Object.values(state.life.relationships).some((r) => r.closeFriend && r.value >= 25),
+    vars: ({ state }) => {
+      const f = Object.values(state.life.relationships).filter((r) => r.closeFriend && r.value >= 25).sort((a, b) => b.value - a.value)[0]
+      return { friend: f ? f.name : '?' }
+    },
+    title: t('Yakın Arkadaştan İçeriden Bilgi', 'Inside Word From a Close Friend'),
+    text: t(
+      '{friend} seni kenara çekti: "Kulis konuşuyor, yönetim bu yaz senin hakkında konuşuyor. Dikkatli ol, ama hazırlıklı da ol."',
+      '{friend} pulled you aside: "Word in the corridors is the board is talking about you this summer. Be careful, but be ready."',
+    ),
+    icon: '🤫',
+    choices: [
+      {
+        label: t('Menajerini haberdar et', 'Tip off your agent'),
+        hint: t('Ajan masaya hazırlıklı oturur.', 'Your agent goes into talks prepared.'),
+        effects: () => fx(t('Menajerin notları aldı ve telefon trafiğini başlattı.', 'Your agent took notes and started working the phones.'), rel('agent', 3), { addFlags: { transfer_buzz: 2 } }),
+      },
+      {
+        label: t('Teşekkür et, kimseye söyleme', 'Thank them and tell no one'),
+        effects: () => fx(t('Sırrı sakladın. Dostluk bir kat daha sağlamlaştı.', 'You kept the secret. The friendship got a little stronger.'), happy(2), stress(-1)),
+      },
+      {
+        label: t('Teknik direktörle açık konuş', 'Speak openly to the manager'),
+        risk: 'medium',
+        effects: () => fx(t('Hoca dürüstlüğünü takdir etti ama kulis biraz gerildi.', 'The gaffer valued the honesty, though the corridors got tense.'), boss(3), chairman(-2), trust(2)),
+      },
+    ],
+  },
 ]
 
 /** Number from a template var (vars are string | number). */

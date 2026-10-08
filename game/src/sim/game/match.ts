@@ -21,6 +21,7 @@ import { heroMatchAttributes } from '../career/matchPerks'
 import { LAST_MATCH_FLAG, heroGoalKinds, updateRecordsAfterMatch, type MatchFeats } from './records'
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
+import { closeFriendMatchBonus } from '../life/closeFriends'
 import { deriveAttributes } from '../world/attributes'
 import { addGoalCandidate, describeGoal } from '../world/awards'
 import { aggregateBefore, finalRound, isDecisiveFixture, isFinalFixture, isKnockoutFixture, isNeutralFixture } from '../world/competitions'
@@ -134,7 +135,11 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   const slots = [...lineup.slots]
   const bench = [...lineup.bench]
   const hero = state.hero
-  const rel = (id: string): number => (heroSide ? state.life.relationships[teammateId(id)]?.value ?? 0 : 0)
+  const rel = (id: string): number => {
+    if (!heroSide) return 0
+    const r = state.life.relationships[teammateId(id)]
+    return clamp((r?.value ?? 0) + closeFriendMatchBonus(r), -100, 100)
+  }
   if (heroSide && starts) {
     let best = -1
     let bestScore = -Infinity

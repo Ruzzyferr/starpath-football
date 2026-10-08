@@ -203,6 +203,7 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
     if (idle <= rule.grace) continue
     let d = neglectStep(r.kind, r.value)
     if (CLOSE_KINDS.has(r.kind) && r.kind !== 'partner') d *= 1 - familySlow
+    if (r.closeFriend) d *= 0.5 // a chosen close friend (2.4#37) forgives neglect twice as long
     const before = r.value
     r.value = Math.max(0, Math.round((r.value - d) * 10) / 10)
     recordRelationChange(r, r.value - before, 'decay', DEFAULT_WHY.decay, week)

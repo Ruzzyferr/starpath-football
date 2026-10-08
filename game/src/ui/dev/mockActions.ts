@@ -7,6 +7,7 @@
  * mock career and jumps straight to that screen.
  */
 import * as eco from '../../sim/life/economy'
+import { toggleCloseFriend } from '../../sim/life/closeFriends'
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { GameState, Investment, MatchResultSummary, SeasonStats } from '../../core/types'
 import {
@@ -530,6 +531,13 @@ export const mockActions: GameActions = {
     const s = get()
     s.life.trainer = null
     commit(s)
+  },
+
+  toggleCloseFriend(relationshipId) {
+    const s = get()
+    const r = toggleCloseFriend(s.life, relationshipId)
+    if (r !== 'invalid') commit(s)
+    return r
   },
 
   interact(relationshipId, kind) {

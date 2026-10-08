@@ -88,3 +88,18 @@ test('casino: helpline, loss limit and self-exclusion lock', async ({ page, shot
   await assertCleanText(page)
   await shot('w6-casino-excluded')
 })
+
+test('close friends: mark a person, list shows the star, cap of three is enforced (2.4#37)', async ({ page, shot }) => {
+  await sp(page, `sp.navigate('life', { tab: 'relations' })`)
+  const section = page.getByTestId('close-friends')
+  await expect(section).toBeVisible()
+  const toggles = page.getByTestId('close-friend-toggle')
+  await expect(toggles.first()).toBeVisible()
+  await toggles.first().click()
+  await expect(section).toContainText('★')
+  await expect(page.getByTestId('close-friend-badge').first()).toBeVisible()
+  const n = await sp(page, `Object.values(sp.state().life.relationships).filter((r) => r.closeFriend).length`)
+  expect(n).toBe(1)
+  await page.waitForTimeout(800)
+  await shot('close-friends')
+})

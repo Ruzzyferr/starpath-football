@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import type { RelationCause, RelationKind, Relationship } from '../../../core/types'
 import { relationCauseTotals, relationHistory } from '../../../sim/life/relationships'
+import { CLOSE_FRIEND_MIN, MAX_CLOSE_FRIENDS, canBeCloseFriend, closeFriends } from '../../../sim/life/closeFriends'
 import { INTERACT_COST } from '../../../sim/game/interactCost'
 import { passPercent, relBand, relGroup, relTrend } from '../../../sim/game/relationView'
 import { formatMoney } from '../../format'
@@ -118,6 +119,13 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
   const pct = passPercent(rel.value)
   const trend = relTrend(rel, week)
   const memory = rel.memory[0]
+  const canFriend = canBeCloseFriend(rel)
+  const toggleFriend = () => {
+    const r = actions.toggleCloseFriend(rel.id)
+    if (r === 'full') toast(t('life.rel.friend.full', { n: MAX_CLOSE_FRIENDS }), 'info', 'users')
+    else if (r === 'added') toast(t('life.rel.friend.added', { name: rel.name }), 'success', 'heart')
+    else if (r === 'removed') toast(t('life.rel.friend.removed', { name: rel.name }), 'info', 'users')
+  }
   const interact = (k: InteractionKind) => {
     const deltas = actions.interact(rel.id, k)
     toast(deltas.length ? t('life.rel.done', { name: rel.name, deltas: deltasText(deltas) }) : t('life.rel.doneEmpty', { name: rel.name }), 'success', 'heart')
@@ -128,7 +136,7 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
         <Avatar appearance={relAppearance(rel, s?.world)} size={56} background="#1b2740" age={relAge(rel.kind)} mood={rel.value / 100} ring={ringColor(rel.value)} />
         <div class="grow">
           <div class="life-person-kind micro">{t(`data.relation.${rel.kind}`)}</div>
-          <h3 class="h3 truncate">{rel.name}</h3>
+          <h3 class="h3 truncate">{rel.name}{rel.closeFriend && <span class="life-friend-badge" data-testid="close-friend-badge" title={t('life.rel.friend.badge')}> ★</span>}</h3>
           <Hearts value={rel.value} />
           <div class="life-person-band" data-testid="rel-band" data-band={band}>
             <Chip tone={band === 'enemy' || band === 'cold' ? 'neg' : band === 'neutral' ? 'neutral' : 'pos'}>{t(`life.rel.band.${band}`)}</Chip>
@@ -151,7 +159,14 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
       )}
       <div class="row-between life-person-sub">
         <span class="t-xs t-lo">{ago === 0 ? t('life.rel.thisWeek') : t('life.rel.lastContact', { n: ago })}</span>
-        <Button size="sm" variant="ghost" icon="history" class="life-why-btn" onClick={() => setWhy(true)}>{t('life.why.button')}</Button>
+        <div class="life-person-tools">
+          {canFriend && (
+            <Button size="sm" variant="ghost" icon={rel.closeFriend ? 'heart' : 'users'} class="life-friend-btn" data-testid="close-friend-toggle" aria-pressed={!!rel.closeFriend} onClick={toggleFriend}>
+              {rel.closeFriend ? t('life.rel.friend.remove') : t('life.rel.friend.add')}
+            </Button>
+          )}
+          <Button size="sm" variant="ghost" icon="history" class="life-why-btn" onClick={() => setWhy(true)}>{t('life.why.button')}</Button>
+        </div>
       </div>
       {why && <WhyPanel rel={rel} onClose={() => setWhy(false)} />}
       <div class="life-person-actions" role="group" aria-label={t('life.rel.interactLabel', { name: rel.name })}>
@@ -173,6 +188,17 @@ export function Relations() {
   if (!rels.length) return <EmptyState icon="users" text={t('life.rel.empty')} />
   return (
     <div class="stack" style={{ ['--gap' as string]: 'var(--sp-6)' }}>
+      <section class="stack life-friends" data-testid="close-friends" aria-label={t('life.rel.friend.title')}>
+        <SectionTitle>{t('life.rel.friend.title')}</SectionTitle>
+        <p class="t-sm t-mid">{t('life.rel.friend.perks', { n: MAX_CLOSE_FRIENDS, min: CLOSE_FRIEND_MIN })}</p>
+        <div class="row life-friend-list">
+          {closeFriends(s.life).length === 0
+            ? <span class="t-sm t-lo">{t('life.rel.friend.none', { n: MAX_CLOSE_FRIENDS })}</span>
+            : closeFriends(s.life).map((f) => (
+              <Chip key={f.id} tone={f.value >= CLOSE_FRIEND_MIN ? 'pos' : 'neutral'}>{`★ ${f.name} · ${Math.round(f.value)}`}</Chip>
+            ))}
+        </div>
+      </section>
       {GROUPS.map((g) => {
         const list = rels.filter((r) => GROUP_OF[r.kind] === g).sort((a, b) => b.value - a.value)
         if (!list.length) return null

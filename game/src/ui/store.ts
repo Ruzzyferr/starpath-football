@@ -635,6 +635,8 @@ export interface GameActions {
 
   // life
   interact(relationshipId: string, kind: InteractionKind): Delta[]
+  /** Mark/unmark a close friend (max 3; 2.4#37). */
+  toggleCloseFriend(relationshipId: string): 'added' | 'removed' | 'full' | 'invalid'
   buy(assetId: string): boolean
   sell(assetIndex: number): number
   /** Undo the most recent asset sale (2.7#48). False when it can no longer be restored. */

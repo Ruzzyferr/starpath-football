@@ -397,6 +397,8 @@ export interface Relationship {
   lastContactWeek: number
   /** Change ledger, most recent first (see sim/life/relationships). Missing on old saves. */
   log?: RelationChange[]
+  /** Hero's hand-picked "close friend" (max 3; sim/life/closeFriends). Missing on old saves. */
+  closeFriend?: boolean
 }
 
 /** What moved a relationship: shown in the "why did this change?" panel. */
