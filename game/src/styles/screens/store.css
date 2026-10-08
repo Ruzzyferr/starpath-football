@@ -59,3 +59,6 @@
   .pw-page { padding-top: var(--sp-6); }
   .pw-hero { height: 180px; }
 }
+/* Buy buttons line up across cards of different copy length. */
+.st-card { display: flex; flex-direction: column; gap: 8px; }
+.st-card > :last-child { margin-top: auto; }
