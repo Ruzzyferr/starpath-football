@@ -277,7 +277,7 @@ export const tr = {
     },
     stake: {
       title: 'Kulüp hissesi',
-      body: 'Bir kulübün en çok %{max} hissesini al. Yatırımın yılda yaklaşık %{yield} temettü getirir; hisseyi ödediğin tutarın %90’ı ile geri satabilirsin.',
+      body: 'Bir kulübün en çok %{max} hissesini al. Yatırımın yılda yaklaşık %{yield} temettü getirir; hisseyi ödediğin tutarın %90’ı ile geri satabilirsin. %51’e ulaşırsan kulübün sahibi ve başkanı olursun: temettü artar, Onur Listesi’nde büyük bir puan kazanırsın ve emekliliğinde kulüp başkanlığı hikâyen yazılır.',
       owned: 'Hissen', dividend: 'Haftalık temettü', value: 'Satış değeri',
       club: 'Ortak olduğun kulüp: {club}',
       pick: 'Hisse yüzdesi',
@@ -650,7 +650,7 @@ export const en: Shape<typeof tr> = {
     },
     stake: {
       title: 'Club stake',
-      body: 'Own up to {max}% of a club. Your investment pays about {yield}% a year in dividends; you can sell back at 90% of what you paid.',
+      body: 'Own up to {max}% of a club. Your investment pays about {yield}% a year in dividends; you can sell back at 90% of what you paid. Reach 51% and you become the club’s owner and chairman: a better dividend, a big Hall of Fame line and a chairman epilogue when you retire.',
       owned: 'Your share', dividend: 'Weekly dividend', value: 'Resale value',
       club: 'Co-owned club: {club}',
       pick: 'Share to buy',

@@ -13,7 +13,7 @@ import type { Gender, GameState, LText, Position } from '../../core/types'
 import { heroAge, lt } from '../career/common'
 import { heroOvr } from '../career/progression'
 import { netWorth } from '../life/economy'
-import { academyLevel, legacyFund, projectsLegacyPoints } from '../life/projects'
+import { academyLevel, clubOwnerOf, legacyFund, projectsLegacyPoints, PROJECT_FLAGS, type ClubOwnerInfo } from '../life/projects'
 import { heroClub } from './internal'
 
 export interface TimelineSeason {
@@ -96,6 +96,8 @@ export interface CareerSummary {
   academyLevel?: number
   /** Legacy points from projects (academy, stadium, club stake, collection). */
   projectsScore?: number
+  /** Majority club ownership at retirement (chairman-owner epilogue); absent when the hero holds less than 51%. */
+  owner?: ClubOwnerInfo & { clubName: string }
 }
 
 /** A Hall of Fame row = the career summary. */
@@ -164,6 +166,9 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
   const fund = Math.round(legacyFund(state.life))
   const academy = academyLevel(state.life)
   const projectsScore = projectsLegacyPoints(state.life)
+  const ownedClubName = state.world.clubs[String(state.life.flags[PROJECT_FLAGS.stakeClub] ?? '')]?.name ?? ''
+  const ownerInfo = clubOwnerOf(state.life, ownedClubName)
+  const owner = ownerInfo ? { ...ownerInfo, clubName: ownedClubName } : null
   const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}), ...(projectsScore > 0 ? { projectsScore } : {}) })
   const ovr = heroOvr(h)
   return {
@@ -197,6 +202,7 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     ...(fund > 0 ? { legacyFund: fund } : {}),
     ...(academy > 0 ? { academyLevel: academy } : {}),
     ...(projectsScore > 0 ? { projectsScore } : {}),
+    ...(owner ? { owner } : {}),
   }
 }
 
@@ -236,6 +242,8 @@ export function bestMoments(state: GameState): LText[] {
     const en = ss.length > 1 ? `${ss.length}× ${icon}${g.name.en} (${seasonsText(ss)})` : `${ss[0]}: ${icon}${g.name.en}`
     cands.push({ w: g.w + ss.length * 2, t: { tr, en } })
   }
+  const ownerInfo = clubOwnerOf(state.life, state.world.clubs[String(state.life.flags[PROJECT_FLAGS.stakeClub] ?? '')]?.name ?? '')
+  if (ownerInfo) cands.push({ w: 88, t: ownerInfo.headline })
   const nt = h.nationalTeam
   if (nt.caps > 0) cands.push({ w: 60 + Math.min(30, nt.caps / 2), t: { tr: `🎽 ${nt.caps} milli maç, ${nt.goals} gol`, en: `🎽 ${nt.caps} caps, ${nt.goals} international goals` } })
   const best = [...h.history].sort((a, b) => b.stats.goals - a.stats.goals)[0]

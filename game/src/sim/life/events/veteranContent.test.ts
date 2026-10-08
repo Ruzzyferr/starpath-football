@@ -52,6 +52,8 @@ describe('round-2 content packs', () => {
       variants.push(vet(seed))
       variants.push(vet(seed, (s) => { s.life.flags[PROJECT_FLAGS.academy] = 1; s.life.flags[PROJECT_FLAGS.graduates] = 2 }))
       variants.push(vet(seed, (s) => { s.life.flags[PROJECT_FLAGS.stadium] = 1 }))
+      variants.push(vet(seed, (s) => { s.life.flags[PROJECT_FLAGS.stake] = 30; s.life.flags[PROJECT_FLAGS.stakeInvested] = 12_000_000; s.life.flags[PROJECT_FLAGS.stakeClub] = s.hero.contract!.clubId }))
+      variants.push(vet(seed, (s) => { s.life.flags[PROJECT_FLAGS.stake] = 55; s.life.flags[PROJECT_FLAGS.stakeInvested] = 22_000_000; s.life.flags[PROJECT_FLAGS.stakeClub] = s.hero.contract!.clubId }))
       variants.push(vet(seed, (s) => { s.life.flags[PROJECT_FLAGS.stake] = 10; s.life.flags[PROJECT_FLAGS.fund] = 500_000 }))
       variants.push(vet(seed, (s) => {
         for (const k of ['restaurant', 'gym', 'clothing'] as const) openBusiness(s.life, s.hero, k, s.calendar)

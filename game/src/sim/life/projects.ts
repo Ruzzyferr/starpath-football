@@ -7,8 +7,10 @@
  *    Legacy child (reputation bonus on the child's career).
  *  - Charity stadium / community pitch (2 stages): upkeep, steady happiness,
  *    fan love, press goodwill, a yearly reputation bump.
- *  - Club ownership stake (up to 25 %): weekly dividend, chairman respect;
- *    resale at 90 % (it is a stake, not a lottery ticket).
+ *  - Club ownership stake (up to {@link STAKE_MAX_PCT} %): weekly dividend, chairman respect;
+ *    resale at 90 % (it is a stake, not a lottery ticket). At {@link STAKE_CONTROL_PCT} %
+ *    the hero is the majority owner: club chairman, a better dividend, a big Hall
+ *    of Fame line and a post-retirement epilogue (see {@link clubOwnerOf}).
  *  - Legacy fund: cash locked away at 3.5 %/yr. When the career ends, a share
  *    of it lands in the Legacy child's pocket (hard-capped so the child never
  *    starts as a millionaire, see `legacyFundBonus`).
@@ -31,6 +33,8 @@ export const PROJECT_FLAGS = {
   stakeClub: 'proj:stakeClub',
   fund: 'proj:fund',
   graduates: 'proj:grads',
+  /** Set once the hero has crossed {@link STAKE_CONTROL_PCT} (marker only; ownership itself is read from the live share). */
+  ownerSince: 'proj:ownerSince',
 } as const
 
 /** Price of building stage 1..3 (index = stage). */
@@ -41,7 +45,13 @@ export const STADIUM_PRICE = [0, 1_200_000, 3_500_000] as const
 export const STADIUM_UPKEEP = [0, 1_800, 6_000] as const
 /** Stake: price per percent, max percent, yearly yield on the invested sum. */
 export const STAKE_PRICE_PER_PCT = 400_000
-export const STAKE_MAX_PCT = 25
+export const STAKE_MAX_PCT = 75
+/** From this share on the hero controls the club (chairman-owner). */
+export const STAKE_CONTROL_PCT = 51
+/** Yearly yield bonus for a controlling owner (a say in the commercial deals). */
+export const STAKE_CONTROL_YIELD = 0.02
+/** Hall of Fame points for owning a club outright (on top of the stake's own 6). */
+export const OWNER_LEGACY_POINTS = 45
 export const STAKE_YIELD = 0.07
 export const STAKE_RESALE = 0.9
 export const FUND_GROWTH = 0.035
@@ -70,7 +80,10 @@ export const projectsValue = (life: Life): number => Math.round(legacyFund(life)
 export const nextAcademyPrice = (life: Life): number | null => (academyLevel(life) >= 3 ? null : ACADEMY_PRICE[academyLevel(life) + 1]!)
 export const nextStadiumPrice = (life: Life): number | null => (stadiumLevel(life) >= 2 ? null : STADIUM_PRICE[stadiumLevel(life) + 1]!)
 /** Weekly dividend of the club stake. */
-export const stakeDividend = (life: Life): number => Math.round((num(life, PROJECT_FLAGS.stakeInvested) * STAKE_YIELD) / 52)
+export const stakeDividend = (life: Life): number =>
+  Math.round((num(life, PROJECT_FLAGS.stakeInvested) * (STAKE_YIELD + (isClubOwner(life) ? STAKE_CONTROL_YIELD : 0))) / 52)
+/** Majority owner: holds {@link STAKE_CONTROL_PCT} % or more of one club. */
+export const isClubOwner = (life: Life): boolean => stakePct(life) >= STAKE_CONTROL_PCT
 /** Weekly running cost of the academy and the stadium. */
 export const projectUpkeep = (life: Life): number => ACADEMY_UPKEEP[academyLevel(life)]! + STADIUM_UPKEEP[stadiumLevel(life)]!
 
@@ -123,7 +136,14 @@ export function buyClubStake(life: Life, clubId: string, pct: number): ProjectRe
   life.flags[PROJECT_FLAGS.stake] = owned + p
   life.flags[PROJECT_FLAGS.stakeInvested] = num(life, PROJECT_FLAGS.stakeInvested) + cost
   life.flags[PROJECT_FLAGS.stakeClub] = clubId
-  return { ok: true, lines: [fill(lt('Kulübün %{n} hissesini aldın.', 'You bought {n}% of the club.'), { n: owned + p })] }
+  const lines: Lines = [fill(lt('Kulübün %{n} hissesini aldın.', 'You bought {n}% of the club.'), { n: owned + p })]
+  if (owned < STAKE_CONTROL_PCT && owned + p >= STAKE_CONTROL_PCT) {
+    life.flags[PROJECT_FLAGS.ownerSince] = 1
+    const chairman = life.relationships.chairman
+    if (chairman) changeRelation(life, chairman.id, 10)
+    lines.push(lt('👔 Çoğunluk hissesi sende: artık kulübün sahibi ve başkanısın. Yönetim kurulu sana bakıyor.', '👔 You hold the majority: you are the club’s owner and chairman now. The board looks to you.'))
+  }
+  return { ok: true, lines }
 }
 
 export function sellClubStake(life: Life): ProjectResult & { amount: number } {
@@ -138,7 +158,7 @@ export function sellClubStake(life: Life): ProjectResult & { amount: number } {
 
 /** Legacy score points the hero's projects and collection add to the Hall of Fame entry. */
 export const projectsLegacyPoints = (life: Life): number =>
-  academyLevel(life) * 12 + stadiumLevel(life) * 10 + (stakePct(life) > 0 ? 6 : 0) + Math.round(assetEffectTotal(life, 'collector')) * 3
+  academyLevel(life) * 12 + stadiumLevel(life) * 10 + (stakePct(life) > 0 ? 6 : 0) + (isClubOwner(life) ? OWNER_LEGACY_POINTS : 0) + Math.round(assetEffectTotal(life, 'collector')) * 3
   + Math.min(FUND_POINTS_MAX, Math.floor((legacyFund(life) / 1_000_000) * FUND_POINTS_PER_M))
 
 /** What the Legacy child receives from this career's fund. */
@@ -176,4 +196,30 @@ export function weeklyProjectsTick(life: Life, hero: Pick<Hero, 'reputation'>, c
     if (w % 52 === 0) hero.reputation = clamp(hero.reputation + stad, 0, 100)
   }
   return { income, upkeep, lines }
+}
+
+/** What a controlling owner becomes once the boots are hung up: feeds the documentary, the Hall of Fame and the epilogue. */
+export interface ClubOwnerInfo {
+  clubId: string
+  pct: number
+  /** Short line for the Hall of Fame / best moments. */
+  headline: LText
+  /** Post-retirement epilogue paragraph. */
+  epilogue: LText
+}
+
+/** The hero's club ownership at this moment (null when below {@link STAKE_CONTROL_PCT}). `clubName` is resolved by the caller. */
+export function clubOwnerOf(life: Life, clubName: string): ClubOwnerInfo | null {
+  if (!isClubOwner(life)) return null
+  const pct = stakePct(life)
+  const clubId = String(life.flags[PROJECT_FLAGS.stakeClub] ?? '')
+  return {
+    clubId,
+    pct,
+    headline: fill(lt('👔 {c} kulübünün çoğunluk sahibi (%{n})', '👔 Majority owner of {c} ({n}%)'), { c: clubName, n: pct }),
+    epilogue: fill(lt(
+      'Kramponları astıktan sonra {c} yönetim kurulunun başına geçti: hissenin %{n}’i onun. İlk iş olarak altyapıya yatırım yaptı, tribünde ilk maçı ayakta izledi. Bir zamanlar forma giydiği kulübü artık kendi vizyonuyla yönetiyor.',
+      'After hanging up his boots he took the chair at {c}: he owns {n}% of the shares. His first move was to invest in the academy, and he watched his first match as owner standing in the stands. He now runs the club he once played for.'),
+    { c: clubName, n: pct }),
+  }
 }

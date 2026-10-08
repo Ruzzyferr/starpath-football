@@ -12,7 +12,7 @@
  */
 import { age, boss, canAfford, chain, chairman, fans, flags, fol, follow, fx, happy, hasClub, money, news, num, press, rel, rep, stress, t } from '../dsl'
 import {
-  ACADEMY_PRICE, STADIUM_PRICE, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT, academyGraduates, academyLevel, legacyFund, nextAcademyPrice, stadiumLevel, stakePct,
+  ACADEMY_PRICE, STADIUM_PRICE, STAKE_CONTROL_PCT, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT, academyGraduates, academyLevel, legacyFund, nextAcademyPrice, stadiumLevel, stakePct,
 } from '../../projects'
 import type { EventDef } from '../types'
 
@@ -163,6 +163,46 @@ export const projectEvents: EventDef[] = [
       { label: t('Teknik direktörün bütçesini destekle', 'Back the manager\'s budget'), effects: () => fx(t('Hoca seni yanına çağırıp teşekkür etti. Soyunma odasında bir tebessüm fark ettin.', 'The manager called you aside to thank you. You noticed a smile in the dressing room.'), boss(6), rel('teammate', 2), money(-20_000)) },
       { label: t('Tesisleri yenilet', 'Renovate the facilities'), effects: () => fx(t('Antrenman sahası yenilendi, taraftar tribününün çatısı onarıldı.', 'The training pitch was renewed and the fans\' stand got a new roof.'), fans(4), chairman(2), money(-30_000), happy(3)) },
       { label: t('Temettüyü artır', 'Raise the dividend'), effects: () => fx(t('Hissedarlar sevindi, taraftar sormaya başladı: "Para nereye?"', 'Shareholders were pleased; fans began asking: "Where is the money going?"'), money(25_000), fans(-4), press(-2)) },
+    ],
+  },
+
+  {
+    id: 'money.club_majority_offer', category: 'money', weight: 1.3, cooldownWeeks: 52, maxPerCareer: 3,
+    conditions: ({ state }) => {
+      const owned = stakePct(state.life)
+      return age(state) >= 26 && hasClub(state) && owned >= 10 && owned < STAKE_CONTROL_PCT && state.hero.reputation >= 70
+        && state.life.money >= (STAKE_CONTROL_PCT - owned) * STAKE_PRICE_PER_PCT * 1.1
+        && String(state.life.flags['proj:stakeClub'] ?? '') === (state.hero.contract?.clubId ?? '')
+    },
+    vars: ({ state }) => ({ owned: stakePct(state.life), need: STAKE_CONTROL_PCT - stakePct(state.life), cost: (STAKE_CONTROL_PCT - stakePct(state.life)) * STAKE_PRICE_PER_PCT }),
+    title: t('Çoğunluk Hissesi', 'The Majority Stake'),
+    text: t(
+      '{chairmanName} yarı utangaç bir sesle konuştu: "Eski ortak hissesini satıyor. %{need} daha alırsan kulübün çoğunluğu sende olur. Sahibi sen olursun." Şu an %{owned} hissen var; kalan {cost}. Futbolculuk günleri bir gün biter, kulüp kalır.',
+      '{chairmanName} spoke in a half-shy voice: "An old partner is selling. Buy another {need}% and you hold the majority. You would be the owner." You hold {owned}% now; the rest costs {cost}. The playing days end one day; the club stays.',
+    ),
+    icon: '👔',
+    choices: [
+      { label: t('Çoğunluğu al ({cost:money})', 'Take the majority ({cost:money})'), risk: 'medium', requires: (c) => canAfford(c.state, num(c, 'cost')), lockedHint: t('Nakdin yetmiyor.', 'Not enough cash.'),
+        effects: (c) => fx(t('İmzalar atıldı. Basın toplantısında ilk kez "benim kulübüm" dedin ve kimse gülmedi. Tribünde pankart açıldı: "Başkanımız".', 'Papers signed. At the press conference you said "my club" for the first time and nobody laughed. A banner went up in the stands: "Our chairman".'),
+          money(-num(c, 'cost')), chairman(12), boss(3), fans(8), press(6), rep(2), happy(10), news(t('{heroName} kulübün çoğunluk hissesini aldı', '{heroName} buys majority stake in the club'), 1),
+          { addFlags: { 'proj:stake': num(c, 'need'), 'proj:stakeInvested': num(c, 'cost') }, setFlags: { 'proj:ownerSince': 1 } }) },
+      { label: t('Bir süre bekle', 'Wait a while'), effects: () => fx(t('Başkan anladı: "Kapı açık, ama başkası da kapıda."', 'The chairman understood: "The door is open, but someone else is knocking too."'), chairman(-1)) },
+    ],
+  },
+  {
+    id: 'club.owner_boardroom', category: 'club', weight: 1.2, cooldownWeeks: 40, maxPerCareer: 5,
+    conditions: ({ state }) => stakePct(state.life) >= STAKE_CONTROL_PCT && hasClub(state),
+    vars: ({ state }) => ({ pct: stakePct(state.life) }),
+    title: t('Sahibin Masası', 'The Owner\u2019s Desk'),
+    text: t(
+      'Hem oyuncu hem sahipsin. %{pct} hisseyle toplantı masasının başındasın; ama soyunma odasındaki arkadaşların seni bir "patron" gibi izliyor. Bu hafta masada üç dosya var: yeni stat sponsoru, altyapı bütçesi, bir de teknik direktörün sözleşmesi.',
+      'You are player and owner at once. With {pct}% you head the boardroom table, while your dressing-room friends look at you like a boss. Three files sit on the desk this week: a new stadium sponsor, the academy budget, and the manager\u2019s contract.',
+    ),
+    icon: '🗂️',
+    choices: [
+      { label: t('Altyapı bütçesini artır', 'Raise the academy budget'), effects: () => fx(t('Altyapıdan gelen çocuklar bunu unutmayacak. Mali tablo biraz sızladı ama gelecek parlak.', 'The kids from the academy will not forget this. The books winced, the future glows.'), money(-60_000), fans(5), chairman(3), rel('teammate', 2), happy(4)) },
+      { label: t('Sponsorla pazarlık et', 'Haggle with the sponsor'), effects: () => fx(t('Anlaşma gelirini artırdı. Taraftar sponsor logosunu eleştirdi, ama bütçe rahatladı.', 'The deal lifted revenue. Fans grumbled about the logo, but the budget breathes.'), money(90_000), fans(-3), press(2)) },
+      { label: t('Hocanın sözleşmesini uzat', 'Extend the manager\u2019s contract'), effects: () => fx(t('Hoca seni yanına çağırıp hafifçe sarıldı. Soyunma odasında istikrar kokusu var.', 'The manager pulled you aside for a quick hug. The dressing room smells of stability.'), boss(7), money(-25_000), rep(1)) },
     ],
   },
 

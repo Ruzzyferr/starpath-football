@@ -4,13 +4,15 @@ import { START_YEAR } from '../../core/config'
 import { makeHeroLife } from '../career/testFixtures'
 import { ASSETS } from '../../data/assets'
 import { legacyStartFrom } from '../game/legacy'
+import { buildCareerSummary } from '../game/hallOfFame'
+import { makeGame } from '../game/testHelpers'
 import { netWorth, weeklyEconomy } from './economy'
 import { assetEffectTotal } from './assetEffects'
 import { openBusiness, businessWeek } from './business'
 import {
   ACADEMY_PRICE, LEGACY_FUND_CAP, PROJECT_FLAGS, STADIUM_PRICE, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT, academyLevel, buildAcademyStage, buildStadiumStage,
   buyClubStake, contributeLegacyFund, legacyAcademyBonus, legacyFund, legacyFundBonus, projectUpkeep, projectsLegacyPoints, sellClubStake, stakeDividend, stadiumLevel,
-  weeklyProjectsTick,
+  weeklyProjectsTick, STAKE_CONTROL_PCT, OWNER_LEGACY_POINTS, clubOwnerOf, isClubOwner, stakePct,
 } from './projects'
 
 const cal = { season: START_YEAR, week: 26, day: 0, slot: 0 }
@@ -125,5 +127,48 @@ describe('business decisions (boost, manager, expand)', () => {
     expect(hot).toBeGreaterThan(base)
     businessWeek(new Rng(6), b!, 70, 2)
     expect(b.boost).toBeUndefined()
+  })
+})
+
+describe('majority club ownership', () => {
+  it('crossing 51% makes the hero the owner: better dividend, big legacy points, an epilogue', () => {
+    const { life } = rich()
+    expect(buyClubStake(life, 'c0', 25).ok).toBe(true)
+    expect(isClubOwner(life)).toBe(false)
+    const d25 = stakeDividend(life) / stakePct(life)
+    const pts25 = projectsLegacyPoints(life)
+    const r = buyClubStake(life, 'c0', STAKE_CONTROL_PCT - 25)
+    expect(r.ok).toBe(true)
+    expect(r.lines.length).toBeGreaterThan(1) // the "you are the owner" line
+    expect(isClubOwner(life)).toBe(true)
+    expect(stakeDividend(life) / stakePct(life)).toBeGreaterThan(d25)
+    expect(projectsLegacyPoints(life)).toBe(pts25 + OWNER_LEGACY_POINTS)
+    const o = clubOwnerOf(life, 'Atlas FC')
+    expect(o?.pct).toBe(STAKE_CONTROL_PCT)
+    expect(o?.epilogue.tr).toContain('Atlas FC')
+    expect(o?.epilogue.en).toContain('Atlas FC')
+    expect(sellClubStake(life).ok).toBe(true)
+    expect(clubOwnerOf(life, 'Atlas FC')).toBeNull()
+  })
+
+  it('the share cap now allows a controlling stake and no more', () => {
+    const { life } = rich()
+    life.money = 80_000_000
+    expect(STAKE_MAX_PCT).toBeGreaterThan(STAKE_CONTROL_PCT)
+    expect(buyClubStake(life, 'c0', STAKE_MAX_PCT).ok).toBe(true)
+    expect(buyClubStake(life, 'c0', 1).ok).toBe(false)
+  })
+
+  it('the retirement summary carries the owner epilogue and the Hall of Fame bonus', () => {
+    const s = makeGame(77)
+    s.hero.birthYear = s.calendar.season - 34
+    s.life.money = 60_000_000
+    const club = s.hero.contract!.clubId
+    expect(buyClubStake(s.life, club, STAKE_CONTROL_PCT).ok).toBe(true)
+    const sum = buildCareerSummary(s)
+    expect(sum.owner?.clubName).toBe(s.world.clubs[club]!.name)
+    expect(sum.owner?.pct).toBe(STAKE_CONTROL_PCT)
+    expect(sum.projectsScore).toBeGreaterThanOrEqual(OWNER_LEGACY_POINTS)
+    expect(sum.bestMoments.some((m) => m.en.includes('Majority owner'))).toBe(true)
   })
 })

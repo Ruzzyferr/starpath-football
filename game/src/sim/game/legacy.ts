@@ -5,7 +5,7 @@
  * free "Famous Surname" perk, and a parent who follows the new career.
  *
  *   inheritance = clamp(2% of the parent's final net worth, 5 000, 150 000)
- *   reputation  = clamp(legacy score / 150, 3, 10)
+ *   reputation  = clamp(legacy score / 150, 3, 10) (+2 when the parent retired as a majority club owner)
  *
  * Playtest round 2: at 5% / 2M / 15 the child of a 31M legend started at 16
  * with ~1.5M cash, bought 15 luxuries in the first season, had money idling
@@ -31,14 +31,14 @@ export interface LegacyStart {
 export const LEGACY_PARENT_FLAG = 'c:legacyParentId'
 
 /** Legacy terms for a child of `entry`. */
-export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'> & Partial<Pick<HallOfFameEntry, 'legacyFund' | 'academyLevel'>>): LegacyStart {
+export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'> & Partial<Pick<HallOfFameEntry, 'legacyFund' | 'academyLevel' | 'owner'>>): LegacyStart {
   return {
     parentCareerId: entry.careerId,
     parentName: entry.name,
     parentGender: entry.gender,
     legacyScore: entry.legacyScore,
     inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.02, 5_000, 150_000)) + legacyFundBonus(entry.legacyFund ?? 0),
-    reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)) + legacyAcademyBonus(entry.academyLevel ?? 0),
+    reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)) + legacyAcademyBonus(entry.academyLevel ?? 0) + (entry.owner ? 2 : 0),
   }
 }
 
