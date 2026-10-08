@@ -19,6 +19,7 @@ import {
   POST_Y_HIGH,
   POST_Y_LOW,
   createTracker,
+  predictTrajectory,
   stepBall,
   type BallState,
   type PhysicsEnv,
@@ -160,6 +161,24 @@ export interface KickRequest {
   noiseScale?: number
   /** Override of the aim-assist pull (see {@link assistShotTarget}). */
   assistPull?: number
+  /** Placed (side-foot) finish (plan 2.1#47): accuracy +15 %, pace −25 %. */
+  placed?: boolean
+}
+
+/** Placed-shot modifiers (plan 2.1#47). */
+export const PLACED_NOISE = 0.85
+export const PLACED_SPEED = 0.75
+
+/** Chip apex (m) for a distance (plan 2.1#47: 2.5–4 m). */
+export const chipApex = (d: number): number => clampN(2.5 + (d - 6) * 0.1, 2.5, 4)
+
+/**
+ * Chip accuracy multiplier from the keeper's distance off his line (plan 2.1#47):
+ * a keeper on his line (≤ 1.5 m) makes the chip hard (×1.4 noise), one
+ * caught 6+ m off it makes it easy (×0.75).
+ */
+export function chipKeeperFactor(keeperOffLine: number): number {
+  return clampN(1.4 - Math.max(0, keeperOffLine - 1.5) * (0.65 / 4.5), 0.75, 1.4)
 }
 
 export interface KickPlan {
@@ -210,6 +229,27 @@ export const HEADER_RANGE = 18
 export function maxSpin(kind: KickKind, at: Attributes): number {
   const curve = kind === 'freekick' || kind === 'cross' ? at.setPieces * 0.6 + at.crossing * 0.4 : at.setPieces * 0.4 + at.shooting * 0.3 + at.passing * 0.3
   return 22 + a01(curve) * 42
+}
+
+/** Largest bend (m) a kicker can put on a ball: 3.5 m scaled by the Technique (set pieces) / Shooting average (2.1#45). */
+export const MAX_CURL_BEND = 3.5
+export function curlCap(at: Attributes): number {
+  return MAX_CURL_BEND * (0.3 + 0.7 * a01((at.setPieces + at.shooting) / 2))
+}
+
+/** Max sideways distance (m) of a launch's flight from the straight line to `target` (noiseless). */
+export function curlBulge(from: Vec2, z0: number, l: { vx: number; vy: number; vz: number; spin: Spin }, env: PhysicsEnv, target: Vec2): number {
+  const d = dist(from, target)
+  if (d < 1) return 0
+  const axis = norm(sub(target, from))
+  const pts = predictTrajectory({ x: from.x, y: from.y, z: z0, vx: l.vx, vy: l.vy, vz: l.vz, spin: { ...l.spin } }, env, { duration: 3, sampleEvery: 2, stopOnEnd: true })
+  let best = 0
+  for (const p of pts) {
+    const along = (p.x - from.x) * axis.x + (p.y - from.y) * axis.y
+    if (along > d) break
+    best = Math.max(best, Math.abs((p.x - from.x) * -axis.y + (p.y - from.y) * axis.x))
+  }
+  return best
 }
 
 /** Shot speed (m/s) at power 1 for a kicker. */
@@ -264,6 +304,19 @@ function probe(b0: BallState, env: PhysicsEnv, target: Vec2, axis: Vec2, maxT: n
   return { t: maxT, lateral: 0, z: b.z, arriveSpeed: 0, reached: false }
 }
 
+/**
+ * Launch-speed range (m/s) per pass type (plan 2.1#57): short ground pass 8–16,
+ * through ball 10–20, lofted 10–28, chip 7–18. Receivers then control the ball
+ * by First Touch against its speed (runtime feetContact).
+ */
+export const PASS_SPEED_RANGE: Readonly<Partial<Record<KickKind, readonly [number, number]>>> = {
+  pass: [8, 16], through: [10, 20], lofted: [10, 28], chip: [7, 18],
+}
+const passRange = (kind: KickKind, v: number): number => {
+  const r = PASS_SPEED_RANGE[kind]
+  return r ? clampN(v, r[0], r[1]) : v
+}
+
 /** Desired arrival speed of a ground pass over distance d. */
 const passArriveSpeed = (d: number, power: number) => 4.5 + d * 0.12 + power * 4
 
@@ -292,18 +345,24 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   if (ground) {
     aimZ = 0
     flightT = 0
-    vh = Math.sqrt(passArriveSpeed(d, req.power) ** 2 + 2 * (env.rollDecel + 0.5) * d)
+    vh = passRange(kind, Math.sqrt(passArriveSpeed(d, req.power) ** 2 + 2 * (env.rollDecel + 0.5) * d))
     vz = 0
   } else if (aerial) {
     // Flight time grows with distance; chips hang longest.
     const hang = kind === 'chip' ? 1.15 : kind === 'cross' ? 0.65 : kind === 'clear' ? 0.9 : 0.8
     flightT = hang + d * (kind === 'chip' ? 0.032 : 0.036)
     aimZ = req.targetZ ?? (kind === 'cross' ? 1.7 : kind === 'chip' ? 1.2 : 0.4)
-    vh = d / flightT
+    if (kind === 'chip') {
+      // Pick the flight time that peaks at chipApex(d) and comes down through aimZ.
+      const H = Math.max(chipApex(d), aimZ + 0.3, z0 + 0.3)
+      const v0 = Math.sqrt(2 * GRAVITY * (H - z0))
+      flightT = (v0 + Math.sqrt(Math.max(0, v0 * v0 - 2 * GRAVITY * (aimZ - z0)))) / GRAVITY
+    }
+    vh = passRange(kind, d / flightT)
     vz = (aimZ - z0 + 0.5 * GRAVITY * flightT * flightT) / flightT
   } else {
     // Shots, headers, penalties, free kicks: speed from power, height from aim.
-    vh = shotSpeed(req.power, req.attrs, kind)
+    vh = shotSpeed(req.power, req.attrs, kind) * (req.placed ? PLACED_SPEED : 1)
     aimZ = req.targetZ ?? 0.5
     flightT = d / vh
     vz = (aimZ - z0 + 0.5 * GRAVITY * flightT * flightT) / flightT
@@ -325,9 +384,9 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
     heading -= Math.atan2(pr.lateral, d) * 0.95
     if (ground) {
       const want = passArriveSpeed(d, req.power)
-      vh = Math.max(3, vh + (want - pr.arriveSpeed) * 0.8)
+      vh = passRange(kind, Math.max(3, vh + (want - pr.arriveSpeed) * 0.8))
     } else if (aerial) {
-      vh *= clampN(pr.t / flightT, 0.6, 1.6)
+      vh = passRange(kind, vh * clampN(pr.t / flightT, 0.6, 1.6))
       vz += (aimZ - pr.z) / Math.max(0.3, pr.t)
     } else {
       vz += (aimZ - pr.z) / Math.max(0.15, pr.t)
@@ -386,7 +445,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
   const pressure = 1 + req.pressure * (1.3 - comp)
   const overhit = powerSpread(req.power, req.attrs.composure)
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
-  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * (req.noiseScale ?? 1)
+  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
 }
 
@@ -418,8 +477,17 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
       power = Math.min(power, 0.55)
     }
   }
-  const spinSide = clampN(req.curl, -1, 1) * maxSpin(req.kind, req.attrs)
-  const solved = solveLaunch({ ...req, power, target, targetZ }, spinSide)
+  let spinSide = req.kind === 'header' ? 0 : clampN(req.curl, -1, 1) * maxSpin(req.kind, req.attrs)
+  let solved = solveLaunch({ ...req, power, target, targetZ }, spinSide)
+  if (spinSide !== 0) {
+    // Magnus cap (plan 2.1#45): the bend never exceeds curlCap(attrs) metres off the straight line.
+    const cap = curlCap(req.attrs)
+    const bend = curlBulge(req.from, req.fromZ ?? 0, solved, req.env, target)
+    if (bend > cap) {
+      spinSide *= cap / bend
+      solved = solveLaunch({ ...req, power, target, targetZ }, spinSide)
+    }
+  }
 
   let { vx, vy, vz } = solved
   const spin = { ...solved.spin }

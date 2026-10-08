@@ -59,6 +59,7 @@ import {
   leadPosition,
   pickPassTarget,
   planKick,
+  chipKeeperFactor,
   shotTargetFromDir,
   type AimAssist,
   type KickKind,
@@ -880,7 +881,7 @@ export class HighlightRuntime {
     const rng = preview ? undefined : this.rng
     const base = { from, fromZ: this.ball.z, attrs: hero.attrs, pressure, assist: this.assist, env: this.env, assistPull: this.assistPull() }
 
-    const shot = (target: Vec2, power: number, curl: number, chip: boolean) => {
+    const shot = (target: Vec2, power: number, curl: number, chip: boolean, placed = false) => {
       const kind: KickKind = chip ? 'chip' : sp?.kind === 'penalty' ? 'penalty' : sp?.kind === 'freekick' ? 'freekick' : 'shot'
       let t = { ...target }
       let tz: number | undefined
@@ -893,7 +894,10 @@ export class HighlightRuntime {
         tz = 1.5
         t = { x: PITCH_LENGTH + 0.3, y: t.y }
       }
-      const plan = planKick({ ...base, kind, target: t, targetZ: tz, power, curl, noiseScale: this.noiseScale() * HERO_SHOT_NOISE }, rng)
+      // Chip vs keeper (2.1#47): easy over a keeper off his line, hard against one on it.
+      const gk = kind === 'chip' ? this.agents.find((a) => a.isKeeper && a.team === 'opp') : undefined
+      const chipF = gk ? chipKeeperFactor(PITCH_LENGTH - gk.pos.x) : 1
+      const plan = planKick({ ...base, kind, target: t, targetZ: tz, power, curl, placed, noiseScale: this.noiseScale() * HERO_SHOT_NOISE * chipF }, rng)
       return { plan, kind, power, passTo: null }
     }
     const pass = (to: PassCandidate, lofted: boolean, power: number) => {
@@ -943,7 +947,7 @@ export class HighlightRuntime {
         const mate = mates.filter((m) => dist(m.pos, act.at) < 3.2).sort((p, q) => dist(p.pos, act.at) - dist(q.pos, act.at))[0]
         if (mate) return pass(mate, dist(from, mate.pos) > 30, 0.6)
         // Tap inside the goal mouth area → placed shot.
-        if (act.at.x > PITCH_LENGTH - 3 && Math.abs(act.at.y - GOAL_CENTER_Y) < 6) return shot({ x: PITCH_LENGTH, y: act.at.y }, 0.75, 0, false)
+        if (act.at.x > PITCH_LENGTH - 3 && Math.abs(act.at.y - GOAL_CENTER_Y) < 6) return shot({ x: PITCH_LENGTH, y: act.at.y }, 0.75, 0, false, true)
         return through(act.at, dist(from, act.at) > 28, 0.6)
       }
       case 'pass': {

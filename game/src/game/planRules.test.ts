@@ -5,7 +5,9 @@
 import { describe, expect, it } from 'vitest'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { clampDeadzone, padTriggers, PAD_DEADZONE_MAX, PAD_DEADZONE_MIN } from './input'
-import { analyzeSwipe, POWER_BANDS, powerSpread, type GesturePoint } from './kick'
+import { ATTRIBUTE_KEYS, type Attributes } from '../core/types'
+import { analyzeSwipe, chipKeeperFactor, curlBulge, headingNoise, PASS_SPEED_RANGE, curlCap, MAX_CURL_BEND, planKick, POWER_BANDS, powerSpread, type GesturePoint, type KickRequest } from './kick'
+import { DEFAULT_ENV, predictTrajectory } from './physics'
 import { kickEvents } from './inputReplay'
 import { bulletWindowFor, dribbleReach, magnetMate, PASS_MAGNET } from './runtime'
 import { looseBallWin, standingTackleWin, TACKLE_RANGE } from './ai'
@@ -123,5 +125,73 @@ describe('2.1#37 / #74 tackles and the loose ball', () => {
     expect(standingTackleWin(0.3, 1.0)).toEqual({ win: 0.7, early: false })
     expect(standingTackleWin(0.8, 1.0).win).toBe(0.8)
     expect(standingTackleWin(0.3, 0.5)).toEqual({ win: 0.3, early: true })
+  })
+})
+
+describe('2.1#45 Magnus curl cap', () => {
+  const at = (v: number) => Object.fromEntries(ATTRIBUTE_KEYS.map((k) => [k, v])) as Attributes
+  const req = (kind: KickRequest['kind'], v: number): KickRequest => ({
+    kind, from: { x: 80, y: 20 }, target: { x: 105, y: 32 }, power: 0.9, curl: 1, attrs: at(v), pressure: 0, assist: 'manual', env: DEFAULT_ENV,
+  })
+  it('bend never exceeds 3.5 m and scales with Technique/Shooting', () => {
+    expect(curlCap(at(99))).toBeLessThanOrEqual(MAX_CURL_BEND)
+    for (const v of [40, 70, 99]) {
+      const p = planKick(req('shot', v))
+      const bend = curlBulge({ x: 80, y: 20 }, 0, p, DEFAULT_ENV, p.aim)
+      expect(bend).toBeLessThanOrEqual(curlCap(at(v)) + 0.15)
+    }
+    expect(curlCap(at(40))).toBeLessThan(curlCap(at(80)))
+  })
+  it('a header never curls more than a foot shot', () => {
+    const h = planKick(req('header', 80))
+    const f = planKick(req('shot', 80))
+    expect(Math.abs(h.spin.side)).toBeLessThanOrEqual(Math.abs(f.spin.side))
+    expect(h.spin.side).toBe(0)
+  })
+})
+
+describe('2.1#47 placed and chip finishes', () => {
+  const at = (v: number) => Object.fromEntries(ATTRIBUTE_KEYS.map((k) => [k, v])) as Attributes
+  const base = (over: Partial<KickRequest>): KickRequest => ({
+    kind: 'shot', from: { x: 90, y: 34 }, target: { x: 105, y: 32 }, power: 0.8, curl: 0, attrs: at(70), pressure: 0, assist: 'manual', env: DEFAULT_ENV, ...over,
+  })
+  it('placed: −25 % pace and +15 % accuracy', () => {
+    const n = planKick(base({}))
+    const p = planKick(base({ placed: true }))
+    expect(Math.hypot(p.vx, p.vy) / Math.hypot(n.vx, n.vy)).toBeCloseTo(0.75, 1)
+    expect(headingNoise(base({ placed: true }), 0.7) / headingNoise(base({}), 0.7)).toBeCloseTo(0.85, 6)
+  })
+  it('chip peaks between 2.5 and 4 m', () => {
+    for (const d of [8, 14, 22]) {
+      const req = base({ kind: 'chip', from: { x: 105 - d, y: 34 }, target: { x: 105.3, y: 34 }, targetZ: 1.5 })
+      const p = planKick(req)
+      const pts = predictTrajectory({ x: req.from.x, y: req.from.y, z: 0, vx: p.vx, vy: p.vy, vz: p.vz, spin: { ...p.spin } }, DEFAULT_ENV, { duration: 3 })
+      const apex = Math.max(...pts.map((q) => q.z))
+      expect(apex).toBeGreaterThanOrEqual(2.3)
+      expect(apex).toBeLessThanOrEqual(4.2)
+    }
+  })
+  it('chip accuracy depends on the keeper being off his line', () => {
+    expect(chipKeeperFactor(0.5)).toBe(1.4)
+    expect(chipKeeperFactor(8)).toBe(0.75)
+    expect(chipKeeperFactor(4)).toBeLessThan(chipKeeperFactor(2))
+  })
+})
+
+describe('2.1#57 pass speed range per type', () => {
+  const at = (v: number) => Object.fromEntries(ATTRIBUTE_KEYS.map((k) => [k, v])) as Attributes
+  it('launch speeds stay inside each type’s range', () => {
+    for (const kind of ['pass', 'through', 'lofted', 'chip'] as const) {
+      const [lo, hi] = PASS_SPEED_RANGE[kind]!
+      for (const d of [4, 12, 25, 45]) {
+        for (const power of [0.2, 0.6, 1.1]) {
+          const p = planKick({ kind, from: { x: 30, y: 34 }, target: { x: 30 + d, y: 30 }, power, curl: 0, attrs: at(70), pressure: 0, assist: 'manual', env: DEFAULT_ENV })
+          const v = Math.hypot(p.vx, p.vy)
+          expect(v).toBeGreaterThanOrEqual(lo - 1e-6)
+          expect(v).toBeLessThanOrEqual(hi + 1e-6)
+        }
+      }
+    }
+    expect(PASS_SPEED_RANGE.pass).toEqual([8, 16])
   })
 })
