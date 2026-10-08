@@ -193,6 +193,7 @@ export const tr = {
       sponsor: { name: 'Sponsorluk', def: 'Markalarla yapılan anlaşma. Haftalık gelir sağlar, karşılığında belirli bir imaj ve davranış beklenir.' },
       investment: { name: 'Yatırım', def: 'Paranı büyütmek için riskli ya da güvenli araçlara yatırman. Değeri haftadan haftaya dalgalanır.' },
       addiction: { name: 'Kumar bağımlılığı', def: 'Kumarhaneye sık gittikçe artar. Yüksek bağımlılık para kaybını, stresi ve skandal riskini büyütür.' },
+      seasonForm: { name: 'Sezon formu', def: 'Milli takım teknik direktörünün sezon sayılarına verdiği not: ortalama reyting, gol ve asist (kalecide ve defansta gol yememe) ve şöhret. Çağrı puanına bu ayrı kalemden en fazla +10 puan eklenir; OVR tek başına yetmediğinde fark yaratır.' },
     },
   },
   settings: {
@@ -401,6 +402,7 @@ export const en: Shape<typeof tr> = {
       sponsor: { name: 'Sponsorship', def: 'A deal with a brand. It pays weekly; in return you are expected to keep a certain image and behaviour.' },
       investment: { name: 'Investment', def: 'Putting money into safe or risky products to grow it. Values move week to week.' },
       addiction: { name: 'Gambling addiction', def: 'Rises the more often you visit the casino. High addiction means bigger losses, more stress and a higher scandal risk.' },
+      seasonForm: { name: 'Season form', def: 'The national coach grades your season numbers: average rating, goal involvement (clean sheets for keepers and defenders) and fame. This separate item adds up to +10 points to your call-up score and decides close calls when OVR alone is not enough.' },
     },
   },
   settings: {

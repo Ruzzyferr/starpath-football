@@ -10,6 +10,8 @@ import { formatMoney } from '../../format'
 import { Icon } from '../../icons'
 import { gameState } from '../../store'
 import { lifePlus } from '../../backend/lifePlus'
+import { businessHints, foundationView } from '../../../sim/game/uiViews'
+import type { GameState } from '../../../core/types'
 
 function PnlTable({ p }: { p: BusinessPnl | undefined }) {
   if (!p) return <p class="t-sm t-lo">{t('life.biz.noHistory')}</p>
@@ -123,6 +125,41 @@ function ShopCard({ kind, owned, reputation, money }: { kind: BusinessKind; owne
   )
 }
 
+function FoundationCard({ s }: { s: GameState }) {
+  const f = foundationView(s)
+  const hints = businessHints(s)
+  const money = s.life.money
+  const kindName = (k: string) => lt(BUSINESS_DEFS[k as BusinessKind].name)
+  const tips: string[] = []
+  const up = hints.upgrades[0]
+  if (up) {
+    tips.push(up.affordable
+      ? t('life.biz.foundation.upgradeNow', { kind: kindName(up.kind), price: formatMoney(up.cost, { compact: true }) })
+      : t('life.biz.foundation.upgradeSoon', { kind: kindName(up.kind), price: formatMoney(up.cost, { compact: true }), missing: formatMoney(up.cost - money, { compact: true }) }))
+  }
+  const next = hints.unopened.filter((u) => !u.locked).sort((a, b) => a.price - b.price)[0]
+  if (next) tips.push(t('life.biz.foundation.openKind', { kind: kindName(next.kind), price: formatMoney(next.price, { compact: true }) }))
+  return (
+    <Card variant="raised" class="biz-foundation" data-testid="foundation-card">
+      <div class="row">
+        <span class="biz-icon" aria-hidden="true">🤝</span>
+        <div class="grow">
+          <h3 class="h3">{f.founded ? t('life.biz.foundation.founded', { n: f.name }) : t('life.biz.foundation.title')}</h3>
+          <p class="t-sm t-mid">
+            {f.founded
+              ? t('life.biz.foundation.active', { f: f.funds })
+              : f.repOk ? t('life.biz.foundation.almost', { r: f.needRep }) : t('life.biz.foundation.notYet', { r: f.needRep })}
+          </p>
+        </div>
+      </div>
+      <h4 class="micro t-mid">{t('life.biz.foundation.tipTitle')}</h4>
+      {tips.length === 0
+        ? <p class="t-sm t-lo">{t('life.biz.foundation.none')}</p>
+        : <ul class="biz-tips t-sm">{tips.map((x) => <li key={x}>{x}</li>)}</ul>}
+    </Card>
+  )
+}
+
 export function Business() {
   const s = gameState.value
   if (!s) return null
@@ -135,6 +172,9 @@ export function Business() {
         {list.length === 0
           ? <EmptyState icon="storefront" text={t('life.biz.empty')} />
           : <div class="biz-grid">{list.map((b) => <OwnedCard key={b.id} b={b} reputation={rep} money={s.life.money} />)}</div>}
+      </section>
+      <section class="stack">
+        <FoundationCard s={s} />
       </section>
       <section class="stack">
         <SectionTitle>{t('life.biz.shop')}</SectionTitle>

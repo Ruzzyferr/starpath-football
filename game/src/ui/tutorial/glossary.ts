@@ -43,6 +43,7 @@ export const GLOSSARY: { id: GlossaryTerm; cat: GlossaryCat }[] = [
   { id: 'sponsor', cat: 'life' },
   { id: 'investment', cat: 'life' },
   { id: 'addiction', cat: 'life' },
+  { id: 'seasonForm', cat: 'career' },
 ]
 
 export const GLOSSARY_CATS: GlossaryCat[] = ['player', 'condition', 'match', 'career', 'life']

@@ -22,6 +22,7 @@ export const tr = {
   responsible: {
     title: 'Sorumlu oyun',
     meter: 'Bağımlılık riski',
+    link: 'Sorumlu oyun ve destek',
     low: 'Kontrol sende. Eğlence olarak kaldığı sürece sorun yok.',
     medium: 'Dikkat: sık geliyorsun. Stresin artıyor, kulüp de fark etmeye başladı.',
     high: 'Tehlike: kumar hayatını yönetmeye başladı. Disiplin düşüyor, basın kokusunu aldı.',
@@ -167,6 +168,7 @@ export const en: Shape<typeof tr> = {
   responsible: {
     title: 'Responsible gaming',
     meter: 'Addiction risk',
+    link: 'Responsible gaming and support',
     low: 'You are in control. Fine while it stays entertainment.',
     medium: 'Careful: you come here often. Stress is rising and the club is noticing.',
     high: 'Danger: gambling is starting to run your life. Discipline is dropping and the press smells a story.',

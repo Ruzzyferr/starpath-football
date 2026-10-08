@@ -11,6 +11,7 @@ import { Business } from './life/Business'
 import { Relations } from './life/Relations'
 import { Social } from './life/Social'
 import { Sponsors } from './life/Sponsors'
+import { AddictionMeter } from './casino/AddictionMeter'
 import { InfoTip } from '../tutorial/InfoTip'
 import { LockChip, NewTag, UnlockGate } from '../tutorial/UnlockGate'
 import { features } from '../tutorial/unlocks'
@@ -55,6 +56,7 @@ export function LifeScreen() {
           <span class="micro t-mid">{t('data.stat.followers')}</span>
         </div>
       </div>
+      <AddictionMeter />
       <Tabs
         label={t('life.tabsLabel')}
         idPrefix="life"

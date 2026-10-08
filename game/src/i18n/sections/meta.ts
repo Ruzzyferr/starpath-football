@@ -33,6 +33,13 @@ export const tr = {
     legacyHint: 'Soyadı, {m} miras ve +{r} şöhretle yeni kariyer.',
     rank: '#{n}',
   },
+  comeback: {
+    title: 'Geri dön mü, bırak mı?',
+    body: '{a} yaşındasın ve ağır bir sakatlık geçirdin ({n} hafta). Zorlu bir dönüş yolu var; formayı da asabilirsin.',
+    hint: 'Dönersen moralin artar ve kariyerin sürer. Bırakmak istersen veda ekranına gidersin.',
+    stay: 'Geri döneceğim',
+    retire: 'Emekli ol',
+  },
   retire: {
     title: 'Kariyer kararı',
     sub: '{a} yaşındasın. Bir sezon daha mı, yoksa veda mı?',
@@ -180,6 +187,13 @@ export const en: Shape<typeof tr> = {
     legacy: 'Start as their child',
     legacyHint: 'A new career with the surname, {m} inheritance and +{r} reputation.',
     rank: '#{n}',
+  },
+  comeback: {
+    title: 'Come back or retire?',
+    body: 'You are {a} and have suffered a severe injury ({n} weeks). The road back is hard; you could also hang up your boots.',
+    hint: 'Coming back lifts your morale and your career goes on. If you prefer to stop, you go to the farewell screen.',
+    stay: 'I will come back',
+    retire: 'Retire',
   },
   retire: {
     title: 'Career decision',

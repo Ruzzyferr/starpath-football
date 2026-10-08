@@ -316,3 +316,7 @@
 .life-person-trend.is-flat { color: var(--text-mid); }
 .life-person-effect { margin: 0; }
 .life-act-cost { display: block; font-size: var(--fs-micro, 11px); opacity: 0.8; font-weight: 500; }
+
+/* Tur 2 UI: foundation card */
+.biz-foundation { display: flex; flex-direction: column; gap: var(--sp-2); }
+.biz-tips { margin: 0; padding-inline-start: var(--sp-4, 16px); display: grid; gap: var(--sp-1); color: var(--text-mid); }

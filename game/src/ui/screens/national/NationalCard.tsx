@@ -3,6 +3,8 @@ import { lt, t } from '../../../i18n'
 import { Button, Card, Chip, Flag, StatBar, type ChipTone } from '../../components'
 import { Icon } from '../../icons'
 import { gameState, navigate } from '../../store'
+import { InfoTip } from '../../tutorial/InfoTip'
+import { seasonFormView } from '../../../sim/game/uiViews'
 import { callupCard, type CallupCardView } from '../../backend/worldViews'
 
 const TONE: Record<string, ChipTone> = { certain: 'pos', likely: 'info', borderline: 'warning', out: 'neg' }
@@ -20,6 +22,24 @@ export function CallupMeter({ v }: { v: CallupCardView }) {
         <div class="nt-meter-fill" style={{ width: `${c.meter}%` }} />
         <div class="nt-meter-mark" style={{ left: `${v.threshold}%` }} aria-hidden="true" />
       </div>
+    </div>
+  )
+}
+
+/** Separate "season form" bar: the coach's grade of this season's numbers (heroPerformanceBonus). */
+export function SeasonFormBar() {
+  const s = gameState.value
+  if (!s) return null
+  const f = seasonFormView(s)
+  const label = t('intl.national.seasonForm')
+  const txt = `${f.bonus > 0 ? '+' : ''}${f.bonus.toFixed(1)}`
+  return (
+    <div class="stack" style={{ gap: 'var(--sp-1)' }} data-testid="nt-seasonform">
+      <div class="nt-meter-row">
+        <span class="t-sm t-mid label-with-tip">{label}<InfoTip term="seasonForm" /></span>
+        <span class="num t-sm">{t('intl.national.seasonFormValue', { v: txt })}</span>
+      </div>
+      <StatBar label={label} hideLabel showValue={false} value={f.ratio * 100} size="sm" color="var(--accent-blue)" />
     </div>
   )
 }
@@ -47,6 +67,7 @@ export function NationalCard({ detailed }: { detailed?: boolean }) {
         <Chip tone={TONE[c.status]} icon="flag">{t(`intl.national.status.${c.status}`)}</Chip>
       </div>
       <CallupMeter v={v} />
+      <SeasonFormBar />
       <div class="nt-announce"><Icon name="calendar" size={16} /> {announceText(v)}</div>
       {detailed && (
         <>

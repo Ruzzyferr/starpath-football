@@ -1,6 +1,8 @@
 import '../../styles/screens/home.css'
 import { ObjectivesCard } from './objectives/ObjectivesCard'
 import { NationalCard } from './national/NationalCard'
+import { AddictionMeter } from './casino/AddictionMeter'
+import { ComebackCard } from './legacy/ComebackCard'
 import { CeremonyBanner } from './awards/CeremonyBanner'
 import type { Attributes, Hero, Position } from '../../core/types'
 import { lt, t, tx } from '../../i18n'
@@ -185,6 +187,7 @@ export function HomeScreen() {
             </button>
           )}
 
+          <ComebackCard />
           <ObjectivesCard />
 
           <section aria-labelledby="home-quick">
@@ -239,6 +242,7 @@ export function HomeScreen() {
               <StatBar label={t('home.sharpness')} value={h.sharpness} size="sm" color="var(--brand-pitch)" info={<InfoTip term="sharpness" />} />
               <StatBar label={t('home.fatigue')} value={h.fatigue} size="sm" color={h.fatigue > 70 ? 'var(--state-danger)' : 'var(--state-warning)'} info={<InfoTip term="fatigue" />} />
             </div>
+            <AddictionMeter />
             <div class="home-form">
               <div class="row-between">
                 <span class="micro t-mid">{t('home.formTrend')}</span>

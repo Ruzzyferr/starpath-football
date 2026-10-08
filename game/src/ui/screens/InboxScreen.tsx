@@ -4,6 +4,7 @@ import type { NewsItem } from '../../core/types'
 import { lt, t } from '../../i18n'
 import { Avatar, Button, Card, Crest, EmptyState, Modal, Page, Tabs } from '../components'
 import { newsCause } from '../../sim/game/newsCause'
+import { collapseRepeats } from '../collapseRepeats'
 import { seasonLabel } from '../format'
 import { Icon } from '../icons'
 import { gameState, heroClub, navigate } from '../store'
@@ -43,7 +44,9 @@ export function InboxScreen() {
   const club = heroClub.value
   const all = [...s.life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week)
   const list = filter === 'all' ? all : all.filter((n) => sentKey(n) === filter)
-  const [front, ...rest] = list
+  const [frontC, ...restC] = collapseRepeats(list, (n) => lt(n.headline))
+  const front = frontC?.item
+  const rest = restC
   const c1 = club?.colors.primary ?? '#1fd47a'
   const c2 = club?.colors.secondary ?? '#0b1220'
   const counts = { pos: 0, neu: 0, neg: 0 }
@@ -88,7 +91,7 @@ export function InboxScreen() {
                 <span class="inbox-source">{front.source}</span>
                 <span class="t-lo">{t('inbox.weekOf', { season: seasonLabel(front.season), n: front.week + 1 })}</span>
               </div>
-              <h2 class="inbox-front-head" id="inbox-front-h">{lt(front.headline)}</h2>
+              <h2 class="inbox-front-head" id="inbox-front-h">{lt(front.headline)}{(frontC?.count ?? 1) > 1 && <span class="log-repeat num" title={t('inbox.log.repeatTip', { n: frontC?.count ?? 1 })}> ×{frontC?.count}</span>}</h2>
               {front.body && <p class="inbox-front-body">{lt(front.body)}</p>}
               <span class={`inbox-sent sent-${sentKey(front)}`}>
                 <Icon name={SENT_ICON[sentKey(front)]} size={14} /> {t(`inbox.sentiment.${sentKey(front)}`)}
@@ -99,7 +102,7 @@ export function InboxScreen() {
 
           <div class="inbox-side">
             <ol class="inbox-list">
-              {rest.map((n) => {
+              {rest.map(({ item: n, count }) => {
                 const k = sentKey(n)
                 return (
                   <li key={n.id} class={`inbox-item sent-${k}`}>
@@ -110,7 +113,7 @@ export function InboxScreen() {
                         <span class="t-lo">{t('common.weekShort', { n: n.week + 1 })}</span>
                         <span class="sr-only">{t(`inbox.sentiment.${k}`)}</span>
                       </div>
-                      <h3 class="inbox-item-head">{lt(n.headline)}</h3>
+                      <h3 class="inbox-item-head">{lt(n.headline)}{count > 1 && <span class="log-repeat num" title={t('inbox.log.repeatTip', { n: count })}> ×{count}</span>}</h3>
                       {n.body && <p class="inbox-item-body">{lt(n.body)}</p>}
                       <StoryCause item={n} />
                     </div>

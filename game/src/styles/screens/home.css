@@ -432,3 +432,9 @@
     flex: 0 0 260px;
   }
 }
+
+/* Tur 2 UI: addiction meter, comeback card */
+.addiction-meter { gap: var(--sp-1); margin: var(--sp-2) 0; }
+.addiction-link { color: var(--accent-blue); text-decoration: underline; min-height: 24px; display: inline-flex; align-items: center; }
+.addiction-meter[data-level="high"] .addiction-link { color: var(--state-danger); }
+.comeback-card { display: flex; flex-direction: column; gap: var(--sp-2); }

@@ -6,6 +6,7 @@ import { EmptyState, Page, Tabs } from '../components'
 import { seasonLabel } from '../format'
 import { Icon, isIconName, type IconName } from '../icons'
 import { gameState } from '../store'
+import { collapseRepeats, type Collapsed } from '../collapseRepeats'
 
 type Kind = NonNullable<LogEntry['kind']> | 'other'
 type Filter = Kind | 'all'
@@ -21,12 +22,14 @@ export function CareerLogScreen() {
   const [filter, setFilter] = useState<Filter>('all')
   if (!s) return <Page title={t('inbox.log.title')}><EmptyState /></Page>
   const all = [...s.life.log].sort((a, b) => b.season - a.season || b.week - a.week || b.day - a.day)
-  const list = filter === 'all' ? all : all.filter((e) => kindOf(e) === filter)
+  const filtered = filter === 'all' ? all : all.filter((e) => kindOf(e) === filter)
+  const list = collapseRepeats(filtered, (e) => `${kindOf(e)}|${lt(e.text)}`)
   const present = KINDS.filter((k) => all.some((e) => kindOf(e) === k))
 
   // season → week → entries (already sorted desc)
-  const seasons: { season: number; weeks: { week: number; items: LogEntry[] }[] }[] = []
-  for (const e of list) {
+  const seasons: { season: number; weeks: { week: number; items: Collapsed<LogEntry>[] }[] }[] = []
+  for (const c of list) {
+    const e = c.item
     let se = seasons[seasons.length - 1]
     if (!se || se.season !== e.season) {
       se = { season: e.season, weeks: [] }
@@ -37,7 +40,7 @@ export function CareerLogScreen() {
       wk = { week: e.week, items: [] }
       se.weeks.push(wk)
     }
-    wk.items.push(e)
+    wk.items.push(c)
   }
 
   return (
@@ -61,13 +64,13 @@ export function CareerLogScreen() {
             <section key={se.season} class="log-season" aria-labelledby={`log-s-${se.season}`}>
               <h2 class="log-season-head" id={`log-s-${se.season}`}>
                 <span>{t('inbox.log.seasonHead', { season: seasonLabel(se.season) })}</span>
-                <span class="micro t-lo">{t('inbox.log.entries', { n: se.weeks.reduce((n, w) => n + w.items.length, 0) })}</span>
+                <span class="micro t-lo">{t('inbox.log.entries', { n: se.weeks.reduce((n, w) => n + w.items.reduce((m, x) => m + x.count, 0), 0) })}</span>
               </h2>
               {se.weeks.map((wk) => (
                 <div key={wk.week} class="log-week">
                   <div class="log-week-head micro">{t('inbox.log.weekHead', { n: wk.week + 1 })}</div>
                   <ol class="log-items">
-                    {wk.items.map((e, i) => {
+                    {wk.items.map(({ item: e, count }, i) => {
                       const k = kindOf(e)
                       const icon: IconName = e.icon && isIconName(e.icon) ? e.icon : KIND_ICON[k]
                       const ms = isMilestone(e)
@@ -80,7 +83,7 @@ export function CareerLogScreen() {
                               <span class="t-xs t-lo">{tx(`data.dayShort.${e.day}`)}</span>
                               {ms && <span class="log-ms micro">{t('inbox.log.milestone')}</span>}
                             </div>
-                            <p class="log-text">{lt(e.text)}</p>
+                            <p class="log-text">{lt(e.text)}{count > 1 && <span class="log-repeat num" title={t('inbox.log.repeatTip', { n: count })}> ×{count}</span>}</p>
                           </div>
                         </li>
                       )
