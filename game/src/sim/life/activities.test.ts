@@ -218,3 +218,22 @@ describe('energy drink (2.5#16)', () => {
     expect(d!.money).toBeLessThan(0)
   })
 })
+
+describe('sleep quality (2.5#18)', () => {
+  it('a night refills 75% of the missing energy at base and up to 100% with a premium bed', async () => {
+    const { startDay, sleepQuality, SLEEP_BASE } = await import('./activities')
+    const { makeHeroLife } = await import('../career/testFixtures')
+    const { hero, life } = makeHeroLife({ age: 24 })
+    const cal = { season: 2026, week: 3, day: 2, slot: 0 } as never
+    life.assets = []
+    expect(sleepQuality(life)).toBe(SLEEP_BASE)
+    life.energy = 20
+    startDay(hero, life, { calendar: cal })
+    expect(life.energy).toBe(80) // 20 + 80 * 0.75
+    life.assets = [{ defId: 'tech_somnia_bed', boughtSeason: 2026, boughtWeek: 1, pricePaid: 9000 }, { defId: 'house_townhouse', boughtSeason: 2026, boughtWeek: 1, pricePaid: 650000 }] as never
+    expect(sleepQuality(life)).toBe(1)
+    life.energy = 20
+    startDay(hero, life, { calendar: cal })
+    expect(life.energy).toBe(100)
+  })
+})

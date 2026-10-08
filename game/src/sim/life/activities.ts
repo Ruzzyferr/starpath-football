@@ -365,17 +365,25 @@ export const HANGOVER_ENERGY = 0.7
  */
 export function startDay(hero: Hero, life: Life, ctx: { calendar: Calendar }): Lines {
   const lines: Lines = []
-  let target = Math.min(100, energyCap(life) + assetEffectTotal(life, 'sleep'))
+  let target = energyCap(life)
   let rec = OVERNIGHT_RECOVERY
   if (life.flags.nightlife_day === absDay(ctx.calendar) - 1) {
     target = Math.round(target * HANGOVER_ENERGY)
     rec /= 2
     lines.push(lt('🥴 Dün geceden kalma bir başın var.', '🥴 You are hungover from last night.'))
   }
-  life.energy = meter(target)
+  // 2.5#18: a night's sleep refills a share of the missing energy that depends on
+  // the home: 75 % in plain accommodation up to 100 % with a premium bed / smart home.
+  const q = sleepQuality(life)
+  life.energy = meter(Math.max(life.energy, life.energy + (target - life.energy) * q))
   recoverFatigue(hero, life, rec)
   return lines
 }
+
+/** Share of the missing energy a night's sleep restores (0.75..1), from `sleep` asset effects. */
+export const SLEEP_BASE = 0.75
+export const SLEEP_PER_POINT = 0.025
+export const sleepQuality = (life: Life): number => clamp(SLEEP_BASE + SLEEP_PER_POINT * assetEffectTotal(life, 'sleep'), SLEEP_BASE, 1)
 
 /** An autopilot step. */
 export interface PlannedActivity {

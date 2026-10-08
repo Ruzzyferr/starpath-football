@@ -6,6 +6,7 @@ import { formatMoney, formatSigned } from '../../format'
 import { Icon } from '../../icons'
 import { actions, data, gameState } from '../../store'
 import { assetIcon, categoryIcon } from './util'
+import { sleepQuality } from '../../../sim/life/activities'
 import { shelfInfo } from '../../../sim/game/assetView'
 import { INCOME_TAX, weeklyIncome } from '../../../sim/life/economy'
 import { NewTag, UnlockGate } from '../../tutorial/UnlockGate'
@@ -84,6 +85,7 @@ export function Assets() {
     <div class="stack" style={{ ['--gap' as string]: 'var(--sp-6)' }}>
       <section class="stack">
         <SectionTitle>{t('life.assets.collection')}</SectionTitle>
+        <p class="t-sm t-mid" data-testid="sleep-quality">{t('life.assets.sleepQuality', { pct: Math.round(sleepQuality(s.life) * 100) })}</p>
         {s.life.assets.length === 0 ? (
           <EmptyState compact icon="house" text={t('life.assets.emptyCollection')} />
         ) : (
