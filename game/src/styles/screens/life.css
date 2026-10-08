@@ -141,8 +141,9 @@
 /* ── Bank ── */
 .bank-grid { display: grid; gap: var(--sp-4); grid-template-columns: 1fr; }
 .bank-hero { display: flex; flex-direction: column; gap: var(--sp-4); background: radial-gradient(120% 140% at 0% 0%, rgba(255, 200, 61, 0.12), transparent 55%), var(--surface-2); }
-.bank-hero-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-6); }
-.bank-hero-row > :last-child { margin-left: auto; }
+/* Cash over savings on the left, credit-score ring anchored right (no orphaned ring). */
+.bank-hero-row { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; column-gap: var(--sp-4); row-gap: var(--sp-3); }
+.bank-hero-row > :last-child { grid-column: 2; grid-row: 1 / span 2; }
 .bank-big { font-size: clamp(30px, 6vw, 44px); }
 .bank-networth { display: flex; flex-direction: column; gap: var(--sp-2); }
 .bank-networth .linechart { width: 100%; }
@@ -263,7 +264,13 @@
 /* ── Business ───────────────────────────── */
 .biz-grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fill, minmax(min(100%, 300px), 1fr)); }
 .biz-card, .biz-shop { display: flex; flex-direction: column; gap: var(--sp-3); }
-.biz-icon { font-size: 1.8rem; line-height: 1; }
+.biz-icon {
+  flex: none; display: grid; place-items: center; width: 44px; height: 44px; border-radius: 12px;
+  font-size: 1.5rem; line-height: 1;
+  background: linear-gradient(180deg, var(--surface-3), var(--surface-2));
+  box-shadow: inset 0 0 0 1px var(--hairline), 0 2px 6px rgba(0, 0, 0, 0.18);
+}
+.biz-icon.is-glyph { color: var(--accent-gold); }
 .biz-stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--sp-2); margin: 0; }
 .biz-stats dt { font-size: var(--fs-sm); color: var(--text-mid); }
 .biz-stats dd { margin: 0; color: var(--text-hi); }
@@ -318,7 +325,16 @@
 /* ── Projects ── */
 .prj-card { display: flex; flex-direction: column; gap: var(--sp-3); }
 .prj-summary { gap: var(--sp-3); }
-.prj-sum-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.prj-sum-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: var(--sp-2); }
+.prj-sum-grid > div { padding: var(--sp-2) var(--sp-3); border-radius: 10px; background: var(--surface-1); box-shadow: inset 0 0 0 1px var(--hairline); }
+.prj-sum-grid dt { font-size: var(--fs-xs); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 700; color: var(--text-lo); }
+.prj-sum-grid dd { font-family: var(--font-score); font-size: 1.6rem; line-height: 1.1; }
+.biz-stats dd.t-pos { color: var(--pos); }
+.biz-stats dd.t-neg { color: var(--neg); }
+.biz-stats dd.t-gold { color: var(--accent-gold); }
+.biz-stats dd.t-lo { color: var(--text-lo); }
+.prj-explain { display: flex; align-items: flex-start; gap: var(--sp-2); }
+.prj-explain .icon { flex: none; margin-top: 2px; }
 .prj-stages { display: flex; align-items: center; gap: var(--sp-2); }
 .prj-stage { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong, var(--text-lo)); color: var(--text-mid); font-size: var(--fs-sm); font-weight: 700; }
 .prj-stage.is-done { background: var(--brand-pitch); border-color: var(--brand-pitch); color: var(--on-brand, #04210f); }

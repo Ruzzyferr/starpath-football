@@ -11,7 +11,7 @@ import {
 } from '../../../sim/life/projects'
 import { Button, Card, Chip, EmptyState, Money, SectionTitle, Slider } from '../../components'
 import { formatMoney } from '../../format'
-import { Icon } from '../../icons'
+import { Icon, type IconName } from '../../icons'
 import { gameState } from '../../store'
 import { lifePlus } from '../../backend/lifePlus'
 
@@ -28,11 +28,11 @@ function Stages({ level, total }: { level: number; total: number }) {
   )
 }
 
-function ProjectCard({ id, icon, title, children }: { id: string; icon: string; title: string; children: ComponentChildren }) {
+function ProjectCard({ id, icon, title, children }: { id: string; icon: IconName; title: string; children: ComponentChildren }) {
   return (
     <Card variant="raised" class="prj-card" data-testid={`prj-${id}`}>
       <div class="row">
-        <span class="biz-icon" aria-hidden="true">{icon}</span>
+        <span class="biz-icon is-glyph" aria-hidden="true"><Icon name={icon} size={22} /></span>
         <h3 class="h3 grow">{title}</h3>
       </div>
       {children}
@@ -44,7 +44,7 @@ function Academy({ s }: { s: GameState }) {
   const lvl = academyLevel(s.life)
   const next = nextAcademyPrice(s.life)
   return (
-    <ProjectCard id="academy" icon="🏗️" title={t('life.projects.academy.title')}>
+    <ProjectCard id="academy" icon="ball" title={t('life.projects.academy.title')}>
       <p class="t-sm t-mid">{t('life.projects.academy.body')}</p>
       <Stages level={lvl} total={3} />
       <dl class="biz-stats">
@@ -65,7 +65,7 @@ function Stadium({ s }: { s: GameState }) {
   const lvl = stadiumLevel(s.life)
   const next = nextStadiumPrice(s.life)
   return (
-    <ProjectCard id="stadium" icon="🏟️" title={t('life.projects.stadium.title')}>
+    <ProjectCard id="stadium" icon="building" title={t('life.projects.stadium.title')}>
       <p class="t-sm t-mid">{t('life.projects.stadium.body')}</p>
       <Stages level={lvl} total={2} />
       <dl class="biz-stats">
@@ -93,7 +93,7 @@ function Stake({ s }: { s: GameState }) {
   const cost = p * STAKE_PRICE_PER_PCT
   const blocked = !clubId || room <= 0 || s.life.money < cost
   return (
-    <ProjectCard id="stake" icon="📈" title={t('life.projects.stake.title')}>
+    <ProjectCard id="stake" icon="trend-up" title={t('life.projects.stake.title')}>
       <p class="t-sm t-mid">{t('life.projects.stake.body', { max: STAKE_MAX_PCT, yield: Math.round(STAKE_YIELD * 100) })}</p>
       <dl class="biz-stats">
         <div><dt>{t('life.projects.stake.owned')}</dt><dd class="num" data-testid="prj-stake-pct">{owned}%</dd></div>
@@ -121,7 +121,7 @@ function Fund({ s }: { s: GameState }) {
   const a = Math.max(10_000, Math.min(amt, cap))
   const canFund = s.life.money >= 10_000
   return (
-    <ProjectCard id="fund" icon="🏛️" title={t('life.projects.fund.title')}>
+    <ProjectCard id="fund" icon="bank" title={t('life.projects.fund.title')}>
       <p class="t-sm t-mid">{t('life.projects.fund.body', { growth: (FUND_GROWTH * 100).toFixed(1) })}</p>
       <dl class="biz-stats">
         <div><dt>{t('life.projects.fund.balance')}</dt><dd class="num" data-testid="prj-fund-balance">{money(fund)}</dd></div>
@@ -143,7 +143,7 @@ function Collection({ s }: { s: GameState }) {
   const items = ownedAssetDefs(s.life).filter((d) => d.effect?.key === 'collector')
   const pts = items.reduce((a, d) => a + (d.effect?.value ?? 0), 0)
   return (
-    <ProjectCard id="collection" icon="🏺" title={t('life.projects.collection.title')}>
+    <ProjectCard id="collection" icon="crown" title={t('life.projects.collection.title')}>
       <p class="t-sm t-mid">{t('life.projects.collection.body')}</p>
       {items.length === 0
         ? <p class="t-xs t-lo">{t('life.projects.collection.empty')}</p>
@@ -163,12 +163,12 @@ export function Projects() {
     <div class="stack prj" style={{ ['--gap' as string]: 'var(--sp-6)' }} data-testid="projects">
       <Card class="prj-summary stack" variant="raised">
         <dl class="biz-stats prj-sum-grid">
-          <div><dt>{t('life.projects.sum.dividends')}</dt><dd class="num t-pos">{money(income)}{t('common.perWeek')}</dd></div>
-          <div><dt>{t('life.projects.sum.upkeep')}</dt><dd class="num t-neg">-{money(projectUpkeep(l))}{t('common.perWeek')}</dd></div>
+          <div><dt>{t('life.projects.sum.dividends')}</dt><dd class={`num ${income > 0 ? 't-pos' : 't-lo'}`}>{money(income)}{t('common.perWeek')}</dd></div>
+          <div><dt>{t('life.projects.sum.upkeep')}</dt><dd class={`num ${projectUpkeep(l) > 0 ? 't-neg' : 't-lo'}`}>{projectUpkeep(l) > 0 ? '-' : ''}{money(projectUpkeep(l))}{t('common.perWeek')}</dd></div>
           <div><dt>{t('life.projects.sum.fund')}</dt><dd class="num"><Money value={legacyFund(l)} compact animate={false} /></dd></div>
           <div><dt>{t('life.projects.sum.points')}</dt><dd class="num t-gold" data-testid="prj-points">+{projectsLegacyPoints(l)}</dd></div>
         </dl>
-        <p class="t-sm t-mid"><Icon name="trophy" size={14} /> {t('life.projects.sum.explain')}</p>
+        <p class="t-sm t-mid prj-explain"><Icon name="trophy" size={16} class="t-gold" /><span>{t('life.projects.sum.explain')}</span></p>
       </Card>
       {!any && <EmptyState compact icon="storefront" text={t('life.projects.empty')} />}
       <section class="stack">

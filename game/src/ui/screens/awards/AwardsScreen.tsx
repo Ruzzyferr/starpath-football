@@ -5,6 +5,7 @@ import { Button, Card, Chip, EmptyState, Page, SectionTitle, WhyList } from '../
 import { whyAward } from '../../../sim/game/whyMore'
 import { seasonLabel } from '../../format'
 import { gameState, navigate } from '../../store'
+import { Icon } from '../../icons'
 import { awardsView, markCeremonySeen } from '../../backend/worldViews'
 import type { SeasonAwardRecord, StarCandidate } from '../../../sim/world/worldTypes'
 
@@ -93,9 +94,9 @@ export function AwardsScreen() {
           <div class="stack">
             {rec && (
               <Card pad="md" class="stack">
-                {rec.goldenGlove && <div class="nt-row"><span class="grow">🧤 {t('intl.awards.goldenGlove')}: <b>{rec.goldenGlove.name}</b></span><Chip tone="info">{t('intl.awards.cleanSheets', { n: rec.goldenGlove.value })}</Chip></div>}
-                {rec.youngPlayer && <div class="nt-row"><span class="grow">🌱 {t('intl.awards.youngPlayer')}: <b>{rec.youngPlayer.name}</b></span></div>}
-                {rec.goalOfSeason && <div class="nt-row"><span class="grow">🎯 {t('intl.awards.goalOfSeason')}: <b>{rec.goalOfSeason.name}</b></span></div>}
+                {rec.goldenGlove && <div class="nt-row"><span class="grow row"><Icon name="shield" size={16} class="t-gold" /><span>{t('intl.awards.goldenGlove')}: <b>{rec.goldenGlove.name}</b></span></span><Chip tone="info">{t('intl.awards.cleanSheets', { n: rec.goldenGlove.value })}</Chip></div>}
+                {rec.youngPlayer && <div class="nt-row"><span class="grow row"><Icon name="sparkle" size={16} class="t-gold" /><span>{t('intl.awards.youngPlayer')}: <b>{rec.youngPlayer.name}</b></span></span></div>}
+                {rec.goalOfSeason && <div class="nt-row"><span class="grow row"><Icon name="target" size={16} class="t-gold" /><span>{t('intl.awards.goalOfSeason')}: <b>{rec.goalOfSeason.name}</b></span></span></div>}
               </Card>
             )}
             {rec && rec.goalNominees.length > 0 && (

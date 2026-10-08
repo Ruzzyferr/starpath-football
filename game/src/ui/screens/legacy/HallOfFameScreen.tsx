@@ -1,6 +1,7 @@
 import '../../../styles/screens/legacy.css'
 import { currentLang, lt, t } from '../../../i18n'
 import { Avatar, Button, EmptyState, Page } from '../../components'
+import { Icon } from '../../icons'
 import { formatMoney, formatNumber } from '../../format'
 import { navigate } from '../../store'
 import { hallOfFame, legacyFor } from '../../backend/meta'
@@ -38,7 +39,7 @@ export function HallOfFameScreen() {
                 <div class="t-xs t-mid">
                   {e.position} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })} · {e.clubs.slice(0, 3).join(', ')}
                 </div>
-                <div class="t-xs t-lo">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })} · 🏆 {e.trophies.length}{e.postCareer ? ` · ${lt(POST_CAREER[e.postCareer].label)}` : ''}</div>
+                <div class="t-xs t-lo">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })} · <Icon name="trophy" size={12} class="t-gold doc-inline-ico" /> {e.trophies.length}{e.postCareer ? ` · ${lt(POST_CAREER[e.postCareer].label)}` : ''}</div>
                 <div class="hof-actions">
                   <Button size="sm" variant="secondary" icon="play" onClick={() => navigate('documentary', { id: e.careerId })}>{t('meta.hof.view')}</Button>
                   {leg && (

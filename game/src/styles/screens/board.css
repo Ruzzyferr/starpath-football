@@ -122,13 +122,31 @@
   background: var(--surface-1);
   border: 1px solid var(--border);
 }
+/* KPI tiles read number-first (the label used to outweigh a tiny "0"). */
+.bd-kpi {
+  flex-direction: column-reverse;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  text-align: center;
+}
+.bd-kpi b { font-size: 2.5rem; }
+.bd-kpi .micro { letter-spacing: 0.06em; }
+.cm-item .h3 { font-size: var(--fs-lg); }
 @media (max-width: 480px) {
+  /* Phone: badge stays beside the copy instead of claiming its own row. */
   .bd-hero {
-    align-items: flex-start;
+    display: grid;
+    grid-template-columns: 52px minmax(0, 1fr);
+    column-gap: 12px;
+    row-gap: 10px;
+    align-items: start;
   }
-  .bd-kpi b {
-    font-size: 1.6rem;
-  }
+  .bd-hero > .bd-badge { width: 52px; height: 52px; }
+  .bd-hero > .bd-badge .icon { width: 26px; height: 26px; }
+  .bd-hero > .chip { grid-column: 2; justify-self: start; }
+  .bd-kpi { padding: 12px 6px; }
+  .bd-kpi b { font-size: 2.2rem; }
 }
 .post-share {
   display: flex;

@@ -75,7 +75,8 @@
 .aw-step.p2 .aw-block { height: 80px; background: linear-gradient(#e2e7ef, #9aa5b8); }
 .aw-step.p3 .aw-block { height: 60px; background: linear-gradient(#e0a370, #a0632e); }
 .aw-name { font-weight: 700; font-size: var(--fs-sm); color: var(--text-hi); overflow-wrap: anywhere; }
-.aw-hidden { opacity: 0.25; filter: blur(2px); }
+.aw-hidden { opacity: 0.85; }
+.aw-hidden .aw-name { color: var(--text-lo); letter-spacing: 0.2em; }
 .aw-reveal { animation: draw-in var(--dur-slow) var(--ease-spring) both; }
 .aw-step.is-hero .aw-name { color: var(--brand-pitch); }
 .aw-grid { display: grid; grid-template-columns: 1fr; gap: var(--sp-3); }

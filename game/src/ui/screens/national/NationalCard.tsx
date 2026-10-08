@@ -2,7 +2,7 @@ import '../../../styles/screens/intl.css'
 import { lt, t } from '../../../i18n'
 import { Button, Card, Chip, Flag, StatBar, type ChipTone } from '../../components'
 import { Icon } from '../../icons'
-import { gameState, navigate } from '../../store'
+import { gameState, navigate, screen } from '../../store'
 import { InfoTip } from '../../tutorial/InfoTip'
 import { seasonFormView } from '../../../sim/game/uiViews'
 import { callupCard, type CallupCardView } from '../../backend/worldViews'
@@ -81,7 +81,7 @@ export function NationalCard({ detailed }: { detailed?: boolean }) {
       )}
       <div class="row" style={{ justifyContent: 'space-between', alignItems: 'center', gap: 'var(--sp-2)' }}>
         <span class="t-xs t-mid">{t('intl.national.caps', { c: v.caps, g: v.goals })}</span>
-        <Button variant="ghost" size="sm" iconRight="chevron-right" onClick={() => navigate('national')}>{t('intl.national.open')}</Button>
+        {screen.value.id !== 'national' && <Button variant="ghost" size="sm" iconRight="chevron-right" onClick={() => navigate('national')}>{t('intl.national.open')}</Button>}
       </div>
     </Card>
   )

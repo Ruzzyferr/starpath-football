@@ -169,7 +169,7 @@ function FoundationCard({ s }: { s: GameState }) {
   return (
     <Card variant="raised" class="biz-foundation" data-testid="foundation-card">
       <div class="row">
-        <span class="biz-icon" aria-hidden="true">🤝</span>
+        <span class="biz-icon is-glyph" aria-hidden="true"><Icon name="hand-heart" size={22} /></span>
         <div class="grow">
           <h3 class="h3">{f.founded ? t('life.biz.foundation.founded', { n: f.name }) : t('life.biz.foundation.title')}</h3>
           <p class="t-sm t-mid">

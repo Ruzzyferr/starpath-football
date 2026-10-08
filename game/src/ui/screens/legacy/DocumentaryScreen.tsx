@@ -1,6 +1,7 @@
 import '../../../styles/screens/legacy.css'
 import { currentLang, lt, t } from '../../../i18n'
 import { Button, Card, CardHeader, EmptyState, Page } from '../../components'
+import { Icon } from '../../icons'
 import { formatCompact, formatMoney, formatNumber, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate, screen } from '../../store'
 import { legacyFor, summaryView } from '../../backend/meta'
@@ -34,7 +35,7 @@ export function DocumentaryScreen() {
           <div class="t-sm t-mid">{sum.position} · {sum.nationality} · {sum.clubs.join(' → ') || '—'}</div>
           {sum.postCareer && <div class="t-sm" data-testid="doc-post-career">{lt(POST_CAREER[sum.postCareer].text)}</div>}
           {sum.forced && <div class="t-xs t-lo">{t(`meta.doc.forced.${sum.forced}`)}</div>}
-          {sum.testimonial && <div class="t-sm">🎉 {t('meta.doc.testimonial', { h: sum.testimonial.score[0], a: sum.testimonial.score[1], o: sum.testimonial.opponent, g: sum.testimonial.goals })}</div>}
+          {sum.testimonial && <div class="t-sm row"><Icon name="party" size={16} class="t-gold" /><span>{t('meta.doc.testimonial', { h: sum.testimonial.score[0], a: sum.testimonial.score[1], o: sum.testimonial.opponent, g: sum.testimonial.goals })}</span></div>}
         </div>
         <div class="stack" style={{ alignItems: 'flex-end', gap: '2px' }}>
           <span class="micro t-lo">{t('meta.doc.legacy')}</span>
@@ -62,7 +63,7 @@ export function DocumentaryScreen() {
               <div class="t-xs t-lo">
                 {r.apps > 0 ? t('meta.doc.avg', { r: formatRating(r.avgRating) }) : ''}
                 {r.leaguePosition ? ` · ${t('meta.doc.position', { n: r.leaguePosition })}` : ''}
-                {r.trophies.length ? ` · 🏆 ${r.trophies.join(', ')}` : ''}
+                {r.trophies.length ? <> · <Icon name="trophy" size={12} class="t-gold doc-inline-ico" /> {r.trophies.join(', ')}</> : ''}
               </div>
             </li>
           ))}
@@ -75,8 +76,8 @@ export function DocumentaryScreen() {
           <p class="t-sm t-lo">{t('meta.doc.noTrophies')}</p>
         ) : (
           <ul class="rec-list">
-            {sum.trophies.map((x, i) => <li key={`t${i}`}><span>🏆 {lt(x.name)}</span><span class="num t-lo">{seasonLabel(x.season)}</span></li>)}
-            {sum.awards.map((x, i) => <li key={`a${i}`}><span>🏅 {lt(x.name)}</span><span class="num t-lo">{seasonLabel(x.season)}</span></li>)}
+            {sum.trophies.map((x, i) => <li key={`t${i}`}><span class="row"><Icon name="trophy" size={16} class="t-gold" />{lt(x.name)}</span><span class="num t-lo">{seasonLabel(x.season)}</span></li>)}
+            {sum.awards.map((x, i) => <li key={`a${i}`}><span class="row"><Icon name="medal" size={16} class="t-gold" />{lt(x.name)}</span><span class="num t-lo">{seasonLabel(x.season)}</span></li>)}
           </ul>
         )}
       </Card>
