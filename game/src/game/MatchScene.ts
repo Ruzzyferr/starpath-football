@@ -12,7 +12,7 @@
 import Phaser from 'phaser'
 import type { Difficulty, KitColors, Lang } from '../core/types'
 import type { Highlight, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import {
   adBoardTexture,
   ballTexture,
@@ -25,6 +25,7 @@ import {
   luminance,
   keeperKit,
   utilTextures,
+  NET_BACK_TOP,
   type NetRipple,
 } from './art'
 import { Sfx } from './audio'
@@ -53,6 +54,7 @@ import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
+import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from './netCloth'
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
@@ -1792,10 +1794,12 @@ export class MatchScene extends Phaser.Scene {
       const r = this.ripple[end]
       if (!r) continue
       r.t += dt
+      if (r.cloth) stepCloth(r.cloth, dt)
+      const over = r.cloth ? clothSettled(r.cloth) : r.t > 2
       this.netG[end].clear()
-      drawGoal(this.netG[end], end, 'net', r.t > 2 ? null : r)
+      drawGoal(this.netG[end], end, 'net', over ? null : r)
       const b = this.baked.find((e) => e.g === this.netG[end])
-      if (r.t > 2) this.ripple[end] = null
+      if (over) this.ripple[end] = null
       // Live Graphics while rippling; back to the cached image once it settles.
       this.netG[end].setVisible(!!this.ripple[end] || !b?.img)
       if (b?.img) b.img.setVisible(!this.ripple[end])
@@ -1892,6 +1896,7 @@ export class MatchScene extends Phaser.Scene {
       if (!cc) this.crossCam = null
       let lead = { x: 0, y: 0 }
       if (!cc && !replay) {
+        if (rt.heroOnBall) px += 5
         if (rt.heroIsKeeper) px += 7
         // Look-ahead (2.2#3): 18 % of the screen along the carrier's run (the ball's flight when loose).
         const carrier = rt.owner
@@ -2265,7 +2270,14 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private startRipple(end: 'east' | 'west', y: number, z: number, strength: number): void {
-    this.ripple[end] = { t: 0, y, z: clampN(z, 0.2, 2.2), strength }
+    const zz = clampN(z, 0.2, 2.2)
+    // Verlet net (2.2#66) on Medium/High; Low keeps the analytic ripple.
+    let cloth: NetCloth | undefined
+    if (this.q.profile !== 'low' && !this.rm) {
+      cloth = createCloth(PITCH_WIDTH / 2 - GOAL_WIDTH / 2, PITCH_WIDTH / 2 + GOAL_WIDTH / 2, NET_BACK_TOP)
+      hitCloth(cloth, y, Math.min(zz, NET_BACK_TOP), strength * 1.6)
+    }
+    this.ripple[end] = { t: 0, y, z: zz, strength, cloth }
   }
 
   private handleEvents(evs: RuntimeEvent[]): void {

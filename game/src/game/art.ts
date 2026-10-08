@@ -9,6 +9,7 @@ import type { Weather } from '../sim/match/types'
 import { GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import { PITCH_COLORS } from '../core/pitchColors'
 import { NET_DEPTH } from './physics'
+import { clothAt, type NetCloth } from './netCloth'
 import { PPM, TILT, ZS, project } from './view'
 
 /** '#rrggbb' → 0xrrggbb. */
@@ -596,7 +597,12 @@ export interface NetRipple {
   y: number
   z: number
   strength: number
+  /** Verlet cloth (2.2#66); absent on Low quality, which keeps the analytic ripple. */
+  cloth?: NetCloth
 }
+
+/** Back-panel top of the net (m) — the cloth grid spans the goal width up to here. */
+export const NET_BACK_TOP = 1.6
 
 /**
  * Draws a goal (net + frame). `ripple` displaces the net outward around the impact.
@@ -609,9 +615,10 @@ export function drawGoal(g: Phaser.GameObjects.Graphics, end: 'east' | 'west', p
   const y0 = PITCH_WIDTH / 2 - GOAL_WIDTH / 2
   const y1 = PITCH_WIDTH / 2 + GOAL_WIDTH / 2
   const H = GOAL_HEIGHT
-  const backTop = 1.6
+  const backTop = NET_BACK_TOP
   const disp = (y: number, z: number) => {
     if (!ripple) return 0
+    if (ripple.cloth) return clothAt(ripple.cloth, y, Math.min(z, backTop))
     const d2 = (y - ripple.y) ** 2 + (z - ripple.z) ** 2
     return ripple.strength * Math.exp(-d2 / 1.4) * Math.sin(ripple.t * 18) * Math.exp(-ripple.t * 3.2)
   }
