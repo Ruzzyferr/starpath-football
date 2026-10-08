@@ -55,6 +55,22 @@ export interface InputMapper {
 }
 
 /** Context the controller needs each frame. */
+/** Plan 2.1#24: stick dead zone is adjustable within 5–25 %. */
+export const PAD_DEADZONE_MIN = 0.05
+export const PAD_DEADZONE_MAX = 0.25
+export const clampDeadzone = (v: number): number => clampN(Number.isFinite(v) ? v : 0.18, PAD_DEADZONE_MIN, PAD_DEADZONE_MAX)
+
+/**
+ * Trigger roles (standard gamepad: 6 = LT, 7 = RT). Analog power uses the right
+ * trigger's pressure (plan 2.1#24), so sprint moves to the left trigger.
+ */
+export function padTriggers(padPower: 'hold' | 'oscillate' | 'analog'): { power: number; sprint: number } {
+  return padPower === 'analog' ? { power: 7, sprint: 6 } : { power: -1, sprint: 7 }
+}
+
+/** Mouse sling-shot: the press must start within this many metres of the ball. */
+export const MOUSE_SLING_GRAB = 3
+
 export interface InputContext {
   heroPos: Vec2
   ballPos: Vec2
@@ -415,6 +431,19 @@ export class InputController {
     const held = t - hold.t0
     const at = this.map.toWorld(p.x, p.y)
     this.skipFlag = true
+    // Mouse sling-shot (2.1#23): press on the ball, drag back, release — same scheme as touch.
+    const ctx = this.lastCtx
+    if (getControlPrefs().touchShot === 'slingshot' && ctx?.heroOnBall && !ctx.heroIsKeeper && hold.path.length >= 2) {
+      const p0 = hold.path[0]
+      if (dist({ x: p0.wx, y: p0.wy }, ctx.ballPos) < MOUSE_SLING_GRAB) {
+        const sw = slingshotSwipe(analyzeSwipe(hold.path), this.chipMod() ? 2 : 1)
+        if (!sw.isTap) {
+          this.queued.push({ kind: 'swipe', swipe: { ...sw, curl: clampN(sw.curl + this.wheel, -1, 1) } })
+          this.wheel = 0
+          return
+        }
+      }
+    }
     if (held < HOLD_SHOT_MIN) {
       // Click: pass to a clicked team-mate / contextual tap.
       this.queued.push({ kind: 'tapAt', at })
@@ -594,17 +623,19 @@ export class InputController {
     const pressed = (i: number) => b(i) && !prev[i]
     const released = (i: number) => !b(i) && !!prev[i]
     const prefs = getControlPrefs()
-    const ls = radialDeadzone(gp.axes[0] ?? 0, gp.axes[1] ?? 0, prefs.padDeadzone)
+    const dz = clampDeadzone(prefs.padDeadzone)
+    const trig = padTriggers(prefs.padPower)
+    const ls = radialDeadzone(gp.axes[0] ?? 0, gp.axes[1] ?? 0, dz)
     const mag = ls.mag
     const dead = mag <= 0
     const move = dead ? { x: 0, y: 0 } : this.map.screenDirToWorld(ls.x, ls.y)
     const mv = { x: move.x * mag, y: move.y * mag }
     const stickDir = dead ? null : norm(move)
     const chip = b(4)
-    const curl = -axisDeadzone(gp.axes[2] ?? 0, prefs.padDeadzone) * 0.8
+    const curl = -axisDeadzone(gp.axes[2] ?? 0, dz) * 0.8
     const padPower = (): number => {
       const held = t - this.pad.holdB
-      if (prefs.padPower === 'analog') return analogPower(gp.buttons[6]?.value ?? 0)
+      if (prefs.padPower === 'analog') return analogPower(gp.buttons[trig.power]?.value ?? 0)
       return prefs.padPower === 'oscillate' ? oscPower(held) : chargePower(held)
     }
     let aim: AimState | null = null
@@ -642,7 +673,7 @@ export class InputController {
     }
     this.pad.buttons = gp.buttons.map((_, i) => b(i))
     this.pad.lastSeen = t
-    return { move: mv, sprint: b(7), aim, power }
+    return { move: mv, sprint: b(trig.sprint), aim, power }
   }
 
   /** Vibrate (mobile / gamepad) if supported. */

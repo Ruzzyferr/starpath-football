@@ -62,7 +62,7 @@ function kindAdjustment(kind: HighlightKind, outcome: HighlightResult['outcome']
  * manual aiming more. Applied to the positive part of a played moment's
  * rating delta; mistakes are never amplified.
  */
-export const ASSIST_REWARD: Readonly<Record<'full' | 'half' | 'manual', number>> = { full: 0.8, half: 1, manual: 1.25 }
+export const ASSIST_REWARD: Readonly<Record<'full' | 'half' | 'manual', number>> = { full: 0.85, half: 1, manual: 1.2 }
 
 /**
  * Rating change for one resolved highlight: outcome, micro-stats and cards.

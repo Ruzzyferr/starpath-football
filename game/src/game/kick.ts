@@ -81,6 +81,9 @@ export const SWIPE_MIN_LENGTH = 0.045
  * @param pts sampled path, oldest first
  * @param fingers simultaneous touches during the gesture (≥2 → chip)
  */
+/** Release-velocity window (s), plan 2.1#18: last 80 ms of samples. */
+export const SWIPE_VELOCITY_WINDOW = 0.08
+
 export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFeatures {
   const first = pts[0]
   const last = pts[pts.length - 1]
@@ -91,9 +94,11 @@ export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFe
   const cdy = last.sy - first.sy
   const chord = Math.hypot(cdx, cdy)
   const duration = Math.max(1e-3, last.t - first.t)
-  // Weight recent motion more for speed: use the last 60% of the path.
-  const k = Math.floor(pts.length * 0.4)
-  const mid = pts[Math.min(k, pts.length - 2)]
+  // Release speed from the timestamped samples of the last SWIPE_VELOCITY_WINDOW
+  // seconds (frame-rate independent: 30 or 120 Hz pointer sampling gives the same speed).
+  let k = pts.length - 2
+  while (k > 0 && last.t - pts[k - 1].t <= SWIPE_VELOCITY_WINDOW) k--
+  const mid = pts[k]
   const tailLen = Math.hypot(last.sx - mid.sx, last.sy - mid.sy)
   const tailDur = Math.max(1e-3, last.t - mid.t)
   const speed = Math.max(chord / duration, tailLen / tailDur)
@@ -359,6 +364,19 @@ export function assistShotTarget(target: Vec2, z: number, assist: AimAssist, pul
   return { target: { x: target.x, y: target.y + (ty - target.y) * pull }, z: z + (tz - z) * pull }
 }
 
+/** Power bands of the aim ring (plan 2.1#19): green 0–0.6, yellow 0.6–0.85, red 0.85–1.0, then overhit. */
+export const POWER_BANDS = { yellow: 0.6, red: 0.85 } as const
+
+/**
+ * Accuracy-noise factor from power (2.1#19): in the red band (0.85–1.0) the
+ * aim drifts by up to +15 % at Composure 0 (none at 100); past full power the
+ * kick is overhit and spreads fast (skied / sliced).
+ */
+export function powerSpread(power: number, composure: number): number {
+  const redT = clamp01((power - POWER_BANDS.red) / (1 - POWER_BANDS.red))
+  return 1 + 0.15 * redT * (1 - a01(composure)) + Math.max(0, power - 1) * 4.8
+}
+
 /** Accuracy noise (radians, 1σ) for a kick. */
 export function headingNoise(req: KickRequest, skill: number): number {
   const baseDeg: Record<KickKind, number> = {
@@ -366,7 +384,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
   }
   const comp = a01(req.attrs.composure)
   const pressure = 1 + req.pressure * (1.3 - comp)
-  const overhit = 1 + Math.max(0, req.power - 0.88) * 4
+  const overhit = powerSpread(req.power, req.attrs.composure)
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
   const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * (req.noiseScale ?? 1)
   return (deg * Math.PI) / 180

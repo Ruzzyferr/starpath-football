@@ -155,7 +155,7 @@ describe('Vision pass options', () => {
 describe('assist reward multiplier', () => {
   const r = (o: HighlightResult['outcome'], mult?: number): HighlightResult => ({ outcome: o, passes: 0, passesCompleted: 0, shots: 1, shotsOnTarget: 1, dribbles: 0, tackles: 0, assistMult: mult })
   it('full 0.8×, half 1×, manual 1.25×', () => {
-    expect(ASSIST_REWARD).toEqual({ full: 0.8, half: 1, manual: 1.25 })
+    expect(ASSIST_REWARD).toEqual({ full: 0.85, half: 1, manual: 1.2 })
     const base = highlightRatingDelta('edge_of_box', r('goal'))
     expect(highlightRatingDelta('edge_of_box', r('goal', 0.8))).toBeCloseTo(base * 0.8, 6)
     expect(highlightRatingDelta('edge_of_box', r('goal', 1.25))).toBeCloseTo(base * 1.25, 6)
