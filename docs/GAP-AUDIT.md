@@ -696,39 +696,39 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.11#1 | KISMİ | styles/tokens.css:183 | Tek renk körü modu; 3 palet yok |
-| 2.11#2 | KISMİ | ui/components/Charts.tsx:73 | Gri tonlama testi yok |
-| 2.11#3 | EKSİK | - | Desen maskesi yok |
-| 2.11#5 | KISMİ | ui/screens/SettingsScreen.tsx:108 | Metin boyutu %90–130, px tabanlı |
-| 2.11#6 | EKSİK | - | Sistem font ölçeği okunmuyor |
-| 2.11#10 | KISMİ | ui/components/Modal.tsx:72 | ARIA kısmen; axe yok |
-| 2.11#11 | KISMİ | ui/screens/match/LiveMatchScreen.tsx:187 | Assertive duyuru yok |
-| 2.11#12 | KISMİ | ui/components/Modal.tsx:42 | wizard.css:99 odak halkasını kaldırıyor |
-| 2.11#13 | EKSİK | - | Ekran okuyucu senaryosu yok |
-| 2.11#15 | KISMİ | ui/components/Tabs.tsx:32 | Klavyeyle şut doğrulanmadı |
-| 2.11#17 | EKSİK | - | Tuş atama yok |
-| 2.11#18 | EKSİK | - | Alternatif kontrol şeması yok |
-| 2.11#19 | EKSİK | - | Sol el modu yok |
-| 2.11#20 | EKSİK | - | Dokunma alanı ölçeği yok |
-| 2.11#21 | EKSİK | - | Tek elle oynanış yok |
-| 2.11#22 | KISMİ | ui/screens/SettingsScreen.tsx:89 | Ağır çekim yalnızca aç/kapa |
-| 2.11#23 | EKSİK | - | Zamanlama penceresi genişletme yok |
-| 2.11#29 | EKSİK | - | Görsel ses ipuçları yok |
-| 2.11#31 | KISMİ | ui/hooks/motion.ts:4 | MatchScene sarsıntıyı kapatmıyor |
+| 2.11#1 | TAMAM | (WP-19 doğrulandı) | 3 palet + desen maskesi (components.css:882) |
+| 2.11#2 | TAMAM | (WP-19 doğrulandı) | contrast.test.ts gri tonlama testi |
+| 2.11#3 | TAMAM | (WP-19 doğrulandı) | components.css:882 şerit/nokta maskesi |
+| 2.11#5 | TAMAM | (WP-19 doğrulandı) | rem tabanlı %90-200 (a11y-wp19 e2e) |
+| 2.11#6 | ERTELENDİ | - | Metin rem tabanlı, tarayıcı/WebView yazı boyutunu izler (e2e: 200% ölçek). Android/iOS sistem font ölçeği gerçek cihazda doğrulanmalı |
+| 2.11#10 | TAMAM | (WP-19 doğrulandı) | e2e/a11y*.spec.ts axe 0 serious/critical |
+| 2.11#11 | TAMAM | (WP-19 doğrulandı) | lm-announce assertive duyuru |
+| 2.11#12 | TAMAM | (WP-19 doğrulandı) | wizard.css .wiz-search:focus-within halkası |
+| 2.11#13 | ERTELENDİ | - | Senaryo docs/ACCESSIBILITY.md içinde yazılı; NVDA/VoiceOver/TalkBack ile gerçek cihaz oturumu gerekir (otomatik test yerine geçmez) |
+| 2.11#15 | TAMAM | (WP-19 doğrulandı) | Tabs ok tuşları + roving tabindex e2e |
+| 2.11#17 | TAMAM | (WP-19 doğrulandı) | src/input/bindings.ts tuş atama |
+| 2.11#18 | TAMAM | (WP-19 doğrulandı) | Dokunmatik 3 atış şeması + gamepad + tuş atama (controls.test.ts) |
+| 2.11#19 | TAMAM | (WP-19 doğrulandı) | Sol el modu |
+| 2.11#20 | TAMAM | (WP-19 doğrulandı) | Dokunma ölçeği |
+| 2.11#21 | TAMAM | (WP-19 doğrulandı) | Tek el modu |
+| 2.11#22 | TAMAM | (WP-19 doğrulandı) | Ağır çekim hızı ayarı |
+| 2.11#23 | TAMAM | (WP-19 doğrulandı) | timingAssist: ver-kaç/ağır çekim penceresi ve güç çubuğu (controls.test.ts) |
+| 2.11#29 | TAMAM | (WP-19 doğrulandı) | ui/a11y/Captions.tsx |
+| 2.11#31 | TAMAM | (WP-19 doğrulandı) | MatchScene noShake/noFlash (rm + reduceFlashes) |
 | 2.11#32 | TAMAM | ui/store.ts reduceFlashes | Ayrı anahtar (WP-16 Grafik grubu) |
-| 2.11#38 | EKSİK | - | Erişilebilirlik kontrol listesi yok |
-| 2.11#42 | KISMİ | i18n/index.ts:45 | ICU yok; literal-string lint yok |
+| 2.11#38 | TAMAM | (WP-19 doğrulandı) | docs/ACCESSIBILITY.md kontrol listesi |
+| 2.11#42 | TAMAM | (WP-19 doğrulandı) | ICU plural alt kümesi (i18n/index.ts:61) + lint:i18n 0 literal |
 | 2.11#43 | TAMAM | i18n/i18n.test.ts:27 | TR/EN anahtar eşitliği testli |
-| 2.11#45 | EKSİK | - | Pseudo-locale yok |
-| 2.11#46 | EKSİK | - | Uzun dil regresyon testi yok |
-| 2.11#47 | KISMİ | sim/life/events/engine.ts:182 | Olay metinleri TS içinde |
-| 2.11#49 | KISMİ | i18n/index.ts:77 | MatchScene.ts:486 düz `toUpperCase` (İ hatası) |
-| 2.11#50 | EKSİK | - | `Intl.Collator('tr')` yok |
-| 2.11#51 | KISMİ | sim/match/turkish.ts:12 | Ek üretici yalnızca anlatımda |
-| 2.11#52 | EKSİK | - | Eksiz kalıp işareti yok |
-| 2.11#53 | KISMİ | sim/life/events/engine.ts:182 | "he" sızıntı testi yok |
-| 2.11#54 | KISMİ | ui/format.ts:17 | Para birimi € (plan ₺) |
-| 2.11#58 | EKSİK | - | Mağaza metinleri yok |
+| 2.11#45 | TAMAM | (WP-19 doğrulandı) | ?pseudo=1 (i18n/pseudo.ts) |
+| 2.11#46 | TAMAM | (WP-19 doğrulandı) | a11y-wp19 e2e: 390px + %35 uzun metin + %200 ölçek |
+| 2.11#47 | ERTELENDİ | - | Olay metinleri TS içinde kalıyor (LText tr/en, {g:} ve ek kalıbı testli). Veri dosyalarına taşıma sim/life alanında ve profesyonel çevirmen geçişiyle birlikte yapılmalı |
+| 2.11#49 | TAMAM | (WP-19 doğrulandı) | tr-TR büyük harf |
+| 2.11#50 | TAMAM | (WP-19 doğrulandı) | Collator(tr) |
+| 2.11#51 | TAMAM | (WP-19 doğrulandı) | sim/career/trSuffix.ts ek üretici (olay metinleri) |
+| 2.11#52 | TAMAM | (WP-19 doğrulandı) | {key}'ek kalıbı yeniden çekimlenir, ekli/eksiz yazım desteklenir |
+| 2.11#53 | TAMAM | (WP-19 doğrulandı) | content.test.ts + gender.test.ts cinsiyet/sızıntı testleri |
+| 2.11#54 | TAMAM | - | Karar: para birimi EUR (ui/format.ts, tr "12.500 €"); kurgusal/gerçek TL kuru karışıklığı önlenir |
+| 2.11#58 | ERTELENDİ | - | Taslak docs/store/LISTING.md var; yayın öncesi profesyonel TR/EN pazarlama çevirisi ve marka taraması gerekir |
 
 ### 2.12 Riskler, Hukuk, Mağaza, QA, Etik (yollar depo köküne göre)
 

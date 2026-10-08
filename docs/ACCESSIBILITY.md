@@ -25,8 +25,7 @@ disable flashes (`data-flash`), sound captions, text size 90-200%, left-hand / o
 5. Modal: focus trapped, Esc closes, focus returns to the opener. Errors toast as `role=alert`.
 6. Post-match: ratings are text + number, never colour alone.
 
-## Open items handed to other work packages
-- WP-15: `wizard.css` `.wiz-search input { outline: none }` has no replacement ring on the wrapper: add `.wiz-search:focus-within` ring (2.11#12).
-- WP-13: `MatchScene` should read `settings.reduceFlashes` (via `flashesReduced()` in `ui/hooks/motion.ts`) to skip `cameras.flash` and the full-screen `flash` rectangle (2.11#32); alternative control schemes and timing-window widening (2.11#18, #23) are in WP-13's input work.
-- WP-17/sim: event text lives in TS (2.11#47), "he" leak test (#53), Turkish suffix helper outside narration (#51).
-- WP-20: store listing texts (2.11#58). Currency stays EUR (decision in `ui/format.ts`).
+## Hand-offs (closed) and deferred
+- Closed: `.wiz-search:focus-within` ring (wizard.css); MatchScene honours `noFlash`/reduced motion (`cameras.flash`, flash rectangle) and shake; timing assist (`timingMult`, slower power meter) and touch/gamepad/key-rebind control schemes are tested in `src/game/controls.test.ts`; Turkish suffix helper `sim/career/trSuffix.ts` covers event text; gender-alternative tests in `sim/life/events/content.test.ts`.
+- Deferred (needs real devices or humans): screen-reader session on NVDA/VoiceOver/TalkBack (2.11#13); OS font-scale check on Android/iOS (#6); moving event text out of TS and professional translation/review (#47); store listing copy review (#58, draft in `docs/store/LISTING.md`).
+- Decision: currency stays EUR (`ui/format.ts`).
