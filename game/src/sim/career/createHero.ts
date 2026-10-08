@@ -56,6 +56,20 @@ export const ARCHETYPE_TEMPLATES: Readonly<Record<Archetype, Partial<Record<Attr
   keeper: { reflexes: 24, handling: 22, positioning: 12, jumping: 8, agility: 8, composure: 6, leadership: 3 },
 }
 
+/** Positions each archetype is built for (2.3#3). Elsewhere only half its bonus applies. */
+export const ARCHETYPE_POSITIONS: Readonly<Record<Archetype, readonly Position[]>> = {
+  poacher: ['ST', 'LW', 'RW', 'AM'],
+  playmaker: ['AM', 'CM', 'DM', 'LW', 'RW'],
+  winger: ['LW', 'RW', 'LB', 'RB', 'ST', 'AM'],
+  wall: ['CB', 'DM', 'LB', 'RB'],
+  boxToBox: ['CM', 'DM', 'AM'],
+  keeper: ['GK'],
+}
+/** Share of the archetype bonus a mismatched position still gets (2.3#3: at most 50%). */
+export const ARCHETYPE_MISMATCH_SHARE = 0.5
+
+export const archetypeFits = (position: Position, archetype: Archetype): boolean => ARCHETYPE_POSITIONS[archetype].includes(position)
+
 /** Background (GDD 2.1 "Geçmiş hikâyesi") effects. */
 export interface BackgroundDef {
   attrs: Partial<Record<AttributeKey, number>>
@@ -120,6 +134,7 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
   const posW = POSITION_WEIGHTS[input.position]
   const maxW = Math.max(...Object.values(posW).map((v) => v ?? 0))
   const isKeeper = input.position === 'GK' || input.archetype === 'keeper'
+  const archShare = archetypeFits(input.position, input.archetype) ? 1 : ARCHETYPE_MISMATCH_SHARE
 
   const attrs = {} as Attributes
   for (const key of ATTRIBUTE_KEYS) {
@@ -127,7 +142,7 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     let v = gk && !isKeeper ? OUTFIELD_GK_ATTR : BASE_ATTR
     // Keepers are poor at outfield technique.
     if (isKeeper && !gk && (key === 'finishing' || key === 'dribbling' || key === 'tackling' || key === 'crossing' || key === 'shooting')) v -= 8
-    v += arch[key] ?? 0
+    v += (arch[key] ?? 0) * archShare
     v += (POSITION_BOOST * (posW[key] ?? 0)) / maxW
     v += bg.attrs[key] ?? 0
     v += rng.normal(0, ATTR_NOISE_SD)

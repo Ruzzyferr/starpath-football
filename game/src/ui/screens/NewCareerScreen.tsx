@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks'
+import { archetypeFits } from '../../sim/career/createHero'
 import '../../styles/screens/wizard.css'
 import type { Archetype, AttributeKey, Background, Country, Difficulty, Foot, Gender, Position } from '../../core/types'
 import { START_YEAR } from '../../core/config'
@@ -314,6 +315,7 @@ export function NewCareerScreen() {
                         {t(`data.archetype.${a}`)}
                         {isSug && <span class="chip chip-pos chip-solid">{t('wizard.suggested')}</span>}
                         {a === 'keeper' && !isSug && <span class="chip chip-neutral">{t('wizard.keeperOnly')}</span>}
+                        {a !== 'keeper' && !archetypeFits(form.position, a) && <span class="chip chip-neutral" data-testid="arch-mismatch">{t('career4.mismatch')}</span>}
                       </span>
                       <span class="wiz-card-desc">{t(`data.archetypeDesc.${a}`)}</span>
                     </span>
