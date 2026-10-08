@@ -308,13 +308,16 @@ test('live match control bar fits at phone width in Turkish', async ({ page }, i
   await page.waitForTimeout(800) // screen enter transition
   const vw = page.viewportSize()!.width
   for (const sel of ['.lm-controls .segmented-opt:last-child', '.lm-controls .btn-ghost']) {
-    const b = (await page.locator(sel).first().boundingBox())!
-    expect(b.x + b.width, sel).toBeLessThanOrEqual(vw + 0.5)
+    for (const el of await page.locator(sel).all()) {
+      const b = (await el.boundingBox())!
+      expect(b.x + b.width, sel).toBeLessThanOrEqual(vw + 0.5)
+    }
   }
-  const label = page.locator('.lm-controls .btn-ghost .btn-label')
-  if (await label.isVisible()) {
+  // Skip-to-moment and sim-to-end are both ghost buttons; neither label may clip.
+  for (const label of await page.locator('.lm-controls .btn-ghost .btn-label').all()) {
+    if (!(await label.isVisible())) continue
     const clipped = await label.evaluate((el) => el.scrollWidth > el.clientWidth + 1)
-    expect(clipped, 'sim label is not clipped').toBe(false)
+    expect(clipped, 'control label is not clipped').toBe(false)
   }
   await snapWp6(page, P, '52-live-controls-tr')
 })
