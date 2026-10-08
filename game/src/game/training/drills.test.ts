@@ -6,6 +6,7 @@ import { DIVE_PEAK } from '../ai'
 import type { HeroAction } from '../runtime'
 import { createDrill, type CrossingDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
 import { JUMP_PEAK } from './drills/heading'
+import type { RondoDrill } from './drills/rondo'
 import type { Attributes } from '../../core/types'
 import type { Drill, DrillInput, DrillKind, DrillResult } from './types'
 import type { DrillBase } from './base'
@@ -230,6 +231,30 @@ describe('training drills (headless)', () => {
       }
     })
   }
+
+  it('rondo 4v2: 60 s, quick open passes beat slow ones beat standing still; Vision 60 opens the third option (2.3#24)', () => {
+    const quick: Bot = (d, s) => {
+      const r = d as RondoDrill
+      if (!after(r.ready, s, 0.25)) return idle
+      return act({ kind: 'tapAt', at: { ...r.mates[r.mostOpen()].pos } })
+    }
+    const slow: Bot = (d, s) => {
+      const r = d as RondoDrill
+      if (!after(r.ready, s, 1.3)) return idle
+      return act({ kind: 'tapAt', at: { ...r.mates[r.options[0]].pos } })
+    }
+    const mk = (seed: number, vision = 70) => createDrill('passing', { attrs: { ...flatAttrs(65), vision }, seed, aimAssist: 'half', variant: 'rondo' })
+    const good = [1, 2, 3].map((s) => play(mk(s), quick))
+    const meh = [1, 2, 3].map((s) => play(mk(s), slow))
+    const none = [1, 2, 3].map((s) => play(mk(s), () => idle))
+    expect(good[0].played).toBeGreaterThanOrEqual(59)
+    expect(avg(good.map((r) => r.performance))).toBeGreaterThan(avg(meh.map((r) => r.performance)) + 0.1)
+    expect(avg(good.map((r) => r.performance))).toBeGreaterThan(0.75)
+    expect(avg(none.map((r) => r.performance))).toBeLessThan(0.1)
+    expect(good[0].stats.oneTouch ?? 0).toBeGreaterThan(0)
+    expect((mk(1, 59) as RondoDrill).options).toEqual([0, 2])
+    expect((mk(1, 60) as RondoDrill).options).toEqual([0, 1, 2])
+  })
 
   it('finishing target grid: 10 shots, points made of 10 / 6 / 2 (2.3#23)', () => {
     const r = play(make('finishing', 7), finishingGood)

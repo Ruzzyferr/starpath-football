@@ -41,7 +41,7 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
 export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind; variant: DrillVariant } | null>> = {
   shooting: { kind: 'finishing', variant: 'standard' },
   setPiece: { kind: 'finishing', variant: 'setPiece' },
-  passing: { kind: 'passing', variant: 'standard' },
+  passing: { kind: 'passing', variant: 'rondo' },
   tactical: { kind: 'passing', variant: 'standard' },
   dribbling: { kind: 'dribbling', variant: 'standard' },
   physical: { kind: 'fitness', variant: 'standard' },
@@ -53,7 +53,14 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
 }
 
 /** Variants with their own scoring scale (curl gate: 5 × 20 points). */
-export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 80 }
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 80, rondo: 26 }
+/** Variants with their own length (rondo: 60 s, 2.3#24). */
+export const VARIANT_DURATION: Readonly<Partial<Record<DrillVariant, number>>> = { rondo: 60 }
+
+/** Rondo (2.3#24): a completed pass 1, a one-touch pass 1.5; a lost ball resets the streak. */
+export const rondoPassPoints = (completed: boolean, oneTouch: boolean): number => (!completed ? 0 : oneTouch ? 1.5 : 1)
+/** Vision from which the third pass option (through the middle) is visible. */
+export const RONDO_VISION_THIRD = 60
 
 /** Curl gate (2.3#25): 5 free kicks over the wall, 20 points per kick between the posts. */
 export const CURL_GATE_ATTEMPTS = 5

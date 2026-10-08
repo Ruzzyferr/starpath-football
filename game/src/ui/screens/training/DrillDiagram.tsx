@@ -9,6 +9,8 @@ const CONE = '#ff8a3d'
 const RUN = '#ffc83d'
 const PASS = '#3da5ff'
 const YOU = '#1fd47a'
+const MATE = '#b4c0d6'
+const OPP = '#ff4d5e'
 
 function Player({ x, y, c = YOU }: { x: number; y: number; c?: string }) {
   return <g><circle cx={x} cy={y} r="6" fill={c} stroke="#04140b" stroke-width="1.5" /></g>
@@ -25,7 +27,7 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
   if (setPiece) {
     return (
       <>
-        {[86, 96, 106, 116].map((x) => <Player key={x} x={x} y={74} c="#ff4d5e" />)}
+        {[86, 96, 106, 116].map((x) => <Player key={x} x={x} y={74} c={OPP} />)}
         <Player x={110} y={112} />
         <Ball x={104} y={104} />
         <path d="M104 104C70 70 120 40 120 30" stroke={RUN} {...dash} />
@@ -33,10 +35,20 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
     )
   }
   switch (kind) {
+    case 'rondo':
+      return (
+        <>
+          <path d="M80 62L110 34L140 62L110 90Z" fill="none" stroke={LINE} stroke-width="1" stroke-dasharray="3 3" />
+          <Player x={80} y={62} /><Player x={110} y={34} c={MATE} /><Player x={140} y={62} c={MATE} /><Player x={110} y={90} c={MATE} />
+          <Player x={104} y={58} c={OPP} /><Player x={118} y={68} c={OPP} />
+          <Ball x={86} y={62} />
+          <path d="M86 60L106 38" stroke={PASS} {...dash} />
+        </>
+      )
     case 'passing':
       return (
         <>
-          <Player x={50} y={104} /><Player x={110} y={80} c="#b4c0d6" /><Player x={160} y={104} c="#b4c0d6" />
+          <Player x={50} y={104} /><Player x={110} y={80} c={MATE} /><Player x={160} y={104} c={MATE} />
           <Cone x={78} y={92} /><Cone x={86} y={98} /><Cone x={132} y={92} /><Cone x={140} y={98} />
           <path d="M56 100L104 82M116 84L154 100" stroke={PASS} {...dash} />
           <Ball x={62} y={98} />
@@ -55,7 +67,7 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
         <>
           <Player x={188} y={92} /><Ball x={182} y={86} />
           <path d="M182 86C160 40 120 40 108 52" stroke={RUN} {...dash} />
-          <Player x={106} y={58} c="#b4c0d6" />
+          <Player x={106} y={58} c={MATE} />
           <circle cx="108" cy="52" r="12" fill="none" stroke={RUN} stroke-opacity=".5" />
         </>
       )
@@ -73,13 +85,13 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
           <Player x={110} y={24} c="#ffc83d" />
           <path d="M110 24h-22M110 24h22" stroke="#ffc83d" stroke-width="2" stroke-linecap="round" opacity=".6" />
           <Ball x={84} y={96} /><Ball x={136} y={100} />
-          <path d="M84 96L96 20M136 100L126 18" stroke="#ff4d5e" {...dash} />
+          <path d="M84 96L96 20M136 100L126 18" stroke={OPP} {...dash} />
         </>
       )
     case 'tackling':
       return (
         <>
-          <Player x={110} y={64} c="#ff4d5e" /><Ball x={116} y={70} />
+          <Player x={110} y={64} c={OPP} /><Ball x={116} y={70} />
           <path d="M150 104C140 90 130 80 118 72" stroke={RUN} {...dash} />
           <Player x={152} y={106} />
           <Cone x={70} y={60} /><Cone x={150} y={60} />
@@ -101,7 +113,7 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
           <rect x="126" y="10" width="12" height="10" fill="none" stroke={RUN} stroke-width="2" />
           <path d="M110 92C100 60 92 40 88 18" stroke={RUN} {...dash} />
           <Player x={110} y={100} /><Ball x={110} y={92} />
-          <Player x={110} y={22} c="#b4c0d6" />
+          <Player x={110} y={22} c={MATE} />
         </>
       )
   }

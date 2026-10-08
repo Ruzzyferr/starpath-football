@@ -8,7 +8,7 @@ import type { Attributes, Position } from '../../core/types'
 import { envForWeather, PHYSICS_DT, type BallState, type PhysicsEnv } from '../physics'
 import type { AimAssist } from '../kick'
 import { clampN, type Agent, type Team, type Vec2 } from '../model'
-import { DRILL_DURATION, gradeFor, performanceFromPoints } from './scoring'
+import { DRILL_DURATION, VARIANT_DURATION, gradeFor, performanceFromPoints } from './scoring'
 import type {
   ActorRole, ActorView, Drill, DrillConfig, DrillEvent, DrillInput, DrillKind, DrillResult, DrillVariant, DrillView,
 } from './types'
@@ -110,8 +110,8 @@ export abstract class DrillBase implements Drill {
 
   constructor(kind: DrillKind, cfg: DrillConfig) {
     this.kind = kind
-    this.duration = DRILL_DURATION[kind]
     this.variant = cfg.variant ?? 'standard'
+    this.duration = VARIANT_DURATION[this.variant] ?? DRILL_DURATION[kind]
     this.attrs = { ...cfg.attrs }
     this.assist = cfg.aimAssist ?? 'half'
     this.difficulty = clampN(cfg.difficulty ?? 1, 0.7, 1.4)

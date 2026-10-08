@@ -21,7 +21,7 @@ export type DrillKind = 'finishing' | 'passing' | 'dribbling' | 'fitness' | 'goa
 export const DRILL_KINDS: readonly DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling']
 
 /** Optional variation of a drill (set-piece finishing = free kicks over a wall). */
-export type DrillVariant = 'standard' | 'setPiece'
+export type DrillVariant = 'standard' | 'setPiece' | 'rondo'
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D'
 
