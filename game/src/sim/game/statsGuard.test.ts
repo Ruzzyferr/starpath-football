@@ -5,6 +5,9 @@
 import { existsSync, readFileSync, writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { runCareer, standardMix } from './balanceSim'
+import { makeGame } from './testHelpers'
+import { advanceToNextMatch } from './calendar'
+import { firstEnabledChoice, resolveEventChoice } from './actions'
 import { TOLERANCE, driftReport, metricsOf, type StatsMetrics } from './statsGuard'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
@@ -23,10 +26,30 @@ describe('stats guard helpers', () => {
   })
   it('a career run is deterministic per seed (rng streams are stable)', () => {
     const cfg = standardMix(1, 1, 4242)[0]
-    // Compare at 1e-6: the first run in a process can differ from later ones by float noise (~1e-15) in reputation sums.
-    const round = (x: unknown): unknown => JSON.parse(JSON.stringify(x, (_k, v) => (typeof v === 'number' ? Math.round(v * 1e6) / 1e6 : v)))
-    expect(round(runCareer(cfg).samples)).toEqual(round(runCareer(cfg).samples))
+    // Exact equality: no module-level state may leak between runs in one process.
+    expect(JSON.stringify(runCareer(cfg))).toBe(JSON.stringify(runCareer(cfg)))
   }, 60_000)
+  it('interleaved seeds do not leak state: A, B, A gives byte-identical careers and game states', () => {
+    const [a, b] = [standardMix(1, 1, 4242)[0], standardMix(1, 1, 777)[0]]
+    const careerA1 = JSON.stringify(runCareer(a))
+    const careerB = JSON.stringify(runCareer(b))
+    const careerA2 = JSON.stringify(runCareer(a))
+    expect(careerA2).toBe(careerA1)
+    expect(careerB).not.toBe(careerA1)
+    const playWeeks = (seed: number): string => {
+      const g = makeGame(seed)
+      for (let i = 0; i < 6; i++) {
+        while (g.pendingEvents.length) resolveEventChoice(g, 0, firstEnabledChoice(g, 0))
+        advanceToNextMatch(g)
+      }
+      return JSON.stringify(g)
+    }
+    const stateA1 = playWeeks(31)
+    const stateB = playWeeks(32)
+    const stateA2 = playWeeks(31)
+    expect(stateA2).toBe(stateA1)
+    expect(stateB).not.toBe(stateA1)
+  }, 120_000)
 })
 
 describe.skipIf(!env.STATS_GUARD)('nightly stats guard', () => {

@@ -117,10 +117,11 @@ const tierOf = (s: GameState): number | null => {
 }
 
 /** Reasonable card choice: random among enabled options (seeded), so every branch gets exercised. */
-/** Reputation moved by event cards (balance diagnostics). */
-export const cardRep = { total: 0 }
+/** Reputation moved by event cards (balance diagnostics), metered per day of one career run.
+ *  (A module-level accumulator here leaked across runs: later careers differed by float noise.) */
+type CardMeter = { total: number }
 
-function resolveCards(s: GameState, rng: Rng): number {
+function resolveCards(s: GameState, rng: Rng, meter: CardMeter): number {
   let n = 0
   const rep0 = s.hero.reputation
   for (let guard = 0; guard < 10 && s.pendingEvents.length > 0; guard++) {
@@ -131,7 +132,7 @@ function resolveCards(s: GameState, rng: Rng): number {
     if (!r.ok && s.pendingEvents.length > 0) s.pendingEvents.splice(0, 1)
     n++
   }
-  cardRep.total += s.hero.reputation - rep0
+  meter.total += s.hero.reputation - rep0
   return n
 }
 
@@ -228,13 +229,13 @@ function gamble(s: GameState, rng: Rng): void {
 const NORMAL_TRAINING = ACTIVITY_BY_ID.train_physical ?? ACTIVITY_BY_ID.train_shooting
 
 /** Play one day with the autopilot plan, persona evenings and card answers. Returns cards answered. */
-function playDay(s: GameState, cfg: CareerConfig, rng: Rng): number {
-  let cards = resolveCards(s, rng)
+function playDay(s: GameState, cfg: CareerConfig, rng: Rng, meter: CardMeter): number {
+  let cards = resolveCards(s, rng, meter)
   const day0 = s.calendar.day
   const week0 = s.calendar.week
   for (let step = 0; step < 4; step++) {
     if (s.calendar.day !== day0 || s.calendar.week !== week0) break
-    cards += resolveCards(s, rng)
+    cards += resolveCards(s, rng, meter)
     const ctx = activityContext(s)
     const plan = autoPlanDay(s.hero, s.life, ctx)[0]
     let id = plan?.activityId ?? 'rest'
@@ -250,7 +251,7 @@ function playDay(s: GameState, cfg: CareerConfig, rng: Rng): number {
     }
     const r = doActivity(s, id, opts)
     if (id === 'casino' && r.ok) {
-      cards += resolveCards(s, rng)
+      cards += resolveCards(s, rng, meter)
       gamble(s, rng)
       advanceDay(s)
       break
@@ -263,7 +264,7 @@ function playDay(s: GameState, cfg: CareerConfig, rng: Rng): number {
       }
     }
   }
-  return cards + resolveCards(s, rng)
+  return cards + resolveCards(s, rng, meter)
 }
 
 /** Run one career for `cfg.seasons` seasons. */
@@ -311,9 +312,9 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
     }
     const rep0 = s.hero.reputation
     const apps0 = s.hero.careerStats.apps
-    const card0 = cardRep.total
-    acc.events += playDay(s, cfg, rng)
-    const fromCards = cardRep.total - card0
+    const meter: CardMeter = { total: 0 }
+    acc.events += playDay(s, cfg, rng, meter)
+    const fromCards = meter.total
     acc.repCards += fromCards
     const dRep = s.hero.reputation - rep0 - fromCards
     if (s.hero.careerStats.apps > apps0) acc.repMatch += dRep
