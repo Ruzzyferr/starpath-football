@@ -181,3 +181,210 @@ Tüm veri `sim/game` cephesinden geliyor: `objectivesView(state)` (`ObjectivesVi
 | Sakatlık 1–2 / 3–6 hafta | 1,9 / 3,8 | 1,9 / 3,5 | Tutuyor |
 | Enerji antrenmanı engellemez | %0 | %0 | Tutuyor |
 | Kumarhane payı: kumarbaz %15–35 / tüm kariyerler ≤ %5 | %45 / %8 | %28 / %6 | İyileşti. Önceki sapma bu çalışmadan önce de vardı; BALANCE.md'deki %17 / %4 eski bir ölçüm |
+
+---
+
+# Tur 2 (baş tasarımcı, Ekim 2026): uzun kariyer, kariyer sonu, Legacy
+
+**Soru:** Oyun 8–15 sezon boyunca, gençlikten emekliliğe ve çocuğun Legacy kariyerine kadar NSS'den daha bağımlılık yapıcı, daha mantıklı ve daha iyi hissettiriyor mu?
+**Kısa cevap:** İlk 4–5 sezon NSS'den belirgin biçimde iyi. Hedefler, kartlar, röportajlar, milli takım ölçeri ve ödüller her haftaya bir sebep veriyor; ölü hafta yok denecek kadar az (%0,7). Sorunlar uzun kariyerde başlıyordu. Gol kralı bir forvet milli takıma hiç çağrılmadı. Oyun 32 yaşındaki bir yıldızı soru sormadan emekli etti. Legacy çocuğu 16 yaşında milyoner başladı. 8. sezondan sonra kart destesi tükendi. En ağır beşi düzeltildi; kalanlar aşağıda sıralı.
+
+## Yöntem
+
+- Harness genişletildi (`PLAYTEST=1 PLAYTEST_PLAN=r2`, `game/src/sim/game/playtest.node.test.ts`). Toplam 2.418 hafta oynandı:
+  - **Uzun koşu:** TR ST, "pro", 20 yaşında başlayıp 15 sezon. Emeklilik kararı insan gibi veriliyor: 34+ yaşta yedekse ya da OVR zirvesinin 6 puan altına düştüyse emekli olur, 37'de kesin bırakır. Ardından jübile, belgesel ve Onur Listesi kaydı geliyor.
+  - **5 kariyer × 8 sezon:**
+    - GK, kadın, TR, "social"
+    - CB, DE, "party"
+    - AM, kadın, EN, "spender" (iş kurar)
+    - **Legacy:** uzun koşunun emeklilik belgeselinden `legacyStartFrom` ile doğan çocuğu (LW, TR)
+    - **Ağır kumarbaz:** BR LW, akşamların çoğu kumarhanede, masa limitinde oynuyor, at ve zar dahil
+- Yeni ölçümler eklendi:
+  - kariyer evresine göre tempo (genç ≤20, yükseliş 21–24, zirve 25–30, düşüş 31+)
+  - sezona göre ilk kez görülen kart payı
+  - evreye göre kahraman manşeti benzersizliği
+  - özellik kullanımı tablosu
+  - milli takım çağrı ölçeri dökümü (her hafta skor ve eşik)
+  - emeklilik karar günlüğü
+- **Harness hataları bulundu ve düzeltildi:**
+  - Kumar bahsi masa limitinin (%1,5) üstündeydi. Ağır kumarbazın 458 kumarhane gecesinin 450'sinde tek bahis kabul edilmemişti. Tur 1'deki kumar gözlemleri bu yüzden eksikti.
+  - Kişisel antrenör geçersiz bir grupla tutuluyordu. Bu yüzden günlükte `{n}` görünüyordu.
+- "Önce" ölçümü, düzeltmelerden önceki kodla aynı harness üzerinde alındı. Sayılar `r2-before`, `r2-after` koşularından.
+
+## Bulgular (oyuncu etkisine göre sıralı)
+
+### 1. Gol kralı, milli takıma hiç çağrılmadı (en yüksek etki, NSS şikâyeti #45)
+- **Kanıt:** Uzun koşudaki forvet 12 sezonda 382 maçta 336 gol attı, 34 ödül aldı, itibarı 95'e çıktı ve **0 milli maç** oynadı. Haftalık ölçer dökümü sebebi gösteriyor.
+  - Kahramanın seçim skoru 81, Türkiye forvet barajı 89–91. Ölçerin "güç" parçası 8 sezon boyunca **0** kaldı.
+  - Aynı tablo, OVR'si 80–82 olan EN AM, BR LW ve TR LW için de geçerli: 0 A milli maç. Yalnızca kaleci (kontenjan 3) çağrıldı.
+  - Kök neden dünyada. Ortalama sabit tutuluyor ama üst kuyruk açılıyor. Dünya top-20 OVR ortalaması 4 sezonda 90'dan 95'e çıkıyor, %90'lık dilim 79'dan 84'e. Kahraman ise BALANCE hedefi gereği 80–83'te zirve yapıyor. NSS'deki "50 maç üst üste maçın adamı oldum, hâlâ çağrılmadım" şikâyetinin birebir aynısı.
+- **Düzeltme (`sim/game/national.ts`):** Seçim skoruna −2…+10 arası bir **sezon performansı** eklendi:
+  - reyting (6,7 üstü)
+  - gol + asist / maç (forvet ve orta saha), gol yememe / maç (kaleci ve defans)
+  - şöhret
+  - Sezonun ilk 6 maçında geçen sezonla harmanlanıyor.
+  - Çağrı ölçütü metni de güncellendi.
+- **Ek tutarlılık düzeltmeleri:**
+  - "Aday kadrodasın" telefonu (`national.first_callup`) artık yalnızca A takım ölçeri 48+ iken geliyor. Kadroya giremezsen duyuruda "aday listesindeydin ama son kadroya giremedin" kapanışı var.
+  - "X, Türkiye kadrosunda" manşeti her duyuruda değil, yalnızca ilk çağrıda ya da geri dönüşte çıkıyor.
+  - Milli gol manşetinin 6 varyantı var; ilk milli gol ayrı bir haber.
+  - Yeni kart `national.international_retirement` ile milli takımı bırakmak mümkün. Kadro duyurusu bu kararı tanıyor.
+
+| Metrik | Önce | Sonra |
+|---|---|---|
+| Uzun koşu (TR ST) A milli maç / gol | 0 / 0 | 47 / 40 |
+| Legacy çocuğu (TR LW) A milli maç | 0 | 9 |
+| GK (TR, kadın) A milli maç | 27 | 36 |
+| EN AM / BR LW / DE CB | 0 / 0 / 0 | 0 / 0 / 0 (EN orta saha barajı 94–95; dünya sorunu, açık madde) |
+| "X, Türkiye kadrosunda" en sık tekrar | ×15 | ilk çağrı ve geri dönüş |
+| "X, Türkiye formasıyla # gol attı" | – (gol yoktu) | 6 varyant |
+
+### 2. Oyun, 32 yaşındaki yıldızı sormadan emekli etti
+- **Kanıt:** Uzun koşuda S13 H32'de çapraz bağ koptu (33 hafta). Oyuncu ilk 11'de, OVR 79, 41 gollük sezonun içindeydi. Aynı gün zorunlu emeklilik geldi. Karar kartı, "bir sezon daha" seçeneği ya da dönüş hikâyesi yoktu. 33 yaşında açılan yıllık emeklilik kararı hiç görülmedi; düşüş evresi 76 haftada kaldı.
+- **Düzeltme (`retirement.ts`):** Kariyer bitiren sakatlık artık yalnızca 34+ yaşta ve 30+ haftalık yoklukta zorunlu (önce 31+ yaş ve 24+ hafta). Daha genç oyuncu ağır sakatlıkta yine isterse emekli olabiliyor (`canRetire`).
+- **Sonra:** Karar günlüğü şöyle:
+  - 33 yaş, OVR 78, yedek: "bir sezon daha"
+  - 34 yaş, OVR 74, yedek: emekli
+  - Ardından jübile 2-2, belgesel, Onur Listesi'nde "Ölümsüz Efsane" ve Legacy çocuğu.
+  - Düşüş evresi 174 haftaya çıktı. Bu dönemde yedek kulübesi, rotasyon konuşması ve "Ne zaman bırakacaksın?" sofrası yaşanıyor.
+
+### 3. Legacy çocuğu 16 yaşında milyoner (rags-to-riches atlanıyordu)
+- **Kanıt:** Miras, ebeveynin net servetinin %5'i (tavan 2M). 31M'lık bir efsanenin çocuğu şöyle başladı:
+  - 1. sezonda 810K nakit, 1,8M net servet, 15 lüks alım
+  - 4. sezondan sonra her sezon 29–38 hafta "parası boşta"
+  - 3. sezonda 2,57M net servet (BALANCE tavanı 2M)
+  - 22 yaşında 82 itibar
+- **Düzeltme (`legacy.ts`):**
+  - Miras %2'ye indi (5K–150K).
+  - İtibar bonusu en çok 10 (önce 15).
+  - Ünlü soyadı perki ve ebeveyn ilişkisi duruyor.
+  - İki yeni Legacy kartı var: "Efsanenin Gölgesi" (basın kıyaslaması) ve "Efsaneden Bir Ders". İkisi de ebeveyn ilişkisini oynatıyor.
+- **Sonra:** 1. sezon nakdi 60K, 3. sezon net serveti 454K. Çocuk yine avantajlı ama tırmanış duruyor.
+
+### 4. Kart destesi 8. sezonda tükeniyordu (uzun kariyerde tekrar)
+- **Kanıt:**
+  - İlk kez görülen kart payı: S1 %92 → S5 %16 → S8 %4 → S9–S13 %0–5.
+  - 31+ evresinde kartların yalnızca %1'i yeniydi.
+  - `fans.autograph_swarm` bir kariyerde ×24 çıktı.
+  - Gençlik ve zirve kartları emeklilik yaşında da dönüyordu.
+- **Düzeltmeler:**
+  - `content/careerArc.ts`: evreye bağlı **16 yeni kart**.
+    - Yıldız yılları: belgesel teklifi ve yayın (iki adımlı zincir), ödül kampanyası, "hesapta duran milyonlar" vakfı (geç oyun para emicisi).
+    - Veteran yılları: toparlanma, rotasyon konuşması, formanı isteyen genç, yorumculuk teklifi, "Ne zaman bırakacaksın?", rakip tribünden alkış, soyunma odasının abisi/ablası, başkanın veda sezonu teklifi, MR sonuçları.
+    - Ayrıca: milli takıma veda ve iki Legacy kartı.
+  - Yenilik tabanı 0,2'den 0,1'e indi: çok görülen kart, görülmemiş kartın yanında artık gerçekten geri planda kalıyor.
+  - İmza seli kartının bekleme süresi 15 haftadan 26 haftaya çıktı.
+
+| Metrik | Önce | Sonra |
+|---|---|---|
+| Görülen farklı kart | 247 | 265 |
+| İlk kez görülen kart payı S8 / S10 / S12 | %4 / %5 / %1 | %6 / %9 / %7 |
+| Bir kariyerde en çok tekrar eden kart | ×24 | ×17 (15 sezonluk kariyerde) |
+| Farklı günlük satırı | 2.344 | 2.553 |
+
+**Kalan:** 15 sezonda yaklaşık 1.000 kart çıkıyor, deste 265 kart. Tekrar matematiksel olarak kaçınılmaz. 10+ sezon için 60–80 kart daha gerekiyor (bkz. Açık maddeler).
+
+### 5. Röportaj alıntıları tekrar ediyordu
+- **Kanıt:** Transfer, rakip, form, kulübe, hoca, kumar, maç önü, milli ve sözleşme konularında her tonun **tek** cümlesi vardı. Örnekler:
+  - "Tek transferim yataktan mutfağa" ×18
+  - "Kapıyı kapatmıyorum" ×16
+  - "Özel hayatım beni ilgilendirir" ×13
+  - "Gol atacağım" ×12
+- **Düzeltme:** 25 seçeneğe bağlama uygun 2–3 varyant eklendi (`interview.ts`, `alts`). Kumarhane manşetlerine 5 varyant eklendi; "rulet" gibi olmayan bir ayrıntı uydurulmuyor.
+- **Sonra:** Manşet benzersizliği %56'dan %60'a çıktı. Yıldızlık ve düşüş evrelerinde %55–65. "Tek transferim…" 15 sezonda ×10'a indi (önce 13 sezonda ×18). Listenin başında artık maç manşetleri var; kaynakları gol hacmi (bkz. Açık maddeler).
+
+### 6. Belgesel, efsaneyi "Ayın Oyuncusu" listesine indiriyordu
+- **Kanıt:** 60 ödül, 7 kupa ve 47 milli maçlık kariyerin "en iyi anları": sekiz satırın üçü "Ayın Oyuncusu (Ocak/Eylül)". Kupalar ve milli takım listede yoktu (ilk 8 ödül kronolojik kesiliyordu).
+- **Düzeltme (`hallOfFame.ts`):** Anlar ağırlığa göre sıralanıyor: kupa, sezon ödülü, milli kariyer, en golcü sezon, aylık ödül. Tekrarlar gruplanıyor: "4× Lig Gol Kralı (2028–2033)", "3× 🏆 Süper Lig (…)", "🎽 47 milli maç, 40 gol".
+
+### 7. Ağır kumarbazlığın sonucu (harness düzeltildikten sonra ilk kez ölçüldü)
+- 380 kumarhane gecesinde ~5,2M bahis oynandı. Net sonuç +153K. Bu varyans: slot ve at yarışında büyük vurgunlar var; RTP testleri evi kârlı gösteriyor.
+- Futbola etkisi var gibi görünüyor ama kanıt zayıf. Aynı tohumla önceki koşuda da kumarhane ziyaretleri vardı, yalnızca bahisler reddediliyordu. O koşuya göre:
+  - 26 yaşında itibar 78 yerine 60
+  - 2. kademede kaldı (önce 1. kademe)
+  - maaş 155K yerine 53K
+  - Ziyaretin disiplin ve basın bedeli iki koşuda da vardı. Farkın bir kısmı RNG sapması olabilir; tek tohumla kesin değil. Kumarın kariyere etkisi oyuncuya açıkça gösterilmiyor (bkz. UI madde 5).
+- Mutluluk 100'de, stres 8–35 arasında kaldı; kumarın ruh hâline etkisi görünmüyor.
+- Haftalık "Kumar düşüncesi aklından çıkmıyor" ve destek hattı satırı 205 kez aynı metinle düştü. Sorumlu oyun gereği kalmalı ama arayüzde gruplanmalı (bkz. UI).
+
+### 8. Küçük mantık ve metin hataları (düzeltildi)
+- Antrenör sözleşmesi satırında `{n}` görünüyordu (×20). Bilinmeyen grupta `trainerName` artık geri dönüş değeri kullanıyor.
+- `family.sibling_trial`: "Menajerine telefon açtır" seçeneği artık menajer gerektiriyor (önce hayalet menajer çıkıyordu).
+- Yeni kartta "MR'da" yerine "taramada" yazıyor. Bayraklarda kalan "Caps'i" ve "VIP'de" tartışmalı yabancı okunuşlar; dokunulmadı.
+
+### 9. Tempo, evrelere göre (sonra)
+
+| Evre | Kart/hf | Yeni kart payı | Kahraman haberi/hf | Hedef olayı/hf | Röportaj/hf | Ölü % |
+|---|---|---|---|---|---|---|
+| Genç (≤20) | 1,75 | %54 | 0,67 | 0,85 | 0,43 | 0,6 |
+| Yükseliş (21–24) | 1,74 | %18 | 0,92 | 0,91 | 0,51 | 0,6 |
+| Zirve (25–30) | 1,74 | %9 | 1,26 | 0,91 | 0,63 | 0,9 |
+| Düşüş (31+) | 1,66 | %3 (veteran kartları sayesinde sezonda 4–9 yeni kart) | 1,00 | 0,95 | 0,52 | 1,1 |
+
+- Hedefler, kartlar ve röportajlar her evrede aynı yoğunlukta. Ölü hafta oranı her yerde %1 civarında, ardışık ölü hafta yok.
+- Eksik olan **evreye özgü hedef**. Hoca ve taraftar hedefleri 17 yaşında da 33 yaşında da aynı. Veteran için "gençlere ağabeylik", yıldız için "Altın Yıldız yarışı" gibi hedefler sonraki tura kaldı.
+
+## Denge ve doğrulama
+
+- **BALANCE** (`BALANCE=1`, 30 × 10, seed 1000). "Önce" ve "sonra" aynı anda, aynı HEAD'den alındı. "Önce" kopyasında yalnızca bu turun üç sim commit'i geri alındı; geçici kopya ölçümden sonra silindi.
+
+| Hedef | Önce | Sonra | Durum |
+|---|---|---|---|
+| İtibar 21 yaş ~50, 25 yaş 75–85 | 44 / 78 | 47 / 75 | Tutuyor (25 yaşta alt sınırda) |
+| İlk 1. kademe (21–23) / elit kulüp (22–24) | 21 / 24 (%67) | 21 / 23 (%50) | Tutuyor |
+| Pot ≥ 85 → 25 yaşına kadar OVR 80+ | 9/9 | 9/9 | Tutuyor |
+| 3. sezon net servet medyan ≤ 300K / max ≤ 2M | 161K / 1,1M | 157K / 1,6M | Tutuyor |
+| İflas yok | %0 | %0 | Tutuyor |
+| Haftalık kart 1,5–2,5 | 1,7 | 1,8 | Tutuyor |
+| Sakatlık 1–2 / 3–6 hafta | 1,6 / 4,1 | 1,4 / 3,3 | Tutuyor |
+| Kumarhane payı: kumarbaz %15–35 / herkes ≤ %5 | %6 / %1 | %5 / %1 | Kumarbaz hedefin altında. Bu tur öncesinden kalma, değişmedi (açık madde) |
+
+- **Golden master değişmedi.** `golden.test.ts` yeniden üretim gerekmeden geçiyor; maç motoru ve sezon özeti etkilenmedi. `UPDATE_GOLDEN` kullanılmadı.
+- **Hız ve his:** Maç motoruna, kontrollere ve render'a dokunulmadı. Harness süresi 6 kariyer × 8–15 sezon için ~90 sn.
+- `npx vitest run`: 168 dosya, 1.424 test geçti (4 atlandı).
+- `npm run lint`: 0 hata (39 uyarı, bu turdan önce de vardı).
+- `npm run lint:i18n` ve `npm run build`: temiz.
+
+## NSS'de sevilenler: bizde var mı, daha iyi mi? (Tur 2, uzun kariyer gözüyle)
+
+| NSS'de sevilen | Bizde | Karar |
+|---|---|---|
+| Kararlar ve sonuçları | 265 farklı kart, risk etiketleri, zincirler, evreye bağlı kartlar | **Daha iyi**; 10+ sezonda deste hâlâ dar |
+| İlişkiler | Defter, "neden değişti" günlüğü, Legacy ebeveyn ilişkisi | **Daha iyi** |
+| Lüks alımlar | Kariyer başına 38–74 alım, iş kurma, vakıf | İlk 5 sezon daha iyi. Geç oyunda para yine boşta (sezonda 16–40 hafta) |
+| Kumarhane | Blackjack, rulet, slot, at, zar; masa limiti; sorumlu oyun | Masa limiti ve sorumlu oyun sayesinde **daha mantıklı** ama daha az eğlenceli. Kariyer bedeli zayıf ve görünmüyor, mutluluğa etkisi yok |
+| Transferler | Pazarlık, kiralık, kariyer başına 6–12 transfer | **Daha iyi**; kademe yolu gerçekçi |
+| Milli takım | Ölçer, U19/U21/A, kaptanlık, milli takıma veda | Düzeltmeden önce NSS kadar kötüydü (#45). Şimdi **daha iyi**: performans sayılıyor. Güçlü ülkelerde dünya enflasyonu yüzünden hâlâ zor |
+| Ödüller | Aylık ve sezonluk ödül, Altın Yıldız, tören | **Daha iyi**: performansa bağlı (NSS #46 yok); belgesel artık doğru öne çıkarıyor |
+| Highlight maç | Kilit anlar, otomatik çözümde 30–35 maç/sezon | His tarafı test edilmedi (sim harness). Gol hacmi yüksek: 459 maçta 407 gol (NSS #47 "500 gol" riski) |
+| Röportaj mini oyunu | 3 soru, muhabir stilleri, bağlam varyantları | **Daha iyi**; tekrar azaldı |
+| 16'dan efsaneye ve emekliliğe | Karar kartı, jübile, belgesel, Onur Listesi, Legacy | NSS'de yok. **Bizim artımız**, artık mantıklı |
+
+**Yeni sistemler entegre mi, eklenti gibi mi?**
+- **Hedefler:** Entegre. Hoca, taraftar ve aile sesi, haftada ~0,9 olay.
+- **Röportajlar:** Entegre. Manşetler alıntıdan geliyor, ilişkiler de değişiyor.
+- **Milli takım:** Düzeltmeyle entegre. Kartlar ve duyurular ölçerle tutarlı.
+- **Ödüller:** Entegre. Manşet, belgesel, miras puanı.
+- **İş kurma:** **Hâlâ eklenti gibi**. Kariyer başına en çok 2 iş açılıyor, haftalık "İşletmelerin bu hafta" satırı dışında oyuncuya karar sormuyor. Yalnızca birkaç kart (`business.*`) bağlanıyor.
+
+## Arayüz için yapılacaklar (sim tarafı hazır)
+
+1. **Milli takım kartı:** "Güç" çubuğu artık sezon performansını da içeriyor. Ayrı bir "Sezon performansı" çubuğu gösterilmeli. Değer `heroPerformanceBonus(state)` ile alınır (−2…+10, `sim/game/national.ts`, dışa açık). Metin anahtarı `intl.national.parts`'a eklenmeli.
+2. **Ağır sakatlıkta karar (31–33 yaş):** `retirementStatus(s).canRetire === true && forced === null` ve sakatlık şiddeti 3 iken bir "Geri dönüş mü, veda mı?" ekranı gösterilmeli. Şu an yalnızca zorunlu emeklilik ve 33+ yıllık karar ekranı açılıyor.
+3. **Günlükte aynı satırın gruplanması:** Art arda gelen aynı metinli satırlar "×N" ile tek satırda gösterilmeli (kumar uyarısı, haftalık bakiye). Sorumlu oyun mesajı kaybolmaz, gürültü azalır.
+4. **Geç oyun para emicileri:** Vakıf kartı (`money.foundation`, `flags.foundation`) için Profil'de bir "Vakfın" satırı. İş yükseltmelerinin ana ekrandan önerilmesi (`upgradeCost`).
+5. **Kumarın ruh hâline etkisi:** Mutluluk metresinin yanında kumar bağımlılığı göstergesi (`life.casino.addiction`) ve bunun maçtaki soğukkanlılığa etkisi (Tur 1 madde 4 ile birlikte).
+
+## Açık maddeler (benim alanım dışında ya da sonraki tur)
+
+- **Dünya üst kuyruk enflasyonu (dünya sahibi):** Ortalama sabit, ama:
+  - %90'lık dilim 4 sezonda 79'dan 84'e, top-20 ortalaması 90'dan 95'e çıkıyor.
+  - OVR 88+ oyuncu sayısı 23'ten ~230'a çıkıyor.
+  - Başlangıçta 219 oyuncunun potansiyeli 90 ve üstü.
+  - Kahramanın 80–83 zirvesi göreli olarak "sıradan" kalıyor. EN/DE gibi güçlü ülkelerde milli takım barajı 94–95.
+  - Bir kuyruk çapası ve wonderkid durgunluğu denendi ama tek başına yetmedi (genç yıldızlar 24 yaş altında 88+'ya çıkıyor). Potansiyel dağılımının kaynağında (üretim ve altyapı alımı) çözülmeli; dünya hash'i ve dengeyle birlikte ele alınmalı.
+- **Maç motoru gol hacmi:** Uzun koşuda 459 maçta 407 gol; ST OVR 77–82 sezonda 33/43/47 gol (BALANCE tablosu). NSS #47 riski. İtibar enflasyonunun da kaynağı.
+- **İtibar temposu (harness):** İnsan gibi PR yapan oyuncuda kaleci 23 yaşında 95, Legacy çocuğu 24 yaşında 94 itibara çıkıyor. BALANCE sim'inde hedefte (yukarıda); harness'te üst sınırın üstünde.
+- **Kumarbaz persona payı (BALANCE):** %5–6, hedef %15–35. Bu tur öncesinden kalma; kumarbaz otomatik kariyerin bahis davranışı masa limitiyle birlikte yeniden ayarlanmalı.
+- **Kart içeriği:** 10+ sezon için 60–80 kart daha, özellikle `business` (iş kararları), `national` (turnuva hikâyeleri) ve evreye özgü hedefler.
+- **İşletme:** Karar üreten bir sistem değil, pasif gelir. İş başına aylık bir karar kartı ya da kriz zinciri gerekiyor.

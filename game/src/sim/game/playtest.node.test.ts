@@ -25,7 +25,7 @@ import { getEventDef } from '../life/events/engine'
 import type { Delta, EventCtx } from '../life/events/types'
 import { advanceDay, isHeroMatchday } from './calendar'
 import {
-  acceptNegotiation, acceptOffer, acceptSponsor, blackjackAct, blackjackDeal, buyAsset, complainAboutBench, counterNegotiation,
+  acceptNegotiation, acceptOffer, acceptSponsor, blackjackAct, blackjackDeal, buyAsset, horseRaceCard, playDice, playHorses, complainAboutBench, counterNegotiation,
   currentNegotiation, declineOffer, doActivity, hireAgent, hireTrainer, playRoulette, playSlots, resolveEventChoice, startNegotiation,
   unlockPerk, AGENT_TIERS,
 } from './actions'
@@ -39,6 +39,12 @@ import { dashboard, nextHeroFixture } from './summary'
 import { objectivesView } from './objectives'
 import { reinflect } from '../career/trSuffix'
 import { placeholdersOf } from '../life/events/engine'
+import { BUSINESS_DEFS, BUSINESS_KINDS, businesses, openBusiness } from '../life/business'
+import { continueCareer, retireHero, retirementStatus } from './retirement'
+import { buildCareerSummary, legacyTier, type CareerSummary } from './hallOfFame'
+import { legacyStartFrom, type LegacyStart } from './legacy'
+import { heroCallup } from './national'
+import { canHoldPressConference, preMatchQuestions, pressConferenceQuestions } from './interview'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 const FULL = env.PLAYTEST === '1'
@@ -55,6 +61,12 @@ interface PtConfig {
   background: Background
   persona: Persona
   startAge: number
+  /** Heavy gambler: casino most evenings, bigger stakes, every game. */
+  heavy?: boolean
+  /** Legacy child of the career at this index in the run list (needs its retirement summary). */
+  legacyOf?: number
+  /** Override seasons for this career (long run). */
+  seasons?: number
 }
 
 const POS: Record<Archetype, Position> = { poacher: 'ST', playmaker: 'AM', winger: 'LW', wall: 'CB', boxToBox: 'CM', keeper: 'GK' }
@@ -68,6 +80,21 @@ const CONFIGS: PtConfig[] = [
   { seed: 5150, first: 'Kerem', last: 'Öztürk', gender: 'male', nationality: 'ES', archetype: 'boxToBox', background: 'street', persona: 'pro', startAge: 17 },
   { seed: 8080, first: 'Deniz', last: 'Arslan', gender: 'female', nationality: 'NL', archetype: 'winger', background: 'footballFamily', persona: 'social', startAge: 17 },
 ]
+
+// Round 2 (PLAYTEST_PLAN=r2): a 15-season long run (retires -> Hall of Fame -> its child plays a Legacy career)
+// plus GK (female), CB, female AM (spender, business), heavy gambler.
+const CONFIGS_R2: PtConfig[] = [
+  { seed: 1905, first: 'Burak', last: 'Yılmaz', gender: 'male', nationality: 'TR', archetype: 'poacher', background: 'lateBloomer', persona: 'pro', startAge: 20, seasons: 15 },
+  { seed: 777, first: 'Elif', last: 'Kaya', gender: 'female', nationality: 'TR', archetype: 'keeper', background: 'street', persona: 'social', startAge: 17 },
+  { seed: 31337, first: 'Mert', last: 'Aydın', gender: 'male', nationality: 'DE', archetype: 'wall', background: 'lateBloomer', persona: 'party', startAge: 18 },
+  { seed: 2026, first: 'Zeynep', last: 'Şahin', gender: 'female', nationality: 'EN', archetype: 'playmaker', background: 'academy', persona: 'spender', startAge: 16 },
+  { seed: 6161, first: 'Efe', last: 'Yılmaz', gender: 'male', nationality: 'TR', archetype: 'winger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 0 },
+  { seed: 9001, first: 'Can', last: 'Demir', gender: 'male', nationality: 'BR', archetype: 'winger', background: 'footballFamily', persona: 'gambler', startAge: 18, heavy: true },
+]
+
+type Phase = 'genç (≤20)' | 'yükseliş (21–24)' | 'zirve (25–30)' | 'düşüş (31+)'
+const PHASES: Phase[] = ['genç (≤20)', 'yükseliş (21–24)', 'zirve (25–30)', 'düşüş (31+)']
+const phaseOf = (a: number): Phase => (a <= 20 ? PHASES[0] : a <= 24 ? PHASES[1] : a <= 30 ? PHASES[2] : PHASES[3])
 
 const input = (c: PtConfig): NewGameInput => ({
   firstName: c.first, lastName: c.last, nickname: c.first, nationality: c.nationality, birthYear: 2026 - c.startAge,
@@ -173,6 +200,11 @@ interface WeekRec {
   heroNews: number
   inSeason: boolean
   objectiveEvents: number
+  age: number
+  newCards: number
+  national: number
+  awards: number
+  interviews: number
 }
 
 interface CareerOut {
@@ -189,13 +221,21 @@ interface CareerOut {
   commentary: string[]
   repFrom: Record<string, number>
   objectives: string[]
+  summary: CareerSummary | null
+  retiredAge: number | null
+  retireLog: string[]
+  feat: Record<string, number>
+  heroNewsByPhase: Record<string, string[]>
 }
 
-function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
-  const s = newGame(input(cfg), cfg.seed)
+function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: LegacyStart): CareerOut {
+  const s = newGame({ ...input(cfg), ...(legacy ? { legacy } : {}) }, cfg.seed)
   const rng = new Rng(cfg.seed ^ 0xa11ce)
-  const out: CareerOut = { cfg, transcript: [], cards: [], news: [], logs: [], weeks: [], flags: [], noTradeoff: {}, matches: 0, seasons: [], commentary: [], repFrom: {}, objectives: [] }
+  const out: CareerOut = { cfg, transcript: [], cards: [], news: [], logs: [], weeks: [], flags: [], noTradeoff: {}, matches: 0, seasons: [], commentary: [], repFrom: {}, objectives: [], summary: null, retiredAge: null, retireLog: [], feat: {}, heroNewsByPhase: {} }
   const T = out.transcript
+  const feat = (k: string, n = 1) => { out.feat[k] = (out.feat[k] ?? 0) + n }
+  const seenCards = new Set<string>()
+  let peakOvr = 0
   const when = () => `S${s.calendar.season - startSeason + 1} H${s.calendar.week} ${DAYS[s.calendar.day] ?? '?'}`
   const startSeason = s.calendar.season
   const age = () => heroAge(s.hero, s.calendar.season)
@@ -205,7 +245,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
   let purchases = 0
   let idleMoneyWeeks = 0
   function freshWeek(): WeekRec {
-    return { season: s.calendar.season, week: s.calendar.week, cards: 0, heroMatches: 0, offers: 0, news: 0, heroNews: 0, inSeason: s.calendar.week >= 1 && s.calendar.week <= 41, objectiveEvents: 0 }
+    return { season: s.calendar.season, week: s.calendar.week, cards: 0, heroMatches: 0, offers: 0, news: 0, heroNews: 0, inSeason: s.calendar.week >= 1 && s.calendar.week <= 41, objectiveEvents: 0, age: heroAge(s.hero, s.calendar.season), newCards: 0, national: 0, awards: 0, interviews: 0 }
   }
   const rep = <T,>(cat: string, f: () => T): T => {
     const r0 = s.hero.reputation
@@ -226,6 +266,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       if (/\{[a-zA-Z]+\}/.test(t)) flag('placeholder', t)
       for (const x of suffixIssues(t)) flag('ek', `${x} ← ${t}`)
       if (e.icon === '🎯' || e.icon === '⌛') wk.objectiveEvents++
+      if (/[Mm]illi|U21|U19|A [Tt]akım|kadroya çağr/.test(t)) wk.national++
       if (e.icon === '🎯' || e.icon === '⌛') out.objectives.push(t.startsWith('Yeni') ? 'yeni' : t.startsWith('Sezon hedefi') ? 'sezon' : t.startsWith('Hedef tamam') ? 'tamam' : 'kaçtı')
     }
     lastLog = L[L.length - 1]
@@ -235,7 +276,10 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       const h = tr(n.headline)
       out.news.push(h)
       wk.news++
-      if (heroNameRe.test(h)) wk.heroNews++
+      if (heroNameRe.test(h)) {
+        wk.heroNews++
+        ;(out.heroNewsByPhase[phaseOf(age())] ??= []).push(norm(h))
+      }
       T.push(`[${when()}] 📰 ${h} — ${n.source}${n.sentiment > 0 ? ' (+)' : n.sentiment < 0 ? ' (−)' : ''}`)
       if (/\{[a-zA-Z]+\}/.test(h)) flag('placeholder', h)
       for (const x of suffixIssues(h)) flag('ek', `${x} ← ${h}`)
@@ -268,7 +312,8 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       const def = getEventDef(pe.defId)
       const usesPartner = !!def && [def.title, def.text, ...def.choices.map((c) => c.label)].some((x) => placeholdersOf(x).includes('partnerName'))
       if (!hasPartner && (usesPartner || /sevgilin|partnerin|ilişkiniz/i.test(blob))) flag('hayalet-partner', `${v.defId}: ${v.title} — ${v.text.slice(0, 120)}`)
-      if (!s.life.agent && /menajerin|ajanın/i.test(blob) && !/menajer bul|ajan tut/i.test(blob)) flag('hayalet-ajan', `${v.defId}: ${v.title}`)
+      const liveBlob = `${v.title} ${v.text} ${v.choices.filter((c) => c.enabled).map((c) => c.label).join(' ')}`
+      if (!s.life.agent && /menajerin|ajanın/i.test(liveBlob) && !/menajer bul|ajan tut/i.test(liveBlob)) flag('hayalet-ajan', `${v.defId}: ${v.title}`)
       if (!s.hero.contract && /kulübün|takım arkadaş|hocan/i.test(blob)) flag('kulüpsüz', `${v.defId}: ${v.title}`)
       if (age() < 18 && /(?<!\p{L})(içki|bira|şarap|şampanya|kokteyl|bahis|kumar\p{L}*|gece kulübü|sarhoş)(?!\p{L})/iu.test(blob)) flag('yaş', `${age()} yaş — ${v.defId}: ${v.title}`)
       if (cfg.gender === 'female' && /\b(kız arkadaşın|delikanlı|beyefendi)\b/i.test(blob)) flag('cinsiyet', `${v.defId}: ${v.title}`)
@@ -283,6 +328,8 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       const r = rep('kart', () => resolveEventChoice(s, 0, pick))
       if (!r.ok && s.pendingEvents[0] === pe) s.pendingEvents.splice(0, 1)
       wk.cards++
+      if (!seenCards.has(v.defId)) wk.newCards++
+      seenCards.add(v.defId)
       out.cards.push({ defId: v.defId, title: v.title, category: v.category, season: s.calendar.season, week: s.calendar.week, choice: v.choices[pick]?.label ?? '', age: age() })
       T.push(`[${when()}] 🃏 KART «${v.title}» (${v.defId}) ${v.text}`)
       T.push(`      seçenekler: ${v.choices.map((c, i) => `${i === pick ? '▶' : ''}${c.label}${c.enabled ? '' : ' [kilitli]'}${c.risk ? ` {${c.risk}}` : ''}`).join(' | ')}`)
@@ -294,6 +341,16 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
   const playMatch = () => {
     const nf = nextHeroFixture(s)
     const club = heroClub(s)
+    if (nf && rng.chance(0.2)) {
+      const qs = safe(() => preMatchQuestions(s, { opponent: nf.opponentName }), [])
+      if (qs.length) { wk.interviews++; feat('röportaj (maç önü)') }
+      for (const q of qs) {
+        const o = rng.pick(q.options)
+        const a = rep('röportaj', () => answerInterview(s, q.id, o.id))
+        T.push(`      🎙️ (maç önü) ${tr(q.text)} → ${tr(o.label)}`)
+        if (a.done && a.headline) T.push(`      🗞️ ${tr(a.headline)}`)
+      }
+    }
     const mr = rep('maç', () => autoPlayHeroMatch(s, 'tr'))
     if (!mr) return
     out.matches++
@@ -309,6 +366,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
     // Post-match interview, sometimes.
     if (mr.minutes > 0 && rng.chance(0.45)) {
       const qs = interviewQuestions(s, { won: mr.won, drew: mr.drew, goals: mine, assists: 0, rating: mr.rating, motm: false, started: mr.minutes > 60, minutes: mr.minutes, opponent: opp })
+      if (qs.length) { wk.interviews++; feat('röportaj (maç sonu)') }
       for (const q of qs) {
         const o = rng.pick(q.options)
         const a = rep('röportaj', () => answerInterview(s, q.id, o.id))
@@ -328,7 +386,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       ['shopping', p === 'spender' ? 2 : 0.4], ['social_post', 0.6],
     ]
     if (hasPartner) opts.push(['date_night', p === 'social' ? 2 : 1])
-    if (a >= 18) opts.push(['party', p === 'party' ? 3 : p === 'social' ? 0.8 : 0.25], ['casino', p === 'gambler' ? 1.6 : 0.08])
+    if (a >= 18) opts.push(['party', p === 'party' ? 3 : p === 'social' ? 0.8 : 0.25], ['casino', cfg.heavy ? 4 : p === 'gambler' ? 1.6 : 0.08])
     return rng.weighted(opts, (x) => x[1])[0]
   }
   const dayChoice = (slot: number): string | null => {
@@ -373,10 +431,16 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       drain()
       if (id === 'casino' && r.ok) {
         answerCards()
-        const stake = Math.max(50, Math.round((s.life.money * rng.range(0.005, 0.03)) / 50) * 50)
+        // Table limit is 1.5 % of the bankroll (life/casino maxStakeFor); a heavy gambler sits at the limit and plays more hands.
+        const stake = Math.max(50, Math.floor((s.life.money * (cfg.heavy ? rng.range(0.011, 0.0145) : rng.range(0.005, 0.014))) / 50) * 50)
         const before = s.life.money
-        for (let i = 0; i < rng.int(1, 4) && s.life.money > stake; i++) {
-          if (rng.chance(0.4)) playSlots(s, stake)
+        feat('kumarhane gecesi')
+        for (let i = 0; i < rng.int(1, cfg.heavy ? 6 : 4) && s.life.money > stake; i++) {
+          if (cfg.heavy && rng.chance(0.2)) {
+            const card = horseRaceCard(s).value
+            if (card) playHorses(s, rng.int(0, Math.max(0, card.horses.length - 1)), stake)
+          } else if (cfg.heavy && rng.chance(0.15)) playDice(s, 'pass', stake)
+          else if (rng.chance(0.4)) playSlots(s, stake)
           else if (rng.chance(0.5)) playRoulette(s, [{ type: rng.chance(0.5) ? 'red' : 'black', stake }])
           else {
             let round = blackjackDeal(s, stake).value
@@ -384,6 +448,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
           }
         }
         T.push(`[${when()}] 🎰 kumarhane: ${Math.round(s.life.money - before)} (bahis ${stake})`)
+        feat('kumar net', Math.round(s.life.money - before))
         if (isHeroMatchday(s)) playMatch()
         advanceDay(s)
         drain()
@@ -436,12 +501,14 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
         drain()
         if (s.hero.contract?.clubId === o.clubId) {
           T.push(`[${when()}] ✍️ İMZA: ${o.clubName}`)
+          feat(o.contract.kind === 'renewal' ? 'sözleşme yenileme' : o.isLoan ? 'kiralık' : 'transfer')
           return
         }
         continue
       }
       if (acceptOffer(s, o.id).ok) {
         T.push(`[${when()}] ✍️ İMZA: ${o.clubName} (${o.contract.kind})`)
+        feat(o.contract.kind === 'renewal' ? 'sözleşme yenileme' : o.isLoan ? 'kiralık' : 'transfer')
         drain()
         return
       }
@@ -459,8 +526,30 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
     const want = [4, 3, 2, 1].find((q) => h.reputation >= AGENT_TIERS[q].minReputation && life.money > AGENT_TIERS[q].fee * 4)
     if (want && (life.agent?.quality ?? 0) < want && hireAgent(s, want).ok) T.push(`[${when()}] 🕴️ ajan tutuldu (kalite ${want})`)
     if (!life.trainer && life.money > 80_000 && cfg.persona !== 'party') {
-      const grp = h.position === 'GK' ? 'goalkeeping' : h.position === 'ST' ? 'shooting' : 'physical'
+      const grp = h.position === 'GK' ? 'goalkeeping' : h.position === 'ST' ? 'technical' : 'physical'
       if (hireTrainer(s, grp as never, 1).ok) T.push(`[${when()}] 🧑‍🏫 kişisel antrenör`)
+    }
+    // Business: spenders and pros invest once rich.
+    if ((cfg.persona === 'spender' || cfg.persona === 'pro') && businesses(life).length < 2) {
+      const kind = BUSINESS_KINDS.find((k) => !businesses(life).some((b) => b.kind === k) && life.money > BUSINESS_DEFS[k].price * 2.5 && h.reputation >= BUSINESS_DEFS[k].minReputation)
+      if (kind) {
+        const r = openBusiness(life, h, kind, s.calendar)
+        if (r.ok) { feat('iş kuruldu'); T.push(`[${when()}] 🏢 İŞ KURDU: ${kind}`) }
+      }
+    }
+    // Press conference now and then.
+    if (rng.chance(0.06) && safe(() => canHoldPressConference(s), false)) {
+      const qs = safe(() => pressConferenceQuestions(s), null)
+      if (qs?.length) {
+        feat('basın toplantısı')
+        wk.interviews++
+        for (const q of qs) {
+          const o = rng.pick(q.options)
+          const a = rep('röportaj', () => answerInterview(s, q.id, o.id))
+          T.push(`      📣 (basın) ${tr(q.text)} → ${tr(o.label)}`)
+          if (a.done && a.headline) T.push(`      🗞️ ${tr(a.headline)}`)
+        }
+      }
     }
     // Bench complaint when stuck.
     if ((h.contract?.role === 'reserve' || h.contract?.role === 'youth') && s.calendar.week % 8 === 4 && rng.chance(0.5)) {
@@ -479,6 +568,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       const pick = cands[rng.int(0, Math.min(2, cands.length - 1))]
       if (buyAsset(s, pick.id).ok) {
         purchases++
+        feat('lüks alım')
         T.push(`[${when()}] 🛒 SATIN ALDI: ${tr(pick.name as LText)} (${pick.price})`)
       }
     } else if (!cands.length && life.money > 20 * Math.max(1000, wage)) idleMoneyWeeks++
@@ -489,17 +579,43 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
   let lastSeasonSeen = s.calendar.season
   T.push(`=== KARİYER ${idx + 1}: ${cfg.first} ${cfg.last} (${cfg.gender === 'female' ? 'K' : 'E'}, ${cfg.nationality}, ${POS[cfg.archetype]}, ${cfg.background}, persona ${cfg.persona}, ${cfg.startAge} yaş) ===`)
   drain()
-  while (s.calendar.season < startSeason + seasons && guard++ < 4000) {
+  let awardsSeen = s.hero.awards.length
+  while (s.calendar.season < startSeason + seasons && guard++ < 8000 && !s.hero.retired) {
     const week = s.calendar.week
     const season = s.calendar.season
+    peakOvr = Math.max(peakOvr, heroOvr(s.hero))
+    const rs = retirementStatus(s)
+    if (rs.decisionDue) {
+      const ovr = heroOvr(s.hero)
+      const benched = s.hero.contract?.role === 'reserve' || !s.hero.contract
+      const go = !!rs.forced || rs.age >= 37 || (rs.age >= 34 && (ovr <= peakOvr - 6 || benched))
+      out.retireLog.push(`${rs.age} yaş, OVR ${ovr} (zirve ${peakOvr}), rol ${s.hero.contract?.role ?? '-'} → ${go ? 'EMEKLİ' : 'devam'}${rs.forced ? ` (zorunlu: ${rs.forced})` : ''}`)
+      if (go) {
+        const r = retireHero(s, { testimonial: true, postCareer: 'pundit', peakOvr, retiredAt: 0 })
+        T.push(`[${when()}] 🏁 EMEKLİLİK: ${r.lines.map(tr).join(' / ')}`)
+        if (r.summary) { out.summary = r.summary; out.retiredAge = rs.age }
+        drain()
+        break
+      }
+      const lines = continueCareer(s)
+      T.push(`[${when()}] 💪 KARAR: ${lines.map(tr).join(' / ')}`)
+      drain()
+    }
     playDay()
+    if (s.hero.awards.length > awardsSeen) {
+      wk.awards += s.hero.awards.length - awardsSeen
+      feat('ödül', s.hero.awards.length - awardsSeen)
+      for (const a of s.hero.awards.slice(awardsSeen)) T.push(`[${when()}] 🏆 ÖDÜL: ${tr(a.name)}`)
+      awardsSeen = s.hero.awards.length
+    }
     rep('transfer', handleOffers)
     if (s.calendar.week !== week || s.calendar.season !== season) {
       out.weeks.push(wk)
       const d = dashboard(s)
       const rels = Object.values(s.life.relationships).filter((r) => ['partner', 'manager', 'bestFriend', 'agent'].includes(r.kind)).map((r) => `${r.kind}:${r.name}=${Math.round(r.value)}`).join(' ')
       const obj = safe(() => objectivesView(s), null)
-      T.push(`--- [${when()}] durum: ${age()} yaş, OVR ${heroOvr(s.hero)}, itibar ${Math.round(s.hero.reputation)}, para ${Math.round(s.life.money)}, enerji ${Math.round(s.life.energy)}, mutluluk ${Math.round(s.life.happiness)}, stres ${Math.round(s.life.stress)}, rol ${s.hero.contract?.role ?? '-'}, kulüp ${d.club?.name ?? 'yok'}${d.league ? ` (${d.league.position}./${d.league.teams})` : ''} | ${rels}${obj ? ` | hedefler: ${obj.active.map((o) => `${tr(o.title)} ${o.progress}/${o.target}`).join('; ')}` : ''}`)
+      const nt = safe(() => heroCallup(s), null)
+      T.push(`--- [${when()}] durum: ${age()} yaş, OVR ${heroOvr(s.hero)}, itibar ${Math.round(s.hero.reputation)}, para ${Math.round(s.life.money)}, enerji ${Math.round(s.life.energy)}, mutluluk ${Math.round(s.life.happiness)}, stres ${Math.round(s.life.stress)}, rol ${s.hero.contract?.role ?? '-'}, kulüp ${d.club?.name ?? 'yok'}${d.league ? ` (${d.league.position}./${d.league.teams})` : ''} | ${rels}${nt ? ` | milli ${nt.level} ${nt.meter} (skor ${nt.heroScore}/eşik ${nt.cutoff}; ${Object.entries(nt.parts).map(([k, v]) => `${k}:${v}`).join(',')})` : ''}${obj ? ` | hedefler: ${obj.active.map((o) => `${tr(o.title)} ${o.progress}/${o.target}`).join('; ')}` : ''}`)
       wk = freshWeek()
       rep('haftalık-yönetim', weekly)
     }
@@ -517,6 +633,19 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number): CareerOut {
       idleMoneyWeeks = 0
       lastSeasonSeen = s.calendar.season
     }
+  }
+  feat('milli maç', s.hero.nationalTeam.caps)
+  feat('milli gol', s.hero.nationalTeam.goals)
+  feat('kupa', s.hero.trophies.length)
+  feat('ilişki: sevgili', Object.values(s.life.relationships).some((r) => r.kind === 'partner') ? 1 : 0)
+  if (!out.summary && cfg.seasons && cfg.seasons > 8) {
+    // Never retired inside the window: build the documentary anyway (as the UI would on retiring).
+    out.summary = safe(() => buildCareerSummary(s, { peakOvr }), null)
+  }
+  if (out.summary) {
+    const sm = out.summary
+    T.push(`==== BELGESEL: ${sm.name}, ${sm.age} yaş, zirve OVR ${sm.peakOvr}, ${sm.totals.apps} maç ${sm.totals.goals} gol, ${sm.caps} milli maç, kupalar ${sm.trophies.length}, ödüller ${sm.awards.length}, miras puanı ${sm.legacyScore} (${tr(legacyTier(sm.legacyScore))}) ====`)
+    for (const m of sm.bestMoments) T.push(`      ★ ${tr(m)}`)
   }
   return out
 }
@@ -588,6 +717,52 @@ export function analyse(runs: CareerOut[]): string {
   for (const r of runs) for (const [k, v] of Object.entries(r.repFrom)) rf.set(k, (rf.get(k) ?? 0) + v)
   const cs = runs.reduce((a, r) => a + r.seasons.length, 0)
   o.push('## İtibar kaynakları (kariyer-sezon başına)', '', ...[...rf.entries()].sort((a, b) => b[1] - a[1]).map(([k, v]) => `- ${k}: ${(v / Math.max(1, cs)).toFixed(2)}`), '')
+  // Phase pacing
+  o.push('## Kariyer evresine göre tempo', '', '| Evre | Hafta | Kart/hf | Yeni kart payı | Kahraman haberi/hf | Hedef olayı/hf | Milli/hf | Ödül | Röportaj/hf | Ölü % | Sessiz % |', '|---|---|---|---|---|---|---|---|---|---|---|')
+  for (const ph of PHASES) {
+    const ws = weeks.filter((w) => phaseOf(w.age) === ph)
+    if (!ws.length) continue
+    const sum = (f: (w: WeekRec) => number) => ws.reduce((a, w) => a + f(w), 0)
+    const dd = ws.filter((w) => w.cards === 0 && w.heroMatches === 0 && w.offers === 0 && w.heroNews === 0 && w.objectiveEvents === 0).length
+    const qq = ws.filter((w) => w.cards === 0 && w.offers === 0 && w.heroNews === 0 && w.objectiveEvents === 0).length
+    o.push(`| ${ph} | ${ws.length} | ${(sum((w) => w.cards) / ws.length).toFixed(2)} | ${((sum((w) => w.newCards) / Math.max(1, sum((w) => w.cards))) * 100).toFixed(0)}% | ${(sum((w) => w.heroNews) / ws.length).toFixed(2)} | ${(sum((w) => w.objectiveEvents) / ws.length).toFixed(2)} | ${(sum((w) => w.national) / ws.length).toFixed(2)} | ${sum((w) => w.awards)} | ${(sum((w) => w.interviews) / ws.length).toFixed(2)} | ${((dd / ws.length) * 100).toFixed(1)} | ${((qq / ws.length) * 100).toFixed(1)} |`)
+  }
+  o.push('')
+  // Novelty by career season
+  o.push('## Yenilik: sezona göre ilk kez görülen kart payı', '')
+  const bySeason = new Map<number, { n: number; fresh: number }>()
+  for (const r of runs) {
+    const seen = new Set<string>()
+    const s0 = r.cards[0]?.season ?? 0
+    for (const c of r.cards) {
+      const k = c.season - s0 + 1
+      const e = bySeason.get(k) ?? { n: 0, fresh: 0 }
+      e.n++
+      if (!seen.has(c.defId)) e.fresh++
+      seen.add(c.defId)
+      bySeason.set(k, e)
+    }
+  }
+  o.push(...[...bySeason.entries()].sort((a, b) => a[0] - b[0]).map(([k, e]) => `- S${k}: ${e.n} kart, ilk kez ${((e.fresh / e.n) * 100).toFixed(0)}%`), '')
+  // Hero headline repetition per phase
+  o.push('## Kahraman manşetleri: evreye göre benzersizlik', '')
+  for (const ph of PHASES) {
+    const hs = runs.flatMap((r) => r.heroNewsByPhase[ph] ?? [])
+    if (!hs.length) continue
+    o.push(`- ${ph}: ${hs.length} manşet, ${((new Set(hs).size / hs.length) * 100).toFixed(0)}% benzersiz; en sık: ${top(hs, 3).map(([k, v]) => `×${v} «${k.slice(0, 70)}»`).join(' · ')}`)
+  }
+  o.push('')
+  // Feature usage
+  const keys = [...new Set(runs.flatMap((r) => Object.keys(r.feat)))].sort()
+  o.push('## Özellik kullanımı (kariyer başına)', '', `| Özellik | ${runs.map((r) => r.cfg.first).join(' | ')} |`, `|---|${runs.map(() => '---').join('|')}|`)
+  for (const k of keys) o.push(`| ${k} | ${runs.map((r) => r.feat[k] ?? 0).join(' | ')} |`)
+  o.push('')
+  // Retirement
+  for (const r of runs.filter((x) => x.retireLog.length || x.summary)) {
+    o.push(`## Kariyer sonu: ${r.cfg.first} ${r.cfg.last}`, '', ...r.retireLog.map((x) => `- karar: ${x}`))
+    if (r.summary) o.push(`- belgesel: ${r.summary.age} yaş, zirve OVR ${r.summary.peakOvr}, ${r.summary.totals.apps} maç/${r.summary.totals.goals} gol, ${r.summary.caps} milli maç, ${r.summary.trophies.length} kupa, ${r.summary.awards.length} ödül, miras ${r.summary.legacyScore} (${tr(legacyTier(r.summary.legacyScore))}), jübile ${r.summary.testimonial ? r.summary.testimonial.score.join('-') : 'yok'}, en iyi anlar ${r.summary.bestMoments.length}`)
+    o.push('')
+  }
   o.push('## Sezon özetleri', '')
   for (const r of runs) {
     o.push(`### ${r.cfg.first} ${r.cfg.last} (${r.cfg.persona}, ${POS[r.cfg.archetype]})`, '| S | Yaş | OVR | İtibar | Kulüp (kademe) | Maç/Gol | Maaş | Para | Net servet | Alım | Parası boşta hafta |', '|---|---|---|---|---|---|---|---|---|---|---|')
@@ -610,10 +785,16 @@ function streaks(ws: WeekRec[]): number {
 
 describe('playtest harness', () => {
   it(FULL ? 'plays full careers and writes transcripts' : 'smoke: a few weeks of a human-like career', () => {
-    const n = FULL ? Number(env.PLAYTEST_N ?? 5) : 1
-    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? 6) : 1
+    const r2 = FULL && env.PLAYTEST_PLAN === 'r2'
+    const set = r2 ? CONFIGS_R2 : CONFIGS
+    const n = FULL ? Number(env.PLAYTEST_N ?? (r2 ? CONFIGS_R2.length : 5)) : 1
+    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? (r2 ? 8 : 6)) : 1
     const runs: CareerOut[] = []
-    for (let i = 0; i < n; i++) runs.push(runPlaytest(CONFIGS[i % CONFIGS.length], i, seasons))
+    for (let i = 0; i < n; i++) {
+      const cfg = set[i % set.length]
+      const parent = cfg.legacyOf !== undefined ? runs[cfg.legacyOf]?.summary ?? null : null
+      runs.push(runPlaytest(cfg, i, cfg.seasons ?? seasons, parent ? legacyStartFrom(parent) : undefined))
+    }
     expect(runs[0].cards.length).toBeGreaterThan(0)
     expect(runs[0].matches).toBeGreaterThan(0)
     if (!FULL) return
