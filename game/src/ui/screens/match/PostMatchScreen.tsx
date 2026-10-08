@@ -382,9 +382,10 @@ function RelationsStep({ pm }: { pm: PostMatchView }) {
   )
 }
 
-function PassRowItem({ r, i }: { r: PassRowView; i: number }) {
+function PassRowItem({ r, i, max }: { r: PassRowView; i: number; max: number }) {
+  const share = max > 0 ? Math.round((Math.max(0, r.from) / max) * 100) : 0
   return (
-    <li class={`ppas-row band-${r.band}`} style={{ ['--i' as string]: String(i) }} data-testid="post-pass-row">
+    <li class={`ppas-row band-${r.band}`} style={{ ['--i' as string]: String(i), ['--share' as string]: `${share}%` }} data-testid="post-pass-row">
       <div class="prel-main">
         <span class="prel-name truncate">{r.name}</span>
         <span class="t-xs t-mid prel-why">{t(`postmatch.passes.band.${r.band}`)} · {t('postmatch.passes.relation', { v: r.relation })}</span>
@@ -397,16 +398,17 @@ function PassRowItem({ r, i }: { r: PassRowView; i: number }) {
 
 function PassStep({ pm }: { pm: PostMatchView }) {
   const net = pm.passNet ?? { fed: [], ignored: [] }
+  const max = Math.max(1, ...net.fed.map((r) => r.from), ...net.ignored.map((r) => r.from))
   return (
     <section class="post-card post-step-card ppas" aria-labelledby="post-step-h" data-testid="post-passes">
       <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="users" size={14} /> {t('postmatch.passes.title')}</h2>
       <h3 class="micro t-lo ppas-h">{t('postmatch.passes.fed')}</h3>
       {net.fed.length === 0 ? <p class="t-sm t-mid">{t('postmatch.passes.noneFed')}</p> : (
-        <ul class="prel-list" data-testid="post-passes-fed" aria-label={t('postmatch.passes.fed')}>{net.fed.map((r, i) => <PassRowItem key={r.id} r={r} i={i} />)}</ul>
+        <ul class="prel-list" data-testid="post-passes-fed" aria-label={t('postmatch.passes.fed')}>{net.fed.map((r, i) => <PassRowItem key={r.id} r={r} i={i} max={max} />)}</ul>
       )}
       <h3 class="micro t-lo ppas-h">{t('postmatch.passes.ignored')}</h3>
       {net.ignored.length === 0 ? <p class="t-sm t-mid">{t('postmatch.passes.noneIgnored')}</p> : (
-        <ul class="prel-list" data-testid="post-passes-ignored" aria-label={t('postmatch.passes.ignored')}>{net.ignored.map((r, i) => <PassRowItem key={r.id} r={r} i={i} />)}</ul>
+        <ul class="prel-list" data-testid="post-passes-ignored" aria-label={t('postmatch.passes.ignored')}>{net.ignored.map((r, i) => <PassRowItem key={r.id} r={r} i={i} max={max} />)}</ul>
       )}
       <p class="t-xs t-lo">{t('postmatch.passes.hint')}</p>
     </section>

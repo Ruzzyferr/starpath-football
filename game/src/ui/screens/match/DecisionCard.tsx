@@ -68,7 +68,7 @@ export function DecisionCard({ d }: { d: DecisionView }) {
               onClick={() => pick(o.id)}
             >
               <span class="lm-dec-opt">
-                <b>{i + 1}. {lt(o.label)}</b>
+                <b><span class="lm-dec-key" aria-hidden="true">{i + 1}</span>{lt(o.label)}</b>
                 <small>{lt(o.hint)}{o.risky ? ` · ${t('match.live.decision.risky')}` : ''}</small>
               </span>
             </Button>
@@ -83,7 +83,7 @@ export function DecisionCard({ d }: { d: DecisionView }) {
             {hold ? t('match.live.decision.resume') : t('match.live.decision.hold')}
           </Button>
         </div>
-        <p class="micro t-lo lm-dec-note">{t('match.live.decision.auto')} · {t('match.live.decision.note')}</p>
+        <p class="t-xs t-lo lm-dec-note">{t('match.live.decision.auto')} · {t('match.live.decision.note')}</p>
       </div>
     </Modal>
   )

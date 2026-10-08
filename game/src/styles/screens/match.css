@@ -498,7 +498,13 @@
     max-width: 480px;
     margin-left: auto;
     margin-right: auto;
-    background: none;
+    margin-bottom: var(--sp-4);
+    padding: var(--sp-2);
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+    box-shadow: var(--sh-pop);
+    backdrop-filter: blur(10px);
   }
 }
 
@@ -802,7 +808,7 @@
   z-index: 5;
   margin: 0 calc(-1 * var(--gutter));
   padding: var(--sp-3) var(--gutter) calc(var(--safe-bottom) + var(--sp-3));
-  background: linear-gradient(180deg, transparent, var(--bg-0) 30%);
+  background: linear-gradient(180deg, transparent, var(--bg-0) var(--sp-3));
 }
 .lm-ctrl-row {
   display: flex;
@@ -833,11 +839,6 @@
 }
 .lm-ft-banner > * {
   transform: skewX(12deg);
-}
-@media (max-width: 380px) {
-  .lm-hide-xs {
-    display: none;
-  }
 }
 
 /* Moment card — slides up from the thumb zone. */
@@ -966,11 +967,31 @@
   }
   .lm-controls {
     background: none;
+    padding-bottom: calc(var(--safe-bottom) + var(--sp-4));
   }
   .lm-ctrl-row,
   .lm-fulltime {
     max-width: 640px;
     margin: 0 auto;
+  }
+  /* Floating dock: the bar no longer prints over the rating card it scrolls past. */
+  .lm-fulltime {
+    width: min(100%, 460px);
+    padding: var(--sp-3) var(--sp-4) var(--sp-4);
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: color-mix(in srgb, var(--surface-1) 92%, transparent);
+    box-shadow: var(--sh-pop);
+    backdrop-filter: blur(10px);
+  }
+  .lm-ctrl-row {
+    width: fit-content;
+    padding: var(--sp-2);
+    border-radius: 16px;
+    border: 1px solid var(--hairline);
+    background: color-mix(in srgb, var(--surface-1) 88%, transparent);
+    box-shadow: var(--sh-pop);
+    backdrop-filter: blur(10px);
   }
   .lm-bug-score {
     font-size: 2.625rem;
@@ -1313,7 +1334,7 @@
 }
 @media (max-width: 520px) {
   .post-stepper li:not(.is-current) .post-stepper-label { display: none; }
-  .post-stepper li.is-current { flex-grow: 2.4; }
+  .post-stepper li.is-current { flex-grow: 3.2; }
 }
 
 .post-step {
@@ -1331,6 +1352,7 @@
   align-items: stretch;
 }
 .post-nav > .btn-block { flex: 1 1 auto; }
+.post-nav .post-back { flex: none; }
 @media (max-width: 520px) {
   .post-nav .post-back { flex: none; padding-left: var(--sp-3); padding-right: var(--sp-3); }
   .post-nav .post-back .btn-label { display: none; }
@@ -1519,17 +1541,15 @@
 /* 390px: keep pause, 1×/2×/4× and "sim to the end" inside the bar (WP-6 QA). */
 .lm-ctrl-row .segmented { flex: none; }
 .lm-ctrl-row > .btn { flex: 0 1 auto; min-width: 0; }
+/* Phones: pause + speed on the first line, the two skip buttons share the
+   second line as equal halves (labels stay on one line, never split mid-word). */
 @media (max-width: 480px) {
-  .lm-ctrl-row { gap: 6px; }
-  .lm-ctrl-row .segmented-opt { min-width: 0; padding-inline: 10px; }
-  .lm-ctrl-row > .btn { padding-inline: 10px; }
-  .lm-ctrl-row > .btn .btn-label {
-    white-space: normal;
-    text-align: left;
-    line-height: 1.05;
-    font-size: 0.8125rem;
-    overflow-wrap: anywhere;
-  }
+  .lm-ctrl-row { flex-wrap: wrap; gap: 6px; }
+  .lm-ctrl-row .segmented { flex: 1 1 auto; }
+  .lm-ctrl-row .segmented-opt { flex: 1; min-width: 0; padding-inline: 8px; }
+  .lm-ctrl-row > .btn { flex: 1 1 calc(50% - 3px); padding-inline: 10px; }
+  .lm-ctrl-row > .btn { font-size: 0.875rem; letter-spacing: 0.02em; gap: 6px; }
+  .lm-ctrl-row > .btn .btn-label { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 }
 
 /* ───────────── In-match decision window ───────────── */
@@ -1539,7 +1559,16 @@
 .lm-dec-prompt { margin: var(--sp-3) 0; }
 .lm-dec-opts { display: grid; gap: var(--sp-2); }
 .lm-dec-opt { display: grid; text-align: left; gap: 2px; width: 100%; }
-.lm-dec-opt small { font-weight: 400; opacity: 0.85; white-space: normal; overflow-wrap: anywhere; }
+.lm-dec-opt b { display: flex; align-items: center; gap: var(--sp-2); }
+.lm-dec-key {
+  display: inline-grid; place-items: center; width: 22px; height: 22px; flex: none;
+  border-radius: 6px; font-size: 0.8125rem; background: rgba(255, 255, 255, 0.16); box-shadow: inset 0 -2px 0 rgba(0, 0, 0, 0.25);
+}
+.lm-dec-opt small {
+  font-family: var(--font-body); font-size: var(--fs-sm); font-weight: 500; text-transform: none; letter-spacing: 0;
+  opacity: 0.85; white-space: normal; overflow-wrap: anywhere; padding-left: 30px;
+}
+.lm-decision .lm-dec-opts .btn { justify-content: flex-start; }
 .lm-decision .btn { height: auto; min-height: 56px; white-space: normal; padding-block: var(--sp-2); }
 .lm-dec-timer { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-3); }
 .lm-dec-bar { flex: 1; height: 6px; border-radius: 3px; background: var(--surface-3); overflow: hidden; }
@@ -1558,7 +1587,9 @@
   gap: var(--sp-2);
   padding: 8px 10px;
   border-radius: var(--r-xs);
-  background: var(--surface-2);
+  /* Pass share as a soft fill behind the row: who fed you most reads at a glance. */
+  background:
+    linear-gradient(90deg, color-mix(in srgb, var(--brand-pitch) 24%, var(--surface-2)) var(--share, 0%), var(--surface-2) var(--share, 0%));
   animation: rise-in var(--dur-screen) var(--ease-out) both;
   animation-delay: calc(var(--i, 0) * 70ms + 200ms);
 }
