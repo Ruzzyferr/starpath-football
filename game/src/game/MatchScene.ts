@@ -62,7 +62,7 @@ import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from '.
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { ObjectPool } from './pool'
-import { PPM, TILT, ZS, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
+import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -78,6 +78,8 @@ export interface HighlightSettings {
   lowFx?: boolean
   /** Graphics quality profile (WP-16): particle budget, crowd density, glow. */
   quality?: QualityProfile
+  /** Camera distance (Far / Normal / Close / Auto). */
+  cameraDistance?: CameraDistanceChoice
 }
 
 export interface StartHighlightOptions {
@@ -1060,7 +1062,7 @@ export class MatchScene extends Phaser.Scene {
     this.cameras.main.setViewport(0, this.hudTop, w, vh)
     this.uiCam.setSize(w, h)
     // FIT design area (view.ts): portrait frames tighter, always enough pitch ahead of the play.
-    const z = fitZoom(w, vh, landscape)
+    const z = fitZoom(w, vh, landscape, resolveCameraDistance(this.data0.opts.settings.cameraDistance, w / this.ui, h / this.ui))
     this.cam.base = z
     this.bakeStatics()
     this.vignette.setDisplaySize(w, h)

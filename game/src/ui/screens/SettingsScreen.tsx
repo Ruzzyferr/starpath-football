@@ -6,6 +6,7 @@ import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../
 import { Icon, type IconName } from '../icons'
 import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
 import { actions, detectQuality, effectiveQuality, gameState, settings, updateSettings } from '../store'
+import type { CameraDistanceChoice } from '../../game/view'
 import type { QualityChoice, QualityProfile } from '../../game/quality'
 import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
@@ -243,6 +244,21 @@ export function SettingsScreen() {
                 {t('settings.qualityRedetect')}
               </Button>
             </div>
+          </div>
+          <div data-testid="camera-setting">
+            <Field label={t('settings.camera')} hint={t('settings.cameraDesc')}>
+              <Segmented<CameraDistanceChoice>
+                label={t('settings.camera')}
+                value={s.cameraDistance}
+                onChange={(cameraDistance) => updateSettings({ cameraDistance })}
+                options={[
+                  { id: 'auto', label: t('settings.qAuto') },
+                  { id: 'far', label: t('settings.camFar') },
+                  { id: 'normal', label: t('settings.camNormal') },
+                  { id: 'close', label: t('settings.camClose') },
+                ]}
+              />
+            </Field>
           </div>
           <Switch label={t('settings.reduceFlashes')} desc={t('settings.reduceFlashesDesc')} checked={s.reduceFlashes} onChange={(reduceFlashes) => updateSettings({ reduceFlashes })} />
           <p class="t-xs t-lo">{t('settings.qualityFlashNote')}</p>

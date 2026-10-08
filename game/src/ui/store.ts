@@ -25,6 +25,7 @@ import { setControlPrefs } from '../input/prefs'
 import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
+import { isCameraDistanceChoice, type CameraDistanceChoice } from '../game/view'
 import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { SlotThumb } from '../state/save'
 import type { DrillKind, DrillVariant } from '../game/training/types'
@@ -842,6 +843,8 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   lowFx: boolean
   /** WP-16 graphics quality profile; 'auto' uses the device benchmark result below. */
   quality: QualityChoice
+  /** Match camera distance (Auto = Close on phone portrait, Normal elsewhere). */
+  cameraDistance: CameraDistanceChoice
   /** Profile picked by the device benchmark (null = not measured yet). */
   qualityAuto: QualityProfile | null
   /** Colour-blind palette (the legacy `colorblind` flag mirrors `cbMode !== 'off'`). */
@@ -891,6 +894,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   theme: 'dark',
   lowFx: false,
   quality: 'auto',
+  cameraDistance: 'auto',
   qualityAuto: null,
   cbMode: 'off',
   leftHanded: false,
@@ -920,6 +924,7 @@ function loadSettings(): UiSettings {
       // Before WP-16 there was only the "low effects" switch: it maps to the Low profile.
       if (saved.quality === undefined && saved.lowFx) saved.quality = 'low'
       if (!isQualityChoice(saved.quality)) delete saved.quality
+      if (!isCameraDistanceChoice(saved.cameraDistance)) delete saved.cameraDistance
       return withDerivedFx({ ...DEFAULT_SETTINGS, ...saved })
     }
   } catch {

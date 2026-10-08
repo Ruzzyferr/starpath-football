@@ -115,8 +115,26 @@ export function crossCamFit(
  */
 export const FIT_METERS_ACROSS = { landscape: 38, portrait: 21 } as const
 export const FIT_METERS_AHEAD = 24
-export function fitZoom(w: number, vh: number, landscape = w >= vh): number {
-  const across = landscape ? FIT_METERS_ACROSS.landscape : FIT_METERS_ACROSS.portrait
-  const z = w / (across * PPM)
-  return Math.min(z, vh / (FIT_METERS_AHEAD * PPM * TILT))
+
+/** Camera distance setting: Auto picks Close on a phone held upright, Normal elsewhere. */
+export type CameraDistanceChoice = 'auto' | 'far' | 'normal' | 'close'
+export type CameraDistance = Exclude<CameraDistanceChoice, 'auto'>
+export const CAMERA_DISTANCES: readonly CameraDistanceChoice[] = ['auto', 'far', 'normal', 'close']
+export const isCameraDistanceChoice = (v: unknown): v is CameraDistanceChoice => typeof v === 'string' && (CAMERA_DISTANCES as readonly string[]).includes(v)
+/** Pitch meters visible across / ahead per distance mode (normal = the WP-P design area). */
+export const FIT_BY_DISTANCE: Readonly<Record<CameraDistance, { landscape: number; portrait: number; ahead: number }>> = {
+  far: { landscape: 46, portrait: 27, ahead: 30 },
+  normal: { ...FIT_METERS_ACROSS, ahead: FIT_METERS_AHEAD },
+  close: { landscape: 30, portrait: 14, ahead: 16 },
+}
+/** Phone-portrait test on CSS pixels: narrower than a tablet and taller than wide. */
+export const isPhonePortrait = (cssW: number, cssH: number): boolean => cssH > cssW && cssW <= 600
+export function resolveCameraDistance(choice: CameraDistanceChoice | undefined, cssW: number, cssH: number): CameraDistance {
+  if (choice && choice !== 'auto') return choice
+  return isPhonePortrait(cssW, cssH) ? 'close' : 'normal'
+}
+export function fitZoom(w: number, vh: number, landscape = w >= vh, mode: CameraDistance = 'normal'): number {
+  const f = FIT_BY_DISTANCE[mode]
+  const z = w / ((landscape ? f.landscape : f.portrait) * PPM)
+  return Math.min(z, vh / (f.ahead * PPM * TILT))
 }

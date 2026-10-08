@@ -84,6 +84,7 @@ export function playHighlight(
             reducedMotion: req.settings.reducedMotion,
             lowFx: req.settings.lowFx,
             quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
+            cameraDistance: req.settings.cameraDistance,
           },
           stadium: req.stadium,
           celebration: req.celebration,
@@ -147,7 +148,7 @@ export function rewatchMoment(
       handle = mod.replayMoment(
         container,
         moment,
-        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx, quality: resolveQuality(settings.quality, settings.qualityAuto) } },
+        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx, quality: resolveQuality(settings.quality, settings.qualityAuto), cameraDistance: settings.cameraDistance } },
         () => {
           if (!stopped) onDone()
         },
@@ -199,6 +200,7 @@ export function rewatchGoal(container: HTMLElement, req: GoalReelRequest, onDone
             reducedMotion: req.settings.reducedMotion,
             lowFx: req.settings.lowFx,
             quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
+            cameraDistance: req.settings.cameraDistance,
           },
           matchKey: 'goal-reel',
           lang: req.lang,
