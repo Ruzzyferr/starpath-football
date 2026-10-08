@@ -9,7 +9,7 @@ import {
 const input: HeroInput = {
   firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', position: 'ST', foot: 'R',
   appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 },
-  archetype: 'poacher', background: 'academy', birthYear: 2009,
+  role: 'runner', background: 'academy', birthYear: 2009,
 }
 const SEASON = 2026
 

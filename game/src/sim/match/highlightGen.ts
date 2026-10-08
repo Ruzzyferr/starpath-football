@@ -11,7 +11,7 @@
  */
 import type { Rng } from '../../core/rng'
 import { clamp } from '../../core/rng'
-import type { Formation, Lang, Position } from '../../core/types'
+import type { Formation, Lang, Position, Role } from '../../core/types'
 import { HIGHLIGHT_PROMPTS } from './commentary'
 import { formationSlots } from './formations'
 import type { ExpectedMoments, HighlightKind, HighlightScenario, MatchPlayer, ScenarioPlayer, Side, Vec2 } from './types'
@@ -796,6 +796,7 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
   ]
   const owner = actors.ball.ownerId ? layout.pos.get(actors.ball.ownerId) : undefined
   const ball = { ...actors.ball, pos: owner ? { ...owner } : actors.ball.pos }
+  const heroRole = input.mates.find((sp) => sp.player.id === input.heroId)?.player.role
   if (input.kind === 'freekick' || input.kind === 'penalty' || input.kind === 'gk_penalty' || input.kind === 'corner' || input.kind === 'rebound' || input.kind === 'corner_kick' || input.kind === 'fk_wall') {
     ball.pos = actors.ball.pos // set-piece ball sits on its spot, not on the taker
   }
@@ -806,6 +807,7 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
       ball,
       timeLimit: TIME_LIMITS[input.kind],
       prompt: HIGHLIGHT_PROMPTS[input.kind][input.lang],
+      ...(heroRole ? { heroRole } : {}),
     },
     passerId: actors.passerId,
     finisherId: actors.finisherId,
@@ -833,6 +835,82 @@ const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
   GK: { gk_save: 0.55, gk_1v1: 0.25, gk_sweep: 0.2 },
 }
 
+/**
+ * Role identity (owner feedback): how a role reshapes its position's moment mix. {@link kindWeights}
+ * multiplies the position weights, then rescales so the total stays the position's and the shooting
+ * kinds take {@link ROLE_SHOT_SHARE} × the position's shooting share. A kind the position never gets
+ * stays absent.
+ */
+export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind, number>>>> = {
+  // Strikers: in behind → 1v1s and breaks; target → hold-up and link-up; pivot → headers, corners, high balls.
+  runner: { one_on_one: 2.0, counter: 1.6, counter_2v1: 1.3, long_ball_control: 1.6, build_up: 0.35, header: 0.45, corner: 0.5, hold_up: 0.2, defend: 1.0 },
+  targetForward: { hold_up: 4.0, build_up: 1.8, long_ball_control: 1.2, edge_of_box: 1.0, rebound: 1.3, header: 0.8, one_on_one: 0.6, counter: 0.7, defend: 0.8 },
+  pivot: { header: 2.6, corner: 2.2, long_ball_control: 1.8, hold_up: 1.4, rebound: 1.3, one_on_one: 0.5, counter: 0.5, dribble: 0.5, build_up: 0.7 },
+  // Wingers: byline crosses; cutting in to shoot; roaming playmaking; take-ons.
+  touchlineWinger: { cross: 1.6, counter: 1.2, dribble: 1.1, one_on_one: 0.9, edge_of_box: 0.5 },
+  invertedWinger: { edge_of_box: 2.2, rebound: 1.6, one_on_one: 1.2, dribble: 1.2, cross: 0.45 },
+  freeWinger: { build_up: 1.8, hold_up: 2.5, long_ball_control: 1.2, edge_of_box: 1.3, counter_2v1: 1.4, cross: 0.7, defend: 0.6 },
+  dribbler: { dribble: 2.8, one_on_one: 1.1, cross: 0.8 },
+  // Midfield: screen and win it back; both boxes; run the game.
+  anchor: { interception: 2.0, block: 1.6, defend: 1.4, defend_1v1: 1.4, build_up: 0.8, long_ball_control: 0.7, edge_of_box: 1.3, counter: 0.6, one_on_one: 0.4, cross: 0.6 },
+  boxToBox: { rebound: 1.6, counter: 1.4, interception: 1.2, edge_of_box: 1.1, defend: 1.1, build_up: 0.85 },
+  playmaker: { build_up: 1.7, long_ball_control: 1.3, counter_2v1: 1.3, edge_of_box: 1.1, defend: 0.55, interception: 0.6, block: 0.55, defend_1v1: 0.7 },
+  // Full-backs: overlap and cross; lock the flank; both.
+  attackingFullBack: { cross: 1.7, counter: 1.4, counter_2v1: 2.2, edge_of_box: 1.2, defend: 0.7, defend_1v1: 0.75, back_post: 0.75, build_up: 1.3 },
+  defensiveFullBack: { defend_1v1: 1.5, defend: 1.3, interception: 1.4, block: 1.4, back_post: 1.4, build_up: 0.7, cross: 0.5, counter: 0.6, counter_2v1: 0.4 },
+  balancedFullBack: {},
+  // Centre-backs: step out and intercept; own the air; build from the back.
+  stopper: { interception: 1.8, defend_1v1: 1.7, defend: 1.0, block: 1.1, build_up: 0.6, back_post: 0.8 },
+  aerialDefender: { corner: 1.5, back_post: 2.0, defend: 1.1, interception: 0.75, defend_1v1: 0.7, build_up: 0.8 },
+  ballPlayingDefender: { build_up: 2.6, interception: 1.1, defend: 0.85, defend_1v1: 0.8, block: 0.9 },
+  // Keepers: point-blank reactions; diving saves; sweeping up behind the line.
+  reflexKeeper: { gk_1v1: 1.5, gk_save: 1.1, gk_sweep: 0.7 },
+  shotStopper: { gk_save: 1.25, gk_1v1: 0.9, gk_sweep: 0.7 },
+  sweeperKeeper: { gk_sweep: 2.2, gk_save: 0.9 },
+}
+
+/**
+ * Shooting share of a role relative to its position (1 = the position's), set so a striker's or winger's
+ * expected goals per moment stay within ~±6 % of the position mix (BALANCE goal bands; roles.test checks
+ * it). Defensive roles score a little less, attacking full-backs a little more. The engine's team factor
+ * absorbs the hero's expected goals either way.
+ */
+export const ROLE_SHOT_SHARE: Readonly<Partial<Record<Role, number>>> = {
+  // A runner's chances (1v1s, breaks) convert best, so he gets fewer of them: same goals, different goals.
+  runner: 0.83, targetForward: 1.0, pivot: 1.0,
+  invertedWinger: 1.0, freeWinger: 0.95,
+  anchor: 0.9, playmaker: 0.9, boxToBox: 1.0,
+  attackingFullBack: 1.1, defensiveFullBack: 0.85,
+  stopper: 0.95, aerialDefender: 1.1, ballPlayingDefender: 0.95,
+}
+
+/** Position mix reshaped by the role (see {@link ROLE_KIND_MULT}, {@link ROLE_SHOT_SHARE}). */
+function roleMix(pos: Position, role: Role | undefined): Partial<Record<HighlightKind, number>> {
+  const base = KIND_WEIGHTS[pos]
+  const mult = role ? ROLE_KIND_MULT[role] : undefined
+  if (!role || !mult || !Object.keys(mult).length) return { ...base }
+  const out: Partial<Record<HighlightKind, number>> = {}
+  // [base, reshaped] totals of the shooting and the other kinds.
+  const shoot = { base: 0, now: 0 }
+  const rest = { base: 0, now: 0 }
+  for (const [k, v] of Object.entries(base) as [HighlightKind, number][]) {
+    const m = v * (mult[k] ?? 1)
+    out[k] = m
+    const g = SHOOTING_KINDS.has(k) ? shoot : rest
+    g.base += v
+    g.now += m
+  }
+  const all = shoot.base + rest.base
+  const shootTarget = rest.base > 0 ? Math.min(all, shoot.base * (ROLE_SHOT_SHARE[role] ?? 1)) : shoot.base
+  const restTarget = all - shootTarget
+  for (const k of Object.keys(out) as HighlightKind[]) {
+    const isShot = SHOOTING_KINDS.has(k)
+    const g = isShot ? shoot : rest
+    if (g.now > 0) out[k] = ((out[k] ?? 0) * (isShot ? shootTarget : restTarget)) / g.now
+  }
+  return out
+}
+
 /** Base number of open-play highlights per 90 minutes by position. */
 const BASE_COUNT: Record<Position, number> = {
   ST: 6, LW: 5.8, RW: 5.8, AM: 6, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5,
@@ -848,9 +926,9 @@ const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['coun
 /** Keeper moments per 90 (plan 2.1#85): 4–8. */
 export const GK_HIGHLIGHTS_MAX_90 = 8
 
-/** Kind weights for a position (copy, safe to mutate). */
-export function kindWeights(pos: Position, ovr?: number, marked = 0): Partial<Record<HighlightKind, number>> {
-  const w = { ...KIND_WEIGHTS[pos] }
+/** Kind weights for a position, reshaped by the hero's role (copy, safe to mutate). */
+export function kindWeights(pos: Position, ovr?: number, marked = 0, role?: Role): Partial<Record<HighlightKind, number>> {
+  const w = roleMix(pos, role)
   const p = Math.max(tightening(ovr), marked)
   const e = Math.max(eliteMarking(ovr), marked)
   if (p > 0) for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * (1 - SHOOT_TIGHTENING * p) * (1 - ELITE_SHOOT * e)
@@ -888,14 +966,15 @@ export function isDefensiveKind(kind: HighlightKind): boolean {
  * @param counts kinds generated so far
  * @param slotsLeft planned open-play slots left, including the current one
  */
-export function guaranteedKind(pos: Position, counts: Partial<Record<HighlightKind, number>>, slotsLeft: number, rng: Rng): HighlightKind | null {
+export function guaranteedKind(pos: Position, counts: Partial<Record<HighlightKind, number>>, slotsLeft: number, rng: Rng, role?: Role): HighlightKind | null {
   const need = (kinds: HighlightKind[], n: number) => Math.max(0, n - kinds.reduce((a, k) => a + (counts[k] ?? 0), 0))
   if (pos === 'CB') {
     const missing = need(['defend', 'interception', 'defend_1v1', 'block', 'back_post'], 3)
     if (missing > 0 && slotsLeft <= missing) return rng.chance(0.5) ? 'defend' : 'interception'
   }
   if (pos === 'LW' || pos === 'RW') {
-    const missing = need(['cross'], 2)
+    // Wingers who cut in, roam or dribble are guaranteed one cross; a touchline winger two.
+    const missing = need(['cross'], role === 'invertedWinger' || role === 'freeWinger' || role === 'dribbler' ? 1 : 2)
     if (missing > 0 && slotsLeft <= missing) return 'cross'
   }
   return null
@@ -919,7 +998,7 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
     min = share === 0 ? 0 : Math.max(0, Math.round(min * share) - 1)
     max = share === 0 ? 0 : Math.max(1, Math.round(max * share))
   }
-  const w = KIND_WEIGHTS[input.position]
+  const w = roleMix(input.position, input.role)
   const total = Object.values(w).reduce((a, v) => a + (v ?? 0), 0) || 1
   const kinds = (Object.keys(w) as HighlightKind[])
     .map((kind) => ({ kind, share: Math.round(((w[kind] ?? 0) / total) * 1000) / 1000 }))
@@ -934,8 +1013,8 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
  * Picks the kind of an open-play highlight. A trailing team late on pushes
  * forward (fewer defensive moments); a leading team sits deeper.
  */
-export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number, heroGoals = 0, ovr?: number, marked = 0): HighlightKind {
-  const w = kindWeights(pos, ovr, marked)
+export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number, heroGoals = 0, ovr?: number, marked = 0, role?: Role): HighlightKind {
+  const w = kindWeights(pos, ovr, marked, role)
   // A hero already on a hat-trick sees fewer shooting chances (realistic goal concentration).
   if (heroGoals > 0) {
     const brake = heroGoals >= 2 ? 0.5 : 0.78
@@ -968,6 +1047,8 @@ export interface HighlightPlanInput {
   focus?: MatchFocus
   /** Hero Positioning 0..100: off-ball movement relative to his level finds more chances. */
   positioning?: number
+  /** Hero's playing role: reshapes the kind mix of the preview (not the count). */
+  role?: Role
 }
 
 /** Pre-match focus mode. */

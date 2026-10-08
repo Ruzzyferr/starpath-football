@@ -1,10 +1,11 @@
 /**
- * Character creation (GDD 2.1): attributes from archetype + position templates
+ * Character creation (GDD 2.1): attributes from role + position templates
  * + background, hidden potential, and the starting Life (family, money).
  */
 import type {
-  Appearance, Archetype, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship,
+  Appearance, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship, Role,
 } from '../../core/types'
+import { clampHeight, normalizeRole } from '../../core/roles'
 import { ATTRIBUTE_KEYS, isGoalkeepingAttr } from '../../core/types'
 import { Rng, hashString } from '../../core/rng'
 import { clamp, emptyStats } from './common'
@@ -20,7 +21,10 @@ export interface HeroInput {
   position: Position
   foot: Foot
   appearance: Appearance
-  archetype: Archetype
+  /** Playing role; a role that does not fit the position falls back to the position default. */
+  role: Role
+  /** Height in cm, clamped into the role's range (default: the role's height). */
+  heightCm?: number
   background: Background
   birthYear: number
   /** Optional birth city (wizard). */
@@ -31,7 +35,7 @@ export interface HeroInput {
 
 /**
  * Baseline for every attribute of a 16–18 year old before templates.
- * Chosen so a matched archetype+position lands at OVR ≈ 48–54: good enough for
+ * Chosen so a role at its position lands at OVR ≈ 48–54: good enough for
  * a youth/reserve role at a mid-table club, far from a starter.
  */
 const BASE_ATTR = 31
@@ -43,32 +47,72 @@ const POSITION_BOOST = 9
 const ATTR_NOISE_SD = 2.5
 
 /**
- * Archetype bonuses (GDD: Golcü, Oyun Kurucu, Kanat Motoru, Duvar, Box-to-Box, Kaleci).
- * Each sums to roughly +80–90 points so archetypes are balanced in total
- * budget; they only differ in *where* the points go.
+ * Role templates (owner feedback: roles depend on the position). Raw shapes: the strengths and the
+ * weaknesses of each role. {@link roleTemplate} scales the strengths so every role of a position starts
+ * at the same weighted OVR gain ({@link ROLE_OVR_GAIN}); roles only differ in *where* the points go.
  */
-export const ARCHETYPE_TEMPLATES: Readonly<Record<Archetype, Partial<Record<AttributeKey, number>>>> = {
-  poacher: { finishing: 18, shooting: 12, positioning: 13, composure: 9, pace: 8, heading: 7, firstTouch: 9, agility: 4 },
-  playmaker: { passing: 18, vision: 18, firstTouch: 12, dribbling: 8, composure: 9, setPieces: 9, agility: 4, shooting: 3 },
-  winger: { pace: 18, dribbling: 16, crossing: 12, agility: 12, stamina: 7, firstTouch: 8, finishing: 4, passing: 3 },
-  wall: { tackling: 18, heading: 14, strength: 14, positioning: 12, jumping: 10, leadership: 7, composure: 5, workRate: 3 },
-  boxToBox: { stamina: 18, workRate: 16, passing: 10, tackling: 10, strength: 8, shooting: 7, positioning: 5, vision: 6, firstTouch: 4 },
-  keeper: { reflexes: 22, handling: 20, gkPositioning: 12, gkDistribution: 5, positioning: 4, jumping: 8, agility: 6, composure: 4, leadership: 2 },
+export const ROLE_TEMPLATES: Readonly<Record<Role, Partial<Record<AttributeKey, number>>>> = {
+  // Keepers
+  reflexKeeper: { reflexes: 26, agility: 12, handling: 14, gkPositioning: 8, jumping: 6, composure: 4, gkDistribution: 2, strength: -3 },
+  shotStopper: { handling: 20, reflexes: 18, jumping: 12, gkPositioning: 12, agility: 8, strength: 4, composure: 2, passing: -3 },
+  sweeperKeeper: { gkDistribution: 22, passing: 14, gkPositioning: 14, composure: 10, reflexes: 12, handling: 10, pace: 6, vision: 6, jumping: -4 },
+  // Full-backs
+  attackingFullBack: { crossing: 18, pace: 16, stamina: 12, dribbling: 10, agility: 8, passing: 6, workRate: 6, tackling: -4, positioning: -4 },
+  defensiveFullBack: { tackling: 18, positioning: 14, strength: 10, pace: 10, heading: 8, workRate: 8, stamina: 6, crossing: -4, dribbling: -4 },
+  balancedFullBack: { stamina: 16, tackling: 12, pace: 12, crossing: 10, workRate: 10, positioning: 8, passing: 8, dribbling: 4 },
+  // Centre-backs
+  stopper: { tackling: 20, pace: 12, positioning: 10, strength: 10, workRate: 6, agility: 6, heading: 6, stamina: 4, passing: -4, vision: -3 },
+  aerialDefender: { heading: 20, jumping: 16, strength: 16, tackling: 12, positioning: 8, leadership: 6, pace: -6, agility: -5 },
+  ballPlayingDefender: { passing: 18, vision: 12, composure: 12, tackling: 12, positioning: 10, firstTouch: 8, heading: 6, strength: -3, workRate: -2 },
+  // Midfield
+  anchor: { tackling: 18, positioning: 16, strength: 10, workRate: 8, passing: 8, composure: 6, stamina: 6, heading: 6, dribbling: -4, finishing: -4, shooting: -2 },
+  boxToBox: { stamina: 18, workRate: 14, passing: 10, tackling: 10, shooting: 8, strength: 6, positioning: 6, firstTouch: 6, pace: 4, setPieces: -3 },
+  playmaker: { passing: 18, vision: 18, firstTouch: 12, composure: 9, dribbling: 8, setPieces: 8, shooting: 4, agility: 4, tackling: -4, strength: -4 },
+  // Wingers
+  touchlineWinger: { pace: 20, crossing: 18, stamina: 10, dribbling: 10, agility: 8, workRate: 6, finishing: -4, heading: -2 },
+  invertedWinger: { shooting: 16, finishing: 12, dribbling: 12, passing: 8, firstTouch: 8, agility: 8, pace: 8, composure: 6, crossing: -5 },
+  freeWinger: { vision: 14, passing: 12, dribbling: 12, firstTouch: 12, agility: 8, pace: 8, composure: 6, crossing: 6, workRate: -4, tackling: -2 },
+  dribbler: { dribbling: 22, agility: 16, firstTouch: 12, pace: 12, composure: 4, strength: -6, heading: -4 },
+  // Strikers
+  runner: { pace: 18, finishing: 19, positioning: 12, composure: 9, agility: 6, firstTouch: 6, dribbling: 5, strength: -5, heading: -4 },
+  targetForward: { firstTouch: 16, strength: 16, finishing: 12, passing: 10, composure: 10, positioning: 8, vision: 6, shooting: 4, pace: -6, agility: -3 },
+  pivot: { heading: 20, jumping: 16, strength: 14, finishing: 12, positioning: 10, composure: 4, pace: -6, agility: -5, dribbling: -3 },
 }
 
-/** Positions each archetype is built for (2.3#3). Elsewhere only half its bonus applies. */
-export const ARCHETYPE_POSITIONS: Readonly<Record<Archetype, readonly Position[]>> = {
-  poacher: ['ST', 'LW', 'RW', 'AM'],
-  playmaker: ['AM', 'CM', 'DM', 'LW', 'RW'],
-  winger: ['LW', 'RW', 'LB', 'RB', 'ST', 'AM'],
-  wall: ['CB', 'DM', 'LB', 'RB'],
-  boxToBox: ['CM', 'DM', 'AM'],
-  keeper: ['GK'],
+/**
+ * Position-specific shapes where a role means something different: a box-to-box number 10 arrives in the
+ * box to shoot, a deep-lying playmaker (regista) dictates from in front of the defence.
+ */
+export const ROLE_TEMPLATES_AT: Readonly<Partial<Record<Position, Partial<Record<Role, Partial<Record<AttributeKey, number>>>>>>> = {
+  AM: { boxToBox: { stamina: 16, shooting: 14, workRate: 12, firstTouch: 10, passing: 10, dribbling: 8, vision: 6, composure: 4, setPieces: -3 } },
+  DM: { playmaker: { passing: 18, vision: 14, composure: 12, positioning: 8, firstTouch: 8, setPieces: 6, tackling: 4, strength: -4, pace: -3 } },
 }
-/** Share of the archetype bonus a mismatched position still gets (2.3#3: at most 50%). */
-export const ARCHETYPE_MISMATCH_SHARE = 0.5
 
-export const archetypeFits = (position: Position, archetype: Archetype): boolean => ARCHETYPE_POSITIONS[archetype].includes(position)
+/**
+ * Weighted OVR gain every role of a position gets from its template (the old matched archetype's gain, so
+ * BALANCE targets hold: ST ≈ poacher, AM ≈ playmaker, wingers ≈ wing engine, CB ≈ wall, GK ≈ keeper).
+ */
+export const ROLE_OVR_GAIN: Readonly<Record<Position, number>> = {
+  GK: 13.4, CB: 10.4, LB: 9, RB: 9, DM: 9, CM: 8.6, AM: 10.8, LW: 10.8, RW: 10.8, ST: 9.6,
+}
+
+/** The role's template at a position, strengths scaled to {@link ROLE_OVR_GAIN} (weaknesses kept as they are). */
+export function roleTemplate(role: Role, pos: Position): Partial<Record<AttributeKey, number>> {
+  const raw = ROLE_TEMPLATES_AT[pos]?.[role] ?? ROLE_TEMPLATES[role]
+  const w = POSITION_WEIGHTS[pos]
+  const total = Object.values(w).reduce((a, v) => a + (v ?? 0), 0)
+  let plus = 0
+  let minus = 0
+  for (const [k, v] of Object.entries(raw) as [AttributeKey, number][]) {
+    const c = ((w[k] ?? 0) * v) / total
+    if (v > 0) plus += c
+    else minus += c
+  }
+  const scale = plus > 0 ? Math.max(0.6, Math.min(2, (ROLE_OVR_GAIN[pos] - minus) / plus)) : 1
+  const out: Partial<Record<AttributeKey, number>> = {}
+  for (const [k, v] of Object.entries(raw) as [AttributeKey, number][]) out[k] = v > 0 ? Math.round(v * scale * 10) / 10 : v
+  return out
+}
 
 /** Background (GDD 2.1 "Geçmiş hikâyesi") effects. */
 export interface BackgroundDef {
@@ -124,17 +168,41 @@ const SHIRT_BY_POSITION: Readonly<Record<Position, number>> = {
 }
 
 /**
+ * Starting value of one attribute before noise: base, keeper/outfield split, role template, position boost
+ * and background. Shared by {@link createHero} and the wizard's live preview ({@link previewAttrs}).
+ */
+function attrBase(key: AttributeKey, pos: Position, tpl: Partial<Record<AttributeKey, number>>, bg: BackgroundDef): number {
+  const posW = POSITION_WEIGHTS[pos]
+  const maxW = Math.max(...Object.values(posW).map((v) => v ?? 0))
+  const isKeeper = pos === 'GK'
+  const gk = isGoalkeepingAttr(key)
+  let v = gk && !isKeeper ? OUTFIELD_GK_ATTR : BASE_ATTR
+  // Keepers are poor at outfield technique.
+  if (isKeeper && !gk && (key === 'finishing' || key === 'dribbling' || key === 'tackling' || key === 'crossing' || key === 'shooting')) v -= 8
+  v += tpl[key] ?? 0
+  v += (POSITION_BOOST * (posW[key] ?? 0)) / maxW
+  v += bg.attrs[key] ?? 0
+  return v
+}
+
+/** Expected starting sheet (no noise) for the wizard's live preview. */
+export function previewAttrs(pos: Position, role: Role, background: Background): Attributes {
+  const tpl = roleTemplate(normalizeRole(pos, role), pos)
+  const bg = BACKGROUNDS[background]
+  const out = {} as Attributes
+  for (const key of ATTRIBUTE_KEYS) out[key] = clamp(Math.round(attrBase(key, pos, tpl, bg)), 5, 75)
+  return out
+}
+
+/**
  * Create the hero. Deterministic for a given Rng state and input.
  * Potential: N(80, 5) + background, clamped 60..99 and always ≥ start OVR + 12
  * so every hero has meaningful growth ahead.
  */
 export function createHero(rng: Rng, input: HeroInput): Hero {
-  const arch = ARCHETYPE_TEMPLATES[input.archetype]
+  const role = normalizeRole(input.position, input.role)
+  const tpl = roleTemplate(role, input.position)
   const bg = BACKGROUNDS[input.background]
-  const posW = POSITION_WEIGHTS[input.position]
-  const maxW = Math.max(...Object.values(posW).map((v) => v ?? 0))
-  const isKeeper = input.position === 'GK' || input.archetype === 'keeper'
-  const archShare = archetypeFits(input.position, input.archetype) ? 1 : ARCHETYPE_MISMATCH_SHARE
 
   const attrs = {} as Attributes
   // The v4 goalkeeping pair draws its noise from a side stream read off (not consumed from) the
@@ -142,13 +210,7 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
   const st = rng.state
   const gkRng = new Rng((st.a ^ st.d ^ hashString('gk-attrs-v4')) >>> 0)
   for (const key of ATTRIBUTE_KEYS) {
-    const gk = isGoalkeepingAttr(key)
-    let v = gk && !isKeeper ? OUTFIELD_GK_ATTR : BASE_ATTR
-    // Keepers are poor at outfield technique.
-    if (isKeeper && !gk && (key === 'finishing' || key === 'dribbling' || key === 'tackling' || key === 'crossing' || key === 'shooting')) v -= 8
-    v += (arch[key] ?? 0) * archShare
-    v += (POSITION_BOOST * (posW[key] ?? 0)) / maxW
-    v += bg.attrs[key] ?? 0
+    let v = attrBase(key, input.position, tpl, bg)
     v += (key === 'gkPositioning' || key === 'gkDistribution' ? gkRng : rng).normal(0, ATTR_NOISE_SD)
     attrs[key] = clamp(Math.round(v), 5, 75)
   }
@@ -165,7 +227,8 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     position: input.position,
     foot: input.foot,
     appearance: { ...input.appearance, gender },
-    archetype: input.archetype,
+    role,
+    heightCm: clampHeight(role, gender, input.heightCm),
     background: input.background,
     attrs,
     attrXp: {},

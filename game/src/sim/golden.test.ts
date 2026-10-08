@@ -34,7 +34,7 @@ function matchesDigest(): string {
 }
 
 function seasonDigest(): string {
-  const t = runCareer({ seed: 424242, nationality: 'TR', archetype: 'poacher', background: 'academy', gender: 'male', persona: 'pro', seasons: 1 })
+  const t = runCareer({ seed: 424242, nationality: 'TR', role: 'runner', background: 'academy', gender: 'male', persona: 'pro', seasons: 1 })
   const slim = t.samples.map((s) => ({ ovr: s.ovr, apps: s.apps, goals: s.goals, money: s.money, rep: s.reputation, trophies: s.trophies, events: s.events }))
   const json = JSON.stringify({ slim, clubs: t.clubs })
   return hex(json) + hex(json.split('').reverse().join(''))

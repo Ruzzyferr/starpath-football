@@ -346,3 +346,18 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
   display: block; width: 100%; height: auto; aspect-ratio: 220 / 124; border-radius: 10px;
   box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.08), 0 8px 20px rgba(0, 0, 0, 0.35);
 }
+
+/* The perk that suits the hero's role (position roles) */
+.trn-node-role {
+  position: absolute;
+  top: 0;
+  left: calc(50% + 14px);
+  display: grid;
+  place-items: center;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--accent-gold);
+  color: var(--text-on-gold);
+  box-shadow: var(--sh-card);
+}

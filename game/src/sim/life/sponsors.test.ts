@@ -13,7 +13,7 @@ function setup(seed = 1, rep = 60): { rng: Rng; hero: Hero; life: Life } {
   const rng = new Rng(seed)
   const hero = createHero(rng, {
     firstName: 'A', lastName: 'B', nickname: 'AB', nationality: 'EN', position: 'CM', foot: 'R',
-    appearance: APPEAR, archetype: 'playmaker', background: 'academy', birthYear: 2009,
+    appearance: APPEAR, role: 'playmaker', background: 'academy', birthYear: 2009,
   })
   hero.reputation = rep
   return { rng, hero, life: createLife(rng, hero, 'academy') }
@@ -117,7 +117,7 @@ describe('sponsor slot cap (2.5#54)', () => {
     const rng = new Rng(5)
     const hero = createHero(rng, {
       firstName: 'A', lastName: 'B', nickname: 'A', nationality: 'TR', position: 'ST', foot: 'R',
-      appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 }, archetype: 'poacher', background: 'street', birthYear: 2000,
+      appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 }, role: 'runner', background: 'street', birthYear: 2000,
     })
     hero.reputation = 100
     const life = createLife(rng, hero, 'street')

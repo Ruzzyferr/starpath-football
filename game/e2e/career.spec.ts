@@ -31,9 +31,9 @@ test('new career through the wizard lands on Home with the hero name', async ({ 
   // Position
   await shot('a4-position')
   await next.click()
-  // Archetype
+  // Role (only the position's roles)
   await page.locator('.wiz-card').nth(2).click()
-  await shot('a5-archetype')
+  await shot('a5-role')
   await next.click()
   // Background
   await page.locator('.wiz-story').first().click()

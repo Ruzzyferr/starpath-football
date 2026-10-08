@@ -14,7 +14,7 @@ function setup(seed = 1): { rng: Rng; hero: Hero; life: Life } {
   const rng = new Rng(seed)
   const hero = createHero(rng, {
     firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', position: 'ST', foot: 'R',
-    appearance: APPEAR, archetype: 'poacher', background: 'academy', birthYear: 2007,
+    appearance: APPEAR, role: 'runner', background: 'academy', birthYear: 2007,
   })
   const life = createLife(rng, hero, 'academy')
   life.money = 200000

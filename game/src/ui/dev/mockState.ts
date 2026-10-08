@@ -1,9 +1,11 @@
 /** Mock GameState fixture: a rich, deterministic mid-season career. */
 import { Rng, clamp } from '../../core/rng'
 import { SAVE_VERSION } from '../../core/config'
+import { heightRange } from '../../core/roles'
+import { ROLE_TEMPLATES } from '../../sim/career/createHero'
 import {
   ATTRIBUTE_KEYS, isGoalkeepingAttr, type AttributeKey, type Attributes, type GameState, type Hero, type Life, type LogEntry,
-  type NewsItem, type Position, type Relationship, type SeasonStats, type Archetype,
+  type NewsItem, type Position, type Relationship, type SeasonStats, type Role,
 } from '../../core/types'
 import type { NewGameInput } from '../store'
 import { buildWorld, emptyStats, SEASON } from './mockWorld'
@@ -34,22 +36,17 @@ export function computeOvr(attrs: Attributes, pos: Position): number {
   return Math.round(sum / tot)
 }
 
-const ARCH_BONUS: Record<Archetype, AttributeKey[]> = {
-  poacher: ['finishing', 'composure', 'positioning'],
-  playmaker: ['vision', 'passing', 'firstTouch'],
-  winger: ['pace', 'dribbling', 'crossing'],
-  wall: ['tackling', 'strength', 'heading'],
-  boxToBox: ['stamina', 'workRate', 'tackling'],
-  keeper: ['reflexes', 'handling', 'gkPositioning'],
-}
+/** The role's three biggest template strengths get a bump in the mock sheet. */
+const roleBonus = (role: Role): AttributeKey[] =>
+  (Object.entries(ROLE_TEMPLATES[role]) as [AttributeKey, number][]).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([k]) => k)
 
-function makeAttrs(rng: Rng, arch: Archetype, base: number): Attributes {
+function makeAttrs(rng: Rng, role: Role, keeper: boolean, base: number): Attributes {
   const a = {} as Attributes
   for (const k of ATTRIBUTE_KEYS) {
     const gk = isGoalkeepingAttr(k)
-    a[k] = clamp(Math.round(rng.normal(gk && arch !== 'keeper' ? 25 : base, 6)), 10, 90)
+    a[k] = clamp(Math.round(rng.normal(gk && !keeper ? 25 : base, 6)), 10, 90)
   }
-  for (const k of ARCH_BONUS[arch]) a[k] = clamp(a[k] + rng.int(8, 13), 10, 92)
+  for (const k of roleBonus(role)) a[k] = clamp(a[k] + rng.int(8, 13), 10, 92)
   return a
 }
 
@@ -86,7 +83,7 @@ export const DEFAULT_INPUT: NewGameInput = {
   birthYear: SEASON - 19,
   position: 'ST',
   foot: 'R',
-  archetype: 'poacher',
+  role: 'runner',
   background: 'academy',
   appearance: { skin: 3, hairStyle: 12, hairColor: 1, beard: 1, eyeColor: 1, face: 5, accessory: 0 },
   difficulty: 'normal',
@@ -102,7 +99,7 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
   const { world, heroClubId } = buildWorld(seed, playedWeeks)
   const rng = new Rng(seed ^ 0x5eed)
   const club = world.clubs[heroClubId]!
-  const attrs = makeAttrs(rng, input.archetype, fresh ? 54 : 63)
+  const attrs = makeAttrs(rng, input.role, input.position === 'GK', fresh ? 54 : 63)
   const teammates = club.squad.slice(0, 22).filter((id) => world.players[id]!.position !== 'GK').slice(0, 6)
 
   const season = fresh ? emptyStats() : statsLine(rng, 12, 0.42)
@@ -120,7 +117,8 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
     position: input.position,
     foot: input.foot,
     appearance: input.gender === 'female' ? { ...input.appearance, gender: 'female' } : input.appearance,
-    archetype: input.archetype,
+    role: input.role,
+    heightCm: input.heightCm ?? heightRange(input.role, input.gender).def,
     background: input.background,
     attrs,
     attrXp: Object.fromEntries(ATTRIBUTE_KEYS.map((k) => [k, Math.round(rng.next() * 90) / 100])) as Partial<Record<AttributeKey, number>>,

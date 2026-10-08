@@ -55,8 +55,11 @@ describe('international through the real backend', () => {
     expect(nationalView()!.squad.some((p) => p.isHero)).toBe(true)
     const caps0 = S().hero.nationalTeam.caps
 
-    for (let i = 0; i < 40; i++) {
+    // Slot by slot, keeping the hero fit: this test is about the international flow, and a random knock in
+    // the days before the window (the RNG path moves with every sim change) would skip the call-up game.
+    for (let i = 0; i < 240; i++) {
       clearEvents()
+      S().hero.injury = null
       const fx = D.nextFixture()
       if (fx?.daysUntil === 0 && S().calendar.slot >= 1 && fx.compType === 'international') break
       if (fx?.daysUntil === 0 && S().calendar.slot >= 1) {
@@ -64,7 +67,7 @@ describe('international through the real backend', () => {
         A.advance()
         continue
       }
-      A.advanceToMatch()
+      A.advance()
     }
     clearEvents()
     const fx = D.nextFixture()!

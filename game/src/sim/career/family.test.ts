@@ -6,7 +6,7 @@ import type { Background } from '../../core/types'
 const APPEAR = { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 }
 const mk = (i: number, background: Background) => {
   const rng = new Rng(i)
-  const hero = createHero(rng, { firstName: `N${i}`, lastName: `L${i * 7}`, nickname: 'x', nationality: 'TR', position: 'CM', foot: 'R', appearance: APPEAR, archetype: 'playmaker', background, birthYear: 2008 })
+  const hero = createHero(rng, { firstName: `N${i}`, lastName: `L${i * 7}`, nickname: 'x', nationality: 'TR', position: 'CM', foot: 'R', appearance: APPEAR, role: 'playmaker', background, birthYear: 2008 })
   return createLife(rng, hero, background)
 }
 

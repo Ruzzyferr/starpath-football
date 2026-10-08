@@ -67,6 +67,10 @@ const I = {
   tactics: '<rect x="3" y="4" width="18" height="16" rx="2"/><circle cx="8" cy="9" r="1.5"/><circle cx="8" cy="15" r="1.5"/><path d="M14 8l3 3M17 8l-3 3M11 15h3.5l2-3"/>',
   barbell: '<path d="M6.5 7v10M17.5 7v10M3.5 9.5v5M20.5 9.5v5M6.5 12h11"/>',
   run: '<circle cx="14.5" cy="4.5" r="1.8"/><path d="M6 20l3.5-4.5 3 1.5 1.5-5 3 3H20M8.5 9.5l3-2.5 3.5 1.5-1.5 4.5"/>',
+  // roles (owner feedback): a header, a slalom with the ball, a run in behind the line
+  'head-ball': '<circle cx="16.5" cy="5" r="2.6"/><circle cx="10" cy="12.5" r="3.2"/><path d="M3.5 21.5c.9-3 3.5-4.6 6.5-4.6s5.6 1.6 6.5 4.6M12.6 9.6l1.8-2"/>',
+  slalom: '<circle cx="19" cy="18.5" r="2.2"/><path d="M4 4c5 0 5 5 0 7.5s0 7.5 5 7.5h7"/><path d="M14 5.5v3M10 12.5v3" stroke-dasharray="1.5 2"/>',
+  'run-in-behind': '<path d="M14 3v18" stroke-dasharray="2 2.5"/><path d="M3 12h15M15 8.5l4 3.5-4 3.5"/><circle cx="6" cy="7" r="1.6"/>',
   // people
   user: '<circle cx="12" cy="8" r="4"/><path d="M4.5 20.5c1-3.8 4-6 7.5-6s6.5 2.2 7.5 6"/>',
   users: '<circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 19.5c.8-3.3 3.4-5 6.5-5s5.7 1.7 6.5 5M15 5.2a3.5 3.5 0 0 1 0 6.6M17.5 14.6c2 .6 3.4 2.3 4 4.9"/>',

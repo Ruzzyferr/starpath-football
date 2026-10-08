@@ -4,7 +4,7 @@
  */
 import { applyWorldMods } from './modWorld'
 import type { InstalledMod } from './mods'
-import type { Appearance, Archetype, Background, CustomDifficulty, Difficulty, Foot, GameState, Gender, Position, SquadRole } from '../../core/types'
+import type { Appearance, Background, CustomDifficulty, Difficulty, Foot, GameState, Gender, Position, Role, SquadRole } from '../../core/types'
 import { Rng } from '../../core/rng'
 import { normalizeCustom } from '../../core/customDifficulty'
 import { SAVE_VERSION, START_YEAR } from '../../core/config'
@@ -37,7 +37,10 @@ export interface NewGameInput {
   birthYear: number
   position: Position
   foot: Foot
-  archetype: Archetype
+  /** Playing role at the position (core/roles.ts). */
+  role: Role
+  /** Height in cm within the role's range (default: the role's height). */
+  heightCm?: number
   background: Background
   appearance: Appearance
   /** Birth city (optional, from data/world CITIES of the nationality): hometown fans and events. */
@@ -152,7 +155,8 @@ export function newGame(input: NewGameInput, seed: number, now: number = determi
 
   const hero = createHero(rng, {
     firstName: input.firstName, lastName: input.lastName, nickname: input.nickname, nationality: input.nationality,
-    position: input.position, foot: input.foot, appearance: input.appearance, archetype: input.archetype,
+    position: input.position, foot: input.foot, appearance: input.appearance, role: input.role,
+    ...(input.heightCm !== undefined ? { heightCm: input.heightCm } : {}),
     background: input.background, birthYear: input.birthYear, gender,
     ...(input.birthCity ? { birthCity: input.birthCity } : {}),
   })

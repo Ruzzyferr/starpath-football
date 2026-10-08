@@ -9,7 +9,7 @@ function setup(seed = 1) {
   const rng = new Rng(seed)
   const hero = createHero(rng, {
     firstName: 'A', lastName: 'B', nickname: 'A', nationality: 'TR', position: 'ST', foot: 'R',
-    appearance: APPEARANCE, archetype: 'poacher', background: 'street', birthYear: 2009,
+    appearance: APPEARANCE, role: 'runner', background: 'street', birthYear: 2009,
   })
   return { rng, hero, life: createLife(rng, hero, 'street') }
 }

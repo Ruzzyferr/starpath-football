@@ -10,7 +10,7 @@ function setup(seed = 1, rep = 40): { rng: Rng; hero: Hero; life: Life } {
   const rng = new Rng(seed)
   const hero = createHero(rng, {
     firstName: 'A', lastName: 'B', nickname: 'AB', nationality: 'EN', position: 'LW', foot: 'L',
-    appearance: APPEAR, archetype: 'winger', background: 'street', birthYear: 2009,
+    appearance: APPEAR, role: 'touchlineWinger', background: 'street', birthYear: 2009,
   })
   hero.reputation = rep
   return { rng, hero, life: createLife(rng, hero, 'street') }

@@ -7,6 +7,7 @@
  * agents toward the returned targets with their physical limits.
  */
 import type { Rng } from '../core/rng'
+import type { RoleAiStyle } from '../core/roles'
 import type { HighlightKind } from '../sim/match/types'
 import { PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import { laneOpenness } from './kick'
@@ -43,6 +44,8 @@ export interface AiWorld {
   /** 0.8 (easy) … 1.3 (legend). Scales opponent sharpness. */
   difficulty: number
   kind: HighlightKind
+  /** How team-mates like to find the hero, from his role (core/roles roleAiStyle). */
+  heroStyle?: RoleAiStyle | null
 }
 
 /** +1 when the team attacks toward +x. */
@@ -324,7 +327,7 @@ export function cardForFoul(rng: Rng, slide: boolean, fromBehind: boolean, lastM
 // ───────────────────────── Ball carrier decisions (AI) ─────────────────────────
 
 export type CarrierDecision =
-  | { kind: 'pass'; to: Agent; lofted: boolean }
+  | { kind: 'pass'; to: Agent; lofted: boolean; through?: boolean; high?: boolean }
   | { kind: 'shoot'; target: Vec2 }
   | { kind: 'cross'; to: Agent | null; point: Vec2 }
   | { kind: 'dribble'; dir: Vec2 }
@@ -377,7 +380,7 @@ export function carrierDecision(a: Agent, w: AiWorld, rng: Rng, opts: { heldFor:
     const space = clamp01(nearestDist(m.pos, oppPos) / 7)
     const fwd = ((m.pos.x - a.pos.x) * dir) / 25
     let s = open * 1.3 + space + fwd * (0.5 + vision * 0.6)
-    if (m.isHero) s += 0.25 + (a.relationToHero / 100) * 0.6 + vision * 0.2
+    if (m.isHero) s += 0.25 + (a.relationToHero / 100) * 0.6 + vision * 0.2 + heroStyleBonus(w.heroStyle, fwd, space)
     if (s > bestScore) {
       bestScore = s
       best = m
@@ -391,6 +394,9 @@ export function carrierDecision(a: Agent, w: AiWorld, rng: Rng, opts: { heldFor:
       // Ignore the hero this time.
     } else {
       const lofted = laneOpenness(a.pos, best.pos, oppPos) < 0.2 || dist(a.pos, best.pos) > 28
+      // Role hooks: a runner gets it in behind, a pivot gets it in the air (the runtime plays the ball).
+      if (best.isHero && w.heroStyle === 'runner' && best.pos.x * dir > a.pos.x * dir + 3) return { kind: 'pass', to: best, lofted, through: true }
+      if (best.isHero && w.heroStyle === 'aerial' && dist(a.pos, best.pos) > 14) return { kind: 'pass', to: best, lofted: true, high: true }
       return { kind: 'pass', to: best, lofted }
     }
   }
@@ -403,6 +409,18 @@ export function carrierDecision(a: Agent, w: AiWorld, rng: Rng, opts: { heldFor:
     if (d < 6) away = add(away, scale(norm(sub(a.pos, o)), (6 - d) / 6))
   }
   return { kind: 'dribble', dir: norm(add(toGoal, scale(away, 0.9))) }
+}
+
+/**
+ * Extra pass score for the hero by role: a runner is found when he is ahead of the ball (space behind
+ * matters, not the space around him), a pivot when he is up the pitch to win it in the air, a target
+ * forward even with a marker on his back.
+ */
+export function heroStyleBonus(style: RoleAiStyle | null | undefined, fwd: number, space: number): number {
+  if (style === 'runner') return fwd > 0.12 ? 0.3 + (1 - space) * 0.4 : 0
+  if (style === 'aerial') return fwd > 0.2 ? 0.25 : 0
+  if (style === 'feet') return 0.15 + (1 - space) * 0.5
+  return 0
 }
 
 // ───────────────────────── Goalkeeper ─────────────────────────

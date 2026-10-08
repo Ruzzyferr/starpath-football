@@ -10,7 +10,7 @@
  * In a Highlight scenario the hero's team ALWAYS attacks toward +x (the scene
  * flips visuals if needed).
  */
-import type { Attributes, Formation, Gender, KitColors, Position, ShotBook, TacticStyle } from '../../core/types'
+import type { Attributes, Formation, Gender, KitColors, Position, Role, ShotBook, TacticStyle } from '../../core/types'
 import type { Referee, RefereeBrief, RedReason } from './referee'
 
 export const PITCH_LENGTH = 105
@@ -32,6 +32,8 @@ export interface MatchPlayer {
   relationToHero: number
   /** Hero only, 0..1: extra marking earned by a prolific scoring run (see sim/game/match markedMan). */
   marked?: number
+  /** Hero only: playing role (core/roles), set while he plays in a slot the role belongs to. */
+  role?: Role
 }
 
 export interface MatchTeam {
@@ -149,6 +151,8 @@ export interface HighlightScenario {
   timeLimit: number
   /** Short instruction for UI, localized. */
   prompt: string
+  /** Hero's playing role: AI team-mates look for him the way the role likes (core/roles roleAiStyle). */
+  heroRole?: Role
 }
 
 export interface Highlight {

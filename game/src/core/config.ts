@@ -1,8 +1,8 @@
 export const GAME_NAME = 'StarPath Football'
 export const GAME_NAME_TR = 'Yıldız Yolu Futbol'
 /** Bump with a MIGRATIONS entry in state/save.ts. v2: hero.gender. v3: attrHistory, replays, dataPack, SHA-256 envelope.
- *  v4: goalkeeping attributes gkPositioning + gkDistribution. */
-export const SAVE_VERSION = 4
+ *  v4: goalkeeping attributes gkPositioning + gkDistribution. v5: hero.role (position roles) + hero.heightCm. */
+export const SAVE_VERSION = 5
 
 /** Days per week in the calendar; slots per day. */
 export const DAYS_PER_WEEK = 7

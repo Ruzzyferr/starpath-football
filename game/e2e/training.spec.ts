@@ -113,7 +113,7 @@ test('play the cross station with the keyboard and get a graded result', async (
 test('goalkeeper distribution & claiming drill is listed for keepers and plays to a graded result', async ({ page, shot }) => {
   await openTraining(page)
   await expect(page.locator('.trn-session', { hasText: 'Distribution & Claiming' })).toHaveCount(0)
-  await sp(page, `(() => { sp.actions.newGame({ firstName: 'Eli', lastName: 'Kaya', nickname: 'Eli', nationality: 'TR', birthYear: 2009, position: 'GK', foot: 'R', archetype: 'keeper', background: 'academy', appearance: { skin: 2, hairStyle: 3, hairColor: 1, beard: 0, eyeColor: 1, face: 1, accessory: 0 }, difficulty: 'normal', seed: 314 }); sp.clearEvents(); const s = sp.state(); s.calendar.slot = 0; s.life.energy = 100; s.hero.fatigue = 0; s.hero.injury = null; sp.navigate('training') })()`)
+  await sp(page, `(() => { sp.actions.newGame({ firstName: 'Eli', lastName: 'Kaya', nickname: 'Eli', nationality: 'TR', birthYear: 2009, position: 'GK', foot: 'R', role: 'shotStopper', background: 'academy', appearance: { skin: 2, hairStyle: 3, hairColor: 1, beard: 0, eyeColor: 1, face: 1, accessory: 0 }, difficulty: 'normal', seed: 314 }); sp.clearEvents(); const s = sp.state(); s.calendar.slot = 0; s.life.energy = 100; s.hero.fatigue = 0; s.hero.injury = null; sp.navigate('training') })()`)
   const card = page.locator('.trn-session', { hasText: 'Distribution & Claiming' })
   await card.getByRole('button', { name: 'Play drill' }).click()
   const overlay = page.locator('.trn-drill')

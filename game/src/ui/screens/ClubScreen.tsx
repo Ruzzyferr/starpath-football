@@ -9,6 +9,8 @@ import {
 } from '../components'
 import { ageOf, attrColor, formatMoney, formatNumber } from '../format'
 import { Icon } from '../icons'
+import { ROLE_ICON } from '../roleView'
+import { npcRole } from '../../core/roles'
 import { actions, data, gameState, heroClub, navigate, screen, type FixtureView, type InteractionKind, type SquadMemberView } from '../store'
 import { LINES, faceFor, lineOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
@@ -39,6 +41,7 @@ function MateSheet({ m, onClose }: { m: SquadMemberView | null; onClose: () => v
           <div class="grow stack" style={{ ['--gap' as string]: '6px' }}>
             <div class="row wrap">
               <Chip tone="info">{t(`data.pos.${p.position}`)}</Chip>
+              <Chip icon={ROLE_ICON[npcRole(p)]} title={t(`data.playRoleDesc.${npcRole(p)}`)}>{t(`data.playRole.${npcRole(p)}`)}</Chip>
               <Chip>{t('club.squad.age', { n: ageOf(p.birthYear, s.calendar) })}</Chip>
               <Chip tone="violet">{t(`data.personality.${p.personality}`)}</Chip>
             </div>

@@ -51,6 +51,20 @@ describe('v2 -> v3 migration', () => {
     }
     expect(JSON.parse((await st.get('sp.save.0.premigrate'))!).version).toBe(3)
   })
+  it('loads a v4 envelope into v5: the old archetype becomes the closest role at the hero position, with a height', () => {
+    const o = openEnvelope(fixture(4))
+    expect(o?.state.version).toBe(SAVE_VERSION)
+    const h = o!.state.hero as GameState['hero'] & { archetype?: string }
+    expect(h.position).toBe('CB')
+    expect(h.role).toBe('aerialDefender') // wall at centre-back
+    expect(h.heightCm).toBe(192)
+    expect(h.archetype).toBeUndefined()
+  })
+  it('v3 careers reach v5 with a role that fits their position', () => {
+    const o = openEnvelope(fixture(3))
+    expect(o?.state.hero.role).toBe('runner') // poacher up front
+    expect(o?.state.hero.heightCm).toBeGreaterThan(160)
+  })
 })
 
 describe('SHA-256 envelope', () => {

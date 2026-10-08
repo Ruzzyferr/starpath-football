@@ -1,28 +1,28 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks'
-import { archetypeFits } from '../../sim/career/createHero'
+import { previewAttrs } from '../../sim/career/createHero'
+import { ovrFor } from '../../sim/career/progression'
+import { clampHeight, defaultRole } from '../../core/roles'
 import '../../styles/screens/wizard.css'
-import type { Archetype, AttributeKey, Background, Country, CustomDifficulty, Difficulty, Foot, Gender, Position } from '../../core/types'
+import type { Background, Country, CustomDifficulty, Difficulty, Foot, Gender } from '../../core/types'
 import { AI_REACTION_MAX, AI_REACTION_MIN, DEFAULT_CUSTOM } from '../../core/customDifficulty'
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
 import { Button, Chip, Flag, PlayerCard, Segmented, Slider, Switch, TextField, toast, type PlayerCardStat } from '../components'
 import { Icon, type IconName } from '../icons'
+import { roleKeys } from '../roleView'
 import { haptic } from '../haptics'
 import { actions, back, data, navigate, screen, type NewGameInput } from '../store'
 import { legacyFor, summaryView } from '../backend/meta'
 import { CITIES } from '../../data/world/names'
 import { PitchPicker } from './newcareer/PitchPicker'
 import { StoryArt } from './newcareer/StoryArt'
+import { RolePicker } from './newcareer/RolePicker'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 import { beginNewCareer } from '../tutorial/tour'
 
-type Step = 'identity' | 'nation' | 'position' | 'archetype' | 'background' | 'look' | 'summary'
-const STEPS: Step[] = ['identity', 'nation', 'position', 'archetype', 'background', 'look', 'summary']
+type Step = 'identity' | 'nation' | 'position' | 'role' | 'background' | 'look' | 'summary'
+const STEPS: Step[] = ['identity', 'nation', 'position', 'role', 'background', 'look', 'summary']
 
-const ARCHETYPES: Archetype[] = ['poacher', 'playmaker', 'winger', 'wall', 'boxToBox', 'keeper']
-const ARCH_ICON: Record<Archetype, IconName> = {
-  poacher: 'target', playmaker: 'eye', winger: 'run', wall: 'shield', boxToBox: 'energy', keeper: 'goal',
-}
 const BACKGROUNDS: Background[] = ['street', 'academy', 'footballFamily', 'lateBloomer']
 const BG_ICON: Record<Background, IconName> = { street: 'ball', academy: 'building', footballFamily: 'users', lateBloomer: 'sparkle' }
 const DIFFS: Difficulty[] = ['easy', 'normal', 'hard', 'legend']
@@ -63,20 +63,6 @@ function CustomDifficultyPanel({ value, base, onChange }: { value: CustomDifficu
   )
 }
 
-const SUGGEST: Record<Position, Archetype> = {
-  GK: 'keeper', CB: 'wall', LB: 'boxToBox', RB: 'boxToBox', DM: 'wall', CM: 'boxToBox', AM: 'playmaker', LW: 'winger', RW: 'winger', ST: 'poacher',
-}
-
-/** Rough starting card preview per archetype (the sim decides real values). */
-const PREVIEW: Record<Archetype, [AttributeKey, number][]> = {
-  poacher: [['pace', 63], ['finishing', 66], ['passing', 48], ['dribbling', 56], ['tackling', 28], ['strength', 52]],
-  playmaker: [['pace', 55], ['shooting', 52], ['passing', 66], ['vision', 64], ['tackling', 40], ['stamina', 55]],
-  winger: [['pace', 68], ['crossing', 60], ['passing', 52], ['dribbling', 64], ['tackling', 32], ['agility', 62]],
-  wall: [['pace', 50], ['heading', 63], ['passing', 46], ['positioning', 58], ['tackling', 66], ['strength', 64]],
-  boxToBox: [['pace', 58], ['shooting', 50], ['passing', 56], ['stamina', 66], ['tackling', 54], ['workRate', 64]],
-  keeper: [['reflexes', 66], ['handling', 62], ['gkPositioning', 58], ['gkDistribution', 50], ['jumping', 55], ['composure', 52]],
-}
-
 const FALLBACK_COUNTRY: Country = {
   id: 'TR', name: { tr: 'Türkiye', en: 'Türkiye' }, adjective: { tr: 'Türk', en: 'Turkish' },
   flag: ['#e30a17', '#ffffff', '#e30a17'], reputation: 70, nameStyle: 'tr',
@@ -110,7 +96,7 @@ export function NewCareerScreen() {
     birthYear: START_YEAR - 17,
     position: 'ST',
     foot: 'R',
-    archetype: 'poacher',
+    role: defaultRole('ST'),
     background: 'academy',
     appearance: randomAppearance(Date.now()),
     gender: 'male',
@@ -171,8 +157,12 @@ export function NewCareerScreen() {
     : countries
 
   const age = START_YEAR - form.birthYear
-  const stats: PlayerCardStat[] = PREVIEW[form.archetype].map(([k, v]) => ({ label: t(`data.attrShort.${k}`), value: v }))
-  const ovr = Math.round(PREVIEW[form.archetype].reduce((a, [, v]) => a + v, 0) / 6) - (form.background === 'lateBloomer' ? 3 : 0)
+  // Expected starting card (no noise): the role's key strengths and the weighted OVR at the position.
+  const sheet = previewAttrs(form.position, form.role, form.background)
+  const cardKeys = [...roleKeys(form.role, form.position, 6).strong]
+  const stats: PlayerCardStat[] = cardKeys.map((k) => ({ label: t(`data.attrShort.${k}`), value: sheet[k] }))
+  const ovr = ovrFor(sheet, form.position)
+  const gender: Gender = form.gender ?? 'male'
   const fullName = `${form.firstName.trim() || '—'} ${form.lastName.trim()}`.trim()
 
   return (
@@ -308,7 +298,7 @@ export function NewCareerScreen() {
             <div class="wiz-position">
               <PitchPicker
                 value={form.position}
-                onChange={(p) => setForm((f) => ({ ...f, position: p, archetype: p === 'GK' ? 'keeper' : f.archetype === 'keeper' ? SUGGEST[p] : f.archetype }))}
+                onChange={(p) => setForm((f) => (p === f.position ? f : { ...f, position: p, role: defaultRole(p), heightCm: undefined }))}
               />
               <div class="wiz-position-side stack">
                 <div class="wiz-pos-readout">
@@ -327,38 +317,16 @@ export function NewCareerScreen() {
             </div>
           )}
 
-          {cur === 'archetype' && (
-            <div class="wiz-cards" role="radiogroup" aria-label={t('wizard.steps.archetype')}>
-              {ARCHETYPES.map((a) => {
-                const sel = form.archetype === a
-                const isSug = SUGGEST[form.position] === a
-                const off = (a === 'keeper') !== (form.position === 'GK')
-                return (
-                  <button
-                    key={a}
-                    type="button"
-                    role="radio"
-                    aria-checked={sel}
-                    class={`wiz-card${sel ? ' is-active' : ''}${off ? ' is-off' : ''}`}
-                    onClick={() => {
-                      haptic('select')
-                      set('archetype', a)
-                    }}
-                  >
-                    <span class="wiz-card-icon"><Icon name={ARCH_ICON[a]} size={26} /></span>
-                    <span class="wiz-card-text">
-                      <span class="wiz-card-title">
-                        {t(`data.archetype.${a}`)}
-                        {isSug && <span class="chip chip-pos chip-solid">{t('wizard.suggested')}</span>}
-                        {a === 'keeper' && !isSug && <span class="chip chip-neutral">{t('wizard.keeperOnly')}</span>}
-                        {a !== 'keeper' && !archetypeFits(form.position, a) && <span class="chip chip-neutral" data-testid="arch-mismatch">{t('career4.mismatch')}</span>}
-                      </span>
-                      <span class="wiz-card-desc">{t(`data.archetypeDesc.${a}`)}</span>
-                    </span>
-                  </button>
-                )
-              })}
-            </div>
+          {cur === 'role' && (
+            <RolePicker
+              position={form.position}
+              role={form.role}
+              background={form.background}
+              gender={gender}
+              heightCm={form.heightCm}
+              onRole={(r) => setForm((f) => ({ ...f, role: r, heightCm: undefined }))}
+              onHeight={(cm) => set('heightCm', clampHeight(form.role, gender, cm))}
+            />
           )}
 
           {cur === 'background' && (
@@ -414,7 +382,7 @@ export function NewCareerScreen() {
                     ['summaryNation', lt(country.name), 1],
                     ...(form.birthCity ? ([['summaryCity', form.birthCity, 1]] as const) : []),
                     ['summaryPos', `${t(`data.posLong.${form.position}`)} · ${t(`data.foot.${form.foot}`)}`, 2],
-                    ['summaryStyle', t(`data.archetype.${form.archetype}`), 3],
+                    ['summaryStyle', `${t(`data.playRole.${form.role}`)} · ${t('wizard.heightValue', { n: clampHeight(form.role, gender, form.heightCm) })}`, 3],
                     ['summaryStory', t(`data.background.${form.background}`), 4],
                   ] as const).map(([k, v, s]) => (
                     <div key={k} class="wiz-fact">

@@ -11,6 +11,7 @@
  */
 import { stepTimeScale, type ScaleRamp } from './bulletTime'
 import { Rng } from '../core/rng'
+import { roleAiStyle, type RoleAiStyle } from '../core/roles'
 import type { Difficulty } from '../core/types'
 import type { Highlight, HighlightKind, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
 import { GOAL_HEIGHT, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
@@ -497,9 +498,13 @@ export class HighlightRuntime {
    */
   readonly keeperRead: { zone: GoalZone; share: number } | null
 
+  /** How team-mates look for the hero (his role, core/roles roleAiStyle); null for scenarios without a role. */
+  readonly heroStyle: RoleAiStyle | null
+
   constructor(highlight: Highlight, opts: RuntimeOptions = {}) {
     this.highlight = highlight
     this.kind = highlight.scenario.kind ?? highlight.kind
+    this.heroStyle = roleAiStyle(highlight.scenario.heroRole)
     this.rng = new Rng(opts.seed ?? `hl:${highlight.id}`)
     const cast = buildCast(highlight, this.rng.fork('cast'), opts.names)
     this.agents = cast.agents
@@ -1862,9 +1867,12 @@ export class HighlightRuntime {
         return
       }
       case 'pass': {
-        const target = leadPosition(a.pos, dec.to, dec.lofted ? 17 : 13)
-        const kind: KickKind = dec.lofted ? 'lofted' : 'pass'
-        const plan = planKick({ ...base, kind, target, power: 0.55, curl: 0, noiseScale: oppNoise }, this.rng)
+        // Role hooks (ai.carrierDecision): into the space behind for a runner, a high ball for a pivot.
+        const target = dec.through
+          ? inField(add(leadPosition(a.pos, dec.to, 20), { x: attackDir(a.team) * 4, y: 0 }), 1)
+          : leadPosition(a.pos, dec.to, dec.lofted ? 17 : 13)
+        const kind: KickKind = dec.through ? (dec.lofted ? 'lofted' : 'through') : dec.lofted ? 'lofted' : 'pass'
+        const plan = planKick({ ...base, kind, target, ...(dec.high ? { targetZ: 1.7 } : {}), power: 0.55, curl: 0, noiseScale: oppNoise }, this.rng)
         this.kickBall(a, plan, kind, 0.55, null)
         return
       }
@@ -2995,7 +3003,7 @@ export class HighlightRuntime {
 
   /** Current AI world view. */
   aiWorld(): AiWorld {
-    return { agents: this.agents, ball: this.ball, owner: this.owner, env: this.env, time: this.time, difficulty: this.difficulty, kind: this.kind }
+    return { agents: this.agents, ball: this.ball, owner: this.owner, env: this.env, time: this.time, difficulty: this.difficulty, kind: this.kind, heroStyle: this.heroStyle }
   }
 
   /** True if the hero is the intended target of the incoming ball (header prompt). */

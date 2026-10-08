@@ -2,7 +2,7 @@
  * Test-only fixtures (not imported by game code): build heroes, lives and a
  * minimal GameState without the world generator.
  */
-import type { Appearance, Archetype, Background, GameState, Hero, Life, Position } from '../../core/types'
+import type { Appearance, Background, GameState, Hero, Life, Position, Role } from '../../core/types'
 import { Rng } from '../../core/rng'
 import { START_YEAR } from '../../core/config'
 import { createHero, createLife } from './createHero'
@@ -12,7 +12,7 @@ export const TEST_APPEARANCE: Appearance = { skin: 0, hairStyle: 0, hairColor: 0
 export interface FixtureOpts {
   seed?: number
   position?: Position
-  archetype?: Archetype
+  role?: Role
   background?: Background
   age?: number
   season?: number
@@ -26,7 +26,7 @@ export function makeHeroLife(o: FixtureOpts = {}): { rng: Rng; hero: Hero; life:
   const hero = createHero(rng, {
     firstName: 'Deniz', lastName: 'Kaya', nickname: '', nationality: 'TR',
     position: o.position ?? 'ST', foot: 'R', appearance: TEST_APPEARANCE,
-    archetype: o.archetype ?? 'poacher', background, birthYear: season - (o.age ?? 17),
+    role: o.role ?? 'runner', background, birthYear: season - (o.age ?? 17),
   })
   const life = createLife(rng, hero, background)
   return { rng, hero, life }

@@ -13,12 +13,13 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Rng } from '../../core/rng'
-import type { Archetype, Background, GameState, Gender, LText, Position } from '../../core/types'
+import type { Background, GameState, Gender, LText } from '../../core/types'
 import { ASSETS } from '../../data/assets'
 import { PERKS } from '../../data/perks'
 import { ACTIVITY_BY_ID } from '../../data/activities'
 import { heroAge } from '../career/common'
 import { heroOvr } from '../career/progression'
+import { ROLE_POS, type BalanceRole } from './balanceSim'
 import { activityBlock, autoPlanDay } from '../life/activities'
 import { assetUpkeep, netWorth, purchaseBlock } from '../life/economy'
 import { getEventDef } from '../life/events/engine'
@@ -65,7 +66,7 @@ interface PtConfig {
   last: string
   gender: Gender
   nationality: string
-  archetype: Archetype
+  role: BalanceRole
   background: Background
   persona: Persona
   startAge: number
@@ -77,40 +78,40 @@ interface PtConfig {
   seasons?: number
 }
 
-const POS: Record<Archetype, Position> = { poacher: 'ST', playmaker: 'AM', winger: 'LW', wall: 'CB', boxToBox: 'CM', keeper: 'GK' }
+const POS = ROLE_POS
 
 const CONFIGS: PtConfig[] = [
-  { seed: 4242, first: 'Arda', last: 'Yıldız', gender: 'male', nationality: 'TR', archetype: 'poacher', background: 'academy', persona: 'pro', startAge: 16 },
-  { seed: 777, first: 'Elif', last: 'Kaya', gender: 'female', nationality: 'TR', archetype: 'keeper', background: 'street', persona: 'social', startAge: 17 },
-  { seed: 9001, first: 'Can', last: 'Demir', gender: 'male', nationality: 'BR', archetype: 'winger', background: 'footballFamily', persona: 'gambler', startAge: 17 },
-  { seed: 31337, first: 'Mert', last: 'Aydın', gender: 'male', nationality: 'DE', archetype: 'wall', background: 'lateBloomer', persona: 'party', startAge: 18 },
-  { seed: 2026, first: 'Zeynep', last: 'Şahin', gender: 'female', nationality: 'EN', archetype: 'playmaker', background: 'academy', persona: 'spender', startAge: 16 },
-  { seed: 5150, first: 'Kerem', last: 'Öztürk', gender: 'male', nationality: 'ES', archetype: 'boxToBox', background: 'street', persona: 'pro', startAge: 17 },
-  { seed: 8080, first: 'Deniz', last: 'Arslan', gender: 'female', nationality: 'NL', archetype: 'winger', background: 'footballFamily', persona: 'social', startAge: 17 },
+  { seed: 4242, first: 'Arda', last: 'Yıldız', gender: 'male', nationality: 'TR', role: 'runner', background: 'academy', persona: 'pro', startAge: 16 },
+  { seed: 777, first: 'Elif', last: 'Kaya', gender: 'female', nationality: 'TR', role: 'shotStopper', background: 'street', persona: 'social', startAge: 17 },
+  { seed: 9001, first: 'Can', last: 'Demir', gender: 'male', nationality: 'BR', role: 'touchlineWinger', background: 'footballFamily', persona: 'gambler', startAge: 17 },
+  { seed: 31337, first: 'Mert', last: 'Aydın', gender: 'male', nationality: 'DE', role: 'aerialDefender', background: 'lateBloomer', persona: 'party', startAge: 18 },
+  { seed: 2026, first: 'Zeynep', last: 'Şahin', gender: 'female', nationality: 'EN', role: 'playmaker', background: 'academy', persona: 'spender', startAge: 16 },
+  { seed: 5150, first: 'Kerem', last: 'Öztürk', gender: 'male', nationality: 'ES', role: 'boxToBox', background: 'street', persona: 'pro', startAge: 17 },
+  { seed: 8080, first: 'Deniz', last: 'Arslan', gender: 'female', nationality: 'NL', role: 'touchlineWinger', background: 'footballFamily', persona: 'social', startAge: 17 },
 ]
 
 // Round 2 (PLAYTEST_PLAN=r2): a 15-season long run (retires -> Hall of Fame -> its child plays a Legacy career)
 // plus GK (female), CB, female AM (spender, business), heavy gambler.
 const CONFIGS_R2: PtConfig[] = [
-  { seed: 1905, first: 'Burak', last: 'Yılmaz', gender: 'male', nationality: 'TR', archetype: 'poacher', background: 'lateBloomer', persona: 'pro', startAge: 20, seasons: 15 },
-  { seed: 777, first: 'Elif', last: 'Kaya', gender: 'female', nationality: 'TR', archetype: 'keeper', background: 'street', persona: 'social', startAge: 17 },
-  { seed: 31337, first: 'Mert', last: 'Aydın', gender: 'male', nationality: 'DE', archetype: 'wall', background: 'lateBloomer', persona: 'party', startAge: 18 },
-  { seed: 2026, first: 'Zeynep', last: 'Şahin', gender: 'female', nationality: 'EN', archetype: 'playmaker', background: 'academy', persona: 'spender', startAge: 16 },
-  { seed: 6161, first: 'Efe', last: 'Yılmaz', gender: 'male', nationality: 'TR', archetype: 'winger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 0 },
-  { seed: 9001, first: 'Can', last: 'Demir', gender: 'male', nationality: 'BR', archetype: 'winger', background: 'footballFamily', persona: 'gambler', startAge: 18, heavy: true },
+  { seed: 1905, first: 'Burak', last: 'Yılmaz', gender: 'male', nationality: 'TR', role: 'runner', background: 'lateBloomer', persona: 'pro', startAge: 20, seasons: 15 },
+  { seed: 777, first: 'Elif', last: 'Kaya', gender: 'female', nationality: 'TR', role: 'shotStopper', background: 'street', persona: 'social', startAge: 17 },
+  { seed: 31337, first: 'Mert', last: 'Aydın', gender: 'male', nationality: 'DE', role: 'aerialDefender', background: 'lateBloomer', persona: 'party', startAge: 18 },
+  { seed: 2026, first: 'Zeynep', last: 'Şahin', gender: 'female', nationality: 'EN', role: 'playmaker', background: 'academy', persona: 'spender', startAge: 16 },
+  { seed: 6161, first: 'Efe', last: 'Yılmaz', gender: 'male', nationality: 'TR', role: 'touchlineWinger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 0 },
+  { seed: 9001, first: 'Can', last: 'Demir', gender: 'male', nationality: 'BR', role: 'touchlineWinger', background: 'footballFamily', persona: 'gambler', startAge: 18, heavy: true },
 ]
 
 // Round 3 (PLAYTEST_PLAN=r3): 6 careers x 10 seasons (ST, LW heavy gambler, CM investor/project builder,
 // CB, GK, female AM) + an 18-season run through retirement and its Legacy child for 4 seasons.
 const CONFIGS_R3: PtConfig[] = [
-  { seed: 1907, first: 'Okan', last: 'Çelik', gender: 'male', nationality: 'TR', archetype: 'poacher', background: 'academy', persona: 'pro', startAge: 17 },
-  { seed: 9002, first: 'Rafael', last: 'Souza', gender: 'male', nationality: 'BR', archetype: 'winger', background: 'street', persona: 'gambler', startAge: 18, heavy: true },
-  { seed: 4848, first: 'Emre', last: 'Koç', gender: 'male', nationality: 'TR', archetype: 'boxToBox', background: 'footballFamily', persona: 'investor', startAge: 17 },
-  { seed: 3131, first: 'Jonas', last: 'Weber', gender: 'male', nationality: 'DE', archetype: 'wall', background: 'lateBloomer', persona: 'party', startAge: 18 },
-  { seed: 2121, first: 'Tolga', last: 'Aksoy', gender: 'male', nationality: 'TR', archetype: 'keeper', background: 'academy', persona: 'social', startAge: 17 },
-  { seed: 6060, first: 'Ayşe', last: 'Demirtaş', gender: 'female', nationality: 'TR', archetype: 'playmaker', background: 'street', persona: 'spender', startAge: 16 },
-  { seed: 1903, first: 'Hakan', last: 'Güler', gender: 'male', nationality: 'TR', archetype: 'poacher', background: 'street', persona: 'investor', startAge: 17, seasons: 18 },
-  { seed: 7171, first: 'Ali', last: 'Güler', gender: 'male', nationality: 'TR', archetype: 'winger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 6, seasons: 4 },
+  { seed: 1907, first: 'Okan', last: 'Çelik', gender: 'male', nationality: 'TR', role: 'runner', background: 'academy', persona: 'pro', startAge: 17 },
+  { seed: 9002, first: 'Rafael', last: 'Souza', gender: 'male', nationality: 'BR', role: 'touchlineWinger', background: 'street', persona: 'gambler', startAge: 18, heavy: true },
+  { seed: 4848, first: 'Emre', last: 'Koç', gender: 'male', nationality: 'TR', role: 'boxToBox', background: 'footballFamily', persona: 'investor', startAge: 17 },
+  { seed: 3131, first: 'Jonas', last: 'Weber', gender: 'male', nationality: 'DE', role: 'aerialDefender', background: 'lateBloomer', persona: 'party', startAge: 18 },
+  { seed: 2121, first: 'Tolga', last: 'Aksoy', gender: 'male', nationality: 'TR', role: 'shotStopper', background: 'academy', persona: 'social', startAge: 17 },
+  { seed: 6060, first: 'Ayşe', last: 'Demirtaş', gender: 'female', nationality: 'TR', role: 'playmaker', background: 'street', persona: 'spender', startAge: 16 },
+  { seed: 1903, first: 'Hakan', last: 'Güler', gender: 'male', nationality: 'TR', role: 'runner', background: 'street', persona: 'investor', startAge: 17, seasons: 18 },
+  { seed: 7171, first: 'Ali', last: 'Güler', gender: 'male', nationality: 'TR', role: 'touchlineWinger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 6, seasons: 4 },
 ]
 
 // Round 3b (PLAYTEST_PLAN=r3b): the same seeds as r3 for the ST, the CB and the investor (before/after of the Tur 3b changes).
@@ -122,7 +123,7 @@ const phaseOf = (a: number): Phase => (a <= 20 ? PHASES[0] : a <= 24 ? PHASES[1]
 
 const input = (c: PtConfig): NewGameInput => ({
   firstName: c.first, lastName: c.last, nickname: c.first, nationality: c.nationality, birthYear: 2026 - c.startAge,
-  position: POS[c.archetype], foot: 'R', archetype: c.archetype, background: c.background,
+  position: POS[c.role], foot: 'R', role: c.role, background: c.background,
   appearance: { skin: 1, hairStyle: 2, hairColor: 0, beard: 0, eyeColor: 1, face: 0, accessory: 0 }, gender: c.gender, difficulty: 'normal',
 })
 
@@ -660,7 +661,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
 
   let guard = 0
   let lastSeasonSeen = s.calendar.season
-  T.push(`=== KARİYER ${idx + 1}: ${cfg.first} ${cfg.last} (${cfg.gender === 'female' ? 'K' : 'E'}, ${cfg.nationality}, ${POS[cfg.archetype]}, ${cfg.background}, persona ${cfg.persona}, ${cfg.startAge} yaş) ===`)
+  T.push(`=== KARİYER ${idx + 1}: ${cfg.first} ${cfg.last} (${cfg.gender === 'female' ? 'K' : 'E'}, ${cfg.nationality}, ${POS[cfg.role]}, ${cfg.background}, persona ${cfg.persona}, ${cfg.startAge} yaş) ===`)
   drain()
   let awardsSeen = s.hero.awards.length
   while (s.calendar.season < startSeason + seasons && guard++ < 8000 && !s.hero.retired) {
@@ -866,7 +867,7 @@ export function analyse(runs: CareerOut[]): string {
   }
   o.push('## Sezon özetleri', '')
   for (const r of runs) {
-    o.push(`### ${r.cfg.first} ${r.cfg.last} (${r.cfg.persona}, ${POS[r.cfg.archetype]})`, '| S | Yaş | OVR | İtibar | Kulüp (kademe) | Maç/Gol | Maaş | Para | Net servet | Alım | Parası boşta hafta | Projeler | Takım arkadaşı min/ort/max | VIP |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    o.push(`### ${r.cfg.first} ${r.cfg.last} (${r.cfg.persona}, ${POS[r.cfg.role]})`, '| S | Yaş | OVR | İtibar | Kulüp (kademe) | Maç/Gol | Maaş | Para | Net servet | Alım | Parası boşta hafta | Projeler | Takım arkadaşı min/ort/max | VIP |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
     for (const x of r.seasons) o.push(`| ${x.season} | ${x.age} | ${x.ovr} | ${x.rep} | ${x.club} (${x.tier ?? '-'}) | ${x.apps}/${x.goals} | ${x.wage} | ${x.money} | ${x.netWorth} | ${x.purchases} | ${x.moneyIdleWeeks} | ${x.proj} | ${x.mates} | ${x.vip} |`)
     o.push('')
   }

@@ -248,6 +248,7 @@ function expectedFor(s: GameState, blob: MatchBlob): PreMatchView['expectedMomen
     const e = expectedMomentsFor({
       position, relationAvg, morale: team.morale, form: s.hero.form, minutes: blob.starts ? 90 : 25,
       positioning: hero?.attrs.positioning, ovr: hero?.ovr, ...(s.hero.matchFocus ? { focus: s.hero.matchFocus } : {}),
+      ...(hero?.role ? { role: hero.role } : {}),
     })
     return { min: e.min, max: e.max, kinds: e.kinds.map((k) => ({ kind: k.kind, share: k.share })) }
   } catch {

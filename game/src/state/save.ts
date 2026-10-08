@@ -10,7 +10,8 @@
  * Envelopes carry a schema version and run through `migrate()` on load.
  */
 import { SAVE_VERSION } from '../core/config'
-import type { CrestSpec, GameState } from '../core/types'
+import { heightRange, isRole, roleFits, roleFromArchetype } from '../core/roles'
+import { POSITIONS, type CrestSpec, type GameState, type Position } from '../core/types'
 
 export const SLOT_COUNT = 3
 export const BACKUP_COUNT = 3
@@ -204,6 +205,20 @@ const MIGRATIONS: Record<number, Migration> = {
         }
         hist.keys = [...keys, ...add]
       }
+    }
+    return s
+  },
+  /**
+   * v4 → v5 (position roles): the position-agnostic archetype becomes the closest role at the hero's
+   * position (frozen {@link roleFromArchetype}) and the hero gets that role's default height.
+   */
+  4: (s) => {
+    const h = s.hero
+    if (h && typeof h === 'object') {
+      const pos: Position = (POSITIONS as readonly string[]).includes(h.position) ? h.position : 'ST'
+      if (!isRole(h.role) || !roleFits(pos, h.role)) h.role = roleFromArchetype(h.archetype, pos)
+      if (!Number.isFinite(h.heightCm)) h.heightCm = heightRange(h.role, h.gender === 'female' ? 'female' : 'male').def
+      delete h.archetype
     }
     return s
   },

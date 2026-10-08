@@ -17,7 +17,7 @@ import { signal, computed, effect } from '@preact/signals'
 import type {
   AssetDef, AttributeGroup, AttributeKey, CrestSpec, CustomDifficulty, Difficulty, Foot, Formation, GameState,
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
-  SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender, RelationKind,
+  SquadRole, Appearance, Role, Background, Investment, Country, TableRow, Gender, RelationKind,
 } from '../core/types'
 import { currentLang } from '../i18n'
 import { setMoneyStyle, type MoneyStyle } from './format'
@@ -614,7 +614,10 @@ export interface NewGameInput {
   birthYear: number
   position: Position
   foot: Foot
-  archetype: Archetype
+  /** Playing role at the position (core/roles.ts). */
+  role: Role
+  /** Height in cm within the role's range (default: the role's height). */
+  heightCm?: number
   background: Background
   appearance: Appearance
   /** Default 'male'. A female hero plays in the women's game of the same leagues. */

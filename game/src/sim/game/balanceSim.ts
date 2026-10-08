@@ -7,7 +7,7 @@
  * Not used by production code. Deterministic per seed.
  */
 import { Rng } from '../../core/rng'
-import type { Archetype, Background, GameState, Gender, Position } from '../../core/types'
+import type { Background, GameState, Gender, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
 import { PERKS } from '../../data/perks'
 import { ACTIVITY_BY_ID } from '../../data/activities'
@@ -33,7 +33,8 @@ export type Persona = 'pro' | 'spender' | 'gambler' | 'party'
 export interface CareerConfig {
   seed: number
   nationality: string
-  archetype: Archetype
+  /** Playing role; the career plays at {@link ROLE_POS}[role]. */
+  role: BalanceRole
   background: Background
   gender: Gender
   persona: Persona
@@ -99,13 +100,16 @@ export interface CareerTrace {
   clubs: string[]
 }
 
-const POS: Record<Archetype, Position> = { poacher: 'ST', playmaker: 'AM', winger: 'LW', wall: 'CB', boxToBox: 'CM', keeper: 'GK' }
+/** Roles the balance careers play (the old archetype set, one per home position). */
+export type BalanceRole = Extract<Role, 'runner' | 'playmaker' | 'touchlineWinger' | 'aerialDefender' | 'boxToBox' | 'shotStopper'>
+export const ROLE_POS: Record<BalanceRole, Position> = { runner: 'ST', playmaker: 'AM', touchlineWinger: 'LW', aerialDefender: 'CB', boxToBox: 'CM', shotStopper: 'GK' }
+const POS = ROLE_POS
 
 export function careerInput(cfg: CareerConfig): NewGameInput {
   const female = cfg.gender === 'female'
   return {
     firstName: female ? 'Elif' : 'Arda', lastName: 'Yıldız', nickname: female ? 'Elif' : 'Arda', nationality: cfg.nationality,
-    birthYear: 2026 - (cfg.startAge ?? 17), position: POS[cfg.archetype], foot: 'R', archetype: cfg.archetype, background: cfg.background,
+    birthYear: 2026 - (cfg.startAge ?? 17), position: POS[cfg.role], foot: 'R', role: cfg.role, background: cfg.background,
     appearance: { skin: 1, hairStyle: 2, hairColor: 0, beard: 0, eyeColor: 1, face: 0, accessory: 0 },
     gender: cfg.gender, difficulty: 'normal',
   }
@@ -397,14 +401,14 @@ function freshAcc() {
 
 /** The standard 30-career mix used by the report. */
 export function standardMix(n = 30, seasons = 10, base = 1000): CareerConfig[] {
-  const arch: Archetype[] = ['poacher', 'playmaker', 'winger', 'wall', 'boxToBox', 'keeper']
+  const arch: BalanceRole[] = ['runner', 'playmaker', 'touchlineWinger', 'aerialDefender', 'boxToBox', 'shotStopper']
   const bg: Background[] = ['academy', 'street', 'footballFamily', 'lateBloomer']
   const nat = ['TR', 'EN', 'ES', 'BR', 'DE', 'JP', 'NL', 'US', 'AR', 'FR']
   const personas: Persona[] = ['pro', 'pro', 'spender', 'pro', 'gambler', 'party', 'pro', 'spender', 'gambler', 'pro']
   return Array.from({ length: n }, (_, i) => ({
     seed: base + i * 7919,
     nationality: nat[i % nat.length]!,
-    archetype: arch[i % arch.length]!,
+    role: arch[i % arch.length]!,
     background: bg[(i * 3) % bg.length]!,
     gender: i % 4 === 3 ? 'female' : 'male',
     persona: personas[i % personas.length]!,

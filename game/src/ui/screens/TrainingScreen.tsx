@@ -6,6 +6,7 @@ import {
 } from '../components'
 import { formatMoney } from '../format'
 import { Icon, type IconName } from '../icons'
+import { ROLE_PERK } from '../../core/roles'
 import { actions, data, gameState, screen, type PerkView, type TrainingOutcomeView, type TrainingSessionView } from '../store'
 import { decayWarning } from '../backend/meta'
 import '../../styles/screens/legacy.css'
@@ -158,6 +159,9 @@ function PerkTree() {
   const cy = (r: number) => r * CELL_H + CELL_H / 2
   const state = (p: PerkView) => (p.owned ? 'owned' : p.available ? 'available' : 'locked')
   const current = sel ? (byId.get(sel.id) ?? sel) : null
+  // The perk that suits the hero's role (core/roles ROLE_PERK) wears a star.
+  const rolePerk = h.role ? ROLE_PERK[h.role] : null
+  const roleName = h.role ? t(`data.playRole.${h.role}`) : ''
   return (
     <div class="stack">
       <Card class="trn-points" pad="sm">
@@ -194,8 +198,9 @@ function PerkTree() {
               class={`trn-node is-${state(p)}`}
               style={{ left: `${((p.col + 0.5) / cols) * 100}%`, top: `${cy(p.row)}px` }}
               onClick={() => setSel(p)}
-              aria-label={`${lt(p.name)}, ${t(`training.perks.${state(p)}`)}`}
+              aria-label={`${lt(p.name)}, ${t(`training.perks.${state(p)}`)}${p.id === rolePerk ? `, ${t('wizard.rolePerkFit', { role: roleName })}` : ''}`}
             >
+              {p.id === rolePerk && <span class="trn-node-role" aria-hidden="true"><Icon name="star-fill" size={11} /></span>}
               <span class="trn-node-disc">
                 <Icon name={p.owned || p.available ? p.icon : 'lock'} size={22} />
               </span>
@@ -236,6 +241,7 @@ function PerkTree() {
               <Chip tone={current.owned ? 'pos' : current.available ? 'gold' : 'neutral'} icon={current.owned ? 'check' : current.available ? 'lock-open' : 'lock'}>
                 {t(`training.perks.${state(current)}`)}
               </Chip>
+              {current.id === rolePerk && <Chip tone="gold" icon="star-fill">{t('wizard.rolePerkFit', { role: roleName })}</Chip>}
               {!current.owned && <Chip tone="violet" icon="rocket">{t('training.perks.cost', { n: current.cost })}</Chip>}
               {current.branch && <Chip tone="info" data-testid="perk-branch">{t('career4.perkBranch', { b: t(`career4.branch.${current.branch}`), n: current.tier ?? 1 })}</Chip>}
             </div>

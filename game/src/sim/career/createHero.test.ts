@@ -1,28 +1,27 @@
-import type { Archetype, Background, Position } from '../../core/types'
+import type { Background, Position, Role } from '../../core/types'
 import { ATTRIBUTE_KEYS } from '../../core/types'
 import { Rng } from '../../core/rng'
-import { BACKGROUNDS, createHero, createLife } from './createHero'
-import { earnedPerkPoints, heroOvr } from './progression'
+import { POSITION_ROLES, ROLES } from '../../core/roles'
+import { BACKGROUNDS, ROLE_TEMPLATES, createHero, createLife, previewAttrs } from './createHero'
+import { earnedPerkPoints, heroOvr, ovrFor } from './progression'
 import { TEST_APPEARANCE } from './testFixtures'
 
-const ARCH_POS: [Archetype, Position][] = [
-  ['poacher', 'ST'], ['playmaker', 'AM'], ['winger', 'LW'], ['wall', 'CB'], ['boxToBox', 'CM'], ['keeper', 'GK'],
-]
+const ARCH_POS: [Role, Position][] = (Object.entries(POSITION_ROLES) as [Position, readonly Role[]][]).flatMap(([pos, roles]) => roles.map((r) => [r, pos] as [Role, Position]))
 const BGS: Background[] = ['street', 'academy', 'footballFamily', 'lateBloomer']
 
-const input = (archetype: Archetype, position: Position, background: Background, foot: 'L' | 'R' | 'B' = 'R') => ({
+const input = (role: Role, position: Position, background: Background, foot: 'L' | 'R' | 'B' = 'R') => ({
   firstName: 'Ece', lastName: 'Demir', nickname: 'Ece', nationality: 'TR', position, foot,
-  appearance: TEST_APPEARANCE, archetype, background, birthYear: 2009,
+  appearance: TEST_APPEARANCE, role, background, birthYear: 2009,
 })
 
 describe('createHero', () => {
   it('is deterministic for a seed', () => {
-    const a = createHero(new Rng(5), input('poacher', 'ST', 'street'))
-    const b = createHero(new Rng(5), input('poacher', 'ST', 'street'))
+    const a = createHero(new Rng(5), input('runner', 'ST', 'street'))
+    const b = createHero(new Rng(5), input('runner', 'ST', 'street'))
     expect(a).toEqual(b)
   })
 
-  it('every archetype × background starts in a sensible OVR band with growth headroom', () => {
+  it('every role × background starts in a sensible OVR band with growth headroom', () => {
     for (const [arch, pos] of ARCH_POS) {
       for (const bg of BGS) {
         for (let seed = 1; seed <= 5; seed++) {
@@ -44,8 +43,8 @@ describe('createHero', () => {
   it('late bloomers start lower but have a higher ceiling on average', () => {
     let lateOvr = 0, lateP = 0, acaOvr = 0, acaP = 0
     for (let s = 1; s <= 40; s++) {
-      const l = createHero(new Rng(s), input('poacher', 'ST', 'lateBloomer'))
-      const a = createHero(new Rng(s), input('poacher', 'ST', 'academy'))
+      const l = createHero(new Rng(s), input('runner', 'ST', 'lateBloomer'))
+      const a = createHero(new Rng(s), input('runner', 'ST', 'academy'))
       lateOvr += heroOvr(l); lateP += l.potential; acaOvr += heroOvr(a); acaP += a.potential
     }
     expect(lateOvr).toBeLessThan(acaOvr)
@@ -53,15 +52,15 @@ describe('createHero', () => {
   })
 
   it('outfielders have poor goalkeeping, keepers poor finishing', () => {
-    const st = createHero(new Rng(1), input('poacher', 'ST', 'academy'))
-    const gk = createHero(new Rng(1), input('keeper', 'GK', 'academy'))
+    const st = createHero(new Rng(1), input('runner', 'ST', 'academy'))
+    const gk = createHero(new Rng(1), input('shotStopper', 'GK', 'academy'))
     expect(st.attrs.reflexes).toBeLessThan(25)
     expect(gk.attrs.reflexes).toBeGreaterThan(50)
     expect(gk.attrs.finishing).toBeLessThan(st.attrs.finishing)
   })
 
   it('grants innate perks and starting perk points', () => {
-    const h = createHero(new Rng(2), input('winger', 'RW', 'street', 'B'))
+    const h = createHero(new Rng(2), input('touchlineWinger', 'RW', 'street', 'B'))
     expect(h.perks).toContain('two_footed')
     expect(h.perks).toContain('street_smart')
     expect(h.perkPoints).toBe(earnedPerkPoints(heroOvr(h)))
@@ -72,7 +71,7 @@ describe('createLife', () => {
   it('builds family relations and background money', () => {
     for (const bg of BGS) {
       const rng = new Rng(3)
-      const h = createHero(rng, input('poacher', 'ST', bg))
+      const h = createHero(rng, input('runner', 'ST', bg))
       const life = createLife(rng, h, bg, { mother: 'Leyla' })
       expect(life.money).toBe(BACKGROUNDS[bg].money)
       for (const id of ['bestFriend', 'fans', 'press']) expect(life.relationships[id]).toBeDefined()
@@ -87,5 +86,51 @@ describe('createLife', () => {
   it('football families are richest, street kids poorest', () => {
     expect(BACKGROUNDS.footballFamily.money).toBeGreaterThan(BACKGROUNDS.academy.money)
     expect(BACKGROUNDS.street.money).toBeLessThan(BACKGROUNDS.lateBloomer.money)
+  })
+})
+
+describe('position roles (owner feedback)', () => {
+  it('every role is offered at some position and every template has strengths and a fair budget', () => {
+    const offered = new Set(Object.values(POSITION_ROLES).flat())
+    for (const r of ROLES) {
+      expect(offered.has(r)).toBe(true)
+      const pts = Object.values(ROLE_TEMPLATES[r]) as number[]
+      const plus = pts.filter((v) => v > 0).reduce((a, v) => a + v, 0)
+      const minus = pts.filter((v) => v < 0).reduce((a, v) => a + v, 0)
+      expect(plus).toBeGreaterThanOrEqual(60)
+      expect(plus).toBeLessThanOrEqual(110)
+      expect(minus).toBeGreaterThanOrEqual(-15)
+    }
+  })
+  it('roles of the same position start at the same OVR (±1) and differ where the points go', () => {
+    for (const [pos, roles] of Object.entries(POSITION_ROLES) as [Position, readonly Role[]][]) {
+      const ovrs = roles.map((r) => ovrFor(previewAttrs(pos, r, 'academy'), pos))
+      expect(Math.max(...ovrs) - Math.min(...ovrs), `${pos}: ${ovrs.join(',')}`).toBeLessThanOrEqual(1)
+      // Any two roles of a position differ clearly somewhere (≥ 5 points on some attribute).
+      for (const r of roles) for (const o of roles) {
+        if (r === o) continue
+        const a = previewAttrs(pos, r, 'academy')
+        const b = previewAttrs(pos, o, 'academy')
+        const gap = Math.max(...(Object.keys(a) as (keyof typeof a)[]).map((k) => Math.abs(a[k] - b[k])))
+        expect(gap, `${pos}: ${r} vs ${o}`).toBeGreaterThanOrEqual(5)
+      }
+    }
+  })
+  it('noisy heroes average the same OVR across roles of a position', () => {
+    for (const [pos, roles] of Object.entries(POSITION_ROLES) as [Position, readonly Role[]][]) {
+      const avg = roles.map((r) => {
+        let sum = 0
+        for (let s = 1; s <= 40; s++) sum += heroOvr(createHero(new Rng(s * 17), input(r, pos, 'academy')))
+        return sum / 40
+      })
+      expect(Math.max(...avg) - Math.min(...avg), `${pos}: ${avg.map((a) => a.toFixed(1)).join(',')}`).toBeLessThanOrEqual(1.2)
+    }
+  })
+  it('tall roles get taller defaults, clamped to the role range', () => {
+    const pivot = createHero(new Rng(3), input('pivot', 'ST', 'academy'))
+    const runner = createHero(new Rng(3), input('runner', 'ST', 'academy'))
+    expect(pivot.heightCm! - runner.heightCm!).toBeGreaterThanOrEqual(10)
+    const giant = createHero(new Rng(3), { ...input('runner', 'ST', 'academy'), heightCm: 230 })
+    expect(giant.heightCm).toBe(runner.heightCm! + 5)
   })
 })

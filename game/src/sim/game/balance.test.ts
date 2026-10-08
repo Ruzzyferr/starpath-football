@@ -125,7 +125,7 @@ export function report(traces: CareerTrace[]): string {
   traces.forEach((t, i) => {
     const last = t.samples[t.samples.length - 1]
     if (!last) return
-    out.push(`| ${i + 1} | ${t.cfg.persona} | ${t.cfg.archetype} | ${t.cfg.background} | ${t.cfg.nationality} | ${t.cfg.gender === 'female' ? 'K' : 'E'} | ${t.samples[0]!.potential} | ${last.ovr} | ${last.reputation} | ${t.samples.map((r) => r.tier ?? '-').join('')} | ${money(last.wage)} | ${money(last.netWorth)} | ${last.trophies} | ${t.clubs.length} |`)
+    out.push(`| ${i + 1} | ${t.cfg.persona} | ${t.cfg.role} | ${t.cfg.background} | ${t.cfg.nationality} | ${t.cfg.gender === 'female' ? 'K' : 'E'} | ${t.samples[0]!.potential} | ${last.ovr} | ${last.reputation} | ${t.samples.map((r) => r.tier ?? '-').join('')} | ${money(last.wage)} | ${money(last.netWorth)} | ${last.trophies} | ${t.clubs.length} |`)
   })
   return out.join('\n')
 }

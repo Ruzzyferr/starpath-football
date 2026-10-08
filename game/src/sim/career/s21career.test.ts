@@ -120,23 +120,23 @@ describe('negotiation trades and 3-5 rounds (2.3#61)', async () => {
   })
 })
 
-describe('archetype / position mismatch (2.3#3)', async () => {
-  const { createHero, archetypeFits, ARCHETYPE_TEMPLATES } = await import('./createHero')
+describe('roles belong to their position (owner feedback, replaces 2.3#3 archetype mismatch)', async () => {
+  const { createHero } = await import('./createHero')
+  const { roleFits } = await import('../../core/roles')
   const base = {
     firstName: 'A', lastName: 'B', nickname: '', nationality: 'TR', foot: 'R' as const,
     appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 }, background: 'street' as const, birthYear: 2009,
   }
-  it('fits the natural pairs', () => {
-    expect(archetypeFits('ST', 'poacher')).toBe(true)
-    expect(archetypeFits('CB', 'poacher')).toBe(false)
-    expect(archetypeFits('GK', 'keeper')).toBe(true)
+  it('fits the natural pairs only', () => {
+    expect(roleFits('ST', 'runner')).toBe(true)
+    expect(roleFits('CB', 'runner')).toBe(false)
+    expect(roleFits('GK', 'sweeperKeeper')).toBe(true)
   })
-  it('a mismatched archetype puts at most half its bonus into its group', () => {
-    const fit = createHero(new Rng(9), { ...base, position: 'ST', archetype: 'poacher' })
-    const off = createHero(new Rng(9), { ...base, position: 'CB', archetype: 'poacher' })
-    // finishing gets +18 when it fits; off-position it gets ≤ 9 (plus the CB template, which ignores finishing).
-    const bonus = ARCHETYPE_TEMPLATES.poacher.finishing!
-    expect(fit.attrs.finishing - off.attrs.finishing).toBeGreaterThanOrEqual(bonus * 0.5 - 6)
+  it('a role from another position falls back to the position default', () => {
+    const off = createHero(new Rng(9), { ...base, position: 'CB', role: 'runner' })
+    const def = createHero(new Rng(9), { ...base, position: 'CB', role: 'stopper' })
+    expect(off.role).toBe('stopper')
+    expect(off.attrs).toEqual(def.attrs)
   })
 })
 

@@ -7,6 +7,8 @@ import {
 } from '../components'
 import { formatMoney, formatNumber, formatPercent, formatRating, ratingColor, seasonLabel, tierOf } from '../format'
 import { Icon } from '../icons'
+import { ROLE_ICON } from '../roleView'
+import { heroHeight } from '../../core/roles'
 import { data, gameState, heroClub, navigate } from '../store'
 import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGroup } from './career/attrs'
 import { Radar } from './career/Radar'
@@ -134,6 +136,12 @@ export function ProfileScreen() {
           </div>
           <div class="prof-facts">
             <Chip tone="info" icon="shirt">{t(`data.posLong.${h.position}`)}</Chip>
+            {h.role && (
+              <span data-testid="profile-role">
+                <Chip tone="violet" icon={ROLE_ICON[h.role]} title={t(`data.playRoleDesc.${h.role}`)}>{t(`data.playRole.${h.role}`)}</Chip>
+              </span>
+            )}
+            {h.role && <Chip icon="chevron-up">{t('wizard.heightValue', { n: heroHeight(h) })}</Chip>}
             <Chip>{t('common.ageN', { n: age })}</Chip>
             <Chip icon="boot">{t('profile.foot', { f: t(`data.foot.${h.foot}`) })}</Chip>
             {country && (

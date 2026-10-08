@@ -17,7 +17,7 @@ async function wizardToSummary(page: Page): Promise<void> {
   await next.click() // → nation
   await page.locator('.wiz-flag').first().click()
   await next.click() // → position
-  await next.click() // → archetype
+  await next.click() // → role
   await page.locator('.wiz-card').nth(2).click()
   await next.click() // → background
   await page.locator('.wiz-story').first().click()

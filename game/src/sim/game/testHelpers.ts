@@ -10,7 +10,7 @@ import { getOffers } from './season'
 
 export const TEST_INPUT: NewGameInput = {
   firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', birthYear: 2009,
-  position: 'ST', foot: 'R', archetype: 'poacher', background: 'academy',
+  position: 'ST', foot: 'R', role: 'runner', background: 'academy',
   appearance: { skin: 1, hairStyle: 2, hairColor: 0, beard: 0, eyeColor: 1, face: 0, accessory: 0 },
   difficulty: 'normal',
 }

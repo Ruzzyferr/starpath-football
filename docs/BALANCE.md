@@ -628,3 +628,27 @@ Tohum gürültüsü: Tohum 1000'de kumarbaz payı, bu turdaki ara ölçümlerde 
 | Kumarbaz kumarhane payı | %27 / %20 | %16 / %18 | ≤ %30 |
 
 `statsBaseline.json` yalnızca bilinçli kaymada yeniden merkezlendi: `netWorthLog` 7,07 → 6,885 (STATS_GUARD 40 × 10: itibar 81 → 80, kupa 2,35 → 1,9, gol 8,3 → 8,1 tolerans içinde, dokunulmadı). Rapora "Net servet (pot ≥ 85 medyan)" sütunu eklendi. **Golden master bilinçli yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): yeni hedef havuzları, kartlar, vergi dilimleri ve pas ağı kaydı kariyer akışını değiştirdi.
+
+## Mevki rolleri (APK geri bildirimi, save v5)
+
+Konumdan bağımsız arketipler (Golcü, Kanat Motoru, Duvar…) kaldırıldı; her mevki kendi rollerini sunuyor
+(`core/roles.ts`): kaleci 3, bek 3, stoper 3, DM/CM 3, AM 2, kanat 4, forvet 3 rol. Rol şablonları
+(`createHero.ROLE_TEMPLATES`) güçlü/zayıf yanları belirliyor; `roleTemplate` güçlü yanları ölçekleyerek aynı
+mevkideki her rolün başlangıç OVR'sini eşitliyor (`ROLE_OVR_GAIN`, eski eşleşen arketipin kazancı). Maçta rol,
+mevkinin an karışımını yeniden şekillendiriyor (`highlightGen.ROLE_KIND_MULT`); şut payı `ROLE_SHOT_SHARE` ile
+ayarlandı, böylece hücum rollerinin an başına gol beklentisi mevki karışımının ±%8'i içinde (`roles.test`).
+Sarkan forvetin 1v1/kontra şansları en iyi dönüştüğü için daha az ama daha net şans alıyor (0,83).
+Boy (`hero.heightCm`, rolün varsayılanı ±5 cm) maçta kafa/sıçramaya −4..+4 ekliyor.
+
+| Ölçüt (son kod, tohum 1000 · 2000) | Değer | Hedef |
+|---|---|---|
+| İtibar 18 / 21 / 25 | 14/49/78 · 15/51/79 | ~15 / ~50 / 75–85 |
+| İlk 1. kademe / elit kulüp yaşı | 20,5 · 20,0 / 22,0 · 23,0 | 21–23 / 22–24 |
+| 3. sezon net servet medyan / max | 135K/861K · 137K/502K | ≤300K / ≤2M |
+| ST gol/maç kariyer / en iyi sezon | 0,72/1,00 · 0,76/1,06 | ~0,6–0,8 / ~1,0–1,3 |
+| ST sezonluk gol 71–76 / 77–82 | 21/26 · 19/29 | 18–28 / 25–35 |
+| Kumarhane payı kumarbaz / herkes | %25/%4 · %20/%2 | %15–35 / ≤%5 |
+| Kart/hafta, sakatlık/sezon, sakat hafta | 1,8/1,6/3,8 · 1,7/1,6/4,1 | 1,5–2,5 / 1–2 / 3–6 |
+
+**Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit): rol şablonları başlangıç
+özelliklerini, rol karışımı ve boy maç sonuçlarını değiştiriyor.

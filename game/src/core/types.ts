@@ -273,7 +273,24 @@ export interface World {
 
 // ───────────────────────── Hero (the user's player) ─────────────────────────
 
-export type Archetype = 'poacher' | 'playmaker' | 'winger' | 'wall' | 'boxToBox' | 'keeper'
+/**
+ * Playing role (owner feedback after the APK play-test): every position offers its own roles, each with an
+ * attribute template, a height default and a match identity (see core/roles.ts). Replaced the
+ * position-agnostic archetypes in save v5.
+ */
+export type Role =
+  // GK
+  | 'reflexKeeper' | 'shotStopper' | 'sweeperKeeper'
+  // LB / RB
+  | 'attackingFullBack' | 'defensiveFullBack' | 'balancedFullBack'
+  // CB
+  | 'stopper' | 'aerialDefender' | 'ballPlayingDefender'
+  // DM / CM / AM
+  | 'anchor' | 'boxToBox' | 'playmaker'
+  // LW / RW
+  | 'touchlineWinger' | 'invertedWinger' | 'freeWinger' | 'dribbler'
+  // ST
+  | 'targetForward' | 'runner' | 'pivot'
 export type Background = 'street' | 'academy' | 'footballFamily' | 'lateBloomer'
 export type SquadRole = 'youth' | 'reserve' | 'rotation' | 'starter' | 'star' | 'captain'
 
@@ -346,7 +363,10 @@ export interface Hero {
   position: Position
   foot: Foot
   appearance: Appearance
-  archetype: Archetype
+  /** Playing role at his position (save v5; see core/roles.ts). */
+  role: Role
+  /** Height in cm (save v5): aerial duels and headers. Read through `heroHeight()` (core/roles.ts). */
+  heightCm?: number
   background: Background
   attrs: Attributes
   /** Fractional XP accumulated toward the next point per attribute. */

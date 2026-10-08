@@ -1,0 +1,31 @@
+{
+ "version": 4,
+ "savedAt": 1700000000000,
+ "checksum": "506d822c:1pr",
+ "dataPack": "sp-data-2",
+ "summary": {
+  "heroName": "Arda Yıldız",
+  "clubName": "Antalya Doğanspor",
+  "season": 2026,
+  "week": 1,
+  "ovr": 46,
+  "money": 1194,
+  "playTimeSec": 0,
+  "thumb": {
+   "v": 1,
+   "skin": 1,
+   "hairStyle": 2,
+   "hairColor": 0,
+   "beard": 0,
+   "eyeColor": 1,
+   "face": 0,
+   "kit": [
+    "#00843D",
+    "#111111"
+   ],
+   "pos": "ST",
+   "female": false
+  }
+ },
+ "data": "{\"version\":4,\"hero\":{\"firstName\":\"Arda\",\"lastName\":\"Yıldız\",\"gender\":\"male\",\"nickname\":\"Arda\",\"nationality\":\"TR\",\"birthYear\":2009,\"position\":\"CB\",\"foot\":\"R\",\"appearance\":{\"skin\":1,\"hairStyle\":2,\"hairColor\":0,\"beard\":0,\"eyeColor\":1,\"face\":0,\"accessory\":0,\"gender\":\"male\"},\"archetype\":\"wall\",\"background\":\"academy\",\"attrs\":{\"pace\":42,\"stamina\":31,\"strength\":35,\"agility\":39,\"jumping\":35,\"passing\":35,\"shooting\":44,\"finishing\":53,\"dribbling\":37,\"firstTouch\":45,\"crossing\":27,\"heading\":46,\"tackling\":31,\"setPieces\":32,\"vision\":27,\"composure\":45,\"positioning\":57,\"leadership\":31,\"workRate\":34,\"reflexes\":8,\"handling\":5,\"gkPositioning\":24,\"gkDistribution\":26},\"attrXp\":{\"shooting\":0.5341094427942102,\"finishing\":0.38945781962630577,\"composure\":0.17026298641686183,\"heading\":0.2183825563061668,\"stamina\":0.3817547515299878,\"strength\":0.36910488994082846,\"pace\":0.33054819463087254,\"jumping\":0.1973335100591716,\"agility\":0.3817827525773196,\"dribbling\":0.3743003399301513,\"firstTouch\":0.2196202131147541,\"setPieces\":0.38886346310679604,\"crossing\":0.18049485627376424,\"positioning\":0.032387040000000006,\"vision\":0.029290831939163504,\"workRate\":0.02206249775656325,\"tackling\":0.022629587662178707,\"leadership\":0.011314793831089354},\"potential\":76,\"perkPoints\":1,\"perks\":[\"academy_discipline\"],\"form\":50,\"morale\":68,\"sharpness\":100,\"fatigue\":17.5,\"injury\":null,\"suspendedMatches\":0,\"contract\":{\"clubId\":\"TR-50\",\"wage\":300,\"untilSeason\":2028,\"signingBonus\":0,\"goalBonus\":20,\"assistBonus\":10,\"releaseClause\":null,\"role\":\"reserve\"},\"managerTrust\":45.24,\"reputation\":3,\"shirtNumber\":4,\"nationalTeam\":{\"called\":false,\"caps\":0,\"goals\":0},\"seasonStats\":{\"apps\":0,\"starts\":0,\"minutes\":0,\"goals\":0,\"assists\":0,\"shots\":0,\"shotsOnTarget\":0,\"passes\":0,\"passesCompleted\":0,\"tackles\":0,\"dribbles\":0,\"yellow\":0,\"red\":0,\"cleanSheets\":0,\"saves\":0,\"ratingSum\":0,\"motm\":0},\"careerStats\":{\"apps\":0,\"starts\":0,\"minutes\":0,\"goals\":0,\"assists\":0,\"shots\":0,\"shotsOnTarget\":0,\"passes\":0,\"passesCompleted\":0,\"tackles\":0,\"dribbles\":0,\"yellow\":0,\"red\":0,\"cleanSheets\":0,\"saves\":0,\"ratingSum\":0,\"motm\":0},\"history\":[],\"trophies\":[],\"awards\":[],\"retired\":false},\"calendar\":{\"season\":2026,\"week\":1,\"day\":5,\"slot\":0},\"meta\":{\"id\":\"fixture-v4\"},\"dataPack\":\"sp-data-2\"}"
+}

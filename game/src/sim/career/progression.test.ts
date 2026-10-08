@@ -9,8 +9,8 @@ import { makeHeroLife } from './testFixtures'
 
 /** Simulate a diligent career: 5 auto sessions + one 70-minute match per week, 44 weeks per season. */
 function simulateCareer(seed: number, position: Position, plan: TrainingType[], performance = 0.6): { potential: number; byAge: Record<number, number> } {
-  const archetype = position === 'GK' ? 'keeper' : position === 'CB' ? 'wall' : position === 'CM' ? 'playmaker' : 'poacher'
-  const { rng, hero, life } = makeHeroLife({ seed, position, archetype })
+  const role = position === 'GK' ? 'shotStopper' : position === 'CB' ? 'aerialDefender' : position === 'CM' ? 'playmaker' : 'runner'
+  const { rng, hero, life } = makeHeroLife({ seed, position, role })
   const byAge: Record<number, number> = { 17: heroOvr(hero) }
   const w = POSITION_WEIGHTS[hero.position]
   const wsum = Object.values(w).reduce((a, b) => a + (b ?? 0), 0)
