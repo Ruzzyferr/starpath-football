@@ -25,7 +25,7 @@ export function PitchPicker({ value, onChange }: { value: Position; onChange: (p
     else if (e.key === 'ArrowUp' || e.key === 'ArrowLeft') n = Math.max(0, i - 1)
     else return
     e.preventDefault()
-    onChange(ORDER[n])
+    onChange(ORDER[n]!)
     const el = (e.currentTarget as HTMLElement).querySelector<HTMLButtonElement>(`[data-pos="${ORDER[n]}"]`)
     el?.focus()
   }

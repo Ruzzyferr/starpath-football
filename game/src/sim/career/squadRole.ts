@@ -172,20 +172,20 @@ export function evaluateRoleChange(hero: Hero, life: Life, ctx: SquadContext, ca
   const ti = roleIndex(target)
   if (ti === ci) return []
   const next = ROLE_ORDER[ci + Math.sign(ti - ci)]
-  hero.contract.role = next
+  hero.contract.role = next!
   const week = absWeek(cal)
-  if (roleIndex(next) > ci) {
+  if (roleIndex(next!) > ci) {
     hero.morale = meter(hero.morale + 6)
     changeRelation(life, MANAGER_REL, 3, { memory: lt('Sana daha büyük rol verdi.', 'Gave you a bigger role.'), week })
     if (next === 'captain') {
       hero.morale = meter(hero.morale + 6)
       return [lt('©️ Kaptanlık pazubandı artık senin! Takımı sen yöneteceksin.', '©️ The captain’s armband is yours! You lead the team now.')]
     }
-    return [fill(lt('⬆️ Yeni rolün: {r}. Teknik direktör sana güveniyor.', '⬆️ New role: {r}. The manager believes in you.'), { r: ROLE_NAMES[next] })]
+    return [fill(lt('⬆️ Yeni rolün: {r}. Teknik direktör sana güveniyor.', '⬆️ New role: {r}. The manager believes in you.'), { r: ROLE_NAMES[next!] })]
   }
   hero.morale = meter(hero.morale - 8)
   life.stress = meter(life.stress + 5)
-  return [fill(lt('⬇️ Rolün düştü: {r}. Formaya yeniden hak kazanmalısın.', '⬇️ Role dropped to {r}. You need to win your place back.'), { r: ROLE_NAMES[next] })]
+  return [fill(lt('⬇️ Rolün düştü: {r}. Formaya yeniden hak kazanmalısın.', '⬇️ Role dropped to {r}. You need to win your place back.'), { r: ROLE_NAMES[next!] })]
 }
 
 /** Base start probability per role. */

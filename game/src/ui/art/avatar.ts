@@ -344,12 +344,12 @@ function beard(style: number, g: FaceGeo, c: string): string {
 
 export function avatarSvg(a: Appearance, opts: AvatarOpts = {}): string {
   const skin = SKIN_TONES[mod(a.skin, SKIN_TONES.length)]
-  let hair: string = HAIR_COLORS[mod(a.hairColor, HAIR_COLORS.length)]
+  let hair: string = HAIR_COLORS[mod(a.hairColor, HAIR_COLORS.length)]!
   const age = opts.age ?? 24
   if (age >= 34) hair = mix(hair, '#c9ccd2', Math.min(0.7, (age - 33) * 0.12))
   const eye = EYE_COLORS[mod(a.eyeColor, EYE_COLORS.length)]
   const female = (opts.gender ?? a.gender) === 'female'
-  const g0 = FACES[mod(a.face, FACES.length)]
+  const g0 = FACES[mod(a.face, FACES.length)]!
   // Female faces: slightly narrower jaw and finer chin.
   const g: FaceGeo = female ? { ...g0, jw: g0.jw - 1.8, cw: Math.max(5, g0.cw - 2) } : g0
   const style = mod(a.hairStyle, female ? FEMALE_HAIR_STYLE_COUNT : HAIR_STYLE_COUNT)
@@ -362,12 +362,12 @@ export function avatarSvg(a: Appearance, opts: AvatarOpts = {}): string {
     ? uid('avf', a.skin, a.hairStyle, a.hairColor, a.eyeColor, a.face, a.accessory, shirt, trim, age, mood, opts.background ?? '')
     : uid('av', a.skin, a.hairStyle, a.hairColor, a.beard, a.eyeColor, a.face, a.accessory, shirt, trim, age, mood, opts.background ?? '')
 
-  const skinHi = shade(skin, 0.1)
-  const skinLo = shade(skin, -0.16)
-  const skinLine = shade(skin, -0.42)
+  const skinHi = shade(skin!, 0.1)
+  const skinLo = shade(skin!, -0.16)
+  const skinLine = shade(skin!, -0.42)
   const hairDark = shade(hair, -0.35)
   const brow = shade(hair, -0.15)
-  const lip = female ? mix(shade(skin, -0.2), '#b4505e', 0.45) : mix(shade(skin, -0.28), '#b4565a', 0.28)
+  const lip = female ? mix(shade(skin!, -0.2), '#b4505e', 0.45) : mix(shade(skin!, -0.28), '#b4565a', 0.28)
 
   const defs =
     `<defs>` +
@@ -406,10 +406,10 @@ export function avatarSvg(a: Appearance, opts: AvatarOpts = {}): string {
     `<circle cx="${cx + dir * 0.3}" cy="${eyeY}" r="2.55" fill="${eye}"/>` +
     `<circle cx="${cx + dir * 0.3}" cy="${eyeY}" r="1.15" fill="#0d0a08"/>` +
     `<circle cx="${cx + dir * 0.3 - 0.9}" cy="${eyeY - 0.9}" r=".7" fill="#fff"/>` +
-    `<path d="M${cx - 5.4} ${eyeY + 0.2}C${cx - 3} ${eyeY - 4} ${cx + 3} ${eyeY - 4} ${cx + 5.4} ${eyeY - 0.4}" stroke="${shade(skin, -0.6)}" stroke-width="1.5" fill="none" stroke-linecap="round"/>` +
+    `<path d="M${cx - 5.4} ${eyeY + 0.2}C${cx - 3} ${eyeY - 4} ${cx + 3} ${eyeY - 4} ${cx + 5.4} ${eyeY - 0.4}" stroke="${shade(skin!, -0.6)}" stroke-width="1.5" fill="none" stroke-linecap="round"/>` +
     `<path d="M${cx - 4} ${eyeY + 3.4}Q${cx} ${eyeY + 4.6} ${cx + 4} ${eyeY + 3.2}" stroke="${skinLine}" stroke-width=".6" fill="none" opacity=".45"/>`
   const lash = (cx: number, dir: number) =>
-    `<path d="M${cx + dir * 5.2} ${eyeY - 0.6}l${dir * 1.8} -1.6M${cx + dir * 3.6} ${eyeY - 2.4}l${dir * 1.2} -1.8" stroke="${shade(skin, -0.65)}" stroke-width="1" stroke-linecap="round"/>`
+    `<path d="M${cx + dir * 5.2} ${eyeY - 0.6}l${dir * 1.8} -1.6M${cx + dir * 3.6} ${eyeY - 2.4}l${dir * 1.2} -1.8" stroke="${shade(skin!, -0.65)}" stroke-width="1" stroke-linecap="round"/>`
   const eyes = eyeFn(47.5, 1) + eyeFn(72.5, -1) + (female ? lash(47.5, -1) + lash(72.5, 1) : '')
   const brows = female
     ? `<path d="M42 ${53.5 - browTilt}Q47.5 48.6 54 ${52 + browTilt * 0.4}" stroke="${brow}" stroke-width="1.7" fill="none" stroke-linecap="round"/>` +

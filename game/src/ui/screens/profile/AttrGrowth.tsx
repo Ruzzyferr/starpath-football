@@ -23,7 +23,7 @@ export function AttrGrowth() {
   }
   const now = radarValues(s.hero.attrs)
   const then = radarValues(cmp.then)
-  const top = cmp.deltas[0]
+  const top = cmp.deltas[0]!
   const series = attrSeries(s.attrHistory, top.key).map((p) => p.value)
   const when = seasonLabel(cmp.season)
   return (

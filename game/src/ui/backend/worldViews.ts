@@ -241,7 +241,7 @@ export function cupsView(): CupsView | null {
     continental: cupView(s, comps[continentalCompId(season)]),
     qualifying: cupView(s, comps[continentalQualifyingCompId(season)]),
     playoff: club ? cupView(s, comps[playoffCompId(season, club.leagueId)]) : null,
-    coefficients: coefficientRanking(s.world).map((c) => ({ country: c.countryId, name: s.world.countries[c.countryId].name, flag: s.world.countries[c.countryId].flag, total: c.total, seasons: c.seasons })),
+    coefficients: coefficientRanking(s.world).map((c) => ({ country: c.countryId, name: s.world.countries[c.countryId]!.name, flag: s.world.countries[c.countryId]!.flag, total: c.total, seasons: c.seasons })),
     scorers,
   }
 }

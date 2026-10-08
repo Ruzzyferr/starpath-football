@@ -41,7 +41,7 @@ export class FakeParam {
 
   /** Last scheduled target value (or the static value). */
   get last(): number {
-    return this.events.length ? this.events[this.events.length - 1].value : this.value
+    return this.events.length ? this.events[this.events.length - 1]!.value : this.value
   }
 }
 
@@ -97,7 +97,7 @@ export class FakeBuffer {
   }
 
   getChannelData(c: number): Float32Array {
-    return this.data[c]
+    return this.data[c]!
   }
 }
 

@@ -97,7 +97,7 @@ describe('round-2 content packs', () => {
   it('business deltas: boost, manager and free expansion change the shop', () => {
     const s = vet(5)
     openBusiness(s.life, s.hero, 'restaurant', s.calendar)
-    const b = s.life.businesses![0]
+    const b = s.life.businesses![0]!
     const def = getEventDef('business.expand_restaurant')!
     const r = applyEffectResult(s, new Rng(1), def, {}, fx(t('x', 'x'), bizBoost(3, 1.3, 6), bizManager(true), bizExpand(200_000, 2)))
     expect(b.boost).toEqual({ mult: 1.3, weeks: 6 })

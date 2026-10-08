@@ -93,7 +93,7 @@ export function autopilotStep(rt: HighlightRuntime, st: AutopilotState): void {
     if (rt.ball.z > 0.8) {
       // Aerial ball: get to where it drops to head height, jump just before it arrives.
       const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
-      const drop = pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1].z) ?? pts[pts.length - 1]
+      const drop = (pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
       moveTo({ x: drop.x, y: drop.y }, true)
       const eta = dist(hero.pos, ball) / Math.max(4, Math.hypot(rt.ball.vx, rt.ball.vy))
       if (eta < 0.3 && dist(hero.pos, { x: drop.x, y: drop.y }) < 1.5) act({ kind: 'action' })

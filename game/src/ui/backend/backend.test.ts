@@ -60,8 +60,8 @@ describe('real backend end to end', () => {
     expect(D.perks().length).toBeGreaterThan(20)
     expect(D.trainingSessions().length).toBeGreaterThanOrEqual(7)
     expect(D.trainerOffers().length).toBeGreaterThan(0)
-    const club = S().world.clubs[S().hero.contract!.clubId]
-    expect(D.leagueTable(club.leagueId)?.length).toBe(club ? S().world.leagues[club.leagueId].clubIds.length : 0)
+    const club = S().world.clubs[S().hero.contract!.clubId]!
+    expect(D.leagueTable(club.leagueId)?.length).toBe(club ? S().world.leagues[club.leagueId]!.clubIds.length : 0)
     expect(D.ovrHistory().length).toBeGreaterThanOrEqual(2)
     for (const it of D.interest()) expect(it.club.name).toBeTruthy()
     expect(D.socialFeed().length).toBeGreaterThan(0)
@@ -78,7 +78,7 @@ describe('real backend end to end', () => {
     const morning = acts.find((a) => a.available && a.category === 'training' && a.id.startsWith('train_'))!
     expect(morning).toBeDefined()
     A.planSlot(0, morning.id)
-    expect(D.dayPlan().slots[0].activityId).toBe(morning.id)
+    expect(D.dayPlan().slots[0]!.activityId).toBe(morning.id)
     const energy0 = S().life.energy
     A.advance()
     expect(S().calendar.slot).toBe(1)
@@ -95,7 +95,7 @@ describe('real backend end to end', () => {
     clearEvents()
     const fx = D.nextFixture()!
     expect(fx.daysUntil).toBe(0)
-    expect(D.dayPlan().slots[1].state).toBe('match')
+    expect(D.dayPlan().slots[1]!.state).toBe('match')
 
     // ── Live match, every moment simmed ──
     A.playMatch()
@@ -151,7 +151,7 @@ describe('real backend end to end', () => {
     clearEvents()
 
     // ── Buy an asset (top up cash to afford the cheapest item) ──
-    const cheapest = [...ASSETS].filter((a) => (a.minReputation ?? 0) <= S().hero.reputation).sort((a, b) => a.price - b.price)[0]
+    const cheapest = [...ASSETS].filter((a) => (a.minReputation ?? 0) <= S().hero.reputation).sort((a, b) => a.price - b.price)[0]!
     S().life.money += cheapest.price + 5000
     const owned0 = S().life.assets.length
     expect(A.buy(cheapest.id)).toBe(true)
@@ -179,12 +179,12 @@ describe('real backend end to end', () => {
 
     // ── Contract negotiation: use a real offer if any, else table a transfer offer from a league rival ──
     if (getOffers(S()).length === 0) {
-      const own = S().world.clubs[S().hero.contract!.clubId]
+      const own = S().world.clubs[S().hero.contract!.clubId]!
       const rival = Object.values(S().world.clubs).find((c) => c.id !== own.id && c.leagueId === own.leagueId)!
       const contract = generateContractOffer(new Rng(5), S().hero, { club: clubContextOf(S(), rival.id), season: S().calendar.season, kind: 'transfer' })
       setOffers(S(), [{ id: 'test-offer', clubId: rival.id, clubName: rival.name, fee: 25_000, isLoan: false, viaReleaseClause: false, contract }])
     }
-    const offer = getOffers(S())[0]
+    const offer = getOffers(S())[0]!
     A.openNegotiation(offer.clubId)
     const n = negotiation.value!
     expect(n.status).toBe('open')
@@ -201,8 +201,8 @@ describe('real backend end to end', () => {
     await A.save()
     await flushAutosave()
     const slots = D.saveSlots()
-    expect(slots[0].empty).toBe(false)
-    expect(slots[0].heroName).toBe('Arda Yıldız')
+    expect(slots[0]!.empty).toBe(false)
+    expect(slots[0]!.heroName).toBe('Arda Yıldız')
     const before = S()
     const key = JSON.stringify({
       hero: before.hero, cal: before.calendar, money: before.life.money, assets: before.life.assets, rels: before.life.relationships,
@@ -221,7 +221,7 @@ describe('real backend end to end', () => {
     // Export / import round trip into slot 3.
     const json = await A.exportSave(1)
     expect(await A.importSave(json, 3)).toBe(true)
-    expect(D.saveSlots()[2].empty).toBe(false)
+    expect(D.saveSlots()[2]!.empty).toBe(false)
   }, 120_000)
 
   it('reaches the end of the season and serves the season review', () => {

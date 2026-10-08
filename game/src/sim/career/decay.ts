@@ -58,7 +58,7 @@ export function weeklySkillDecay(hero: Hero): Lines {
 function pickPhysical(hero: Hero, step: number): AttributeKey {
   // Highest physical attribute first (that is what fades fastest), ties broken by rotation.
   const sorted = ROTATION.map((k, i) => ({ k, v: hero.attrs[k] - ((i + step) % ROTATION.length) * 0.01 })).sort((a, b) => b.v - a.v)
-  return sorted[0].k
+  return sorted[0]!.k
 }
 
 const TR: Partial<Record<AttributeKey, string>> = { pace: 'Hız', stamina: 'Dayanıklılık', agility: 'Çeviklik', strength: 'Güç', firstTouch: 'İlk dokunuş' }

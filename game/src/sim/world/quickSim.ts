@@ -98,18 +98,18 @@ function pickByWeight(rng: Rng, lineup: Lineup, weights: Readonly<Record<Positio
   const idx: number[] = []
   for (let i = 0; i < lineup.playerIds.length; i++) if (lineup.playerIds[i] !== exclude) idx.push(i)
   if (!idx.length) return null
-  const i = rng.weighted(idx, (k) => weights[lineup.slots[k]] * Math.pow(Math.max(lineup.ratings[k], 20) / 70, 3))
-  return lineup.playerIds[i]
+  const i = rng.weighted(idx, (k) => weights[lineup.slots[k]!] * Math.pow(Math.max(lineup.ratings[k]!, 20) / 70, 3))
+  return lineup.playerIds[i]!
 }
 
 function penaltyTaker(lineup: Lineup): string | null {
   let best = -1
   let id: string | null = null
   lineup.slots.forEach((slot, i) => {
-    const v = lineup.ratings[i] * (SCORER_WEIGHT[slot] >= 2.5 ? 1.1 : slot === 'CM' ? 1 : 0.7)
+    const v = lineup.ratings[i]! * (SCORER_WEIGHT[slot] >= 2.5 ? 1.1 : slot === 'CM' ? 1 : 0.7)
     if (v > best) {
       best = v
-      id = lineup.playerIds[i]
+      id = lineup.playerIds[i]!
     }
   })
   return id
@@ -169,14 +169,14 @@ function rateStarters(
   const result = goalsFor > goalsAgainst ? 0.35 : goalsFor < goalsAgainst ? -0.35 : 0
   lineup.playerIds.forEach((id, i) => {
     const slot = lineup.slots[i]
-    let r = 6.4 + result + rng.normal(0, 0.45) + (lineup.ratings[i] - 65) * 0.01
+    let r = 6.4 + result + rng.normal(0, 0.45) + (lineup.ratings[i]! - 65) * 0.01
     for (const g of goals) {
       if (g.team !== team) continue
       if (g.playerId === id && !g.ownGoal) r += 1
       if (g.assistId === id) r += 0.6
     }
     for (const g of goals) if (g.ownGoal && g.playerId === id && g.team !== team) r -= 0.8
-    if (DEFENSIVE_SLOTS.has(slot)) r += goalsAgainst === 0 ? 0.6 : -0.15 * Math.max(0, goalsAgainst - 1)
+    if (DEFENSIVE_SLOTS.has(slot!)) r += goalsAgainst === 0 ? 0.6 : -0.15 * Math.max(0, goalsAgainst - 1)
     out[id] = Math.round(clamp(r, 3, 10) * 10) / 10
   })
 }

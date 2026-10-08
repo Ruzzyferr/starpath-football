@@ -45,11 +45,11 @@ export function buildLineup(s: GameState, club: Club, _side: 'home' | 'away', wi
       return { id: 'hero', name: h.nickname || h.lastName, number: h.shirtNumber, position: pos, ovr: 0, isHero: true, x: fx, y: fy }
     }
     const cand = squad
-      .filter((p) => !used.has(p.id))
+      .filter((p) => !used.has(p!.id))
       .sort((a, b) => {
-        const ra = NEAR[pos].indexOf(a.position)
-        const rb = NEAR[pos].indexOf(b.position)
-        return (ra < 0 ? 9 : ra) - (rb < 0 ? 9 : rb) || b.ovr - a.ovr
+        const ra = NEAR[pos].indexOf(a!.position)
+        const rb = NEAR[pos].indexOf(b!.position)
+        return (ra < 0 ? 9 : ra) - (rb < 0 ? 9 : rb) || b!.ovr - a!.ovr
       })[0]
     if (cand) used.add(cand.id)
     const num = cand ? (hashString(cand.id) % 30) + 1 : i + 1
@@ -101,7 +101,7 @@ const L = (): Lang => settings.value.lang
 function txt(key: string, vars: Record<string, string> = {}): string {
   const pair = TXT[key] ?? ['', '']
   let s = L() === 'tr' ? pair[0] : pair[1]
-  for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, vars[k])
+  for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, vars[k]!)
   return s
 }
 
@@ -138,7 +138,7 @@ export function emptyHeroStats(): HeroMatchStatsView {
 
 export function weatherFor(seed: number, week: number): Weather {
   const ws: Weather[] = ['clear', 'clear', 'rain', 'wind', 'clear', week > 14 && week < 26 ? 'snow' : 'hot']
-  return ws[seed % ws.length]
+  return ws[seed % ws.length]!
 }
 
 export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void }) {
@@ -259,11 +259,11 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
       r.corners[si]++
       push('corner', side, txt('corner', { team: teamName(side) }))
     } else if (roll < 0.175) {
-      r.fouls[1 - si]++
+      r.fouls[1 - si]!++
       push('freekick', side, txt('freekick', { team: teamName(side) }))
     } else if (roll < 0.19) {
       const other = side === 'home' ? 'away' : 'home'
-      r.fouls[1 - si]++
+      r.fouls[1 - si]!++
       push('yellow', other, txt('yellow', { name: name(other) }))
     } else if (roll < 0.205) push('offside', side, txt('offside', { name: name(side) }))
     else if (roll < 0.24) push('chance', side, txt('chance', { team: teamName(side) }))
@@ -273,7 +273,7 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
     if (v.heroOnPitch && v.minute >= r.nextMoment && v.minute < 89) {
       const kinds = ['one_on_one', 'edge_of_box', 'cross', 'counter', 'build_up', rng.chance(0.15) ? 'penalty' : 'freekick']
       const kind = rng.pick(kinds)
-      const pr = MOMENT_PROMPTS[kind]
+      const pr = MOMENT_PROMPTS[kind]!
       v.pendingMoment = { id: `m${v.minute}`, minute: v.minute, kind, prompt: L() === 'tr' ? pr[0] : pr[1] }
       push('highlight', v.heroSide, v.pendingMoment.prompt, true)
       r.nextMoment = v.minute + rng.int(15, 25)
@@ -475,14 +475,14 @@ const MOCK_KINDS: Record<string, string[]> = {
   GK: ['gk_save', 'fk_wall'],
 }
 const kindPool = (p: Position): string[] =>
-  p === 'GK' ? MOCK_KINDS.GK : p === 'ST' ? MOCK_KINDS.ST : p === 'LW' || p === 'RW' ? MOCK_KINDS.W : p === 'CB' || p === 'LB' || p === 'RB' ? MOCK_KINDS.D : MOCK_KINDS.M
+  p === 'GK' ? MOCK_KINDS.GK! : p === 'ST' ? MOCK_KINDS.ST! : p === 'LW' || p === 'RW' ? MOCK_KINDS.W! : p === 'CB' || p === 'LB' || p === 'RB' ? MOCK_KINDS.D! : MOCK_KINDS.M!
 
 /** Mock "expected moments" preview. */
 export function mockExpectedMoments(position: Position, starting: boolean): NonNullable<PreMatchView['expectedMoments']> {
   const pool = kindPool(position)
   const w = pool.map((_, i) => 1 / (i + 1.2))
   const tot = w.reduce((a, b) => a + b, 0)
-  return { min: starting ? 4 : 1, max: starting ? 7 : 3, kinds: pool.map((kind, i) => ({ kind, share: w[i] / tot })) }
+  return { min: starting ? 4 : 1, max: starting ? 7 : 3, kinds: pool.map((kind, i) => ({ kind, share: w[i]! / tot })) }
 }
 
 const L2 = (tr: string, en: string) => ({ tr, en })
@@ -500,12 +500,12 @@ export function mockPostDetails(m: FinishedMatch, s: GameState): Pick<PostMatchV
   const extra = ['saved', 'missed', 'lost_ball', 'pass_complete', 'defended'] as const
   for (let i = 0; i < 3; i++) {
     const outcome = extra[rng.int(0, extra.length - 1)]
-    log.push({ minute: rng.int(3, 89), source: 'moment', key: outcome, kind: pool[rng.int(0, pool.length - 1)], outcome, delta: MOCK_DELTA[outcome], ...(i === 2 ? { auto: true } : {}) })
+    log.push({ minute: rng.int(3, 89), source: 'moment', key: outcome!, kind: pool[rng.int(0, pool.length - 1)], outcome, delta: MOCK_DELTA[outcome!], ...(i === 2 ? { auto: true } : {}) })
   }
   const my = m.heroSide === 'home' ? 0 : 1
   for (const g of m.scorers) log.push({ minute: g.minute, source: 'team', key: g.side === m.heroSide ? 'goalFor' : 'goalAgainst', delta: g.side === m.heroSide ? 0.1 : -0.05 })
   const gf = m.score[my]
-  const ga = m.score[1 - my]
+  const ga = m.score[1 - my]!
   if (gf !== ga) log.push({ minute: 90, source: 'final', key: 'result', delta: gf > ga ? 0.3 : -0.3 })
   if (st.passes >= 8) log.push({ minute: 90, source: 'final', key: 'passing', delta: Math.round((st.passesCompleted / st.passes - 0.78) * 1.5 * 100) / 100 })
   log.sort((a, b) => a.minute - b.minute)
@@ -524,7 +524,7 @@ export function mockPostDetails(m: FinishedMatch, s: GameState): Pick<PostMatchV
   let goals = st.goals
   const misses = ['missed', 'blocked', 'woodwork'] as const
   for (let i = 0; i < st.shots; i++) {
-    const outcome = goals > 0 ? 'goal' : i < st.shotsOnTarget ? 'saved' : misses[rng.int(0, 2)]
+    const outcome = goals > 0 ? 'goal' : i < st.shotsOnTarget ? 'saved' : misses[rng.int(0, 2)]!
     if (outcome === 'goal') goals--
     const x = clamp(rng.range(0.74, 0.95), 0, 1)
     const y = clamp(rng.range(0.3, 0.7), 0, 1)

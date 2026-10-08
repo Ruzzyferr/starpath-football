@@ -46,9 +46,9 @@ export function hitCloth(c: NetCloth, y: number, z: number, strength: number): v
       const r2 = (i - fi) ** 2 + (j - fj) ** 2
       const push = strength * Math.exp(-r2 / 1.6)
       const k = idx(i, j)
-      c.d[k] += push * 0.8
+      c.d[k]! += push * 0.8
       // Give the nodes outward velocity too (verlet: move prev back).
-      c.prev[k] = c.d[k] - push * 0.4
+      c.prev[k] = c.d[k]! - push * 0.4
     }
   }
   c.t = 0
@@ -70,9 +70,9 @@ export function stepCloth(c: NetCloth, dt: number): void {
           next[k] = 0
           continue
         }
-        const lap = c.d[idx(i - 1, j)] + c.d[idx(i + 1, j)] + c.d[idx(i, j - 1)] + c.d[idx(i, j + 1)] - 4 * c.d[k]
+        const lap = c.d[idx(i - 1, j)]! + c.d[idx(i + 1, j)]! + c.d[idx(i, j - 1)]! + c.d[idx(i, j + 1)]! - 4 * c.d[k]!
         // Verlet: x' = x + (x − x_prev)·damp + a·dt² (stiffness folded into STIFF), plus a pull back to rest.
-        next[k] = c.d[k] + (c.d[k] - c.prev[k]) * DAMP + STIFF * lap - 0.05 * c.d[k]
+        next[k] = c.d[k]! + (c.d[k]! - c.prev[k]!) * DAMP + STIFF * lap - 0.05 * c.d[k]!
       }
     }
     c.prev.set(c.d)
@@ -83,7 +83,7 @@ export function stepCloth(c: NetCloth, dt: number): void {
 /** Largest |displacement| on the grid (m). */
 export function clothEnergy(c: NetCloth): number {
   let m = 0
-  for (let k = 0; k < c.d.length; k++) m = Math.max(m, Math.abs(c.d[k]))
+  for (let k = 0; k < c.d.length; k++) m = Math.max(m, Math.abs(c.d[k]!))
   return m
 }
 
@@ -98,7 +98,7 @@ export function clothAt(c: NetCloth, y: number, z: number): number {
   const j0 = Math.min(NET_ROWS - 2, Math.floor(fj))
   const u = fi - i0
   const v = fj - j0
-  const a = c.d[idx(i0, j0)] * (1 - u) + c.d[idx(i0 + 1, j0)] * u
-  const b = c.d[idx(i0, j0 + 1)] * (1 - u) + c.d[idx(i0 + 1, j0 + 1)] * u
+  const a = c.d[idx(i0, j0)]! * (1 - u) + c.d[idx(i0 + 1, j0)]! * u
+  const b = c.d[idx(i0, j0 + 1)]! * (1 - u) + c.d[idx(i0 + 1, j0 + 1)]! * u
   return a * (1 - v) + b * v
 }

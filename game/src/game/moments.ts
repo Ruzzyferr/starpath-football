@@ -54,7 +54,7 @@ export function momentScore(outcome: HighlightOutcome, frames: number): number {
 /** Keep every `step`-th frame (always the last) — halves memory at 30 fps. */
 export function compactFrames(frames: readonly ReplayFrame[], step = 2): ReplayFrame[] {
   const out: ReplayFrame[] = []
-  for (let i = 0; i < frames.length; i += step) out.push(frames[i])
+  for (let i = 0; i < frames.length; i += step) out.push(frames[i]!)
   const last = frames[frames.length - 1]
   if (last && out[out.length - 1] !== last) out.push(last)
   return out

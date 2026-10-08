@@ -27,13 +27,13 @@ describe('stats guard helpers', () => {
   it('a career run is deterministic per seed (rng streams are stable)', () => {
     const cfg = standardMix(1, 1, 4242)[0]
     // Exact equality: no module-level state may leak between runs in one process.
-    expect(JSON.stringify(runCareer(cfg))).toBe(JSON.stringify(runCareer(cfg)))
+    expect(JSON.stringify(runCareer(cfg!))).toBe(JSON.stringify(runCareer(cfg!)))
   }, 60_000)
   it('interleaved seeds do not leak state: A, B, A gives byte-identical careers and game states', () => {
     const [a, b] = [standardMix(1, 1, 4242)[0], standardMix(1, 1, 777)[0]]
-    const careerA1 = JSON.stringify(runCareer(a))
-    const careerB = JSON.stringify(runCareer(b))
-    const careerA2 = JSON.stringify(runCareer(a))
+    const careerA1 = JSON.stringify(runCareer(a!))
+    const careerB = JSON.stringify(runCareer(b!))
+    const careerA2 = JSON.stringify(runCareer(a!))
     expect(careerA2).toBe(careerA1)
     expect(careerB).not.toBe(careerA1)
     const playWeeks = (seed: number): string => {

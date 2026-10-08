@@ -29,7 +29,7 @@ export function TrophiesScreen() {
   type Slot = { kind: 'trophy'; name: string; season: number } | { kind: 'empty'; hint: string }
   const slots: Slot[] = [
     ...tList.map((x) => ({ kind: 'trophy' as const, name: lt(x.name), season: x.season })),
-    ...Array.from({ length: emptySlots }, (_, i) => ({ kind: 'empty' as const, hint: goals[i % goals.length] })),
+    ...Array.from({ length: emptySlots }, (_, i) => ({ kind: 'empty' as const, hint: goals[i % goals.length]! })),
   ]
   const shelves: Slot[][] = []
   for (let i = 0; i < slots.length; i += PER_SHELF) shelves.push(slots.slice(i, i + PER_SHELF))

@@ -101,13 +101,13 @@ export interface TeamRating {
 export function rateLineup(world: World, lineup: Lineup): TeamRating {
   let att = 0, attW = 0, def = 0, defW = 0, sum = 0, morale = 0
   lineup.slots.forEach((slot, i) => {
-    const r = lineup.ratings[i]
+    const r = lineup.ratings[i]!
     att += r * ATTACK_WEIGHT[slot]
     attW += ATTACK_WEIGHT[slot]
     def += r * DEFENSE_WEIGHT[slot]
     defW += DEFENSE_WEIGHT[slot]
     sum += r
-    morale += world.players[lineup.playerIds[i]]?.morale ?? 60
+    morale += world.players[lineup.playerIds[i]!]?.morale ?? 60
   })
   const n = lineup.slots.length
   const missing = Math.max(0, LINEUP_SIZE - n)

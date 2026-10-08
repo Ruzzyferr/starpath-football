@@ -27,7 +27,7 @@ describe('2.6#1/#2 deterministic, sized world', () => {
 describe('2.6#5/#10 names', () => {
   it('no two players of a club share a full name', () => {
     for (const c of Object.values(world().clubs)) {
-      const names = c.squad.map((id) => `${world().players[id].firstName} ${world().players[id].lastName}`)
+      const names = c.squad.map((id) => `${world().players[id]!.firstName} ${world().players[id]!.lastName}`)
       expect(new Set(names).size, c.id).toBe(names.length)
     }
   })
@@ -36,7 +36,7 @@ describe('2.6#5/#10 names', () => {
     const hits = Object.values(w.players).filter((p) => isRealPersonName(p.firstName, p.lastName)).map((p) => p.firstName + ' ' + p.lastName)
     for (const c of Object.values(w.clubs)) {
       const [first, ...rest] = c.managerName.split(' ')
-      if (isRealPersonName(first, rest.join(' '))) hits.push(c.managerName)
+      if (isRealPersonName(first!, rest.join(' '))) hits.push(c.managerName)
     }
     expect(hits).toEqual([])
     // The guard: a blacklisted draw is re-rolled; the pools do contain combinations such as Sergio Ramos.
@@ -97,7 +97,7 @@ describe('2.6#69/#70 fixture rules', () => {
   it('no club plays 3 league games in a row at the same ground', () => {
     for (const [id, list] of clubFixtures(world())) {
       const lg = list.filter((x) => x.league).sort((a, b) => a.t - b.t)
-      for (let i = 2; i < lg.length; i++) expect(lg[i].home === lg[i - 1].home && lg[i].home === lg[i - 2].home, `${id} round ${lg[i].round}`).toBe(false)
+      for (let i = 2; i < lg.length; i++) expect(lg[i]!.home === lg[i - 1]!.home && lg[i]!.home === lg[i - 2]!.home, `${id} round ${lg[i]!.round}`).toBe(false)
     }
   })
   it('derbies (same city) are kept out of the first rounds', () => {
@@ -109,12 +109,12 @@ describe('2.6#69/#70 fixture rules', () => {
       expect(fixtures).toHaveLength(16 * 15)
     }
     const w = world()
-    for (const comp of Object.values(w.competitions)) if (comp.type === 'league') for (const f of comp.fixtures) if (f.round < DERBY_FREE_ROUNDS) expect(w.clubs[f.homeId].city === w.clubs[f.awayId].city, f.id).toBe(false)
+    for (const comp of Object.values(w.competitions)) if (comp.type === 'league') for (const f of comp.fixtures) if (f.round < DERBY_FREE_ROUNDS) expect(w.clubs[f.homeId]!.city === w.clubs[f.awayId]!.city, f.id).toBe(false)
   })
   it('no club plays twice within 72 hours', () => {
     for (const [id, list] of clubFixtures(world())) {
       const ts = list.map((x) => x.t).sort((a, b) => a - b)
-      for (let i = 1; i < ts.length; i++) expect(ts[i] - ts[i - 1], id).toBeGreaterThanOrEqual(3)
+      for (let i = 1; i < ts.length; i++) expect(ts[i]! - ts[i - 1]!, id).toBeGreaterThanOrEqual(3)
     }
   })
 })

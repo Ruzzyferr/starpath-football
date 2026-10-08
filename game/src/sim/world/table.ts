@@ -106,7 +106,7 @@ export function sortTable(rows: readonly TableRow[], fixtures?: readonly Fixture
   let i = 0
   while (i < sorted.length) {
     let j = i + 1
-    while (j < sorted.length && primaryCompare(sorted[i], sorted[j]) === 0) j++
+    while (j < sorted.length && primaryCompare(sorted[i]!, sorted[j]!) === 0) j++
     if (j - i > 1) {
       const tied = sorted.slice(i, j)
       sorted.splice(i, j - i, ...sortByHeadToHead(tied, fixtures))
@@ -121,7 +121,7 @@ function sortHeadToHeadFirst(rows: readonly TableRow[], fixtures: readonly Fixtu
   let i = 0
   while (i < sorted.length) {
     let j = i + 1
-    while (j < sorted.length && sorted[j].pts === sorted[i].pts) j++
+    while (j < sorted.length && sorted[j]!.pts === sorted[i]!.pts) j++
     if (j - i > 1) {
       const tied = sorted.slice(i, j)
       const ids = new Set(tied.map((r) => r.clubId))

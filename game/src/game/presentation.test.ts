@@ -25,8 +25,8 @@ describe('stadium tiers', () => {
   it('bigger grounds are fuller, deeper and brighter; low fx thins the crowd', () => {
     const tiers = [3_000, 12_000, 38_000, 75_000].map((c) => stadiumLook(c))
     for (let i = 1; i < tiers.length; i++) {
-      expect(tiers[i].density).toBeGreaterThan(tiers[i - 1].density)
-      expect(tiers[i].endDepth).toBeGreaterThan(tiers[i - 1].endDepth)
+      expect(tiers[i]!.density).toBeGreaterThan(tiers[i - 1]!.density)
+      expect(tiers[i]!.endDepth).toBeGreaterThan(tiers[i - 1]!.endDepth)
     }
     expect(new Set(tiers.map((t) => t.lights)).size).toBe(4)
     expect(stadiumLook(75_000, true).density).toBeLessThan(stadiumLook(75_000).density)
@@ -129,7 +129,7 @@ describe('moments store', () => {
     recordMoment({ matchKey: 'm1', minute: 20, kind: 'counter', outcome: 'goal', highlight: hl('h2'), frames, keyTime: 0.5, view: { ...view } })
     recordMoment({ matchKey: 'm1', minute: 70, kind: 'counter', outcome: 'pass_complete', highlight: hl('h3'), frames, keyTime: -1, view: { ...view } })
     expect(listMoments('m1').map((m) => m.minute)).toEqual([20, 50, 70])
-    expect(topMoments('m1', 1)[0].outcome).toBe('goal')
+    expect(topMoments('m1', 1)[0]!.outcome).toBe('goal')
     recordMoment({ matchKey: 'm2', minute: 5, kind: 'counter', outcome: 'goal', highlight: hl('h1'), frames, keyTime: 0.5, view: { ...view } })
     recordMoment({ matchKey: 'm3', minute: 5, kind: 'counter', outcome: 'goal', highlight: hl('h1'), frames, keyTime: 0.5, view: { ...view } })
     expect(listMoments('m1')).toHaveLength(0)

@@ -87,7 +87,7 @@ describe('WP-15 economy & legacy', () => {
     const cal = { season: 2026, week: 1 }
     openTermDeposit(life, 50_000, 13, cal)
     expect(life.money).toBe(50_000)
-    const td = life.bank.termDeposits![0]
+    const td = life.bank.termDeposits![0]!
     expect(netWorth(life, cal)).toBeGreaterThanOrEqual(100_000)
     const brk = structuredClone(life)
     breakTermDeposit(brk, td.id)
@@ -96,7 +96,7 @@ describe('WP-15 economy & legacy', () => {
     const before = life.money
     weeklyEconomy(new Rng(1), life, hero, { calendar: { season: 2026, week: 14, day: 1, slot: 1 } })
     expect(life.bank.termDeposits).toHaveLength(0)
-    expect(life.money - before).toBeGreaterThan(50_000 + termInterest(td) - 1000)
+    expect(life.money - before).toBeGreaterThan(50_000 + termInterest(td!) - 1000)
   })
 
   it('goalkeeper award score rewards shutouts, saves and rating', () => {

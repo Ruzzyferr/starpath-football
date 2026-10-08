@@ -321,7 +321,7 @@ export class InputController {
     }
     if (this.gesture && this.gesture.id === e.pointerId) {
       const g = this.gesture
-      const last = g.pts[g.pts.length - 1]
+      const last = g.pts[g.pts.length - 1]!
       const { w, h } = this.map.size()
       const s = Math.min(w, h)
       if (Math.hypot(p.x / s - last.sx, p.y / s - last.sy) > 0.002) g.pts.push(this.point(p, t))
@@ -434,7 +434,7 @@ export class InputController {
     // Mouse sling-shot (2.1#23): press on the ball, drag back, release — same scheme as touch.
     const ctx = this.lastCtx
     if (getControlPrefs().touchShot === 'slingshot' && ctx?.heroOnBall && !ctx.heroIsKeeper && hold.path.length >= 2) {
-      const p0 = hold.path[0]
+      const p0 = hold.path[0]!
       if (dist({ x: p0.wx, y: p0.wy }, ctx.ballPos) < MOUSE_SLING_GRAB) {
         const sw = slingshotSwipe(analyzeSwipe(hold.path), this.chipMod() ? 2 : 1)
         if (!sw.isTap) {

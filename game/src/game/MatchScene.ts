@@ -771,7 +771,7 @@ export class MatchScene extends Phaser.Scene {
       }
     } else {
       // Roof-mounted banks: along the far roof edge (and the side roofs for the ring).
-      const roofY = project(PITCH_LENGTH + 6.2 + ({ large: 6.6, mega: 7.2 } as Record<string, number>)[look.tier] * 0.96, 0).y
+      const roofY = project(PITCH_LENGTH + 6.2 + ({ large: 6.6, mega: 7.2 } as Record<string, number>)[look.tier]! * 0.96, 0).y
       for (let y = -14; y <= PITCH_WIDTH + 14; y += look.lights === 'ring' ? 9 : 12) lamps.push({ x: project(0, y).x, y: roofY, r: 6 * PPM })
       if (look.lights === 'ring') {
         for (const left of [true, false]) {
@@ -793,7 +793,7 @@ export class MatchScene extends Phaser.Scene {
       const centre = project(PITCH_LENGTH / 2, PITCH_WIDTH / 2)
       const every = look.lights === 'poles' || look.lights === 'pylons' ? 1 : this.q.profile === 'high' ? 2 : 4
       for (let i = 0; i < lamps.length; i += every) {
-        const l = lamps[i]
+        const l = lamps[i]!
         const tx = l.x + (centre.x - l.x) * 0.45
         const dyc = centre.y - l.y
         const ty = l.y + (dyc > 0 ? Math.max(14 * PPM, dyc * 0.45) : dyc * 0.45)
@@ -810,7 +810,7 @@ export class MatchScene extends Phaser.Scene {
     }
     const step = this.q.lampStep
     for (let i = 0; i < lamps.length; i += step) {
-      const l = lamps[i]
+      const l = lamps[i]!
       this.addW(this.add.image(l.x, l.y, 'fx_dot')).setDisplaySize(l.r * 2, l.r * 2).setTint(0xfff1c8).setAlpha(0.55).setBlendMode(Phaser.BlendModes.ADD).setDepth(-38)
       this.addW(this.add.image(l.x, l.y, 'fx_dot')).setDisplaySize(l.r * 0.5, l.r * 0.5).setAlpha(0.95).setBlendMode(Phaser.BlendModes.ADD).setDepth(-38)
     }
@@ -1350,13 +1350,13 @@ export class MatchScene extends Phaser.Scene {
   private startReplay(frames: ReplayFrame[], keyT: number, flash: boolean): boolean {
     if (frames.length < 8) return false
     this.mode = 'replay'
-    const t0 = frames[0].t
-    const t1 = frames[frames.length - 1].t
+    const t0 = frames[0]!.t
+    const t1 = frames[frames.length - 1]!.t
     const kT = keyT > 0 ? keyT : t1 - 1.2
     const ro = this.data0.replayOnly
     const goal = ro ? ro.outcome === 'goal' || ro.outcome === 'conceded' || ro.outcome === 'assist' : this.rt.goalTime > 0
     // Which goal the action heads for: where the ball is at the key moment.
-    const kf = frames.reduce((a, f) => (Math.abs(f.t - kT) < Math.abs(a.t - kT) ? f : a), frames[0])
+    const kf = frames.reduce((a, f) => (Math.abs(f.t - kT) < Math.abs(a!.t - kT) ? f : a), frames[0])!
     this.replay = { frames, t: t0, t0, t1, keyT: kT, goal, endX: kf.bx > PITCH_LENGTH / 2 ? PITCH_LENGTH : 0 }
     this.bannerText.setAlpha(0)
     this.bannerSub.setAlpha(0)
@@ -1487,12 +1487,12 @@ export class MatchScene extends Phaser.Scene {
     const blobW = (flat ? 1.9 : 1.0) * PPM
     v.shadow.setPosition(p.x, p.y).setScale(blobW / 64, ((0.62 * PPM) / 32) * TILT).setAlpha(0.85 * air)
     for (let i = 0; i < v.casts.length; i++) {
-      const c = v.casts[i]
+      const c = v.casts[i]!
       let ang = 0.62
       let al = 0.3
       if (this.night && this.lightSrc.length) {
         // Away from the floodlight towers.
-        const L = this.lightSrc[i % this.lightSrc.length]
+        const L = this.lightSrc[i % this.lightSrc.length]!
         ang = Math.atan2(p.y - L.y, p.x - L.x)
         al = 0.2
       }
@@ -1605,13 +1605,13 @@ export class MatchScene extends Phaser.Scene {
     if (this.trail.length > 14) this.trail.shift()
     const n = this.trail.length
     for (let i = 0; i < this.ballGhosts.length; i++) {
-      const gh = this.ballGhosts[i]
+      const gh = this.ballGhosts[i]!
       const k = n - 2 - i
       if (blur <= 0 || k < 0) {
         gh.setVisible(false)
         continue
       }
-      const q = this.trail[k]
+      const q = this.trail[k]!
       gh.setVisible(true).setPosition(q.x, q.y).setScale(scale * (1 - i * 0.08)).setAlpha(blur * (0.42 - i * 0.12)).setDepth(depth - 0.002 - i * 0.001)
     }
     // Trail ribbon for real shots (gold tint on the hero's hard strikes).
@@ -1622,7 +1622,7 @@ export class MatchScene extends Phaser.Scene {
       for (let i = 1; i < n; i++) {
         const t = i / n
         this.trailG.lineStyle(BALL_D * 0.8 * t, col, 0.3 * t * Math.min(1, (speed - 15) / 10))
-        this.trailG.lineBetween(this.trail[i - 1].x, this.trail[i - 1].y, this.trail[i].x, this.trail[i].y)
+        this.trailG.lineBetween(this.trail[i - 1]!.x, this.trail[i - 1]!.y, this.trail[i]!.x, this.trail[i]!.y)
       }
     }
   }
@@ -1659,10 +1659,10 @@ export class MatchScene extends Phaser.Scene {
         for (const [w, c, al] of [[0.13, 0x000000, 0.3], [0.05, col, 0.55]] as const) {
           g.lineStyle(w * PPM, c, al)
           g.beginPath()
-          const p0 = project(pv.points[0].x, pv.points[0].y, pv.points[0].z)
+          const p0 = project(pv.points[0]!.x, pv.points[0]!.y, pv.points[0]!.z)
           g.moveTo(p0.x, p0.y)
           for (let i = 1; i < n; i++) {
-            const q = project(pv.points[i].x, pv.points[i].y, pv.points[i].z)
+            const q = project(pv.points[i]!.x, pv.points[i]!.y, pv.points[i]!.z)
             g.lineTo(q.x, q.y)
           }
           g.strokePath()
@@ -1670,7 +1670,7 @@ export class MatchScene extends Phaser.Scene {
       }
       // Pass target: the team-mate the ball is heading for (clearer the better the hero's vision).
       if (!shot) {
-        const end = pv.points[pv.points.length - 1]
+        const end = pv.points[pv.points.length - 1]!
         let best: Agent | null = null
         let bd = 7
         for (const a of rt.agents) {
@@ -1692,7 +1692,7 @@ export class MatchScene extends Phaser.Scene {
         }
       }
       for (let i = 1; i < n; i++) {
-        const pt = pv.points[i]
+        const pt = pv.points[i]!
         const q = project(pt.x, pt.y, pt.z)
         const t = i / n
         g.fillStyle(col, 0.95 - t * 0.55)
@@ -1707,7 +1707,7 @@ export class MatchScene extends Phaser.Scene {
       const land = showPath && LANDING_KINDS.has(pv.kind) ? firstLanding(pv.points) : -1
       if (land >= 0) {
         // Lofted balls: X at the first bounce inside a Technique error ellipse (2.2#18).
-        const q = project(pv.points[land].x, pv.points[land].y)
+        const q = project(pv.points[land]!.x, pv.points[land]!.y)
         const er = landingErrorRadius(tech) * PPM
         g.fillStyle(0xffffff, 0.08)
         g.fillEllipse(q.x, q.y, er * 2, er * 2 * TILT)
@@ -1720,7 +1720,7 @@ export class MatchScene extends Phaser.Scene {
           g.lineBetween(q.x - xr, q.y + xr * TILT, q.x + xr, q.y - xr * TILT)
         }
       } else if (n > 0) {
-        const last = pv.points[n - 1]
+        const last = pv.points[n - 1]!
         const lp = project(last.x, last.y, last.z)
         g.lineStyle(0.07 * PPM, col, 0.9)
         g.strokeEllipse(lp.x, lp.y, 0.9 * PPM, 0.9 * PPM * (shot ? 1 : TILT))
@@ -1750,12 +1750,12 @@ export class MatchScene extends Phaser.Scene {
       const ids = rt.passOptions()
       const offs = ids.length ? rt.offsideMates() : null
       for (let i = 0; i < ids.length; i++) {
-        const a = this.agentById(ids[i])
+        const a = this.agentById(ids[i]!)
         if (!a) continue
         const bp = project(a.pos.x, a.pos.y)
         const r = Math.max(0.55, 0.95 - i * 0.12) * PPM
         // Offside target: red frame (2.1#60).
-        g.lineStyle(0.08 * PPM, offs?.has(ids[i]) ? 0xff3b3b : 0x5dff8a, Math.max(0.3, 0.75 - i * 0.12))
+        g.lineStyle(0.08 * PPM, offs?.has(ids[i]!) ? 0xff3b3b : 0x5dff8a, Math.max(0.3, 0.75 - i * 0.12))
         g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT, 20)
       }
     }
@@ -2081,9 +2081,9 @@ export class MatchScene extends Phaser.Scene {
     // Find frames around t.
     const fr = rp.frames
     let i = 0
-    while (i < fr.length - 2 && fr[i + 1].t < rp.t) i++
-    const f0 = fr[i]
-    const f1 = fr[Math.min(fr.length - 1, i + 1)]
+    while (i < fr.length - 2 && fr[i + 1]!.t < rp.t) i++
+    const f0 = fr[i]!
+    const f1 = fr[Math.min(fr.length - 1, i + 1)]!
     const a = f1.t > f0.t ? clampN((rp.t - f0.t) / (f1.t - f0.t), 0, 1) : 0
     const L = (u: number, v: number) => u + (v - u) * a
     // Facing: shortest-arc interpolation.
@@ -2096,12 +2096,12 @@ export class MatchScene extends Phaser.Scene {
     for (let k = 0; k < this.views.length; k++) {
       const o = k * 5
       if (o + 4 >= f0.agents.length) continue
-      const x = L(f0.agents[o], f1.agents[o])
-      const y = L(f0.agents[o + 1], f1.agents[o + 1])
-      const z = L(f0.agents[o + 2], f1.agents[o + 2])
-      const facing = LA(f0.agents[o + 3], f1.agents[o + 3])
-      const st = STATE_CODES[f1.agents[o + 4]] ?? 'run'
-      this.drawPlayer(this.views[k], x, y, z, facing, st, rp.t, dt * rate)
+      const x = L(f0.agents[o]!, f1.agents[o]!)
+      const y = L(f0.agents[o + 1]!, f1.agents[o + 1]!)
+      const z = L(f0.agents[o + 2]!, f1.agents[o + 2]!)
+      const facing = LA(f0.agents[o + 3]!, f1.agents[o + 3]!)
+      const st = STATE_CODES[f1.agents[o + 4]!] ?? 'run'
+      this.drawPlayer(this.views[k]!, x, y, z, facing, st, rp.t, dt * rate)
     }
     const bx = L(f0.bx, f1.bx)
     const by = L(f0.by, f1.by)
@@ -2159,7 +2159,7 @@ export class MatchScene extends Phaser.Scene {
     const rt = this.rt
     const unlocked = (opts.celebration?.unlocked ?? ['knee_slide', 'airplane', 'point_sky']) as CelebrationId[]
     const id = resolveCelebration(opts.celebration?.choice, unlocked, ((this.data0.highlight.minute * 7919 + this.data0.highlight.id.length * 31) % 1000) / 1000)
-    const def = CELEBRATION_BY_ID[id]
+    const def = CELEBRATION_BY_ID[id]!
     const heroV = this.views.find((v) => v.agent.isHero)
     if (!heroV) return this.afterCelebration()
     const h = rt.hero
@@ -2318,8 +2318,8 @@ export class MatchScene extends Phaser.Scene {
       })
     }
     for (let i = 0; i < this.views.length; i++) {
-      const v = this.views[i]
-      const l = this.labels[i]
+      const v = this.views[i]!
+      const l = this.labels[i]!
       // Hero has the gold tag during play.
       if (v.agent.isHero && this.mode === 'play') {
         l.setVisible(false)
@@ -2406,7 +2406,7 @@ export class MatchScene extends Phaser.Scene {
           this.crossCam = null
           if ((e.kick === 'cross' || e.kick === 'lofted') && e.x > PITCH_LENGTH * 0.55 && rt.agents.find((a) => a.id === e.by)?.team === 'hero') {
             const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 4 })
-            const drop = pts.find((q, i) => i > 0 && q.z < 2.2 && q.z < pts[i - 1].z) ?? pts[pts.length - 1]
+            const drop = pts.find((q, i) => i > 0 && q.z < 2.2 && q.z < pts[i - 1]!.z) ?? pts[pts.length - 1]
             if (drop && drop.x > PITCH_LENGTH - 22) {
               const vp = this.cameras.main
               const f = crossCamFit({ x: e.x, y: e.y }, drop, { x: PITCH_LENGTH, y: GOAL_CENTER_Y, halfWidth: 3.66, height: 2.44 }, { w: vp.width, h: vp.height }, this.cam.base)
@@ -2755,7 +2755,7 @@ export class MatchScene extends Phaser.Scene {
 
     // Floating texts.
     for (let i = this.floaters.length - 1; i >= 0; i--) {
-      const f = this.floaters[i]
+      const f = this.floaters[i]!
       f.t += dt
       const sp = this.worldToScreen(f.wx, f.wy)
       f.text.setPosition(sp.x, sp.y - f.t * 30 * u).setAlpha(clampN((f.life - f.t) / 0.3, 0, 1)).setScale(1 + Math.max(0, 0.25 - f.t) * 1.5)

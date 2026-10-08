@@ -11,8 +11,8 @@ describe('mock backend', () => {
     expect(JSON.stringify(a.world.clubs)).toBe(JSON.stringify(b.world.clubs))
     expect(Object.keys(a.world.leagues)).toEqual(['tr1', 'tr2', 'en1', 'es1', 'de1'])
     expect(Object.keys(a.world.clubs).length).toBe(94)
-    const tr1 = a.world.competitions['tr1-2026']
-    expect(tr1.table?.[0].p).toBe(12)
+    const tr1 = a.world.competitions['tr1-2026']!
+    expect(tr1.table?.[0]!.p).toBe(12)
     expect(a.life.log.length).toBe(40)
     expect(a.life.news.length).toBe(25)
     expect(a.pendingEvents.length).toBe(2)
@@ -31,7 +31,7 @@ describe('mock backend', () => {
     A.planSlot(0, 'gym')
     A.advanceToMatch()
     expect(D.nextFixture()?.daysUntil).toBe(0)
-    expect(D.dayPlan().slots[2].state).toBe('match')
+    expect(D.dayPlan().slots[2]!.state).toBe('match')
   })
 
   it('plays a match end-to-end', () => {
@@ -74,7 +74,7 @@ describe('mock backend', () => {
     expect(split).toBe(true)
     const race = A.casino.horseRace(100, 0)
     expect(race.timeline.length).toBe(60)
-    expect(Math.max(...race.timeline[59])).toBe(1)
+    expect(Math.max(...race.timeline[59]!)).toBe(1)
     A.openNegotiation(gameState.value?.hero.contract?.clubId ?? '')
     const n = negotiation.value
     expect(n?.kind).toBe('renewal')

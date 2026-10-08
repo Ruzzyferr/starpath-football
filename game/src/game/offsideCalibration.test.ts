@@ -16,7 +16,7 @@ function reference(attX: number, ballX: number, oppXs: number[], dir: 1 | -1): b
   if (!aheadOfBall) return false
   // Furthest-forward opponents first; the second one is the offside line.
   const ordered = [...oppXs].sort((p, q) => (dir === 1 ? q - p : p - q))
-  const line = ordered.length >= 2 ? ordered[1] : ordered[0]
+  const line = (ordered.length >= 2 ? ordered[1] : ordered[0])!
   return dir === 1 ? attX > line + OFFSIDE_TOLERANCE : attX < line - OFFSIDE_TOLERANCE
 }
 

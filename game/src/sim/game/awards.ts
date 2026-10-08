@@ -42,7 +42,7 @@ const MONTHS: readonly LText[] = [
   lt('Ağustos', 'August'), lt('Eylül', 'September'), lt('Ekim', 'October'), lt('Kasım', 'November'), lt('Aralık', 'December'),
   lt('Ocak', 'January'), lt('Şubat', 'February'), lt('Mart', 'March'), lt('Nisan', 'April'), lt('Mayıs', 'May'),
 ]
-export const monthName = (m: number): LText => MONTHS[Math.max(0, Math.min(MONTHS.length - 1, m))]
+export const monthName = (m: number): LText => MONTHS[Math.max(0, Math.min(MONTHS.length - 1, m))]!
 
 /** The hero as an award candidate. */
 export function heroAwardInput(state: GameState): HeroAwardInput {

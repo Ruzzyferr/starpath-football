@@ -490,7 +490,7 @@ export function isRealClubName(name: string): boolean {
 
 /** Replace `{key}` placeholders in a pattern. Unknown keys are left untouched. */
 export function formatPattern(pattern: string, vars: Readonly<Record<string, string>>): string {
-  return pattern.replace(/\{(\w+)\}/g, (m, key: string) => (key in vars ? vars[key] : m))
+  return pattern.replace(/\{(\w+)\}/g, (m, key: string) => (key in vars ? vars[key]! : m))
 }
 
 // ───────────────────────── Name → gender ─────────────────────────

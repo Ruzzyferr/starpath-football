@@ -67,7 +67,7 @@ const HAIR_WEIGHTS: Readonly<Record<NameStyle, readonly number[]>> = {
 
 function weightedIndex(rng: Rng, weights: readonly number[]): number {
   const idx = weights.map((_, i) => i)
-  return rng.weighted(idx, (i) => weights[i])
+  return rng.weighted(idx, (i) => weights[i]!)
 }
 
 /** Random appearance biased by the player's name style. */

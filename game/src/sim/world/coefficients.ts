@@ -37,8 +37,8 @@ export interface CoefficientRow {
 export function coefficientRanking(world: World): CoefficientRow[] {
   const coefs = ensureCoefficients(world)
   return Object.values(world.countries)
-    .map((c) => ({ countryId: c.id, total: coefficientTotal(coefs[c.id]), seasons: [...coefs[c.id]] }))
-    .sort((a, b) => b.total - a.total || (world.countries[b.countryId].reputation - world.countries[a.countryId].reputation) || (a.countryId < b.countryId ? -1 : 1))
+    .map((c) => ({ countryId: c.id, total: coefficientTotal(coefs[c.id]!), seasons: [...coefs[c.id]!] }))
+    .sort((a, b) => b.total - a.total || (world.countries[b.countryId]!.reputation - world.countries[a.countryId]!.reputation) || (a.countryId < b.countryId ? -1 : 1))
 }
 
 /** Points each country earned in the continental competitions of `season`. */
@@ -88,7 +88,7 @@ export function updateCoefficients(world: World, season: number): Record<string,
   const coefs = ensureCoefficients(world)
   const pts = seasonCoefficientPoints(world, season)
   for (const c of Object.keys(world.countries)) {
-    const arr = coefs[c]
+    const arr = coefs[c]!
     arr.push(pts[c] ?? 0)
     while (arr.length > COEFFICIENT_SEASONS) arr.shift()
   }

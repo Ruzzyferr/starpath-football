@@ -122,7 +122,7 @@ describe('scopeSvgIds', () => {
     const out = scopeSvgIds(html, 'z9')
     const ids = [...out.matchAll(/\sid="([^"]+)"/g)].map((m) => m[1])
     expect(ids.length).toBeGreaterThan(0)
-    for (const id of ids) expect(id.endsWith('-z9')).toBe(true)
+    for (const id of ids) expect(id!.endsWith('-z9')).toBe(true)
     for (const m of out.matchAll(/url\(#([^)]+)\)/g)) expect(ids).toContain(m[1])
     expect(out.includes('#fff')).toBe(html.includes('#fff'))
   })

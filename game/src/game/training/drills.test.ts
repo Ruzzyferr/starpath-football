@@ -51,7 +51,7 @@ function after(ready: boolean, s: Mem, delay: number): boolean {
 const finishingGood: Bot = (d, s) => {
   const f = d as FinishingDrill
   if (!after(f.ready, s, 0.45)) return idle
-  const tg = f.litTargets()[0]
+  const tg = f.litTargets()[0]!
   const power = Math.min(1, Math.max(0.45, Math.sqrt(Math.max(0, tg.z - 0.3) / 1.5)))
   return act({ kind: 'shoot', target: { x: 105.2, y: tg.y }, power, curl: 0, chip: false })
 }
@@ -204,7 +204,7 @@ const distributionBot = (good: boolean): Bot => (d, s) => {
     s.mem.holdAt = -1
     return { ...idle, move }
   }
-  if (s.mem.holdAt < 0 || s.mem.holdAt === undefined) s.mem.holdAt = s.t
+  if (s.mem.holdAt! < 0 || s.mem.holdAt === undefined) s.mem.holdAt = s.t
   const waited = s.t - s.mem.holdAt
   if (good && waited > 0.5) return act({ kind: 'tapAt', at: t.leadPoint(t.featuredMate) })
   if (!good && waited > 2.4) return act({ kind: 'tapAt', at: t.mateAt(t.featuredMate) })
@@ -244,7 +244,7 @@ describe('training drills (headless)', () => {
       const pg = avg(good.map((r) => r.performance))
       const pm = avg(meh.map((r) => r.performance))
       const pn = avg(none.map((r) => r.performance))
-      if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log(kind, { good: pg.toFixed(2), meh: pm.toFixed(2), none: pn.toFixed(2), pts: good.map((r) => r.points), mehPts: meh.map((r) => r.points), stats: good[0].stats, mehStats: meh[0].stats })
+      if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log(kind, { good: pg.toFixed(2), meh: pm.toFixed(2), none: pn.toFixed(2), pts: good.map((r) => r.points), mehPts: meh.map((r) => r.points), stats: good[0]!.stats, mehStats: meh[0]!.stats })
       expect(pg).toBeGreaterThan(pm + 0.1)
       expect(pm).toBeGreaterThan(pn)
       expect(pg).toBeGreaterThan(0.75)
@@ -261,22 +261,22 @@ describe('training drills (headless)', () => {
     const quick: Bot = (d, s) => {
       const r = d as RondoDrill
       if (!after(r.ready, s, 0.25)) return idle
-      return act({ kind: 'tapAt', at: { ...r.mates[r.mostOpen()].pos } })
+      return act({ kind: 'tapAt', at: { ...r.mates[r.mostOpen()]!.pos } })
     }
     const slow: Bot = (d, s) => {
       const r = d as RondoDrill
       if (!after(r.ready, s, 1.3)) return idle
-      return act({ kind: 'tapAt', at: { ...r.mates[r.options[0]].pos } })
+      return act({ kind: 'tapAt', at: { ...r.mates[r.options[0]!]!.pos } })
     }
     const mk = (seed: number, vision = 70) => createDrill('passing', { attrs: { ...flatAttrs(65), vision }, seed, aimAssist: 'half', variant: 'rondo' })
     const good = [1, 2, 3].map((s) => play(mk(s), quick))
     const meh = [1, 2, 3].map((s) => play(mk(s), slow))
     const none = [1, 2, 3].map((s) => play(mk(s), () => idle))
-    expect(good[0].played).toBeGreaterThanOrEqual(59)
+    expect(good[0]!.played).toBeGreaterThanOrEqual(59)
     expect(avg(good.map((r) => r.performance))).toBeGreaterThan(avg(meh.map((r) => r.performance)) + 0.1)
     expect(avg(good.map((r) => r.performance))).toBeGreaterThan(0.75)
     expect(avg(none.map((r) => r.performance))).toBeLessThan(0.1)
-    expect(good[0].stats.oneTouch ?? 0).toBeGreaterThan(0)
+    expect(good[0]!.stats.oneTouch ?? 0).toBeGreaterThan(0)
     expect((mk(1, 59) as RondoDrill).options).toEqual([0, 2])
     expect((mk(1, 60) as RondoDrill).options).toEqual([0, 1, 2])
   })
@@ -331,10 +331,10 @@ describe('training drills (headless)', () => {
       expect(a.played).toBeLessThanOrEqual(40)
     })
 
-    it(`${kind}: better ${KEY_ATTRS[kind].join('/')} raise the score`, () => {
+    it(`${kind}: better ${KEY_ATTRS[kind]!.join('/')} raise the score`, () => {
       const withAttr = (v: number): Attributes => {
         const at = { ...flatAttrs(60) }
-        for (const k of KEY_ATTRS[kind]) at[k] = v
+        for (const k of KEY_ATTRS[kind]!) at[k] = v
         return at
       }
       const run = (v: number) =>

@@ -68,7 +68,7 @@ describe('buildRelationChanges', () => {
     const before = { fans: 24, manager: 10, mum: 50, t1: 20, t2: 10, t3: 0, t4: 36 }
     const rows = buildRelationChanges(before, after)
     expect(rows.map((r) => r.id)).toEqual(['fans', 't4', 'manager', 'squad'])
-    expect(rows[0].why?.en).toBe('show')
+    expect(rows[0]!.why?.en).toBe('show')
     const squad = rows.find((r) => r.kind === 'squad')!
     expect(squad.name).toBe('3')
     expect(squad.after - squad.before).toBe(2)
@@ -107,7 +107,7 @@ describe('expected moments', () => {
     expect(e.max).toBeLessThanOrEqual(10)
     expect(e.max).toBeGreaterThanOrEqual(e.min)
     expect(e.kinds.reduce((a, k) => a + k.share, 0)).toBeCloseTo(1, 5)
-    expect(e.kinds[0].share).toBeGreaterThanOrEqual(e.kinds[e.kinds.length - 1].share)
+    expect(e.kinds[0]!.share).toBeGreaterThanOrEqual(e.kinds[e.kinds.length - 1]!.share)
   })
   it('a bench cameo expects fewer moments', () => {
     expect(expectedMomentsFor({ ...input, minutes: 25 }).max).toBeLessThan(expectedMomentsFor(input).min + 1)
@@ -156,7 +156,7 @@ describe('post flow', () => {
     ]
     const g = ratingGroups(6, 7.2, log)
     expect(g.groups.map((x) => x.source)).toEqual(['moment', 'final'])
-    expect(g.groups[0].lines[0].minute).toBe(5)
+    expect(g.groups[0]!.lines[0]!.minute).toBe(5)
     expect(6 + log.reduce((a, l) => a + l.delta, 0) + g.other).toBeCloseTo(7.2, 5)
     expect(ratingGroups(6, 7.15, log).other).toBe(0)
     const ex = ratingExtremes(log)

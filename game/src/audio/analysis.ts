@@ -34,12 +34,12 @@ export function analyze(channels: readonly Float32Array[], sampleRate: number, s
     let ws = 0
     for (let i = w; i < w + win; i++) {
       for (const ch of channels) {
-        const v = ch[i]
+        const v = ch[i]!
         if (!Number.isFinite(v)) {
           nan++
           continue
         }
-        const a = Math.abs(v)
+        const a = Math.abs(v!)
         if (a > peak) peak = a
         ws += v * v
         dcSum += v
@@ -91,7 +91,7 @@ export function encodeWav(channels: readonly Float32Array[], sampleRate: number)
   let o = 44
   for (let i = 0; i < n; i++) {
     for (let c = 0; c < chs; c++) {
-      const s = Math.max(-1, Math.min(1, channels[c][i] || 0))
+      const s = Math.max(-1, Math.min(1, channels[c]![i] || 0))
       v.setInt16(o, s < 0 ? s * 0x8000 : s * 0x7fff, true)
       o += 2
     }

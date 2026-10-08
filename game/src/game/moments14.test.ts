@@ -47,7 +47,7 @@ describe('WP-14 kinds: generated scenarios', () => {
       const h = generatedHighlight('hold_up', s)
       const hero = h.scenario.players.find((p) => p.isHero)!
       expect(h.scenario.ball.ownerId).toBe(hero.id)
-      const marker = h.scenario.players.filter((p) => p.side !== hero.side).sort((a, b) => Math.hypot(a.pos.x - hero.pos.x, a.pos.y - hero.pos.y) - Math.hypot(b.pos.x - hero.pos.x, b.pos.y - hero.pos.y))[0]
+      const marker = h.scenario.players.filter((p) => p.side !== hero.side).sort((a, b) => Math.hypot(a.pos.x - hero.pos.x, a.pos.y - hero.pos.y) - Math.hypot(b.pos.x - hero.pos.x, b.pos.y - hero.pos.y))[0]!
       expect(marker.pos.x).toBeGreaterThan(hero.pos.x)
       expect(Math.hypot(marker.pos.x - hero.pos.x, marker.pos.y - hero.pos.y)).toBeLessThan(2.2)
       const rt = new HighlightRuntime(h, { seed: s })
@@ -103,7 +103,7 @@ describe('WP-14 kinds: runtime rules', () => {
   it('hold-up: a completed lay-off ends the moment as good play', () => {
     const rt = new HighlightRuntime(generatedHighlight('hold_up', 3), { aimAssist: 'full', slowMoAim: false, seed: 3 })
     run(rt, 0.5)
-    const mate = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper).sort((a, b) => Math.hypot(a.pos.x - rt.hero.pos.x, a.pos.y - rt.hero.pos.y) - Math.hypot(b.pos.x - rt.hero.pos.x, b.pos.y - rt.hero.pos.y))[0]
+    const mate = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper).sort((a, b) => Math.hypot(a.pos.x - rt.hero.pos.x, a.pos.y - rt.hero.pos.y) - Math.hypot(b.pos.x - rt.hero.pos.x, b.pos.y - rt.hero.pos.y))[0]!
     for (const a of rt.agents) if (a.team === 'opp') a.noTouch = 99
     rt.queueAction({ kind: 'pass', target: { ...mate.pos } })
     run(rt, 4)

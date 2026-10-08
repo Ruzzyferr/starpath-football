@@ -43,7 +43,7 @@ export function luminance(hex: string): number {
     const c = v / 255
     return c <= 0.03928 ? c / 12.92 : ((c + 0.055) / 1.055) ** 2.4
   })
-  return 0.2126 * r + 0.7152 * g + 0.0722 * b
+  return 0.2126 * r! + 0.7152 * g! + 0.0722 * b!
 }
 
 export function contrastRatio(a: string, b: string): number {
@@ -68,7 +68,7 @@ export function bestContrast(bg: string, candidates: string[]): string {
       best = c
     }
   }
-  return best
+  return best!
 }
 
 /** Regular polygon / star points as an SVG points string. */
@@ -106,7 +106,7 @@ export function svgWrap(viewBox: string, body: string, opts: { title?: string; c
  */
 export function scopeSvgIds(html: string, suffix: string): string {
   const ids = new Set<string>()
-  for (const m of html.matchAll(/\sid="([^"]+)"/g)) ids.add(m[1])
+  for (const m of html.matchAll(/\sid="([^"]+)"/g)) ids.add(m[1]!)
   if (!ids.size) return html
   return html.replace(/(?<=\s)id="([^"]+)"|#([A-Za-z][\w-]*)/g, (all, def: string | undefined, ref: string | undefined) => {
     if (def) return ids.has(def) ? `id="${def}-${suffix}"` : all

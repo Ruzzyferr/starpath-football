@@ -81,11 +81,11 @@ describe('Mixer graph (fake context)', () => {
     const m = new Mixer(ctx, DEFAULT_MIX)
     m.duck('music', 10, { attack: 0.1, hold: 0.5, release: 0.5 })
     // The duck node sits after the bus input.
-    const duckNode = (m.input.music as unknown as { connections: { gain: FakeParam }[] }).connections[0]
+    const duckNode = (m.input.music as unknown as { connections: { gain: FakeParam }[] }).connections[0]!
     const ev = duckNode.gain.events
     const min = Math.min(...ev.map((e) => e.value))
     expect(min).toBeCloseTo(dbToGain(-10), 2)
-    expect(ev[ev.length - 1].value).toBe(1)
+    expect(ev[ev.length - 1]!.value).toBe(1)
   })
 })
 

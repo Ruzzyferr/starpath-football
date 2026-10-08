@@ -37,7 +37,7 @@ export function generatedHighlight(kind: HighlightKind, seed: number, opts: { ov
   const away = makeTeam(rng, 'a', { formation: of, ovr })
   const toSlots = (players: typeof home.lineup, f: Formation): SlotPlayer[] => {
     const sl = assignSlots(players, f)
-    return players.map((player, i) => ({ player, slot: sl[i] }))
+    return players.map((player, i) => ({ player, slot: sl[i]! }))
   }
   const g = buildScenario({
     kind, heroSide: 'home', heroId: 'hero', mates: toSlots(home.lineup, mf), opps: toSlots(away.lineup, of), mateFormation: mf, oppFormation: of, lang: opts.lang ?? 'en', rng,

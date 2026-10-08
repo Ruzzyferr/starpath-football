@@ -82,7 +82,7 @@ function applyMatchStats(world: World, rng: Rng, d: QuickSimDetail): void {
       p.stats.starts++
       p.stats.minutes += minutes
       p.stats.ratingSum += rating
-      if (side.ga === 0 && (positionGroup(side.slots[i]) === 'GK' || positionGroup(side.slots[i]) === 'DEF')) p.stats.cleanSheets++
+      if (side.ga === 0 && (positionGroup(side.slots[i]!) === 'GK' || positionGroup(side.slots[i]!) === 'DEF')) p.stats.cleanSheets++
       const fx = effectsOf(p) // 2.6#36: traits shift cards, injuries and locker-room mood (same number of draws)
       const yellowAdded = rng.chance(YELLOW_CHANCE * fx.cards)
       if (yellowAdded) p.stats.yellow++
@@ -102,7 +102,7 @@ function applyMatchStats(world: World, rng: Rng, d: QuickSimDetail): void {
     const assist = d.assists[i]
     if (assist && world.players[assist]) world.players[assist].stats.assists++
   })
-  if (d.result.motmId && world.players[d.result.motmId]) world.players[d.result.motmId].stats.motm++
+  if (d.result.motmId && world.players[d.result.motmId]) world.players[d.result.motmId]!.stats.motm++
 }
 
 /** Advance every competition of a season whose current round is complete. */
@@ -204,7 +204,7 @@ export function recordFixtureResult(
       p.stats.ratingSum += rating
     }
   }
-  if (result.motmId && world.players[result.motmId]) world.players[result.motmId].stats.motm++
+  if (result.motmId && world.players[result.motmId]) world.players[result.motmId]!.stats.motm++
   advanceCompetitions(world, rng, comp.season)
 }
 
@@ -318,7 +318,7 @@ function lowerBound(arr: readonly NpcPlayer[], ovr: number): number {
   let lo = 0, hi = arr.length
   while (lo < hi) {
     const mid = (lo + hi) >> 1
-    if (arr[mid].ovr < ovr) lo = mid + 1
+    if (arr[mid]!.ovr < ovr) lo = mid + 1
     else hi = mid
   }
   return lo
@@ -356,17 +356,17 @@ function findCandidate(st: WindowState, club: Club, need: Need): { player: NpcPl
   const samples = i1 - i0 <= 24 ? Array.from({ length: i1 - i0 }, (_, k) => i0 + k) : Array.from({ length: 24 }, () => st.rng.int(i0, i1 - 1))
   let best: { player: NpcPlayer; fee: number; score: number } | null = null
   for (const k of samples) {
-    const p = list[k]
+    const p = list[k]!
     if (p.clubId === club.id || st.moved.has(p.id) || p.injuredWeeks > 0) continue
     if (st.opts.protectedPlayerIds?.has(p.id)) continue
-    const age = ageIn(p, st.season)
+    const age = ageIn(p!, st.season)
     if (age > 32) continue
     let fee = 0
     if (p.clubId) {
       const seller = st.world.clubs[p.clubId]
       if (!seller || st.opts.protectedClubIds?.has(seller.id)) continue
       if (seller.reputation > club.reputation + 6 || seller.squad.length <= SELLER_MIN_SQUAD) continue
-      fee = askingFee(st.rng, p, st.season)
+      fee = askingFee(st.rng, p!, st.season)
       if (fee > club.budget) continue
     }
     const score = p.ovr + (p.potential - p.ovr) * (age <= 23 ? 0.4 : 0.1) - Math.max(0, age - 29) * 1.5 + st.rng.range(0, 2)
@@ -478,7 +478,7 @@ function recordHonours(world: World, season: number): ChampionRecord[] {
 }
 
 function finalOrder(world: World, leagueId: string, season: number): string[] {
-  const league = world.leagues[leagueId]
+  const league = world.leagues[leagueId]!
   const comp = seasonCompetitions(world, season).find((c) => c.type === 'league' && c.leagueId === leagueId)
   if (!comp?.table) return [...league.clubIds]
   const order = sortTable(comp.table, comp.fixtures).map((r) => r.clubId).filter((id) => league.clubIds.includes(id))
@@ -505,10 +505,10 @@ export function applyPromotionRelegation(world: World, season: number): LeagueMo
   const byCountry = new Map<string, string[]>()
   for (const l of Object.values(world.leagues)) byCountry.set(l.countryId, [...(byCountry.get(l.countryId) ?? []), l.id])
   for (const leagueIds of byCountry.values()) {
-    const tiers = leagueIds.map((id) => world.leagues[id]).sort((a, b) => a.tier - b.tier)
+    const tiers = leagueIds.map((id) => world.leagues[id]).sort((a, b) => a!.tier - b!.tier)
     for (let t = 0; t + 1 < tiers.length; t++) {
-      const upper = tiers[t]
-      const lower = tiers[t + 1]
+      const upper = tiers[t]!
+      const lower = tiers[t + 1]!
       const n = Math.min(upper.relegate, lower.promote)
       if (n <= 0) continue
       for (const clubId of finalOrder(world, upper.id, season).slice(-n)) moves.push({ clubId, fromLeagueId: upper.id, toLeagueId: lower.id, kind: 'relegated' })
@@ -517,10 +517,10 @@ export function applyPromotionRelegation(world: World, season: number): LeagueMo
   }
   // Apply after all decisions so a club cannot move two tiers in one summer.
   for (const m of moves) {
-    const from = world.leagues[m.fromLeagueId]
+    const from = world.leagues[m.fromLeagueId]!
     from.clubIds = from.clubIds.filter((id) => id !== m.clubId)
-    world.leagues[m.toLeagueId].clubIds.push(m.clubId)
-    world.clubs[m.clubId].leagueId = m.toLeagueId
+    world.leagues[m.toLeagueId]!.clubIds.push(m.clubId)
+    world.clubs[m.clubId]!.leagueId = m.toLeagueId
   }
   return moves
 }
@@ -530,7 +530,7 @@ function updateClubReputations(world: World, season: number, moves: readonly Lea
     const order = finalOrder(world, league.id, season)
     const country = world.countries[league.countryId]
     order.forEach((clubId, i) => {
-      const club = world.clubs[clubId]
+      const club = world.clubs[clubId]!
       const n = Math.max(1, order.length - 1)
       const baseline = (country?.reputation ?? 60) * 0.55 + 22.5 - (league.tier - 1) * 14
       let rep = club.reputation + Math.round((0.5 - i / n) * 4)
@@ -538,7 +538,7 @@ function updateClubReputations(world: World, season: number, moves: readonly Lea
       club.reputation = rep
     })
   }
-  for (const m of moves) world.clubs[m.clubId].reputation += m.kind === 'promoted' ? 4 : -4
+  for (const m of moves) world.clubs[m.clubId]!.reputation += m.kind === 'promoted' ? 4 : -4
   for (const c of champions) {
     const club = world.clubs[c.winnerId]
     if (club) club.reputation += c.type === 'continental' ? 5 : c.type === 'league' ? 2 : 1
@@ -695,7 +695,7 @@ function balanceSquads(world: World, rng: Rng, season: number): { signed: Transf
         const pos = neediestPosition(world, club)
         const idx = free.findIndex((p) => p.clubId === null && p.position === pos && p.ovr <= level + 3 && p.ovr >= level - 12)
         if (idx >= 0) {
-          const p = free.splice(idx, 1)[0]
+          const p = free.splice(idx, 1)[0]!
           transferPlayer(world, p.id, club.id, 0, season, rng.int(1, 2))
           signed.push({ playerId: p.id, fromClubId: null, toClubId: club.id, fee: 0, season })
         } else {

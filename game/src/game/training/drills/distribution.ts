@@ -67,7 +67,7 @@ export class DistributionDrill extends DrillBase {
     this.hero = makeActor('hero', 'hero', 'GK', { x: 3, y: GOAL_CENTER_Y }, this.attrs, { hero: true, number: 1 })
     this.winger = makeActor('wing', 'opp', 'RW', { x: 16, y: 10 }, flatAttrs(70), { number: 7 })
     this.striker = makeActor('st', 'opp', 'ST', { x: 12, y: GOAL_CENTER_Y }, flatAttrs(60), { number: 9 })
-    this.mates = [0, 1, 2].map((i) => ({ agent: makeActor(`m${i}`, 'hero', (['LB', 'CM', 'RB'] as const)[i], { x: 22, y: 20 + i * 14 }, flatAttrs(65), { number: 2 + i }), start: { x: 22, y: 20 + i * 14 }, vel: { x: 3, y: 0 } }))
+    this.mates = [0, 1, 2].map((i) => ({ agent: makeActor(`m${i}`, 'hero', (['LB', 'CM', 'RB'] as const)[i]!, { x: 22, y: 20 + i * 14 }, flatAttrs(65), { number: 2 + i }), start: { x: 22, y: 20 + i * 14 }, vel: { x: 3, y: 0 } }))
     this.ball = { x: 16, y: 10, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.newRound()
   }
@@ -91,7 +91,7 @@ export class DistributionDrill extends DrillBase {
     this.rng.shuffle(ys)
     this.mates.forEach((m, i) => {
       const far = i === 1
-      m.start = { x: far ? this.rng.range(30, 36) : this.rng.range(13, 19), y: ys[i] + this.rng.range(-2.5, 2.5) }
+      m.start = { x: far ? this.rng.range(30, 36) : this.rng.range(13, 19), y: ys[i]! + this.rng.range(-2.5, 2.5) }
       m.vel = { x: this.rng.range(2.4, 3.6), y: (i === 1 ? this.rng.range(-1.5, 1.5) : (m.start.y < GOAL_CENTER_Y ? 1 : -1) * this.rng.range(0, 1.4)) }
       place(m.agent, m.start, 0)
     })
@@ -217,8 +217,8 @@ export class DistributionDrill extends DrillBase {
 
   /** Where to aim so the ball meets team-mate `i` (his run is led). */
   leadPoint(i: number): Vec2 {
-    const m = this.mates[i]
-    let p = this.mateNow(m)
+    const m = this.mates[i]!
+    let p = this.mateNow(m!)
     for (let k = 0; k < 3; k++) {
       const t = this.flightTime(this.kindFor(p), p)
       p = { x: m.agent.pos.x + m.vel.x * t, y: clampN(m.agent.pos.y + m.vel.y * t, 8, PITCH_WIDTH - 8) }
@@ -233,7 +233,7 @@ export class DistributionDrill extends DrillBase {
     const nearest = (p: Vec2): { i: number; lead: Vec2; d: number } => {
       let best = { i: 0, lead: p, d: Infinity }
       for (let i = 0; i < this.mates.length; i++) {
-        const d = dist(p, this.mateNow(this.mates[i]))
+        const d = dist(p, this.mateNow(this.mates[i]!))
         if (d < best.d) best = { i, lead: this.leadPoint(i), d }
       }
       return best
@@ -250,7 +250,7 @@ export class DistributionDrill extends DrillBase {
       let best = -1
       let bestA = cone
       for (let i = 0; i < this.mates.length; i++) {
-        const m = this.mateNow(this.mates[i])
+        const m = this.mateNow(this.mates[i]!)
         const a = Math.abs(angleDiff(ang, Math.atan2(m.y - from.y, m.x - from.x)))
         if (a < bestA) {
           bestA = a
@@ -442,7 +442,7 @@ export class DistributionDrill extends DrillBase {
     return this.holdT
   }
   mateAt(i: number): Vec2 {
-    return { ...this.mates[i].agent.pos }
+    return { ...this.mates[i]!.agent.pos }
   }
   get featuredMate(): number {
     return this.featured
@@ -454,7 +454,7 @@ export class DistributionDrill extends DrillBase {
     const lines: LineView[] = []
     if (this.cycle === 'setup' || this.cycle === 'cross') rings.push({ x: this.landingAt.x, y: this.landingAt.y, r: this.reach(), tone: flash ?? 'gold', pulse: this.cycle === 'cross' && !this.claimed })
     if (this.cycle === 'hold') {
-      const p = this.mates[this.featured].agent.pos
+      const p = this.mates[this.featured]!.agent.pos
       lines.push({ a: this.hero.pos, b: p, tone: 'white', width: 0.08 })
     }
     const left = clampN(1 - this.holdT / KEEPER_HOLD_SECONDS, 0, 1)

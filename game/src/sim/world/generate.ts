@@ -117,7 +117,7 @@ function chooseClubName(rng: Rng, cc: CountryContext, city: string): string {
     if (!cc.usedNames.has(normalizeClubName(name)) && !isRealClubName(name)) return name
   }
   for (let n = 2; ; n++) {
-    const name = `${formatPattern(patterns[0], { city })} ${n}`
+    const name = `${formatPattern(patterns[0]!, { city })} ${n}`
     if (!cc.usedNames.has(normalizeClubName(name))) return name
   }
 }
@@ -135,9 +135,9 @@ function chooseShortName(cc: CountryContext, name: string, city: string): string
   const tokens = distinctiveTokens(name)
   const c = asciiUpper(city)
   const candidates: string[] = []
-  if (tokens.length >= 2) candidates.push(tokens[0][0] + tokens[1].slice(0, 2), tokens[0].slice(0, 2) + tokens[1][0])
+  if (tokens.length >= 2) candidates.push(tokens[0]![0] + tokens[1]!.slice(0, 2), tokens[0]!.slice(0, 2) + tokens[1]![0])
   candidates.push(c.slice(0, 3), c[0] + c.slice(-2), c.slice(0, 2) + c.slice(-1))
-  if (tokens.length) candidates.push(tokens[tokens.length - 1].slice(0, 3))
+  if (tokens.length) candidates.push(tokens[tokens.length - 1]!.slice(0, 3))
   for (const cand of candidates) if (cand.length === 3 && !cc.usedShort.has(cand)) return cand
   for (let i = 0; i < 26; i++) {
     const cand = c.slice(0, 2) + String.fromCharCode(65 + i)
@@ -242,7 +242,7 @@ function squadOvr(rng: Rng, level: number, rankInPosition: number, starters: num
 }
 
 function generateSquad(rng: Rng, ctx: GenContext, club: Club, level: number, tier: number): void {
-  const def = COUNTRY_BY_ID[club.countryId]
+  const def = COUNTRY_BY_ID[club.countryId]!
   const size = rng.int(MIN_SQUAD, MAX_SQUAD)
   const foreignChance = tier === 1 ? clamp((def.reputation - 55) / 150, 0.03, 0.3) : 0.05
   const seen = new Map<Position, number>()
@@ -329,7 +329,7 @@ function generateLeague(rng: Rng, ctx: GenContext, cc: CountryContext, tier: num
     const club = createClub(rng, cc, league, quality)
     const level = lo + quality * (hi - lo)
     generateSquad(rng, ctx, club, level, tier)
-    club.wageBudget = Math.round(club.squad.reduce((s, pid) => s + ctx.world.players[pid].wage, 0) * 1.1)
+    club.wageBudget = Math.round(club.squad.reduce((s, pid) => s + ctx.world.players[pid]!.wage, 0) * 1.1)
     ctx.world.clubs[club.id] = club
     league.clubIds.push(club.id)
   }

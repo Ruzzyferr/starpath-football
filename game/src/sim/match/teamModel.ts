@@ -130,8 +130,8 @@ export function computeRatings(players: readonly RatedPlayer[]): TeamRatings {
     const w = UNIT_WEIGHTS[p.position]
     const vals = [p.skills.def, p.skills.mid, p.skills.att]
     for (let i = 0; i < 3; i++) {
-      acc[i] += w[i] * vals[i] * f
-      wsum[i] += w[i]
+      acc[i]! += w[i]! * vals[i]! * f
+      wsum[i]! += w[i]!
     }
   }
   if (!gkFound) {
@@ -139,7 +139,7 @@ export function computeRatings(players: readonly RatedPlayer[]): TeamRatings {
     gk = Math.max(15, ...players.map((p) => p.skills.gk)) * 0.6
   }
   const short = Math.pow(players.length / 11, 0.9)
-  const avg = (i: number) => (wsum[i] > 0 ? acc[i] / wsum[i] : 30) * short
+  const avg = (i: number) => (wsum[i]! > 0 ? acc[i]! / wsum[i]! : 30) * short
   return { gk, def: avg(0), mid: avg(1), att: avg(2), n: players.length }
 }
 

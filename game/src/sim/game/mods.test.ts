@@ -34,7 +34,7 @@ describe('validateModPack', () => {
     expect(errs).toMatch(/reputation out of range/)
     expect(errs).toMatch(/needs >=12 unique cities/)
     expect(errs).toMatch(/flag must be 3 hex/)
-    const taken = { ...good, countries: [{ ...good.countries[0], id: COUNTRY_DEFS[0].id }] }
+    const taken = { ...good, countries: [{ ...good.countries[0], id: COUNTRY_DEFS[0]!.id }] }
     expect(validateModPack(text(taken), COUNTRY_DEFS.map((c) => c.id)).errors.join()).toMatch(/already exists/)
     expect(validateModPack(text({ ...good, names: [{ style: 'english', last: ['A', 'A', 'b', 'c', 'd', 'e', 'f', 'g'] }] })).errors.join()).toMatch(/duplicates/)
     expect(validateModPack(text({ format: 'starpath-mod', id: 'empty-one', version: '1.0.0', name: 'x' })).errors.join()).toMatch(/changes nothing/)

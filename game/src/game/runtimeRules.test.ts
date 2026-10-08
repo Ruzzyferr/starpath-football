@@ -34,13 +34,13 @@ describe('2.1#58 a pass that reaches another team-mate is a completed pass', () 
       const h = rt.hero.pos
       // Clear the lane: opponents far away, A in front, B right behind A on the same line.
       for (const o of rt.agents) if (o.team !== 'hero' && !o.isKeeper) o.pos = { x: 5, y: 5 }
-      a.pos = { x: h.x - 8, y: h.y }
-      b.pos = { x: h.x - 12, y: h.y }
-      a.vel = { x: 0, y: 0 }
-      b.vel = { x: 0, y: 0 }
-      a.noTouch = 10 // the ball runs through A (dummy / miscontrol)
+      a!.pos = { x: h.x - 8, y: h.y }
+      b!.pos = { x: h.x - 12, y: h.y }
+      a!.vel = { x: 0, y: 0 }
+      b!.vel = { x: 0, y: 0 }
+      a!.noTouch = 10 // the ball runs through A (dummy / miscontrol)
       tried++
-      rt.queueAction({ kind: 'pass', target: { ...a.pos } })
+      rt.queueAction({ kind: 'pass', target: { ...a!.pos } })
       runUntil(rt, () => rt.owner === b, 4)
       if (rt.owner === b && statsOf(rt).passesCompleted >= 1) completed++
     }

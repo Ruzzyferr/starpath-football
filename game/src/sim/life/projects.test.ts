@@ -118,12 +118,12 @@ describe('business decisions (boost, manager, expand)', () => {
   it('a boost multiplies revenue and runs out', () => {
     const { hero, life } = rich()
     openBusiness(life, hero, 'gym', cal)
-    const b = life.businesses![0]
-    const base = businessWeek(new Rng(5), { ...b, history: [] }, 70, 1).revenue
+    const b = life.businesses![0]!
+    const base = businessWeek(new Rng(5), ({ ...b, history: [] })!, 70, 1).revenue
     b.boost = { mult: 1.4, weeks: 2 }
-    const hot = businessWeek(new Rng(5), b, 70, 1).revenue
+    const hot = businessWeek(new Rng(5), b!, 70, 1).revenue
     expect(hot).toBeGreaterThan(base)
-    businessWeek(new Rng(6), b, 70, 2)
+    businessWeek(new Rng(6), b!, 70, 2)
     expect(b.boost).toBeUndefined()
   })
 })

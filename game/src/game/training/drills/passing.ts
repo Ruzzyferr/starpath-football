@@ -89,7 +89,7 @@ export class PassingDrill extends DrillBase {
     const angles = [-1.0, -0.38, 0.38, 1.0].map((a) => a + this.rng.range(-0.18, 0.18))
     this.stations.forEach((st, i) => {
       const d = this.rng.range(13, 34)
-      let p = { x: HERO_SPOT.x + Math.cos(angles[i]) * d, y: HERO_SPOT.y + Math.sin(angles[i]) * d }
+      let p = { x: HERO_SPOT.x + Math.cos(angles[i]!) * d, y: HERO_SPOT.y + Math.sin(angles[i]!) * d }
       p = { x: clampN(p.x, HERO_SPOT.x + 8, PITCH_LENGTH - 20), y: clampN(p.y, 4, PITCH_WIDTH - 4) }
       st.home = p
       st.sway = r <= 3 ? 0 : Math.min(2.6, 0.6 + (r - 3) * 0.35)
@@ -99,7 +99,7 @@ export class PassingDrill extends DrillBase {
     let t = this.rng.int(0, 3)
     if (t === this.target && r > 1) t = (t + 1 + this.rng.int(0, 2)) % 4
     this.target = t
-    const tgt = this.stations[t].home
+    const tgt = this.stations[t]!.home
     const d = dist(HERO_SPOT, tgt)
     const wanted: Lane['wanted'] = d > 28 ? 'loft' : d < 17 ? 'ground' : this.rng.chance(0.5) ? 'loft' : 'ground'
     const dir = norm(sub(tgt, HERO_SPOT))
@@ -131,7 +131,7 @@ export class PassingDrill extends DrillBase {
   /** Which mate an action aims at, and with which technique. */
   private interpret(act: HeroAction): { to: Station | null; dir: Vec2; lofted: boolean; power: number } | null {
     const from = HERO_SPOT
-    const lit = this.stations[this.target]
+    const lit = this.stations[this.target]!
     const cone = this.assist === 'full' ? 0.38 : this.assist === 'half' ? 0.26 : 0.14
     const byDir = (dir: Vec2): Station | null => {
       let best: Station | null = null
@@ -354,14 +354,14 @@ export class PassingDrill extends DrillBase {
     return this.state === 'ready' && this.live
   }
   get litMate(): Agent {
-    return this.stations[this.target].mate
+    return this.stations[this.target]!.mate
   }
   get wanted(): 'ground' | 'loft' {
     return this.lane.wanted
   }
 
   view(): DrillView {
-    const lit = this.stations[this.target]
+    const lit = this.stations[this.target]!
     const flash = this.flash && this.time - this.flash.at < 0.6 ? this.flash.tone : null
     const rings: RingView[] = [{ x: lit.mate.pos.x, y: lit.mate.pos.y, r: 1.3, tone: flash ?? 'gold', pulse: this.state === 'ready' }]
     const cones: ConeView[] = []

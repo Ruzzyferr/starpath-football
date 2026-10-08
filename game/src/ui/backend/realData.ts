@@ -215,7 +215,7 @@ function eventView(s: GameState, index: number): EventView | null {
           const a = c.effects(ctx, new Rng(hashString(`${def.id}:a`)))
           const b = c.effects(ctx, new Rng(hashString(`${def.id}:b`)))
           const sig = (x: (typeof a.deltas)[number]) => JSON.stringify(x)
-          preview = eventDeltas(s, a.deltas, (i) => !b.deltas[i] || sig(a.deltas[i]) !== sig(b.deltas[i]))
+          preview = eventDeltas(s, a.deltas, (i) => !b.deltas[i] || sig(a.deltas[i]!) !== sig(b.deltas[i]))
         } catch {
           preview = []
         }
@@ -388,8 +388,8 @@ function squadView(s: GameState): SquadMemberView[] {
     const club = heroClub(s)
     if (!club) return []
     return club.squad.map((id) => s.world.players[id]).filter(Boolean).map((p) => {
-      const rel = s.life.relationships[teammateId(p.id)]
-      return { player: p, relation: rel ? Math.round(rel.value) : null, relationId: rel?.id ?? null }
+      const rel = s.life.relationships[teammateId(p!.id)]
+      return { player: p!, relation: rel ? Math.round(rel.value) : null, relationId: rel?.id ?? null }
     })
   })
 }
@@ -556,7 +556,7 @@ function horsesView(s: GameState): HorseView[] {
   return card.horses.map((h, i) => {
     const rng = new Rng(hashString(`${render(h.name)}:${i}`))
     const pos = () => clamp(Math.round(7 - h.formStars * 1.2 + rng.int(-1, 2)), 1, 8)
-    return { index: i, name: render(h.name), odds: Math.round(h.odds * 100) / 100, color: HORSE_COLORS[i % HORSE_COLORS.length], form: `${pos()}-${pos()}-${pos()}` }
+    return { index: i, name: render(h.name), odds: Math.round(h.odds * 100) / 100, color: HORSE_COLORS[i % HORSE_COLORS.length]!, form: `${pos()}-${pos()}-${pos()}` }
   })
 }
 

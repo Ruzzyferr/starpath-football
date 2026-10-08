@@ -52,7 +52,7 @@ export function Social() {
   const ids = new Set(feed.map((p) => p.id))
   const all = [...mine.filter((p) => !ids.has(p.id)), ...feed]
   const hist = data.followerHistory()
-  const growth = hist.length > 1 ? hist[hist.length - 1] - hist[0] : 0
+  const growth = hist.length > 1 ? hist[hist.length - 1]! - hist[0]! : 0
   const handle = (s.hero.nickname || `${s.hero.firstName}${s.hero.lastName}`).toLowerCase().replace(/\s+/g, '')
 
   const publish = () => {

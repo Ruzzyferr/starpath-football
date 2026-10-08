@@ -99,7 +99,7 @@ describe('HighlightRuntime smoke', () => {
     while (rt.phase !== 'live') rt.update(1 / 60)
     const pv = rt.preview({ kind: 'target', target: { x: PITCH_LENGTH, y: GOAL_CENTER_Y }, power: 0.8, curl: 0.5, chip: false })
     expect(pv).not.toBeNull()
-    const last = pv!.points[pv!.points.length - 1]
+    const last = pv!.points[pv!.points.length - 1]!
     expect(last.x).toBeGreaterThan(rt.ball.x + 10)
   })
 })

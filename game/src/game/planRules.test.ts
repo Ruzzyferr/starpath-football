@@ -96,8 +96,8 @@ describe('2.1#34 kick input events {t, dx, dy, curve, lift}', () => {
       { dt: 0.1, actions: [{ kind: 'pass', target: { x: 80, y: 20 }, lofted: false }, { kind: 'action' }] },
     ])
     expect(ev.map((e) => e.kind)).toEqual(['swipe', 'shoot', 'pass'])
-    expect(ev[0].t).toBe(0.5)
-    expect(ev[0].dx).toBeCloseTo(sw.dir.x * sw.length, 3)
+    expect(ev[0]!.t).toBe(0.5)
+    expect(ev[0]!.dx).toBeCloseTo(sw.dir.x * sw.length, 3)
     expect(ev[1]).toMatchObject({ t: 0.75, dx: 105, dy: 31, curve: -0.4, lift: 1, power: 0.9 })
     expect(ev[2]).toMatchObject({ t: 1, lift: 0, curve: 0 })
     // A bug-report attachment of a busy moment stays tiny.

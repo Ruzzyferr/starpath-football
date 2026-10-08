@@ -55,7 +55,7 @@ export function keyToPickerInput(code: string, mode: PickerMode): PickerInput | 
     if (code === 'KeyZ' || code === 'KeyH') return { kind: 'height' }
     if (code === 'KeyX') return { kind: 'curl' }
     const d = /^(?:Digit|Numpad)([1-4])$/.exec(code)
-    if (d) return { kind: 'zone', zone: CORNER_ZONES[Number(d[1]) - 1] }
+    if (d) return { kind: 'zone', zone: CORNER_ZONES[Number(d[1]) - 1]! }
   } else {
     const d = /^(?:Digit|Numpad)([2-5])$/.exec(code)
     if (d) return { kind: 'count', count: Number(d[1]) }
@@ -100,10 +100,10 @@ export class PickerState {
       const i = CORNER_ZONES.indexOf(this.corner.zone)
       switch (input.kind) {
         case 'up':
-          this.corner.zone = CORNER_ZONES[(i + CORNER_ZONES.length - 1) % CORNER_ZONES.length]
+          this.corner.zone = CORNER_ZONES[(i + CORNER_ZONES.length - 1) % CORNER_ZONES.length]!
           return null
         case 'down':
-          this.corner.zone = CORNER_ZONES[(i + 1) % CORNER_ZONES.length]
+          this.corner.zone = CORNER_ZONES[(i + 1) % CORNER_ZONES.length]!
           return null
         case 'left':
         case 'right':

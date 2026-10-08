@@ -48,7 +48,7 @@ export function challengeFor(season: number, week: number, keeper: boolean): Cha
   const pool = poolFor(keeper)
   const block = Math.floor(week / pool.length)
   const order = new Rng(hashString(`wk|${season}|${block}|${keeper ? 'k' : 'o'}`)).shuffle([...pool])
-  return order[week % pool.length]
+  return order[week % pool.length]!
 }
 
 export interface ChallengeDone {
@@ -164,7 +164,7 @@ export function applyMatch(m: LocalMeta, f: MatchFeats): MatchMetaResult {
     if (ev) m.stamps[`${f.season}:${ev.id}`] = (m.stamps[`${f.season}:${ev.id}`] ?? 0) + 1
     m.challenges[key] = { id: def.id, rating, opponent: f.opponent }
     const prev = m.lastKey ? m.lastKey.split(':').map(Number) : null
-    const consecutive = prev !== null && absWeek(f.season, f.week) - absWeek(prev[0], prev[1]) <= 1
+    const consecutive = prev !== null && absWeek(f.season, f.week) - absWeek(prev[0]!, prev[1]!) <= 1
     m.streak = consecutive ? m.streak + 1 : 1
     m.bestStreak = Math.max(m.bestStreak, m.streak)
     m.lastKey = key

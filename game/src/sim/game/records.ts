@@ -64,13 +64,13 @@ export function heroGoalKinds(events: readonly FeatEvent[], side: 'home' | 'away
   let freeKick = 0
   let header = 0
   for (let i = 0; i < events.length; i++) {
-    const e = events[i]
+    const e = events[i]!
     if (e.type !== 'goal' || e.playerId !== heroId) continue
     let j = i - 1
-    while (j >= 0 && events[j].type !== 'highlight') j--
-    if (j < 0 || events[j].playerId !== heroId) continue
+    while (j >= 0 && events[j]!.type !== 'highlight') j--
+    if (j < 0 || events[j]!.playerId !== heroId) continue
     let k = j - 1
-    while (k >= 0 && events[k].type === 'commentary') k--
+    while (k >= 0 && events[k]!.type === 'commentary') k--
     const before = events[k]
     if (!before || before.side !== side) continue
     if (before.type === 'freekick') freeKick++

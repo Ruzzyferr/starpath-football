@@ -28,7 +28,7 @@ function dealPairOfEights(bet: number): void {
   const s = S()
   const round = readJson<BlackjackRound | null>(s.life, GFLAG.blackjack, null)
   if (!round) throw new Error('no open round')
-  round.hands[0].cards = [7, 20] // 8♠-ish, 8♥-ish (rank 8 in two suits)
+  round.hands[0]!.cards = [7, 20] // 8♠-ish, 8♥-ish (rank 8 in two suits)
   round.dealer = [5, 9] // dealer shows 6, holds 10 → 16, must draw
   writeJson(s.life, GFLAG.blackjack, round)
 }
@@ -57,7 +57,7 @@ describe('blackjack split via real backend', () => {
     expect(v.hands).toHaveLength(2)
     expect(v.bet).toBe(200)
     expect(v.canSplit).toBe(false)
-    expect(v.hands.every((h) => h.stake === 100 && h.cards[0].rank === '8')).toBe(true)
+    expect(v.hands.every((h) => h.stake === 100 && h.cards[0]!.rank === '8')).toBe(true)
     expect(blackjack.value?.hands).toHaveLength(2)
     if (v.phase === 'player') expect(v.active).toBe(0)
     for (let i = 0; i < 6 && v.phase === 'player'; i++) v = A.casino.blackjackStand()

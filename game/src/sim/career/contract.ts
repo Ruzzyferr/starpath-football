@@ -559,7 +559,7 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
   if (concession > 0 && ask.wage !== undefined) cur.wage = roundNice(ask.wage)
   if (ask.years !== undefined) cur.years = clamp(ask.years, h.minYears, h.maxYears)
   if (ask.role !== undefined && roleRank(ask.role) > roleRank(cur.role)) {
-    cur.role = ROLE_ORDER[Math.min(roleRank(ask.role), h.maxRoleRank)]
+    cur.role = ROLE_ORDER[Math.min(roleRank(ask.role), h.maxRoleRank)]!
   }
   if (ask.releaseClause !== undefined && ask.releaseClause !== null && cur.releaseClause !== null) {
     cur.releaseClause = roundNice(Math.max(h.minReleaseClause, (ask.releaseClause + cur.releaseClause) / 2))

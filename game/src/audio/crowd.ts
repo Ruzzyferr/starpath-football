@@ -510,7 +510,7 @@ export class Crowd {
   /** Starts a chant soon (on the next pump), unless one is running. */
   queueChant(at: number, index?: number): void {
     if (this.reduced || !this.built) return
-    const def = CHANTS[index ?? this.rng.int(0, CHANTS.length - 1)]
+    const def = CHANTS[index ?? this.rng.int(0, CHANTS.length - 1)]!
     this.pendingChant = { at: Math.max(at, this.chantUntil), def, passes: this.rng.int(2, 3) }
     if (!this.unsub && this.state.active) this.armTimers(at)
   }
@@ -555,7 +555,7 @@ export class Crowd {
     if (this.nextChantAt < until) {
       if (!this.reduced && this.state.size > 0.15 && this.nextChantAt >= this.chantUntil) {
         const def = CHANTS[this.rng.int(0, CHANTS.length - 1)]
-        this.chant(def, this.rng.int(2, 3), this.nextChantAt)
+        this.chant(def!, this.rng.int(2, 3), this.nextChantAt)
       }
       this.nextChantAt = Math.max(this.nextChantAt, this.chantUntil) + b.chantEvery * this.moodChantFactor() * this.rng.range(0.6, 1.3)
     }

@@ -22,7 +22,7 @@ export function pickNeighbour(boxes: readonly Box[], from: number, dir: Dir): nu
   let bestScore = Infinity
   for (let i = 0; i < boxes.length; i++) {
     if (i === from) continue
-    const b = boxes[i]
+    const b = boxes[i]!
     const dx = b.x + b.w / 2 - ax
     const dy = b.y + b.h / 2 - ay
     const along = dir === 'up' ? -dy : dir === 'down' ? dy : dir === 'left' ? -dx : dx
@@ -51,7 +51,7 @@ function visible(el: HTMLElement): boolean {
 
 function scopeRoot(): ParentNode {
   const modals = document.querySelectorAll<HTMLElement>('.modal-root, [role=dialog][aria-modal=true]')
-  return modals.length ? modals[modals.length - 1] : document
+  return modals.length ? modals[modals.length - 1]! : document
 }
 
 function focusables(): HTMLElement[] {
@@ -109,7 +109,7 @@ function switchTab(delta: 1 | -1): void {
   if (!tabs.length) return
   let i = tabs.findIndex((t) => t.getAttribute('aria-selected') === 'true')
   if (i < 0) i = 0
-  const next = tabs[(i + delta + tabs.length) % tabs.length]
+  const next = tabs[(i + delta + tabs.length) % tabs.length]!
   next.click()
   next.focus({ preventScroll: true })
 }

@@ -221,7 +221,7 @@ describe('fk_wall', () => {
     const spots = wallSpots(a.setPiece!.spot, 3, 0.5)
     a.setPiece!.wall.forEach((id, i) => {
       const ag = a.agents.find((x) => x.id === id)!
-      expect(Math.hypot(ag.pos.x - spots[i].x, ag.pos.y - spots[i].y)).toBeLessThan(0.01)
+      expect(Math.hypot(ag.pos.x - spots[i]!.x, ag.pos.y - spots[i]!.y)).toBeLessThan(0.01)
     })
     for (const ag of a.agents) {
       const bg = b.agents.find((x) => x.id === ag.id)!

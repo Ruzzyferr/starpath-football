@@ -18,7 +18,7 @@ describe('pass telemetry', () => {
     }
     expect(run()).toEqual(run())
     const n = run()
-    expect(n.a.from).toBeGreaterThan(n.b?.from ?? 0)
+    expect(n.a!.from).toBeGreaterThan(n.b?.from ?? 0)
     expect(Object.values(n).reduce((a, p) => a + p.to, 0)).toBe(90)
   })
 

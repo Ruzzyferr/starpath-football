@@ -164,11 +164,11 @@ describe('activities', () => {
 
   it('family visit raises family relations and records memory', () => {
     const { rng, hero, life } = setup(4)
-    const before = life.relationships.mother.value
+    const before = life.relationships.mother!.value
     performActivity(rng, hero, life, 'family_visit', ctx({ calendar: cal(1) }))
-    expect(life.relationships.mother.value).toBeGreaterThan(before)
-    expect(life.relationships.mother.memory.length).toBe(1)
-    expect(life.relationships.mother.lastContactWeek).toBe(3)
+    expect(life.relationships.mother!.value).toBeGreaterThan(before)
+    expect(life.relationships.mother!.memory.length).toBe(1)
+    expect(life.relationships.mother!.lastContactWeek).toBe(3)
   })
 
   it('autoPlanDay never schedules exhausting work the day before a match', () => {
@@ -188,7 +188,7 @@ describe('activities', () => {
     const { rng, hero, life } = setup(6)
     hero.injury = { name: { tr: 'x', en: 'x' }, weeksLeft: 3, severity: 2 }
     const plan = autoPlanDay(hero, life, ctx())
-    expect(plan[0].activityId).toBe('physio')
+    expect(plan[0]!.activityId).toBe('physio')
     plan.forEach((p, slot) => {
       expect(performActivity(rng, hero, life, p.activityId, ctx({ calendar: cal(slot) }), p.options).ok).toBe(true)
     })

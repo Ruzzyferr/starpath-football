@@ -57,7 +57,7 @@ describe('training (real backend)', () => {
     expect(lo.ok && hi.ok).toBe(true)
     expect(hi.performance).toBe(1)
     expect(hi.xp).toBeGreaterThan(lo.xp * 2)
-    expect(hi.attrXp[0].xp).toBeGreaterThanOrEqual(hi.attrXp[hi.attrXp.length - 1].xp)
+    expect(hi.attrXp[0]!.xp).toBeGreaterThanOrEqual(hi.attrXp[hi.attrXp.length - 1]!.xp)
     expect(hi.deltas[0]).toEqual({ key: 'xp', value: hi.xp })
     expect(hi.deltas.some((d) => d.key === 'energy' && d.value < 0)).toBe(true)
   })

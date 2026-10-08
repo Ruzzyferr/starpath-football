@@ -280,7 +280,7 @@ export function ensureRelation(life: Life, id: string, kind: RelationKind, name:
       // New person in the role (e.g. manager sacked): fresh start.
       life.relationships[id] = makeRelation(id, kind, name, initial, week)
     }
-    return life.relationships[id]
+    return life.relationships[id]!
   }
   life.relationships[id] = makeRelation(id, kind, name, initial, week)
   return life.relationships[id]

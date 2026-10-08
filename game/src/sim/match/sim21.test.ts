@@ -27,9 +27,9 @@ describe('late fatigue (2.1#12)', () => {
 
   it('tired legs lower the attacking and defending unit skills', () => {
     const s = makeSetup({ seed: 3 })
-    const p = s.home.lineup[9]
-    const fresh = unitSkills(p)
-    const tired = unitSkills({ ...p, attrs: lateFatigueAttrs(p.attrs) })
+    const p = s.home.lineup[9]!
+    const fresh = unitSkills(p!)
+    const tired = unitSkills(({ ...p, attrs: lateFatigueAttrs(p.attrs) })!)
     expect(tired.att).toBeLessThan(fresh.att)
     expect(tired.def).toBeLessThan(fresh.def)
     expect(tired.mid).toBeLessThan(fresh.mid)
@@ -99,7 +99,7 @@ describe('strength reaches the match (2.1#6)', () => {
     for (let i = 0; i < n; i++) {
       const s = new MatchSim(makeSetup({ seed: base + i, home: { ovr: homeOvr }, away: { ovr: awayOvr }, neutralVenue: true }), 'en').simulateToEnd()
       shots += s.shots[0]
-      onT += s.shotsOnTarget[0]
+      onT += s.shotsOnTarget[0]!
       if (s.score[0] > s.score[1]) win++
     }
     return { shots: shots / n, onTargetRate: onT / Math.max(1, shots), win: win / n }

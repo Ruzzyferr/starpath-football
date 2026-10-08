@@ -18,7 +18,7 @@ describe('whyPlaying', () => {
     s.hero.injury = { kind: 'x', weeksLeft: 3 } as never
     const w = whyPlaying(s)!
     expect(w.chance).toBe(0)
-    expect(w.factors[0].key).toBe('injury')
+    expect(w.factors[0]!.key).toBe('injury')
   })
   it('lists fatigue as an actionable negative', () => {
     const s = makeGame(13)

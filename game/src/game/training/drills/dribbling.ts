@@ -76,8 +76,8 @@ export class DribblingDrill extends DrillBase {
     }
     // Mannequins between gates 0–1 and 2–3, in the running lane.
     this.dummies.forEach((d, i) => {
-      const a = this.gates[i * 2]
-      const b = this.gates[1 + i * 2]
+      const a = this.gates[i * 2]!
+      const b = this.gates[1 + i * 2]!
       place(d.agent, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, Math.PI)
       d.beaten = false
     })
@@ -304,7 +304,7 @@ export class DribblingDrill extends DrillBase {
     if (this.prevHero.x < FINISH_X && h.pos.x >= FINISH_X && this.owned) {
       // Unvisited gates count as missed.
       while (this.next < this.gates.length) {
-        this.gates[this.next].state = 'missed'
+        this.gates[this.next]!.state = 'missed'
         this.next++
         this.stat('gatesMissed')
         this.award(GATE_MISS_PENALTY, false, { label: 'gateMissed', x: h.pos.x, y: h.pos.y })

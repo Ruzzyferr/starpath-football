@@ -11,10 +11,10 @@ describe('ovrBreakdown', () => {
       const b = ovrBreakdown(attrs(60), pos)
       expect(b.rows.reduce((s, r) => s + r.share, 0)).toBeCloseTo(1, 6)
       expect(Math.round(b.raw)).toBe(b.ovr)
-      for (let i = 1; i < b.rows.length; i++) expect(b.rows[i - 1].share).toBeGreaterThanOrEqual(b.rows[i].share)
+      for (let i = 1; i < b.rows.length; i++) expect(b.rows[i - 1]!.share).toBeGreaterThanOrEqual(b.rows[i]!.share)
     })
   }
   it('striker is dominated by finishing', () => {
-    expect(ovrBreakdown(attrs(50), 'ST').rows[0].key).toBe('finishing')
+    expect(ovrBreakdown(attrs(50), 'ST').rows[0]!.key).toBe('finishing')
   })
 })

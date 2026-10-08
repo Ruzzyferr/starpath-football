@@ -17,9 +17,9 @@ function interp(timeline: number[][], p: number): number[] {
   const f = Math.min(1, Math.max(0, p || 0)) * (timeline.length - 1)
   const i = Math.floor(f)
   const k = f - i
-  const a = timeline[i]
-  const b = timeline[Math.min(timeline.length - 1, i + 1)]
-  return a.map((v, j) => v + (b[j] - v) * k)
+  const a = timeline[i]!
+  const b = timeline[Math.min(timeline.length - 1, i + 1)]!
+  return a.map((v, j) => v + (b[j]! - v) * k)
 }
 
 export function HorsesScreen() {
@@ -133,7 +133,7 @@ function HorsesMain() {
             <div class="hr-result-place score-font">{t('casino.hr.placing', { n: myPlace })}</div>
             <div class="grow">
               <div class="h3">{t('casino.hr.youFinished', { name: mine.name, n: myPlace })}</div>
-              <div class="t-sm t-mid">{t('casino.hr.winner', { name: horses[result.order[0]]?.name ?? '' })}</div>
+              <div class="t-sm t-mid">{t('casino.hr.winner', { name: horses[result.order[0]!]?.name ?? '' })}</div>
             </div>
             <div class={`score-font num ${result.net > 0 ? 't-pos' : 't-neg'}`}>{formatMoney(result.net, { sign: true })}</div>
           </div>

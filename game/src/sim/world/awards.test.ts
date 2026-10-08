@@ -31,7 +31,7 @@ describe('awards over a season', () => {
   it('Golden Star: top-30 shortlist and a deterministic 100-journalist vote', () => {
     const list = goldenStarShortlist(world, S)
     expect(list).toHaveLength(GOLDEN_STAR_SHORTLIST)
-    for (let i = 1; i < list.length; i++) expect(list[i - 1].score).toBeGreaterThanOrEqual(list[i].score)
+    for (let i = 1; i < list.length; i++) expect(list[i - 1]!.score).toBeGreaterThanOrEqual(list[i]!.score)
     for (const c of list) expect(c.score).toBeCloseTo(c.parts.league + c.parts.continental + c.parts.international + c.parts.trophies, 1)
     const a = goldenStarVote(list, S)
     const b = goldenStarVote(goldenStarShortlist(world, S), S)
@@ -40,19 +40,19 @@ describe('awards over a season', () => {
     const total = a.ranking.reduce((s, c) => s + c.points, 0)
     expect(total).toBe(GOLDEN_STAR_JOURNALISTS * VOTE_POINTS.reduce((s, v) => s + v, 0))
     expect(a.ranking.reduce((s, c) => s + c.firsts, 0)).toBe(GOLDEN_STAR_JOURNALISTS)
-    for (let i = 1; i < a.ranking.length; i++) expect(a.ranking[i - 1].points).toBeGreaterThanOrEqual(a.ranking[i].points)
+    for (let i = 1; i < a.ranking.length; i++) expect(a.ranking[i - 1]!.points).toBeGreaterThanOrEqual(a.ranking[i]!.points)
     // Sanity: the winner comes from the top of the shortlist.
-    const winnerScoreRank = list.findIndex((c) => c.playerId === a.ranking[0].playerId)
+    const winnerScoreRank = list.findIndex((c) => c.playerId === a.ranking[0]!.playerId)
     expect(winnerScoreRank).toBeLessThan(10)
   })
 
   it('hero competes on equal terms', () => {
-    const top = goldenStarShortlist(world, S)[0]
-    const p = world.players[top.playerId]
+    const top = goldenStarShortlist(world, S)[0]!
+    const p = world.players[top.playerId]!
     const hero = { name: 'Hero', clubId: p.clubId, nationality: p.nationality, position: p.position, ovr: p.ovr + 8, age: 24, stats: { ...p.stats, goals: p.stats.goals + 25, ratingSum: p.stats.ratingSum + p.stats.apps * 0.8 }, intlCaps: 6, intlGoals: 4 }
     const list = goldenStarShortlist(world, S, hero)
-    expect(list[0].isHero).toBe(true)
-    expect(goldenStarVote(list, S).ranking[0].isHero).toBe(true)
+    expect(list[0]!.isHero).toBe(true)
+    expect(goldenStarVote(list, S).ranking[0]!.isHero).toBe(true)
   })
 
   it('Player of the Month per league from real fixture data', () => {
@@ -72,15 +72,15 @@ describe('awards over a season', () => {
 
   it('Golden Glove, Young Player, Goal and Team of the Season', () => {
     const rec = computeSeasonAwardRecord(world, S, undefined, 'EN1')
-    expect(world.players[rec.goldenGlove!.playerId].position).toBe('GK')
+    expect(world.players[rec.goldenGlove!.playerId]!.position).toBe('GK')
     expect(rec.youngPlayer).not.toBeNull()
     expect(rec.goalNominees.length).toBeGreaterThan(0)
     expect(rec.goalNominees).toContainEqual(rec.goalOfSeason)
     expect(ensureAwards(world).goals.length).toBeGreaterThan(0)
     expect(rec.teamOfSeason).toHaveLength(11)
-    expect(rec.teamOfSeason[0].slot).toBe('GK')
+    expect(rec.teamOfSeason[0]!.slot).toBe('GK')
     expect(new Set(rec.teamOfSeason.map((p) => p.playerId)).size).toBe(11)
-    for (const p of rec.teamOfSeason) expect(world.leagues.EN1.clubIds).toContain(p.clubId)
+    for (const p of rec.teamOfSeason) expect(world.leagues.EN1!.clubIds).toContain(p.clubId)
   })
 
   it('goal descriptors are deterministic and penalties are never nominated', () => {

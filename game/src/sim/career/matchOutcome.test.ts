@@ -28,16 +28,16 @@ describe('applyMatchToHero', () => {
 
   it('great games raise form, morale, reputation, followers, fans and trust', () => {
     const s = state()
-    const before = { form: s.hero.form, morale: s.hero.morale, rep: s.hero.reputation, f: s.life.followers, fans: s.life.relationships.fans.value, trust: s.hero.managerTrust }
+    const before = { form: s.hero.form, morale: s.hero.morale, rep: s.hero.reputation, f: s.life.followers, fans: s.life.relationships.fans!.value, trust: s.hero.managerTrust }
     const r = applyMatchToHero(s, { ...base, rating: 9, goals: 3, won: true, drew: false, motm: true, importance: 0.8 })
     expect(s.hero.form).toBeGreaterThan(before.form)
     expect(s.hero.morale).toBeGreaterThan(before.morale)
     expect(s.hero.reputation).toBeGreaterThan(before.rep)
     expect(s.life.followers).toBeGreaterThan(before.f)
-    expect(s.life.relationships.fans.value).toBeGreaterThan(before.fans)
+    expect(s.life.relationships.fans!.value).toBeGreaterThan(before.fans)
     expect(s.hero.managerTrust).toBeGreaterThan(before.trust)
     expect(r.headlines.length).toBe(1)
-    expect(r.headlines[0].sentiment).toBe(1)
+    expect(r.headlines[0]!.sentiment).toBe(1)
     expect(s.life.news.length).toBe(1)
   })
 
@@ -47,7 +47,7 @@ describe('applyMatchToHero', () => {
     const r = applyMatchToHero(s, { ...base, rating: 3.8, red: true })
     expect(s.hero.suspendedMatches).toBe(1)
     expect(s.hero.reputation).toBeLessThan(rep)
-    expect(r.headlines[0].sentiment).toBe(-1)
+    expect(r.headlines[0]!.sentiment).toBe(-1)
     expect(s.hero.seasonStats.red).toBe(1)
   })
 
@@ -72,10 +72,10 @@ describe('applyMatchToHero', () => {
 
   it('assist links strengthen teammate relationships', () => {
     const s = state()
-    const v = s.life.relationships[teammateId('p1')].value
+    const v = s.life.relationships[teammateId('p1')]!.value
     applyMatchToHero(s, { ...base, goals: 1, assistedBy: ['p1'] })
-    expect(s.life.relationships[teammateId('p1')].value).toBeGreaterThan(v)
-    expect(s.life.relationships[teammateId('p1')].memory.length).toBe(1)
+    expect(s.life.relationships[teammateId('p1')]!.value).toBeGreaterThan(v)
+    expect(s.life.relationships[teammateId('p1')]!.memory.length).toBe(1)
   })
 
   it('unused substitute only counts nothing but morale drift', () => {
@@ -96,7 +96,7 @@ describe('applyMatchToHero', () => {
     applyMatchToHero(a, { ...base, rating: 9, goals: 3 })
     applyMatchToHero(b, { ...base, rating: 9, goals: 3 })
     expect(a.rng).toEqual(b.rng)
-    expect(a.life.news[0].headline).toEqual(b.life.news[0].headline)
+    expect(a.life.news[0]!.headline).toEqual(b.life.news[0]!.headline)
     expect(a.rng).not.toEqual(makeState().rng)
   })
 

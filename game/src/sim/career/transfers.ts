@@ -298,7 +298,7 @@ export function freeAgentOffers(
     const fits = candidates.filter((c) => ovr >= c.squadAvgOvr - 5)
     const pool = fits.length > 0 ? fits : [...candidates]
     pool.sort((a, b) => a.reputation - b.reputation)
-    offers.push(make(fits.length > 0 ? pool[pool.length - 1] : pool[0]))
+    offers.push(make((fits.length > 0 ? pool[pool.length - 1] : pool[0])!))
   }
   return offers
 }

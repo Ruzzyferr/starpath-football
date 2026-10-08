@@ -35,7 +35,7 @@ const depth = (x: number, dir: AttackDir): number => (dir > 0 ? x : PITCH_LENGTH
 export function secondLastOpponentDepth(opponentXs: readonly number[], dir: AttackDir): number | null {
   if (opponentXs.length === 0) return null
   const d = opponentXs.map((x) => depth(x, dir)).sort((a, b) => b - a)
-  return d.length >= 2 ? d[1] : d[0]
+  return d.length >= 2 ? d[1]! : d[0]!
 }
 
 /**

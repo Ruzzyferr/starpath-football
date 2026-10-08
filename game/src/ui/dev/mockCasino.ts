@@ -36,7 +36,7 @@ export function handTotal(cards: CardView[]): number {
 export function makeHorses(rng: Rng): HorseView[] {
   return HORSE_NAMES.map((name, index) => {
     const odds = Math.round((1.8 + rng.next() * 9) * 10) / 10
-    return { index, name, odds, color: HORSE_COLORS[index], form: [rng.int(1, 8), rng.int(1, 8), rng.int(1, 8)].join('-') }
+    return { index, name, odds, color: HORSE_COLORS[index]!, form: [rng.int(1, 8), rng.int(1, 8), rng.int(1, 8)].join('-') }
   })
 }
 
@@ -59,11 +59,11 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
 
   const view = (): BlackjackView => {
     const r = round as NonNullable<typeof round>
-    const act = r.hands[Math.min(r.active, r.hands.length - 1)]
+    const act = r.hands[Math.min(r.active, r.hands.length - 1)]!
     const net = r.hands.reduce((a, h) => a + h.net, 0)
     const free = !r.done && act.cards.length === 2 && host.canAfford(staked() + act.bet)
     const result: BlackjackView['result'] = !r.done ? null
-      : r.hands.length === 1 ? r.hands[0].result
+      : r.hands.length === 1 ? r.hands[0]!.result
       : net > 0 ? 'win' : net === 0 ? 'push' : r.hands.every((h) => h.result === 'bust') ? 'bust' : 'lose'
     const v: BlackjackView = {
       bet: staked(),
@@ -77,7 +77,7 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
       canDouble: free,
       hands: r.hands.map((h) => ({ cards: h.cards.map((c) => ({ ...c })), total: handTotal(h.cards), stake: h.bet, doubled: h.doubled, result: r.done ? h.result : null, payout: r.done ? h.net : 0 })),
       active: r.done ? r.hands.length : r.active,
-      canSplit: free && r.hands.length === 1 && cardVal(act.cards[0]) === cardVal(act.cards[1]),
+      canSplit: free && r.hands.length === 1 && cardVal(act.cards[0]!) === cardVal(act.cards[1]!),
     }
     blackjack.value = v
     return v
@@ -103,7 +103,7 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
   /** Mark the active hand done and move on (finishing the round after the last). */
   const next = (): BlackjackView => {
     const r = round as NonNullable<typeof round>
-    while (r.active < r.hands.length && r.hands[r.active].done) r.active++
+    while (r.active < r.hands.length && r.hands[r.active]!.done) r.active++
     return r.active >= r.hands.length ? finish() : view()
   }
   const live = (): MockHand | null => (round && !round.done ? round.hands[round.active] ?? null : null)
@@ -148,9 +148,9 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
     blackjackSplit() {
       const h = live()
       if (!h || !round || !view().canSplit) return blackjack.value as BlackjackView
-      const aces = h.cards[0].rank === 'A'
-      const second: MockHand = { cards: [h.cards[1], draw()], bet: h.bet, doubled: false, done: aces, result: null, net: 0 }
-      h.cards = [h.cards[0], draw()]
+      const aces = h.cards[0]!.rank === 'A'
+      const second: MockHand = { cards: [h.cards[1]!, draw()], bet: h.bet, doubled: false, done: aces, result: null, net: 0 }
+      h.cards = [h.cards[0]!, draw()]
       h.done = aces
       round.hands.push(second)
       for (const x of round.hands) if (handTotal(x.cards) >= 21) x.done = true
@@ -193,18 +193,18 @@ export function createCasino(host: CasinoHost, horses: () => HorseView[]): Casin
       const raw: number[][] = []
       for (let f = 0; f < 60; f++) {
         for (let i = 0; i < hs.length; i++) {
-          const base = 0.012 + strength[i] * 0.012
-          const burst = f >= surge[i] && f < surge[i] + 8 ? 0.006 : 0
-          pos[i] += Math.max(0.002, base + burst + (rng.next() - 0.4) * 0.008)
+          const base = 0.012 + strength[i]! * 0.012
+          const burst = f >= surge[i]! && f < surge[i]! + 8 ? 0.006 : 0
+          pos[i]! += Math.max(0.002, base + burst + (rng.next() - 0.4) * 0.008)
         }
         raw.push([...pos])
       }
       // Normalise so the winner crosses the line (1.0) exactly on the last frame.
       const k = 1 / Math.max(...pos)
       for (const fr of raw) timeline.push(fr.map((p) => Math.min(1, Math.round(p * k * 1000) / 1000)))
-      const order = hs.map((h) => h.index).sort((a, b) => pos[b] - pos[a])
+      const order = hs.map((h) => h.index).sort((a, b) => pos[b]! - pos[a]!)
       const won = order[0] === horse
-      const net = won ? Math.round(bet * (hs[horse].odds - 1)) : -bet
+      const net = won ? Math.round(bet * (hs[horse]!.odds - 1)) : -bet
       host.settle(net)
       return { timeline, order, net }
     },

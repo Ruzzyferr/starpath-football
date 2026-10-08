@@ -54,7 +54,7 @@ describe('2.6#39 manager profiles', () => {
       expect(m.patience).toBeGreaterThanOrEqual(5)
       expect(m.formation).toBe(c.formation)
     }
-    const c = clubs[0]
+    const c = clubs[0]!
     expect(managerProfile(c)).toEqual(managerProfile({ ...c }))
     expect(managerProfile({ ...c, managerName: 'Someone Else' }).youthTrust === managerProfile(c).youthTrust && managerProfile({ ...c, managerName: 'Someone Else' }).age === managerProfile(c).age).toBe(false)
     expect(youthTrustBonus(90, 19)).toBeCloseTo(2)
@@ -83,7 +83,7 @@ describe('2.6#116 women\'s pyramid', () => {
     const women = generateWorld(new Rng(3), { ...opts, gender: 'female' })
     expect(women.gender).toBe('female')
     expect(Object.keys(women.clubs)).toEqual(Object.keys(men.clubs))
-    const same = Object.keys(men.clubs).filter((id) => men.clubs[id].name === women.clubs[id].name).length
+    const same = Object.keys(men.clubs).filter((id) => men.clubs[id]!.name === women.clubs[id]!.name).length
     expect(same).toBeLessThan(Object.keys(men.clubs).length * 0.2)
     const avg = (w: World, f: (c: World['clubs'][string]) => number) => Object.values(w.clubs).reduce((s, c) => s + f(c), 0) / Object.keys(w.clubs).length
     expect(avg(women, (c) => c.reputation)).toBeLessThan(avg(men, (c) => c.reputation))

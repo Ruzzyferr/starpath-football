@@ -282,7 +282,7 @@ export function acceptSponsor(state: GameState, offerId: string): ActionResult {
   const o = offers.find((x) => x.deal.id === offerId)
   if (!o) return fail(lt('Teklif bulunamadı.', 'Offer not found.'))
   const r = acceptSponsorFn(state.life, o)
-  if (!r.ok) return fail(r.lines[0])
+  if (!r.ok) return fail(r.lines[0]!)
   setSponsorOffers(state, offers.filter((x) => x !== o && x.deal.category !== o.deal.category))
   logAll(state, [], r.lines, 'money', '🤝')
   return okr(r.lines)
@@ -307,7 +307,7 @@ const AGENT_NAMES = ['Cem Kaya', 'Marco Bellini', 'Sarah Whitfield', 'Jorge Mend
 
 export function hireAgent(state: GameState, quality: number): ActionResult {
   const q = clamp(Math.round(quality), 1, 5)
-  const tier = AGENT_TIERS[q]
+  const tier = AGENT_TIERS[q]!
   if (state.hero.reputation < tier.minReputation) return fail(lt('Bu menajer seninle çalışmak için henüz yeterince ünlü değilsin diyor.', 'This agent says you are not famous enough yet.'))
   if (state.life.money < tier.fee) return fail(fill(lt('Menajer ücreti için {m} gerekiyor.', 'You need {m} for the agent fee.'), { m: fmtMoney(tier.fee) }))
   return withRng(state, (rng) => {
@@ -420,7 +420,7 @@ export function acceptNegotiation(state: GameState): ActionResult<NegotiationSta
   const cur = currentNegotiation(state)
   if (!cur) return fail(lt('Açık görüşme yok.', 'No open negotiation.'))
   const step = acceptNegotiated(cur.state)
-  if (step.state.status !== 'agreed') return fail(step.lines[0])
+  if (step.state.status !== 'agreed') return fail(step.lines[0]!)
   const res = finalizeNegotiation(state, cur.offerId, step.state)
   return { ...res, lines: [...step.lines, ...res.lines], value: step.state }
 }
@@ -471,7 +471,7 @@ export const offerClubContext = clubContextOf
 export function unlockPerk(state: GameState, perkId: string): ActionResult {
   const before = state.hero.perks.length
   const lines = unlockPerkFn(state.hero, perkId)
-  return state.hero.perks.length > before ? okr(lines) : fail(lines[0])
+  return state.hero.perks.length > before ? okr(lines) : fail(lines[0]!)
 }
 
 /**

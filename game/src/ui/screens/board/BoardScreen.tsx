@@ -27,7 +27,7 @@ function Challenge() {
   const done = Object.entries(m.challenges).sort((a, b) => {
     const [as, aw] = a[0].split(':').map(Number)
     const [bs, bw] = b[0].split(':').map(Number)
-    return bs - as || bw - aw
+    return bs! - as! || bw! - aw!
   }).slice(0, 12)
   return (
     <div class="stack" style={{ gap: '12px' }}>
@@ -62,7 +62,7 @@ function Challenge() {
               const def = CHALLENGES.find((c) => c.id === d.id)
               return (
                 <li key={key}>
-                  <span><Icon name="check" size={14} class="t-pos" /> {def ? lt(def.title) : d.id}<span class="t-xs t-lo"> · {t('board.challenge.weekRow', { s: seasonLabel(se), w: wk + 1 })}</span></span>
+                  <span><Icon name="check" size={14} class="t-pos" /> {def ? lt(def.title) : d.id}<span class="t-xs t-lo"> · {t('board.challenge.weekRow', { s: seasonLabel(se!), w: wk! + 1 })}</span></span>
                   <b class="num">{formatRating(m.attempts[key]?.best.rating ?? d.rating)}</b>
                   {m.attempts[key] && (
                     <span class="t-xs t-lo bd-attempt" data-testid="attempt-row">{t('community.attempt.tries', { n: m.attempts[key].count })} · {t('community.attempt.first')} {formatRating(m.attempts[key].first.rating)} · {t('community.attempt.best')} {formatRating(m.attempts[key].best.rating)}</span>

@@ -20,16 +20,16 @@ export function Sparkline({ values, width = 120, height = 36, color = 'var(--bra
   const { d, pts } = path(values, width, height, 3, min, max)
   const [sel, setSel] = useState<number | null>(null)
   if (!pts.length) return <span class="t-lo t-sm">{t('ui.noForm')}</span>
-  const last = pts[pts.length - 1]
-  const area = `${d}L${last[0].toFixed(1)} ${height}L${pts[0][0].toFixed(1)} ${height}Z`
-  const gid = `sg${Math.round(width)}${values.length}${Math.round(values[0] * 10)}`
+  const last = pts[pts.length - 1]!
+  const area = `${d}L${last[0].toFixed(1)} ${height}L${pts[0]![0].toFixed(1)} ${height}Z`
+  const gid = `sg${Math.round(width)}${values.length}${Math.round(values[0]! * 10)}`
   const fmt = format ?? ((v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)))
   // Tap / hover / arrow keys pick the nearest point and read its value (GAP 2.7#56).
   const pick = (clientX: number, el: SVGSVGElement) => {
     const r = el.getBoundingClientRect()
     const x = ((clientX - r.left) / (r.width || 1)) * width
     let best = 0
-    pts.forEach(([px], i) => { if (Math.abs(px - x) < Math.abs(pts[best][0] - x)) best = i })
+    pts.forEach(([px], i) => { if (Math.abs(px - x) < Math.abs(pts[best]![0] - x)) best = i })
     setSel(best)
   }
   const shown = sel ?? values.length - 1
@@ -37,7 +37,7 @@ export function Sparkline({ values, width = 120, height = 36, color = 'var(--bra
     <span class="sparkline-wrap" style={{ width }}>
       <svg
         class="sparkline" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" tabIndex={0}
-        aria-label={`${label ?? t('ui.sparkline', { n: values.length })}: ${fmt(values[shown])}`}
+        aria-label={`${label ?? t('ui.sparkline', { n: values.length })}: ${fmt(values[shown]!)}`}
         onPointerDown={(e) => pick(e.clientX, e.currentTarget as SVGSVGElement)}
         onPointerMove={(e) => { if (e.pointerType === 'mouse' || e.buttons) pick(e.clientX, e.currentTarget as SVGSVGElement) }}
         onPointerLeave={() => setSel(null)}
@@ -60,10 +60,10 @@ export function Sparkline({ values, width = 120, height = 36, color = 'var(--bra
           </>
         )}
         <path d={d} fill="none" stroke={color} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-        <circle cx={pts[shown][0]} cy={pts[shown][1]} r={sel === null ? 3 : 4.5} fill={color} stroke={sel === null ? 'none' : 'var(--surface-1)'} stroke-width="2" />
+        <circle cx={pts[shown]![0]} cy={pts[shown]![1]} r={sel === null ? 3 : 4.5} fill={color} stroke={sel === null ? 'none' : 'var(--surface-1)'} stroke-width="2" />
       </svg>
       {sel !== null && (
-        <output class="sparkline-read num" style={{ left: `${Math.min(Math.max(pts[sel][0], 18), width - 18)}px` }}>{fmt(values[sel])}</output>
+        <output class="sparkline-read num" style={{ left: `${Math.min(Math.max(pts[sel]![0], 18), width - 18)}px` }}>{fmt(values[sel]!)}</output>
       )}
     </span>
   )
@@ -74,8 +74,8 @@ export function LineChart({ values, height = 120, color = 'var(--accent-blue)', 
   const w = 300
   const { d, pts } = path(values, w, height, 8, min, max)
   if (!pts.length) return <span class="t-lo t-sm">{t('common.noData')}</span>
-  const last = pts[pts.length - 1]
-  const gid = `lc${values.length}${Math.round(values[values.length - 1])}`
+  const last = pts[pts.length - 1]!
+  const gid = `lc${values.length}${Math.round(values[values.length - 1]!)}`
   return (
     <svg class="linechart" viewBox={`0 0 ${w} ${height}`} preserveAspectRatio="none" role="img" aria-label={label} style={{ height }}>
       <defs>
@@ -87,7 +87,7 @@ export function LineChart({ values, height = 120, color = 'var(--accent-blue)', 
       {[0.25, 0.5, 0.75].map((g) => (
         <line key={g} x1="0" x2={w} y1={height * g} y2={height * g} stroke="var(--border)" stroke-width="1" stroke-dasharray="3 5" vector-effect="non-scaling-stroke" />
       ))}
-      <path d={`${d}L${last[0]} ${height}L${pts[0][0]} ${height}Z`} fill={`url(#${gid})`} />
+      <path d={`${d}L${last[0]} ${height}L${pts[0]![0]} ${height}Z`} fill={`url(#${gid})`} />
       <path d={d} fill="none" stroke={color} stroke-width="2.2" vector-effect="non-scaling-stroke" stroke-linejoin="round" />
     </svg>
   )

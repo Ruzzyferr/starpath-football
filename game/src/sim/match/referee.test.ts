@@ -103,7 +103,7 @@ describe('suspensions (WP-14)', () => {
         expect(snap.heroStats.red).toBe(1)
         expect(snap.heroStats.ban).toBe(3)
         const st = JSON.parse(sim.serialize()) as EngineState
-        expect(st.players[st.hero.id as string].ban).toBe(3)
+        expect(st.players[st.hero.id as string]!.ban).toBe(3)
       }
     }
     expect(found).toBe(true)
@@ -129,13 +129,13 @@ describe('suspensions (WP-14)', () => {
 
   it('NPC bans are booked, keep the player out of the lineup and are served match by match', () => {
     const world = generateWorld(new Rng(77), { season: 2025, heroCountryId: 'TR', countryIds: ['TR'] })
-    const club = Object.values(world.clubs)[0]
-    const best = club.squad.map((id) => world.players[id]).sort((a, b) => b.ovr - a.ovr)[0]
-    const before = selectLineupFromPlayers(club.squad.map((id) => world.players[id]), club.formation)
+    const club = Object.values(world.clubs)[0]!
+    const best = club.squad.map((id) => world.players[id]).sort((a, b) => b!.ovr - a!.ovr)[0]!
+    const before = selectLineupFromPlayers(club.squad.map((id) => world.players[id]!), club.formation)
     expect(before.playerIds).toContain(best.id)
-    addNpcBan(best, { red: true, ban: 2 }, 'k')
+    addNpcBan(best!, { red: true, ban: 2 }, 'k')
     expect(best.suspendedMatches).toBe(2)
-    const during = selectLineupFromPlayers(club.squad.map((id) => world.players[id]), club.formation)
+    const during = selectLineupFromPlayers(club.squad.map((id) => world.players[id]!), club.formation)
     expect(during.playerIds).not.toContain(best.id)
     serveClubBans(world, club.id)
     expect(best.suspendedMatches).toBe(1)
@@ -143,7 +143,7 @@ describe('suspensions (WP-14)', () => {
     expect(best.suspendedMatches).toBeUndefined()
     // Fifth yellow of the season: one match.
     best.stats.yellow = 5
-    addNpcBan(best, { yellowAdded: true }, 'y')
+    addNpcBan(best!, { yellowAdded: true }, 'y')
     expect(best.suspendedMatches).toBe(1)
   })
 })

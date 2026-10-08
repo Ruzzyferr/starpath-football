@@ -49,7 +49,7 @@ export interface SeasonEvent extends SeasonEventDef {
 /** The event calendar of one season: a seeded pick and order from the pool, so every season feels different. */
 export function seasonCalendar(season: number): SeasonEvent[] {
   const order = new Rng(hashString(`ev|${season}`)).shuffle([...EVENT_POOL])
-  return EVENT_SLOTS.map((slot, i) => ({ ...order[i], ...slot }))
+  return EVENT_SLOTS.map((slot, i) => ({ ...order[i]!, ...slot }))
 }
 
 /** The event running in `week`, or null between events. */
@@ -106,7 +106,7 @@ export function newsOfTheDay(season: number, week: number, ctx: NewsContext): Ne
       : { id: 'ch:open', icon: def.icon, title: lt('Bu haftanın görevi', 'This week\'s challenge'), text: lt(`${def.title.tr}: ${def.desc.tr}`, `${def.title.en}: ${def.desc.en}`) })
   }
   if (ctx.streak >= 2) out.push({ id: 'streak', icon: 'star', title: lt('Seri devam ediyor', 'Streak alive'), text: lt(`${ctx.streak} haftalık serindesin; kopmaması için bu hafta da görevi bitir.`, `You are on a ${ctx.streak}-week streak. Clear this week to keep it.`) })
-  const tip = TIPS[new Rng(hashString(`news|${season}|${week}`)).int(0, TIPS.length - 1)]
+  const tip = TIPS[new Rng(hashString(`news|${season}|${week}`)).int(0, TIPS.length - 1)]!
   out.push({ id: `tip:${season}:${week}`, icon: 'sparkle', title: tip.title, text: tip.text })
   return out
 }
@@ -133,7 +133,7 @@ export function milestoneTimeline(m: LocalMeta, careers: readonly CareerSummary[
     const [season, week] = key.split(':').map(Number)
     const def = CHALLENGES.find((c) => c.id === d.id)
     out.push({
-      id: `ch:${key}`, season, week, kind: 'challenge', icon: def?.icon ?? 'medal',
+      id: `ch:${key}`, season: season!, week: week!, kind: 'challenge', icon: def?.icon ?? 'medal',
       title: def?.title ?? lt(d.id, d.id), detail: lt(`${d.opponent} maçında ${d.rating.toFixed(1)}`, `${d.rating.toFixed(1)} vs ${d.opponent}`),
     })
   }

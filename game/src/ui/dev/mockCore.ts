@@ -170,6 +170,6 @@ export function series(seedStr: string, n: number, end: number, vol: number, dri
   const rng = new Rng(h)
   const out: number[] = new Array(n)
   out[n - 1] = end
-  for (let i = n - 2; i >= 0; i--) out[i] = Math.max(0, out[i + 1] * (1 - drift + (rng.next() - 0.5) * vol))
+  for (let i = n - 2; i >= 0; i--) out[i] = Math.max(0, out[i + 1]! * (1 - drift + (rng.next() - 0.5) * vol))
   return out.map((v) => Math.round(v))
 }

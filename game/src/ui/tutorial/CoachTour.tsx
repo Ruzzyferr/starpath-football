@@ -150,7 +150,7 @@ export function CoachTour() {
         const i = list.indexOf(document.activeElement as HTMLElement)
         e.preventDefault()
         const n = i < 0 ? 0 : (i + (e.shiftKey ? -1 : 1) + list.length) % list.length
-        list[n].focus()
+        list[n]!.focus()
       }
       // The App's Space shortcut must not advance time behind the tour (unless that is the step).
       if (e.key === ' ' && step?.waitFor !== 'advance' && document.activeElement === document.body) e.preventDefault()

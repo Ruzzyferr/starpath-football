@@ -42,7 +42,7 @@ describe('Sequence', () => {
     s.collect(0.1, 0)
     // The tab was throttled for 2 s.
     const late = s.collect(2.2, 2.05)
-    expect(late[0].time).toBeGreaterThanOrEqual(2.0 - 1e-9)
+    expect(late[0]!.time).toBeGreaterThanOrEqual(2.0 - 1e-9)
     expect(s.skipped).toBeGreaterThan(10)
   })
 })

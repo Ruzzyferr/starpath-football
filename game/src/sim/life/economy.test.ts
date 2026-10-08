@@ -87,27 +87,27 @@ describe('asset catalogue', () => {
 
 describe('resale curve', () => {
   it('cars drop immediately then slide toward resale and keep depreciating', () => {
-    const def = ASSET_BY_ID.car_kestrel_gt
+    const def = ASSET_BY_ID.car_kestrel_gt!
     const o = { defId: def.id, boughtSeason: 2026, boughtWeek: 0, pricePaid: def.price }
-    const v0 = resaleValue(o, def, cal(2026, 0))
-    const v1 = resaleValue(o, def, cal(2027, 0))
-    const v3 = resaleValue(o, def, cal(2029, 0))
+    const v0 = resaleValue(o, def!, cal(2026, 0))
+    const v1 = resaleValue(o, def!, cal(2027, 0))
+    const v3 = resaleValue(o, def!, cal(2029, 0))
     expect(v0).toBeCloseTo(def.price * 0.87, -1)
     expect(v1).toBeCloseTo(def.price * def.resale, -1)
     expect(v3).toBeLessThan(v1)
     expect(v3).toBeGreaterThan(0)
   })
   it('blue-chip art appreciates over years (capped)', () => {
-    const def = ASSET_BY_ID.art_masterpiece
+    const def = ASSET_BY_ID.art_masterpiece!
     const o = { defId: def.id, boughtSeason: 2026, boughtWeek: 0, pricePaid: def.price }
-    expect(resaleValue(o, def, cal(2026, 0))).toBeLessThan(def.price)
-    expect(resaleValue(o, def, cal(2028, 0))).toBeGreaterThan(def.price)
-    expect(resaleValue(o, def, cal(2050, 0))).toBe(resaleValue(o, def, cal(2040, 0)))
+    expect(resaleValue(o, def!, cal(2026, 0))).toBeLessThan(def.price)
+    expect(resaleValue(o, def!, cal(2028, 0))).toBeGreaterThan(def.price)
+    expect(resaleValue(o, def!, cal(2050, 0))).toBe(resaleValue(o, def!, cal(2040, 0)))
   })
   it('houses keep ~resale value', () => {
-    const def = ASSET_BY_ID.house_flat
+    const def = ASSET_BY_ID.house_flat!
     const o = { defId: def.id, boughtSeason: 2026, boughtWeek: 0, pricePaid: def.price }
-    expect(resaleValue(o, def, cal(2030, 0))).toBeCloseTo(def.price * def.resale, -2)
+    expect(resaleValue(o, def!, cal(2030, 0))).toBeCloseTo(def.price * def.resale, -2)
   })
 })
 
@@ -115,12 +115,12 @@ describe('buy / sell / happiness', () => {
   it('blocks unaffordable and reputation-gated items; buys and sells', () => {
     const { hero, life } = setup()
     life.money = 1_000
-    expect(buyAsset(life, hero, 'car_kestrel_gt', cal(2026, 0))[0].en).toMatch(/afford/)
+    expect(buyAsset(life, hero, 'car_kestrel_gt', cal(2026, 0))[0]!.en).toMatch(/afford/)
     life.money = 10_000_000
-    expect(buyAsset(life, hero, 'car_spectra_hyper', cal(2026, 0))[0].en).toMatch(/famous/)
+    expect(buyAsset(life, hero, 'car_spectra_hyper', cal(2026, 0))[0]!.en).toMatch(/famous/)
     buyAsset(life, hero, 'car_kestrel_gt', cal(2026, 0))
     expect(life.assets).toHaveLength(1)
-    expect(buyAsset(life, hero, 'car_kestrel_gt', cal(2026, 0))[0].en).toMatch(/already/)
+    expect(buyAsset(life, hero, 'car_kestrel_gt', cal(2026, 0))[0]!.en).toMatch(/already/)
     const before = life.money
     const r = sellAsset(life, 'car_kestrel_gt', cal(2026, 10))
     expect(r.amount).toBeGreaterThan(0)
@@ -141,7 +141,7 @@ describe('buy / sell / happiness', () => {
     buyAsset(life, hero, 'watch_kronos_diver', cal(2026, 0))
     const one = assetHappiness(life)
     for (const id of ['watch_tik_sport', 'watch_valmont_chrono', 'watch_helvetia_royal', 'watch_duval_tourbillon', 'watch_orbis_grand']) buyAsset(life, hero, id, cal(2026, 0))
-    const sum = life.assets.reduce((s, o) => s + ASSET_BY_ID[o.defId].happiness, 0)
+    const sum = life.assets.reduce((s, o) => s + ASSET_BY_ID[o.defId]!.happiness, 0)
     expect(assetHappiness(life)).toBeGreaterThan(one)
     expect(assetHappiness(life)).toBeLessThan(sum)
   })
@@ -176,10 +176,10 @@ describe('bank & loans', () => {
   it('refuses loans beyond limits and second loans', () => {
     const { hero, life } = setup()
     contract(hero, 1_000)
-    expect(takeLoan(life, hero, 10_000_000, 52)[0].en).toMatch(/at most/)
+    expect(takeLoan(life, hero, 10_000_000, 52)[0]!.en).toMatch(/at most/)
     takeLoan(life, hero, 1_000, 52)
-    expect(takeLoan(life, hero, 1_000, 52)[0].en).toMatch(/current loan/)
-    expect(repayLoan(life)[0].en).toMatch(/repaid/)
+    expect(takeLoan(life, hero, 1_000, 52)[0]!.en).toMatch(/current loan/)
+    expect(repayLoan(life)[0]!.en).toMatch(/repaid/)
   })
   it('missed payments hurt credit', () => {
     const { rng, hero, life } = setup()
@@ -236,10 +236,10 @@ describe('investments', () => {
     life.money = 50_000
     invest(life, 'index', 20_000, rng)
     expect(life.money).toBe(30_000)
-    const id = life.bank.investments[0].id
+    const id = life.bank.investments[0]!.id
     const r = sellInvestment(life, id)
     expect(r.amount).toBe(Math.round(20_000 * 0.995))
-    expect(invest(life, 'crypto', 10, rng)[0].en).toMatch(/Minimum/)
+    expect(invest(life, 'crypto', 10, rng)[0]!.en).toMatch(/Minimum/)
   })
 })
 
@@ -334,7 +334,7 @@ describe('low-cash warning (2.5#109)', () => {
     const { rng, hero, life } = setup(3)
     hero.contract = null
     life.sponsors = []
-    life.assets = [{ defId: ASSETS[0].id, boughtSeason: 2026, boughtWeek: 0, pricePaid: ASSETS[0].price }]
+    life.assets = [{ defId: ASSETS[0]!.id, boughtSeason: 2026, boughtWeek: 0, pricePaid: ASSETS[0]!.price }]
     life.money = 1500
     life.trainer = { name: 'T', group: 'technical', weeklyFee: 1000 }
     const warn = (w: number) =>

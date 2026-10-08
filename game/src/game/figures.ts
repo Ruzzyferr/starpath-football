@@ -189,18 +189,18 @@ function joints(b: Body): Joints {
   const head = add(add(P, T, TORSO + 0.27), [1, 0, 0], b.headF ?? 0)
   const hip: [V3, V3] = [add(P, [0, -0.12, 0]), add(P, [0, 0.12, 0])]
   const knee = [0, 1].map((i) => {
-    const l = b.legs[i]
-    return add(hip[i], [Math.sin(l.t) * THIGH, 0, -Math.cos(l.t) * THIGH])
+    const l = b.legs[i]!
+    return add(hip[i]!, [Math.sin(l.t) * THIGH, 0, -Math.cos(l.t) * THIGH])
   }) as [V3, V3]
   const ankle = [0, 1].map((i) => {
-    const l = b.legs[i]
+    const l = b.legs[i]!
     const s = l.t - l.k
-    return add(knee[i], [Math.sin(s) * SHIN, (i ? 1 : -1) * (l.w ?? 0) * 0.5, -Math.cos(s) * SHIN])
+    return add(knee[i]!, [Math.sin(s) * SHIN, (i ? 1 : -1) * (l.w ?? 0) * 0.5, -Math.cos(s) * SHIN])
   }) as [V3, V3]
   const toe = [0, 1].map((i) => {
-    const l = b.legs[i]
+    const l = b.legs[i]!
     const s = l.t - l.k
-    return add(ankle[i], [Math.cos(s) * 0.2, 0, Math.sin(s) * 0.2 - 0.02])
+    return add(ankle[i]!, [Math.cos(s) * 0.2, 0, Math.sin(s) * 0.2 - 0.02])
   }) as [V3, V3]
   const sh: [V3, V3] = [add(C, [0, -0.25, 0]), add(C, [0, 0.25, 0])]
   const elbow: [V3 | null, V3 | null] = [null, null]
@@ -210,7 +210,7 @@ function joints(b: Body): Joints {
     if (!a) continue
     const side = i ? 1 : -1
     const dir = (ang: number): V3 => [Math.sin(ang) * Math.cos(a.b), side * Math.sin(a.b), -Math.cos(ang) * Math.cos(a.b)]
-    elbow[i] = add(sh[i], dir(a.a), UPPER)
+    elbow[i] = add(sh[i]!, dir(a.a), UPPER)
     hand[i] = add(elbow[i]!, dir(a.a + a.e), FORE)
   }
   return { P, C, T, N, neck, head, hip, knee, ankle, toe, sh, elbow, hand }
@@ -230,7 +230,7 @@ interface P2 {
 }
 
 function projector(dir: number, S: number) {
-  const [dx, dy] = DIR_VECS[dir]
+  const [dx, dy] = DIR_VECS[dir]!
   return (v: V3): P2 => {
     const gx = v[0] * dx - v[1] * dy
     const gy = v[0] * dy + v[1] * dx
@@ -288,14 +288,14 @@ function hull(pts: P2[]): P2[] {
   const cross = (o: P2, a: P2, b: P2) => (a.x - o.x) * (b.y - o.y) - (a.y - o.y) * (b.x - o.x)
   const lo: P2[] = []
   for (const q of p) {
-    while (lo.length >= 2 && cross(lo[lo.length - 2], lo[lo.length - 1], q) <= 0) lo.pop()
+    while (lo.length >= 2 && cross(lo[lo.length - 2]!, lo[lo.length - 1]!, q) <= 0) lo.pop()
     lo.push(q)
   }
   const up: P2[] = []
   for (let i = p.length - 1; i >= 0; i--) {
     const q = p[i]
-    while (up.length >= 2 && cross(up[up.length - 2], up[up.length - 1], q) <= 0) up.pop()
-    up.push(q)
+    while (up.length >= 2 && cross(up[up.length - 2]!, up[up.length - 1]!, q!) <= 0) up.pop()
+    up.push(q!)
   }
   return lo.slice(0, -1).concat(up.slice(0, -1))
 }
@@ -355,18 +355,18 @@ function buildFrame(pose: FigPose, dir: number, S: number): FrameGeo {
 
   // Legs: skin underneath, then shorts, socks and boots.
   for (const i of [0, 1]) {
-    const hip = J.hip[i]
-    const kn = J.knee[i]
-    const an = J.ankle[i]
+    const hip = J.hip[i]!
+    const kn = J.knee[i]!
+    const an = J.ankle[i]!
     const toe = J.toe[i]
     const bias = 0.001 * (i ? 1 : -1)
-    segPrim('skin', hip, kn, 0.2, () => '#d6d6d6', 0.4, bias)
-    segPrim('skin', kn, an, 0.16, () => '#d6d6d6', 0.4, bias)
-    const thighMid = add(hip, [(kn[0] - hip[0]) * 0.5, (kn[1] - hip[1]) * 0.5, (kn[2] - hip[2]) * 0.5])
-    segPrim('kit', hip, thighMid, 0.25, (k) => k.shorts, 0.25, bias + 0.0005)
-    const sockTop = add(kn, [(an[0] - kn[0]) * 0.18, (an[1] - kn[1]) * 0.18, (an[2] - kn[2]) * 0.18])
-    segPrim('kit', sockTop, an, 0.17, (k) => k.socks, 0.3, bias + 0.0005)
-    segPrim('kit', an, toe, 0.15, (k) => k.boots, 0.35, bias + 0.0007)
+    segPrim('skin', hip!, kn, 0.2, () => '#d6d6d6', 0.4, bias)
+    segPrim('skin', kn!, an, 0.16, () => '#d6d6d6', 0.4, bias)
+    const thighMid = add(hip!, [(kn[0] - hip[0]) * 0.5, (kn[1] - hip[1]) * 0.5, (kn[2] - hip[2]) * 0.5])
+    segPrim('kit', hip!, thighMid, 0.25, (k) => k.shorts, 0.25, bias + 0.0005)
+    const sockTop = add(kn!, [(an[0] - kn[0]) * 0.18, (an[1] - kn[1]) * 0.18, (an[2] - kn[2]) * 0.18])
+    segPrim('kit', sockTop, an!, 0.17, (k) => k.socks, 0.3, bias + 0.0005)
+    segPrim('kit', an!, toe!, 0.15, (k) => k.boots, 0.35, bias + 0.0007)
   }
 
   // Torso (shirt) and shorts seat as convex hulls with thickness.
@@ -510,12 +510,12 @@ function buildFrame(pose: FigPose, dir: number, S: number): FrameGeo {
     const el = J.elbow[i]
     const hd = J.hand[i]
     if (!el || !hd) continue
-    const sh = J.sh[i]
+    const sh = J.sh[i]!
     const bias = 0.0002
-    segPrim('skin', sh, el, 0.135, () => '#d6d6d6', 0.4, bias)
+    segPrim('skin', sh!, el, 0.135, () => '#d6d6d6', 0.4, bias)
     segPrim('skin', el, hd, 0.12, () => '#d6d6d6', 0.4, bias)
-    const sleeveEnd = add(sh, [(el[0] - sh[0]) * 0.6, (el[1] - sh[1]) * 0.6, (el[2] - sh[2]) * 0.6])
-    const a = pr(sh)
+    const sleeveEnd = add(sh!, [(el[0] - sh[0]) * 0.6, (el[1] - sh[1]) * 0.6, (el[2] - sh[2]) * 0.6])
+    const a = pr(sh!)
     const sEnd = pr(sleeveEnd)
     const e = pr(el)
     const h = pr(hd)
@@ -751,7 +751,7 @@ const SKINS = ['#f1c9a5', '#e0ac7e', '#c68c5c', '#a86b3f', '#7a4a2a', '#56331c']
 const HAIRS = ['#1b1209', '#3b2412', '#6b4423', '#a8763e', '#d9b36c', '#222222', '#8c2f12']
 
 /** Skin tone of head variant `idx` (matches {@link figureHeadTexture}). */
-export const skinTone = (idx: number): string => SKINS[idx % SKINS.length]
+export const skinTone = (idx: number): string => SKINS[idx % SKINS.length]!
 
 /**
  * Head with three frames 'b' (back), 's' (side, facing right) and 'f' (front).
@@ -782,7 +782,7 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
     c.clip()
     // Ponytail behind (female).
     if (style === 3) {
-      c.fillStyle = hair
+      c.fillStyle = hair!
       c.strokeStyle = ink
       c.lineWidth = 2
       c.beginPath()
@@ -798,7 +798,7 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
     c.beginPath()
     c.arc(cx, cy, r + 1.8, 0, Math.PI * 2)
     c.fill()
-    c.fillStyle = skin
+    c.fillStyle = skin!
     c.beginPath()
     c.arc(cx, cy, r, 0, Math.PI * 2)
     c.fill()
@@ -806,7 +806,7 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
     c.beginPath()
     c.arc(cx, cy, r, 0, Math.PI * 2)
     c.clip()
-    c.fillStyle = hair
+    c.fillStyle = hair!
     if (view === 'b') {
       // Back of the head: hair down to the nape.
       c.beginPath()
@@ -817,7 +817,7 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
       c.ellipse(cx - r * 0.25, cy - r * 0.42, r * 1.0, r * (style === 2 ? 0.85 : 0.72), -0.2, 0, Math.PI * 2)
       c.fill()
       // Ear.
-      c.fillStyle = mixHex(skin, '#000000', 0.15)
+      c.fillStyle = mixHex(skin!, '#000000', 0.15)
       c.beginPath()
       c.ellipse(cx - r * 0.12, cy + r * 0.12, r * 0.14, r * 0.2, 0, 0, Math.PI * 2)
       c.fill()
@@ -841,7 +841,7 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
     }
     if (style === 2 && view !== 'f') {
       // Curly top texture.
-      c.fillStyle = mixHex(hair, '#ffffff', 0.18)
+      c.fillStyle = mixHex(hair!, '#ffffff', 0.18)
       for (let k = 0; k < 7; k++) {
         c.beginPath()
         c.arc(cx - r * 0.6 + (k % 4) * r * 0.4, cy - r * (0.7 - Math.floor(k / 4) * 0.35), r * 0.12, 0, Math.PI * 2)

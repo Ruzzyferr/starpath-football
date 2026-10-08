@@ -40,7 +40,7 @@ function simulateDay(s: GameState, rng: Rng): void {
         touched = true
         continue
       }
-      f.result = makeResult(rng, s.world, s.world.clubs[f.homeId], s.world.clubs[f.awayId])
+      f.result = makeResult(rng, s.world, s.world.clubs[f.homeId]!, s.world.clubs[f.awayId]!)
       touched = true
     }
     if (touched && comp.type === 'league') comp.table = computeTable(comp)
@@ -105,7 +105,7 @@ function maybeRandomStuff(s: GameState, rng: Rng): void {
   if (s.pendingEvents.length < 3 && rng.chance(0.14)) {
     const pending = new Set(s.pendingEvents.map((e) => e.defId))
     const nowWeek = s.calendar.week
-    const pool = EVENTS.filter((e) => !pending.has(e.id) && (s.life.eventHistory[e.id] === undefined || nowWeek - s.life.eventHistory[e.id] > 4))
+    const pool = EVENTS.filter((e) => !pending.has(e.id) && (s.life.eventHistory[e.id] === undefined || nowWeek - s.life.eventHistory[e.id]! > 4))
     if (pool.length) {
       const def = rng.pick(pool)
       const teammates = Object.values(s.life.relationships).filter((r) => r.kind === 'teammate')
@@ -189,7 +189,7 @@ function writeHeroResult(s: GameState, fixtureId: string, score: [number, number
   const ratings = typeof s.life.flags.ratings === 'string' && s.life.flags.ratings ? s.life.flags.ratings.split(',') : mockData.formHistory().map(String)
   s.life.flags.ratings = [...ratings, stats.rating.toFixed(1)].slice(-10).join(',')
   s.hero.sharpness = clamp(s.hero.sharpness + 6, 0, 100)
-  const opp = s.world.clubs[heroSide === 'home' ? f.awayId : f.homeId]
+  const opp = s.world.clubs[heroSide === 'home' ? f.awayId : f.homeId]!
   const my = heroSide === 'home' ? score[0] : score[1]
   const txt = L(`${opp.name} maçı: ${score[0]}-${score[1]} · puan ${stats.rating.toFixed(1).replace('.', ',')}${stats.goals ? ` · ${stats.goals} gol` : ''}`, `vs ${opp.name}: ${score[0]}-${score[1]} · rated ${stats.rating.toFixed(1)}${stats.goals ? ` · ${stats.goals} goal${stats.goals > 1 ? 's' : ''}` : ''}`)
   addLog(s, txt, 'match', 'ball')
@@ -205,11 +205,11 @@ function quickSimHero(s: GameState, rng: Rng, fixtureId: string): void {
   if (!f) return
   const home = s.world.clubs[f.homeId]
   const away = s.world.clubs[f.awayId]
-  const score = simulateScore(rng, home, away)
+  const score = simulateScore(rng, home!, away!)
   const heroSide = f.homeId === heroClubId(s) ? 'home' : 'away'
   const mine = heroSide === 'home' ? score[0] : score[1]
   const goals = Math.min(mine, rng.chance(0.35) ? 1 : 0)
-  const base = makeResult(rng, s.world, home, away, score)
+  const base = makeResult(rng, s.world, home!, away!, score)
   const scorers: FinishedMatch['scorers'] = base.scorers.map((x, i) => ({
     minute: x.minute,
     name: '',
@@ -453,7 +453,7 @@ export const mockActions: GameActions = {
     const pe = s.pendingEvents[index]
     const def = pe && EVENTS.find((e) => e.id === pe.defId)
     if (!pe || !def) return { text: L('Olay bulunamadı.', 'Event not found.'), deltas: [], success: false }
-    const c = def.choices[choice] ?? def.choices[0]
+    const c = (def.choices[choice] ?? def.choices[0])!
     const out = withRng(s, (rng): EventOutcomeView => {
       if (c.requirement && !c.requirement.check(s)) {
         return { text: L('Bu seçenek için şartları sağlamıyorsun.', 'You don’t meet the requirements for this choice.'), deltas: [], success: false }
@@ -695,7 +695,7 @@ export const mockActions: GameActions = {
   hireAgent(quality) {
     const s = get()
     const names = ['Cem Varol', 'Selin Demirtaş', 'Marco Bellini', 'Jorge Mendoza', 'Ayla Kaan']
-    s.life.agent = { name: names[clamp(quality - 1, 0, 4)], quality: clamp(quality, 1, 5), commission: 0.04 + quality * 0.012 }
+    s.life.agent = { name: names[clamp(quality - 1, 0, 4)]!, quality: clamp(quality, 1, 5), commission: 0.04 + quality * 0.012 }
     commit(s)
   },
   casino,
@@ -900,10 +900,10 @@ export const mockActions: GameActions = {
     const s = get()
     const id = heroClubId(s)
     if (id) {
-      const club = s.world.clubs[id]
+      const club = s.world.clubs[id]!
       const league = Object.values(s.world.competitions).find((c) => c.type === 'league' && c.participantIds.includes(id))
       s.hero.history = [...s.hero.history, {
-        season: s.calendar.season, clubId: id, clubName: club.name, leagueName: s.world.leagues[club.leagueId].name,
+        season: s.calendar.season, clubId: id, clubName: club.name, leagueName: s.world.leagues[club.leagueId]!.name,
         stats: s.hero.seasonStats, leaguePosition: (league?.table?.findIndex((r) => r.clubId === id) ?? -1) + 1 || null, trophies: [],
       }]
     }

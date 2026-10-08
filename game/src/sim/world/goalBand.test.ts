@@ -24,12 +24,12 @@ beforeAll(() => {
 })
 
 function seasonTopScorer(rng: Rng, leagueId: string): number {
-  const ids = world.leagues[leagueId].clubIds
+  const ids = world.leagues[leagueId]!.clubIds
   const tally = new Map<string, number>()
   for (const h of ids) {
     for (const a of ids) {
       if (h === a) continue
-      const r = quickSimMatch(rng, world.clubs[h], world.clubs[a], world)
+      const r = quickSimMatch(rng, world.clubs[h]!, world.clubs[a]!, world)
       for (const g of r.scorers) if (g.playerId) tally.set(g.playerId, (tally.get(g.playerId) ?? 0) + 1)
     }
   }
@@ -44,7 +44,7 @@ describe('season goal band (2.1#129)', () => {
   it('top scorers sit in the realistic band; extreme seasons stay ≤ 0.1%', () => {
     const rng = new Rng(77)
     const tops: number[] = []
-    for (let i = 0; i < seasons; i++) tops.push(seasonTopScorer(rng, leagues[i % leagues.length]))
+    for (let i = 0; i < seasons; i++) tops.push(seasonTopScorer(rng, leagues[i % leagues.length]!))
     tops.sort((a, b) => a - b)
     const median = tops[Math.floor(tops.length / 2)]
     const mean = tops.reduce((a, v) => a + v, 0) / tops.length

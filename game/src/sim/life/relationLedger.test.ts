@@ -13,37 +13,37 @@ const LOSS: HeroMatchInput = { rating: 8.6, goals: 3, assists: 0, minutes: 90, s
 describe('relationship ledger', () => {
   it('records every change with cause, week, amount and value after', () => {
     const { life } = makeHeroLife()
-    const before = life.relationships.mother.value
+    const before = life.relationships.mother!.value
     changeRelation(life, 'mother', 6, { cause: 'activity', week: 12, why: lt('Akşam yemeği', 'Dinner') })
-    const [e] = relationHistory(life.relationships.mother)
-    expect(e.cause).toBe('activity')
-    expect(e.w).toBe(12)
-    expect(e.d).toBe(life.relationships.mother.value - before)
-    expect(e.v).toBe(life.relationships.mother.value)
-    expect(e.why.en).toBe('Dinner')
+    const [e] = relationHistory(life.relationships.mother!)
+    expect(e!.cause).toBe('activity')
+    expect(e!.w).toBe(12)
+    expect(e!.d).toBe(life.relationships.mother!.value - before)
+    expect(e!.v).toBe(life.relationships.mother!.value)
+    expect(e!.why.en).toBe('Dinner')
   })
 
   it('falls back to memory, then to a per-cause default line', () => {
     const { life } = makeHeroLife()
     changeRelation(life, 'father', 3, { memory: lt('Hediye', 'Gift') })
-    expect(life.relationships.father.log?.[0].why.en).toBe('Gift')
+    expect(life.relationships.father!.log?.[0]!.why.en).toBe('Gift')
     changeRelation(life, 'father', -3, { cause: 'interview' })
-    expect(life.relationships.father.log?.[0].why.en).toMatch(/interview/i)
+    expect(life.relationships.father!.log?.[0]!.why.en).toMatch(/interview/i)
   })
 
   it('caps the ledger and merges consecutive neglect decay', () => {
     const { life } = makeHeroLife()
     for (let i = 0; i < 40; i++) changeRelation(life, 'sibling', i % 2 ? 2 : -2, { cause: 'event', week: i })
-    expect(life.relationships.sibling.log!.length).toBe(RELATION_LOG_SIZE)
-    const m = life.relationships.mother
+    expect(life.relationships.sibling!.log!.length).toBe(RELATION_LOG_SIZE)
+    const m = life.relationships.mother!
     m.value = 60
     m.lastContactWeek = 0
     for (let w = 5; w < 12; w++) weeklyRelationDecay(life, w)
-    const top = m.log![0]
+    const top = m.log![0]!
     expect(top.cause).toBe('decay')
     expect(top.n).toBeGreaterThan(1)
     expect(top.v).toBe(m.value)
-    expect(relationCauseTotals(m).decay).toBeLessThan(0)
+    expect(relationCauseTotals(m!).decay).toBeLessThan(0)
   })
 })
 
@@ -85,10 +85,10 @@ describe('match fairness (store review: "hat-trick and still got blamed")', () =
       const mgr0 = rels.manager?.value ?? 0
       const mates0 = Object.values(rels).filter((r) => r.kind === 'teammate').map((r) => [r.id, r.value] as const)
       for (const rating of [6.4, 7.2, 8.6]) applyMatchToHero(s, { ...LOSS, rating })
-      expect(rels.fans.value).toBeGreaterThan(fans0)
+      expect(rels.fans!.value).toBeGreaterThan(fans0)
       if (rels.manager) expect(rels.manager.value).toBeGreaterThan(mgr0)
-      for (const [id, v] of mates0) expect(rels[id].value, id).toBeGreaterThanOrEqual(v)
-      const why = rels.fans.log?.[0]
+      for (const [id, v] of mates0) expect(rels[id]!.value, id).toBeGreaterThanOrEqual(v)
+      const why = rels.fans!.log?.[0]
       expect(why?.cause).toBe('match')
       expect(why?.why.en).toMatch(/3 goal/)
       expect(why?.why.en).toMatch(/defeat/)

@@ -27,7 +27,7 @@ describe('goal frame calibration', () => {
   it('ball centre within post radius + ball radius of a post hits the post (120 cases)', () => {
     const reach = POST_RADIUS + BALL_RADIUS
     for (let i = 0; i < 120; i++) {
-      const end = ends[i % 2]
+      const end = ends[i % 2]!
       const post = i % 4 < 2 ? POST_Y_HIGH : POST_Y_LOW
       const y = post + rng.range(-0.8, 0.8) * reach
       const { ev, b, east } = fly({ end, y, z: rng.range(0.25, 1.5), vz: rng.range(0, 1.2), speed: rng.range(12, 30), fromX: rng.range(6, 12) })
@@ -44,7 +44,7 @@ describe('goal frame calibration', () => {
 
   it('ball centre at the crossbar height is deflected, never a goal (80 cases)', () => {
     for (let i = 0; i < 80; i++) {
-      const end = ends[i % 2]
+      const end = ends[i % 2]!
       const z = BAR_Z + rng.range(-0.6, 0.6) * (POST_RADIUS + BALL_RADIUS)
       const { ev } = fly({ end, y: 34 + rng.range(-2.5, 2.5), z, vz: 0, speed: rng.range(20, 28), fromX: rng.range(1.2, 1.8) })
       const label = `case ${i} end=${end} z=${z.toFixed(3)}`
@@ -56,7 +56,7 @@ describe('goal frame calibration', () => {
 
   it('shots comfortably inside the frame score (60 cases)', () => {
     for (let i = 0; i < 60; i++) {
-      const end = ends[i % 2]
+      const end = ends[i % 2]!
       const { ev, tr } = fly({ end, y: 34 + rng.range(-3, 3), z: rng.range(0.3, 1.6), vz: rng.range(0, 0.5), speed: rng.range(18, 30), fromX: rng.range(6, 10) })
       expect(tr.inGoal, `case ${i}`).toBe(end)
       expect(ev.some((e) => e.type === 'post' || e.type === 'bar'), `case ${i}`).toBe(false)
@@ -65,7 +65,7 @@ describe('goal frame calibration', () => {
 
   it('shots clearly wide or over never score (60 cases)', () => {
     for (let i = 0; i < 60; i++) {
-      const end = ends[i % 2]
+      const end = ends[i % 2]!
       const wide = i % 2 === 0
       const y = wide ? (i % 4 === 0 ? POST_Y_HIGH : POST_Y_LOW) + (i % 4 === 0 ? 1 : -1) * rng.range(1, 6) : 34 + rng.range(-3, 3)
       const z = wide ? rng.range(0.3, 1.5) : GOAL_HEIGHT + rng.range(2.5, 4)

@@ -125,7 +125,7 @@ function resolveCards(s: GameState, rng: Rng, meter: CardMeter): number {
   let n = 0
   const rep0 = s.hero.reputation
   for (let guard = 0; guard < 10 && s.pendingEvents.length > 0; guard++) {
-    const v = describeEvent(s, s.pendingEvents[0], 'en')
+    const v = describeEvent(s, s.pendingEvents[0]!, 'en')
     const enabled = v ? v.choices.map((c, i) => (c.enabled ? i : -1)).filter((i) => i >= 0) : [0]
     const pick = enabled.length ? rng.pick(enabled) : 0
     const r = resolveEventChoice(s, 0, pick)
@@ -176,7 +176,7 @@ function weeklyManagement(s: GameState, cfg: CareerConfig, rng: Rng, spent: { as
   // Perks: spend points on anything unlockable.
   if (h.perkPoints > 0) for (const p of PERKS) if (h.perkPoints > 0) unlockPerk(s, p.id)
   // Agent: the best tier the hero qualifies for, once it is affordable many times over.
-  const want = [5, 4, 3, 2, 1].find((q) => h.reputation >= AGENT_TIERS[q].minReputation && life.money > AGENT_TIERS[q].fee * 4)
+  const want = [5, 4, 3, 2, 1].find((q) => h.reputation >= AGENT_TIERS[q]!.minReputation && life.money > AGENT_TIERS[q]!.fee * 4)
   if (want && (life.agent?.quality ?? 0) < want) hireAgent(s, want)
   // Trainer (pro/gambler): a basic one when the fee is pocket money.
   if (!life.trainer && cfg.persona !== 'party' && life.money > 60_000 && s.calendar.slot === 0) {
@@ -197,7 +197,7 @@ function weeklyManagement(s: GameState, cfg: CareerConfig, rng: Rng, spent: { as
     .sort((a, b) => b.price - a.price)
   if (!cands.length) return
   // Spenders buy the priciest toy; others prefer useful things (facilities, houses) near the top of the budget.
-  const pick = cfg.persona === 'spender' ? cands[0] : (cands.find((a) => a.category === 'facility' || a.category === 'house' || a.category === 'business') ?? cands[rng.int(0, Math.min(3, cands.length - 1))])
+  const pick = (cfg.persona === 'spender' ? cands[0] : (cands.find((a) => a.category === 'facility' || a.category === 'house' || a.category === 'business') ?? cands[rng.int(0, Math.min(3, cands.length - 1))]))!
   const before = life.money
   if (buyAsset(s, pick.id).ok) {
     spent.assets += before - life.money
@@ -244,7 +244,7 @@ function playDay(s: GameState, cfg: CareerConfig, rng: Rng, meter: CardMeter): n
       const evening = cfg.persona === 'gambler' && rng.chance(0.3) ? 'casino'
         : cfg.persona === 'party' && rng.chance(0.3) ? 'party'
           : cfg.persona === 'spender' && rng.chance(0.08) ? 'party' : null
-      if (evening && !activityBlock(s.hero, s.life, ACTIVITY_BY_ID[evening], ctx)) {
+      if (evening && !activityBlock(s.hero, s.life, ACTIVITY_BY_ID[evening]!, ctx)) {
         id = evening
         opts = {}
       }
@@ -403,11 +403,11 @@ export function standardMix(n = 30, seasons = 10, base = 1000): CareerConfig[] {
   const personas: Persona[] = ['pro', 'pro', 'spender', 'pro', 'gambler', 'party', 'pro', 'spender', 'gambler', 'pro']
   return Array.from({ length: n }, (_, i) => ({
     seed: base + i * 7919,
-    nationality: nat[i % nat.length],
-    archetype: arch[i % arch.length],
-    background: bg[(i * 3) % bg.length],
+    nationality: nat[i % nat.length]!,
+    archetype: arch[i % arch.length]!,
+    background: bg[(i * 3) % bg.length]!,
     gender: i % 4 === 3 ? 'female' : 'male',
-    persona: personas[i % personas.length],
+    persona: personas[i % personas.length]!,
     seasons,
   }))
 }

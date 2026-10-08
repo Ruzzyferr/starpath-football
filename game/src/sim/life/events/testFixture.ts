@@ -40,14 +40,14 @@ export function makeTestState(opts: FixtureOptions = {}): GameState {
       squad.push(pid)
       players[pid] = {
         id: pid, firstName: rng.pick(FIRST), lastName: rng.pick(LAST), nationality: 'TR', birthYear: 1995 + rng.int(0, 12),
-        position: POS[i], foot: 'R', ovr: rng.int(55, 80), potential: 80, styleSeed: rng.nextUint(), clubId: id,
+        position: POS[i]!, foot: 'R', ovr: rng.int(55, 80), potential: 80, styleSeed: rng.nextUint(), clubId: id,
         value: 1_000_000, wage: 5000, contractUntil: 2028, morale: 60, form: 50, personality: 'professional',
         appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 },
         injuredWeeks: 0, stats: emptyStats(),
       }
     }
     clubs[id] = {
-      id, name, shortName: name.slice(0, 3).toUpperCase(), city: ['İstanbul', 'İzmir', 'Ankara', 'Trabzon'][ci], countryId: 'TR', leagueId: 'L1',
+      id, name, shortName: name.slice(0, 3).toUpperCase(), city: ['İstanbul', 'İzmir', 'Ankara', 'Trabzon'][ci]!, countryId: 'TR', leagueId: 'L1',
       colors: { primary: '#ff0000', secondary: '#ffffff', pattern: 'plain' },
       awayColors: { primary: '#ffffff', secondary: '#ff0000', pattern: 'plain' },
       crest: { shape: 'shield', symbol: 0, colors: ['#f00', '#fff', '#000'], initials: 'KY' },
@@ -69,8 +69,8 @@ export function makeTestState(opts: FixtureOptions = {}): GameState {
     fans: rel('fans', 'fans', 'Kuzey Yıldızı', 10),
     press: rel('press', 'press', 'Media', 0),
     chairman: rel('chairman', 'chairman', 'Halit Bey', 5),
-    tm1: rel('tm1', 'teammate', `${players.c0p6.firstName} ${players.c0p6.lastName}`, 20, 'c0p6'),
-    tm2: rel('tm2', 'teammate', `${players.c0p11.firstName} ${players.c0p11.lastName}`, -10, 'c0p11'),
+    tm1: rel('tm1', 'teammate', `${players.c0p6!.firstName} ${players.c0p6!.lastName}`, 20, 'c0p6'),
+    tm2: rel('tm2', 'teammate', `${players.c0p11!.firstName} ${players.c0p11!.lastName}`, -10, 'c0p11'),
   }
   if (opts.partner) relationships.partner = rel('partner', 'partner', 'Selin', 45)
 

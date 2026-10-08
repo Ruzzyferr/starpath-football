@@ -56,14 +56,14 @@ export function keeperKit(avoid: KitColors[], prefer: number): KitColors {
   let best = options[prefer % options.length]
   let bestD = -1
   for (let i = 0; i < options.length; i++) {
-    const o = options[(i + prefer) % options.length]
+    const o = options[(i + prefer) % options.length]!
     const d = Math.min(...avoid.map((k) => colorDistance(o.primary, k.primary)))
     if (d > bestD + 40) {
       bestD = d
       best = o
     }
   }
-  return best
+  return best!
 }
 
 /** Creates (or replaces) a canvas texture. */
@@ -173,7 +173,7 @@ export function headTexture(scene: Phaser.Scene, idx: number, size = 56, female 
     const r = size / 2 - 2
     if (female) {
       // Tail/bun sits behind the head, drawn first; dark rim for readability.
-      c.fillStyle = hair
+      c.fillStyle = hair!
       c.strokeStyle = 'rgba(0,0,0,0.55)'
       c.lineWidth = 2
       c.beginPath()
@@ -184,11 +184,11 @@ export function headTexture(scene: Phaser.Scene, idx: number, size = 56, female 
     }
     c.beginPath()
     c.arc(w / 2, w / 2, r, 0, Math.PI * 2)
-    c.fillStyle = skin
+    c.fillStyle = skin!
     c.fill()
     c.save()
     c.clip()
-    c.fillStyle = hair
+    c.fillStyle = hair!
     c.beginPath()
     c.ellipse(w / 2, w / 2 - r * 0.6, r * 1.05, r * 0.72, 0, 0, Math.PI * 2)
     c.fill()
@@ -741,19 +741,19 @@ export function adBoardTexture(scene: Phaser.Scene, key: string, lengthM: number
     const seg = (style === 'painted' ? 9 : 14) * pxPerM
     for (let i = 0, x = 0; x < w; i++, x += seg) {
       const bg = palette[(i + seed) % palette.length]
-      c.fillStyle = led ? '#05070c' : bg
+      c.fillStyle = (led ? '#05070c' : bg)!
       c.fillRect(x, 0, seg, h)
       if (led) {
         // LED panel: dark matrix, glowing brand.
         const g = c.createLinearGradient(x, 0, x, h)
-        g.addColorStop(0, bg)
-        g.addColorStop(1, mixHex(bg, '#000000', 0.55))
+        g.addColorStop(0, bg!)
+        g.addColorStop(1, mixHex(bg!, '#000000', 0.55))
         c.fillStyle = g
         c.globalAlpha = 0.85
         c.fillRect(x + 1, 1, seg - 2, h - 2)
         c.globalAlpha = 1
       }
-      c.fillStyle = led ? '#ffffff' : luminance(bg) > 0.5 ? '#111' : '#fff'
+      c.fillStyle = led ? '#ffffff' : luminance(bg!) > 0.5 ? '#111' : '#fff'
       if (led) {
         c.shadowColor = '#ffffff'
         c.shadowBlur = style === 'led-glow' ? h * 0.35 : h * 0.15
@@ -761,7 +761,7 @@ export function adBoardTexture(scene: Phaser.Scene, key: string, lengthM: number
       c.font = `${style === 'painted' ? 700 : 900} ${Math.round(h * (style === 'painted' ? 0.48 : 0.62))}px system-ui, 'Segoe UI', Arial, sans-serif`
       c.textAlign = 'center'
       c.textBaseline = 'middle'
-      c.fillText(brands[(i * 3 + seed) % brands.length], x + seg / 2, h * 0.54)
+      c.fillText(brands[(i * 3 + seed) % brands.length]!, x + seg / 2, h * 0.54)
       c.shadowBlur = 0
       if (style === 'painted') {
         c.fillStyle = 'rgba(0,0,0,0.25)'
@@ -857,7 +857,7 @@ export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, 
         const bob = rnd() * 1.6 * sy
         c.globalAlpha = fade * (tifo ? 1 : 0.85 + rnd() * 0.15)
         // Body.
-        c.fillStyle = shirt
+        c.fillStyle = shirt!
         c.beginPath()
         c.ellipse(x, yb - 3.6 * sy - bob, 3.5, 3.6 * sy, 0, Math.PI, 0)
         c.lineTo(x + 3.5, yb - 1.5 * sy - bob)
@@ -867,7 +867,7 @@ export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, 
         // Raised arms or a scarf held up (a few fans).
         const pose = rnd()
         if (pose < 0.07 && !tifo) {
-          c.strokeStyle = shirt
+          c.strokeStyle = shirt!
           c.lineWidth = 1.4
           c.beginPath()
           c.moveTo(x - 3, yb - 5.5 * sy - bob)
@@ -876,16 +876,16 @@ export function crowdTexture(scene: Phaser.Scene, key: string, lengthM: number, 
           c.lineTo(x + 4.2, yb - 11 * sy - bob)
           c.stroke()
         } else if (pose < 0.11 && !tifo) {
-          c.fillStyle = colors[pose < 0.09 ? 0 : 1]
+          c.fillStyle = colors[pose < 0.09 ? 0 : 1]!
           c.fillRect(x - 5, yb - 11.5 * sy - bob, 10, 1.8 * sy)
         }
         // Head.
-        c.fillStyle = skins[Math.floor(rnd() * skins.length)]
+        c.fillStyle = skins[Math.floor(rnd() * skins.length)]!
         c.beginPath()
         c.ellipse(x, yb - 8.6 * sy - bob, 2.3, 2.3 * sy, 0, 0, Math.PI * 2)
         c.fill()
         if (rnd() < 0.55) {
-          c.fillStyle = rnd() < 0.15 ? colors[0] : '#1c140e'
+          c.fillStyle = (rnd() < 0.15 ? colors[0] : '#1c140e')!
           c.beginPath()
           c.ellipse(x, yb - 9.6 * sy - bob, 2.4, 1.3 * sy, 0, Math.PI, 0)
           c.fill()

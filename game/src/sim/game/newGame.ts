@@ -84,7 +84,7 @@ export function defaultCountryIds(heroCountry: string, extra = DEFAULT_EXTRA_COU
 export function pickStartingClub(state: GameState, rng: Rng): string {
   const w = state.world
   const leagues = Object.values(w.leagues).filter((l) => l.countryId === state.hero.nationality)
-  const lowest = leagues.sort((a, b) => b.tier - a.tier)[0]
+  const lowest = leagues.sort((a, b) => b.tier - a.tier)[0]!
   const ovr = heroOvr(state.hero)
   const ranked = lowest.clubIds
     .map((id) => ({ id, d: Math.abs(clubStrength(w, id).overall - (ovr + 4)) }))
@@ -107,7 +107,7 @@ export interface FirstClubTerms {
  */
 export function signFirstClub(state: GameState, rng: Rng, clubId: string, terms: FirstClubTerms = {}): void {
   const { world, hero, life } = state
-  const club = world.clubs[clubId]
+  const club = world.clubs[clubId]!
   const ctx = clubContextOf(state, clubId)
   const offer = generateContractOffer(rng, hero, { club: ctx, season: state.calendar.season, kind: 'new' })
   const merit = targetRole(hero, life, { squadAvgOvr: ctx.squadAvgOvr, season: state.calendar.season })

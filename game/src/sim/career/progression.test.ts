@@ -20,7 +20,7 @@ function simulateCareer(seed: number, position: Position, plan: TrainingType[], 
         life.energy = 100
         hero.fatigue = 25
         hero.injury = null
-        runTraining(rng, hero, life, { type: plan[(week * 5 + s) % plan.length], performance, season })
+        runTraining(rng, hero, life, { type: plan[(week * 5 + s) % plan.length]!, performance, season })
       }
       const bundle: Partial<Record<AttributeKey, number>> = {}
       for (const k in w) bundle[k as AttributeKey] = (16 * 0.8 * 1.28 * (w[k as AttributeKey] ?? 0)) / wsum
@@ -135,7 +135,7 @@ describe('Career curve 17 → 35', () => {
       expect(byAge[17]).toBeGreaterThanOrEqual(40)
       expect(byAge[17]).toBeLessThanOrEqual(60)
       // Fast growth phase: at least +3 OVR per season on average through 21.
-      expect(byAge[21] - byAge[17]).toBeGreaterThanOrEqual(12)
+      expect(byAge[21]! - byAge[17]!).toBeGreaterThanOrEqual(12)
       // Reaches the neighbourhood of potential by 25 with diligent training…
       expect(byAge[25]).toBeGreaterThanOrEqual(potential - 8)
       // …and potential is a soft ceiling.
@@ -146,7 +146,7 @@ describe('Career curve 17 → 35', () => {
       expect(peakAge).toBeLessThanOrEqual(32)
       expect(byAge[35]).toBeLessThanOrEqual(peak - 4)
       // Monotone-ish: never drops more than 1 OVR in a season before 30.
-      for (let a = 18; a < 30; a++) expect(byAge[a]).toBeGreaterThanOrEqual(byAge[a - 1] - 1)
+      for (let a = 18; a < 30; a++) expect(byAge[a]).toBeGreaterThanOrEqual(byAge[a - 1]! - 1)
     })
   }
 
@@ -154,6 +154,6 @@ describe('Career curve 17 → 35', () => {
     const plan: TrainingType[] = ['shooting', 'shooting', 'dribbling', 'physical', 'tactical']
     const good = simulateCareer(9, 'ST', plan, 0.95)
     const poor = simulateCareer(9, 'ST', plan, 0.2)
-    expect(good.byAge[22]).toBeGreaterThan(poor.byAge[22])
+    expect(good.byAge[22]).toBeGreaterThan(poor.byAge[22]!)
   })
 })

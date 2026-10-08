@@ -36,7 +36,7 @@ describe('generateWorld', () => {
     for (const l of Object.values(world.leagues)) {
       expect(l.clubIds.length).toBeGreaterThanOrEqual(16)
       expect(l.clubIds.length).toBeLessThanOrEqual(20)
-      for (const id of l.clubIds) expect(world.clubs[id].leagueId).toBe(l.id)
+      for (const id of l.clubIds) expect(world.clubs[id]!.leagueId).toBe(l.id)
       const below = Object.values(world.leagues).find((x) => x.countryId === l.countryId && x.tier === l.tier + 1)
       expect(l.relegate).toBe(below ? boundarySpots(l.countryId, l.tier) : 0)
       expect(l.promote).toBe(l.tier > 1 ? boundarySpots(l.countryId, l.tier - 1) : 0)
@@ -48,26 +48,26 @@ describe('generateWorld', () => {
       expect(club.squad.length).toBeGreaterThanOrEqual(MIN_SQUAD)
       expect(club.squad.length).toBeLessThanOrEqual(MAX_SQUAD)
       const players = club.squad.map((id) => world.players[id])
-      const count = (pos: string) => players.filter((p) => p.position === pos).length
+      const count = (pos: string) => players.filter((p) => p!.position === pos).length
       expect(count('GK')).toBeGreaterThanOrEqual(3)
-      expect(players.filter((p) => ['CB', 'LB', 'RB'].includes(p.position)).length).toBeGreaterThanOrEqual(6)
-      expect(players.filter((p) => ['LW', 'RW', 'ST', 'AM'].includes(p.position)).length).toBeGreaterThanOrEqual(3)
+      expect(players.filter((p) => ['CB', 'LB', 'RB'].includes(p!.position)).length).toBeGreaterThanOrEqual(6)
+      expect(players.filter((p) => ['LW', 'RW', 'ST', 'AM'].includes(p!.position)).length).toBeGreaterThanOrEqual(3)
       for (const p of players) {
-        expect(p.clubId).toBe(club.id)
-        const age = SEASON - p.birthYear
+        expect(p!.clubId).toBe(club.id)
+        const age = SEASON - p!.birthYear
         expect(age).toBeGreaterThanOrEqual(17)
         expect(age).toBeLessThanOrEqual(36)
-        expect(p.potential).toBeGreaterThanOrEqual(p.ovr)
-        expect(p.value).toBeGreaterThan(0)
-        expect(p.wage).toBeGreaterThan(0)
-        expect(p.contractUntil).toBeGreaterThanOrEqual(SEASON)
+        expect(p!.potential).toBeGreaterThanOrEqual(p!.ovr)
+        expect(p!.value).toBeGreaterThan(0)
+        expect(p!.wage).toBeGreaterThan(0)
+        expect(p!.contractUntil).toBeGreaterThanOrEqual(SEASON)
       }
     }
   })
 
   it('scales ability with tier and country reputation', () => {
     const avg = (leagueId: string) => {
-      const s = world.leagues[leagueId].clubIds.map((id) => clubStrength(world, id).overall)
+      const s = world.leagues[leagueId]!.clubIds.map((id) => clubStrength(world, id).overall)
       return { mean: s.reduce((a, b) => a + b, 0) / s.length, max: Math.max(...s), min: Math.min(...s) }
     }
     const en1 = avg('EN1')
@@ -130,21 +130,21 @@ describe('generateWorld', () => {
 
   it('creates all competitions for the season', () => {
     for (const l of Object.values(world.leagues)) {
-      const comp = world.competitions[leagueCompId(SEASON, l.id)]
+      const comp = world.competitions[leagueCompId(SEASON, l.id)]!
       const n = l.clubIds.length
       expect(comp.fixtures.length).toBe(n * (n - 1))
       expect(comp.table?.length).toBe(n)
     }
     for (const id of Object.keys(world.countries)) {
-      const cup = world.competitions[cupCompId(SEASON, id)]
+      const cup = world.competitions[cupCompId(SEASON, id)]!
       const clubs = Object.values(world.clubs).filter((c) => c.countryId === id).length
       expect(cup.participantIds.length).toBe(clubs)
       expect(cup.alive?.length).toBe(clubs)
       expect(cup.fixtures.length).toBeGreaterThan(0)
     }
     // Continental: 3/4 of the 32-team group stage direct, 8 places through 16 two-legged qualifiers.
-    const cont = world.competitions[continentalCompId(SEASON)]
-    const qual = world.competitions[continentalQualifyingCompId(SEASON)]
+    const cont = world.competitions[continentalCompId(SEASON)]!
+    const qual = world.competitions[continentalQualifyingCompId(SEASON)]!
     expect(cont.participantIds.length + qual.participantIds.length / 2).toBe(32)
     expect(cont.participantIds.length).toBe(24)
     const all = [...cont.participantIds, ...qual.participantIds]
@@ -152,7 +152,7 @@ describe('generateWorld', () => {
     expect(cont.fixtures.length).toBe(0) // groups are drawn once the qualifying round is over
     expect(qual.fixtures.length).toBe(qual.participantIds.length)
     expect(qual.fixtures.every((f) => f.leg === 1 || f.leg === 2)).toBe(true)
-    for (const id of all) expect(world.leagues[world.clubs[id].leagueId].tier).toBe(1)
+    for (const id of all) expect(world.leagues[world.clubs[id]!.leagueId]!.tier).toBe(1)
     expect(world.honours).toEqual([])
   })
 
@@ -170,7 +170,7 @@ describe('generateWorld', () => {
     const small = generateWorld(new Rng(1), { season: SEASON, heroCountryId: 'TR', countryIds: ['TR', 'EN', 'DE', 'IT'] })
     expect(Object.keys(small.countries).sort()).toEqual(['DE', 'EN', 'IT', 'TR'])
     const q = small.competitions[continentalQualifyingCompId(SEASON)]
-    expect(small.competitions[continentalCompId(SEASON)].participantIds.length + (q?.participantIds.length ?? 0) / 2).toBe(16)
+    expect(small.competitions[continentalCompId(SEASON)]!.participantIds.length + (q?.participantIds.length ?? 0) / 2).toBe(16)
     expect(() => generateWorld(new Rng(1), { season: SEASON, heroCountryId: 'XX' })).toThrow()
   })
 })

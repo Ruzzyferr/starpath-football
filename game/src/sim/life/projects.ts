@@ -64,12 +64,12 @@ export const stakeValue = (life: Life): number => Math.round(num(life, PROJECT_F
 /** All project holdings that count towards net worth (fund + stake). */
 export const projectsValue = (life: Life): number => Math.round(legacyFund(life) + stakeValue(life))
 /** Next academy / stadium stage price (null when finished). */
-export const nextAcademyPrice = (life: Life): number | null => (academyLevel(life) >= 3 ? null : ACADEMY_PRICE[academyLevel(life) + 1])
-export const nextStadiumPrice = (life: Life): number | null => (stadiumLevel(life) >= 2 ? null : STADIUM_PRICE[stadiumLevel(life) + 1])
+export const nextAcademyPrice = (life: Life): number | null => (academyLevel(life) >= 3 ? null : ACADEMY_PRICE[academyLevel(life) + 1]!)
+export const nextStadiumPrice = (life: Life): number | null => (stadiumLevel(life) >= 2 ? null : STADIUM_PRICE[stadiumLevel(life) + 1]!)
 /** Weekly dividend of the club stake. */
 export const stakeDividend = (life: Life): number => Math.round((num(life, PROJECT_FLAGS.stakeInvested) * STAKE_YIELD) / 52)
 /** Weekly running cost of the academy and the stadium. */
-export const projectUpkeep = (life: Life): number => ACADEMY_UPKEEP[academyLevel(life)] + STADIUM_UPKEEP[stadiumLevel(life)]
+export const projectUpkeep = (life: Life): number => ACADEMY_UPKEEP[academyLevel(life)]! + STADIUM_UPKEEP[stadiumLevel(life)]!
 
 export interface ProjectResult {
   ok: boolean

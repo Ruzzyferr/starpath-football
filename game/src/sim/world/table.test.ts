@@ -17,16 +17,16 @@ describe('table', () => {
     const [a, b] = rows
     expect(a).toMatchObject({ p: 2, w: 1, d: 1, l: 0, gf: 5, ga: 3, pts: 4 })
     expect(b).toMatchObject({ p: 2, w: 0, d: 1, l: 1, gf: 3, ga: 5, pts: 1 })
-    expect(goalDifference(a)).toBe(2)
-    expect(formString(a)).toBe('WD')
-    expect(formPoints(b)).toBe(1)
+    expect(goalDifference(a!)).toBe(2)
+    expect(formString(a!)).toBe('WD')
+    expect(formPoints(b!)).toBe(1)
   })
 
   it('keeps only the last FORM_LENGTH results, newest last', () => {
     const rows = createTable(['a', 'b'])
     for (let i = 0; i < 7; i++) applyResultToTable(rows, 'a', 'b', i % 2, 0)
-    expect(rows[0].form.length).toBe(FORM_LENGTH)
-    expect(rows[0].form[FORM_LENGTH - 1]).toBe('D') // i = 6 → 0-0
+    expect(rows[0]!.form.length).toBe(FORM_LENGTH)
+    expect(rows[0]!.form[FORM_LENGTH - 1]).toBe('D') // i = 6 → 0-0
   })
 
   it('sorts by points, goal difference, goals for', () => {

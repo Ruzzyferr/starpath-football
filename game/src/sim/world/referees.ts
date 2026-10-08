@@ -29,8 +29,8 @@ export function refereePool(seed: number, countryId: string): Referee[] {
   const out: Referee[] = []
   for (let i = 0; i < REFEREES_PER_COUNTRY; i++) {
     const n = randomName(rng, style)
-    const strictness = clampStrictness(rng.weighted([1, 2, 3, 4, 5], (s) => STRICTNESS_W[s - 1]))
-    const advantage = Math.round(Math.max(0.15, Math.min(0.95, ADVANTAGE_BASE[strictness - 1] + rng.range(-0.1, 0.1))) * 100) / 100
+    const strictness = clampStrictness(rng.weighted([1, 2, 3, 4, 5], (s) => STRICTNESS_W[s - 1]!))
+    const advantage = Math.round(Math.max(0.15, Math.min(0.95, ADVANTAGE_BASE[strictness - 1]! + rng.range(-0.1, 0.1))) * 100) / 100
     out.push({ name: `${n.firstName} ${n.lastName}`, strictness, advantage })
   }
   return out
@@ -39,7 +39,7 @@ export function refereePool(seed: number, countryId: string): Referee[] {
 /** Referee for a fixture: from the home country's pool, picked by the fixture id. */
 export function refereeFor(seed: number, countryId: string, fixtureId: string): Referee {
   const pool = refereePool(seed, countryId)
-  return { ...pool[hashString(`ref:${fixtureId}`) % pool.length] }
+  return { ...pool[hashString(`ref:${fixtureId}`) % pool.length]! }
 }
 
 // ───────────────────────── NPC suspensions ─────────────────────────

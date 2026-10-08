@@ -14,15 +14,15 @@ describe('relationship scenes (2.4#11)', () => {
     const view = describeEvent(state, pending, 'en')!
     expect(view.choices).toHaveLength(3)
     expect(view.title).toContain('Ayşe') // the mother's name in the fixture
-    const before = state.life.relationships.mother.value
+    const before = state.life.relationships.mother!.value
     resolveEvent(state, new Rng(1), pending, 0)
-    expect(state.life.relationships.mother.value).toBeGreaterThan(before)
+    expect(state.life.relationships.mother!.value).toBeGreaterThan(before)
     expect(state.pendingEvents.some((p) => p.defId.startsWith('friends.scene_'))).toBe(false)
   })
 
   it('a shared activity scene works for a teammate id and refuses a second open scene or no energy', () => {
     const state = makeTestState({ seed: 6 })
-    const mate = Object.values(state.life.relationships).find((r) => r.kind === 'teammate') ?? state.life.relationships.mother
+    const mate = (Object.values(state.life.relationships).find((r) => r.kind === 'teammate') ?? state.life.relationships.mother)!
     expect(startScene(state, mate.id, 'together').ok).toBe(true)
     expect(startScene(state, mate.id, 'talk').ok).toBe(false) // one open scene at a time
     const def = getEventDef('friends.scene_together')!

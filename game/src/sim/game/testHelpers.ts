@@ -53,7 +53,7 @@ export function autoRun(state: GameState, until: (s: GameState) => boolean, maxS
     if (acceptOffers) {
       // Prefer the biggest club; renewals otherwise.
       const offers = getOffers(state).sort((a, b) => (b.contract.terms.wage - a.contract.terms.wage))
-      if (offers.length && acceptOffer(state, offers[0].id).ok) st.signed++
+      if (offers.length && acceptOffer(state, offers[0]!.id).ok) st.signed++
     }
     if (isHeroMatchday(state)) {
       if (autoPlayHeroMatch(state)) st.heroMatches++

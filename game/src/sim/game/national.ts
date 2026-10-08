@@ -108,8 +108,8 @@ export function squadCutoff(state: GameState, level: NationalLevel, position: Po
   const cut = scores.length >= k ? scores[k - 1] : Math.min(fallback, scores[scores.length - 1] ?? fallback)
   const cc = memoFor(w).cutoff
   if (cc.size > 200) cc.clear()
-  cc.set(key, cut)
-  return cut
+  cc.set(key, cut!)
+  return cut!
 }
 
 /** Most the season's numbers can add to the hero's selection score (OVR points). */
@@ -202,7 +202,7 @@ export function heroCallup(state: GameState): CallupView | null {
   const levels = eligibleLevels(state)
   if (!levels.length) return null
   const views = levels.map((l) => callupFor(state, l))
-  return views.find((v) => v.meter >= CALLUP_THRESHOLD) ?? views[views.length - 1]
+  return (views.find((v) => v.meter >= CALLUP_THRESHOLD) ?? views[views.length - 1])!
 }
 
 /** Weeks until the next squad announcement (0 = this week) and its week number. */
@@ -210,7 +210,7 @@ export function nextAnnouncement(state: GameState): { week: number; weeksUntil: 
   const w = state.calendar.week
   const next = SQUAD_ANNOUNCE_WEEKS.find((x) => x >= w)
   if (next !== undefined) return { week: next, weeksUntil: next - w, finals: next === SQUAD_ANNOUNCE_WEEKS[SQUAD_ANNOUNCE_WEEKS.length - 1] }
-  return { week: SQUAD_ANNOUNCE_WEEKS[0], weeksUntil: SEASON_WEEKS - w + SQUAD_ANNOUNCE_WEEKS[0], finals: false }
+  return { week: SQUAD_ANNOUNCE_WEEKS[0]!, weeksUntil: SEASON_WEEKS - w + SQUAD_ANNOUNCE_WEEKS[0]!, finals: false }
 }
 
 /** Refresh the stored meter (Profile/Home read it; no selection happens here). */
@@ -229,7 +229,7 @@ export function evaluateCallupMeter(state: GameState): CallupView | null {
 function teamPlaysInWindow(state: GameState, teamId: string, week: number): boolean {
   const season = state.calendar.season
   const from = week + 1
-  const to = week === 41 ? NATIONAL_FINALS_DATES[NATIONAL_FINALS_DATES.length - 1].week : week + 1
+  const to = week === 41 ? NATIONAL_FINALS_DATES[NATIONAL_FINALS_DATES.length - 1]!.week : week + 1
   for (const comp of nationalCompetitions(state.world, season)) {
     if (comp.fixtures.some((f) => f.week >= from && f.week <= to && (f.homeId === teamId || f.awayId === teamId))) return true
   }

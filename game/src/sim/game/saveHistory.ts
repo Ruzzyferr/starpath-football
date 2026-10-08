@@ -40,7 +40,7 @@ export function sampleAttrHistory(state: GameState): void {
     hist.rows.push(row)
   }
   const minSeason = season - ATTR_HISTORY_SEASONS + 1
-  if (hist.rows[0] && hist.rows[0][0] < minSeason) hist.rows = hist.rows.filter((r) => r[0] >= minSeason)
+  if (hist.rows[0] && hist.rows[0][0]! < minSeason) hist.rows = hist.rows.filter((r) => r[0]! >= minSeason)
 }
 
 /** Keeps only the last sample of every season except the newest. */
@@ -59,7 +59,7 @@ export function attrSeries(hist: AttrHistory | undefined, key: AttributeKey): { 
   if (!hist) return []
   const i = hist.keys.indexOf(key)
   if (i < 0) return []
-  return hist.rows.map((r) => ({ season: r[0], week: r[1], value: r[2 + i] }))
+  return hist.rows.map((r) => ({ season: r[0]!, week: r[1]!, value: r[2 + i]! }))
 }
 
 // ───────────── Goal replays (2.2#48, 2.10#34) ─────────────

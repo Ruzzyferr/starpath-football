@@ -224,7 +224,7 @@ export function pickDecision(ctx: DecisionContext): DecisionKind | null {
 
 /** Resolve a choice. An unknown `optionId` falls back to the default option. */
 export function resolveDecision(def: DecisionDef, optionId: string, seed: string): DecisionOutcome {
-  const opt = def.options.find((o) => o.id === optionId) ?? def.options.find((o) => o.id === def.fallback) ?? def.options[0]
+  const opt = (def.options.find((o) => o.id === optionId) ?? def.options.find((o) => o.id === def.fallback) ?? def.options[0])!
   let fx = add(ZERO, opt.effects)
   let won: boolean | null = null
   if (opt.gamble) {

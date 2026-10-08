@@ -25,7 +25,7 @@ export const MOD_NAME_SHARE = 0.4
 
 function initialsOf(name: string): string {
   const tokens = name.split(/[\s-]+/).filter((t) => /^[\p{L}]/u.test(t))
-  const letters = tokens.map((t) => t[0].toUpperCase())
+  const letters = tokens.map((t) => t[0]!.toUpperCase())
   return (letters.length > 1 ? letters.join('') : (tokens[0] ?? 'FC').slice(0, 1).toUpperCase()).slice(0, 3)
 }
 

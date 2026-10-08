@@ -880,7 +880,7 @@ export function startInterview(state: GameState, kind: InterviewKind, report: In
   const picked: QuestionTopic[] = []
   // The strongest context topic always comes first; the rest are weighted picks.
   const sorted = [...cands].sort((a, b) => b.w - a.w)
-  if (sorted.length) picked.push(sorted[0].topic)
+  if (sorted.length) picked.push(sorted[0]!.topic)
   while (picked.length < 3) {
     const rest = cands.filter((x) => !picked.includes(x.topic))
     if (!rest.length) break

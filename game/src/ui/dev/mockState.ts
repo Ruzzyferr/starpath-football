@@ -101,9 +101,9 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
   const playedWeeks = fresh ? 0 : START_WEEK
   const { world, heroClubId } = buildWorld(seed, playedWeeks)
   const rng = new Rng(seed ^ 0x5eed)
-  const club = world.clubs[heroClubId]
+  const club = world.clubs[heroClubId]!
   const attrs = makeAttrs(rng, input.archetype, fresh ? 54 : 63)
-  const teammates = club.squad.slice(0, 22).filter((id) => world.players[id].position !== 'GK').slice(0, 6)
+  const teammates = club.squad.slice(0, 22).filter((id) => world.players[id]!.position !== 'GK').slice(0, 6)
 
   const season = fresh ? emptyStats() : statsLine(rng, 12, 0.42)
   const prev1 = statsLine(rng, 24, 0.28)
@@ -150,8 +150,8 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
     seasonStats: season,
     careerStats: career,
     history: fresh ? [] : [
-      { season: SEASON - 2, clubId: heroClubId, clubName: club.name, leagueName: world.leagues[club.leagueId].name, stats: prev2, leaguePosition: 9, trophies: [] },
-      { season: SEASON - 1, clubId: heroClubId, clubName: club.name, leagueName: world.leagues[club.leagueId].name, stats: prev1, leaguePosition: 6, trophies: ['Hilal Kupası'] },
+      { season: SEASON - 2, clubId: heroClubId, clubName: club.name, leagueName: world.leagues[club.leagueId]!.name, stats: prev2, leaguePosition: 9, trophies: [] },
+      { season: SEASON - 1, clubId: heroClubId, clubName: club.name, leagueName: world.leagues[club.leagueId]!.name, stats: prev1, leaguePosition: 6, trophies: ['Hilal Kupası'] },
     ],
     trophies: fresh ? [] : [{ season: SEASON - 1, name: L('Hilal Kupası', 'Crescent Cup') }],
     awards: fresh ? [] : [
@@ -176,7 +176,7 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
   addRel('press', 'press', 'Spor Basını', 12, [['Röportajda sert konuştun', 'You were blunt in an interview']])
   addRel('chairman', 'chairman', 'Nihat Özkan', 30, [])
   teammates.forEach((pid, i) => {
-    const p = world.players[pid]
+    const p = world.players[pid]!
     const v = [65, 40, 12, -8, -35, 80][i] ?? 20
     addRel(`tm-${pid}`, 'teammate', `${p.firstName} ${p.lastName}`, v, v > 30 ? [['Gol pası verdi', 'Set up your goal']] : v < 0 ? [['Antrenmanda tartıştınız', 'You clashed at training']] : [], pid)
   })
@@ -193,17 +193,17 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
     injury: ['Hafif ayak bileği burkulması', 'Minor ankle sprain'],
   }
   const icons: Record<string, string> = { match: 'ball', event: 'chat', money: 'coins', relation: 'heart', career: 'career', award: 'medal', injury: 'bandage' }
-  const opps = world.leagues[club.leagueId].clubIds.filter((x) => x !== heroClubId).map((x) => world.clubs[x].name)
+  const opps = world.leagues[club.leagueId]!.clubIds.filter((x) => x !== heroClubId).map((x) => world.clubs[x]!.name)
   const total = fresh ? 1 : 40
   for (let i = 0; i < total; i++) {
     const kind = fresh ? 'career' : kinds[i % kinds.length]
     const wk = Math.max(0, playedWeeks - Math.floor(i / 3))
-    const [tr, en] = LOG_TEXT[kind]
+    const [tr, en] = LOG_TEXT[kind!]!
     const opp = opps[i % opps.length]
-    const name = Object.values(relationships)[i % 8].name
-    log.push({ season: SEASON - (wk === 0 && i > 30 ? 1 : 0), week: wk, day: (i * 3) % 7, kind, icon: icons[kind], text: { tr: tr.replace('{opp}', opp).replace('{name}', name), en: en.replace('{opp}', opp).replace('{name}', name) } })
+    const name = Object.values(relationships)[i % 8]!.name
+    log.push({ season: SEASON - (wk === 0 && i > 30 ? 1 : 0), week: wk, day: (i * 3) % 7, kind, icon: icons[kind!], text: { tr: tr.replace('{opp}', opp!).replace('{name}', name), en: en.replace('{opp}', opp!).replace('{name}', name) } })
   }
-  if (fresh) log[0].text = L(`${club.name} ile ilk profesyonel sözleşmeni imzaladın!`, `You signed your first pro contract with ${club.name}!`)
+  if (fresh) log[0]!.text = L(`${club.name} ile ilk profesyonel sözleşmeni imzaladın!`, `You signed your first pro contract with ${club.name}!`)
 
   const HEAD: [string, string, -1 | 0 | 1][] = [
     ['{hero} durdurulamıyor: üst üste üçüncü gol', '{hero} unstoppable: third goal in a row', 1],
@@ -222,8 +222,8 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
   const news: NewsItem[] = []
   const heroName = `${input.firstName} ${input.lastName}`
   for (let i = 0; i < (fresh ? 4 : 25); i++) {
-    const [tr, en, sentiment] = HEAD[i % HEAD.length]
-    const rival = world.clubs[world.leagues.tr1.clubIds[(i * 5) % 18]].name
+    const [tr, en, sentiment] = HEAD[i % HEAD.length]!
+    const rival = world.clubs[world.leagues.tr1!.clubIds[(i * 5) % 18]!]!.name
     const sub = (s: string) => s.replace('{hero}', heroName).replace('{club}', club.name).replace('{rival}', rival)
     news.push({
       id: `n${i}`,
@@ -231,7 +231,7 @@ export function buildState(input: NewGameInput, seed: number, fresh: boolean): G
       week: Math.max(0, playedWeeks - Math.floor(i / 2)),
       headline: { tr: sub(tr), en: sub(en) },
       body: { tr: 'Kulüp kaynaklarına göre gelişmeler önümüzdeki günlerde netleşecek.', en: 'According to club sources, things will become clearer in the coming days.' },
-      source: ['Fotomaç Gazetesi', 'Yıldız Spor', 'Albion Sport Daily', 'Gol TV', 'Tribün Dergi'][i % 5],
+      source: ['Fotomaç Gazetesi', 'Yıldız Spor', 'Albion Sport Daily', 'Gol TV', 'Tribün Dergi'][i % 5]!,
       sentiment,
     })
   }

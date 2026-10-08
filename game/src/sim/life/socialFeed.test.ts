@@ -9,13 +9,13 @@ describe('generated fan feed', () => {
     expect(feedTopics(s)[0]).toBe('carried')
     const f = fanFeed(s)
     expect(f.comments.length).toBeGreaterThanOrEqual(3)
-    expect(f.comments[0].topic).toBe('carried')
+    expect(f.comments[0]!.topic).toBe('carried')
     for (const c of f.comments) {
       expect(c.text.en).not.toMatch(/\{\w+\}/)
       expect(c.text.tr).not.toMatch(/\{\w+\}/)
     }
     expect(f.comments.some((c) => c.replies.length > 0)).toBe(true)
-    expect(f.hashtags[0].tag.startsWith('#')).toBe(true)
+    expect(f.hashtags[0]!.tag.startsWith('#')).toBe(true)
     expect(f.hashtags.some((h) => /YalnızKurt/.test(h.tag))).toBe(true)
     // Deterministic per week.
     expect(fanFeed(s)).toEqual(f)

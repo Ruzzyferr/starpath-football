@@ -298,7 +298,7 @@ function offsideLine(w: AiWorld, team: Team): number {
   const dir = dirOf(team)
   const xs = w.agents.filter((o) => o.team !== team).map((o) => o.pos.x * dir).sort((p, q) => q - p)
   const second = xs.length >= 2 ? xs[1] : PITCH_LENGTH / 2
-  return Math.max(second, w.ball.x * dir, (PITCH_LENGTH / 2) * dir) * dir
+  return Math.max(second!, w.ball.x * dir, (PITCH_LENGTH / 2) * dir) * dir
 }
 
 /**

@@ -91,7 +91,7 @@ const GROUP_INDEX: Readonly<Record<AttributeGroup, number>> = { physical: 0, tec
 /** The trainer on offer for a speciality and tier (the same name the hire uses). */
 export function trainerName(group: AttributeGroup, quality: 1 | 2 | 3): string {
   const list = TRAINER_NAMES[quality]
-  return list[(GROUP_INDEX[group] ?? 0) % list.length]
+  return list[(GROUP_INDEX[group] ?? 0) % list.length]!
 }
 
 /** Money delta of an activity (negative = cost). Deterministic. */
@@ -339,7 +339,7 @@ export function performActivity(
   if (def.special !== 'train' && def.special !== 'post') {
     // Variety without touching the RNG stream: the day and slot pick the completion line.
     const pool = [def.done, ...(DONE_VARIANTS[def.id] ?? [])]
-    const done = pool[hashString(`${def.id}|${today}|${ctx.calendar.slot}`) % pool.length]
+    const done = pool[hashString(`${def.id}|${today}|${ctx.calendar.slot}`) % pool.length]!
     lines.unshift({ tr: `${def.icon} ${done.tr}`, en: `${def.icon} ${done.en}` })
   }
   const summary = deltaLine([

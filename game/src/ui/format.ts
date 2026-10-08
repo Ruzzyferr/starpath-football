@@ -164,6 +164,6 @@ export function initials(name: string, lang: Lang = currentLang.value): string {
     .split(/\s+/)
     .filter(Boolean)
     .slice(0, 2)
-    .map((w) => w[0].toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US'))
+    .map((w) => w[0]!.toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US'))
     .join('')
 }

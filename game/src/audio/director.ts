@@ -147,7 +147,7 @@ export function installAudioDirector(): void {
           const hero = m.heroSide === 'home' ? 0 : 1
           const [h, a] = [m.score[hero], m.score[1 - hero]]
           engine.stopMusic(0.5)
-          engine.sting(h > a ? 'victory' : h < a ? 'defeat' : 'draw')
+          engine.sting(h > a! ? 'victory' : h < a! ? 'defeat' : 'draw')
         }
       } else if (m.pendingMoment && !m.momentActive && settings.peek().matchMusic !== false) {
         engine.setMusicIntensity(t)

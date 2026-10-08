@@ -86,15 +86,15 @@ class Biquad {
 
 function contourAt(c: VoiceNote['contour'], frac: number): number {
   if (!c || c.length === 0) return 0
-  if (frac <= c[0][0]) return c[0][1]
+  if (frac <= c[0]![0]) return c[0]![1]
   for (let i = 1; i < c.length; i++) {
-    if (frac <= c[i][0]) {
-      const [x0, y0] = c[i - 1]
-      const [x1, y1] = c[i]
+    if (frac <= c[i]![0]) {
+      const [x0, y0] = c[i - 1]!
+      const [x1, y1] = c[i]!
       return y0 + ((y1 - y0) * (frac - x0)) / Math.max(1e-6, x1 - x0)
     }
   }
-  return c[c.length - 1][1]
+  return c[c.length - 1]![1]
 }
 
 const BLOCK = 32
@@ -127,8 +127,8 @@ export function renderVoice(out: Float32Array, sr: number, n: VoiceNote, rng: Au
     // Formants for this block (vowel morph eases in the middle of the note).
     const m = n.vowelTo ? Math.min(1, Math.max(0, (frac - 0.25) / 0.5)) : 0
     for (let k = 0; k < 3; k++) {
-      const f = (fa[k] + (fb[k] - fa[k]) * m) * fScale
-      filters[k].setBandpass(f, FORMANT_BW[k] * (1 + 0.15 * k), sr)
+      const f = (fa[k]! + (fb[k]! - fa[k]!) * m) * fScale
+      filters[k]!.setBandpass(f, FORMANT_BW[k]! * (1 + 0.15 * k), sr)
     }
     drift += (rng.next() - 0.5) * 0.02
     drift *= 0.97
@@ -145,12 +145,12 @@ export function renderVoice(out: Float32Array, sr: number, n: VoiceNote, rng: Au
       prevPulse = pulse
       src += (rng.next() * 2 - 1) * breath * 0.35
       tilt += (src - tilt) * 0.55
-      const s = filters[0].run(tilt) * FORMANT_GAIN[0] + filters[1].run(tilt) * FORMANT_GAIN[1] + filters[2].run(tilt) * FORMANT_GAIN[2]
+      const s = filters[0]!.run(tilt) * FORMANT_GAIN[0] + filters[1]!.run(tilt) * FORMANT_GAIN[1] + filters[2]!.run(tilt) * FORMANT_GAIN[2]
       const env = Math.min(1, i / attack, (total - i) / release)
       let idx = start + i
       if (circular) idx = ((idx % len) + len) % len
       else if (idx >= len) return
-      if (idx >= 0) out[idx] += s * env * n.amp
+      if (idx >= 0) out[idx]! += s * env * n.amp
     }
   }
 }
@@ -173,7 +173,7 @@ export function renderWhistle(out: Float32Array, sr: number, start: number, dur:
     let idx = s0 + i
     if (circular) idx %= len
     else if (idx >= len) return
-    out[idx] += v
+    out[idx]! += v
   }
 }
 
@@ -194,14 +194,14 @@ export function renderClap(out: Float32Array, sr: number, start: number, amp: nu
     if (circular) idx = ((idx % len) + len) % len
     else if (idx < 0) continue
     else if (idx >= len) return
-    out[idx] += v
+    out[idx]! += v
   }
 }
 
 export function peakOf(buf: Float32Array): number {
   let p = 0
   for (let i = 0; i < buf.length; i++) {
-    const a = Math.abs(buf[i])
+    const a = Math.abs(buf[i]!)
     if (a > p) p = a
   }
   return p
@@ -209,7 +209,7 @@ export function peakOf(buf: Float32Array): number {
 
 export function rmsOf(buf: Float32Array): number {
   let s = 0
-  for (let i = 0; i < buf.length; i++) s += buf[i] * buf[i]
+  for (let i = 0; i < buf.length; i++) s += buf[i]! * buf[i]!
   return Math.sqrt(s / Math.max(1, buf.length))
 }
 
@@ -218,7 +218,7 @@ export function normalize(buf: Float32Array, target = 0.9): Float32Array {
   const p = peakOf(buf)
   if (p > 1e-9) {
     const k = target / p
-    for (let i = 0; i < buf.length; i++) buf[i] *= k
+    for (let i = 0; i < buf.length; i++) buf[i]! *= k
   }
   return buf
 }
@@ -229,8 +229,8 @@ export function dcBlock(buf: Float32Array, sr: number): Float32Array {
   let x1 = 0
   let y1 = 0
   for (let i = 0; i < buf.length; i++) {
-    const y = buf[i] - x1 + r * y1
-    x1 = buf[i]
+    const y = buf[i]! - x1 + r * y1
+    x1 = buf[i]!
     y1 = y
     buf[i] = y
   }
@@ -440,7 +440,7 @@ export function renderImpulse(seconds: number, decay: number, seed: number, sr: 
   const out: [Float32Array, Float32Array] = [new Float32Array(n), new Float32Array(n)]
   for (let ch = 0; ch < 2; ch++) {
     const rng = new AudioRng(seed + ch * 7919)
-    const d = out[ch]
+    const d = out[ch]!
     let lp = 0
     for (let i = 0; i < n; i++) {
       const frac = i / n
@@ -452,9 +452,9 @@ export function renderImpulse(seconds: number, decay: number, seed: number, sr: 
   }
   // Unit energy: a noise-like input comes out of the convolver at about the same RMS.
   let e = 0
-  for (const d of out) for (let i = 0; i < d.length; i++) e += d[i] * d[i]
+  for (const d of out) for (let i = 0; i < d.length; i++) e += d[i]! * d[i]!
   const k = e > 0 ? 1 / Math.sqrt(e / 2) : 0
-  for (const d of out) for (let i = 0; i < d.length; i++) d[i] *= k
+  for (const d of out) for (let i = 0; i < d.length; i++) d[i]! *= k
   return out
 }
 
@@ -477,7 +477,7 @@ export function renderPinkNoise(seconds: number, seed: number, sr: number): Floa
   const xf = Math.min(Math.round(0.05 * sr), Math.floor(n / 4))
   for (let i = 0; i < xf; i++) {
     const a = i / xf
-    out[i] = out[i] * a + out[n - xf + i] * (1 - a)
+    out[i] = out[i]! * a + out[n - xf + i]! * (1 - a)
   }
   return normalize(out.subarray(0, n - xf).slice(), 0.9)
 }

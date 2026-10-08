@@ -10,7 +10,7 @@ beforeAll(() => {
 })
 
 function leaguePairs(rng: Rng, leagueId: string): [string, string] {
-  const ids = world.leagues[leagueId].clubIds
+  const ids = world.leagues[leagueId]!.clubIds
   const a = rng.pick(ids)
   let b = rng.pick(ids)
   while (b === a) b = rng.pick(ids)
@@ -24,8 +24,8 @@ describe('quickSim', () => {
     const N = 2000
     let goals = 0, draws = 0, home = 0, away = 0, maxGoals = 0
     for (let i = 0; i < N; i++) {
-      const [h, a] = leaguePairs(rng, leagues[i % leagues.length])
-      const r = quickSimMatch(rng, world.clubs[h], world.clubs[a], world)
+      const [h, a] = leaguePairs(rng, leagues[i % leagues.length]!)
+      const r = quickSimMatch(rng, world.clubs[h]!, world.clubs[a]!, world)
       goals += r.home + r.away
       maxGoals = Math.max(maxGoals, r.home + r.away)
       if (r.home === r.away) draws++
@@ -43,13 +43,13 @@ describe('quickSim', () => {
   })
 
   it('stronger teams win much more often', () => {
-    const ids = [...world.leagues.EN1.clubIds].sort((a, b) => clubStrength(world, b).overall - clubStrength(world, a).overall)
-    const best = world.clubs[ids[0]]
-    const worst = world.clubs[ids[ids.length - 1]]
+    const ids = [...world.leagues.EN1!.clubIds].sort((a, b) => clubStrength(world, b).overall - clubStrength(world, a).overall)
+    const best = world.clubs[ids[0]!]
+    const worst = world.clubs[ids[ids.length - 1]!]
     const rng = new Rng(9)
     let bestWins = 0, worstWins = 0
     for (let i = 0; i < 400; i++) {
-      const r = quickSimMatch(rng, worst, best, world)
+      const r = quickSimMatch(rng, worst!, best!, world)
       if (r.away > r.home) bestWins++
       else if (r.home > r.away) worstWins++
     }
@@ -61,7 +61,7 @@ describe('quickSim', () => {
     let shootouts = 0
     for (let i = 0; i < 500; i++) {
       const [h, a] = leaguePairs(rng, 'DE1')
-      const d = quickSimDetailed(rng, world.clubs[h], world.clubs[a], world, { knockout: true })
+      const d = quickSimDetailed(rng, world.clubs[h]!, world.clubs[a]!, world, { knockout: true })
       const r = d.result
       if (r.penalties) {
         shootouts++
@@ -80,7 +80,7 @@ describe('quickSim', () => {
     const rng = new Rng(21)
     for (let i = 0; i < 200; i++) {
       const [h, a] = leaguePairs(rng, 'IT1')
-      const d = quickSimDetailed(rng, world.clubs[h], world.clubs[a], world)
+      const d = quickSimDetailed(rng, world.clubs[h]!, world.clubs[a]!, world)
       let last = 0
       d.result.scorers.forEach((s, k) => {
         expect(s.minute).toBeGreaterThanOrEqual(last)
@@ -102,8 +102,8 @@ describe('quickSim', () => {
 
   it('is deterministic for the same rng state', () => {
     const [h, a] = ['EN-01', 'EN-02']
-    const r1 = quickSimDetailed(new Rng(77), world.clubs[h], world.clubs[a], world, { knockout: true })
-    const r2 = quickSimDetailed(new Rng(77), world.clubs[h], world.clubs[a], world, { knockout: true })
+    const r1 = quickSimDetailed(new Rng(77), world.clubs[h]!, world.clubs[a]!, world, { knockout: true })
+    const r2 = quickSimDetailed(new Rng(77), world.clubs[h]!, world.clubs[a]!, world, { knockout: true })
     expect(r1).toEqual(r2)
   })
 

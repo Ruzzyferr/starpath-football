@@ -108,13 +108,13 @@ function preMatch(s: GameState): PreMatchView | null {
   const heroId = heroClubId(s)
   if (!f || !heroId) return null
   const fx = fixtureView(s, f, heroId) as FixtureView
-  const home = s.world.clubs[f.homeId]
-  const away = s.world.clubs[f.awayId]
+  const home = s.world.clubs[f.homeId]!
+  const away = s.world.clubs[f.awayId]!
   const oppId = f.homeId === heroId ? f.awayId : f.homeId
-  const opp = s.world.clubs[oppId]
+  const opp = s.world.clubs[oppId]!
   const league = Object.values(s.world.competitions).find((c) => c.type === 'league' && c.participantIds.includes(oppId))
   const oppForm = league?.table?.find((r) => r.clubId === oppId)?.form ?? []
-  const key = opp.squad.map((id) => s.world.players[id]).sort((a, b) => b.ovr - a.ovr)[0]
+  const key = opp.squad.map((id) => s.world.players[id]).sort((a, b) => b!.ovr - a!.ovr)[0]
   const starting = !!s.hero.contract && s.hero.contract.role !== 'reserve' && s.hero.contract.role !== 'youth' && !s.hero.injury
   const hr = home.reputation + 4
   const ar = away.reputation
@@ -132,11 +132,11 @@ function preMatch(s: GameState): PreMatchView | null {
     importance: f.compId.startsWith('trcup') ? 0.7 : Math.abs(home.reputation - away.reputation) < 6 ? 0.6 : 0.35,
     homeFormation: home.formation,
     awayFormation: away.formation,
-    homeLineup: buildLineup(s, home, 'home', starting && f.homeId === heroId),
-    awayLineup: buildLineup(s, away, 'away', starting && f.awayId === heroId),
+    homeLineup: buildLineup(s, home!, 'home', starting && f.homeId === heroId),
+    awayLineup: buildLineup(s, away!, 'away', starting && f.awayId === heroId),
     opponentForm: oppForm,
     opponentKeyPlayer: key ? { name: `${key.firstName} ${key.lastName}`, position: key.position, ovr: key.ovr } : null,
-    tacticHint: hints[hashString(oppId) % hints.length],
+    tacticHint: hints[hashString(oppId) % hints.length]!,
     heroStarting: starting,
     odds: { home: odds(ph * 0.75), draw: odds(0.25), away: odds((1 - ph) * 0.75) },
     expectedMoments: mockExpectedMoments(s.hero.position, starting),
@@ -149,7 +149,7 @@ function postMatch(s: GameState): PostMatchView | null {
   if (!m) return null
   const hs = m.heroSide
   const my = hs === 'home' ? 0 : 1
-  const won = m.score[my] > m.score[1 - my]
+  const won = m.score[my] > m.score[1 - my]!
   const rating = m.stats.rating
   const motmHero = rating >= 7.6
   const lineupScorer = m.scorers.find((x) => x.side === hs && x.playerId !== 'hero')
@@ -277,10 +277,10 @@ export const mockData: GameData = {
     const id = s && heroClubId(s)
     if (!s || !id) return []
     const rels = Object.values(s.life.relationships)
-    return s.world.clubs[id].squad.map((pid): SquadMemberView => {
+    return s.world.clubs[id]!.squad.map((pid): SquadMemberView => {
       const r = rels.find((x) => x.npcId === pid)
       const p = s.world.players[pid]
-      return { player: p, relation: r ? r.value : ((hashString(pid) % 60) - 15), relationId: r?.id ?? null }
+      return { player: p!, relation: r ? r.value : ((hashString(pid) % 60) - 15), relationId: r?.id ?? null }
     })
   },
   interest() {
@@ -298,8 +298,8 @@ export const mockData: GameData = {
     return ids.map((id, i): InterestView => ({
       club: teamView(s, id) as NonNullable<ReturnType<typeof teamView>>,
       level: Math.max(10, Math.min(95, s.hero.reputation + 40 - i * 12)),
-      note: notes[i],
-      leagueName: s.world.leagues[s.world.clubs[id].leagueId].name,
+      note: notes[i]!,
+      leagueName: s.world.leagues[s.world.clubs[id]!.leagueId]!.name,
     }))
   },
   transferNews() {
@@ -308,8 +308,8 @@ export const mockData: GameData = {
     const players = Object.values(s.world.players).filter((p) => p.ovr >= 76).slice(0, 8)
     const clubs = Object.values(s.world.clubs)
     return players.map((p, i): NewsItem => {
-      const from = s.world.clubs[p.clubId ?? ''] ?? clubs[0]
-      const to = clubs[(i * 17 + 5) % clubs.length]
+      const from = (s.world.clubs[p.clubId ?? ''] ?? clubs[0])!
+      const to = clubs[(i * 17 + 5) % clubs.length]!
       const fee = Math.round(p.value / 100000) / 10
       return {
         id: `tn${i}`,
@@ -330,8 +330,8 @@ export const mockData: GameData = {
     const lg = s.world.leagues[leagueId]
     if (!lg) return []
     const rows: ScorerRow[] = []
-    for (const cid of lg.clubIds) for (const pid of s.world.clubs[cid].squad) {
-      const p = s.world.players[pid]
+    for (const cid of lg.clubIds) for (const pid of s.world.clubs[cid]!.squad) {
+      const p = s.world.players[pid]!
       if (p.stats.goals > 0) rows.push({ playerId: pid, name: `${p.firstName} ${p.lastName}`, clubId: cid, goals: p.stats.goals, assists: p.stats.assists, isHero: false })
     }
     const hid = heroClubId(s)
@@ -410,7 +410,7 @@ export const mockData: GameData = {
       season: s.calendar.season,
       club: teamView(s, id) as NonNullable<ReturnType<typeof teamView>>,
       leaguePosition: pos,
-      leagueName: s.world.leagues[s.world.clubs[id].leagueId].name,
+      leagueName: s.world.leagues[s.world.clubs[id]!.leagueId]!.name,
       stats: { apps: st.apps, goals: st.goals, assists: st.assists, avgRating: st.apps ? Math.round((st.ratingSum / st.apps) * 100) / 100 : 0, motm: st.motm },
       trophies: [L('Hilal Kupası', 'Crescent Cup')],
       awards: [

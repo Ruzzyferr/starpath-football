@@ -64,9 +64,9 @@ export function generateTrialInvites(state: GameState, rng: Rng): TrialInvite[] 
   const w = state.world
   const leagues = Object.values(w.leagues).filter((l) => l.countryId === state.hero.nationality).sort((a, b) => a.tier - b.tier)
   if (leagues.length === 0) return []
-  const top = leagues[0]
-  const lowest = leagues[leagues.length - 1]
-  const upper = leagues.length > 1 ? leagues[leagues.length - 2] : lowest
+  const top = leagues[0]!
+  const lowest = leagues[leagues.length - 1]!
+  const upper = (leagues.length > 1 ? leagues[leagues.length - 2] : lowest)!
   const ovr = heroOvr(state.hero)
   const drill = trialDrillFor(state.hero.position)
   const used = new Set<string>()
@@ -74,14 +74,14 @@ export function generateTrialInvites(state: GameState, rng: Rng): TrialInvite[] 
     const ranked = ids.filter((id) => !used.has(id)).map((id) => ({ id, d: Math.abs(clubStrength(w, id).overall - want) })).sort((a, b) => a.d - b.d || (a.id < b.id ? -1 : 1))
     return rng.pick(ranked.slice(0, 3)).id
   }
-  const academyId = [...top.clubIds].filter((id) => !used.has(id)).sort((a, b) => w.clubs[b].reputation - w.clubs[a].reputation || (a < b ? -1 : 1)).slice(0, 4)
+  const academyId = [...top.clubIds].filter((id) => !used.has(id)).sort((a, b) => w.clubs[b]!.reputation - w.clubs[a]!.reputation || (a < b ? -1 : 1)).slice(0, 4)
   const academy = rng.pick(academyId)
   used.add(academy)
   const trial = nearest(lowest.clubIds, ovr + 4)
   used.add(trial)
   const open = nearest(upper.clubIds, ovr + 8)
   const make = (clubId: string, kind: TrialKind, target: number, tier: number): TrialInvite => ({
-    id: `tr-${kind}-${clubId}`, clubId, clubName: w.clubs[clubId].name, kind, drill, target, tier,
+    id: `tr-${kind}-${clubId}`, clubId, clubName: w.clubs[clubId]!.name, kind, drill, target, tier,
   })
   return [make(open, 'open', 0.65, upper.tier), make(trial, 'trial', 0.3, lowest.tier), make(academy, 'academy', 0, top.tier)]
 }

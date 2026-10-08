@@ -72,7 +72,7 @@ function RefereeCard({ r }: { r: NonNullable<PreMatchView['referee']> }) {
           {[1, 2, 3, 4, 5].map((i) => <span key={i} class={`pm-ref-pip${i <= s ? ' is-on' : ''}`} />)}
         </span>
       </div>
-      <p class="t-sm t-mid">{t(`match.pre.refStyle.${REF_STYLE[s - 1]}`)} · {t(`match.pre.refFlow.${flow}`)}</p>
+      <p class="t-sm t-mid">{t(`match.pre.refStyle.${REF_STYLE[s - 1]!}`)} · {t(`match.pre.refFlow.${flow}`)}</p>
     </div>
   )
 }

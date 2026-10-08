@@ -17,9 +17,9 @@ describe('close friends (2.4#37)', () => {
     const { life } = setup()
     const ids = Object.values(life.relationships).filter((r) => r.kind === 'teammate').map((r) => r.id)
     for (const id of ids.slice(0, 3)) expect(toggleCloseFriend(life, id)).toBe('added')
-    expect(toggleCloseFriend(life, ids[3])).toBe('full')
+    expect(toggleCloseFriend(life, ids[3]!)).toBe('full')
     expect(closeFriends(life)).toHaveLength(MAX_CLOSE_FRIENDS)
-    expect(toggleCloseFriend(life, ids[0])).toBe('removed')
+    expect(toggleCloseFriend(life, ids[0]!)).toBe('removed')
     expect(toggleCloseFriend(life, 'fans')).toBe('invalid')
   })
 
@@ -55,10 +55,10 @@ describe('close friends (2.4#37)', () => {
   it('neglect fades a close friend at half speed', () => {
     const a = setup(); const b = setup()
     const [ra] = Object.values(a.life.relationships).filter((x) => x.kind === 'teammate')
-    const rb = b.life.relationships[ra.id]
-    ra.value = rb.value = 60
+    const rb = b.life.relationships[ra!.id]!
+    ra!.value = rb.value = 60
     toggleCloseFriend(b.life, rb.id)
     for (let w = 10; w < 20; w++) { weeklyRelationDecay(a.life, w); weeklyRelationDecay(b.life, w) }
-    expect(60 - rb.value).toBeLessThan((60 - ra.value) * 0.7)
+    expect(60 - rb.value).toBeLessThan((60 - ra!.value) * 0.7)
   })
 })

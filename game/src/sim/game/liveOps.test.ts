@@ -21,9 +21,9 @@ describe('season event calendar', () => {
   })
   it('finds the running and the next event', () => {
     const cal = seasonCalendar(2030)
-    expect(eventForWeek(2030, cal[1].start)?.id).toBe(cal[1].id)
-    expect(eventForWeek(2030, cal[0].end + 1)).toBeNull()
-    expect(nextEvent(2030, cal[0].end)?.id).toBe(cal[1].id)
+    expect(eventForWeek(2030, cal[1]!.start)?.id).toBe(cal[1]!.id)
+    expect(eventForWeek(2030, cal[0]!.end + 1)).toBeNull()
+    expect(nextEvent(2030, cal[0]!.end)?.id).toBe(cal[1]!.id)
     expect(nextEvent(2030, 43)).toBeNull()
   })
 })
@@ -45,20 +45,20 @@ describe('news of the day', () => {
 describe('stamps, attempts and tiers', () => {
   it('stamps a cleared challenge inside an event and keeps first and best attempts', () => {
     const m = emptyLocalMeta()
-    const ev = seasonCalendar(2026)[0]
+    const ev = seasonCalendar(2026)[0]!
     const wk = ev.start + 1
     const base = feats({ week: wk, goals: 0, assists: 0, motm: false, rating: 5.5, won: false, goalsFor: 0, goalsAgainst: 1, cleanSheet: false, saves: 0, opponentReputation: 10, minutes: 30 })
     applyMatch(m, { ...base, fixtureId: 'a' })
     applyMatch(m, { ...base, fixtureId: 'b', rating: 6.8 })
     const key = `2026:${wk}`
-    expect(m.attempts[key].count).toBe(2)
-    expect(m.attempts[key].first.rating).toBe(5.5)
-    expect(m.attempts[key].best.rating).toBe(6.8)
+    expect(m.attempts[key]!.count).toBe(2)
+    expect(m.attempts[key]!.first.rating).toBe(5.5)
+    expect(m.attempts[key]!.best.rating).toBe(6.8)
     expect(m.stamps[`2026:${ev.id}`]).toBeUndefined()
     applyMatch(m, feats({ week: wk, fixtureId: 'c' }))
-    expect(m.attempts[key].count).toBe(3)
-    expect(m.attempts[key].best.passed).toBe(true)
-    expect(m.attempts[key].first.passed).toBe(false)
+    expect(m.attempts[key]!.count).toBe(3)
+    expect(m.attempts[key]!.best.passed).toBe(true)
+    expect(m.attempts[key]!.first.passed).toBe(false)
     expect(m.stamps[`2026:${ev.id}`]).toBe(1)
   })
   it('splits the career board into official and modded tables', () => {
@@ -73,14 +73,14 @@ describe('stamps, attempts and tiers', () => {
 describe('milestone timeline', () => {
   it('merges challenges, careers, stamps and streak badges newest first', () => {
     const m = emptyLocalMeta()
-    const ev = seasonCalendar(2026)[0]
+    const ev = seasonCalendar(2026)[0]!
     applyMatch(m, feats({ week: ev.start }))
     m.bestStreak = 5
     const career = { careerId: 'x', name: 'Test Hero', endSeason: 2030, totals: { apps: 10, goals: 4 }, trophies: [] } as unknown as CareerSummary
     const t = milestoneTimeline(m, [career])
     expect(t.map((x) => x.kind)).toEqual(expect.arrayContaining(['challenge', 'career', 'stamps', 'streak']))
-    expect(t[0].kind).toBe('career')
-    for (let i = 1; i < t.length; i++) expect(t[i - 1].season).toBeGreaterThanOrEqual(t[i].season)
+    expect(t[0]!.kind).toBe('career')
+    for (let i = 1; i < t.length; i++) expect(t[i - 1]!.season).toBeGreaterThanOrEqual(t[i]!.season)
     expect(t.filter((x) => x.kind === 'streak')).toHaveLength(2)
   })
 })

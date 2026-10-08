@@ -117,7 +117,7 @@ export function buildRelationChanges(before: Record<string, number>, after: Reco
     if (g.rows.length >= 3) {
       const n = g.rows.length
       const avg = (f: (x: RelationChangeView) => number) => Math.round(g.rows.reduce((a, x) => a + f(x), 0) / n)
-      rows.push({ id: 'squad', name: String(n), kind: 'squad', before: avg((x) => x.before), after: avg((x) => x.after), ...(g.rows[0].why ? { why: g.rows[0].why } : {}) })
+      rows.push({ id: 'squad', name: String(n), kind: 'squad', before: avg((x) => x.before), after: avg((x) => x.after), ...(g.rows[0]!.why ? { why: g.rows[0]!.why } : {}) })
     } else rows.push(...g.rows)
   }
   return rows.sort((a, b) => Math.abs(b.after - b.before) - Math.abs(a.after - a.before)).slice(0, max)

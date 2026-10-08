@@ -26,7 +26,7 @@ function Reel({ from, to, spinId, duration, hits }: { from: number[]; to: number
   }, [spinId])
   const strip: number[] = spinId === 0 ? to : [...from]
   if (spinId !== 0) {
-    for (let i = 0; i < FILL; i++) strip.push((from[1] + i * 3 + spinId) % SLOT_SYMBOLS.length)
+    for (let i = 0; i < FILL; i++) strip.push((from[1]! + i * 3 + spinId) % SLOT_SYMBOLS.length)
     strip.push(...to)
   }
   const shift = spinId === 0 ? 0 : go ? ((strip.length - ROWS) / strip.length) * 100 : 0
@@ -83,8 +83,8 @@ function LineDiagram({ rows, n, lit }: { rows: number[]; n: number; lit: boolean
 function hitMap(rules: SlotRules, result: SlotsResult | null): boolean[][] {
   const hits = [0, 1, 2].map(() => [false, false, false])
   for (const w of result?.wins ?? []) {
-    const rows = rules.lines[w.line]
-    for (let reel = 0; reel < w.count; reel++) hits[reel][rows[reel]] = true
+    const rows = rules.lines[w.line]!
+    for (let reel = 0; reel < w.count; reel++) hits[reel]![rows[reel]!] = true
   }
   return hits
 }
@@ -120,7 +120,7 @@ function SlotsGame() {
       setSpinning(false)
       setResult(res)
       haptic(res.net > 0 ? 'success' : 'tap')
-    }, prefersReducedMotion() ? 50 : DURATIONS[2] + 150)
+    }, prefersReducedMotion() ? 50 : DURATIONS[2]! + 150)
   }
   const paid = !!result && result.wins.length > 0
   const lit = new Set((result?.wins ?? []).map((w) => w.line))
@@ -137,7 +137,7 @@ function SlotsGame() {
           </div>
           <div class={`slot-window${result ? ' has-result' : ''}`} role="group" aria-label={t('casino.slot.reels')}>
             {win.map((col, i) => (
-              <Reel key={i} from={prev[i] ?? col} to={col} spinId={spinId} duration={DURATIONS[i]} hits={hits[i]} />
+              <Reel key={i} from={prev[i] ?? col} to={col} spinId={spinId} duration={DURATIONS[i]!} hits={hits[i]!} />
             ))}
             <Paylines rules={rules} lit={lit} />
           </div>
@@ -154,7 +154,7 @@ function SlotsGame() {
             <ul class="slot-winlines">
               {result.wins.map((w) => (
                 <li key={w.line} class="row">
-                  <LineDiagram rows={rules.lines[w.line]} n={w.line + 1} lit />
+                  <LineDiagram rows={rules.lines[w.line]!} n={w.line + 1} lit />
                   <span class="row">{Array.from({ length: w.count }, (_, k) => <SlotSymbol key={k} index={w.symbol} size={18} />)}</span>
                   <span class="t-sm">×{w.multiplier}</span>
                   <span class="t-sm t-gold num">+{formatMoney(w.amount)}</span>

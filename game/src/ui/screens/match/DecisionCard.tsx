@@ -40,7 +40,7 @@ export function DecisionCard({ d }: { d: DecisionView }) {
       const i = Number(e.key) - 1
       if (Number.isInteger(i) && i >= 0 && i < d.options.length) {
         e.preventDefault()
-        pick(d.options[i].id)
+        pick(d.options[i]!.id)
       }
     }
     document.addEventListener('keydown', onKey)

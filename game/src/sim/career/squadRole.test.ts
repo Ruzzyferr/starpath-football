@@ -81,14 +81,14 @@ describe('roles', () => {
     const { hero, life } = setup('star')
     hero.attrs.leadership = 80
     hero.managerTrust = 90
-    life.relationships.manager.value = 50
+    life.relationships.manager!.value = 50
     const ctx = { squadAvgOvr: heroOvr(hero) - 10, season: 2026 }
     expect(targetRole(hero, life, ctx)).toBe('star')
     expect(targetRole(hero, life, { ...ctx, captaincyOpen: true })).toBe('captain')
   })
   it('start probability rises with role and is 0 when unavailable', () => {
     const probs = ROLE_ORDER.map((r) => { const x = setup(r); return startProbability(x.hero, x.life) })
-    for (let i = 1; i < probs.length; i++) expect(probs[i]).toBeGreaterThanOrEqual(probs[i - 1])
+    for (let i = 1; i < probs.length; i++) expect(probs[i]).toBeGreaterThanOrEqual(probs[i - 1]!)
     const x = setup('star')
     x.hero.suspendedMatches = 1
     expect(startProbability(x.hero, x.life)).toBe(0)

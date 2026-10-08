@@ -11,7 +11,7 @@ describe('formationSlots', () => {
   it.each(FORMATIONS)('%s has 11 plausible slots', (f) => {
     const slots = formationSlots(f)
     expect(slots).toHaveLength(11)
-    expect(slots[0].role).toBe('GK')
+    expect(slots[0]!.role).toBe('GK')
     const defenders = slots.filter((s) => s.role === 'CB' || s.role === 'LB' || s.role === 'RB').length
     expect(defenders).toBe(Number(f[0]))
     for (const s of slots) {
@@ -35,7 +35,7 @@ describe('assignSlots', () => {
       const slots = assignSlots(shuffled, f)
       const roles = formationSlots(f)
       expect(new Set(slots).size).toBe(11)
-      shuffled.forEach((p, i) => expect(roles[slots[i]].role).toBe(p.position))
+      shuffled.forEach((p, i) => expect(roles[slots[i]!]!.role).toBe(p.position))
     }
   })
 })
@@ -47,7 +47,7 @@ describe('buildScenario', () => {
     const away = makeTeam(rng, 'a', { formation: '4-4-2' })
     const toSlots = (players: typeof home.lineup, f: Formation): SlotPlayer[] => {
       const s = assignSlots(players, f)
-      return players.map((player, i) => ({ player, slot: s[i] }))
+      return players.map((player, i) => ({ player, slot: s[i]! }))
     }
     return { mates: toSlots(home.lineup, '4-3-3'), opps: toSlots(away.lineup, '4-4-2') }
   }

@@ -59,7 +59,7 @@ export function StoreScreen() {
               <span class="st-owned">{t('iap.store.owned')}</span>
             ) : (
               <Button variant="primary" block disabled={busy !== null || !storeAvailable()} onClick={() => buy(p.id)}>
-                {prices[p.id] ? t('iap.store.buy', { price: prices[p.id] }) : t('iap.store.buyNoPrice')}
+                {prices[p.id] ? t('iap.store.buy', { price: prices[p.id]! }) : t('iap.store.buyNoPrice')}
               </Button>
             )}
           </Card>

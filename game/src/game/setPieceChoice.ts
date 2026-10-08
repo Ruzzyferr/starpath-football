@@ -125,7 +125,7 @@ export function cornerRuns(choice: CornerChoice, spot: Vec2, runners: readonly C
     { x: PITCH_LENGTH - 15, y: GOAL_CENTER_Y + s * 6 },
   ]
   box.forEach((r, i) => {
-    if (i < slots.length) out.set(r.id, slots[i])
+    if (i < slots.length) out.set(r.id, slots[i]!)
   })
   return out
 }
@@ -242,5 +242,5 @@ export function chooseFkShot(view: FkView, rng: Rng): FkShot {
       return { label: 'cross', target: { x: Math.min(13, Math.max(8.5, free.pos.x)), y: free.pos.y }, z: 1.7, curl: nearSideY * 0.4, power: 0.74, passTo: free.id }
     }
   }
-  return { ...best, target: { ...best.target } }
+  return { ...best!, target: { ...best!.target } }
 }

@@ -17,7 +17,7 @@ const EITHER: ReadonlySet<RelationKind> = new Set<RelationKind>(['partner', 'sib
 
 /** Deterministic face for people who are not NPC players. */
 export function relAppearance(rel: Relationship, world: World | undefined): Appearance {
-  if (rel.npcId && world?.players[rel.npcId]) return world.players[rel.npcId].appearance
+  if (rel.npcId && world?.players[rel.npcId]) return world.players[rel.npcId]!.appearance
   const h = hashString(rel.id + rel.name)
   // Partners, siblings and friends: the face follows the name ("Ayşe" is drawn
   // as a woman); unisex/unknown names fall back to a stable coin flip.

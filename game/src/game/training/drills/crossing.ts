@@ -91,7 +91,7 @@ export class CrossingDrill extends DrillBase {
     let zi = this.rng.int(0, zs.length - 1)
     if (zi === this.zoneIdx) zi = (zi + 1 + this.rng.int(0, zs.length - 2)) % zs.length
     this.zoneIdx = zi
-    this.zone = zs[zi]
+    this.zone = zs[zi]!
     // Ball and hero at the spot, facing the box.
     const toZone = norm(sub(this.zone, this.spot))
     this.tracker = createTracker()

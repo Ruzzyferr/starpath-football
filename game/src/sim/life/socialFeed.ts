@@ -140,20 +140,20 @@ export function fanFeed(state: GameState, count = 5): FanFeed {
   const used = new Set<string>()
   for (let i = 0; i < count; i++) {
     // The headline topic dominates; others get a word in.
-    const topic = i < 2 ? topics[0] : rng.pick(topics)
+    const topic = (i < 2 ? topics[0] : rng.pick(topics))!
     const pool = C[topic].filter((c) => !used.has(c.text.en))
     if (!pool.length) continue
     // Cold fans pick the harsher lines, warm fans the kinder ones.
-    const pick = rng.weighted(pool, (c) => (c.mood === 'hater' || c.mood === 'critic' ? 1 - fansVal / 150 : 1 + fansVal / 150))
-    used.add(pick.text.en)
+    const pick = rng.weighted(pool, (c) => (c!.mood === 'hater' || c!.mood === 'critic' ? 1 - fansVal / 150 : 1 + fansVal / 150))
+    used.add(pick!.text.en)
     const replies: FeedReply[] = []
     const nr = rng.int(0, 2)
     for (let j = 0; j < nr; j++) {
       const kind = rng.pick(['agree', 'disagree', 'joke'] as const)
-      replies.push({ handle: handleFor(rng), text: rng.pick(REPLIES[kind]), mood: kind === 'disagree' ? 'critic' : kind === 'joke' ? 'joke' : pick.mood, likes: rng.int(1, 40) + Math.round(reach * 0.0005) })
+      replies.push({ handle: handleFor(rng), text: rng.pick(REPLIES[kind]), mood: kind === 'disagree' ? 'critic' : kind === 'joke' ? 'joke' : pick!.mood, likes: rng.int(1, 40) + Math.round(reach * 0.0005) })
     }
     comments.push({
-      id: `fc${wk}_${i}`, handle: handleFor(rng), text: fill(pick.text, vars), mood: pick.mood, topic,
+      id: `fc${wk}_${i}`, handle: handleFor(rng), text: fill(pick!.text, vars), mood: pick!.mood, topic,
       likes: Math.round(reach * rng.range(0.001, 0.01)) + rng.int(3, 60), replies,
     })
   }

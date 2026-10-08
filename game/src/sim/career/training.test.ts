@@ -116,7 +116,7 @@ describe('training', () => {
       const r = runTraining(rng, hero, life, { type: c.type, performance: 0.8, season: 2026 })
       expect(r.ok).toBe(true)
       const xp = r.xp as Record<string, number | undefined>
-      const top = Object.entries(xp).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0][0]
+      const top = Object.entries(xp).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0))[0]![0]
       expect(top).toBe(c.main)
       for (const o of c.others) expect(xp[o] ?? 0).toBeGreaterThan(0)
       expect(xp.shooting ?? 0).toBe(0)

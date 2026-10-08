@@ -14,26 +14,26 @@ beforeAll(() => {
 
 describe('lineup selection', () => {
   it.each(FORMATIONS)('picks 11 distinct players with GK first for %s', (formation) => {
-    for (const clubId of world.leagues.EN1.clubIds.slice(0, 5)) {
+    for (const clubId of world.leagues.EN1!.clubIds.slice(0, 5)) {
       const l = selectLineup(world, clubId, formation)
       expect(l.playerIds.length).toBe(11)
       expect(new Set([...l.playerIds, ...l.bench]).size).toBe(11 + l.bench.length)
       expect(l.slots).toEqual(FORMATION_SLOTS[formation])
-      expect(world.players[l.playerIds[0]].position).toBe('GK')
+      expect(world.players[l.playerIds[0]!]!.position).toBe('GK')
       expect(l.bench.length).toBe(7)
-      expect(l.bench.some((id) => world.players[id].position === 'GK')).toBe(true)
+      expect(l.bench.some((id) => world.players[id]!.position === 'GK')).toBe(true)
     }
   })
 
   it('respects exclusions and injuries', () => {
-    const clubId = world.leagues.TR1.clubIds[0]
-    const first = selectLineup(world, clubId)
+    const clubId = world.leagues.TR1!.clubIds[0]
+    const first = selectLineup(world, clubId!)
     const excluded = new Set(first.playerIds.slice(0, 3))
-    const second = selectLineup(world, clubId, undefined, excluded)
+    const second = selectLineup(world, clubId!, undefined, excluded)
     for (const id of excluded) expect(second.playerIds).not.toContain(id)
-    const injured = world.players[first.playerIds[5]]
+    const injured = world.players[first.playerIds[5]!]!
     injured.injuredWeeks = 3
-    expect(selectLineup(world, clubId).playerIds).not.toContain(injured.id)
+    expect(selectLineup(world, clubId!).playerIds).not.toContain(injured.id)
     injured.injuredWeeks = 0
   })
 
@@ -57,22 +57,22 @@ describe('lineup selection', () => {
 
 describe('queries', () => {
   it('reports club strength, tables and fixtures', () => {
-    const clubId = world.leagues.EN1.clubIds[0]
-    const s = clubStrength(world, clubId)
+    const clubId = world.leagues.EN1!.clubIds[0]
+    const s = clubStrength(world, clubId!)
     expect(s.overall).toBeGreaterThan(60)
-    const t = leagueTableFor(world, clubId, 2026)
-    expect(t?.rows.length).toBe(world.leagues.EN1.clubIds.length)
+    const t = leagueTableFor(world, clubId!, 2026)
+    expect(t?.rows.length).toBe(world.leagues.EN1!.clubIds.length)
     expect(t?.position).toBeGreaterThanOrEqual(1)
-    const fixtures = clubFixtures(world, clubId, 2026)
-    expect(fixtures.filter((f) => f.competition.type === 'league').length).toBe((world.leagues.EN1.clubIds.length - 1) * 2)
+    const fixtures = clubFixtures(world, clubId!, 2026)
+    expect(fixtures.filter((f) => f.competition.type === 'league').length).toBe((world.leagues.EN1!.clubIds.length - 1) * 2)
     for (let i = 1; i < fixtures.length; i++) {
-      const a = fixtures[i - 1].fixture
-      const b = fixtures[i].fixture
+      const a = fixtures[i - 1]!.fixture
+      const b = fixtures[i]!.fixture
       expect(a.week * 7 + a.day).toBeLessThan(b.week * 7 + b.day) // never two games on one day
     }
-    const next = nextFixtureFor(world, clubId, 2026, 0, 0)
-    expect(next?.fixture.id).toBe(fixtures[0].fixture.id)
-    const later = nextFixtureFor(world, clubId, 2026, 20, 0)
+    const next = nextFixtureFor(world, clubId!, 2026, 0, 0)
+    expect(next?.fixture.id).toBe(fixtures[0]!.fixture.id)
+    const later = nextFixtureFor(world, clubId!, 2026, 20, 0)
     expect(later?.fixture.week).toBeGreaterThanOrEqual(20)
   })
 
@@ -82,15 +82,15 @@ describe('queries', () => {
     expect(playerDisplayName(p, 'full')).toBe('Arda Yılmaz')
     expect(playerDisplayName(p, 'last')).toBe('Yılmaz')
     expect(playerDisplayName(undefined)).toBe('—')
-    const squad = sortedSquad(world, world.leagues.ES1.clubIds[0])
-    expect(squad[0].position).toBe('GK')
-    expect(squad[squad.length - 1].position).toBe('ST')
+    const squad = sortedSquad(world, world.leagues.ES1!.clubIds[0]!)
+    expect(squad[0]!.position).toBe('GK')
+    expect(squad[squad.length - 1]!.position).toBe('ST')
   })
 
   it('switches the away kit on a colour clash', () => {
-    const [a, b] = [world.clubs[world.leagues.DE1.clubIds[0]], world.clubs[world.leagues.DE1.clubIds[1]]]
-    const clone = { ...b, colors: { ...a.colors } }
-    expect(matchKits(a, clone).away).toBe(clone.awayColors)
+    const [a, b] = [world.clubs[world.leagues.DE1!.clubIds[0]!], world.clubs[world.leagues.DE1!.clubIds[1]!]]
+    const clone = { ...b!, colors: { ...a!.colors } }
+    expect(matchKits(a!, clone).away).toBe(clone.awayColors)
   })
 })
 

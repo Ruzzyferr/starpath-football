@@ -52,7 +52,7 @@ export function refFoulMult(s: number | undefined): number {
 
 /** Card probability multiplier (strictness 3 → 1). */
 export function refCardMult(s: number | undefined): number {
-  return s === undefined ? 1 : ([0.6, 0.8, 1, 1.25, 1.55] as const)[clampStrictness(s) - 1]
+  return s === undefined ? 1 : ([0.6, 0.8, 1, 1.25, 1.55] as const)[clampStrictness(s) - 1]!
 }
 
 /** Foul odds multiplier for challenges in a highlight (a strict referee whistles more 50/50s). */

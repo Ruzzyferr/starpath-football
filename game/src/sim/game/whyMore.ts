@@ -38,8 +38,8 @@ export function topShares(raw: Raw[], n = 3): WhyRow[] {
   if (total === 0) return []
   const shares = top.map((r) => Math.floor((Math.abs(r.value) / total) * 100))
   let left = 100 - shares.reduce((a, b) => a + b, 0)
-  for (let i = 0; left > 0; i = (i + 1) % shares.length, left--) shares[i]++
-  return top.map((r, i) => ({ key: r.key, label: r.label, share: shares[i], tone: r.value > 0 ? 'pos' : 'neg', actionable: r.actionable }))
+  for (let i = 0; left > 0; i = (i + 1) % shares.length, left--) shares[i]!++
+  return top.map((r, i) => ({ key: r.key, label: r.label, share: shares[i]!, tone: r.value > 0 ? 'pos' : 'neg', actionable: r.actionable }))
 }
 
 /** Why `clubId` watches the hero at the level it does (same terms as the scouting model, without the noise). */

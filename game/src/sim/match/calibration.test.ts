@@ -13,7 +13,7 @@ describe('shot outcome calibration', () => {
       const s = new MatchSim(makeSetup({ seed: 31_000 + i }), 'en').simulateToEnd()
       shots += s.shots[0] + s.shots[1]
       goals += s.score[0] + s.score[1]
-      onTarget += s.shotsOnTarget[0] + s.shotsOnTarget[1]
+      onTarget += s.shotsOnTarget[0]! + s.shotsOnTarget[1]!
       wood += s.events.filter((e) => e.type === 'woodwork').length
     }
     expect(shots).toBeGreaterThanOrEqual(1000)

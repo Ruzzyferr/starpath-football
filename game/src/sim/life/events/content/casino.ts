@@ -249,7 +249,7 @@ export const casinoEvents: EventDef[] = [
           const s = sev(ctx)
           return fx(
             t('Kameraların karşısında sesin titredi ama kaçmadın. Bazı taraftarlar sırtını döndü, bazıları "insan hata yapar" dedi.', 'Your voice shook in front of the cameras but you did not dodge. Some fans turned their backs; some said "everyone deserves a second chance."'),
-            ban(BANS[s]), money(-num(ctx, 'amount') * 0.25 * s), disc(-8 * s), rep(-2 * s), fans(-4 * s), stress(8),
+            ban(BANS[s]!), money(-num(ctx, 'amount') * 0.25 * s), disc(-8 * s), rep(-2 * s), fans(-4 * s), stress(8),
             { addFlags: { scandals: 1 } },
             flags({ fixing_closed: true }),
             news(t('{heroName}, şike skandalında {clubName} formasından men edildi', '{heroName} banned over match-fixing scandal'), -1),
@@ -267,13 +267,13 @@ export const casinoEvents: EventDef[] = [
           return rng.chance(0.3)
             ? fx(
                 t('Tahkim cezayı yarıya indirdi. Hâlâ bir cezan var; ama yeniden oynayabileceğin tarih yaklaştı.', 'The tribunal halved the ban. It is still a ban, but your comeback date moved closer.'),
-                money(-num(ctx, 'lawyerFee')), ban(Math.ceil(BANS[s] / 2)), disc(-5 * s), rep(-2 * s), stress(6),
+                money(-num(ctx, 'lawyerFee')), ban(Math.ceil(BANS[s]! / 2)), disc(-5 * s), rep(-2 * s), stress(6),
                 { addFlags: { scandals: 1 } }, flags({ fixing_closed: true }),
                 news(t('{heroName}\'in şike cezası itirazda indirildi', "{heroName}'s fixing ban reduced on appeal"), -1),
               )
             : fx(
                 t('İtiraz reddedildi; kurul "pişmanlık göstermedi" notunu ekledi.', 'Appeal rejected; the board added a note: "showed no remorse."'),
-                money(-num(ctx, 'lawyerFee')), ban(Math.min(20, BANS[s] + 2)), disc(-10 * s), rep(-3 * s), fans(-5 * s), stress(12),
+                money(-num(ctx, 'lawyerFee')), ban(Math.min(20, BANS[s]! + 2)), disc(-10 * s), rep(-3 * s), fans(-5 * s), stress(12),
                 { addFlags: { scandals: 1 } }, flags({ fixing_closed: true }),
                 news(t('{heroName}\'in itirazı reddedildi, ceza arttı', "{heroName}'s appeal rejected, ban extended"), -1),
               )
@@ -287,7 +287,7 @@ export const casinoEvents: EventDef[] = [
           const s = sev(ctx)
           return fx(
             t('Nasıl tuzağa düştüğünü, korkuyu, utancı anlattın. Röportaj çok okundu; gençlere uyarı olarak okullarda gösterilmeye başladı.', 'You described the trap, the fear, the shame. The interview went far; schools started using it as a warning for young players.'),
-            ban(BANS[s]), money(-num(ctx, 'amount') * 0.25 * s), disc(-6 * s), rep(-s), press(5), folPct(ctx, 4), stress(6),
+            ban(BANS[s]!), money(-num(ctx, 'amount') * 0.25 * s), disc(-6 * s), rep(-s), press(5), folPct(ctx, 4), stress(6),
             { addFlags: { scandals: 1 } }, flags({ fixing_closed: true }),
             news(t('{heroName}: "Şikeye nasıl çekildim"', '{heroName}: "How I was pulled into fixing"'), 0),
           )

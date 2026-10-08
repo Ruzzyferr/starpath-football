@@ -27,7 +27,7 @@ export function addHeat(grid: number[], x01: number, y01: number, w = 1): void {
   const put = (cx: number, cy: number, k: number) => {
     const c = clamp(cx, 0, HEAT_COLS - 1)
     const r = clamp(cy, 0, HEAT_ROWS - 1)
-    grid[r * HEAT_COLS + c] += w * k
+    grid[r * HEAT_COLS + c]! += w * k
   }
   put(x0, y0, (1 - tx) * (1 - ty))
   put(x0 + 1, y0, tx * (1 - ty))

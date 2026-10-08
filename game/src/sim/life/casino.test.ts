@@ -75,7 +75,7 @@ describe('blackjack', () => {
     expect(availableActions(r, 9)).not.toContain('split') // can't cover the second stake
     expect(blackjackAction(rng, r, 'split')).toBe(true)
     expect(r.hands).toHaveLength(2)
-    expect(r.hands.map((h) => cardValue(h.cards[0]))).toEqual([8, 8])
+    expect(r.hands.map((h) => cardValue(h.cards[0]!))).toEqual([8, 8])
     expect(r.hands.every((h) => h.fromSplit && h.stake === 10)).toBe(true)
     expect(r.active).toBe(0)
     // No re-split (max two hands) even if another eight comes.
@@ -83,7 +83,7 @@ describe('blackjack', () => {
     expect(blackjackAction(rng, r, 'split')).toBe(false)
     while (!r.finished) blackjackAction(rng, r, 'stand')
     expect(r.outcomes).toHaveLength(2)
-    const sum = r.hands.reduce((a, h, i) => a + handReturn(r.outcomes[i], h.stake), 0)
+    const sum = r.hands.reduce((a, h, i) => a + handReturn(r.outcomes[i]!, h.stake), 0)
     expect(r.payout).toBe(sum)
   })
 
@@ -95,8 +95,8 @@ describe('blackjack', () => {
     shoe.pos = 0
     const r = startBlackjack(rng, shoe, 10)
     blackjackAction(rng, r, 'split')
-    expect(handValue(r.hands[0].cards).total).toBe(21)
-    expect(r.hands[0].done).toBe(true)
+    expect(handValue(r.hands[0]!.cards).total).toBe(21)
+    expect(r.hands[0]!.done).toBe(true)
     expect(r.active).toBe(1)
     while (!r.finished) blackjackAction(rng, r, 'stand')
     expect(r.outcomes[0]).not.toBe('blackjack')
@@ -109,9 +109,9 @@ describe('blackjack', () => {
     shoe.pos = 0
     const r = startBlackjack(rng, shoe, 10)
     blackjackAction(rng, r, 'split')
-    if (!r.hands[0].done) blackjackAction(rng, r, 'double')
-    expect(r.hands[0].stake).toBe(20)
-    expect(r.hands[1].stake).toBe(10)
+    if (!r.hands[0]!.done) blackjackAction(rng, r, 'double')
+    expect(r.hands[0]!.stake).toBe(20)
+    expect(r.hands[1]!.stake).toBe(10)
   })
 
   it('handReturn / handNet pay 3:2, 1:1, push and loss', () => {
@@ -134,8 +134,8 @@ describe('blackjack', () => {
       const r = startBlackjack(rng, shoe, 1)
       while (!r.finished) {
         const acts = availableActions(r)
-        const h = r.hands[r.active]
-        const a = basicStrategyAction(h.cards, r.dealer[0], acts.includes('double'), acts.includes('split'))
+        const h = r.hands[r.active]!
+        const a = basicStrategyAction(h.cards, r.dealer[0]!, acts.includes('double'), acts.includes('split'))
         blackjackAction(rng, r, acts.includes(a) ? a : 'hit')
       }
       staked += blackjackTotalStake(r)
@@ -247,11 +247,11 @@ describe('horse racing', () => {
       for (const h of contenders) { returned += settleHorseBet(race, res, h, 1); staked++ }
       if (i === 0) {
         expect(res.frames.length).toBe(41)
-        expect(Math.max(...res.frames[40])).toBeCloseTo(1, 10)
+        expect(Math.max(...res.frames[40]!)).toBeCloseTo(1, 10)
         expect(res.order.length).toBe(8)
       }
     }
-    for (let h = 0; h < 8; h++) expect(Math.abs(wins[h] / N - race.horses[h].winProb)).toBeLessThan(0.015)
+    for (let h = 0; h < 8; h++) expect(Math.abs(wins[h] / N - race.horses[h]!.winProb)).toBeLessThan(0.015)
     // Backing the contenders returns ≈ 1/1.15 of the stake.
     const rtp = returned / staked
     expect(rtp).toBeGreaterThan(0.8)
@@ -294,8 +294,8 @@ describe('horse racing', () => {
 
   it('stronger horses are more likely to win', () => {
     const p = raceWinProbabilities([80, 60, 60, 60, 60, 60, 60, 40])
-    expect(p[0]).toBeGreaterThan(p[1])
-    expect(p[1]).toBeGreaterThan(p[7])
+    expect(p[0]).toBeGreaterThan(p[1]!)
+    expect(p[1]).toBeGreaterThan(p[7]!)
   })
 })
 

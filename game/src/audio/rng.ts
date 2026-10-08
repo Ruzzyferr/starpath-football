@@ -29,7 +29,7 @@ export class AudioRng {
   }
 
   pick<T>(xs: readonly T[]): T {
-    return xs[Math.floor(this.next() * xs.length) % xs.length]
+    return xs[Math.floor(this.next() * xs.length) % xs.length]!
   }
 
   /** Approximately normal (sum of 3 uniforms), mean 0, sd ~1. */

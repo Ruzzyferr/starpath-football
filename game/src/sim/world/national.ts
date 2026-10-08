@@ -47,7 +47,7 @@ export const nationalTeamId = (nationId: string, level: NationalLevel): string =
 
 export function parseTeamId(teamId: string): { nationId: string; level: NationalLevel } | null {
   const [nationId, lv] = teamId.split(':')
-  if (!NATION_BY_ID[nationId]) return null
+  if (nationId === undefined || !NATION_BY_ID[nationId]) return null
   if (lv === undefined) return { nationId, level: 'A' }
   return lv === 'U21' || lv === 'U19' ? { nationId, level: lv } : null
 }
@@ -289,7 +289,7 @@ function snakeGroups(teams: readonly string[], groups: number): string[][] {
   teams.forEach((id, i) => {
     const row = Math.floor(i / groups)
     const col = i % groups
-    out[row % 2 === 0 ? col : groups - 1 - col].push(id)
+    out[row % 2 === 0 ? col : groups - 1 - col]!.push(id)
   })
   return out
 }
@@ -317,7 +317,7 @@ function groupFixtures(compId: string, groups: readonly string[][], dates: reado
     const rounds = double ? doubleRoundRobin(group) : roundRobin(group)
     rounds.forEach((pairs, r) => {
       const di = rounds.length <= 1 ? 0 : Math.round((r * (dates.length - 1)) / (rounds.length - 1))
-      const date = dates[Math.min(di, dates.length - 1)]
+      const date = dates[Math.min(di, dates.length - 1)]!
       pairs.forEach(([homeId, awayId], i) => {
         out.push({ id: fixtureId(compId, r, g * 4 + i), compId, round: r, group: g, week: date.week, day: date.day, homeId, awayId, result: null })
       })
@@ -345,7 +345,7 @@ export function createNationalCompetitions(world: World, rng: Rng, season: numbe
     const rounds = roundRobin(teams).slice(0, INTERNATIONAL_DATES.length)
     const fixtures: Fixture[] = []
     rounds.forEach((pairs, r) => {
-      const d = INTERNATIONAL_DATES[r]
+      const d = INTERNATIONAL_DATES[r]!
       pairs.forEach(([homeId, awayId], i) => fixtures.push({ id: fixtureId(id, r, i), compId: id, round: r, week: d.week, day: d.day, homeId, awayId, result: null }))
     })
     comps.push({
@@ -436,7 +436,7 @@ export function createFinalsCompetition(world: World, rng: Rng, qual: Competitio
   const id = finalsCompId(qual.season, key)
   const existing = world.competitions[id]
   if (existing) return existing
-  const host = qual.meta?.hostId ?? qual.participantIds[0]
+  const host = (qual.meta?.hostId ?? qual.participantIds[0])!
   const quals = qualifiers(qual)
   const teams = [host, ...quals]
   const name = NATIONAL_TOURNAMENT_NAMES[key]
@@ -449,13 +449,13 @@ export function createFinalsCompetition(world: World, rng: Rng, qual: Competitio
   if (teams.length >= 8) {
     // Pot 1: host (group A) + best qualifier (group B); the rest snake-seeded in pots of two.
     const rest = quals.slice(1).sort(byReputation)
-    const groups: string[][] = [[host], [quals[0]]]
+    const groups: string[][] = [[host!], [quals[0]!]]
     for (let i = 0; i + 1 < rest.length; i += 2) {
       const pair = rng.shuffle([rest[i], rest[i + 1]])
-      groups[0].push(pair[0])
-      groups[1].push(pair[1])
+      groups[0]!.push(pair[0]!)
+      groups[1]!.push(pair[1]!)
     }
-    if (rest.length % 2 === 1) groups[0].push(rest[rest.length - 1])
+    if (rest.length % 2 === 1) groups[0]!.push(rest[rest.length - 1]!)
     comp.meta!.groups = groups
     comp.meta!.koFrom = 3
     comp.participantIds = groups.flat()
@@ -463,7 +463,7 @@ export function createFinalsCompetition(world: World, rng: Rng, qual: Competitio
     groups.forEach((group, g) => {
       // Host always plays at home; other games are on neutral ground.
       roundRobin(group).forEach((pairs, r) => {
-        const d = NATIONAL_FINALS_DATES[r]
+        const d = NATIONAL_FINALS_DATES[r]!
         pairs.forEach(([a, b], i) => {
           const [h, aw] = b === host ? [b, a] : [a, b]
           comp.fixtures.push({ id: fixtureId(id, r, g * 2 + i), compId: id, round: r, group: g, week: d.week, day: d.day, homeId: h, awayId: aw, result: null, ...neutralFor(h, aw) })
@@ -474,7 +474,7 @@ export function createFinalsCompetition(world: World, rng: Rng, qual: Competitio
     comp.meta!.koFrom = 0
     const seeds = [host, ...quals]
     const pairs: [string, string][] = [[seeds[0], seeds[3]], [seeds[1], seeds[2]]].filter((p) => p[0] && p[1]) as [string, string][]
-    const d = NATIONAL_FINALS_DATES[3]
+    const d = NATIONAL_FINALS_DATES[3]!
     pairs.forEach(([h, a], i) => comp.fixtures.push({ id: fixtureId(id, 0, i), compId: id, round: 0, week: d.week, day: d.day, homeId: h, awayId: a, result: null, ...neutralFor(h, a) }))
     comp.meta!.draws!.push({ round: 0, week: d.week, pairs })
   }
@@ -524,8 +524,8 @@ export function advanceNationalCompetition(world: World, rng: Rng, comp: Competi
     if (current < koFrom - 1) return false
     const st = groupStandings(comp)
     comp.alive = st.flatMap((g) => g.slice(0, 2))
-    const pairs: [string, string][] = st.length >= 2 ? [[st[0][0], st[1][1]], [st[1][0], st[0][1]]] : [[st[0][0], st[0][1]]]
-    const d = datesFor(koFrom)
+    const pairs: [string, string][] = st.length >= 2 ? [[st[0]![0]!, st[1]![1]!], [st[1]![0]!, st[0]![1]!]] : [[st[0]![0]!, st[0]![1]!]]
+    const d = datesFor(koFrom)!
     pairs.forEach(([a, b], i) => {
       const [h, aw] = b === host ? [b, a] : [a, b]
       comp.fixtures.push({ id: fixtureId(comp.id, koFrom, i), compId: comp.id, round: koFrom, week: d.week, day: d.day, homeId: h, awayId: aw, result: null, ...neutralFor(h, aw) })
@@ -540,12 +540,12 @@ export function advanceNationalCompetition(world: World, rng: Rng, comp: Competi
     return true
   }
   const next = current + 1
-  const d = datesFor(next)
+  const d = datesFor(next)!
   // Bracket order: winners of tie 0 and tie 1 meet.
   const winners = comp.fixtures.filter((f) => f.round === current).sort((a, b) => (a.id < b.id ? -1 : 1))
     .map((f) => tieWinner(comp, f) ?? f.homeId)
   const pairs: [string, string][] = []
-  for (let i = 0; i + 1 < winners.length; i += 2) pairs.push([winners[i], winners[i + 1]])
+  for (let i = 0; i + 1 < winners.length; i += 2) pairs.push([winners[i]!, winners[i + 1]!])
   pairs.forEach(([a, b], i) => {
     const [h, aw] = b === host ? [b, a] : [a, b]
     comp.fixtures.push({ id: fixtureId(comp.id, next, i), compId: comp.id, round: next, week: d.week, day: d.day, homeId: h, awayId: aw, result: null, ...neutralFor(h, aw) })

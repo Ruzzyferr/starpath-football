@@ -28,9 +28,9 @@ describe('newGame', () => {
     expect(size).toBeLessThan(SAVE_BUDGET)
     expect(Object.keys(s.world.countries)).toHaveLength(6)
     // Hero placed at a lowest-tier club of his country.
-    const club = s.world.clubs[s.hero.contract!.clubId]
+    const club = s.world.clubs[s.hero.contract!.clubId]!
     expect(club.countryId).toBe('TR')
-    expect(s.world.leagues[club.leagueId].tier).toBe(3)
+    expect(s.world.leagues[club.leagueId]!.tier).toBe(3)
     expect(s.hero.contract!.untilSeason).toBeGreaterThanOrEqual(START_YEAR + 1)
     // Teammates + manager relationships.
     for (const id of club.squad) expect(s.life.relationships[teammateId(id)]).toBeDefined()
@@ -125,7 +125,7 @@ describe('casino & negotiation', () => {
   it('negotiates and signs an offer', () => {
     const s = makeGame(3)
     autoRun(s, (x) => getOffers(x).length > 0, 3000)
-    const offer = getOffers(s)[0]
+    const offer = getOffers(s)[0]!
     expect(offer).toBeDefined()
     const st = startNegotiation(s, offer.id)
     expect(st.ok).toBe(true)
@@ -155,14 +155,14 @@ describe('full season', () => {
     expect(s.life.money).toBeGreaterThan(-1)
     expect(s.life.money).toBeLessThan(1e8)
     expect(s.hero.history).toHaveLength(1)
-    expect(s.hero.history[0].season).toBe(START_YEAR)
-    expect(s.hero.history[0].stats.apps).toBe(s.hero.careerStats.apps)
+    expect(s.hero.history[0]!.season).toBe(START_YEAR)
+    expect(s.hero.history[0]!.stats.apps).toBe(s.hero.careerStats.apps)
     expect(stats.heroMatches).toBeGreaterThan(15) // one seed, 16-year-old squad role decides; balance sim tracks the median (27)
     expect(s.world.honours.some((h) => h.season === START_YEAR)).toBe(true)
     // New season competitions exist with complete tables.
-    const club = s.hero.contract ? s.world.clubs[s.hero.contract.clubId] : Object.values(s.world.clubs)[0]
+    const club = (s.hero.contract ? s.world.clubs[s.hero.contract.clubId] : Object.values(s.world.clubs)[0])!
     const t = leagueTableFor(s.world, club.id, START_YEAR + 1)!
-    expect(t.rows.length).toBe(s.world.leagues[club.leagueId].clubIds.length)
+    expect(t.rows.length).toBe(s.world.leagues[club.leagueId]!.clubIds.length)
     expect(size).toBeLessThan(SAVE_BUDGET)
     const d = dashboard(s)
     expect(d.nextFixture).not.toBeNull()

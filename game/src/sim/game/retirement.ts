@@ -89,7 +89,7 @@ export function playTestimonial(state: GameState): CareerSummary['testimonial'] 
   return withRng(state, (rng) => {
     const home = buildTeam(state, club, true, true, 1)
     const away = { ...buildTeam(state, legends, false, true, 1), id: 'legends', name: 'Legends XI', shortName: 'LEG' }
-    if (!home.lineup.some((p) => p.id === HERO_ID)) home.lineup[home.lineup.length - 1] = { ...home.lineup[home.lineup.length - 1], id: HERO_ID, isHero: true, name: state.hero.nickname || state.hero.lastName, attrs: { ...state.hero.attrs } }
+    if (!home.lineup.some((p) => p.id === HERO_ID)) home.lineup[home.lineup.length - 1] = { ...home.lineup[home.lineup.length - 1]!, id: HERO_ID, isHero: true, name: state.hero.nickname || state.hero.lastName, attrs: { ...state.hero.attrs } }
     const setup: MatchSetup = {
       home, away, seed: rng.nextUint(), competitionName: 'Testimonial', weather: 'clear', heroSide: 'home', heroOnBench: false,
       knockout: false, neutralVenue: false, importance: 1, difficulty: 0.85,

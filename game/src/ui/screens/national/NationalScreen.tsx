@@ -73,7 +73,7 @@ export function NationalScreen() {
         {v.comps.filter((c) => c.groups.length || c.knockout.length).map((c) => (
           <Card key={c.id} pad="md" class="stack">
             <SectionTitle>{lt(c.name)}</SectionTitle>
-            {c.hostId && <span class="t-xs t-lo">{t('intl.national.host', { n: s.world.countries[c.hostId] ? lt(s.world.countries[c.hostId].name) : c.hostId })}</span>}
+            {c.hostId && <span class="t-xs t-lo">{t('intl.national.host', { n: s.world.countries[c.hostId] ? lt(s.world.countries[c.hostId]!.name) : c.hostId })}</span>}
             {c.groups.map((g, i) => <MiniTable key={i} g={g} highlight={mine} qualify={c.format === 'nt_finals' ? 2 : c.format === 'nt_qual' ? 1 : 0} />)}
             {c.knockout.length > 0 && <><h3 class="micro t-mid">{t('intl.national.knockout')}</h3><TieList ties={c.knockout} /></>}
             {c.winner && <Chip tone="gold" icon="trophy">{t('intl.national.winner', { n: c.winner.name })}</Chip>}

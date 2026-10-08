@@ -58,7 +58,7 @@ export const CONTINENTAL_GROUP_WEEKS: readonly number[] = [3, 6, 8, 13, 17, 19]
  */
 export const CONTINENTAL_KO_LEGS: readonly (readonly number[])[] = [[21, 23], [26, 28], [30, 33], [36]]
 /** First-leg week of each continental knockout round (k rounds use the LAST k). */
-export const CONTINENTAL_KO_WEEKS: readonly number[] = CONTINENTAL_KO_LEGS.map((l) => l[0])
+export const CONTINENTAL_KO_WEEKS: readonly number[] = CONTINENTAL_KO_LEGS.map((l) => l[0]!)
 /** Continental qualifying round (two legs, before the group stage). */
 export const CONTINENTAL_QUALIFYING_WEEKS: readonly number[] = [1, 2]
 
@@ -117,26 +117,26 @@ export function leagueRoundWeek(round: number, totalRounds: number, lastWeek: nu
   const weeks = lastWeek >= LAST_MATCH_WEEK ? LEAGUE_WEEKS : LEAGUE_WEEKS.filter((w) => w <= lastWeek)
   if (totalRounds > weeks.length) throw new Error(`League has ${totalRounds} rounds, max ${weeks.length}`)
   const idx = Math.round(((round + 1) * weeks.length) / totalRounds) - 1
-  return weeks[idx]
+  return weeks[idx]!
 }
 
 /** Week of national cup round `round` in a cup with `totalRounds` rounds. */
 export function cupRoundWeek(round: number, totalRounds: number): number {
   const offset = CUP_WEEKS.length - totalRounds
   if (offset < 0) throw new Error(`Cup has ${totalRounds} rounds, max ${CUP_WEEKS.length}`)
-  return CUP_WEEKS[offset + round]
+  return CUP_WEEKS[offset + round]!
 }
 
 /** Week of continental knockout round `koRound` (0-based) with `totalKoRounds` rounds (first leg). */
 export function continentalKoWeek(koRound: number, totalKoRounds: number): number {
-  return continentalKoLegs(koRound, totalKoRounds)[0]
+  return continentalKoLegs(koRound, totalKoRounds)[0]!
 }
 
 /** Leg weeks of continental knockout round `koRound` (one entry for the final). */
 export function continentalKoLegs(koRound: number, totalKoRounds: number): readonly number[] {
   const idx = CONTINENTAL_KO_LEGS.length - totalKoRounds + koRound
   if (idx < 0 || idx >= CONTINENTAL_KO_LEGS.length) throw new Error(`Continental KO round ${koRound}/${totalKoRounds} out of range`)
-  return CONTINENTAL_KO_LEGS[idx]
+  return CONTINENTAL_KO_LEGS[idx]!
 }
 
 /** A pairing: [home, away]. */
@@ -159,11 +159,11 @@ export function roundRobin<T>(teams: readonly T[]): Pairing<T>[][] {
     for (let i = 0; i < n / 2; i++) {
       const a = arr[i]
       const b = arr[n - 1 - i]
-      if (a === null || b === null) continue
+      if (a === null || b === null || a === undefined || b === undefined) continue
       const pair = orientPair(a, b, lastHome, homes)
-      lastHome.set(pair[0], true)
-      lastHome.set(pair[1], false)
-      homes.set(pair[0], (homes.get(pair[0]) ?? 0) + 1)
+      lastHome.set(pair[0]!, true)
+      lastHome.set(pair[1]!, false)
+      homes.set(pair[0]!, (homes.get(pair[0]!) ?? 0) + 1)
       pairs.push(pair)
     }
     rounds.push(pairs)
@@ -218,10 +218,10 @@ export function limitVenueStreaks<T>(rounds: Pairing<T>[][], maxIter = 400): voi
   }
   const flip = (t: T, r: number): void => {
     for (const rr of mirrored ? [r, r < half ? r + half : r - half] : [r]) {
-      const i = rounds[rr].findIndex(([x, y]) => x === t || y === t)
+      const i = rounds[rr]!.findIndex(([x, y]) => x === t || y === t)
       if (i < 0) continue
-      const [h, a] = rounds[rr][i]
-      rounds[rr][i] = [a, h]
+      const [h, a] = rounds[rr]![i]!
+      rounds[rr]![i] = [a, h]
       home.get(h)![rr] = false
       home.get(a)![rr] = true
     }
@@ -230,7 +230,7 @@ export function limitVenueStreaks<T>(rounds: Pairing<T>[][], maxIter = 400): voi
   const keyOf = (t: T, k: number): string => `${String(t)}@${mirrored && k >= half ? k - half : k}`
   let current = streaks()
   for (let iter = 0; iter < maxIter && current.length; iter++) {
-    const [t, r] = current[iter % current.length]
+    const [t, r] = current[iter % current.length]!
     let best = -1
     let bestCount = Infinity
     for (const k of [r - 1, r, r - 2]) {
@@ -252,10 +252,10 @@ export function deferDerbies(rounds: Pairing<string>[][], derbies: ReadonlySet<s
   const half = rounds.length / 2
   const hasDerby = (round: Pairing<string>[]) => round.some(([h, a]) => derbies.has(pairKey(h, a)))
   for (let r = 0; r < Math.min(free, half); r++) {
-    if (!hasDerby(rounds[r])) continue
+    if (!hasDerby(rounds[r]!)) continue
     for (let k = free; k < half; k++) {
-      if (hasDerby(rounds[k])) continue
-      for (const off of [0, half]) [rounds[r + off], rounds[k + off]] = [rounds[k + off], rounds[r + off]]
+      if (hasDerby(rounds[k]!)) continue
+      for (const off of [0, half]) [rounds[r + off], rounds[k + off]] = [rounds[k + off]!, rounds[r + off]!]
       break
     }
   }

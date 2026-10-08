@@ -60,11 +60,11 @@ interface Harmony {
 function analyze(name: string): Harmony {
   const raw = normalize(lastWord(name))
   const lastDigit = /([0-9])$/.exec(raw)
-  const w = lastDigit ? DIGIT_READING[Number(lastDigit[1])] : raw.replace(/[^a-zçğıöşü]/g, '')
+  const w = (lastDigit ? DIGIT_READING[Number(lastDigit[1])] : raw.replace(/[^a-zçğıöşü]/g, ''))!
   let vowel = ''
   for (let i = w.length - 1; i >= 0; i--) {
-    if (VOWELS.includes(w[i])) {
-      vowel = w[i]
+    if (VOWELS.includes(w[i]!)) {
+      vowel = w[i]!
       break
     }
   }

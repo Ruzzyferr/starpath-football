@@ -10,7 +10,7 @@ export function Radar({ axes, size = 220, color = 'var(--brand-pitch)', compare,
   const ring = (v: number) => axes.map((_, i) => pt(i, v).map((x) => x.toFixed(1)).join(',')).join(' ')
   const shape = axes.map((ax, i) => pt(i, Math.max(4, ax.value)).map((x) => x.toFixed(1)).join(',')).join(' ')
   const past = compare && compare.length === n ? compare.map((v, i) => pt(i, Math.max(4, v)).map((x) => x.toFixed(1)).join(',')).join(' ') : null
-  const aria = axes.map((a, i) => `${a.label} ${Math.round(a.value)}${past && compare ? ` (${compareLabel ?? ''} ${Math.round(compare[i])})` : ''}`).join(', ')
+  const aria = axes.map((a, i) => `${a.label} ${Math.round(a.value)}${past && compare ? ` (${compareLabel ?? ''} ${Math.round(compare[i]!)})` : ''}`).join(', ')
   return (
     <svg class="prof-radar" viewBox={`0 0 ${size} ${size}`} role="img" aria-label={aria}>
       {[25, 50, 75, 100].map((v) => (

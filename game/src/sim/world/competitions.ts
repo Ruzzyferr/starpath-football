@@ -205,12 +205,12 @@ export function tieAggregate(comp: Competition, fixture: Fixture): [number, numb
 /** Same-city club pairs of a league (derbies, 2.6#69). */
 function derbiesOf(world: World, clubIds: readonly string[]): Set<string> {
   const out = new Set<string>()
-  for (let i = 0; i < clubIds.length; i++) for (let j = i + 1; j < clubIds.length; j++) if (world.clubs[clubIds[i]]?.city === world.clubs[clubIds[j]]?.city) out.add(derbyKey(clubIds[i], clubIds[j]))
+  for (let i = 0; i < clubIds.length; i++) for (let j = i + 1; j < clubIds.length; j++) if (world.clubs[clubIds[i]!]?.city === world.clubs[clubIds[j]!]?.city) out.add(derbyKey(clubIds[i]!, clubIds[j]!))
   return out
 }
 
 function createLeagueCompetition(world: World, rng: Rng, season: number, leagueId: string): Competition {
-  const league = world.leagues[leagueId]
+  const league = world.leagues[leagueId]!
   const id = leagueCompId(season, leagueId)
   const lastWeek = hasPlayoff(world, leagueId) ? LOWER_TIER_LAST_WEEK : undefined
   return {
@@ -244,16 +244,16 @@ function rankTopLeagueClubs(world: World, countryId: string, prevSeason: number)
   const prev = world.competitions[leagueCompId(prevSeason, top.id)]
   if (prev?.table) {
     const order = sortTable(prev.table, prev.fixtures).map((r) => r.clubId).filter((id) => top.clubIds.includes(id))
-    const rest = top.clubIds.filter((id) => !order.includes(id)).sort((a, b) => world.clubs[b].reputation - world.clubs[a].reputation || (a < b ? -1 : 1))
+    const rest = top.clubIds.filter((id) => !order.includes(id)).sort((a, b) => world.clubs[b]!.reputation - world.clubs[a]!.reputation || (a < b ? -1 : 1))
     return [...order, ...rest]
   }
-  return [...top.clubIds].sort((a, b) => world.clubs[b].reputation - world.clubs[a].reputation || (a < b ? -1 : 1))
+  return [...top.clubIds].sort((a, b) => world.clubs[b]!.reputation - world.clubs[a]!.reputation || (a < b ? -1 : 1))
 }
 
 /** Last season's cup winner of a country, if known and still existing. */
 function previousCupWinner(world: World, countryId: string, season: number): string | null {
   for (let i = world.honours.length - 1; i >= 0; i--) {
-    const h = world.honours[i]
+    const h = world.honours[i]!
     if (h.season === season - 1 && h.compKey === `cup:${countryId}` && world.clubs[h.winnerId]) return h.winnerId
   }
   return null
@@ -281,17 +281,17 @@ export function selectContinentalEntrants(world: World, season: number): Contine
   const slots = new Map<string, number>()
   ranking.forEach((r, i) => {
     const want = CONTINENTAL_DIRECT_SLOTS[Math.min(i, CONTINENTAL_DIRECT_SLOTS.length - 1)]
-    slots.set(r.countryId, Math.min(want, ranked.get(r.countryId)?.length ?? 0, CONTINENTAL_MAX_PER_COUNTRY))
+    slots.set(r.countryId, Math.min(want!, ranked.get(r.countryId)?.length ?? 0, CONTINENTAL_MAX_PER_COUNTRY))
   })
   // Direct places in round-robin priority: every country's champion first, then runners-up…
   const direct: string[] = []
   const maxSlots = Math.max(0, ...slots.values())
   for (let k = 0; k < maxSlots; k++) {
-    for (const r of ranking) if ((slots.get(r.countryId) ?? 0) > k) direct.push((ranked.get(r.countryId) ?? [])[k])
+    for (const r of ranking) if ((slots.get(r.countryId) ?? 0) > k) direct.push((ranked.get(r.countryId) ?? [])[k]!)
   }
   const taken = new Set(direct)
   const perCountry = new Map<string, number>()
-  for (const id of direct) perCountry.set(world.clubs[id].countryId, (perCountry.get(world.clubs[id].countryId) ?? 0) + 1)
+  for (const id of direct) perCountry.set(world.clubs[id]!.countryId, (perCountry.get(world.clubs[id]!.countryId) ?? 0) + 1)
   const qualPool: string[] = []
   const tryAdd = (id: string | undefined) => {
     if (!id || taken.has(id)) return false
@@ -347,15 +347,15 @@ export function selectContinentalClubs(world: World, season: number): string[] {
 /** Seeded group draw: pots by reputation, avoiding same-country clubs in a group where possible. */
 function drawGroups(world: World, rng: Rng, entrants: readonly string[]): string[][] {
   const groupsCount = entrants.length / CONTINENTAL_GROUP_SIZE
-  const byRep = [...entrants].sort((a, b) => world.clubs[b].reputation - world.clubs[a].reputation || (a < b ? -1 : 1))
+  const byRep = [...entrants].sort((a, b) => world.clubs[b]!.reputation - world.clubs[a]!.reputation || (a < b ? -1 : 1))
   const groups: string[][] = Array.from({ length: groupsCount }, () => [])
   for (let pot = 0; pot < CONTINENTAL_GROUP_SIZE; pot++) {
     const potClubs = rng.shuffle(byRep.slice(pot * groupsCount, (pot + 1) * groupsCount))
     for (const g of groups) {
-      const countries = new Set(g.map((id) => world.clubs[id].countryId))
-      let idx = potClubs.findIndex((id) => !countries.has(world.clubs[id].countryId))
+      const countries = new Set(g.map((id) => world.clubs[id]!.countryId))
+      let idx = potClubs.findIndex((id) => !countries.has(world.clubs[id]!.countryId))
       if (idx < 0) idx = 0
-      g.push(potClubs.splice(idx, 1)[0])
+      g.push(potClubs.splice(idx, 1)[0]!)
     }
   }
   return groups
@@ -370,7 +370,7 @@ function startContinentalGroups(world: World, rng: Rng, comp: Competition): void
       pairs.forEach(([homeId, awayId], i) => {
         comp.fixtures.push({
           id: fixtureId(comp.id, round, g * 2 + i), compId: comp.id, round, group: g,
-          week: CONTINENTAL_GROUP_WEEKS[round], day: CONTINENTAL_DAY, homeId, awayId, result: null,
+          week: CONTINENTAL_GROUP_WEEKS[round]!, day: CONTINENTAL_DAY, homeId, awayId, result: null,
         })
       })
     })
@@ -399,13 +399,13 @@ function createContinentalCompetitions(world: World, rng: Rng, season: number): 
       meta: { format: 'continental_q', feedsInto: id, draws: [], twoLegFrom: 0, key: 'continental_q' },
     }
     // Seeded: the stronger half (reputation) meets the weaker half; the weaker club hosts the first leg.
-    const sorted = [...entrants.qualifying].sort((a, b) => world.clubs[b].reputation - world.clubs[a].reputation || (a < b ? -1 : 1))
+    const sorted = [...entrants.qualifying].sort((a, b) => world.clubs[b]!.reputation - world.clubs[a]!.reputation || (a < b ? -1 : 1))
     const half = sorted.length / 2
     const seeded = rng.shuffle(sorted.slice(0, half))
     const unseeded = rng.shuffle(sorted.slice(half))
-    const pairs: [string, string][] = seeded.map((s, i) => [unseeded[i], s])
+    const pairs: [string, string][] = seeded.map((s, i) => [unseeded[i]!, s])
     q.fixtures = twoLegFixtures(q, 0, pairs, CONTINENTAL_QUALIFYING_WEEKS, QUALIFYING_DAY)
-    q.meta!.draws!.push({ round: 0, week: CONTINENTAL_QUALIFYING_WEEKS[0], pairs, seeded: sorted.slice(0, half), twoLegged: true })
+    q.meta!.draws!.push({ round: 0, week: CONTINENTAL_QUALIFYING_WEEKS[0]!, pairs, seeded: sorted.slice(0, half), twoLegged: true })
     out.push(q)
   } else {
     startContinentalGroups(world, rng, main)
@@ -441,17 +441,17 @@ export function createPlayoffCompetition(world: World, league: Competition): Com
   const order = sortTable(league.table, league.fixtures).map((r) => r.clubId)
   const field = order.slice(auto, auto + PLAYOFF_TEAMS)
   if (field.length < PLAYOFF_TEAMS) return null
-  const lg = world.leagues[league.leagueId]
+  const lg = world.leagues[league.leagueId]!
   const comp: Competition = {
     id, type: 'cup', name: { tr: `${lg.name} ${PLAYOFF_NAME.tr}`, en: `${lg.name} ${PLAYOFF_NAME.en}` }, season: league.season,
     countryId: league.countryId, leagueId: league.leagueId, participantIds: field, fixtures: [], table: null, alive: [...field], winnerId: null,
     meta: { format: 'playoff', key: `playoff:${league.leagueId}`, draws: [] },
   }
-  const pairs: [string, string][] = [[field[0], field[3]], [field[1], field[2]]]
+  const pairs: [string, string][] = [[field[0]!, field[3]!], [field[1]!, field[2]!]]
   comp.fixtures = pairs.map(([homeId, awayId], i) => ({
-    id: fixtureId(id, 0, i), compId: id, round: 0, week: PLAYOFF_WEEKS[0], day: PLAYOFF_DAY, homeId, awayId, result: null,
+    id: fixtureId(id, 0, i), compId: id, round: 0, week: PLAYOFF_WEEKS[0]!, day: PLAYOFF_DAY, homeId, awayId, result: null,
   }))
-  comp.meta!.draws!.push({ round: 0, week: PLAYOFF_WEEKS[0], pairs })
+  comp.meta!.draws!.push({ round: 0, week: PLAYOFF_WEEKS[0]!, pairs })
   world.competitions[id] = comp
   return comp
 }
@@ -491,8 +491,8 @@ export function continentalGroups(comp: Competition): string[][] {
 export function twoLegFixtures(comp: Competition, round: number, pairs: readonly [string, string][], weeks: readonly number[], day: number): Fixture[] {
   const out: Fixture[] = []
   pairs.forEach(([a, b], i) => {
-    out.push({ id: fixtureId(comp.id, round, i * 2), compId: comp.id, round, leg: 1, tie: i, week: weeks[0], day, homeId: a, awayId: b, result: null })
-    out.push({ id: fixtureId(comp.id, round, i * 2 + 1), compId: comp.id, round, leg: 2, tie: i, week: weeks[1], day, homeId: b, awayId: a, result: null })
+    out.push({ id: fixtureId(comp.id, round, i * 2), compId: comp.id, round, leg: 1, tie: i, week: weeks[0]!, day, homeId: a, awayId: b, result: null })
+    out.push({ id: fixtureId(comp.id, round, i * 2 + 1), compId: comp.id, round, leg: 2, tie: i, week: weeks[1]!, day, homeId: b, awayId: a, result: null })
   })
   return out
 }
@@ -511,7 +511,7 @@ function recordDraw(comp: Competition, draw: DrawRecord): void {
 function cupRoundFixtures(world: World, comp: Competition, rng: Rng, round: number): Fixture[] {
   const alive = comp.alive ?? []
   const totalRounds = cupTotalRounds(comp.participantIds.length)
-  const week = comp.meta?.format === 'playoff' ? PLAYOFF_WEEKS[Math.min(round, PLAYOFF_WEEKS.length - 1)] : cupRoundWeek(round, totalRounds)
+  const week = comp.meta?.format === 'playoff' ? PLAYOFF_WEEKS[Math.min(round, PLAYOFF_WEEKS.length - 1)]! : cupRoundWeek(round, totalRounds)
   const day = comp.meta?.format === 'playoff' ? PLAYOFF_DAY : CUP_DAY
   const isFinal = round === totalRounds - 1
   let playing = [...alive]
@@ -533,7 +533,7 @@ function cupRoundFixtures(world: World, comp: Competition, rng: Rng, round: numb
     // Play-off final: the two semi-final winners (better seed listed first).
     const seedOf = (id: string) => comp.participantIds.indexOf(id)
     const ordered = [...playing].sort((a, b) => seedOf(a) - seedOf(b))
-    for (let i = 0; i + 1 < ordered.length; i += 2) pairs.push([ordered[i], ordered[i + 1]])
+    for (let i = 0; i + 1 < ordered.length; i += 2) pairs.push([ordered[i]!, ordered[i + 1]!])
   } else {
     const seededRound = round < totalRounds - 2 && playing.length >= 4
     if (seededRound) {
@@ -546,10 +546,10 @@ function cupRoundFixtures(world: World, comp: Competition, rng: Rng, round: numb
       const seeded = rng.shuffle(byStrength.slice(0, half))
       const unseeded = rng.shuffle(byStrength.slice(half))
       seededIds = byStrength.slice(0, half)
-      for (let i = 0; i < seeded.length; i++) pairs.push([unseeded[i], seeded[i]])
+      for (let i = 0; i < seeded.length; i++) pairs.push([unseeded[i]!, seeded[i]!])
     } else {
       rng.shuffle(playing)
-      for (let i = 0; i + 1 < playing.length; i += 2) pairs.push([playing[i], playing[i + 1]])
+      for (let i = 0; i + 1 < playing.length; i += 2) pairs.push([playing[i]!, playing[i + 1]!])
     }
     // Giant-killing tradition: the lower-tier club hosts.
     for (const pr of pairs) {
@@ -578,25 +578,25 @@ function continentalKoFixtures(world: World, comp: Competition, rng: Rng, round:
   let seeded: string[] | undefined
   if (koRound === 0 && groupsCount > 1) {
     const groups = continentalGroups(comp)
-    seeded = groups.map((g) => g[0])
+    seeded = groups.map((g) => g[0]!)
     const offsets = rng.shuffle(Array.from({ length: groupsCount - 1 }, (_, k) => k))
     const country = (id: string) => world.clubs[id]?.countryId
     let best = offsets[0]
     for (const off of offsets) {
-      const clash = groups.some((g, i) => country(g[0]) === country(groups[(i + 1 + off) % groupsCount][1]))
+      const clash = groups.some((g, i) => country(g[0]!) === country(groups[(i + 1 + off) % groupsCount]![1]!))
       if (!clash) { best = off; break }
     }
     // Runner-up hosts the first leg, the group winner the second.
-    for (let g = 0; g < groupsCount; g++) pairs.push([groups[(g + 1 + best) % groupsCount][1], groups[g][0]])
+    for (let g = 0; g < groupsCount; g++) pairs.push([groups[(g + 1 + best!) % groupsCount]![1]!, groups[g]![0]!])
   } else {
     const alive = rng.shuffle([...(comp.alive ?? [])])
-    for (let i = 0; i + 1 < alive.length; i += 2) pairs.push([alive[i], alive[i + 1]])
+    for (let i = 0; i + 1 < alive.length; i += 2) pairs.push([alive[i]!, alive[i + 1]!])
   }
   const twoLegged = legs.length === 2
-  recordDraw(comp, { round, week: legs[0], pairs: pairs.map((p) => [p[0], p[1]]), seeded, twoLegged })
+  recordDraw(comp, { round, week: legs[0]!, pairs: pairs.map((p) => [p[0], p[1]]), seeded, twoLegged })
   if (twoLegged) return twoLegFixtures(comp, round, pairs, legs, CONTINENTAL_DAY)
   return pairs.map(([homeId, awayId], i) => ({
-    id: fixtureId(comp.id, round, i), compId: comp.id, round, week: legs[0], day: CONTINENTAL_DAY, homeId, awayId, result: null, neutral: true,
+    id: fixtureId(comp.id, round, i), compId: comp.id, round, week: legs[0]!, day: CONTINENTAL_DAY, homeId, awayId, result: null, neutral: true,
   }))
 }
 

@@ -59,9 +59,9 @@ describe('isOffsidePosition (Law 11)', () => {
   it('offsideSnapshot lists only offside team-mates of the passer', () => {
     const ag = (id: string, team: Team, x: number): Agent => ({ id, team, pos: { x, y: 30 } }) as Agent
     const agents = [ag('p', 'hero', 60), ag('a', 'hero', 88), ag('b', 'hero', 79), ag('gk', 'opp', 103), ag('d1', 'opp', 80), ag('d2', 'opp', 82)]
-    expect([...offsideSnapshot(agents, 60, agents[0])]).toEqual(['a'])
+    expect([...offsideSnapshot(agents, 60, agents[0]!)]).toEqual(['a'])
     // Opponents attacking west from the same positions: nobody beyond their line.
-    expect(offsideSnapshot(agents, 82, agents[4]).size).toBe(0)
+    expect(offsideSnapshot(agents, 82, agents[4]!).size).toBe(0)
   })
 })
 

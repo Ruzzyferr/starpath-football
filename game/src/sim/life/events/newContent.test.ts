@@ -49,7 +49,7 @@ describe('WP-10 event content', () => {
     const r0 = applyEffectResult(s, new Rng(1), def, {}, fx(t('x', 'x'), brand(5)))
     expect(r0.deltas).toEqual([])
     openBusiness(s.life, s.hero, 'restaurant', s.calendar)
-    const b = s.life.businesses![0]
+    const b = s.life.businesses![0]!
     const before = b.brand
     const r1 = applyEffectResult(s, new Rng(1), def, {}, fx(t('x', 'x'), brand(5)))
     expect(b.brand).toBe(before + 5)

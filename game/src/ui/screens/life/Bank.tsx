@@ -86,7 +86,7 @@ export function Bank() {
           <div class="bank-networth">
             <div class="row-between">
               <span class="micro t-mid">{t('life.bank.netWorth')}</span>
-              <span class="num">{formatMoney(netWorth[netWorth.length - 1], { compact: true })}</span>
+              <span class="num">{formatMoney(netWorth[netWorth.length - 1]!, { compact: true })}</span>
             </div>
             <LineChart values={netWorth} height={96} color="var(--accent-gold)" label={t('life.bank.netWorth')} />
           </div>

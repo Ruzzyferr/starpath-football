@@ -254,7 +254,7 @@ export function rollFamily(hero: Pick<Hero, 'firstName' | 'lastName' | 'birthYea
  */
 export function createLife(rng: Rng, hero: Hero, background: Background, names: FamilyNames = {}): Life {
   const bg = BACKGROUNDS[background]
-  const pool = GENERIC_NAMES[hero.nationality] ?? GENERIC_NAMES._
+  const pool = (GENERIC_NAMES[hero.nationality] ?? GENERIC_NAMES._)!
   const jitter = () => rng.int(-5, 5)
   const sibName = names.sibling ?? (rng.chance(0.5) ? rng.pick(pool.f) : rng.pick(pool.m))
   const plan = rollFamily(hero, background)

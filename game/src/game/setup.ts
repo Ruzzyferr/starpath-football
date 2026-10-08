@@ -403,7 +403,7 @@ export function arrangeWall(agents: Agent[], spot: Vec2, count: number, nudge: n
     setPos(a, { x: 7 + (i % 2) * 3, y: GOAL_CENTER_Y + (i % 2 === 0 ? -1 : 1) * (2 + i * 1.4) })
   })
   members.forEach((m, i) => {
-    setPos(m, spots[i])
+    setPos(m, spots[i]!)
     faceTo(m, spot)
     m.state = 'wall'
   })

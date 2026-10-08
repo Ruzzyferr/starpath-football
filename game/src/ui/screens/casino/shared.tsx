@@ -172,7 +172,7 @@ export const SLOT_SYMBOLS = ['cherries', 'star', 'bell', 'seven', 'ball', 'troph
 export type SlotSymbolName = (typeof SLOT_SYMBOLS)[number]
 
 export function SlotSymbol({ index, size = 56 }: { index: number; size?: number }) {
-  const name = SLOT_SYMBOLS[((index % SLOT_SYMBOLS.length) + SLOT_SYMBOLS.length) % SLOT_SYMBOLS.length]
+  const name = SLOT_SYMBOLS[((index % SLOT_SYMBOLS.length) + SLOT_SYMBOLS.length) % SLOT_SYMBOLS.length]!
   let body
   switch (name) {
     case 'cherries':

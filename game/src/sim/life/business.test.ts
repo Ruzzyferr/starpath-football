@@ -24,9 +24,9 @@ describe('business v1', () => {
     expect(r.ok).toBe(true)
     expect(life.money).toBe(5_000_000 - BUSINESS_DEFS.restaurant.price)
     expect(openBusiness(life, hero, 'restaurant', cal).ok).toBe(false) // one per kind
-    const b = businesses(life)[0]
+    const b = businesses(life)[0]!
     expect(b.name).toBe('Deniz Lokanta')
-    const cost = upgradeCost(b)!
+    const cost = upgradeCost(b!)!
     const m0 = life.money
     expect(upgradeBusiness(life, b.id).ok).toBe(true)
     expect(b.level).toBe(2)
@@ -34,7 +34,7 @@ describe('business v1', () => {
     expect(b.invested).toBe(BUSINESS_DEFS.restaurant.price + cost)
     expect(setBusinessManager(life, b.id, true).ok).toBe(true)
     expect(setBusinessManager(life, b.id, true).ok).toBe(false)
-    const v = businessValue(b)
+    const v = businessValue(b!)
     const s = sellBusiness(life, b.id)
     expect(s.amount).toBe(v)
     expect(businesses(life)).toHaveLength(0)
@@ -61,7 +61,7 @@ describe('business v1', () => {
         expect(p.profit).toBe(p.revenue - p.rent - p.staff - p.manager - p.stock - p.incident)
         expect(Number.isFinite(p.profit)).toBe(true)
       }
-      expect(b.history[0].w).toBeGreaterThan(b.history[1].w)
+      expect(b.history[0]!.w).toBeGreaterThan(b.history[1]!.w)
     }
   })
 
@@ -72,7 +72,7 @@ describe('business v1', () => {
       for (let seed = 1; seed <= 20; seed++) {
         const { hero, life } = rich()
         openBusiness(life, hero, k, cal)
-        const b = businesses(life)[0]
+        const b = businesses(life)[0]!
         setBusinessManager(life, b.id, true)
         const rng = new Rng(seed)
         for (let w = 0; w < 104; w++) weekly.push(weeklyBusinessTick(rng, life, hero, cal).net)
@@ -96,6 +96,6 @@ describe('business v1', () => {
     openBusiness(life, hero, 'gym', cal)
     expect(Math.abs(netWorth(life, cal) - nw0)).toBeLessThan(BUSINESS_DEFS.gym.price) // value retained, not lost
     const r = weeklyEconomy(new Rng(3), life, hero, { calendar: cal })
-    expect(r.breakdown.business).toBe(businesses(life)[0].history[0].profit)
+    expect(r.breakdown.business).toBe(businesses(life)[0]!.history[0]!.profit)
   })
 })

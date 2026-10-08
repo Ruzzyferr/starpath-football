@@ -25,7 +25,7 @@ const median = (xs: number[]): number => {
   if (!xs.length) return NaN
   const s = [...xs].sort((a, b) => a - b)
   const m = s.length >> 1
-  return s.length % 2 ? s[m] : (s[m - 1] + s[m]) / 2
+  return s.length % 2 ? s[m]! : (s[m - 1]! + s[m]!) / 2
 }
 const mean = (xs: number[]) => (xs.length ? xs.reduce((a, b) => a + b, 0) / xs.length : NaN)
 
@@ -37,14 +37,14 @@ export function metricsOf(traces: CareerTrace[]): StatsMetrics {
     careers: traces.length,
     seasons: Math.max(...traces.map((t) => t.samples.length)),
     bankruptRate: traces.filter((t) => t.bankrupt).length / traces.length,
-    ovrS3: median(at(2).map((r) => r.ovr)),
-    ovrS6: median(at(5).map((r) => r.ovr)),
-    ovrLast: median(last.map((r) => r.ovr)),
-    repLast: median(last.map((r) => r.reputation)),
-    netWorthLog: Math.log10(Math.max(1, median(last.map((r) => r.netWorth)))),
+    ovrS3: median(at(2).map((r) => r!.ovr)),
+    ovrS6: median(at(5).map((r) => r!.ovr)),
+    ovrLast: median(last.map((r) => r!.ovr)),
+    repLast: median(last.map((r) => r!.reputation)),
+    netWorthLog: Math.log10(Math.max(1, median(last.map((r) => r!.netWorth)))),
     goalsPerSeason: mean(all.map((r) => r.goals)),
     injuredWeeksPerSeason: mean(all.map((r) => r.weeksInjured)),
-    trophiesLast: mean(last.map((r) => r.trophies)),
+    trophiesLast: mean(last.map((r) => r!.trophies)),
   }
 }
 

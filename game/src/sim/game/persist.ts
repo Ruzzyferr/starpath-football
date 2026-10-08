@@ -130,7 +130,7 @@ export function unpackState(state: GameState): GameState {
     if (fx && !Array.isArray(fx) && Array.isArray(fx[FX_KEY])) c.fixtures = unpackFixtures(c.id, fx[FX_KEY])
   }
   if (!isPacked(state)) return state
-  const rows = (state.world.players as unknown as Record<string, PackedPlayer[]>)[PACK_KEY]
+  const rows = (state.world.players as unknown as Record<string, PackedPlayer[]>)[PACK_KEY]!
   const players: Record<string, NpcPlayer> = {}
   const female = state.world.gender === 'female'
   for (const r of rows) players[r[0]] = unpackPlayer(r, female)

@@ -402,7 +402,7 @@ export class MatchSim {
     for (const side of ['home', 'away'] as const) {
       const team = s.setup[side]
       const slots = assignSlots(team.lineup, team.formation)
-      team.lineup.forEach((p, i) => (s.players[p.id] = newPlayer(p.id, side, slots[i], true)))
+      team.lineup.forEach((p, i) => (s.players[p.id] = newPlayer(p.id, side, slots[i]!, true)))
       team.bench.forEach((p) => (s.players[p.id] = newPlayer(p.id, side, -1, false)))
       s.teams[side].aiSubsPlanned = Math.min(s.teams[side].subsLeft, this.rng.int(3, 5))
       s.teams[side].tilt = this.rng.normal(0, 0.035)
@@ -506,7 +506,7 @@ export class MatchSim {
 
   /** Unit skills for this minute: after 70', players under 40% condition run on tired legs (GAP 2.1#12). */
   private unitSkillsNow(id: string): UnitSkills {
-    if (!isLateTired(this.s.clock, this.s.players[id].fatigue)) return this.skills.get(id) as UnitSkills
+    if (!isLateTired(this.s.clock, this.s.players[id]!.fatigue)) return this.skills.get(id) as UnitSkills
     let t = this.tiredSkills.get(id)
     if (!t) {
       const p = this.player(id)
@@ -520,7 +520,7 @@ export class MatchSim {
     const rated = this.s.teams[side].onPitch.map((id) => ({
       position: this.player(id).position,
       skills: this.unitSkillsNow(id),
-      fatigue: this.s.players[id].fatigue,
+      fatigue: this.s.players[id]!.fatigue,
     }))
     const r = computeRatings(rated)
     const t = this.team(side)
@@ -538,7 +538,7 @@ export class MatchSim {
 
   private advanceClock(): void {
     const s = this.s
-    if (s.clock < PERIOD_END[s.period]) {
+    if (s.clock < PERIOD_END[s.period]!) {
       const periodStart = s.period > 0 && s.clock === PERIOD_END[s.period - 1]
       s.clock++
       if (periodStart) this.announcePeriodStart()
@@ -555,7 +555,7 @@ export class MatchSim {
   /** Minutes played for everyone on the pitch (regular minutes only). */
   private tickMinutes(): void {
     for (const side of ['home', 'away'] as const) {
-      for (const id of this.s.teams[side].onPitch) this.s.players[id].minutes++
+      for (const id of this.s.teams[side].onPitch) this.s.players[id]!.minutes++
     }
     if (this.heroOnPitch()) {
       this.s.hero.stats.minutes++
@@ -566,7 +566,7 @@ export class MatchSim {
   private maybeEndPeriod(): void {
     const s = this.s
     if (s.phase === 'done' || s.phase === 'shootout') return
-    if (s.clock < PERIOD_END[s.period]) return
+    if (s.clock < PERIOD_END[s.period]!) return
     if (s.stoppage < 0) {
       s.stoppage = this.decideStoppage()
       return
@@ -675,7 +675,7 @@ export class MatchSim {
       for (const id of this.s.teams[side].onPitch) {
         const p = this.player(id)
         const rate = p.position === 'GK' ? 0.003 : 0.0085 * (1.3 - p.attrs.stamina / 100)
-        const r = this.s.players[id]
+        const r = this.s.players[id]!
         r.fatigue = Math.min(1, r.fatigue + Math.max(0.001, rate) * st * w)
       }
     }
@@ -800,7 +800,7 @@ export class MatchSim {
     this.s.ballX = att === 'home' ? 0.9 : 0.1
     if (this.rng.chance(pGoal) && !this.braked(att)) {
       team.onTarget++
-      this.s.players[shooter.id].shotsOnTarget++
+      this.s.players[shooter.id]!.shotsOnTarget++
       const assist = this.pickAssist(att, shooter.id, type)
       if (this.rng.chance(0.015) && type !== 'pen') {
         const og = this.pickFrom(def, (p) => (positionGroup(p.position) === 1 ? 3 : 0.5), { excludeHero: true })
@@ -833,7 +833,7 @@ export class MatchSim {
     }
     if (u < blockP + 0.03 + 0.3) {
       this.s.teams[att].onTarget++
-      this.s.players[shooter.id].shotsOnTarget++
+      this.s.players[shooter.id]!.shotsOnTarget++
       if (gk) this.recordSave(def, gk.id)
       this.emit('save', att, this.say('save', vars), { playerId: shooter.id })
       if (allowCorner && this.rng.chance(0.3)) this.corner(att, null)
@@ -843,7 +843,7 @@ export class MatchSim {
   }
 
   private recordSave(side: Side, gkId: string): void {
-    this.s.players[gkId].saves++
+    this.s.players[gkId]!.saves++
     if (this.isHero(gkId) && this.s.hero.side === side) {
       this.s.hero.stats.saves++
       this.rate(0.05, { source: 'background', key: 'save' })
@@ -877,10 +877,10 @@ export class MatchSim {
     s.periodEvents++
     s.ballX = 0.5
     s.lastAttack = null
-    const scorerRt = s.players[scorerId]
+    const scorerRt = s.players[scorerId]!
     if (flags.ownGoal) scorerRt.ownGoals++
     else scorerRt.goals++
-    if (assistId && !flags.ownGoal) s.players[assistId].assists++
+    if (assistId && !flags.ownGoal) s.players[assistId]!.assists++
     s.scorers.push({
       minute: s.clock,
       playerId: scorerId,
@@ -994,13 +994,13 @@ export class MatchSim {
     const red = RED_PER_FOUL * m
     if (r < red) return this.sendOff(side, p.id, 'red', backgroundRedReason(`${p.id}:${this.s.clock}:${this.s.seq}`))
     // Booked players tread carefully: far less likely to pick up a second yellow.
-    const yellow = YELLOW_PER_FOUL * m * (this.s.players[p.id].yellow > 0 ? 0.35 : 1)
+    const yellow = YELLOW_PER_FOUL * m * (this.s.players[p.id]!.yellow > 0 ? 0.35 : 1)
     if (r < red + yellow) this.book(side, p.id)
   }
 
   /** Yellow card; a second yellow becomes a red. */
   private book(side: Side, id: string): void {
-    const rt = this.s.players[id]
+    const rt = this.s.players[id]!
     rt.yellow++
     this.s.periodEvents++
     if (this.isHero(id)) this.s.hero.stats.yellow++
@@ -1009,7 +1009,7 @@ export class MatchSim {
   }
 
   private sendOff(side: Side, id: string, key: 'red' | 'secondYellow', reason: RedReason = key === 'secondYellow' ? 'secondYellow' : 'serious'): void {
-    const rt = this.s.players[id]
+    const rt = this.s.players[id]!
     rt.red = true
     // Ban for the coming matches (1..3), applied by the career layer.
     rt.ban = banMatches(key === 'secondYellow' ? 'secondYellow' : reason, this.s.setup.referee?.strictness)
@@ -1027,7 +1027,7 @@ export class MatchSim {
   /** After a keeper's red card, bring on the bench keeper for an outfielder. */
   private replaceKeeper(side: Side): void {
     const t = this.s.teams[side]
-    const benchGk = t.bench.find((b) => this.player(b).position === 'GK' && !this.s.players[b].gone)
+    const benchGk = t.bench.find((b) => this.player(b).position === 'GK' && !this.s.players[b]!.gone)
     if (!benchGk || t.subsLeft <= 0) return
     const victim = this.onPitch(side)
       .filter((p) => !this.isHero(p.id) && positionGroup(p.position) === 3)
@@ -1038,7 +1038,7 @@ export class MatchSim {
   private removeFromPitch(side: Side, id: string): void {
     const t = this.s.teams[side]
     t.onPitch = t.onPitch.filter((x) => x !== id)
-    const rt = this.s.players[id]
+    const rt = this.s.players[id]!
     rt.onPitch = false
     rt.gone = true
     rt.slot = -1
@@ -1067,7 +1067,7 @@ export class MatchSim {
   /** Best available bench player for a position (never the hero). */
   private bestBenchFor(side: Side, pos: Position): string | undefined {
     const t = this.s.teams[side]
-    const avail = t.bench.filter((b) => !this.isHero(b) && !this.s.players[b].gone && !this.s.players[b].onPitch)
+    const avail = t.bench.filter((b) => !this.isHero(b) && !this.s.players[b]!.gone && !this.s.players[b]!.onPitch)
     const fit = (b: string) => {
       const bp = this.player(b).position
       if ((bp === 'GK') !== (pos === 'GK')) return -1000
@@ -1080,8 +1080,8 @@ export class MatchSim {
 
   private substitute(side: Side, outId: string, inId: string): void {
     const t = this.s.teams[side]
-    const outRt = this.s.players[outId]
-    const inRt = this.s.players[inId]
+    const outRt = this.s.players[outId]!
+    const inRt = this.s.players[inId]!
     inRt.slot = outRt.slot
     inRt.onPitch = true
     inRt.played = true
@@ -1128,14 +1128,14 @@ export class MatchSim {
   }
 
   private subNeed(p: MatchPlayer): number {
-    const rt = this.s.players[p.id]
+    const rt = this.s.players[p.id]!
     return rt.fatigue + rt.yellow * 0.15 - p.ovr / 400
   }
 
   private heroBenchEntry(side: Side): void {
     const h = this.s.hero
     if (!h.id || h.side !== side || !this.s.setup.heroOnBench) return
-    const rt = this.s.players[h.id]
+    const rt = this.s.players[h.id]!
     if (rt.onPitch || rt.gone || this.s.clock > 80 || this.s.period > 1) return
     const t = this.s.teams[side]
     if (t.subsLeft <= 0) return
@@ -1159,7 +1159,7 @@ export class MatchSim {
     const hero = this.player(h.id)
     if (hero.position === 'GK') return
     const poor = h.ratingRaw < 5.5 ? 0.03 : 0
-    const tired = this.s.players[h.id].fatigue > 0.75 ? 0.015 : 0
+    const tired = this.s.players[h.id]!.fatigue > 0.75 ? 0.015 : 0
     if (!this.rng.chance((poor + tired) * (1.5 - h.trust / 100))) return
     const inId = this.bestBenchFor(side, hero.position)
     if (inId) this.substitute(side, h.id, inId)
@@ -1243,8 +1243,8 @@ export class MatchSim {
   private slotPlayers(side: Side, tired = false): SlotPlayer[] {
     return this.s.teams[side].onPitch.map((id) => {
       const p = this.player(id)
-      const player = tired && isLateTired(this.s.clock, this.s.players[id].fatigue) ? { ...p, attrs: lateFatigueAttrs(p.attrs) } : p
-      return { player, slot: Math.max(0, this.s.players[id].slot) }
+      const player = tired && isLateTired(this.s.clock, this.s.players[id]!.fatigue) ? { ...p, attrs: lateFatigueAttrs(p.attrs) } : p
+      return { player, slot: Math.max(0, this.s.players[id]!.slot) }
     })
   }
 
@@ -1401,7 +1401,7 @@ export class MatchSim {
     }
     switch (r.outcome) {
       case 'goal': {
-        this.s.players[heroId].shotsOnTarget++
+        this.s.players[heroId]!.shotsOnTarget++
         const scorer = r.scorerId && this.lookup.has(r.scorerId) ? r.scorerId : heroId
         const assist = r.assistId && this.lookup.has(r.assistId) ? r.assistId : kind === 'penalty' || kind === 'freekick' ? null : p.passerId
         return this.applyGoal(side, scorer, assist === scorer ? null : assist, { penalty: kind === 'penalty' })
@@ -1575,13 +1575,13 @@ export class MatchSim {
     if (this.isHero(kicker) && this.s.hero.side === side) return this.createHighlight('penalty', 'shootout')
     if (this.heroIsKeeperFor(other(side))) {
       this.createHighlight('gk_penalty', 'shootout')
-      if (this.s.pending) this.s.pending.opponentId = kicker
+      if (this.s.pending) this.s.pending.opponentId = kicker!
       return
     }
     const gk = this.keeper(other(side))
-    const p = clamp(0.75 * Math.sqrt(skillMult(penaltySkill(this.player(kicker).attrs))) / Math.pow(skillMult(this.ratings(other(side)).gk), 0.35), 0.5, 0.9)
+    const p = clamp(0.75 * Math.sqrt(skillMult(penaltySkill(this.player(kicker!).attrs))) / Math.pow(skillMult(this.ratings(other(side)).gk), 0.35), 0.5, 0.9)
     const forced = so.taken[0] > 30 && so.taken[0] === so.taken[1] && side === so.first
-    this.recordShootoutKick(side, kicker, !forced && this.rng.chance(p), gk?.name ?? '')
+    this.recordShootoutKick(side, kicker!, !forced && this.rng.chance(p), gk?.name ?? '')
     this.checkShootoutEnd()
   }
 
@@ -1636,7 +1636,7 @@ export class MatchSim {
     const side = this.s.hero.side
     if (!id || !side || !this.heroOnPitch() || this.finished) return
     if (ratingDelta) this.rate(ratingDelta, { source: 'final', key: 'decision' })
-    if (book && !this.s.players[id].red) this.book(side, id)
+    if (book && !this.s.players[id]!.red) this.book(side, id)
   }
 
   /** Moves the hero's running rating and records why. */
@@ -1653,9 +1653,9 @@ export class MatchSim {
     if (!h.id || !h.side) return
     const hero = this.player(h.id)
     const slots = formationSlots(this.team(h.side).formation)
-    const slot = slots[Math.max(0, this.s.players[h.id].slot)] ?? slots[0]
+    const slot = slots[Math.max(0, this.s.players[h.id]!.slot)] ?? slots[0]
     const bx = h.side === 'home' ? this.s.ballX : 1 - this.s.ballX
-    const p = backgroundPresence(slot, bx, this.s.clock, hero.position === 'GK')
+    const p = backgroundPresence(slot!, bx, this.s.clock, hero.position === 'GK')
     addHeat((h.heat ??= emptyHeat()), p.x, p.y, 1)
   }
 
@@ -1689,7 +1689,7 @@ export class MatchSim {
       const gf = s.score[idx(side)]
       const ga = s.score[idx(other(side))]
       for (const id of [...this.team(side).lineup, ...this.team(side).bench].map((p) => p.id)) {
-        const rt = s.players[id]
+        const rt = s.players[id]!
         if (!rt.played) continue
         const rating = this.isHero(id) ? this.finalizeHero(gf, ga) : this.npcFinal(id, gf, ga)
         cands.push({ id, rating, minutes: rt.minutes, won: winner === side })
@@ -1699,7 +1699,7 @@ export class MatchSim {
   }
 
   private npcFinal(id: string, gf: number, ga: number): number {
-    const rt = this.s.players[id]
+    const rt = this.s.players[id]!
     return npcRating({
       position: this.player(id).position,
       minutes: rt.minutes,

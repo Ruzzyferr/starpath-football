@@ -30,7 +30,7 @@ describe('scout interest', () => {
   it('is sorted and favours clubs at the hero level over elite clubs', () => {
     const h = hero(10) // OVR ~60
     const list = scoutInterest(new Rng(1), h, clubs, { season: SEASON })
-    for (let i = 1; i < list.length; i++) expect(list[i - 1].level).toBeGreaterThanOrEqual(list[i].level)
+    for (let i = 1; i < list.length; i++) expect(list[i - 1]!.level).toBeGreaterThanOrEqual(list[i]!.level)
     const ids = list.map((x) => x.clubId)
     expect(ids).not.toContain('c11') // elite club ignores a 60 OVR
     expect(list.length).toBeGreaterThan(0)
@@ -149,18 +149,18 @@ describe('loans & free agency', () => {
     const h = hero(20)
     h.contract = { clubId: 'c3', wage: 2000, untilSeason: SEASON + 2, signingBonus: 0, goalBonus: 0, assistBonus: 0, releaseClause: null, role: 'starter' }
     const life = createLife(new Rng(1), h, 'street')
-    life.relationships.fans.value = 60
+    life.relationships.fans!.value = 60
     life.relationships.manager = { id: 'manager', kind: 'manager', name: 'Old Boss', value: 50, memory: [], lastContactWeek: 0 }
     life.flags[TRANSFER_REQUEST_FLAG] = 3
     const offers = freeAgentOffers(new Rng(1), { ...h, contract: null }, clubs, { season: SEASON })
-    const offer = { ...offers[0], fee: 4_000_000 }
+    const offer = { ...offers[0]!, fee: 4_000_000 }
     const rep = h.reputation
     const lines = acceptTransfer(new Rng(1), h, life, offer, cal, { managerName: 'Yeni Hoca' })
     expect(h.contract?.clubId).toBe(offer.clubId)
-    expect(h.managerTrust).toBe(ARRIVAL_TRUST[offer.contract.terms.role])
+    expect(h.managerTrust).toBe(ARRIVAL_TRUST[offer.contract!.terms.role])
     expect(life.relationships.manager.name).toBe('Yeni Hoca')
     expect(life.relationships.manager.value).toBe(0)
-    expect(life.relationships.fans.value).toBe(12)
+    expect(life.relationships.fans!.value).toBe(12)
     expect(life.flags[TRANSFER_REQUEST_FLAG]).toBeUndefined()
     expect(life.news.length).toBe(1)
     expect(h.reputation).toBeGreaterThan(rep)
@@ -173,7 +173,7 @@ describe('loans & free agency', () => {
     h.contract = { ...parent }
     const life = createLife(new Rng(1), h, 'street')
     const [loan] = generateLoanOffers(new Rng(3), h, clubs, { window: 'summer', season: SEASON, currentClub: { clubId: 'c9', name: 'Club 9', reputation: 79 } })
-    acceptTransfer(new Rng(2), h, life, loan, cal)
+    acceptTransfer(new Rng(2), h, life, loan!, cal)
     expect(h.contract?.loan).toBe(true)
     endLoan(h, life, { ...cal, season: SEASON + 1 })
     expect(h.contract).toEqual(parent)

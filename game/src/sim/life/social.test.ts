@@ -84,7 +84,7 @@ describe('social', () => {
       const r = makePost(rng, hero, life, 'training', { calendar: cal })
       if (!r.viral) gains.push(r.followersGained)
     }
-    expect(gains[gains.length - 1]).toBeLessThan(gains[0])
+    expect(gains[gains.length - 1]).toBeLessThan(gains[0]!)
   })
 
   it('controversy hurts press and discipline', () => {
@@ -95,7 +95,7 @@ describe('social', () => {
       const r = makePost(rng, hero, life, 'provocation', { calendar: cal })
       if (r.controversy) {
         expect(life.discipline).toBeLessThan(d0)
-        expect(life.relationships.press.value).toBeLessThan(0)
+        expect(life.relationships.press!.value).toBeLessThan(0)
         expect(r.triggerTags).toContain('controversy')
         expect(life.news.length).toBeGreaterThan(0)
         return

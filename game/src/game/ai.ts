@@ -69,7 +69,7 @@ export function offsideLineX(w: AiWorld, attacking: Team): number {
   const dir = attackDir(attacking)
   const defenders = teamOf(w, other(attacking)).map((a) => a.pos.x * dir).sort((a, b) => b - a)
   const second = defenders.length >= 2 ? defenders[1] : defenders.length === 1 ? defenders[0] : PITCH_LENGTH / 2
-  const line = Math.max(second, w.ball.x * dir, (PITCH_LENGTH / 2) * dir)
+  const line = Math.max(second!, w.ball.x * dir, (PITCH_LENGTH / 2) * dir)
   return line * dir
 }
 

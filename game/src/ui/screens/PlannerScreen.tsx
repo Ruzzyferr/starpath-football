@@ -174,7 +174,7 @@ export function PlannerScreen() {
           return (
             <li key={sl.slot} class={`plan-slot state-${sl.state}`}>
               <div class="plan-slot-time">
-                <Icon name={SLOT_ICON[sl.slot]} size={22} />
+                <Icon name={SLOT_ICON[sl.slot]!} size={22} />
                 <span class="plan-slot-name">{tx(`data.slot.${sl.slot}`)}</span>
                 <span class={`plan-slot-state micro state-chip-${sl.state}`}>{t(`planner.state.${sl.state}`)}</span>
               </div>

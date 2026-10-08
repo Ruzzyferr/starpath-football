@@ -48,7 +48,7 @@ describe('hero gender', () => {
   it('the save codec keeps player appearance gender', () => {
     const s = makeGame(3, { gender: 'female' })
     const round = unpackState(JSON.parse(JSON.stringify(packState(s))))
-    const p = Object.values(round.world.players)[0]
+    const p = Object.values(round.world.players)[0]!
     expect(p.appearance.gender).toBe('female')
     expect(round.hero.gender).toBe('female')
   })

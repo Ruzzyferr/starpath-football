@@ -28,8 +28,8 @@ export function npcTraits(p: Pick<NpcPlayer, 'styleSeed' | 'personality'>): NpcT
   for (let guard = 0; out.length < want && guard < 40; guard++) {
     h = Math.imul(h ^ (h >>> 15), 2246822519) >>> 0
     const t = NPC_TRAITS[h % NPC_TRAITS.length]
-    if (out.includes(t) || EXCLUSIVE.some(([a, b]) => (a === t && out.includes(b)) || (b === t && out.includes(a)))) continue
-    out.push(t)
+    if (out.includes(t!) || EXCLUSIVE.some(([a, b]) => (a === t && out.includes(b)) || (b === t && out.includes(a)))) continue
+    out.push(t!)
   }
   return out
 }
@@ -147,7 +147,7 @@ export function shortClubName(name: string, max = 12): string {
   const core = words.filter((w) => !GENERIC.has(w.toLowerCase().replace(/[.]/g, '')))
   const joined = (core.length ? core : words).join(' ')
   if (joined.length <= max) return joined
-  const lastWord = (core.length ? core : words).slice(-1)[0]
+  const lastWord = (core.length ? core : words).slice(-1)[0]!
   if (lastWord.length <= max && lastWord.length >= 4) return lastWord
   return `${joined.slice(0, max - 1).trimEnd()}…`
 }

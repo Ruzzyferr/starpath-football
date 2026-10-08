@@ -34,7 +34,7 @@ describe('a full season', () => {
     playSeason(world, rng)
     preTables = new Map()
     for (const l of Object.values(world.leagues)) {
-      const comp = world.competitions[leagueCompId(S, l.id)]
+      const comp = world.competitions[leagueCompId(S, l.id)]!
       preTables.set(l.id, sortTable(comp.table!, comp.fixtures).map((r) => r.clubId))
     }
     preAges = new Map(Object.values(world.players).map((p) => [p.id, p.ovr]))
@@ -51,7 +51,7 @@ describe('a full season', () => {
 
   it('keeps tables consistent with fixtures', () => {
     for (const l of Object.values(world.leagues)) {
-      const comp = world.competitions[leagueCompId(S, l.id)]
+      const comp = world.competitions[leagueCompId(S, l.id)]!
       const n = l.clubIds.length
       for (const row of comp.table!) {
         expect(row.p).toBe(2 * (n - 1))
@@ -60,17 +60,17 @@ describe('a full season', () => {
       const recomputed = computeTable(comp.participantIds, comp.fixtures)
       const sortById = <T extends { clubId: string }>(r: T[]) => [...r].sort((a, b) => (a.clubId < b.clubId ? -1 : 1))
       expect(sortById(recomputed).map(({ form, ...r }) => r)).toEqual(sortById(comp.table!).map(({ form, ...r }) => r))
-      expect(comp.winnerId).toBe(sortTable(comp.table!, comp.fixtures)[0].clubId)
+      expect(comp.winnerId).toBe(sortTable(comp.table!, comp.fixtures)[0]!.clubId)
     }
   })
 
   it('runs national cups as single-elimination down to one winner', () => {
     for (const countryId of COUNTRIES) {
-      const cup = world.competitions[cupCompId(S, countryId)]
+      const cup = world.competitions[cupCompId(S, countryId)]!
       expect(cup.alive).toEqual([cup.winnerId])
-      const final = cup.fixtures.filter((f) => f.round === finalRound(cup))
+      const final = cup.fixtures.filter((f) => f.round === finalRound(cup!))
       expect(final.length).toBe(1)
-      expect([final[0].homeId, final[0].awayId]).toContain(cup.winnerId)
+      expect([final[0]!.homeId, final[0]!.awayId]).toContain(cup.winnerId)
       for (const f of cup.fixtures) {
         const r = f.result!
         expect(r.home !== r.away || !!r.penalties).toBe(true)
@@ -88,8 +88,8 @@ describe('a full season', () => {
   })
 
   it('runs qualifying, the continental cup groups then a two-legged knockout', () => {
-    const qual = world.competitions[continentalQualifyingCompId(S)]
-    const cont = world.competitions[continentalCompId(S)]
+    const qual = world.competitions[continentalQualifyingCompId(S)]!
+    const cont = world.competitions[continentalCompId(S)]!
     // 8 countries: 12 direct places + 4 qualifying winners → 4 groups, 8-team knockout.
     expect(cont.participantIds.length).toBe(16)
     expect(qual.participantIds.length).toBe(8)
@@ -123,7 +123,7 @@ describe('a full season', () => {
     expect(awards.topScorer!.value).toBeLessThanOrEqual(60)
     expect(awards.bestPlayer).not.toBeNull()
     expect(awards.youngPlayer).not.toBeNull()
-    const young = world.players[awards.youngPlayer!.playerId]
+    const young = world.players[awards.youngPlayer!.playerId]!
     expect(S - young.birthYear).toBeLessThanOrEqual(21)
     expect(Object.keys(awards.leagueTopScorers).length).toBe(Object.keys(world.leagues).length)
     const totalGoals = Object.values(world.players).reduce((s, p) => s + p.stats.goals, 0)
@@ -137,7 +137,7 @@ describe('a full season', () => {
       }
     }
     expect(totalGoals).toBe(fixtureGoals - ownGoals)
-    expect(playerSeasonScore({ ...world.players[awards.bestPlayer!.playerId].stats, apps: 1 }, 80, 'ST')).toBeNull()
+    expect(playerSeasonScore({ ...world.players[awards.bestPlayer!.playerId]!.stats, apps: 1 }, 80, 'ST')).toBeNull()
   })
 
   describe('endOfSeason', () => {
@@ -167,19 +167,19 @@ describe('a full season', () => {
       for (const m of summary.movements) {
         const before = preTables.get(m.fromLeagueId)!
         const idx = before.indexOf(m.clubId)
-        if (m.kind === 'relegated') expect(idx).toBeGreaterThanOrEqual(before.length - world.leagues[m.fromLeagueId].relegate)
+        if (m.kind === 'relegated') expect(idx).toBeGreaterThanOrEqual(before.length - world.leagues[m.fromLeagueId]!.relegate)
         else {
           // The automatic places go up directly, the last place goes to the play-off winner (3rd-6th).
-          const po = world.competitions[playoffCompId(S, m.fromLeagueId)]
+          const po = world.competitions[playoffCompId(S, m.fromLeagueId)]!
           expect(idx < autoPromotionPlaces(world, m.fromLeagueId) || m.clubId === po.winnerId).toBe(true)
           expect(idx).toBeLessThan(6)
         }
-        expect(world.clubs[m.clubId].leagueId).toBe(m.toLeagueId)
-        expect(world.leagues[m.toLeagueId].clubIds).toContain(m.clubId)
+        expect(world.clubs[m.clubId]!.leagueId).toBe(m.toLeagueId)
+        expect(world.leagues[m.toLeagueId]!.clubIds).toContain(m.clubId)
       }
       for (const l of Object.values(world.leagues)) expect(l.clubIds.length).toBe(preTables.get(l.id)!.length)
       const champ = preTables.get('EN1')![0]
-      expect(world.clubs[champ].leagueId).toBe('EN1')
+      expect(world.clubs[champ!]!.leagueId).toBe('EN1')
     })
 
     it('ages players, retires veterans and brings in youth', () => {
@@ -192,7 +192,7 @@ describe('a full season', () => {
       const keptYouth = summary.youthIntake.filter((id) => world.players[id])
       expect(keptYouth.length / summary.youthIntake.length).toBeGreaterThan(0.85)
       for (const id of keptYouth) {
-        const age = S + 1 - world.players[id].birthYear
+        const age = S + 1 - world.players[id]!.birthYear
         expect(age).toBeGreaterThanOrEqual(16)
         expect(age).toBeLessThanOrEqual(18)
       }
@@ -217,7 +217,7 @@ describe('a full season', () => {
         expect(club.squad.length).toBeLessThanOrEqual(SQUAD_MAX)
         expect(new Set(club.squad).size).toBe(club.squad.length)
         for (const id of club.squad) {
-          const p = world.players[id]
+          const p = world.players[id]!
           expect(p).toBeDefined()
           expect(p.clubId).toBe(club.id)
           expect(p.contractUntil).toBeGreaterThanOrEqual(S + 1)
@@ -230,16 +230,16 @@ describe('a full season', () => {
     it('resets stats and sets up the next season', () => {
       expect(Object.values(world.players).every((p) => p.stats.apps === 0 && p.stats.goals === 0)).toBe(true)
       for (const l of Object.values(world.leagues)) {
-        const comp = world.competitions[leagueCompId(S + 1, l.id)]
+        const comp = world.competitions[leagueCompId(S + 1, l.id)]!
         expect(comp.participantIds.sort()).toEqual([...l.clubIds].sort())
         expect(comp.fixtures.every((f) => !f.result)).toBe(true)
       }
-      const q = world.competitions[continentalQualifyingCompId(S + 1)]
-      expect(world.competitions[continentalCompId(S + 1)].participantIds.length + q.participantIds.length / 2).toBe(16)
+      const q = world.competitions[continentalQualifyingCompId(S + 1)]!
+      expect(world.competitions[continentalCompId(S + 1)]!.participantIds.length + q.participantIds.length / 2).toBe(16)
       expect(seasonCompetitions(world, S).length).toBeGreaterThan(0) // last season kept for history
       // Continental places follow last season's final tables.
       const enChampion = preTables.get('EN1')![0]
-      expect(world.competitions[continentalCompId(S + 1)].participantIds).toContain(enChampion)
+      expect(world.competitions[continentalCompId(S + 1)]!.participantIds).toContain(enChampion)
     })
   })
 })
@@ -262,23 +262,23 @@ describe('season determinism and hero fixtures', () => {
   it('skips the hero fixture until it is recorded, then continues the competition', () => {
     const w = small()
     const rng = new Rng(3)
-    const heroClub = w.leagues.TR3.clubIds[0]
-    const cup = w.competitions[cupCompId(S, 'TR')]
+    const heroClub = w.leagues.TR3!.clubIds[0]!
+    const cup = w.competitions[cupCompId(S, 'TR')]!
     const heroCupFixture = cup.fixtures.find((f) => f.homeId === heroClub || f.awayId === heroClub)
-    const firstLeague = clubFixtures(w, heroClub, S).find((f) => f.competition.type === 'league')!.fixture
+    const firstLeague = clubFixtures(w, heroClub!, S).find((f) => f.competition.type === 'league')!.fixture
     const skip = new Set([firstLeague.id])
     if (heroCupFixture) skip.add(heroCupFixture.id)
     playFixturesFor(w, rng, S, firstLeague.week, firstLeague.day, skip)
     expect(firstLeague.result).toBeNull()
 
-    const scorerId = w.clubs[heroClub].squad[10]
+    const scorerId = w.clubs[heroClub]!.squad[10]
     const result: MatchResultSummary = { home: 2, away: 1, scorers: [] }
     const isHome = firstLeague.homeId === heroClub
-    result.scorers.push({ minute: 10, playerId: scorerId, team: isHome ? 'home' : 'away' })
+    result.scorers.push({ minute: 10, playerId: scorerId!, team: isHome ? 'home' : 'away' })
     recordFixtureResult(w, rng, firstLeague.compId, firstLeague.id, isHome ? result : { ...result, home: 1, away: 2 })
     expect(firstLeague.result).not.toBeNull()
-    expect(w.players[scorerId].stats.goals).toBe(1)
-    const row = w.competitions[firstLeague.compId].table!.find((r) => r.clubId === heroClub)!
+    expect(w.players[scorerId!]!.stats.goals).toBe(1)
+    const row = w.competitions[firstLeague.compId]!.table!.find((r) => r.clubId === heroClub)!
     expect(row.pts).toBe(3)
 
     if (heroCupFixture) {
@@ -294,16 +294,16 @@ describe('season determinism and hero fixtures', () => {
   it('mid-season AI transfer window is light and respects protections', () => {
     const w = small()
     const rng = new Rng(4)
-    const heroClub = w.leagues.TR3.clubIds[0]
-    const protectedIds = new Set(w.clubs[w.leagues.TR1.clubIds[0]].squad)
-    const before = [...w.clubs[heroClub].squad]
+    const heroClub = w.leagues.TR3!.clubIds[0]!
+    const protectedIds = new Set(w.clubs[w.leagues.TR1!.clubIds[0]!]!.squad)
+    const before = [...w.clubs[heroClub]!.squad]
     const moves = aiTransferWindow(w, rng, S, { maxPerClub: 1, intensity: 0.3, protectedClubIds: new Set([heroClub]), protectedPlayerIds: protectedIds })
     expect(moves.length).toBeLessThan(Object.keys(w.clubs).length * 0.4)
-    expect(w.clubs[heroClub].squad).toEqual(before)
+    expect(w.clubs[heroClub!]!.squad).toEqual(before)
     for (const m of moves) {
       expect(protectedIds.has(m.playerId)).toBe(false)
-      expect(w.players[m.playerId].clubId).toBe(m.toClubId)
-      expect(w.clubs[m.toClubId].squad).toContain(m.playerId)
+      expect(w.players[m.playerId]!.clubId).toBe(m.toClubId)
+      expect(w.clubs[m.toClubId]!.squad).toContain(m.playerId)
     }
     const counts = new Map<string, number>()
     for (const m of moves) counts.set(m.toClubId, (counts.get(m.toClubId) ?? 0) + 1)

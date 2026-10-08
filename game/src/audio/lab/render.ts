@@ -72,9 +72,9 @@ export const SCENARIOS: Scenario[] = [
     c.foul('home', 'yellow', 11)
   }),
   crowd('chants', 45000, 0.7, 26, (c) => {
-    c.chant(CHANTS[0], 2, 0.5)
-    c.chant(CHANTS[1], 2, 9.5)
-    c.chant(CHANTS[2], 2, 16)
+    c.chant(CHANTS[0]!, 2, 0.5)
+    c.chant(CHANTS[1]!, 2, 9.5)
+    c.chant(CHANTS[2]!, 2, 16)
   }),
   crowd('time-wasting', 30000, 0.6, 10, (c) => c.timeWasting(1)),
   crowd('goal-duck-music', 50000, 0.7, 14, (c) => c.goal('home', 4), 'hub'),

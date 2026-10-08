@@ -181,12 +181,12 @@ function runActivity(s: GameState, id: string, fn: () => G.ActionResult<unknown>
 
 const RANKS: Rank[] = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 const SUITS: Suit[] = ['S', 'H', 'D', 'C']
-const cardView = (c: Card, faceDown = false): CardView => ({ rank: RANKS[cardRank(c) - 1], suit: SUITS[cardSuit(c)], ...(faceDown ? { faceDown: true } : {}) })
+const cardView = (c: Card, faceDown = false): CardView => ({ rank: RANKS[cardRank(c) - 1]!, suit: SUITS[cardSuit(c)]!, ...(faceDown ? { faceDown: true } : {}) })
 
 function bjView(s: GameState, r: BlackjackRound): BlackjackView {
   const done = r.finished
   const activeIdx = done ? r.hands.length : Math.min(r.active, r.hands.length - 1)
-  const hand = r.hands[Math.min(activeIdx, r.hands.length - 1)] ?? r.hands[0]
+  const hand = (r.hands[Math.min(activeIdx, r.hands.length - 1)] ?? r.hands[0])!
   const stake = blackjackTotalStake(r)
   const legal = done ? [] : availableActions(r, s.life.money - stake)
   const hands: BlackjackHandView[] = r.hands.map((h, i) => {
@@ -357,7 +357,7 @@ function negoView(s: GameState, st: NegotiationState, lines: LText[]): Negotiati
     agentLine,
     agentEstimate: q >= 3 ? st.hidden.maxWage : null,
     status,
-    lastResponse: lines.length ? lines[lines.length - 1] : null,
+    lastResponse: (lines.length ? lines[lines.length - 1] : null)!,
   }
 }
 
@@ -457,7 +457,7 @@ export const realActions: GameActions = {
     const s = get()
     const [group, q] = offerId.split(':')
     const quality = clamp(Number(q) || 1, 1, 3) as 1 | 2 | 3
-    if (!['physical', 'technical', 'mental', 'goalkeeping'].includes(group)) return false
+    if (!['physical', 'technical', 'mental', 'goalkeeping'].includes(group!)) return false
     let ok = false
     runActivity(s, 'hire_trainer', () => {
       const r = G.hireTrainer(s, group as AttributeGroup, quality)

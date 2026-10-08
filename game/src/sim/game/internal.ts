@@ -220,6 +220,6 @@ export function activityContext(state: GameState): ActivityContext {
 
 /** Club context for contract maths (squad strength = best-XI average). */
 export function clubContextOf(state: GameState, clubId: string): ClubContext {
-  const c = state.world.clubs[clubId]
+  const c = state.world.clubs[clubId]!
   return { clubId, clubName: c.name, reputation: c.reputation, squadAvgOvr: clubStrength(state.world, clubId).overall, wageBudget: c.wageBudget }
 }

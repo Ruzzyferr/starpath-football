@@ -98,8 +98,8 @@ export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFe
   // Release speed from the timestamped samples of the last SWIPE_VELOCITY_WINDOW
   // seconds (frame-rate independent: 30 or 120 Hz pointer sampling gives the same speed).
   let k = pts.length - 2
-  while (k > 0 && last.t - pts[k - 1].t <= SWIPE_VELOCITY_WINDOW) k--
-  const mid = pts[k]
+  while (k > 0 && last.t - pts[k - 1]!.t <= SWIPE_VELOCITY_WINDOW) k--
+  const mid = pts[k]!
   const tailLen = Math.hypot(last.sx - mid.sx, last.sy - mid.sy)
   const tailDur = Math.max(1e-3, last.t - mid.t)
   const speed = Math.max(chord / duration, tailLen / tailDur)
@@ -651,7 +651,7 @@ export function nearestZone(zones: readonly CrossZone[], p: Vec2): CrossZone {
       best = z
     }
   }
-  return best
+  return best!
 }
 
 /** Contextual interpretation of a swipe by the ball carrier. */

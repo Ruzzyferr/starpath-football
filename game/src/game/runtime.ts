@@ -734,7 +734,7 @@ export class HighlightRuntime {
     r.assistMult = ASSIST_REWARD[this.assist]
     if (this.track.length) r.track = this.track.map((p) => ({ ...p }))
     if (this.shotLog.length) {
-      const last = this.shotLog[this.shotLog.length - 1]
+      const last = this.shotLog[this.shotLog.length - 1]!
       if (outcome === 'goal' || outcome === 'saved' || outcome === 'missed' || outcome === 'blocked' || outcome === 'woodwork') last.outcome = outcome
       r.shotLog = this.shotLog.map((x) => ({ ...x, outcome: x.outcome ?? 'missed' }))
     }
@@ -1903,7 +1903,7 @@ export class HighlightRuntime {
         best = z
       }
     }
-    return best
+    return best!
   }
 
   /**
@@ -1917,7 +1917,7 @@ export class HighlightRuntime {
     const low = pts.filter((p) => p.z <= 1.2 && p.t > 0.25)
     const cand = window.length ? window : low.slice(0, 6)
     if (!cand.length) return
-    const runners = this.agents.filter((m) => m.team === by.team && m !== by && !m.isKeeper && !m.isHero && dist(m.pos, cand[0]) < 20)
+    const runners = this.agents.filter((m) => m.team === by.team && m !== by && !m.isKeeper && !m.isHero && dist(m.pos, cand[0]!) < 20)
     for (const m of runners) {
       let best: { x: number; y: number; t: number } | null = null
       for (const p of cand) {
@@ -2056,7 +2056,7 @@ export class HighlightRuntime {
   private landingPoint(): { p: Vec2; t: number } | null {
     const pts = predictTrajectory(this.ball, this.env, { duration: 2.5, sampleEvery: 2 })
     for (let i = 1; i < pts.length; i++) {
-      if (pts[i].z < 2.4 && pts[i - 1].z >= pts[i].z) return { p: { x: pts[i].x, y: pts[i].y }, t: pts[i].t }
+      if (pts[i]!.z < 2.4 && pts[i - 1]!.z >= pts[i]!.z) return { p: { x: pts[i]!.x, y: pts[i]!.y }, t: pts[i]!.t }
     }
     return null
   }
@@ -2315,7 +2315,7 @@ export class HighlightRuntime {
       if (dist(a.pos, bp) < 1.15) pool.add(a)
     }
     const list = [...pool]
-    if (list.length === 1) return list[0]
+    if (list.length === 1) return list[0]!
     // Body position: the player in front (toward where the ball comes from) gets there first.
     const inc = norm({ x: -b.vx, y: -b.vy })
     const frontness = (a: Agent) => (a.pos.x - bp.x) * inc.x + (a.pos.y - bp.y) * inc.y
@@ -2950,7 +2950,7 @@ export class HighlightRuntime {
     const n = this.agents.length
     const arr = new Float32Array(n * 5)
     for (let i = 0; i < n; i++) {
-      const a = this.agents[i]
+      const a = this.agents[i]!
       arr[i * 5] = a.pos.x
       arr[i * 5 + 1] = a.pos.y
       arr[i * 5 + 2] = a.z

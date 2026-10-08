@@ -45,7 +45,7 @@ describe('moment chance filter', () => {
     const rng = new Rng(`mc:${seed}`)
     const home = makeTeam(rng, 'h', { heroPosition: 'AM', formation: '4-2-3-1', heroOvr })
     const away = makeTeam(rng, 'a', { formation: '4-4-2' })
-    const slots = (ps: typeof home.lineup, f: Formation): SlotPlayer[] => assignSlots(ps, f).map((slot, i) => ({ player: ps[i], slot }))
+    const slots = (ps: typeof home.lineup, f: Formation): SlotPlayer[] => assignSlots(ps, f).map((slot, i) => ({ player: ps[i]!, slot }))
     const g = buildScenario({ kind, heroSide: 'home', heroId: 'hero', mates: slots(home.lineup, '4-2-3-1'), opps: slots(away.lineup, '4-4-2'), mateFormation: '4-2-3-1', oppFormation: '4-4-2', lang: 'en', rng })
     return { sc: g.scenario, attrs: home.lineup.find((p) => p.isHero)!.attrs }
   }
@@ -129,11 +129,11 @@ describe('expected moments preview', () => {
     expect(full.max).toBeLessThanOrEqual(10)
     expect(full.min).toBeLessThan(full.max)
     expect(full.kinds.reduce((a, k) => a + k.share, 0)).toBeCloseTo(1, 1)
-    expect(full.kinds[0].share).toBeGreaterThanOrEqual(full.kinds[full.kinds.length - 1].share)
+    expect(full.kinds[0]!.share).toBeGreaterThanOrEqual(full.kinds[full.kinds.length - 1]!.share)
     const bench = expectedMoments({ position: 'ST', relationAvg: 0, morale: 1, form: 50, minutes: 25 })
     expect(bench.max).toBeLessThan(full.max)
     const cb = expectedMoments({ position: 'CB', relationAvg: 0, morale: 1, form: 50, minutes: 90 })
-    expect(cb.kinds[0].kind).toBe('defend')
+    expect(cb.kinds[0]!.kind).toBe('defend')
   })
 
   it('the engine stays inside the preview band for most full matches', () => {
@@ -217,7 +217,7 @@ describe('rating breakdown & floor', () => {
       } else {
         // A keeper's heat sits in the own third.
         const cols = map.heat.map((_, i) => i % HEAT_COLS)
-        const mass = map.heat.reduce((a, v, i) => a + v * cols[i], 0) / map.heat.reduce((a, v) => a + v, 0)
+        const mass = map.heat.reduce((a, v, i) => a + v * cols[i]!, 0) / map.heat.reduce((a, v) => a + v, 0)
         expect(mass).toBeLessThan(HEAT_COLS / 3)
       }
     }

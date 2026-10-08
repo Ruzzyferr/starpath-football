@@ -42,8 +42,8 @@ export function Modal({
       } else if (e.key === 'Tab' && el) {
         const f = Array.from(el.querySelectorAll<HTMLElement>('button:not([disabled]), [href], input:not([disabled]), select, textarea, [tabindex]:not([tabindex="-1"])'))
         if (!f.length) return
-        const a = f[0]
-        const z = f[f.length - 1]
+        const a = f[0]!
+        const z = f[f.length - 1]!
         if (e.shiftKey && document.activeElement === a) {
           e.preventDefault()
           z.focus()

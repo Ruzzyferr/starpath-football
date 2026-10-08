@@ -193,6 +193,6 @@ describe('renewal & signing', () => {
     expect(h.contract?.clubId).toBe('small')
     expect(life.money).toBe(money + o.terms.signingBonus - Math.round(o.terms.signingBonus * 0.1))
     expect(lines.length).toBeGreaterThan(0)
-    expect(lines[0].tr.length).toBeGreaterThan(0)
+    expect(lines[0]!.tr.length).toBeGreaterThan(0)
   })
 })

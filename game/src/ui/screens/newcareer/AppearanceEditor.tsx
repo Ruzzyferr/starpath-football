@@ -95,11 +95,11 @@ export function AppearanceEditor({ value, onChange, shirt, trim }: { value: Appe
   const swatch = (color: string) => <span class="wiz-swatch" style={{ background: color }} />
   const female = value.gender === 'female'
   const all: { k: Key; label: TKey; count: number; render: (i: number) => ComponentChildren; swatch?: boolean }[] = [
-    { k: 'skin', label: 'wizard.look.skin', count: SKIN_TONES.length, render: (i) => swatch(SKIN_TONES[i]), swatch: true },
+    { k: 'skin', label: 'wizard.look.skin', count: SKIN_TONES.length, render: (i) => swatch(SKIN_TONES[i]!), swatch: true },
     { k: 'hairStyle', label: 'wizard.look.hairStyle', count: hairStyleCount(value.gender), render: (i) => thumb('hairStyle', i) },
-    { k: 'hairColor', label: 'wizard.look.hairColor', count: HAIR_COLORS.length, render: (i) => swatch(HAIR_COLORS[i]), swatch: true },
+    { k: 'hairColor', label: 'wizard.look.hairColor', count: HAIR_COLORS.length, render: (i) => swatch(HAIR_COLORS[i]!), swatch: true },
     { k: 'beard', label: 'wizard.look.beard', count: BEARD_COUNT, render: (i) => thumb('beard', i) },
-    { k: 'eyeColor', label: 'wizard.look.eyes', count: EYE_COLORS.length, render: (i) => swatch(EYE_COLORS[i]), swatch: true },
+    { k: 'eyeColor', label: 'wizard.look.eyes', count: EYE_COLORS.length, render: (i) => swatch(EYE_COLORS[i]!), swatch: true },
     { k: 'face', label: 'wizard.look.face', count: FACE_COUNT, render: (i) => thumb('face', i) },
     { k: 'accessory', label: 'wizard.look.accessory', count: ACCESSORY_COUNT, render: (i) => thumb('accessory', i) },
   ]

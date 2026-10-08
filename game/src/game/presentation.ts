@@ -188,7 +188,7 @@ export type CelebrationChoice = CelebrationId | 'auto'
 export function resolveCelebration(choice: CelebrationChoice | undefined, unlocked: readonly CelebrationId[], roll: number): CelebrationId {
   if (choice && choice !== 'auto' && unlocked.includes(choice)) return choice
   const pool = unlocked.length ? unlocked : (['knee_slide'] as CelebrationId[])
-  return pool[Math.min(pool.length - 1, Math.floor(Math.abs(roll) * pool.length))]
+  return pool[Math.min(pool.length - 1, Math.floor(Math.abs(roll) * pool.length))]!
 }
 
 /** Relation (-100..100) below which a team-mate does not run over to celebrate. */

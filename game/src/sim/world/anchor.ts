@@ -42,7 +42,7 @@ const quantileOf = (sorted: readonly number[], u: number): number => {
   const x = Math.min(1, Math.max(0, u)) * (sorted.length - 1)
   const i = Math.floor(x)
   const f = x - i
-  return i + 1 < sorted.length ? sorted[i] * (1 - f) + sorted[i + 1] * f : sorted[i]
+  return i + 1 < sorted.length ? sorted[i]! * (1 - f) + sorted[i + 1]! * f : sorted[i]!
 }
 
 /** OVR quantiles of club players on the {@link SHAPE_POINTS} grid. */
@@ -78,15 +78,15 @@ export function anchorShape(world: World, rng: Rng, season: number): number {
   for (let i = 0; i < n; ) {
     // Tied OVRs share the midpoint rank.
     let j = i
-    while (j + 1 < n && ps[j + 1].ovr === ps[i].ovr) j++
+    while (j + 1 < n && ps[j + 1]!.ovr === ps[i]!.ovr) j++
     const target = quantileOf(shape, (i + j) / 2 / (n - 1))
-    const diff = ps[i].ovr - target
+    const diff = ps[i]!.ovr - target
     if (Math.abs(diff) > SHAPE_BAND) {
       const dir = diff > 0 ? -1 : 1
       // Far off the band (the stretched tail): always pulled, by up to 3.
       const steps = Math.min(3, Math.max(1, Math.round(Math.abs(diff) - SHAPE_BAND)))
       const rate = Math.abs(diff) >= SHAPE_BAND + 1 ? 1 : SHAPE_RATE
-      for (let k = i; k <= j; k++) if (rng.chance(rate) && nudge(ps[k], dir, steps, season)) moved++
+      for (let k = i; k <= j; k++) if (rng.chance(rate) && nudge(ps[k]!, dir, steps, season)) moved++
     }
     i = j + 1
   }

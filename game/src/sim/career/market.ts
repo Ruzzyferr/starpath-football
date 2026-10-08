@@ -55,11 +55,11 @@ export function marketReference(world: World, hero: Hero, season: number, offerW
   const value = marketValueBreakdown(hero, season)
   if (samples.length === 0) return { samples, min: 0, max: 0, median: 0, pctOfMarket: null, value }
   const wages = samples.map((s) => s.wage)
-  const median = wages[Math.floor(wages.length / 2)]
+  const median = wages[Math.floor(wages.length / 2)]!
   return {
     samples,
-    min: wages[0],
-    max: wages[wages.length - 1],
+    min: wages[0]!,
+    max: wages[wages.length - 1]!,
     median,
     pctOfMarket: offerWage !== undefined && median > 0 ? Math.round((offerWage / median) * 100) : null,
     value,

@@ -77,9 +77,9 @@ export function selectLineupFromPlayers(
   const pairs: { slot: number; player: number; value: number }[] = []
   for (let s = 0; s < slots.length; s++) {
     for (let i = 0; i < pool.length; i++) {
-      const natural = pool[i].position === slots[s]
+      const natural = pool[i]!.position === slots[s]
       // Tiny natural-position bonus breaks ties in favour of specialists.
-      pairs.push({ slot: s, player: i, value: pool[i].ovr * positionFamiliarity(pool[i].position, slots[s]) + (natural ? 0.01 : 0) })
+      pairs.push({ slot: s, player: i, value: pool[i]!.ovr * positionFamiliarity(pool[i]!.position, slots[s]!) + (natural ? 0.01 : 0) })
     }
   }
   pairs.sort((a, b) => b.value - a.value || a.slot - b.slot || a.player - b.player)
@@ -89,7 +89,7 @@ export function selectLineupFromPlayers(
   let filled = 0
   for (const pr of pairs) {
     if (filled === slots.length) break
-    if (slotTaken[pr.slot] >= 0 || used.has(pr.player)) continue
+    if (slotTaken[pr.slot]! >= 0 || used.has(pr.player)) continue
     slotTaken[pr.slot] = pr.player
     used.add(pr.player)
     filled++
@@ -101,9 +101,9 @@ export function selectLineupFromPlayers(
   const lineupSlots: Position[] = []
   const ratings: number[] = []
   slots.forEach((slot, s) => {
-    const idx = slotTaken[s]
+    const idx = slotTaken[s]!
     if (idx < 0) return
-    const p = pool[idx]
+    const p = pool[idx!]!
     playerIds.push(p.id)
     lineupSlots.push(slot)
     ratings.push(p.ovr * positionFamiliarity(p.position, slot))
@@ -129,16 +129,16 @@ function refineAssignment(pool: readonly NpcPlayer[], slots: readonly Position[]
   const S = slots.length
   const val = new Float64Array(pool.length * S)
   for (let k = 0; k < pool.length; k++) {
-    for (let s = 0; s < S; s++) val[k * S + s] = pool[k].ovr * positionFamiliarity(pool[k].position, slots[s])
+    for (let s = 0; s < S; s++) val[k * S + s] = pool[k]!.ovr * positionFamiliarity(pool[k]!.position, slots[s]!)
   }
-  const v = (player: number, slot: number) => (player < 0 ? 0 : val[player * S + slot])
+  const v = (player: number, slot: number) => (player < 0 ? 0 : val[player * S + slot]!)
   const bestUnused = new Array<number>(S)
 
   for (let pass = 0; pass < MAX_REFINE_PASSES; pass++) {
     bestUnused.fill(-1)
     for (let k = 0; k < pool.length; k++) {
       if (used.has(k)) continue
-      for (let s = 0; s < S; s++) if (bestUnused[s] < 0 || val[k * S + s] > val[bestUnused[s] * S + s]) bestUnused[s] = k
+      for (let s = 0; s < S; s++) if (bestUnused[s]! < 0 || val[k * S + s]! > val[bestUnused[s]! * S + s]!) bestUnused[s] = k
     }
     if (!improveOnce(S, slotTaken, used, bestUnused, v)) return
   }
@@ -150,31 +150,31 @@ function improveOnce(
   for (let i = 0; i < S; i++) {
     for (let j = i + 1; j < S; j++) {
       const pi = slotTaken[i], pj = slotTaken[j]
-      if (v(pj, i) + v(pi, j) > v(pi, i) + v(pj, j) + EPS) {
-        slotTaken[i] = pj
-        slotTaken[j] = pi
+      if (v(pj!, i) + v(pi!, j) > v(pi!, i) + v(pj!, j) + EPS) {
+        slotTaken[i] = pj!
+        slotTaken[j] = pi!
         return true
       }
     }
   }
   for (let i = 0; i < S; i++) {
-    const u = bestUnused[i]
+    const u = bestUnused[i]!
     if (u < 0) continue
-    const pi = slotTaken[i]
-    if (v(u, i) > v(pi, i) + EPS) {
+    const pi = slotTaken[i]!
+    if (v(u!, i) > v(pi!, i) + EPS) {
       slotTaken[i] = u
-      used.add(u)
-      if (pi >= 0) used.delete(pi)
+      used.add(u!)
+      if (pi >= 0) used.delete(pi!)
       return true
     }
     for (let j = 0; j < S; j++) {
-      const pj = slotTaken[j]
+      const pj = slotTaken[j]!
       if (j === i || pi < 0) continue
-      if (v(pi, j) + v(u, i) > v(pi, i) + v(pj, j) + EPS) {
+      if (v(pi!, j) + v(u!, i) > v(pi!, i) + v(pj!, j) + EPS) {
         slotTaken[j] = pi
         slotTaken[i] = u
-        used.add(u)
-        if (pj >= 0) used.delete(pj)
+        used.add(u!)
+        if (pj >= 0) used.delete(pj!)
         return true
       }
     }

@@ -151,12 +151,12 @@ function baseLayout(input: ScenarioInput, ballY: number): Layout {
   const oppSlots = formationSlots(input.oppFormation)
   const jitter = () => input.rng.range(-1.5, 1.5)
   for (const sp of input.mates) {
-    const s = mateSlots[sp.slot] ?? mateSlots[0]
+    const s = (mateSlots[sp.slot] ?? mateSlots[0])!
     const x = s.role === 'GK' ? Math.max(4, mb - 18) : bandX(s.x, mb, mf)
     pos.set(sp.player.id, inPitch({ x: x + jitter(), y: s.y + shiftY * (s.role === 'GK' ? 0.2 : 1) + jitter() }))
   }
   for (const sp of input.opps) {
-    const s = oppSlots[sp.slot] ?? oppSlots[0]
+    const s = (oppSlots[sp.slot] ?? oppSlots[0])!
     const local = s.role === 'GK' ? Math.max(2, ob - 20) : bandX(s.x, ob, of)
     const y = PITCH_WIDTH - s.y + shiftY * (s.role === 'GK' ? 0.2 : 1)
     pos.set(sp.player.id, inPitch({ x: PITCH_LENGTH - local + jitter(), y: y + jitter() }))
@@ -925,7 +925,7 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
     .map((kind) => ({ kind, share: Math.round(((w[kind] ?? 0) / total) * 1000) / 1000 }))
     .sort((a, b) => b.share - a.share || (a.kind < b.kind ? -1 : 1))
   // Rounded shares must still sum to exactly 1: the largest share absorbs the rounding error.
-  if (kinds.length) kinds[0].share = Math.round((1 - kinds.slice(1).reduce((s, k) => s + k.share, 0)) * 1000) / 1000
+  if (kinds.length) kinds[0]!.share = Math.round((1 - kinds.slice(1).reduce((s, k) => s + k.share, 0)) * 1000) / 1000
   return { min, max, kinds }
 }
 

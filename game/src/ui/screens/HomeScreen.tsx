@@ -58,7 +58,7 @@ export function HomeScreen() {
   const age = ageOf(h.birthYear, cal)
   const c1 = club?.colors.primary ?? '#1fd47a'
   const c2 = club?.colors.secondary ?? '#3da5ff'
-  const greet = GREETING[Math.max(0, Math.min(2, cal.slot))]
+  const greet = GREETING[Math.max(0, Math.min(2, cal.slot))]!
   // Newest first (the sim appends; reverse before the stable sort by date).
   const news = [...life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week).slice(0, 3)
   const matchToday = fx?.daysUntil === 0
@@ -247,8 +247,8 @@ export function HomeScreen() {
               <div class="row-between">
                 <span class="micro t-mid">{t('home.formTrend')}</span>
                 {form.length > 0 && (
-                  <span class="score-font home-form-last" style={{ color: ratingColor(form[form.length - 1]) }}>
-                    {form[form.length - 1].toFixed(1)}
+                  <span class="score-font home-form-last" style={{ color: ratingColor(form[form.length - 1]!) }}>
+                    {form[form.length - 1]!.toFixed(1)}
                   </span>
                 )}
               </div>
@@ -268,7 +268,7 @@ export function HomeScreen() {
                 appearance={h.appearance}
                 stats={heroCardStats(h)}
                 crest={club?.crest}
-                flag={s.world.countries[h.nationality] ? { id: h.nationality, colors: s.world.countries[h.nationality].flag } : undefined}
+                flag={s.world.countries[h.nationality] ? { id: h.nationality, colors: s.world.countries[h.nationality]!.flag } : undefined}
                 shirt={club?.colors.primary}
                 age={age}
                 size="sm"

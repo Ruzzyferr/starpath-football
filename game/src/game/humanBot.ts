@@ -390,9 +390,9 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   // ── Long ball to bring down: get under it, don't jump ──
   if (!owner && rt.kind === 'long_ball_control' && rt.ball.z > 0.5) {
     const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
-    const drop = pts.find((p) => p.z < 1.8 && p.t > 0.1 && p.z < (pts[pts.indexOf(p) - 1]?.z ?? 9)) ?? pts[pts.length - 1]
+    const drop = (pts.find((p) => p.z < 1.8 && p.t > 0.1 && p.z < (pts[pts.indexOf(p) - 1]?.z ?? 9)) ?? pts[pts.length - 1])!
     // A late reader arrives off-line by up to a meter.
-    moveTo({ x: drop.x + st.jumpErr * 3, y: drop.y }, dist(hero.pos, drop) > 0.8)
+    moveTo({ x: drop.x + st.jumpErr * 3, y: drop.y }, dist(hero.pos, drop!) > 0.8)
     return
   }
 
@@ -404,7 +404,7 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   if (!owner) {
     if (rt.ball.z > 0.8) {
       const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
-      const drop = pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1].z) ?? pts[pts.length - 1]
+      const drop = (pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
       moveTo({ x: drop.x, y: drop.y }, true)
       const eta = dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / Math.max(4, Math.hypot(rt.ball.vx, rt.ball.vy))
       // Press when the ball is about to arrive, with human timing error (game time ≈ eta·timeScale real).

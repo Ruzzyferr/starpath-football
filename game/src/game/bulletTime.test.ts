@@ -15,7 +15,7 @@ describe('bullet-time ramps (2.2#14, #15)', () => {
     expect(s[s.length - 1]).toBeCloseTo(0.25, 6)
     // Ease-out: more than half the drop in the first half of the ramp.
     expect(s[Math.floor(s.length / 2) - 1]).toBeLessThan(0.625)
-    for (let i = 1; i < s.length; i++) expect(s[i]).toBeLessThanOrEqual(s[i - 1])
+    for (let i = 1; i < s.length; i++) expect(s[i]).toBeLessThanOrEqual(s[i - 1]!)
   })
   it('returns to 1.0x in 120 ms once the window runs out', () => {
     const r: ScaleRamp = { from: 1, to: 0.25, t: 1 }
@@ -26,7 +26,7 @@ describe('bullet-time ramps (2.2#14, #15)', () => {
   it('is frame-rate independent at the end of the ramp', () => {
     const a = run({ from: 1, to: 1, t: 0 }, 1, 0.25, 0.3, 1 / 30)
     const b = run({ from: 1, to: 1, t: 0 }, 1, 0.25, 0.3, 1 / 144)
-    expect(a[a.length - 1]).toBeCloseTo(b[b.length - 1], 6)
+    expect(a[a.length - 1]).toBeCloseTo(b[b.length - 1]!, 6)
   })
 })
 

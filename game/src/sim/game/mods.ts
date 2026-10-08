@@ -265,8 +265,8 @@ export function checkModSignature(saved: readonly string[], installed: readonly 
   const res: ModMismatch = { missing: [], versionDiffers: [] }
   for (const entry of saved) {
     const [id, ver] = entry.split('@')
-    if (!have.has(id)) res.missing.push(id)
-    else if (have.get(id) !== ver) res.versionDiffers.push(id)
+    if (!have.has(id!)) res.missing.push(id!)
+    else if (have.get(id!) !== ver) res.versionDiffers.push(id!)
   }
   return res
 }

@@ -37,13 +37,13 @@ describe('international calendar', () => {
   const comps = nationalCompetitions(world, START_YEAR)
 
   it('creates youth leagues and the qualifiers of the season tournament(s)', () => {
-    expect(world.competitions[youthCompId(START_YEAR, 'U21')].fixtures).toHaveLength(6 * 8)
-    expect(world.competitions[youthCompId(START_YEAR, 'U19')].fixtures).toHaveLength(6 * 8)
+    expect(world.competitions[youthCompId(START_YEAR, 'U21')]!.fixtures).toHaveLength(6 * 8)
+    expect(world.competitions[youthCompId(START_YEAR, 'U19')]!.fixtures).toHaveLength(6 * 8)
     const keys = tournamentKeys(START_YEAR)
     expect(keys).toEqual(['EU', 'OC'])
     expect(tournamentKeys(START_YEAR + 1)).toEqual(['WORLD'])
     for (const k of keys) {
-      const q = world.competitions[qualifierCompId(START_YEAR, k)]
+      const q = world.competitions[qualifierCompId(START_YEAR, k)]!
       // Double round robin per group: n(n-1) games per group of n.
       const expected = q.meta!.groups!.reduce((s, g) => s + g.length * (g.length - 1), 0)
       expect(q.fixtures).toHaveLength(expected)
@@ -106,7 +106,7 @@ describe('tournament progression', () => {
           if (week === 41) endOfSeason(w, rng, season)
         }
         for (const key of tournamentKeys(season)) {
-          const finals = w.competitions[finalsCompId(season, key)]
+          const finals = w.competitions[finalsCompId(season, key)]!
           expect(finals).toBeDefined()
           expect(finals.fixtures.every((f) => f.result)).toBe(true)
           expect(finals.winnerId).toBeTruthy()

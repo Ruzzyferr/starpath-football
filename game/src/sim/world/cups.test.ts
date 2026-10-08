@@ -32,26 +32,26 @@ describe('two-legged ties', () => {
   it('second leg is the reverse fixture and nobody is out after the first leg', () => {
     const { comp, legs } = tie()
     expect(legs.map((f) => [f.homeId, f.awayId, f.leg, f.week])).toEqual([['A', 'B', 1, 1], ['B', 'A', 2, 2]])
-    applyFixtureResult(comp, legs[0], r(3, 0))
+    applyFixtureResult(comp, legs[0]!, r(3, 0))
     expect(comp.alive).toEqual(['A', 'B'])
-    expect(tieWinner(comp, legs[0])).toBeNull()
+    expect(tieWinner(comp, legs[0]!)).toBeNull()
   })
 
   it('aggregate decides (3-0, 1-2 → A through 4-2)', () => {
     const { comp, legs } = tie()
-    applyFixtureResult(comp, legs[0], r(3, 0))
-    applyFixtureResult(comp, legs[1], r(2, 1))
-    expect(tieAggregate(comp, legs[1])).toEqual([4, 2])
-    expect(tieWinner(comp, legs[1])).toBe('A')
+    applyFixtureResult(comp, legs[0]!, r(3, 0))
+    applyFixtureResult(comp, legs[1]!, r(2, 1))
+    expect(tieAggregate(comp, legs[1]!)).toEqual([4, 2])
+    expect(tieWinner(comp, legs[1]!)).toBe('A')
     expect(comp.alive).toEqual(['A'])
   })
 
   it('no away-goals rule: level aggregate goes to the second-leg penalties', () => {
     const { comp, legs } = tie()
-    applyFixtureResult(comp, legs[0], r(1, 2)) // B scored 2 away
-    applyFixtureResult(comp, legs[1], r(0, 1, { home: 3, away: 4 })) // A scored 1 away, 2-2 on aggregate, A wins pens
-    expect(tieAggregate(comp, legs[0])).toEqual([2, 2])
-    expect(tieWinner(comp, legs[1])).toBe('A')
+    applyFixtureResult(comp, legs[0]!, r(1, 2)) // B scored 2 away
+    applyFixtureResult(comp, legs[1]!, r(0, 1, { home: 3, away: 4 })) // A scored 1 away, 2-2 on aggregate, A wins pens
+    expect(tieAggregate(comp, legs[0]!)).toEqual([2, 2])
+    expect(tieWinner(comp, legs[1]!)).toBe('A')
     expect(comp.alive).toEqual(['A'])
   })
 })
@@ -59,8 +59,8 @@ describe('two-legged ties', () => {
 describe('a season of cups', () => {
   const world: World = generateWorld(new Rng(42), { season: S, heroCountryId: 'TR', countryIds: ['TR', 'EN', 'ES', 'DE', 'IT', 'FR'] })
   const rng = new Rng(43)
-  const qual0 = world.competitions[continentalQualifyingCompId(S)]
-  const cup0 = world.competitions[cupCompId(S, 'TR')]
+  const qual0 = world.competitions[continentalQualifyingCompId(S)]!
+  const cup0 = world.competitions[cupCompId(S, 'TR')]!
   const firstDraw = { ...cup0.meta!.draws![0] }
   for (let week = 0; week < SEASON_WEEKS; week++) {
     for (let day = 0; day < 7; day++) playFixturesFor(world, rng, S, week, day)
@@ -68,10 +68,10 @@ describe('a season of cups', () => {
   }
 
   it('seeds the domestic cup draw (higher tier vs lower tier) and lets the lower tier host', () => {
-    const tierOf = (id: string) => world.leagues[world.clubs[id].leagueId].tier
-    expect(firstDraw.seeded?.length).toBe(firstDraw.pairs.length)
+    const tierOf = (id: string) => world.leagues[world.clubs[id]!.leagueId]!.tier
+    expect(firstDraw.seeded?.length).toBe(firstDraw.pairs!.length)
     const seeded = new Set(firstDraw.seeded)
-    for (const [h, a] of firstDraw.pairs) {
+    for (const [h, a] of firstDraw.pairs!) {
       expect(seeded.has(h) !== seeded.has(a)).toBe(true)
       expect(tierOf(h)).toBeGreaterThanOrEqual(tierOf(a))
     }
@@ -89,7 +89,7 @@ describe('a season of cups', () => {
   })
 
   it('qualifying winners join the continental groups; knockout ties are two-legged with a single final', () => {
-    const cont = world.competitions[continentalCompId(S)]
+    const cont = world.competitions[continentalCompId(S)]!
     expect(qual0.fixtures.every((f) => f.leg)).toBe(true)
     for (const id of qual0.alive!) expect(cont.participantIds).toContain(id)
     expect(qual0.alive!.length).toBe(qual0.participantIds.length / 2)
@@ -97,7 +97,7 @@ describe('a season of cups', () => {
     const finalRoundNo = Math.max(...ko.map((f) => f.round))
     for (const f of ko) expect(f.round === finalRoundNo ? !f.leg && f.neutral : !!f.leg).toBe(true)
     // First knockout round: group winners host the second leg against runners-up of another group.
-    const groups = continentalGroups(cont)
+    const groups = continentalGroups(cont!)
     const firstKo = ko.filter((f) => f.round === 6 && f.leg === 2)
     for (const f of firstKo) {
       const gh = groups.findIndex((g) => g[0] === f.homeId)
@@ -129,7 +129,7 @@ describe('a season of cups', () => {
     expect(lower.length).toBeGreaterThan(0)
     for (const l of lower) {
       expect(hasPlayoff(world, l.id)).toBe(true)
-      const po = world.competitions[playoffCompId(S, l.id)]
+      const po = world.competitions[playoffCompId(S, l.id)]!
       expect(po.participantIds).toHaveLength(4)
       expect(po.fixtures.every((f) => f.week >= 40 && f.week <= 41)).toBe(true)
       expect(po.winnerId).toBeTruthy()
@@ -150,9 +150,9 @@ describe('a season of cups', () => {
     for (const c of after) expect(c.seasons).toHaveLength(5)
     const e = selectContinentalEntrants(world, S + 1)
     const perCountry = new Map<string, number>()
-    for (const id of [...e.direct, ...e.qualifying]) perCountry.set(world.clubs[id].countryId, (perCountry.get(world.clubs[id].countryId) ?? 0) + 1)
+    for (const id of [...e.direct, ...e.qualifying]) perCountry.set(world.clubs[id]!.countryId, (perCountry.get(world.clubs[id]!.countryId) ?? 0) + 1)
     // The top-ranked country never gets fewer places than the bottom one.
-    expect(perCountry.get(after[0].countryId) ?? 0).toBeGreaterThanOrEqual(perCountry.get(after[after.length - 1].countryId) ?? 0)
+    expect(perCountry.get(after[0]!.countryId) ?? 0).toBeGreaterThanOrEqual(perCountry.get(after[after.length - 1]!.countryId) ?? 0)
     expect(seasonCompetitions(world, S + 1).some((c) => c.id === continentalCompId(S + 1))).toBe(true)
   })
 })

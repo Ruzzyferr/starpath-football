@@ -80,7 +80,7 @@ export const INCIDENT_P = { owner: 0.1, managed: 0.05 } as const
 export const businesses = (life: Life): Business[] => life.businesses ?? (life.businesses = [])
 
 export const upgradeCost = (b: Pick<Business, 'kind' | 'level'>): number | null =>
-  b.level >= 3 ? null : Math.round(BUSINESS_DEFS[b.kind].price * UPGRADE_SHARE[b.level + 1])
+  b.level >= 3 ? null : Math.round(BUSINESS_DEFS[b.kind].price * UPGRADE_SHARE[b.level + 1]!)
 
 /** Sale value: what you put in, scaled by how good the brand became (50%..100%). */
 export const businessValue = (b: Pick<Business, 'invested' | 'brand'>): number =>
@@ -107,11 +107,11 @@ export function openBusiness(life: Life, hero: Pick<Hero, 'reputation'>, kind: B
   const w = absWeek(cal)
   const nm = (name ?? '').trim().slice(0, 28) || def.names[w % def.names.length]
   const b: Business = {
-    id: `biz_${kind}_${w}`, kind, name: nm, level: 1, manager: false, brand: 40, openedWeek: w,
+    id: `biz_${kind}_${w}`, kind, name: nm!, level: 1, manager: false, brand: 40, openedWeek: w,
     invested: def.price, totalProfit: 0, history: [],
   }
   businesses(life).push(b)
-  return { ok: true, business: b, lines: [fill(lt('{i} {n} kapılarını açtı! Hayırlı olsun.', '{i} {n} is open for business!'), { i: def.icon, n: nm })] }
+  return { ok: true, business: b, lines: [fill(lt('{i} {n} kapılarını açtı! Hayırlı olsun.', '{i} {n} is open for business!'), { i: def.icon, n: nm! })] }
 }
 
 export function upgradeBusiness(life: Life, id: string): BizResult {
@@ -143,8 +143,8 @@ export function sellBusiness(life: Life, id: string): BizResult & { amount: numb
   const list = businesses(life)
   const i = list.findIndex((x) => x.id === id)
   if (i < 0) return { ...fail(lt('İşletme bulunamadı.', 'Business not found.')), amount: 0 }
-  const b = list[i]
-  const amount = businessValue(b)
+  const b = list[i]!
+  const amount = businessValue(b!)
   list.splice(i, 1)
   life.money += amount
   return { ok: true, amount, lines: [fill(lt('{n} satıldı: {m}.', '{n} sold for {m}.'), { n: b.name, m: fmtMoney(amount) })] }

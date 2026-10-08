@@ -94,9 +94,9 @@ describe('cross delivery zones & aim assist', () => {
   it('four zones; near post on the crossing side, cut-back on the ground', () => {
     const z = crossZones(5)
     expect(z.map((x) => x.name)).toEqual(['near_post', 'far_post', 'penalty_spot', 'cut_back'])
-    expect(z[0].point.y).toBeLessThan(GOAL_CENTER_Y)
-    expect(z[1].point.y).toBeGreaterThan(GOAL_CENTER_Y)
-    expect(z[3].ground).toBe(true)
+    expect(z[0]!.point.y).toBeLessThan(GOAL_CENTER_Y)
+    expect(z[1]!.point.y).toBeGreaterThan(GOAL_CENTER_Y)
+    expect(z[3]!.ground).toBe(true)
     expect(nearestZone(z, { x: PITCH_LENGTH - 12, y: 34 }).name).toBe('penalty_spot')
   })
 
@@ -151,7 +151,7 @@ describe('heat/shot map data from the runtime', () => {
     const r = rt.result!
     expect(r.track?.length ?? 0).toBeGreaterThan(0)
     expect(r.shotLog?.length).toBe(1)
-    expect(r.shotLog![0].x).toBeGreaterThan(70)
-    expect(['goal', 'saved', 'missed', 'blocked', 'woodwork']).toContain(r.shotLog![0].outcome)
+    expect(r.shotLog![0]!.x).toBeGreaterThan(70)
+    expect(['goal', 'saved', 'missed', 'blocked', 'woodwork']).toContain(r.shotLog![0]!.outcome)
   })
 })

@@ -57,8 +57,8 @@ export const LANDING_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['lofted',
 export function firstLanding(points: readonly { z: number }[]): number {
   let air = false
   for (let i = 0; i < points.length; i++) {
-    if (points[i].z > 0.5) air = true
-    else if (air && points[i].z <= 0.12) return i
+    if (points[i]!.z > 0.5) air = true
+    else if (air && points[i]!.z <= 0.12) return i
   }
   return -1
 }

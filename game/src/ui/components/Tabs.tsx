@@ -47,7 +47,7 @@ export function Tabs<K extends string>({
     else if (e.key === 'End') next = items.length - 1
     else return
     e.preventDefault()
-    onChange(items[next].id)
+    onChange(items[next]!.id)
     const btn = ref.current?.querySelectorAll<HTMLButtonElement>('[role=tab]')[next]
     btn?.focus()
     btn?.scrollIntoView?.({ block: 'nearest', inline: 'nearest' })

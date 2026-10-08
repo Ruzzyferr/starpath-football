@@ -72,7 +72,7 @@ export function profileFromProbe(p: DeviceProbe): QualityProfile {
   if ((p.cores > 0 && p.cores <= 2) || (p.memoryGb > 0 && p.memoryGb <= 2)) rank = Math.min(rank, 0)
   else if ((p.cores > 0 && p.cores <= 4) || (p.memoryGb > 0 && p.memoryGb <= 4)) rank = Math.min(rank, 1)
   if (p.coarse) rank = Math.min(rank, 1)
-  return QUALITY_PROFILES[rank]
+  return QUALITY_PROFILES[rank]!
 }
 
 /** The fixed workload: particle-style float integration over typed arrays. */
@@ -84,9 +84,9 @@ function workload(): number {
   let acc = 0
   for (let step = 0; step < 60; step++) {
     for (let i = 0; i < n; i++) {
-      v[i] = v[i] * 0.98 + Math.sin(i + step) * 0.1
-      x[i] += v[i] * 0.016
-      acc += x[i]
+      v[i] = v[i]! * 0.98 + Math.sin(i + step) * 0.1
+      x[i]! += v[i]! * 0.016
+      acc += x[i]!
     }
   }
   return acc
@@ -111,7 +111,7 @@ export function runDeviceBenchmark(): DeviceProbe {
   const nav = (typeof navigator !== 'undefined' ? navigator : {}) as { hardwareConcurrency?: number; deviceMemory?: number }
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   benchSink = sink // keeps the workload observable (no dead-code elimination)
-  return { benchMs: times[1], cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse }
+  return { benchMs: times[1]!, cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse }
 }
 
 // ───────────────────────── Particle budget ─────────────────────────

@@ -28,8 +28,8 @@ export function slotSpinView(spin: Pick<SlotSpin, 'window' | 'wins' | 'payout'>,
   const lineBet = stake / SLOT_PAYLINES.length
   const window = spin.window.map((col) => col.map((sym) => SLOT_UI_INDEX[sym]))
   const wins = spin.wins.map((w) => {
-    const rows = SLOT_PAYLINES[w.line]
-    const third = spin.window[2][rows[2]]
+    const rows = SLOT_PAYLINES[w.line]!
+    const third = spin.window[2]![rows[2]]
     return {
       line: w.line,
       symbol: SLOT_UI_INDEX[w.symbol],
@@ -38,7 +38,7 @@ export function slotSpinView(spin: Pick<SlotSpin, 'window' | 'wins' | 'payout'>,
       amount: Math.round(w.multiplier * lineBet),
     }
   })
-  return { reels: window.map((col) => col[1]), window, wins, net: Math.round(spin.payout - stake), winLine: wins.length > 0 }
+  return { reels: window.map((col) => col[1]!), window, wins, net: Math.round(spin.payout - stake), winLine: wins.length > 0 }
 }
 
 /** Under-age lock for the casino (null once the hero is an adult). */

@@ -133,7 +133,7 @@ export function crestSvg(spec: CrestSpec, opts: CrestOpts = {}): string {
     `<defs><clipPath id="${id}k"><path d="${shape}"/></clipPath>` +
     `<linearGradient id="${id}g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".22"/><stop offset=".5" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".25"/></linearGradient></defs>` +
     `<path d="${shape}" fill="#000" opacity=".28" transform="translate(2.5 3)"/>` +
-    `<g clip-path="url(#${id}k)"><rect width="100" height="120" fill="${c1}"/>${partition(part, c0)}<rect width="100" height="120" fill="url(#${id}g)"/></g>` +
+    `<g clip-path="url(#${id}k)"><rect width="100" height="120" fill="${c1}"/>${partition(part!, c0)}<rect width="100" height="120" fill="url(#${id}g)"/></g>` +
     `<path d="${shape}" fill="none" stroke="${outline}" stroke-width="5"/>` +
     `<path d="${shape}" fill="none" stroke="#fff" stroke-opacity=".18" stroke-width="1" transform="translate(50 60) scale(.9) translate(-50 -60)"/>` +
     `<circle cx="50" cy="${symY}" r="${showText ? 22 : 27}" fill="${medal}" stroke="${c2}" stroke-width="2.5"/>` +

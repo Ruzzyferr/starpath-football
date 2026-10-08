@@ -73,8 +73,8 @@ const can = (c: StepCtx, dur: number): boolean => c.pool.take(c.t, c.t + dur)
 function arp(c: StepCtx, chord: readonly number[], pattern: readonly number[], vel: number, opts: { octave?: number; every?: number; decay?: number; type?: OscillatorType; bright?: number } = {}): void {
   const every = opts.every ?? 1
   if (c.s % every !== 0) return
-  const i = pattern[(c.s / every) % pattern.length]
-  const note = chord[i % chord.length] + 12 * (opts.octave ?? 1) + 12 * Math.floor(i / chord.length)
+  const i = pattern[(c.s / every) % pattern.length]!
+  const note = chord[i % chord.length]! + 12 * (opts.octave ?? 1) + 12 * Math.floor(i / chord.length)
   if (!can(c, 0.3)) return
   pluck(c.ctx, c.out.lead, c.t, note, vel, { decay: opts.decay ?? 0.18, type: opts.type, bright: opts.bright })
   pluck(c.ctx, c.out.delay, c.t, note, vel * 0.5, { decay: opts.decay ?? 0.18, type: opts.type, bright: opts.bright })
@@ -120,16 +120,16 @@ const menu: TrackDef = {
   id: 'menu', bpm: 118, swing: 0, loopBars: 16, gain: 0.9,
   onStep(c) {
     const ci = c.loopBar % 4
-    const chord = MENU_CHORDS[ci]
+    const chord = MENU_CHORDS[ci]!
     const section = c.loopBar < 8 ? 'A' : c.loopBar < 12 ? 'B' : c.loopBar < 15 ? 'C' : 'build'
     const intro = c.firstPass && c.loopBar < 4
     // Pads: one chord per bar.
     if (c.s === 0 && can(c, 2.6)) {
-      pad(c.ctx, c.out.pad, c.t, chord, c.sd * 16, section === 'C' ? 1.2 : 1, { cutoff: section === 'C' ? 1100 : 2200, attack: 0.04, release: 0.5 })
+      pad(c.ctx, c.out.pad, c.t, chord!, c.sd * 16, section === 'C' ? 1.2 : 1, { cutoff: section === 'C' ? 1100 : 2200, attack: 0.04, release: 0.5 })
       pad(c.ctx, c.out.verb, c.t, chord.map((n) => n + 12), c.sd * 16, 0.4, { cutoff: 2600, attack: 0.3, release: 0.8, type: 'triangle' })
     }
     // Arp everywhere except the build bar.
-    if (section !== 'build') arp(c, chord, [0, 1, 2, 1, 0, 2, 1, 2], intro ? 0.45 : 0.55, { every: 2, octave: 1, bright: section === 'C' ? 1800 : 3800 })
+    if (section !== 'build') arp(c, chord!, [0, 1, 2, 1, 0, 2, 1, 2], intro ? 0.45 : 0.55, { every: 2, octave: 1, bright: section === 'C' ? 1800 : 3800 })
     if (intro) {
       if (c.s === 0 && c.loopBar === 3) riser(c.ctx, c.out.drums, c.t, c.sd * 16, 0.7)
       if (c.s % 2 === 1) hat(c.ctx, c.out.drums, c.t, 0.3)
@@ -138,14 +138,14 @@ const menu: TrackDef = {
     if (section === 'C') {
       if (c.s % 4 === 2) hat(c.ctx, c.out.drums, c.t, 0.35)
       if (c.s === 0 && c.loopBar === 14) riser(c.ctx, c.out.drums, c.t, c.sd * 32, 0.8)
-      if (c.s === 0) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci], c.sd * 15, 0.6, { cutoff: 250, env: 300 })
+      if (c.s === 0) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci]!, c.sd * 15, 0.6, { cutoff: 250, env: 300 })
       return
     }
     if (section === 'build') {
       // Snare roll that accelerates into the downbeat.
       const roll = c.s < 8 ? c.s % 2 === 0 : true
       if (roll) snareDrum(c.ctx, c.out.drums, c.t, 0.25 + (c.s / 16) * 0.6, { decay: 0.1 })
-      if (c.s === 0) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci], c.sd * 8, 0.8)
+      if (c.s === 0) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci]!, c.sd * 8, 0.8)
       if (c.s === 15) tom(c.ctx, c.out.drums, c.t, 98, 0.8)
       return
     }
@@ -166,7 +166,7 @@ const menu: TrackDef = {
     // Off-beat pumping bass with an octave pop.
     if (c.s % 4 === 2 || (c.s === 14 && c.rng.chance(0.5))) {
       const oct = c.s === 14 ? 12 : 0
-      if (can(c, c.sd * 2)) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci] + oct, c.sd * 1.8, 0.9)
+      if (can(c, c.sd * 2)) bass(c.ctx, c.out.bass, c.t, MENU_ROOTS[ci]! + oct, c.sd * 1.8, 0.9)
     }
     if (section === 'B') playLine(c, MENU_HOOK[ci], 0.85, 'pluck')
   },
@@ -183,10 +183,10 @@ const hub: TrackDef = {
   id: 'hub', bpm: 96, swing: 0.28, loopBars: 16, gain: 0.95,
   onStep(c) {
     const ci = c.loopBar % 4
-    const chord = HUB_CHORDS[ci]
+    const chord = HUB_CHORDS[ci]!
     const sparse = c.loopBar >= 12 && c.loopBar < 14
     // Keys: soft stabs on the "and" of 1 and on 3, plus a held pad underneath.
-    if (c.s === 0 && can(c, 2.8)) pad(c.ctx, c.out.pad, c.t, chord, c.sd * 16, 0.75, { cutoff: 1300, attack: 0.15, release: 0.9, type: 'triangle' })
+    if (c.s === 0 && can(c, 2.8)) pad(c.ctx, c.out.pad, c.t, chord!, c.sd * 16, 0.75, { cutoff: 1300, attack: 0.15, release: 0.9, type: 'triangle' })
     if ((c.s === 2 || c.s === 8 || (c.s === 11 && c.rng.chance(0.5))) && can(c, 0.5)) {
       pad(c.ctx, c.out.lead, c.t, chord.map((n) => n + 12), c.sd * 1.5, 0.75, { cutoff: 2600, attack: 0.005, release: 0.25, type: 'triangle' })
     }
@@ -202,12 +202,12 @@ const hub: TrackDef = {
     else if (c.rng.chance(0.3)) hat(c.ctx, c.out.drums, c.t, 0.14)
     // Round bass.
     const bassHits: Record<number, number> = { 0: 0, 6: 0, 10: 7, 14: 12 }
-    if (c.s in bassHits && can(c, 0.4)) bass(c.ctx, c.out.bass, c.t, HUB_ROOTS[ci] + bassHits[c.s], c.sd * (c.s === 0 ? 5 : 3), 0.8, { type: 'triangle', cutoff: 600, env: 400 })
+    if (c.s in bassHits && can(c, 0.4)) bass(c.ctx, c.out.bass, c.t, HUB_ROOTS[ci]! + bassHits[c.s]!, c.sd * (c.s === 0 ? 5 : 3), 0.8, { type: 'triangle', cutoff: 600, env: 400 })
     // Generative bell noodle in the second half.
     if (c.loopBar >= 4 && c.loopBar < 12 && c.s % 2 === 0 && c.rng.chance(0.2) && can(c, 1)) {
       const n = HUB_SCALE[c.rng.int(0, HUB_SCALE.length - 1)]
-      bell(c.ctx, c.out.lead, c.t, n, 0.55, 0.7)
-      bell(c.ctx, c.out.delay, c.t, n, 0.3, 0.6)
+      bell(c.ctx, c.out.lead, c.t, n!, 0.55, 0.7)
+      bell(c.ctx, c.out.delay, c.t, n!, 0.3, 0.6)
     }
   },
 }
@@ -222,11 +222,11 @@ const tension: TrackDef = {
   id: 'tension', bpm: 128, swing: 0, loopBars: 8, gain: 0.9,
   onStep(c) {
     const ci = Math.floor(c.loopBar / 2) % 4
-    const chord = TEN_CHORDS[ci]
+    const chord = TEN_CHORDS[ci]!
     const k = c.intensity
     if (c.s === 0 && c.loopBar % 2 === 0 && can(c, 4)) pad(c.ctx, c.out.pad, c.t, chord.map((n) => n - 12), c.sd * 32, 0.9, { cutoff: 700 + k * 900, attack: 0.6, release: 0.8 })
     // 16th pulse bass, accents on beats.
-    if (can(c, 0.2)) bass(c.ctx, c.out.bass, c.t, TEN_ROOTS[ci], c.sd * 0.8, c.s % 4 === 0 ? 0.85 : 0.5, { cutoff: 300 + k * 300, env: 900 })
+    if (can(c, 0.2)) bass(c.ctx, c.out.bass, c.t, TEN_ROOTS[ci]!, c.sd * 0.8, c.s % 4 === 0 ? 0.85 : 0.5, { cutoff: 300 + k * 300, env: 900 })
     // Ticking clock.
     hat(c.ctx, c.out.drums, c.t, c.s % 4 === 0 ? 0.35 : 0.16)
     if (k > 0.25 && c.s % 4 === 0) {
@@ -238,7 +238,7 @@ const tension: TrackDef = {
     }
     if (k > 0.5 && (c.s === 4 || c.s === 12)) snareDrum(c.ctx, c.out.drums, c.t, 0.6)
     if (k > 0.5 && c.loopBar % 4 === 3 && c.s >= 8 && c.s % 2 === 0) tom(c.ctx, c.out.drums, c.t, 90 + c.s * 4, 0.6)
-    if (k > 0.7) arp(c, chord, [0, 2, 1, 2], 0.45, { octave: 1, decay: 0.12, type: 'sawtooth', bright: 2600 })
+    if (k > 0.7) arp(c, chord!, [0, 2, 1, 2], 0.45, { octave: 1, decay: 0.12, type: 'sawtooth', bright: 2600 })
     if (c.loopBar === 7 && c.s === 0) riser(c.ctx, c.out.drums, c.t, c.sd * 16, 0.4 + k * 0.5)
   },
 }
@@ -262,10 +262,10 @@ const AW_THEME: readonly Line[] = [
 const awards: TrackDef = {
   id: 'awards', bpm: 100, swing: 0, loopBars: 8, gain: 0.85,
   onStep(c) {
-    const chord = AW_CHORDS[c.loopBar]
+    const chord = AW_CHORDS[c.loopBar]!
     if (c.s === 0 && can(c, 3)) {
-      pad(c.ctx, c.out.pad, c.t, [...chord, chord[0] + 12], c.sd * 16, 1, { cutoff: 2400, attack: 0.08, release: 0.6 })
-      boom(c.ctx, c.out.drums, c.t, 45 + (AW_ROOTS[c.loopBar] - 36) * 0.5, 0.75, 1.1)
+      pad(c.ctx, c.out.pad, c.t, [...chord!, chord[0] + 12], c.sd * 16, 1, { cutoff: 2400, attack: 0.08, release: 0.6 })
+      boom(c.ctx, c.out.drums, c.t, 45 + (AW_ROOTS[c.loopBar]! - 36) * 0.5, 0.75, 1.1)
       if (c.loopBar % 4 === 0) crash(c.ctx, c.out.drums, c.t, 0.6)
     }
     if (c.s === 8) boom(c.ctx, c.out.drums, c.t, 41, 0.5, 0.8)
@@ -274,9 +274,9 @@ const awards: TrackDef = {
     else if (c.s % 2 === 1 && c.rng.chance(0.35)) snareDrum(c.ctx, c.out.drums, c.t, 0.18, { decay: 0.07 })
     if (c.s === 15 && c.loopBar % 2 === 1) snareDrum(c.ctx, c.out.drums, c.t, 0.4, { decay: 0.08 })
     if (c.s % 4 === 0 && c.s !== 8) kickDrum(c.ctx, c.out.drums, c.t, 0.55, { pitch: 50, decay: 0.25 })
-    if ((c.s === 0 || c.s === 8) && can(c, 1)) bass(c.ctx, c.out.bass, c.t, AW_ROOTS[c.loopBar], c.sd * 7, 0.65, { cutoff: 420, env: 500 })
+    if ((c.s === 0 || c.s === 8) && can(c, 1)) bass(c.ctx, c.out.bass, c.t, AW_ROOTS[c.loopBar]!, c.sd * 7, 0.65, { cutoff: 420, env: 500 })
     playLine(c, AW_THEME[c.loopBar], 0.95, 'brass')
-    if (c.s % 2 === 0) arp(c, chord, [0, 1, 2, 3, 2, 1], 0.28, { octave: 1, decay: 0.12, type: 'triangle', bright: 3000 })
+    if (c.s % 2 === 0) arp(c, chord!, [0, 1, 2, 3, 2, 1], 0.28, { octave: 1, decay: 0.12, type: 'triangle', bright: 3000 })
   },
 }
 
@@ -526,7 +526,7 @@ export function playSting(ctx: BaseAudioContext, dest: AudioNode, verb: AudioNod
       boom(ctx, out, hit, 48, 1, 1.4)
       crash(ctx, out, hit, 0.8)
       kickDrum(ctx, out, hit, 1)
-      for (let i = 0; i < 6; i++) bell(ctx, verb, hit + 0.1 + i * 0.09, 84 + [0, 4, 7, 12, 7, 12][i], 0.5, 0.8)
+      for (let i = 0; i < 6; i++) bell(ctx, verb, hit + 0.1 + i * 0.09, 84 + [0, 4, 7, 12, 7, 12][i]!, 0.5, 0.8)
       return 3
     }
     case 'defeat': {

@@ -79,7 +79,7 @@ export { injuryRiskMultiplier } from '../match/injuryRisk'
  * Duration is reduced by recovery perks/facilities (up to −35%).
  */
 export function rollInjury(rng: Rng, hero: Hero, life: Life, severityWeights: [number, number, number] = [0.6, 0.3, 0.1]): Injury {
-  const sev = rng.weighted([1, 2, 3] as const, (s) => severityWeights[s - 1])
+  const sev = rng.weighted([1, 2, 3] as const, (s) => severityWeights[s - 1]!)
   const t = rng.pick(INJURY_TABLE.filter((i) => i.severity === sev))
   const base = rng.int(t.days[0], t.days[1])
   const reduce = clamp((recoveryMultiplier(hero, life) - 1) * 0.6, 0, 0.35)

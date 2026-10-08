@@ -642,7 +642,7 @@ export class TrainingScene extends Phaser.Scene {
       const n = v.preview.points.length
       const col = v.preview.shot ? 0xffd23f : 0xffffff
       for (let i = 1; i < n; i++) {
-        const pt = v.preview.points[i]
+        const pt = v.preview.points[i]!
         const q = project(pt.x, pt.y, pt.z)
         const t = i / n
         g.fillStyle(col, 0.95 - t * 0.55)
@@ -905,11 +905,11 @@ export class TrainingScene extends Phaser.Scene {
       const t = this.meterTexts[i]
       if (t) t.setText(this.s.hud[m.kind]).setPosition(x + mw + 10 * u, y + 4 * u).setAlpha(0.85)
     })
-    for (let i = hud.meters.length; i < this.meterTexts.length; i++) this.meterTexts[i].setAlpha(0)
+    for (let i = hud.meters.length; i < this.meterTexts.length; i++) this.meterTexts[i]!.setAlpha(0)
 
     // Floaters.
     for (let i = this.floaters.length - 1; i >= 0; i--) {
-      const f = this.floaters[i]
+      const f = this.floaters[i]!
       f.t += dt
       const sp = this.worldToScreen(f.wx, f.wy)
       f.text.setPosition(sp.x, sp.y - f.t * 34 * u).setAlpha(clampN((f.life - f.t) / 0.3, 0, 1)).setScale(1 + Math.max(0, 0.25 - f.t) * 1.5)

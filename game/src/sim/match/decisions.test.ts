@@ -49,7 +49,7 @@ describe('decision window rules', () => {
         if (kind) { shown++; last = m; at.push(m) }
       }
       expect(at.length).toBeLessThanOrEqual(MAX_PER_MATCH)
-      if (at.length === 2) expect(at[1] - at[0]).toBeGreaterThanOrEqual(COOLDOWN)
+      if (at.length === 2) expect(at[1]! - at[0]!).toBeGreaterThanOrEqual(COOLDOWN)
     }
   })
 })

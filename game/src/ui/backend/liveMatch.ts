@@ -163,7 +163,7 @@ function lineupOf(team: MatchTeam): LineupPlayer[] {
   const slots = formationSlots(team.formation)
   const idx = assignSlots(team.lineup, team.formation)
   return team.lineup.map((p, i) => {
-    const sl = slots[idx[i]] ?? slots[i] ?? { x: 30, y: 34 }
+    const sl = slots[idx[i]!] ?? slots[i] ?? { x: 30, y: 34 }
     return {
       id: p.id, name: p.name, number: p.number, position: p.position, ovr: p.ovr, isHero: p.isHero,
       x: clamp(sl.x / 52.5, 0.03, 1), y: clamp(sl.y / 68, 0.05, 0.95),
@@ -218,7 +218,7 @@ export function preMatchView(s: GameState): PreMatchView | null {
       ...(keyNpc ? { form: Math.round(keyNpc.form), contractUntil: keyNpc.contractUntil } : {}),
     } : null,
     heroAvailability: { suspendedMatches: s.hero.suspendedMatches, injured: !!s.hero.injury, contractUntil: s.hero.contract?.untilSeason ?? null },
-    tacticHint: HINTS[oppClub?.style ?? 'balanced'] ?? HINTS.balanced,
+    tacticHint: (HINTS[oppClub?.style ?? 'balanced'] ?? HINTS.balanced)!,
     heroStarting: blob.starts,
     odds: { home: ODDS(pHome * (1 - pDraw)), draw: ODDS(pDraw), away: ODDS((1 - pHome) * (1 - pDraw)) },
     expectedMoments: expectedFor(s, blob),

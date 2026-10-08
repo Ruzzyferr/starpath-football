@@ -31,7 +31,7 @@ describe('physics', () => {
     const bounces = ev.filter((e) => e.type === 'bounce')
     expect(bounces.length).toBeGreaterThan(1)
     const speeds = bounces.map((e) => (e.type === 'bounce' ? e.speed : 0))
-    for (let i = 1; i < speeds.length; i++) expect(speeds[i]).toBeLessThan(speeds[i - 1])
+    for (let i = 1; i < speeds.length; i++) expect(speeds[i]).toBeLessThan(speeds[i - 1]!)
     expect(b.z).toBe(0)
   })
 
@@ -81,7 +81,7 @@ describe('physics', () => {
       b.vz = 7
       b.spin.top = top
       const pts = predictTrajectory(b, DEFAULT_ENV, { duration: 0.6 })
-      return pts[pts.length - 1].z
+      return pts[pts.length - 1]!.z
     }
     expect(mk(40)).toBeLessThan(mk(0))
     expect(mk(-40)).toBeGreaterThan(mk(0))

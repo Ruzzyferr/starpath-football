@@ -111,16 +111,16 @@ describe('rollEvents', () => {
     ]
     const rng = new Rng(5)
     const [p] = rollEvents(s, rng, ['weekly'], 1, { events: pool, fireChance: 1 })
-    expect(p.defId).toBe('a.start')
-    resolveEvent(s, rng, p, 0, pool)
+    expect(p!.defId).toBe('a.start')
+    resolveEvent(s, rng, p!, 0, pool)
     expect(scheduledFollowUps(s)).toHaveLength(1)
-    expect(scheduledFollowUps(s)[0].due).toBe(absoluteWeek(s.calendar) + 2)
+    expect(scheduledFollowUps(s)[0]!.due).toBe(absoluteWeek(s.calendar) + 2)
     nextWeek(s)
     expect(rollEvents(s, rng, ['weekly'], 1, { events: pool, fireChance: 0 })).toHaveLength(0)
     nextWeek(s)
     const [f] = rollEvents(s, rng, ['weekly'], 1, { events: pool, fireChance: 0 })
-    expect(f.defId).toBe('a.next')
-    expect(describeEvent(s, f, 'en', pool)!.text).toMatch(/^📜 2 week\(s\) ago[\s\S]*parrot$/)
+    expect(f!.defId).toBe('a.next')
+    expect(describeEvent(s, f!, 'en', pool)!.text).toMatch(/^📜 2 week\(s\) ago[\s\S]*parrot$/)
     expect(scheduledFollowUps(s)).toHaveLength(0)
   })
 
@@ -129,13 +129,13 @@ describe('rollEvents', () => {
     const pool = [mk('a.apply', 'weird')]
     const rng = new Rng(6)
     const [p] = rollEvents(s, rng, ['weekly'], 1, { events: pool, fireChance: 1 })
-    expect(() => resolveEvent(s, rng, p, 1, pool)).toThrow()
+    expect(() => resolveEvent(s, rng, p!, 1, pool)).toThrow()
     const m0 = s.life.money
-    const mom0 = s.life.relationships.mother.value
-    const res = resolveEvent(s, rng, p, 0, pool)
+    const mom0 = s.life.relationships.mother!.value
+    const res = resolveEvent(s, rng, p!, 0, pool)
     expect(s.life.money).toBe(m0 + 100)
-    expect(s.life.relationships.mother.value).toBe(mom0 + 7)
-    expect(s.life.relationships.mother.memory[0].en).toBe('Title Aliço')
+    expect(s.life.relationships.mother!.value).toBe(mom0 + 7)
+    expect(s.life.relationships.mother!.memory[0]!.en).toBe('Title Aliço')
     expect(res.text.en).toBe('Done Kuzey Yıldızı')
     expect(res.deltas.map((d) => d.kind)).toEqual(['money', 'stat', 'relation'])
     expect(s.pendingEvents).toHaveLength(0)
@@ -146,7 +146,7 @@ describe('rollEvents', () => {
     const s = makeTestState()
     const pool = [mk('a.view', 'weird')]
     const [p] = rollEvents(s, new Rng(7), ['weekly'], 1, { events: pool, fireChance: 1 })
-    const v = describeEvent(s, p, 'tr', pool)!
+    const v = describeEvent(s, p!, 'tr', pool)!
     expect(v.title).toBe('Başlık Aliço')
     expect(v.choices.map((c) => c.enabled)).toEqual([true, false])
   })
@@ -248,7 +248,7 @@ describe('event money safety net', () => {
     s.life.bank.savings = savings
     const rng = new Rng(3)
     s.pendingEvents = [{ id: 'p1', defId: costly.id, vars: {}, createdWeek: 0 } as never]
-    resolveEvent(s, rng, s.pendingEvents[0], 0, [costly])
+    resolveEvent(s, rng, s.pendingEvents[0]!, 0, [costly])
     return s
   }
   it('never takes more than cash + savings', () => {

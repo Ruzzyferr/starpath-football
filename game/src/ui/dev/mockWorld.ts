@@ -41,7 +41,7 @@ const SQUAD_16: Position[] = ['GK', 'GK', 'CB', 'CB', 'CB', 'LB', 'RB', 'DM', 'C
 
 function initialsOf(name: string): string {
   const words = name.replace(/[^\p{L}\s]/gu, '').split(/\s+/).filter((w) => w.length > 1)
-  const ini = words.map((w) => w[0].toLocaleUpperCase('tr-TR')).join('')
+  const ini = words.map((w) => w[0]!.toLocaleUpperCase('tr-TR')).join('')
   return ini.slice(0, 4) || name.slice(0, 3).toUpperCase()
 }
 
@@ -53,8 +53,8 @@ export function makePlayer(rng: Rng, id: string, clubId: string | null, pos: Pos
   const value = Math.round((Math.pow(ovr / 10, 4.2) * 70 * (age < 24 ? 1.4 : age > 30 ? 0.6 : 1)) / 1000) * 1000
   return {
     id,
-    firstName: rng.pick(FIRST[nameStyle] ?? FIRST.tr),
-    lastName: rng.pick(LAST[nameStyle] ?? LAST.tr),
+    firstName: rng.pick((FIRST[nameStyle] ?? FIRST.tr)!),
+    lastName: rng.pick((LAST[nameStyle] ?? LAST.tr)!),
     nationality: countryId,
     birthYear,
     position: pos,
@@ -84,10 +84,10 @@ export function roundRobin(ids: string[]): [string, string][][] {
   for (let r = 0; r < n - 1; r++) {
     const round: [string, string][] = []
     for (let i = 0; i < n / 2; i++) {
-      const a = list[i]
-      const b = list[n - 1 - i]
+      const a = list[i]!
+      const b = list[n - 1 - i]!
       if (a === '__bye' || b === '__bye') continue
-      round.push(r % 2 === 0 ? [a, b] : [b, a])
+      round.push((r % 2 === 0 ? [a, b] : [b, a]))
     }
     rounds.push(round)
     list.splice(1, 0, list.pop() as string)
@@ -108,16 +108,16 @@ export function makeResult(rng: Rng, world: World, home: Club, away: Club, score
   const scorers: MatchResultSummary['scorers'] = []
   const pickScorer = (club: Club) => {
     const pool = club.squad.map((id) => world.players[id]).filter((p) => p && p.position !== 'GK')
-    const p = rng.weighted(pool, (pl) => (pl.position === 'ST' ? 5 : pl.position === 'LW' || pl.position === 'RW' || pl.position === 'AM' ? 3 : pl.position === 'CM' ? 1.5 : 0.5))
+    const p = rng.weighted(pool, (pl) => (pl!.position === 'ST' ? 5 : pl!.position === 'LW' || pl!.position === 'RW' || pl!.position === 'AM' ? 3 : pl!.position === 'CM' ? 1.5 : 0.5))
     return p
   }
   for (let i = 0; i < h; i++) {
-    const p = pickScorer(home)
+    const p = pickScorer(home)!
     scorers.push({ minute: rng.int(2, 90), playerId: p.id, team: 'home', penalty: rng.chance(0.08) || undefined })
     p.stats.goals++
   }
   for (let i = 0; i < a; i++) {
-    const p = pickScorer(away)
+    const p = pickScorer(away)!
     scorers.push({ minute: rng.int(2, 90), playerId: p.id, team: 'away', penalty: rng.chance(0.08) || undefined })
     p.stats.goals++
   }
@@ -157,7 +157,7 @@ export function buildWorld(seed: number, playedWeeks: number): WorldBuild {
 
   let pid = 0
   LEAGUE_SEEDS.forEach((ls, li) => {
-    const country = world.countries[ls.countryId]
+    const country = world.countries[ls.countryId]!
     const league: League = { id: ls.id, countryId: ls.countryId, name: ls.name, tier: ls.tier, clubIds: [], promote: ls.promote, relegate: ls.relegate }
     world.leagues[ls.id] = league
     const baseRep = ls.tier === 1 ? country.reputation - 8 : country.reputation - 28
@@ -175,16 +175,16 @@ export function buildWorld(seed: number, playedWeeks: number): WorldBuild {
         city,
         countryId: ls.countryId,
         leagueId: ls.id,
-        colors: { primary: c0, secondary: c1, pattern: PATTERNS[(i + li) % PATTERNS.length] },
-        awayColors: { primary: c1 === '#ffffff' ? '#f2f5fa' : c1, secondary: c0, pattern: PATTERNS[(i + li + 3) % PATTERNS.length] },
-        crest: { shape: SHAPES[(i + li * 2) % SHAPES.length], symbol: (i * 7 + li * 3) % 16, colors: [c0, c1, c2], initials: initialsOf(name) },
+        colors: { primary: c0!, secondary: c1!, pattern: PATTERNS[(i + li) % PATTERNS.length]! },
+        awayColors: { primary: (c1 === '#ffffff' ? '#f2f5fa' : c1)!, secondary: c0!, pattern: PATTERNS[(i + li + 3) % PATTERNS.length]! },
+        crest: { shape: SHAPES[(i + li * 2) % SHAPES.length]!, symbol: (i * 7 + li * 3) % 16, colors: [c0!, c1!, c2], initials: initialsOf(name) },
         reputation: rep,
         budget: Math.round(Math.pow(rep / 10, 3.2) * 9000) * 10,
         wageBudget: Math.round(Math.pow(rep / 10, 3) * 600) * 10,
         stadium: { name: `${city} ${['Arena', 'Stadyumu', 'Park', 'Parkı'][i % 4]}`, capacity: Math.round((8000 + rep * rep * 6.5) / 500) * 500 },
-        formation: FORMATIONS[(i + li) % FORMATIONS.length],
-        style: STYLES[(i * 2 + li) % STYLES.length],
-        managerName: MANAGERS[(i + li * 5) % MANAGERS.length],
+        formation: FORMATIONS[(i + li) % FORMATIONS.length]!,
+        style: STYLES[(i * 2 + li) % STYLES.length]!,
+        managerName: MANAGERS[(i + li * 5) % MANAGERS.length]!,
         squad: [],
       }
       const template = ls.id === 'tr1' ? SQUAD_22 : SQUAD_16
@@ -192,7 +192,7 @@ export function buildWorld(seed: number, playedWeeks: number): WorldBuild {
       for (const pos of template) {
         const pidStr = `p${++pid}`
         const nat = rng.chance(0.78) ? ls.countryId : rng.pick(COUNTRIES).id
-        const style = world.countries[nat].nameStyle
+        const style = world.countries[nat]!.nameStyle
         const p = makePlayer(rng, pidStr, id, pos, baseOvr, style, nat)
         world.players[pidStr] = p
         club.squad.push(pidStr)
@@ -224,10 +224,10 @@ export function buildWorld(seed: number, playedWeeks: number): WorldBuild {
     }
     for (const f of fixtures) {
       if (f.week < playedWeeks) {
-        const res = makeResult(rng, world, world.clubs[f.homeId], world.clubs[f.awayId])
+        const res = makeResult(rng, world, world.clubs[f.homeId]!, world.clubs[f.awayId]!)
         f.result = res
-        for (const pidS of [...world.clubs[f.homeId].squad, ...world.clubs[f.awayId].squad]) {
-          const p = world.players[pidS]
+        for (const pidS of [...world.clubs[f.homeId]!.squad, ...world.clubs[f.awayId]!.squad]) {
+          const p = world.players[pidS]!
           if (p.position === 'GK' && !pidS.endsWith('0')) continue
           if (rng.chance(0.75)) {
             p.stats.apps++
@@ -245,37 +245,37 @@ export function buildWorld(seed: number, playedWeeks: number): WorldBuild {
     // Honours
     for (let y = 1; y <= 4; y++) {
       const winner = league.clubIds[rng.int(0, Math.min(4, league.clubIds.length - 1))]
-      world.honours.push({ season: SEASON - y, compKey: ls.id, name: { tr: ls.name, en: ls.name }, winnerId: winner })
+      world.honours.push({ season: SEASON - y, compKey: ls.id, name: { tr: ls.name, en: ls.name }, winnerId: winner! })
     }
   })
 
   // Turkish cup: tr1 + 14 of tr2 = 32 teams
-  const cupIds = [...world.leagues.tr1.clubIds, ...world.leagues.tr2.clubIds.slice(0, 14)]
+  const cupIds = [...world.leagues.tr1!.clubIds, ...world.leagues.tr2!.clubIds.slice(0, 14)]
   const shuffled = rng.shuffle([...cupIds])
   const cupFixtures: Fixture[] = []
   const alive: string[] = []
   for (let i = 0; i < shuffled.length; i += 2) {
     const h = shuffled[i]
     const a = shuffled[i + 1]
-    const res = makeResult(rng, world, world.clubs[h], world.clubs[a])
+    const res = makeResult(rng, world, world.clubs[h!]!, world.clubs[a!]!)
     if (res.home === res.away) res.penalties = { home: 4, away: rng.int(2, 5) === 4 ? 3 : rng.int(2, 3) }
     const homeWins = res.home > res.away || (res.home === res.away && (res.penalties?.home ?? 0) > (res.penalties?.away ?? 0))
-    cupFixtures.push({ id: `trcup-r1-${i / 2}`, compId: `trcup-${SEASON}`, round: 1, week: 5, day: CUP_DAY, homeId: h, awayId: a, result: res })
-    alive.push(homeWins ? h : a)
+    cupFixtures.push({ id: `trcup-r1-${i / 2}`, compId: `trcup-${SEASON}`, round: 1, week: 5, day: CUP_DAY, homeId: h!, awayId: a!, result: res })
+    alive.push((homeWins ? h : a)!)
   }
   for (let i = 0; i < alive.length; i += 2) {
-    cupFixtures.push({ id: `trcup-r2-${i / 2}`, compId: `trcup-${SEASON}`, round: 2, week: 14, day: CUP_DAY, homeId: alive[i], awayId: alive[i + 1], result: null })
+    cupFixtures.push({ id: `trcup-r2-${i / 2}`, compId: `trcup-${SEASON}`, round: 2, week: 14, day: CUP_DAY, homeId: alive[i]!, awayId: alive[i + 1]!, result: null })
   }
   world.competitions[`trcup-${SEASON}`] = {
     id: `trcup-${SEASON}`, type: 'cup', name: { tr: 'Hilal Kupası', en: 'Crescent Cup' }, season: SEASON,
     countryId: 'TR', leagueId: null, participantIds: cupIds, fixtures: cupFixtures, table: null, alive, winnerId: null,
   }
-  for (let y = 1; y <= 4; y++) world.honours.push({ season: SEASON - y, compKey: 'trcup', name: { tr: 'Hilal Kupası', en: 'Crescent Cup' }, winnerId: world.leagues.tr1.clubIds[rng.int(0, 8)] })
+  for (let y = 1; y <= 4; y++) world.honours.push({ season: SEASON - y, compKey: 'trcup', name: { tr: 'Hilal Kupası', en: 'Crescent Cup' }, winnerId: world.leagues.tr1!.clubIds[rng.int(0, 8)]! })
 
   // Hero club: mid-table tr1 club that is in the cup round 2.
-  const table = world.competitions[`tr1-${SEASON}`].table as TableRow[]
+  const table = world.competitions[`tr1-${SEASON}`]!.table as TableRow[]
   const mid = table.slice(6, 12).map((r) => r.clubId)
-  const heroClubId = mid.find((id) => alive.includes(id)) ?? mid[0]
+  const heroClubId = (mid.find((id) => alive.includes(id)) ?? mid[0])!
   if (!alive.includes(heroClubId)) {
     // Swap the hero club into round 2 so the demo has a cup tie.
     const f = cupFixtures.find((x) => x.round === 2) as Fixture

@@ -150,7 +150,7 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
       if (score > bestScore) { bestScore = score; best = i }
     })
     if (best >= 0) {
-      bench.unshift(ids[best])
+      bench.unshift(ids[best]!)
       ids[best] = HERO_ID
     }
   }
@@ -170,7 +170,7 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   }
   const byId = new Map(club.players.map((p) => [p.id, p]))
   const npc = (id: string): NpcPlayer => w.players[id] ?? (byId.get(id) as NpcPlayer)
-  const xi: MatchPlayer[] = ids.map((id, i) => (id === HERO_ID ? heroPlayer(slots[i]) : npcToMatchPlayer(npc(id), slots[i], nextNumber(), rel(id))))
+  const xi: MatchPlayer[] = ids.map((id, i) => (id === HERO_ID ? heroPlayer(slots[i]!) : npcToMatchPlayer(npc(id), slots[i]!, nextNumber(), rel(id))))
   let benchPlayers: MatchPlayer[] = bench.slice(0, 7).map((id) => npcToMatchPlayer(npc(id), npc(id).position, nextNumber(), rel(id)))
   if (heroSide && !starts) benchPlayers = [heroPlayer(hero.position), ...benchPlayers.slice(0, 6)]
   return {
@@ -224,8 +224,8 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       starts = roll.starts
     }
     const sel = { starts }
-    const home = national ? nationalTeamSource(state, fixture.homeId) : clubSource(state, state.world.clubs[fixture.homeId])
-    const away = national ? nationalTeamSource(state, fixture.awayId) : clubSource(state, state.world.clubs[fixture.awayId])
+    const home = national ? nationalTeamSource(state, fixture.homeId) : clubSource(state, state.world.clubs[fixture.homeId]!)
+    const away = national ? nationalTeamSource(state, fixture.awayId) : clubSource(state, state.world.clubs[fixture.awayId]!)
     if (national) away.colors = nationalKits(home, away).away
     const mental = mentalMatchModifier(state.life)
     const base = state.meta.custom ? normalizeCustom(state.meta.custom).aiReaction : DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1

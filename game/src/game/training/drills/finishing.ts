@@ -76,7 +76,7 @@ export class FinishingDrill extends DrillBase {
       const seq = GRID.map((_, i) => i)
       for (let i = seq.length - 1; i > 0; i--) {
         const j = this.rng.int(0, i)
-        ;[seq[i], seq[j]] = [seq[j], seq[i]]
+        ;[seq[i], seq[j]] = [seq[j]!, seq[i]!]
       }
       this.sequence.push(...seq)
     }

@@ -31,8 +31,8 @@ describe('3-question interviews', () => {
     const qs = interviewQuestions(s, LOSS_HAT)
     checkQuestions(qs)
     // The hero carried a losing team: the loaded "did your teammates let you down?" question comes first.
-    expect(qs[0].topic).toBe('teammates_blame')
-    expect(qs[0].trap).toBe(true)
+    expect(qs[0]!.topic).toBe('teammates_blame')
+    expect(qs[0]!.trap).toBe(true)
     const again = interviewQuestions(s, LOSS_HAT)
     expect(again.map((q) => q.id)).toEqual(qs.map((q) => q.id))
   })
@@ -52,20 +52,20 @@ describe('3-question interviews', () => {
     const qs = interviewQuestions(s, LOSS_HAT)
     const mates = Object.values(s.life.relationships).filter((r) => r.kind === 'teammate')
     const before = mates.reduce((a, r) => a + r.value, 0)
-    const shield = qs[0].options.find((o) => o.tone === 'humble')!
-    const r1 = answerInterview(s, qs[0].id, shield.id)
+    const shield = qs[0]!.options.find((o) => o.tone === 'humble')!
+    const r1 = answerInterview(s, qs[0]!.id, shield.id)
     expect(r1.done).toBe(false)
     expect(mates.reduce((a, r) => a + r.value, 0)).toBeGreaterThan(before)
-    expect(mates[0].log?.[0].cause).toBe('interview')
+    expect(mates[0]!.log?.[0]!.cause).toBe('interview')
     // Answering twice is a no-op.
-    expect(answerInterview(s, qs[0].id, shield.id).applied).toEqual([])
+    expect(answerInterview(s, qs[0]!.id, shield.id).applied).toEqual([])
     const news0 = s.life.news.length
-    answerInterview(s, qs[1].id, qs[1].options[0].id)
-    const last = answerInterview(s, qs[2].id, qs[2].options.find((o) => o.tone !== 'deflect')!.id)
+    answerInterview(s, qs[1]!.id, qs[1]!.options[0]!.id)
+    const last = answerInterview(s, qs[2]!.id, qs[2]!.options.find((o) => o.tone !== 'deflect')!.id)
     expect(last.done).toBe(true)
     expect(last.headline?.en.length).toBeGreaterThan(5)
     expect(s.life.news.length).toBe(news0 + 1)
-    expect(s.life.news[s.life.news.length - 1].headline).toEqual(last.headline)
+    expect(s.life.news[s.life.news.length - 1]!.headline).toEqual(last.headline)
     expect(interviewSession(s)?.headline).toEqual(last.headline)
   })
 
@@ -74,8 +74,8 @@ describe('3-question interviews', () => {
     const qs = interviewQuestions(s, LOSS_HAT)
     const mates = Object.values(s.life.relationships).filter((r) => r.kind === 'teammate')
     const before = mates.reduce((a, r) => a + r.value, 0)
-    const blame = qs[0].options.find((o) => o.tone === 'critical')!
-    answerInterview(s, qs[0].id, blame.id)
+    const blame = qs[0]!.options.find((o) => o.tone === 'critical')!
+    answerInterview(s, qs[0]!.id, blame.id)
     expect(mates.reduce((a, r) => a + r.value, 0)).toBeLessThan(before)
   })
 
@@ -83,12 +83,12 @@ describe('3-question interviews', () => {
     const good = makeGame(25)
     const bad = makeGame(25)
     const gain = (s: ReturnType<typeof makeGame>, r: InterviewReport): number => {
-      const f0 = s.life.relationships.fans.value
+      const f0 = s.life.relationships.fans!.value
       for (const q of interviewQuestions(s, r)) {
-        const best = [...q.options].sort((a, b) => (b.effects.find((e) => e.key === 'fans')?.value ?? -99) - (a.effects.find((e) => e.key === 'fans')?.value ?? -99))[0]
+        const best = [...q.options].sort((a, b) => (b.effects.find((e) => e.key === 'fans')?.value ?? -99) - (a.effects.find((e) => e.key === 'fans')?.value ?? -99))[0]!
         answerInterview(s, q.id, best.id)
       }
-      return s.life.relationships.fans.value - f0
+      return s.life.relationships.fans!.value - f0
     }
     const g = gain(good, { ...LOSS_HAT, won: true, key: 'cap1' })
     const b = gain(bad, { ...POOR, won: true, key: 'cap1' })
@@ -103,7 +103,7 @@ describe('3-question interviews', () => {
     const pc = pressConferenceQuestions(s)
     expect(pc).not.toBeNull()
     checkQuestions(pc!)
-    for (const q of pc!) answerInterview(s, q.id, q.options[0].id)
+    for (const q of pc!) answerInterview(s, q.id, q.options[0]!.id)
     expect(pressConferenceQuestions(s)).toBeNull()
   })
 

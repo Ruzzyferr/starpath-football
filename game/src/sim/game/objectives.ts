@@ -521,11 +521,11 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
   }
   if (fresh('sponsor', 6) && life.sponsors.length > 0) {
     const gain = Math.max(150, Math.round(life.followers * 0.04))
-    const brand = life.sponsors[0].brand
+    const brand = life.sponsors[0]!.brand
     cands.push({ w: 1.5, make: () => mk(state, st, 'sponsor', 'followers',
       fill(lt('{b} kampanyası: 3 haftada {n} yeni takipçi', '{b} campaign: {n} new followers in 3 weeks'), { b: brand, n: gain }),
       lt('Sponsorun kampanya dönemine girdi. Görünür ol: paylaşım, röportaj, iyi maç.', 'Your sponsor is running a campaign. Be visible: posts, interviews, big games.'),
-      gain, 3, { money: Math.round(Math.max(life.sponsors[0].weekly * 1.5, wage * 0.2)) }, undefined, { base: life.followers }) })
+      gain, 3, { money: Math.round(Math.max(life.sponsors[0]!.weekly * 1.5, wage * 0.2)) }, undefined, { base: life.followers }) })
   }
   if (fresh('family', 8) && (life.relationships.mother || life.relationships.father)) {
     // A birthday happens once a year: each family reason is used at most once per season.
@@ -538,7 +538,7 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
       { key: 'dinner', rel: who, title: lt('Pazar yemeği geleneği: 2 hafta içinde ailene uğra', 'Sunday dinner tradition: visit your family within 2 weeks') },
     ].filter((r) => life.relationships[r.rel] && !used.includes(`${state.calendar.season}:${r.key}`))
     if (reasons.length) {
-      const r = reasons[Math.floor(rng.next() * reasons.length)]
+      const r = reasons[Math.floor(rng.next() * reasons.length)]!
       cands.push({ w: 1.2, make: () => {
         st.famUsed = [...(st.famUsed ?? []).slice(-8), `${state.calendar.season}:${r.key}`]
         return mk(state, st, 'family', 'familyVisit', r.title,

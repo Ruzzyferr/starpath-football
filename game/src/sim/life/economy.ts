@@ -135,7 +135,7 @@ export function resaleValue(owned: OwnedAsset, def: AssetDef, cal: Pick<Calendar
 export function assetHappiness(life: Life): number {
   const hs = ownedAssetDefs(life).map((d) => d.happiness).sort((p, q) => q - p)
   let s = 0
-  for (let i = 0; i < hs.length; i++) s += hs[i] * 0.75 ** i
+  for (let i = 0; i < hs.length; i++) s += hs[i]! * 0.75 ** i
   return finite(s)
 }
 
@@ -237,7 +237,7 @@ export function breakTermDeposit(life: Life, id: string): Lines {
   const list = life.bank.termDeposits ?? []
   const i = list.findIndex((d) => d.id === id)
   if (i < 0) return [lt('Vadeli mevduat bulunamadı.', 'Term deposit not found.')]
-  const d = list[i]
+  const d = list[i]!
   list.splice(i, 1)
   const back = Math.round(d.amount * (1 - TERM_BREAK_FEE))
   life.money += back
@@ -337,7 +337,7 @@ export function invest(life: Life, kind: Investment['kind'], amount: number, rng
 export function sellInvestment(life: Life, id: string): { amount: number; lines: Lines } {
   const idx = life.bank.investments.findIndex((i) => i.id === id)
   if (idx < 0) return { amount: 0, lines: [lt('Yatırım bulunamadı.', 'Investment not found.')] }
-  const inv = life.bank.investments[idx]
+  const inv = life.bank.investments[idx]!
   const amount = Math.max(0, Math.round(finite(inv.value * (1 - INVESTMENT_KINDS[inv.kind].sellFee))))
   life.bank.investments.splice(idx, 1)
   life.money += amount
@@ -638,7 +638,7 @@ export function bankruptcyGuard(life: Life, cal: Pick<Calendar, 'season' | 'week
       const s = sellAsset(life, idx, cal)
       raised += s.amount
       life.bank.creditScore -= 15
-      lines.push(fill(lt('⚠️ Alacaklılar yüzünden elden çıkardın: {l}', '⚠️ Creditors forced a sale: {l}'), { l: s.lines[0] }))
+      lines.push(fill(lt('⚠️ Alacaklılar yüzünden elden çıkardın: {l}', '⚠️ Creditors forced a sale: {l}'), { l: s.lines[0]! }))
     }
   }
   if (life.money < -overdraftGrace(wage)) {

@@ -110,8 +110,8 @@ function LegendsCard() {
           {list.map((l) => (
             <li key={l.id}>
               <b>{l.name}</b>
-              <div class="t-xs t-lo">{t('club.legends.row', { pos: t(`data.pos.${l.position}`), nat: w.countries[l.nationality] ? lt(w.countries[l.nationality].name) : l.nationality, ovr: l.ovr, season: l.retiredSeason })}</div>
-              {l.managerOf && w.clubs[l.managerOf] && <div class="t-xs t-mid">{t('club.legends.manager', { club: w.clubs[l.managerOf].name })}</div>}
+              <div class="t-xs t-lo">{t('club.legends.row', { pos: t(`data.pos.${l.position}`), nat: w.countries[l.nationality] ? lt(w.countries[l.nationality]!.name) : l.nationality, ovr: l.ovr, season: l.retiredSeason })}</div>
+              {l.managerOf && w.clubs[l.managerOf] && <div class="t-xs t-mid">{t('club.legends.manager', { club: w.clubs[l.managerOf]!.name })}</div>}
             </li>
           ))}
         </ul>

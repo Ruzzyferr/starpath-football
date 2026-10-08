@@ -143,8 +143,8 @@ describe('Vision pass options', () => {
     expect(high.length).toBe(4)
     expect(low).not.toContain('far')
     // 42 m away: only a high-Vision player sees it.
-    expect(rankPassOptions(from, 95, [mates[3]], [])).toEqual(['far'])
-    expect(rankPassOptions(from, 40, [mates[3]], [])).toEqual([])
+    expect(rankPassOptions(from, 95, [mates[3]!], [])).toEqual(['far'])
+    expect(rankPassOptions(from, 40, [mates[3]!], [])).toEqual([])
   })
   it('skips blocked lanes and prefers forward options', () => {
     const blocked = rankPassOptions(from, 95, mates, [{ x: 56, y: 32 }])
@@ -217,14 +217,14 @@ describe('one-two', () => {
 
   it('no second tap → no one-two', () => {
     const { rt, mate } = setup(2)
-    rt.queueAction({ kind: 'pass', target: { ...mate.pos } })
+    rt.queueAction({ kind: 'pass', target: { ...mate!.pos } })
     const evs = runUntil(rt, () => rt.finished, 4)
     expect(evs.some((e) => e.type === 'oneTwo')).toBe(false)
   })
 
   it('the window closes after ONE_TWO_WINDOW', () => {
     const { rt, mate } = setup(3)
-    rt.queueAction({ kind: 'pass', target: { ...mate.pos } })
+    rt.queueAction({ kind: 'pass', target: { ...mate!.pos } })
     runUntil(rt, () => false, 2.6)
     expect(rt.oneTwoHint()).toBeNull()
   })
@@ -306,7 +306,7 @@ describe('timing assist (a11y)', () => {
     const hint = (timingMult: number, seed: number) => {
       const rt = new HighlightRuntime(makeDemoHighlight('counter_2v1', seed), { aimAssist: 'full', slowMoAim: false, seed, timingMult })
       runUntil(rt, () => rt.phase === 'live' && rt.heroOnBall, 3)
-      const mate = rt.agents.filter((x) => x.team === 'hero' && !x.isHero && !x.isKeeper)[0]
+      const mate = rt.agents.filter((x) => x.team === 'hero' && !x.isHero && !x.isKeeper)[0]!
       rt.queueAction({ kind: 'pass', target: { ...mate.pos } })
       const t0 = rt.time
       runUntil(rt, () => rt.time - t0 > ONE_TWO_WINDOW + 0.15, 4)

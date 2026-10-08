@@ -106,7 +106,7 @@ export function NewCareerScreen() {
     firstName: '',
     lastName: parent?.lastName ?? '',
     nickname: '',
-    nationality: countries.find((c) => c.id === 'TR')?.id ?? countries[0].id,
+    nationality: countries.find((c) => c.id === 'TR')?.id ?? countries[0]!.id,
     birthYear: START_YEAR - 17,
     position: 'ST',
     foot: 'R',
@@ -123,9 +123,9 @@ export function NewCareerScreen() {
   const set = <K extends keyof NewGameInput>(k: K, v: NewGameInput[K]) => setForm((f) => ({ ...f, [k]: v }))
   const setGender = (g: Gender) => setForm((f) => ({ ...f, gender: g, appearance: withGender(f.appearance, g) }))
 
-  const cur = STEPS[step]
+  const cur = STEPS[step]!
   const nameOk = form.firstName.trim().length > 0 && form.lastName.trim().length > 0
-  const country = countries.find((c) => c.id === form.nationality) ?? countries[0]
+  const country = (countries.find((c) => c.id === form.nationality) ?? countries[0])!
   const shirt = country.flag[0]
   const trim = country.flag[1] === shirt ? country.flag[2] : country.flag[1]
 

@@ -12,7 +12,7 @@ describe('ability shape anchor (playtest Tur 2: world top tail)', () => {
     recordAbilityReference(w)
     const shape = w.abilityShape!
     expect(shape).toHaveLength(SHAPE_POINTS)
-    expect(shape.every((v, i) => i === 0 || v >= shape[i - 1])).toBe(true)
+    expect(shape.every((v, i) => i === 0 || v >= shape[i - 1]!)).toBe(true)
     const before = [...shape]
     for (const p of club(w)) p.ovr += 3
     recordAbilityReference(w)
@@ -22,7 +22,7 @@ describe('ability shape anchor (playtest Tur 2: world top tail)', () => {
   it('pulls a stretched top end back without reordering or touching the middle much', () => {
     const w = generateWorld(new Rng(6), { season: 2026, heroCountryId: 'TR', countryIds: ['TR'] })
     recordAbilityReference(w)
-    const top0 = abilityShape(w)[SHAPE_POINTS - 3]
+    const top0 = abilityShape(w)[SHAPE_POINTS - 3]!
     // Stretch: the best 3% gain +6 (and their ceilings), as an unchecked youth wave would.
     const ps = club(w).sort((a, b) => b.ovr - a.ovr)
     const n = Math.ceil(ps.length * 0.03)

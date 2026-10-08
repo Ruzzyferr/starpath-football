@@ -57,7 +57,7 @@ describe('MatchSim statistics (1000 matches)', () => {
       if (s.score[0] > s.score[1]) homeWins++
       else if (s.score[0] === s.score[1]) draws++
       shots += s.shots[0] + s.shots[1]
-      onTarget += s.shotsOnTarget[0] + s.shotsOnTarget[1]
+      onTarget += s.shotsOnTarget[0]! + s.shotsOnTarget[1]!
       possLow = Math.min(possLow, s.possession[0])
       possHigh = Math.max(possHigh, s.possession[0])
     }

@@ -27,8 +27,8 @@ describe('slot view = slot sim', () => {
       for (const col of v.window) expect(col).toHaveLength(3)
       expect(v.reels).toEqual(v.window.map((c) => c[1]))
       for (const w of v.wins) {
-        const rows = rules.lines[w.line]
-        for (let reel = 0; reel < w.count; reel++) expect(v.window[reel][rows[reel]]).toBe(w.symbol)
+        const rows = rules.lines[w.line]!
+        for (let reel = 0; reel < w.count; reel++) expect(v.window[reel]![rows[reel]!]).toBe(w.symbol)
         const pay = rules.pays.find((p) => p.symbol === w.symbol && p.count === w.count)
         expect(pay?.multiplier).toBe(w.multiplier)
         wins++

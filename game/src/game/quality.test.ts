@@ -5,11 +5,11 @@ import { stadiumLook } from './presentation'
 describe('quality profiles', () => {
   it('are ordered: each step up spends more on particles and crowd', () => {
     const [lo, mid, hi] = QUALITY_PROFILES.map((p) => QUALITY[p])
-    expect(lo.particleBudget).toBeLessThan(mid.particleBudget)
-    expect(mid.particleBudget).toBeLessThan(hi.particleBudget)
-    expect(lo.particleScale).toBeLessThan(mid.particleScale)
-    expect(lo.crowdScale).toBeLessThan(mid.crowdScale)
-    expect(mid.crowdScale).toBeLessThanOrEqual(hi.crowdScale)
+    expect(lo!.particleBudget).toBeLessThan(mid!.particleBudget)
+    expect(mid!.particleBudget).toBeLessThan(hi!.particleBudget)
+    expect(lo!.particleScale).toBeLessThan(mid!.particleScale)
+    expect(lo!.crowdScale).toBeLessThan(mid!.crowdScale)
+    expect(mid!.crowdScale).toBeLessThanOrEqual(hi!.crowdScale)
   })
 
   it('resolves auto to the benchmark result, falling back to medium', () => {

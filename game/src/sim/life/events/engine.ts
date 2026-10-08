@@ -263,7 +263,7 @@ export function formatBoth(text: LText, vars: EventVars): LText {
 /** Placeholder names used in a text (both languages), for validation. */
 export function placeholdersOf(text: LText): string[] {
   const out = new Set<string>()
-  for (const s of [text.tr, text.en]) for (const m of s.matchAll(PLACEHOLDER)) out.add(m[1])
+  for (const s of [text.tr, text.en]) for (const m of s.matchAll(PLACEHOLDER)) out.add(m[1]!)
   return [...out]
 }
 

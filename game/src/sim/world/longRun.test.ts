@@ -34,7 +34,7 @@ describe(`${SEASONS} simulated seasons`, () => {
       maxPop = Math.max(maxPop, pop)
       if (i % 10 === 9) {
         const t = top()
-        topHi = { p95: Math.max(topHi.p95, t.p95), top20: Math.max(topHi.top20, t.top20), max: Math.max(topHi.max, t.max) }
+        topHi = { p95: Math.max(topHi.p95, t.p95!), top20: Math.max(topHi.top20, t.top20), max: Math.max(topHi.max, t.max!) }
         for (const l of Object.values(world.leagues)) expect(l.clubIds.length, `${l.id} @${i}`).toBe(sizes[l.id])
         for (const c of Object.values(world.clubs)) {
           expect(c.squad.length, `${c.id} @${i}`).toBeGreaterThanOrEqual(SQUAD_MIN)
@@ -46,10 +46,10 @@ describe(`${SEASONS} simulated seasons`, () => {
     }
     for (const p of Object.values(world.players)) { expect(Number.isFinite(p.ovr)).toBe(true); expect(p.ovr).toBeGreaterThanOrEqual(25) }
     expect(Math.abs(meanAbility(world) - ovr0)).toBeLessThan(1.5)
-    expect(topHi.p95 - top0.p95, 'p95 drift').toBeLessThanOrEqual(2)
+    expect(topHi.p95 - top0.p95!, 'p95 drift').toBeLessThanOrEqual(2)
     expect(topHi.top20 - top0.top20, 'top-20 drift').toBeLessThanOrEqual(2.5)
-    expect(topHi.max - top0.max, 'max drift').toBeLessThanOrEqual(2)
-    expect(Math.abs(top().p95 - top0.p95)).toBeLessThanOrEqual(2)
+    expect(topHi.max - top0.max!, 'max drift').toBeLessThanOrEqual(2)
+    expect(Math.abs(top().p95! - top0.p95!)).toBeLessThanOrEqual(2)
     expect(maxPop / pop0).toBeLessThan(1.08)
     expect(minPop / pop0).toBeGreaterThan(0.92)
     const seen = new Set<string>()
@@ -59,11 +59,11 @@ describe(`${SEASONS} simulated seasons`, () => {
     const legends = world.legends ?? []
     expect(legends.length).toBeGreaterThan(5)
     expect(legends.every((l) => l.ovr >= LEGEND_MIN_OVR)).toBe(true)
-    expect(legends.every((l, i) => i === 0 || legends[i - 1].ovr >= l.ovr)).toBe(true)
+    expect(legends.every((l, i) => i === 0 || legends[i - 1]!.ovr >= l.ovr)).toBe(true)
     expect(legends.length).toBeLessThanOrEqual(150)
     // Some legends take a dugout job.
     expect(legends.some((l) => l.managerOf)).toBe(true)
-    for (const l of legends) if (l.managerOf) expect(world.clubs[l.managerOf].managerName).toBe(l.name)
+    for (const l of legends) if (l.managerOf) expect(world.clubs[l.managerOf]!.managerName).toBe(l.name)
   }, 240_000)
 
   it('academy level follows club standing', () => {
@@ -74,11 +74,11 @@ describe(`${SEASONS} simulated seasons`, () => {
 describe('2.6#62 per-country promotion rules keep every tier the same size', () => {
   it('works for 2, 3 and 4 swapping places', () => {
     const world = generateWorld(new Rng(21), { season: 2026, heroCountryId: 'DE', countryIds: ['DE', 'JP', 'BR'] })
-    expect(world.leagues.DE1.relegate).toBe(2)
-    expect(world.leagues.DE2.promote).toBe(2)
-    expect(world.leagues.DE2.relegate).toBe(3)
-    expect(world.leagues.JP1.relegate).toBe(2)
-    expect(world.leagues.BR1.relegate).toBe(4)
+    expect(world.leagues.DE1!.relegate).toBe(2)
+    expect(world.leagues.DE2!.promote).toBe(2)
+    expect(world.leagues.DE2!.relegate).toBe(3)
+    expect(world.leagues.JP1!.relegate).toBe(2)
+    expect(world.leagues.BR1!.relegate).toBe(4)
     const sizes = Object.fromEntries(Object.values(world.leagues).map((l) => [l.id, l.clubIds.length]))
     const rng = new Rng(22)
     for (let i = 0; i < 6; i++) {

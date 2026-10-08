@@ -16,7 +16,7 @@ describe('statsByClub', () => {
     }
     const rows = statsByClub(hero, { clubId: 'b', clubName: 'B' })
     expect(rows.map((r) => [r.clubId, r.seasons, r.stats.apps, r.stats.goals])).toEqual([['b', 2, 38, 16], ['a', 2, 15, 4]])
-    expect(rows[0].stats.ratingSum).toBe(266)
+    expect(rows[0]!.stats.ratingSum).toBe(266)
   })
   it('skips an empty current season', () => {
     expect(statsByClub({ history: [], seasonStats: emptyStats() }, { clubId: 'x', clubName: 'X' })).toEqual([])

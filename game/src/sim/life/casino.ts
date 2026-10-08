@@ -44,7 +44,7 @@ export const cardValue = (c: Card): number => {
 const SUITS = ['♠', '♥', '♦', '♣']
 const RANKS = ['A', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'J', 'Q', 'K']
 /** Short label like "A♠", "10♥". */
-export const cardLabel = (c: Card): string => RANKS[cardRank(c) - 1] + SUITS[cardSuit(c)]
+export const cardLabel = (c: Card): string => RANKS[cardRank(c) - 1]! + SUITS[cardSuit(c)]!
 
 /** Multi-deck shoe; serializable. */
 export interface Shoe {
@@ -76,7 +76,7 @@ function reshuffle(rng: Rng, shoe: Shoe): void {
 /** Draw one card (reshuffles if the shoe is physically exhausted). */
 export function drawCard(rng: Rng, shoe: Shoe): Card {
   if (shoe.pos >= shoe.cards.length) reshuffle(rng, shoe)
-  return shoe.cards[shoe.pos++]
+  return shoe.cards[shoe.pos++]!
 }
 
 /** Hand total with soft-ace handling. `soft` = an ace is still counted as 11. */
@@ -161,10 +161,10 @@ export function startBlackjack(rng: Rng, shoe: Shoe, stake: number): BlackjackRo
     payout: 0,
   }
   const dealerBJ = isBlackjack(round.dealer)
-  const playerBJ = isBlackjack(round.hands[0].cards)
+  const playerBJ = isBlackjack(round.hands[0]!.cards)
   // Peek: only possible to have a natural with A or 10-value up card, so this is equivalent.
   if (dealerBJ || playerBJ) {
-    round.hands[0].done = true
+    round.hands[0]!.done = true
     finishRound(rng, round, /* dealerPlays */ false)
   }
   return round
@@ -187,14 +187,14 @@ export function availableActions(round: BlackjackRound, extraFunds = Infinity): 
   if (
     two &&
     round.hands.length < MAX_SPLIT_HANDS &&
-    cardValue(h.cards[0]) === cardValue(h.cards[1]) &&
+    cardValue(h.cards[0]!) === cardValue(h.cards[1]!) &&
     extraFunds >= h.stake
   ) acts.push('split')
   return acts
 }
 
 function advance(rng: Rng, round: BlackjackRound): void {
-  while (round.active < round.hands.length && round.hands[round.active].done) round.active++
+  while (round.active < round.hands.length && round.hands[round.active]!.done) round.active++
   if (round.active >= round.hands.length) {
     const anyLive = round.hands.some((h) => handValue(h.cards).total <= 21)
     finishRound(rng, round, anyLive)
@@ -228,11 +228,11 @@ export function blackjackAction(rng: Rng, round: BlackjackRound, action: Blackja
       h.done = true
       break
     case 'split': {
-      const aces = cardRank(h.cards[0]) === 1
+      const aces = cardRank(h.cards[0]!) === 1
       const second: BlackjackHand = {
-        cards: [h.cards[1], drawCard(rng, shoe)], stake: h.stake, doubled: false, done: false, splitAces: aces, fromSplit: true,
+        cards: [h.cards[1]!, drawCard(rng, shoe)], stake: h.stake, doubled: false, done: false, splitAces: aces, fromSplit: true,
       }
-      h.cards = [h.cards[0], drawCard(rng, shoe)]
+      h.cards = [h.cards[0]!, drawCard(rng, shoe)]
       h.fromSplit = true
       h.splitAces = aces
       round.hands.splice(round.active + 1, 0, second)
@@ -281,8 +281,8 @@ function finishRound(rng: Rng, round: BlackjackRound, dealerPlays: boolean): voi
  */
 export function basicStrategyAction(cards: readonly Card[], upCard: Card, canDouble: boolean, canSplit: boolean): BlackjackAction {
   const d = cardValue(upCard) // 2..11
-  if (canSplit && cards.length === 2 && cardValue(cards[0]) === cardValue(cards[1])) {
-    const v = cardValue(cards[0])
+  if (canSplit && cards.length === 2 && cardValue(cards[0]!) === cardValue(cards[1]!)) {
+    const v = cardValue(cards[0]!)
     const split =
       v === 11 || v === 8 ||
       (v === 9 && d !== 7 && d !== 10 && d !== 11) ||
@@ -448,9 +448,9 @@ function buildStrip(offset: number): SlotSymbol[] {
   let i = offset
   while (strip.length < total) {
     const k = order[i % order.length]
-    if (counts[k] > 0) {
-      strip.push(k)
-      counts[k]--
+    if (counts[k!] > 0) {
+      strip.push(k!)
+      counts[k!]--
     }
     i++
   }
@@ -464,8 +464,8 @@ export const SLOT_STRIPS: readonly (readonly SlotSymbol[])[] = [buildStrip(0), b
 export function slotWindow(stops: readonly number[]): SlotSymbol[][] {
   return SLOT_STRIPS.map((strip, r) => {
     const n = strip.length
-    const p = stops[r]
-    return [strip[(p - 1 + n) % n], strip[p % n], strip[(p + 1) % n]]
+    const p = stops[r]!
+    return [strip[(p - 1 + n) % n]!, strip[p % n]!, strip[(p + 1) % n]!]
   })
 }
 
@@ -491,9 +491,9 @@ export function evaluateSlot(window: SlotSymbol[][], stake: number): Pick<SlotSp
   const wins: SlotSpin['wins'] = []
   let payout = 0
   SLOT_PAYLINES.forEach((rows, li) => {
-    const m = linePay(window[0][rows[0]], window[1][rows[1]], window[2][rows[2]])
+    const m = linePay(window[0]![rows[0]]!, window[1]![rows[1]]!, window[2]![rows[2]]!)
     if (m > 0) {
-      wins.push({ line: li, symbol: window[0][rows[0]], multiplier: m })
+      wins.push({ line: li, symbol: window[0]![rows[0]]!, multiplier: m })
       payout += m * lineBet
     }
   })
@@ -514,10 +514,10 @@ export function spinSlot(rng: Rng, stake: number): SlotSpin {
 export function slotExactRtp(): number {
   const [a, b, c] = SLOT_STRIPS
   let total = 0
-  for (let i = 0; i < a.length; i++)
-    for (let j = 0; j < b.length; j++)
-      for (let k = 0; k < c.length; k++) total += evaluateSlot(slotWindow([i, j, k]), 1).payout
-  return total / (a.length * b.length * c.length)
+  for (let i = 0; i < a!.length; i++)
+    for (let j = 0; j < b!.length; j++)
+      for (let k = 0; k < c!.length; k++) total += evaluateSlot(slotWindow([i, j, k]), 1).payout
+  return total / (a!.length * b!.length * c!.length)
 }
 
 // ═════════════════════════════ Horse racing ═════════════════════════════
@@ -584,11 +584,11 @@ export function raceWinProbabilities(strengths: readonly number[]): number[] {
     const w = k === 0 || k === steps ? 0.5 : 1
     const cdfs = means.map((m) => normalCdf((x - m) / sd))
     for (let i = 0; i < means.length; i++) {
-      const z = (x - means[i]) / sd
+      const z = (x - means[i]!) / sd
       const pdf = Math.exp(-0.5 * z * z) / (sd * Math.sqrt(2 * Math.PI))
       let prod = 1
-      for (let j = 0; j < means.length; j++) if (j !== i) prod *= cdfs[j]
-      probs[i] += w * pdf * prod * dx
+      for (let j = 0; j < means.length; j++) if (j !== i) prod *= cdfs[j]!
+      probs[i]! += w * pdf * prod * dx
     }
   }
   const s = probs.reduce((a, b) => a + b, 0)
@@ -659,10 +659,10 @@ export function createRace(rng: Rng): RaceCard {
   return {
     horses: names.map((name, i) => ({
       name,
-      strength: strengths[i],
-      formStars: clamp(Math.round((strengths[i] + rng.normal(0, 6) - 35) / 10), 1, 5),
-      winProb: probs[i],
-      odds: odds[i],
+      strength: strengths[i]!,
+      formStars: clamp(Math.round((strengths[i]! + rng.normal(0, 6) - 35) / 10), 1, 5),
+      winProb: probs[i]!,
+      odds: odds[i]!,
     })),
   }
 }
@@ -681,17 +681,17 @@ export function runRace(rng: Rng, race: RaceCard): RaceResult {
   const dist = new Array<number>(n).fill(0)
   const raw: number[][] = [dist.slice()]
   for (let t = 0; t < RACE_TICKS; t++) {
-    for (let i = 0; i < n; i++) dist[i] += Math.max(0, speedOf(race.horses[i].strength) + rng.normal(0, RACE_NOISE_SD))
+    for (let i = 0; i < n; i++) dist[i]! += Math.max(0, speedOf(race.horses[i]!.strength) + rng.normal(0, RACE_NOISE_SD))
     raw.push(dist.slice())
   }
   const best = Math.max(...dist)
-  const order = range(0, n - 1).sort((a, b) => dist[b] - dist[a])
-  return { frames: raw.map((f) => f.map((d) => (best > 0 ? d / best : 0))), order, winner: order[0] }
+  const order = range(0, n - 1).sort((a, b) => dist[b]! - dist[a]!)
+  return { frames: raw.map((f) => f.map((d) => (best > 0 ? d / best : 0))), order, winner: order[0]! }
 }
 
 /** Return for a win bet on `horse` (0 if it lost). */
 export const settleHorseBet = (race: RaceCard, result: RaceResult, horse: number, stake: number): number =>
-  result.winner === horse ? stake * race.horses[horse].odds : 0
+  result.winner === horse ? stake * race.horses[horse]!.odds : 0
 
 // ═════════════════════════════ Dice ═════════════════════════════
 

@@ -223,7 +223,7 @@ export function describeGoal(fixtureId: string, minute: number, playerId: string
   const h = hashString(`${fixtureId}|${minute}|${playerId}`)
   const u1 = (h & 0xffff) / 0xffff
   const u2 = ((h >>> 16) & 0xffff) / 0xffff
-  const kind = opts.kind ?? GOAL_KINDS[h % GOAL_KINDS.length]
+  const kind = opts.kind ?? GOAL_KINDS[h % GOAL_KINDS.length]!
   const distance = kind === 'long_range' || kind === 'free_kick' || kind === 'curler' ? 20 + Math.round(u2 * 18) : kind === 'header' ? 6 + Math.round(u2 * 8) : 8 + Math.round(u2 * 14)
   const style = kind === 'volley' || kind === 'long_range' || kind === 'solo' ? 1 : kind === 'free_kick' || kind === 'curler' || kind === 'chip' ? 0.7 : 0.3
   const score = clamp(3 + 5.5 * Math.pow(u1, 2.2) + style + (distance >= 25 ? 0.6 : 0) + (opts.quality ?? 0), 0, 10)
@@ -239,9 +239,9 @@ export function nominateGoals(world: World, comp: Competition, f: Fixture, nameF
     if (s.ownGoal || s.penalty || s.playerId === HERO_ID) return
     const d = describeGoal(f.id, s.minute, s.playerId, { quality: importance })
     if (!d) return
-    const worst = st.goals.length >= MAX_GOAL_NOMINEES ? st.goals[st.goals.length - 1].score : -1
+    const worst = st.goals.length >= MAX_GOAL_NOMINEES ? st.goals[st.goals.length - 1]!.score : -1
     if (d.score <= worst) return
-    const name = nameFor?.(s.playerId) ?? (world.players[s.playerId] ? `${world.players[s.playerId].firstName} ${world.players[s.playerId].lastName}` : null)
+    const name = nameFor?.(s.playerId) ?? (world.players[s.playerId] ? `${world.players[s.playerId]!.firstName} ${world.players[s.playerId]!.lastName}` : null)
     if (!name) return
     addGoalCandidate(world, {
       playerId: s.playerId, name, teamId: s.team === 'home' ? f.homeId : f.awayId, oppId: s.team === 'home' ? f.awayId : f.homeId,
@@ -374,7 +374,7 @@ export function goldenStarVote(shortlist: readonly StarCandidate[], season: numb
       .sort((a, b) => b.v - a.v || (a.id < b.id ? -1 : 1))
     ranked.slice(0, VOTE_POINTS.length).forEach((r, i) => {
       const t = tally.get(r.id)!
-      t.points += VOTE_POINTS[i]
+      t.points += VOTE_POINTS[i]!
       if (i === 0) t.firsts++
     })
   }

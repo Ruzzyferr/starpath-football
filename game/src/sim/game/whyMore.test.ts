@@ -15,7 +15,7 @@ describe('whyMore', () => {
     ])
     expect(rows.map((r) => r.key)).toEqual(['a', 'b', 'c'])
     expect(sum(rows)).toBe(100)
-    expect(rows[1].tone).toBe('neg')
+    expect(rows[1]!.tone).toBe('neg')
     expect(topShares([])).toEqual([])
   })
 
@@ -37,7 +37,7 @@ describe('whyMore', () => {
     const star = { season: 2027, ranking: [cand('w', false, 30, 10), cand('h', true, 20, 10)], journalists: 100 } as unknown as GoldenStarResult
     const w = whyAward(star)!
     expect(w.rows.map((r) => r.key)).toEqual(['league'])
-    expect(w.rows[0].share).toBe(100)
+    expect(w.rows[0]!.share).toBe(100)
     expect(whyAward({ ...star, ranking: [cand('h', true, 5, 5)] } as unknown as GoldenStarResult)).toBeNull()
   })
 })

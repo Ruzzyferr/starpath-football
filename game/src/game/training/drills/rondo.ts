@@ -76,7 +76,7 @@ export class RondoDrill extends DrillBase {
 
   private restart(): void {
     place(this.hero, HERO_SPOT, 0)
-    this.mates.forEach((m, i) => place(m, MATE_SPOTS[i], Math.atan2(C.y - MATE_SPOTS[i].y, C.x - MATE_SPOTS[i].x)))
+    this.mates.forEach((m, i) => place(m, MATE_SPOTS[i]!, Math.atan2(C.y - MATE_SPOTS[i]!.y, C.x - MATE_SPOTS[i]!.x)))
     this.defenders.forEach((d, i) => place(d, { x: C.x + (i ? 1.5 : -0.5), y: C.y + (i ? 1 : -1) * this.rng.range(0.5, 2) }, Math.PI))
     this.tracker = createTracker()
     Object.assign(this.ball, { x: HERO_SPOT.x + 0.6, y: HERO_SPOT.y, z: 0, vx: 0, vy: 0, vz: 0 })
@@ -98,14 +98,14 @@ export class RondoDrill extends DrillBase {
     const from = HERO_SPOT
     const opts = this.options
     const byPoint = (p: Vec2): number | null => {
-      const near = opts.filter((i) => dist(this.mates[i].pos, p) < 4).sort((a, b) => dist(this.mates[a].pos, p) - dist(this.mates[b].pos, p))
+      const near = opts.filter((i) => dist(this.mates[i]!.pos, p) < 4).sort((a, b) => dist(this.mates[a]!.pos, p) - dist(this.mates[b]!.pos, p))
       return near[0] ?? byDir(norm(sub(p, from)))
     }
     const byDir = (dir: Vec2): number | null => {
       let best: number | null = null
       let bestA = 0.5
       for (const i of opts) {
-        const m = this.mates[i]
+        const m = this.mates[i]!
         const a = Math.abs(angleDiff(Math.atan2(m.pos.y - from.y, m.pos.x - from.x), Math.atan2(dir.y, dir.x)))
         if (a < bestA) {
           bestA = a
@@ -136,20 +136,20 @@ export class RondoDrill extends DrillBase {
     let best = this.options[0]
     let bestD = -1
     for (const i of this.options) {
-      const d = Math.min(...this.defenders.map((df) => segDist(df.pos, HERO_SPOT, this.mates[i].pos)))
+      const d = Math.min(...this.defenders.map((df) => segDist(df.pos, HERO_SPOT, this.mates[i]!.pos)))
       if (d > bestD) {
         bestD = d
         best = i
       }
     }
-    return best
+    return best!
   }
 
   private pass(input: DrillInput): void {
     for (const act of input.actions) {
       const i = this.pick(act)
       if (i === null) continue
-      const m = this.mates[i]
+      const m = this.mates[i]!
       const from = { x: this.ball.x, y: this.ball.y }
       const target = leadPosition(from, { id: m.id, pos: m.pos, vel: m.vel }, 13, 4)
       const plan = planKick(
@@ -218,8 +218,8 @@ export class RondoDrill extends DrillBase {
       d.facing = Math.atan2(this.ball.y - d.pos.y, this.ball.x - d.pos.x)
     }
     if (!live && this.phase !== 'grace') {
-      go(presser, { x: C.x - 1, y: C.y }, speed)
-      go(cutter, { x: C.x + 1, y: C.y }, speed)
+      go(presser!, { x: C.x - 1, y: C.y }, speed)
+      go(cutter!, { x: C.x + 1, y: C.y }, speed)
       return
     }
     if (this.state === 'flight') {
@@ -229,11 +229,11 @@ export class RondoDrill extends DrillBase {
     }
     // Presser closes the ball down; cutter shadows the lane to the most open option.
     const ball = { x: this.ball.x, y: this.ball.y }
-    const toBall = sub(ball, presser.pos)
-    const stop = len(toBall) > 0.8 ? add(presser.pos, scale(norm(toBall), len(toBall) - 0.8)) : presser.pos
-    go(presser, stop, speed)
-    const open = this.mates[this.mostOpen()].pos
-    go(cutter, add(ball, scale(sub(open, ball), 0.45)), speed * 0.9)
+    const toBall = sub(ball, presser!.pos)
+    const stop = len(toBall) > 0.8 ? add(presser!.pos, scale(norm(toBall), len(toBall) - 0.8)) : presser!.pos
+    go(presser!, stop, speed)
+    const open = this.mates[this.mostOpen()]!.pos
+    go(cutter!, add(ball, scale(sub(open, ball), 0.45)), speed * 0.9)
   }
 
   private flight(): void {
@@ -301,8 +301,8 @@ export class RondoDrill extends DrillBase {
 
   view(): DrillView {
     const flash = this.flash && this.time - this.flash.at < 0.6 ? this.flash.tone : null
-    const rings: RingView[] = this.options.map((i) => ({ x: this.mates[i].pos.x, y: this.mates[i].pos.y, r: 1.1, tone: flash ?? 'gold', pulse: this.state === 'ready' }))
-    const lines: LineView[] = this.state === 'ready' ? this.options.map((i) => ({ a: HERO_SPOT, b: this.mates[i].pos, tone: 'white', width: 0.08 })) : []
+    const rings: RingView[] = this.options.map((i) => ({ x: this.mates[i]!.pos.x, y: this.mates[i]!.pos.y, r: 1.1, tone: flash ?? 'gold', pulse: this.state === 'ready' }))
+    const lines: LineView[] = this.state === 'ready' ? this.options.map((i) => ({ a: HERO_SPOT, b: this.mates[i]!.pos, tone: 'white', width: 0.08 })) : []
     return {
       focus: { x: C.x, y: C.y },
       span: 22,
