@@ -369,6 +369,29 @@ function applyReward(state: GameState, r: ObjectiveReward, o: Objective): void {
   for (const [id, v] of Object.entries(r.rel ?? {})) changeRelation(life, id, v, { hero: h, week, cause: 'other', why: o.title, contact: id !== 'fans' })
 }
 
+// ───────────────────────── Event-started objectives ─────────────────────────
+
+export type ObjectivePreset = 'prove_yourself'
+
+const PROVE_TITLE: LText = lt('Kendini kanıtla: bir maçta 7.5+ puan', 'Prove yourself: rate 7.5+ in a match')
+
+/**
+ * Starts a fixed mission from an event card (2.4#100 "prove yourself": one match
+ * rated 7.5+ within 5 weeks after a night-out scandal). Returns false when the
+ * preset is already running.
+ */
+export function startPresetObjective(state: GameState, preset: ObjectivePreset): boolean {
+  if (preset !== 'prove_yourself') return false
+  const st = load(state)
+  if (st.active.some((o) => o.title.en === PROVE_TITLE.en)) return false
+  const o = mk(state, st, 'manager', 'rating', PROVE_TITLE,
+    lt('Gece hikâyesinden sonra hoca kanıt istiyor: bir maçta 7.5+ puan al.', 'After the night-out story the manager wants proof: rate 7.5+ in a match.'),
+    1, 5, { trust: 5, morale: 5, rel: { manager: 5 }, reputation: 1 }, { trust: -4, rel: { manager: -3 } }, { base: 75 })
+  st.active.push(o)
+  save(state, st)
+  return true
+}
+
 // ───────────────────────── Generation ─────────────────────────
 
 function mk(state: GameState, st: Store, source: ObjectiveSource, kind: ObjectiveKind, title: LText, desc: LText, target: number, weeks: number, reward: ObjectiveReward, penalty?: ObjectiveReward, extra: Partial<Objective> = {}): Objective {

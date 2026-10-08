@@ -122,6 +122,8 @@ export type Delta =
   | { kind: 'suspension'; matches: number }
   /** Morality-clause scandal: sponsors drop out (level 4 = all of them; see sim/life/sponsors). */
   | { kind: 'sponsorLoss'; level: 1 | 2 | 3 | 4 }
+  /** Starts a fixed objective (sim/game/objectives presets). */
+  | { kind: 'objective'; preset: 'prove_yourself' }
   /** Removes a relationship (break-up, falling out). */
   | { kind: 'endRelation'; target: RelationKind; npcId?: string }
   /** Brand reputation of an owned business (life/business); no-op without one. */

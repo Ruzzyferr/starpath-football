@@ -1,7 +1,7 @@
 /** Nightlife: parties, paparazzi, fights, curfews. Mostly fired when the hero goes out. */
 import {
   ban, boss, canAfford, disc, energy, fans, fatigue, flags, folPct, follow, form, fx, happy, hasClub, health, injury, money,
-  morale, news, num, pickFirst, press, rel, relNpc, rep, sharp, stress, t, chain, trust, wageX,
+  morale, news, num, objective, pickFirst, press, rel, relNpc, rep, sharp, stress, t, chain, trust, wageX,
 } from '../dsl'
 import type { EventDef } from '../types'
 
@@ -97,21 +97,76 @@ export const nightlifeEvents: EventDef[] = [
         risk: 'medium',
         effects: (ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('"Ayakkabımı bulan getirsin" yazdın. İnternet seni sevdi; hoca bile gülümsedi.', '"Whoever finds my shoe, please return it." The internet loved it; even the gaffer smirked.'), folPct(ctx, 4), press(3), happy(2))
-            : fx(t('Şaka tutmadı: "Hâlâ ciddiye almıyor" yorumları yağdı.', 'The joke flopped: "Still not taking it seriously," wrote everyone.'), fans(-4), boss(-3), stress(5)),
+            ? fx(t('"Ayakkabımı bulan getirsin" yazdın. İnternet seni sevdi; hoca bile gülümsedi.', '"Whoever finds my shoe, please return it." The internet loved it; even the gaffer smirked.'), folPct(ctx, 4), press(3), happy(2), follow(chain('nightlife.discipline_talk', 1)))
+            : fx(t('Şaka tutmadı: "Hâlâ ciddiye almıyor" yorumları yağdı.', 'The joke flopped: "Still not taking it seriously," wrote everyone.'), fans(-4), boss(-3), stress(5), follow(chain('nightlife.discipline_talk', 1))),
       },
       {
         label: t('Hocayı ara, önce sen özür dile', 'Call the gaffer first, apologise'),
-        effects: () => fx(t('{managerName} sesini yükseltmedi. "Sahada göster" dedi. Bu kez idare etti.', '{managerName} didn\'t raise his voice. "Show me on the pitch." This time, it\'s fine.'), boss(3), trust(2), disc(2)),
+        effects: () => fx(t('{managerName} sesini yükseltmedi. "Sahada göster" dedi. Bu kez idare etti.', '{managerName} didn\'t raise his voice. "Show me on the pitch." This time, it\'s fine.'), boss(3), trust(2), disc(2), follow(chain('nightlife.discipline_talk', 1))),
       },
       {
         label: t('Hiçbir şey olmamış gibi davran', 'Act like nothing happened'),
-        effects: () => fx(t('Antrenmanda kimse bir şey demedi. Kadro listesinde adın ilk on birde değildi.', 'Nobody said anything at training. Your name just wasn\'t in the starting XI.'), trust(-5), disc(-3), stress(4)),
+        effects: () => fx(t('Antrenmanda kimse bir şey demedi. Kadro listesinde adın ilk on birde değildi.', 'Nobody said anything at training. Your name just wasn\'t in the starting XI.'), trust(-5), disc(-3), stress(4), follow(chain('nightlife.discipline_talk', 1))),
       },
     ],
   },
   {
-    id: 'nightlife.bar_fight',
+    id: 'nightlife.discipline_talk',
+    category: 'nightlife',
+    weight: 1,
+    cooldownWeeks: 0,
+    followUpOnly: true,
+    conditions: () => true,
+    title: t('Kulüp Disiplin Görüşmesi', 'Club Disciplinary Meeting'),
+    text: t(
+      'Kulüp yönetimi seni odaya çağırdı. Masada gazete kupürü, karşında {managerName}. "Bu bir ilk uyarı. Ama bir daha olmasın."',
+      'The club has called you in. The newspaper cutting is on the table, {managerName} across from you. "This is a first warning. Let it not happen again."',
+    ),
+    icon: '🗂️',
+    choices: [
+      {
+        label: t('Hatayı kabul et, sorumluluk al', 'Own the mistake and take responsibility'),
+        effects: () => fx(t('Dürüstlüğün takdir edildi. Para cezası küçük, ama hoca senden kanıt bekliyor.', 'Your honesty was noted. The fine is small, but the manager expects proof.'), disc(3), trust(2), money(-1500), objective('prove_yourself'), follow(chain('nightlife.prove_result', 5))),
+      },
+      {
+        label: t('Gazetelerin abarttığını söyle', 'Say the papers are exaggerating'),
+        risk: 'medium',
+        effects: () => fx(t('Pek ikna olmadılar. Ceza biraz daha ağır, ama kanıtlama şansın var.', 'They were not convinced. The fine is a bit heavier, but you still get your chance to prove it.'), disc(-3), trust(-2), money(-4000), boss(-2), objective('prove_yourself'), follow(chain('nightlife.prove_result', 5))),
+      },
+      {
+        label: t('Menajerini devreye sok', 'Bring in your agent'),
+        effects: () => fx(t('Menajerin işi yumuşattı; yazılı uyarı dosyaya girmedi ama göz hep üzerinde.', 'Your agent smoothed it over; no written warning, but eyes stay on you.'), rel('agent', -1), money(-2500), trust(-1), objective('prove_yourself'), follow(chain('nightlife.prove_result', 5))),
+      },
+    ],
+  },
+  {
+    id: 'nightlife.prove_result',
+    category: 'nightlife',
+    weight: 1,
+    cooldownWeeks: 0,
+    followUpOnly: true,
+    conditions: () => true,
+    title: t('Kanıt Zamanı Bitti', 'Time to Prove It Is Up'),
+    text: t(
+      'Gazete hikâyesinin üzerinden birkaç hafta geçti. {managerName} son maçlarının raporunu masaya koydu.',
+      'A few weeks have passed since the newspaper story. {managerName} puts your recent match reports on the desk.',
+    ),
+    icon: '📈',
+    choices: [
+      {
+        label: t('Raporlara bak', 'Look at the reports'),
+        effects: ({ state }) => state.life.flags.last_match_shone === true
+          ? fx(t('"Sahada gösterdin" dedi hoca. Mesele kapandı; taraftar seni yine alkışlıyor.', '"You showed me on the pitch," said the manager. Case closed; the fans are applauding again.'), boss(4), trust(3), fans(3))
+          : fx(t('Rakamlar kötü değil ama yeterince iyi de değil. Hoca bir kez daha uyardı.', 'The numbers are not bad but not good enough either. The manager warned you once more.'), trust(-1), disc(-1)),
+      },
+      {
+        label: t('Konuyu kapat, antrenmana dön', 'Drop it and go back to training'),
+        effects: () => fx(t('Rapora bakmadan çıktın. Hoca omuz silkti; mesele havada kaldı.', 'You left without looking at the report. The manager shrugged; the matter hangs in the air.'), trust(-1)),
+      },
+    ],
+  },
+  {
+id: 'nightlife.bar_fight',
     category: 'nightlife',
     weight: 0.9,
     cooldownWeeks: 20,

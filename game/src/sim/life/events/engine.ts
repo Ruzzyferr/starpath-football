@@ -20,6 +20,7 @@ import { replaceWithSuffix } from '../../career/trSuffix'
 import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, RelationKind, Relationship } from '../../../core/types'
 import { clamp, type Rng } from '../../../core/rng'
 import { checkMoralityClause } from '../sponsors'
+import { startPresetObjective } from '../../game/objectives'
 import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
 import { ADULT_AGE, absWeek, heroAge } from '../../career/common'
@@ -756,6 +757,7 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
       return { kind: 'injury', weeks: w, name: formatBoth(d.name, vars) }
     }
     case 'sponsorLoss': return null // handled in applyEffectResult (needs the rng)
+    case 'objective': return startPresetObjective(state, d.preset) ? { kind: 'objective', preset: d.preset } : null
     case 'suspension': {
       const m = Math.max(0, Math.round(num(d.matches)))
       if (m === 0) return null
