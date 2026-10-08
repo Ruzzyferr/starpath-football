@@ -9,6 +9,7 @@
  * new season, call-ups / international break, offers, weekly event roll).
  * The new day starts with startDay + the casino daily reset.
  */
+import { sampleAttrHistory } from './saveHistory'
 import { recordEconomy } from './financeHistory'
 import type { GameState, LText } from '../../core/types'
 import type { Rng } from '../../core/rng'
@@ -109,6 +110,7 @@ export function advanceDay(state: GameState): AdvanceReport {
       weeklyHeroTick(state, rng, r.lines)
       cal.week++
       onNewWeek(state, rng, r)
+      sampleAttrHistory(state)
     }
     cal.slot = 0
     logAll(state, r.lines, startDay(state.hero, state.life, { calendar: cal }), 'event')

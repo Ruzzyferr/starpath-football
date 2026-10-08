@@ -47,6 +47,7 @@ import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder } from './inputReplay'
+import { queueGoalReplay } from '../sim/game/saveHistory'
 import { setReportAttachment } from '../telemetry/errorLog'
 import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './setPiecePicker'
 import { wallGeometry } from './setup'
@@ -1287,6 +1288,9 @@ export class MatchScene extends Phaser.Scene {
       })
     }
     const r = rt.result
+    if (r?.outcome === 'goal' && !this.data0.replayOnly && (!r.scorerId || r.scorerId === rt.hero.id)) {
+      queueGoalReplay(hl.minute, this.inputRec.toRecording(hl.id, { aimAssist: rt.assist, slowMoAim: rt.slowMoAim, difficulty: this.data0.opts.difficulty, weather: this.data0.opts.weather, importance: this.data0.opts.importance, timingMult: rt.timingMult }))
+    }
     if (r?.outcome === 'goal' && (!r.scorerId || r.scorerId === rt.hero.id) && !this.data0.replayOnly) {
       this.startCelebration()
       return

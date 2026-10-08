@@ -625,4 +625,10 @@ export interface GameState {
   pendingEvents: PendingEvent[]
   /** Fixture id of the hero's next match being played, if any. */
   activeMatchId: string | null
+  /** Weekly attribute history, compacted per season (WP-V; absent before save v3). */
+  attrHistory?: import('../sim/game/saveHistory').AttrHistory
+  /** Last goal replays as compact input recordings (WP-V; absent before save v3). */
+  replays?: import('../sim/game/saveHistory').GoalReplay[]
+  /** Versioned data pack the career was last saved with (WP-V). */
+  dataPack?: string
 }

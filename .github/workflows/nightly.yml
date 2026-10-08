@@ -37,6 +37,18 @@ jobs:
           name: balance-report
           path: game/balance-report.txt
           if-no-files-found: ignore
+      - name: Stats drift guard (fails beyond src/sim/game/statsGuard.ts tolerances)
+        run: npx vitest run src/sim/game/statsGuard.test.ts | tee stats-guard.txt
+        env:
+          STATS_GUARD: '1'
+          STATS_GUARD_N: '200'
+          STATS_GUARD_SEASONS: '10'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: stats-guard
+          path: game/stats-guard.txt
+          if-no-files-found: ignore
       - run: npm test
       - run: npm run build
       - run: npm run budgets

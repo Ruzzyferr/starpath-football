@@ -28,8 +28,26 @@ export interface SaveEnvelope {
   version: number
   savedAt: number
   checksum: string
+  /** SHA-256 of `data` (hex), v3+. Absent on older saves or when WebCrypto is unavailable. */
+  sha256?: string
+  /** Versioned data pack the state was written with (v3+). */
+  dataPack?: string
   summary: SaveSummary
   data: string
+}
+
+/** Procedural slot thumbnail (portrait + kit colours); rendered by `thumbSvg`, no pixels stored. */
+export interface SlotThumb {
+  v: 1
+  skin: number
+  hairStyle: number
+  hairColor: number
+  beard: number
+  eyeColor: number
+  face: number
+  kit: [string, string]
+  pos: string
+  female: boolean
 }
 
 /** Lightweight info shown on the save-slot screen without parsing the whole state. */
@@ -43,6 +61,8 @@ export interface SaveSummary {
   playTimeSec: number
   /** Club crest for the slot card (optional, newer saves). */
   crest?: CrestSpec
+  /** Procedural portrait for the slot card (newer saves). */
+  thumb?: SlotThumb
 }
 
 export type LoadResult =
@@ -85,9 +105,42 @@ export function checksum(text: string): string {
   return (h >>> 0).toString(16).padStart(8, '0') + ':' + text.length.toString(36)
 }
 
+/** SHA-256 hex of text via WebCrypto; null when `crypto.subtle` is unavailable (insecure context, old WebView). */
+export async function sha256Hex(text: string): Promise<string | null> {
+  try {
+    const subtle = globalThis.crypto?.subtle
+    if (!subtle) return null
+    const buf = await subtle.digest('SHA-256', new TextEncoder().encode(text))
+    return Array.from(new Uint8Array(buf), (b) => b.toString(16).padStart(2, '0')).join('')
+  } catch {
+    return null
+  }
+}
+
+/** Adds the SHA-256 field when crypto is available (otherwise the envelope keeps only the FNV checksum). */
+export async function sealEnvelope(env: SaveEnvelope): Promise<SaveEnvelope> {
+  const sha256 = await sha256Hex(env.data)
+  return sha256 ? { ...env, sha256 } : env
+}
+
+/**
+ * Full verification: structure + FNV checksum (always, so pre-v3 envelopes load) and, when the
+ * envelope carries a SHA-256 and crypto is available, the hash too. Without crypto we fall back to the checksum.
+ */
+export async function openEnvelopeVerified(raw: string | null): Promise<{ env: SaveEnvelope; state: GameState } | null> {
+  const o = openEnvelope(raw)
+  if (!o) return null
+  if (typeof o.env.sha256 === 'string') {
+    const h = await sha256Hex(o.env.data)
+    if (h !== null && h !== o.env.sha256) return null
+  }
+  return o
+}
+
 export function buildEnvelope(state: GameState, summary: SaveSummary, now = Date.now()): SaveEnvelope {
   const data = JSON.stringify(state)
-  return { version: SAVE_VERSION, savedAt: now, checksum: checksum(data), summary, data }
+  const dataPack = (state as { dataPack?: string }).dataPack
+  return { version: SAVE_VERSION, savedAt: now, checksum: checksum(data), ...(dataPack ? { dataPack } : {}), summary, data }
 }
 
 /** Parse + verify an envelope. Returns null when anything is off. */
@@ -109,6 +162,20 @@ const MIGRATIONS: Record<number, Migration> = {
   /** v1 → v2: hero gender (old careers are male heroes in men's leagues). */
   1: (s) => {
     if (s.hero && typeof s.hero === 'object' && s.hero.gender !== 'female' && s.hero.gender !== 'male') s.hero.gender = 'male'
+    return s
+  },
+  /**
+   * v2 → v3 (WP-V): attrHistory, replays, dataPack. Old careers start with an empty history seeded with
+   * one sample of the current attributes, no replays and the data pack matching their world's data version.
+   */
+  2: (s) => {
+    if (s.hero && typeof s.hero === 'object' && s.hero.attrs && typeof s.hero.attrs === 'object' && s.calendar && typeof s.calendar === 'object') {
+      const keys = Object.keys(s.hero.attrs)
+      s.attrHistory ??= { v: 1, keys, rows: [[s.calendar.season, s.calendar.week, ...keys.map((k) => Math.round(Number(s.hero.attrs[k]) || 0))]] }
+    }
+    s.replays ??= []
+    const dv = s.world && typeof s.world === 'object' && Number.isInteger(s.world.dataVersion) ? s.world.dataVersion : 1
+    s.dataPack ??= `sp-data-${dv}`
     return s
   },
 }
@@ -143,17 +210,17 @@ export class SaveManager {
 
   /** Atomically write a slot, rotating the previous live save into backups. */
   async save(slot: number, state: GameState, summary: SaveSummary): Promise<void> {
-    const env = buildEnvelope(state, summary)
+    const env = await sealEnvelope(buildEnvelope(state, summary))
     const raw = JSON.stringify(env)
     await this.storage.set(stagingKey(slot), raw)
     const verify = await this.storage.get(stagingKey(slot))
-    if (verify !== raw || !openEnvelope(verify)) throw new Error('Save verification failed')
+    if (verify !== raw || !(await openEnvelopeVerified(verify))) throw new Error('Save verification failed')
 
     // Backup rotation is best-effort: when storage is full we skip it (never deleting
     // existing backups) and keep going, so the newest data still reaches the live key.
     const previous = await this.storage.get(liveKey(slot))
     let skipped = false
-    if (previous && openEnvelope(previous)) {
+    if (previous && (await openEnvelopeVerified(previous))) {
       try {
         // Rotate oldest-first; a failure part-way leaves a duplicate, never a hole.
         for (let i = BACKUP_COUNT - 1; i > 0; i--) {
@@ -177,9 +244,9 @@ export class SaveManager {
   async load(slot: number): Promise<LoadResult> {
     const live = await this.storage.get(liveKey(slot))
     if (isNewerEnvelope(live)) return { ok: false, reason: 'newer' }
-    const opened = openEnvelope(live)
+    const opened = await openEnvelopeVerified(live)
     // A crash (or full storage) between staging and promotion leaves a valid, newer staging copy.
-    const staged = openEnvelope(await this.storage.get(stagingKey(slot)))
+    const staged = await openEnvelopeVerified(await this.storage.get(stagingKey(slot)))
     if (staged && (!opened || staged.env.savedAt >= opened.env.savedAt)) {
       return { ok: true, state: staged.state, recoveredFromBackup: -1 }
     }
@@ -189,12 +256,12 @@ export class SaveManager {
     }
 
     for (let i = 0; i < BACKUP_COUNT; i++) {
-      const b = openEnvelope(await this.storage.get(backupKey(slot, i)))
+      const b = await openEnvelopeVerified(await this.storage.get(backupKey(slot, i)))
       if (b) return { ok: true, state: b.state, recoveredFromBackup: i }
     }
     // Last resort: the newest intact season milestone (loses at most a season, beats losing the career).
     for (const season of await this.listMilestones(slot)) {
-      const m = openEnvelope(await this.storage.get(milestoneKey(slot, season)))
+      const m = await openEnvelopeVerified(await this.storage.get(milestoneKey(slot, season)))
       if (m) return { ok: true, state: m.state, recoveredFromBackup: BACKUP_COUNT }
     }
     return { ok: false, reason: live ? 'corrupt' : 'empty' }
@@ -234,7 +301,7 @@ export class SaveManager {
   /** Restore a milestone copy into the live slot (returns false when it is missing or damaged). */
   async restoreMilestone(slot: number, season: number): Promise<boolean> {
     const raw = await this.storage.get(milestoneKey(slot, season))
-    if (!raw || !openEnvelope(raw)) return false
+    if (!raw || !(await openEnvelopeVerified(raw))) return false
     await this.storage.set(liveKey(slot), raw)
     return true
   }
@@ -255,7 +322,7 @@ export class SaveManager {
   /** Restore the pre-migration backup into the live slot (returns false when none). */
   async restorePremigrate(slot: number): Promise<boolean> {
     const raw = await this.storage.get(premigrateKey(slot))
-    if (!raw || !openEnvelope(raw)) return false
+    if (!raw || !(await openEnvelopeVerified(raw))) return false
     await this.storage.set(liveKey(slot), raw)
     return true
   }
@@ -268,12 +335,12 @@ export class SaveManager {
     const out: Extract<SaveNotice, { kind: 'integrity' }>[] = []
     for (let slot = 0; slot < SLOT_COUNT; slot++) {
       const live = await this.storage.get(liveKey(slot))
-      if (!live || openEnvelope(live)) continue
+      if (!live || (await openEnvelopeVerified(live))) continue
       let problem: 'live-invalid-recovered' | 'live-invalid' | 'newer-version' = 'live-invalid'
       if (isNewerEnvelope(live)) problem = 'newer-version'
       else {
         for (let i = 0; i < BACKUP_COUNT && problem === 'live-invalid'; i++) {
-          if (openEnvelope(await this.storage.get(backupKey(slot, i)))) problem = 'live-invalid-recovered'
+          if (await openEnvelopeVerified(await this.storage.get(backupKey(slot, i)))) problem = 'live-invalid-recovered'
         }
       }
       out.push({ kind: 'integrity', slot, problem })
@@ -285,7 +352,7 @@ export class SaveManager {
   async summaries(): Promise<(SaveSummary & { savedAt: number } | null)[]> {
     const out: (SaveSummary & { savedAt: number } | null)[] = []
     for (let slot = 0; slot < SLOT_COUNT; slot++) {
-      const o = openEnvelope(await this.storage.get(liveKey(slot)))
+      const o = await openEnvelopeVerified(await this.storage.get(liveKey(slot)))
       out.push(o ? { ...o.env.summary, savedAt: o.env.savedAt } : null)
     }
     return out
@@ -303,11 +370,11 @@ export class SaveManager {
   /** Portable export (the raw envelope) for manual backup / moving devices. */
   async exportSlot(slot: number): Promise<string | null> {
     const live = await this.storage.get(liveKey(slot))
-    return openEnvelope(live) ? live : null
+    return (await openEnvelopeVerified(live)) ? live : null
   }
 
   async importSlot(slot: number, raw: string): Promise<boolean> {
-    const o = openEnvelope(raw)
+    const o = await openEnvelopeVerified(raw)
     if (!o) return false
     await this.save(slot, o.state, o.env.summary)
     return true

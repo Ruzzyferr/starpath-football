@@ -14,6 +14,7 @@ import { leagueTableFor, nextFixtureFor } from '../world/queries'
 import { GFLAG, fixtureSeason, heroClub, isInSeason, isOffSeason, readJson, transferWindow, type WindowKind } from './internal'
 import type { SeasonDigest } from './season'
 import { getOffers, getSponsorOffers } from './season'
+import { slotThumb } from './saveHistory'
 import { isHeroMatchday } from './calendar'
 import { nextHeroNationalFixture } from './national'
 import { teamName } from '../world/national'
@@ -31,6 +32,7 @@ export function saveSummary(state: GameState): SaveSummary {
     money: Math.round(state.life.money),
     playTimeSec: state.meta.playTimeSec,
     ...(crest ? { crest } : {}),
+    thumb: slotThumb(state),
   }
 }
 
