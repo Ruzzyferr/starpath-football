@@ -740,30 +740,30 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.10#1 | TAMAM | game/src/platform/index.ts:96 | Hesap gerekmiyor |
-| 2.10#2 | EKSİK | - | Platform kimliği yok |
-| 2.10#3 | EKSİK | game/index.html:20 | Çevrimiçi anahtarı yok; font isteği hep gidiyor |
+| 2.10#2 | ERTELENDİ | - | BLOCKED-EXTERNAL: Steam/Game Center/Play Games kimliği mağaza hesabı ve SDK ister; yerelde hesapsız tablo var (ui/screens/board) |
+| 2.10#3 | TAMAM | sim/game/feedback.ts onlineAllowed, CommunityScreen, feedback.test.ts | Çevrimiçi anahtarı (varsayılan kapalı); fontlar self-host, kaynakta ağ ilkeli yok ve testle sabitlendi |
 | 2.10#8 | TAMAM | sim/game/localMeta.ts, ui/screens/board/BoardScreen.tsx | Yerel kariyer sıralaması (5 ölçüt) ve kişisel rekorlar; çevrimiçi tablo BLOCKED-EXTERNAL |
-| 2.10#15 | EKSİK | - | Modlu/resmi ayrımı yok |
+| 2.10#15 | TAMAM | sim/game/localMeta.ts localBoard tier, sim/game/mods.ts isModded | Resmî / Modlu tablo ayrımı; imzasız etkin mod ile biten kariyer Modlu tabloya gider |
 | 2.10#17 | TAMAM | sim/game/localMeta.ts challengeFor, localMeta.test.ts | Tohumlu haftalık görev rotasyonu, seri; yerel |
 | 2.10#18 | TAMAM | ui/screens/board/BoardScreen.tsx | Yerel meydan okuma profili: seri, en iyi seri, geçmiş. Çevrimiçi paylaşım BLOCKED-EXTERNAL |
-| 2.10#19 | EKSİK | - | Deneme hakkı tablosu yok |
-| 2.10#34 | KISMİ | game/src/game/MatchScene.ts:35 | Tekrar seed+girdi olarak saklanmıyor |
+| 2.10#19 | TAMAM | sim/game/localMeta.ts AttemptRecord, liveOps.test.ts | Sınırsız deneme; ilk ve en iyi deneme ayrı tutulur (yerel tablo) |
+| 2.10#34 | ERTELENDİ | game/src/game/MatchScene.ts:35 | Seed+girdi kaydı src/game sahibinin işi; fotoğraf ve klip modu buna bağlı |
 | 2.10#40 | KISMİ | ui/share/cards.ts, ShareButtons.tsx, e2e/board.spec.ts | Maç sonu ve kariyer PNG kartı (paylaşım sayfası/indirme) TAMAM; video klip ve fotoğraf modu ertelendi (maç tekrarı seed+girdi yok) |
-| 2.10#60 | EKSİK | - | Mod sistemi yok |
-| 2.10#62 | EKSİK | - | Mod imzası yok |
+| 2.10#60 | KISMİ | sim/game/mods.ts, CommunityScreen, mods.test.ts | Yalnızca veri JSON modları: şema, boyut sınırı, bilinmeyen alan reddi, world validator kuralları yeniden kullanılır; yeni dünya üretimine uygulanması sim/world sahibinde (ertelendi) |
+| 2.10#62 | TAMAM | ui/backend/meta.ts c:mods, mods.ts checkModSignature | Kariyer kaydı mod kimlik@sürüm imzasını saklar; eksik veya farklı modda yüklemede uyarı |
 | 2.10#70 | N/A-süreç | - | Yol haritası taahhüdü |
 | 2.10#72 | TAMAM | - | Sezon kartı yok (kısıt sağlanıyor) |
-| 2.10#76 | EKSİK | - | Uzak içerik paketi yok |
-| 2.10#82 | EKSİK | - | Bildirim altyapısı yok |
+| 2.10#76 | KISMİ | sim/game/mods.ts verifySignature, isOfficialSigned | Ed25519 doğrulama ve testi var; uzaktan indirme ve resmî anahtar BLOCKED-EXTERNAL (sunucu, anahtar yok) |
+| 2.10#82 | TAMAM | sim/game/feedback.ts shouldAskNotifications, NotifyPrompt | İzin ilk haftalık görev bittikten sonra, bir kez, gerekçeyle istenir; yerel hatırlatma |
 | 2.10#83 | TAMAM | - | Baskı bildirimi yok (kısıt sağlanıyor) |
 | 2.10#86 | TAMAM | game/src/sim/world/fixtures.ts:66 | Gerçek zaman cezası yok |
-| 2.10#88 | EKSİK | - | "Hata bildir" formu yok |
+| 2.10#88 | TAMAM | sim/game/feedback.ts, CommunityScreen, feedback.test.ts | Yerel geri bildirim formu; cihaz bilgisi ve son 3 maç kimliği isteğe bağlı; dosya olarak dışa aktarılır |
 | 2.10#93 | TAMAM | ui/screens/board/WhatsNewScreen.tsx | Menüden Yenilikler; görüldü bilgisi meta depoda |
-| 2.10#101 | EKSİK | - | Sunucu seed'i yok |
-| 2.10#102 | EKSİK | - | Girdi günlüğü gönderimi yok |
-| 2.10#103 | EKSİK | - | Sunucuda yeniden oynatma yok |
+| 2.10#101 | ERTELENDİ | - | BLOCKED-EXTERNAL: sunucu seed ve jeton için backend gerekir; yerelde seed haftadan türetilir (liveOps.ts) |
+| 2.10#102 | ERTELENDİ | - | BLOCKED-EXTERNAL: girdi günlüğü gönderimi backend ve 2.10#34 ister |
+| 2.10#103 | ERTELENDİ | - | BLOCKED-EXTERNAL: sunucuda yeniden oynatma backend ve 2.10#34 ister |
 | 2.10#110 | TAMAM | - | Çevrimdışı kariyer kısıtsız |
-| 2.10#111 | EKSİK | game/src/platform/index.ts:46 | **Başarım sistemi yok** |
+| 2.10#111 | TAMAM | sim/game/achievements.ts:140 | Başarım sistemi var; Steam, Game Center, Play eşitlemesi BLOCKED-EXTERNAL (mağaza hesabı) |
 
 ### 2.11 Erişilebilirlik ve Yerelleştirme
 

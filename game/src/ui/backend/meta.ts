@@ -33,6 +33,10 @@ import {
 import { careerSummaryOf, continueCareer as continueFn, retireHero, retirementStatus, type RetirementStatus } from '../../sim/game/retirement'
 import { autoTrialPerformance, hasPendingTrials, pendingTrials, resolveTrial, type TrialInvite } from '../../sim/game/trials'
 import { applyMatch, challengeFor, weekKey, type ChallengeDef, type ChallengeDone, type MatchMetaResult } from '../../sim/game/localMeta'
+import { COUNTRY_DEFS } from '../../data/world/countries'
+import { addFeedback, buildFeedback, requestNotifyPermission, type FeedbackAttachments, type FeedbackEntry, type FeedbackKind, type NotifyState } from '../../sim/game/feedback'
+import { eventForWeek, newsOfTheDay, seasonCalendar, type NewsItem, type SeasonEvent } from '../../sim/game/liveOps'
+import { checkModSignature, installMod, isModded, isOfficialSigned, modSignature, validateModPack, type ModCheck } from '../../sim/game/mods'
 import { MetaStore, type KeyValue, type MetaData } from '../../state/metaStore'
 import { toast } from '../components/Toast'
 import { screen, type ScreenId } from '../store'
@@ -157,6 +161,85 @@ export function weeklyChallengeView(): WeeklyChallengeView | null {
   }
 }
 
+// ───────────────────────── Live-ops, mods, feedback (local-first) ─────────────────────────
+
+export interface LiveOpsView {
+  season: number
+  week: number
+  calendar: SeasonEvent[]
+  current: SeasonEvent | null
+  news: NewsItem[]
+}
+
+/** Season event calendar and the news of the day for the active career (or null without one). */
+export function liveOpsView(): LiveOpsView | null {
+  const s = current()
+  if (!s) return null
+  const v = weeklyChallengeView()
+  const { season, week } = s.calendar
+  return {
+    season, week, calendar: seasonCalendar(season), current: eventForWeek(season, week),
+    news: newsOfTheDay(season, week, { streak: v?.streak ?? 0, challengeDone: !!v?.done, challengeId: v?.def.id ?? '' }),
+  }
+}
+
+export function setOnlineFeatures(on: boolean): void {
+  store.update((d) => { d.local.online = on })
+  publish()
+}
+
+/** Answer the in-app notification prompt (shown after the first cleared weekly challenge). */
+export async function answerNotifyPrompt(allow: boolean): Promise<NotifyState> {
+  const st: NotifyState = allow ? await requestNotifyPermission() : 'declined'
+  store.update((d) => { d.local.notify = st })
+  publish()
+  return st
+}
+
+/** Validate and keep a mod pack from file text. Only a signature from a built-in official key makes it official. */
+export async function importModText(text: string): Promise<ModCheck & { error?: 'limit' }> {
+  const chk = validateModPack(text, COUNTRY_DEFS.map((c) => c.id))
+  if (!chk.ok || !chk.pack) return chk
+  const official = await isOfficialSigned(text)
+  const pack = chk.pack
+  let error: 'limit' | undefined
+  store.update((d) => {
+    const r = installMod(d.local.mods, pack, official, text.length, Date.now())
+    error = r.error
+    if (!r.error) d.local.mods = r.list
+  })
+  publish()
+  return error ? { ...chk, ok: false, error } : chk
+}
+
+export function setModEnabled(id: string, enabled: boolean): void {
+  store.update((d) => { d.local.mods = d.local.mods.map((m) => (m.id === id ? { ...m, enabled } : m)) })
+  publish()
+}
+
+export function removeMod(id: string): void {
+  store.update((d) => { d.local.mods = d.local.mods.filter((m) => m.id !== id) })
+  publish()
+}
+
+/** Save a feedback report on this device; returns it, or null for empty text. */
+export function submitFeedback(kind: FeedbackKind, text: string, attach: FeedbackAttachments, version: string): FeedbackEntry | null {
+  const nav = typeof navigator !== 'undefined' ? navigator : null
+  const e = buildFeedback(kind, text, attach, metaData.value.local, {
+    version, now: Date.now(), ua: nav?.userAgent ?? '', lang: nav?.language ?? '',
+    screen: typeof window !== 'undefined' ? `${window.innerWidth}x${window.innerHeight}` : '',
+  })
+  if (!e) return null
+  store.update((d) => { d.local.feedback = addFeedback(d.local.feedback, e) })
+  publish()
+  return e
+}
+
+export function clearFeedback(): void {
+  store.update((d) => { d.local.feedback = [] })
+  publish()
+}
+
 /** Remember that the player has read What's New for this version. */
 export function markWhatsNewSeen(version: string): void {
   store.update((d) => {
@@ -190,6 +273,13 @@ export function onStateCommitted(s: GameState): void {
     heroClubRecords = heroRecordCount(s)
     casino = null
     // Count each career once (flag lives in the save).
+    // Mod signature: written once at career start; a later load warns about missing or changed mods.
+    const sig = s.life.flags['c:mods']
+    if (typeof sig !== 'string') s.life.flags['c:mods'] = modSignature(store.read().local.mods).join(',')
+    else if (sig) {
+      const mm = checkModSignature(sig.split(','), store.read().local.mods)
+      if (mm.missing.length || mm.versionDiffers.length) toast(t('community.mods.mismatch', { m: [...mm.missing, ...mm.versionDiffers].join(', ') }), 'warning', 'flag', 7000)
+    }
     if (s.life.flags['c:started'] !== true && s.hero.careerStats.apps === 0) {
       s.life.flags['c:started'] = true
       events.push({ type: 'newCareer', legacy: typeof s.life.flags['c:legacyParentId'] === 'string' })
@@ -261,6 +351,10 @@ export function retireNow(opts: { testimonial?: boolean; postCareer?: PostCareer
     return null
   }
   store.addHallOfFame(r.summary)
+  if (isModded(store.read().local.mods)) {
+    const id = r.summary.careerId
+    store.update((d) => { if (!d.local.moddedCareers.includes(id)) d.local.moddedCareers = [...d.local.moddedCareers, id] })
+  }
   publish()
   achievementEvent({ type: 'retired', summary: r.summary }, s)
   commit(s)

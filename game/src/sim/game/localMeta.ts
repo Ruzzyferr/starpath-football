@@ -10,6 +10,9 @@ import { Rng, hashString } from '../../core/rng'
 import { lt } from '../career/common'
 import type { MatchFeats } from './records'
 import type { CareerSummary } from './hallOfFame'
+import { eventForWeek } from './liveOps'
+import type { InstalledMod } from './mods'
+import type { FeedbackEntry, NotifyState } from './feedback'
 
 export interface ChallengeDef {
   id: string
@@ -62,6 +65,20 @@ export interface PersonalBests {
   matches: number
 }
 
+/** One side of a weekly-challenge attempt (2.10#19). */
+export interface AttemptSide {
+  rating: number
+  opponent: string
+  passed: boolean
+}
+
+/** Every eligible match of a week is an attempt: the first one and the best one are kept (unlimited retries). */
+export interface AttemptRecord {
+  count: number
+  first: AttemptSide
+  best: AttemptSide
+}
+
 export interface LocalMeta {
   /** "season:week" to completion. */
   challenges: Record<string, ChallengeDone>
@@ -74,6 +91,19 @@ export interface LocalMeta {
   seen: string[]
   /** App version whose What's New the player has seen. */
   seenVersion: string
+  /** "season:week" to the attempts at that week's challenge (first-attempt and best-attempt tables). */
+  attempts: Record<string, AttemptRecord>
+  /** Season-event stamps, "season:eventId" to challenges completed during the event. */
+  stamps: Record<string, number>
+  /** Career ids retired while a data mod was active: they rank in the Modded table only. */
+  moddedCareers: string[]
+  /** Imported data mods (validated, data only). */
+  mods: InstalledMod[]
+  /** Master switch for anything that could touch the network. Off by default; nothing here needs it. */
+  online: boolean
+  notify: NotifyState
+  /** Locally saved feedback / bug reports (never sent anywhere). */
+  feedback: FeedbackEntry[]
 }
 
 export const emptyLocalMeta = (): LocalMeta => ({
@@ -84,6 +114,13 @@ export const emptyLocalMeta = (): LocalMeta => ({
   bests: { bestRating: 0, goalsMatch: 0, assistsMatch: 0, biggestWin: 0, matches: 0 },
   seen: [],
   seenVersion: '',
+  attempts: {},
+  stamps: {},
+  moddedCareers: [],
+  mods: [],
+  online: false,
+  notify: 'unasked',
+  feedback: [],
 })
 
 export const weekKey = (season: number, week: number): string => `${season}:${week}`
@@ -112,7 +149,19 @@ export function applyMatch(m: LocalMeta, f: MatchFeats): MatchMetaResult {
 
   const key = weekKey(f.season, f.week)
   const def = challengeFor(f.season, f.week, f.isKeeper)
+  if (f.minutes > 0) {
+    const side: AttemptSide = { rating, opponent: f.opponent, passed: def.test(f) }
+    const a = m.attempts[key]
+    if (!a) m.attempts[key] = { count: 1, first: side, best: side }
+    else {
+      a.count += 1
+      // The best attempt is a passed one first, then the higher rating.
+      if (Number(side.passed) > Number(a.best.passed) || (side.passed === a.best.passed && side.rating > a.best.rating)) a.best = side
+    }
+  }
   if (!m.challenges[key] && def.test(f)) {
+    const ev = eventForWeek(f.season, f.week)
+    if (ev) m.stamps[`${f.season}:${ev.id}`] = (m.stamps[`${f.season}:${ev.id}`] ?? 0) + 1
     m.challenges[key] = { id: def.id, rating, opponent: f.opponent }
     const prev = m.lastKey ? m.lastKey.split(':').map(Number) : null
     const consecutive = prev !== null && absWeek(f.season, f.week) - absWeek(prev[0], prev[1]) <= 1
@@ -141,8 +190,12 @@ export const boardValue = (e: CareerSummary, metric: BoardMetric): number => {
   }
 }
 
-export function localBoard(entries: readonly CareerSummary[], metric: BoardMetric): CareerSummary[] {
-  return [...entries].sort((a, b) => boardValue(b, metric) - boardValue(a, metric) || b.legacyScore - a.legacyScore)
+export type BoardTier = 'official' | 'modded'
+
+/** Official table = careers played without data mods; modded careers get their own table (2.10#15). */
+export function localBoard(entries: readonly CareerSummary[], metric: BoardMetric, tier?: BoardTier, moddedIds: readonly string[] = []): CareerSummary[] {
+  const pool = tier ? entries.filter((e) => moddedIds.includes(e.careerId) === (tier === 'modded')) : entries
+  return [...pool].sort((a, b) => boardValue(b, metric) - boardValue(a, metric) || b.legacyScore - a.legacyScore)
 }
 
 // ───────────────────────── Career stats export ─────────────────────────

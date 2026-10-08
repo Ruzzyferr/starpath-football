@@ -24,6 +24,7 @@ const TILES: Tile[] = [
   { id: 'hallOfFame', icon: 'crown', title: 'meta.menu.hallOfFame', desc: 'meta.menu.hallOfFameDesc', to: 'hallOfFame', tone: 'violet' },
   { id: 'board', icon: 'flag', title: 'board.menu.title', desc: 'board.menu.desc', to: 'board', tone: 'pitch' },
   { id: 'whatsNew', icon: 'sparkle', title: 'board.menuNew.title', desc: 'board.menuNew.desc', to: 'whatsNew' },
+  { id: 'community', icon: 'users', title: 'community.menu.title', desc: 'community.menu.desc', to: 'community', tone: 'blue' },
   { id: 'careerLog', icon: 'history', title: 'settings.menu.careerLog', desc: 'settings.menu.careerLogDesc', to: 'careerLog', tone: 'violet' },
   { id: 'inbox', icon: 'newspaper', title: 'settings.menu.inbox', desc: 'settings.menu.inboxDesc', to: 'inbox' },
   { id: 'glossary', icon: 'question', title: 'help.glossary.title', desc: 'help.glossary.sub', to: 'glossary', tone: 'blue' },

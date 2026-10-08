@@ -6,8 +6,9 @@ import { formatNumber, formatRating, seasonLabel } from '../../format'
 import { Icon, type IconName } from '../../icons'
 import { gameState, navigate } from '../../store'
 import { hallOfFame, metaData, weeklyChallengeView } from '../../backend/meta'
-import { CHALLENGES, boardValue, localBoard, type BoardMetric, type PersonalBests } from '../../../sim/game/localMeta'
+import { CHALLENGES, boardValue, localBoard, type BoardMetric, type BoardTier, type PersonalBests } from '../../../sim/game/localMeta'
 import { ExportCsvButton, ShareCareerButton } from '../../share/ShareButtons'
+import { NotifyPrompt } from './CommunityScreen'
 
 type Tab = 'challenge' | 'careers' | 'bests'
 const METRICS: BoardMetric[] = ['legacy', 'goals', 'assists', 'apps', 'trophies']
@@ -49,6 +50,7 @@ function Challenge() {
         <div class="bd-kpi"><span class="micro t-lo">{t('board.challenge.bestStreak')}</span><b class="score-font num">{m.bestStreak}</b></div>
         <div class="bd-kpi"><span class="micro t-lo">{t('board.challenge.total')}</span><b class="score-font num">{Object.keys(m.challenges).length}</b></div>
       </div>
+      <NotifyPrompt />
       <Card>
         <CardHeader title={t('board.challenge.history')} icon="history" />
         {done.length === 0 ? (
@@ -61,7 +63,10 @@ function Challenge() {
               return (
                 <li key={key}>
                   <span><Icon name="check" size={14} class="t-pos" /> {def ? lt(def.title) : d.id}<span class="t-xs t-lo"> · {t('board.challenge.weekRow', { s: seasonLabel(se), w: wk + 1 })}</span></span>
-                  <b class="num">{formatRating(d.rating)}</b>
+                  <b class="num">{formatRating(m.attempts[key]?.best.rating ?? d.rating)}</b>
+                  {m.attempts[key] && (
+                    <span class="t-xs t-lo bd-attempt" data-testid="attempt-row">{t('community.attempt.tries', { n: m.attempts[key].count })} · {t('community.attempt.first')} {formatRating(m.attempts[key].first.rating)} · {t('community.attempt.best')} {formatRating(m.attempts[key].best.rating)}</span>
+                  )}
                 </li>
               )
             })}
@@ -74,11 +79,18 @@ function Challenge() {
 
 function Careers() {
   const [metric, setMetric] = useState<BoardMetric>('legacy')
-  const list = localBoard(hallOfFame(), metric)
-  if (list.length === 0) return <EmptyState icon="crown" text={t('board.careers.empty')} compact />
+  const [tier, setTier] = useState<BoardTier>('official')
+  const modded = metaData.value.local.moddedCareers
+  const list = localBoard(hallOfFame(), metric, tier, modded)
+  const tierBar = (
+    <Segmented label={t('community.tier.label')} value={tier} onChange={setTier} options={[{ id: 'official', label: t('community.tier.official') }, { id: 'modded', label: t('community.tier.modded') }]} />
+  )
+  if (list.length === 0) return <div class="stack" style={{ gap: '12px' }}>{tierBar}<EmptyState icon="crown" text={t('board.careers.empty')} compact /></div>
   return (
     <div class="stack" style={{ gap: '12px' }}>
+      {tierBar}
       <Segmented label={t('board.careers.sortBy')} value={metric} onChange={setMetric} options={METRICS.map((id) => ({ id, label: t(`board.metric.${id}`) }))} />
+      <p class="t-xs t-lo">{t('community.tier.note')}</p>
       <ol class="bd-board" data-testid="career-board" aria-label={t('board.tab.careers')}>
         {list.map((e, i) => (
           <li key={e.careerId} class={`bd-row${i < 3 ? ` bd-top bd-top-${i + 1}` : ''}`}>
