@@ -25,13 +25,13 @@
 | 2.4 Sosyal, olaylar | 39 | 0 | 0 | 0 | 0 | 0 | 39 |
 | 2.5 Ekonomi | 44 | 0 | 0 | 4 | 1 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
-| 2.7 UI/UX | 57 | 0 | 0 | 1 | 7 | 0 | 65 |
+| 2.7 UI/UX | 58 | 0 | 0 | 1 | 6 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 2 | 0 | 0 | 19 |
 | 2.9 Platform | 58 | 1 | 0 | 16 | 4 | 0 | 79 |
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 33 | 0 | 0 | 2 | 2 | 39 | 76 |
-| **Toplam** | **475 (%83)** | 1 | 0 | 34 | 19 | 40 | **569** |
+| **Toplam** | **476 (%84)** | 1 | 0 | 34 | 18 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -671,7 +671,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.7#88 | TAMAM | sim/game/patienceEstimate.ts, patienceEstimate.test.ts, ContractScreen patience-preview | Teklif göndermeden önce sabır maliyeti (counterOffer ile aynı hesap, 5 puanlık bant, "masadan kalkar" uyarısı) |
 | 2.7#89 | TAMAM | ui/screens/WorldScreen.tsx, sim/game/clubPreview.ts, clubPreview.test.ts | Takip / ciddi ilgi / teklif hazır kademeleri (sim eşikleriyle), şehir, beklenen rol, maaş aralığı, tek dokunuşla karşılaştırma tablosu |
 | 2.7#90 | TAMAM | ui/screens/InboxScreen.tsx (news-cause), sim/game/newsCause.ts, newsCause.test.ts | Habere dokununca olayı/haftanın kayıtlarını gösterir. Olay haberi n. olay kaydıyla eşlenir; haber öğesine olay kimliği eklenmedi (sim değişmedi) |
-| 2.7#91 | ERTELENDİ-INT | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım: çerçeve/ikon varlıkları ve tüm yaşam alt ekranlarının yeniden akıtılması gerekir; `ui/screens/life/**` başka paketin elinde; v1.1 |
+| 2.7#91 | TAMAM | ui/screens/LifeScreen.tsx, ui/screens/life/Phone.tsx, styles/screens/phone.css | Yaşam merkezi oyun içi akıllı telefon: ana ekran uygulama ikonları (prosedürel SVG), durum çubuğu (saat/tarih/enerji pili), bildirim rozetleri, açılış/kapanış geçişi (reduced-motion uyumlu), Esc/gamepad B/kenar kaydırma ile ana ekrana dönüş; masaüstünde çerçeveli cihaz + bağlam paneli, mobilde çerçevesiz tam ekran; e2e/phone.spec.ts |
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
 | 2.7#94 | TAMAM | ui/screens/ProfileScreen.tsx (club-stats), sim/game/clubStats.ts, clubStats.test.ts | Sezon/Kariyer tablosuna kulüp bazlı kırılım; gol krallığı NPC sıralaması WorldScreen scorers sekmesinde mevcut |
 | 2.7#98 | TAMAM | ui/screens/SavesScreen.tsx, ui/backend/persistence.ts, e2e/goalreel.spec.ts | Kayıt yuvası kartında `thumbSvg` portresi (summary.thumb SaveSlotInfo'ya taşındı); e2e [WP-V] |

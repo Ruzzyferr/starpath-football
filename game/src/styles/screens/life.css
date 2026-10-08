@@ -246,12 +246,6 @@
 .life-deal-pay .money { font-family: var(--font-score); font-size: 1.625rem; line-height: 1; color: var(--accent-gold); }
 .life-deal-actions { justify-content: flex-end; }
 
-@media (min-width: 900px) {
-  .bank-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .bank-hero, .bank-invest { grid-column: span 2; }
-  .soc-layout { grid-template-columns: minmax(260px, 340px) minmax(0, 1fr); align-items: start; }
-  .soc-profile { position: sticky; top: 0; }
-}
 
 /* ── WP-10: relationship "why" panel ───────────────────────────── */
 .life-person-sub { gap: var(--sp-2); }
