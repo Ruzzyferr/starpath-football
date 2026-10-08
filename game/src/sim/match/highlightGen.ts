@@ -852,7 +852,8 @@ export const GK_HIGHLIGHTS_MAX_90 = 8
 export function kindWeights(pos: Position, ovr?: number): Partial<Record<HighlightKind, number>> {
   const w = { ...KIND_WEIGHTS[pos] }
   const p = tightening(ovr)
-  if (p > 0) for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * (1 - SHOOT_TIGHTENING * p)
+  const e = eliteMarking(ovr)
+  if (p > 0) for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * (1 - SHOOT_TIGHTENING * p) * (1 - ELITE_SHOOT * e)
   return w
 }
 
@@ -865,6 +866,15 @@ export function kindWeights(pos: Position, ovr?: number): Partial<Record<Highlig
 const tightening = (ovr?: number): number => (ovr === undefined ? 0 : clamp((ovr - 68) / 16, 0, 1))
 const SHOOT_TIGHTENING = 0.6
 const COUNT_TIGHTENING = 0.2
+/**
+ * Second stage for stars (playtest Tur 2: 407 goals in 459 games; ST careers at 0.91 goals a
+ * game, best seasons 1.35). Elite players are man-marked and doubled: from OVR 74 to 88 clean
+ * chances thin out further, so a superstar striker ends near 0.6-0.7 a game over a career and
+ * about 1.0 in a peak season (real-world elite range). 0 at 74 and below, 1 at 88+.
+ */
+const eliteMarking = (ovr?: number): number => (ovr === undefined ? 0 : clamp((ovr - 74) / 14, 0, 1))
+const ELITE_SHOOT = 0.5
+const ELITE_COUNT = 0.1
 
 /** Kinds where the hero's team is defending. */
 export function isDefensiveKind(kind: HighlightKind): boolean {
@@ -983,7 +993,7 @@ export function plannedHighlightCount(input: HighlightPlanInput, rng: Rng): numb
   n += (input.morale - 1) * 5
   n += ((input.form - 50) / 50) * 1
   n += focusPositioningMoments(input)
-  n *= 1 - COUNT_TIGHTENING * tightening(input.ovr)
+  n *= (1 - COUNT_TIGHTENING * tightening(input.ovr)) * (1 - ELITE_COUNT * eliteMarking(input.ovr))
   n += rng.normal(0, 0.8)
   const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, input.position === 'GK' ? GK_HIGHLIGHTS_MAX_90 : HIGHLIGHTS_MAX_90)
   if (input.minutes >= 89) return full

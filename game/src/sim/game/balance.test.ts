@@ -93,7 +93,7 @@ export function report(traces: CareerTrace[]): string {
 
   // Goals per season by position group and OVR band, and NPC top scorers by tier.
   const grp = (p: string) => (p === 'ST' ? 'ST' : p === 'LW' || p === 'RW' || p === 'AM' ? 'LW/RW/AM' : p === 'CM' || p === 'DM' ? 'CM/DM' : p === 'GK' ? 'GK' : 'DEF')
-  const bands: [string, number, number][] = [['<60', 0, 59], ['60-65', 60, 65], ['66-70', 66, 70], ['71-76', 71, 76], ['77-82', 77, 82], ['83+', 83, 200]]
+  const bands: [string, number, number][] = [['<60', 0, 59], ['60-65', 60, 65], ['66-70', 66, 70], ['71-76', 71, 76], ['77-82', 77, 82], ['83-87', 83, 87], ['88+', 88, 200]]
   out.push('', '### Sezon başına gol: pozisyon × OVR bandı (medyan / p90 / max, n)', '')
   out.push(`| Grup | ${bands.map((b) => b[0]).join(' | ')} |`, `|---|${bands.map(() => '---').join('|')}|`)
   for (const g of ['ST', 'LW/RW/AM', 'CM/DM', 'DEF']) {
@@ -102,6 +102,15 @@ export function report(traces: CareerTrace[]): string {
       return rows.length ? `${med(rows.map((r) => r.goals)).toFixed(0)} / ${q(rows.map((r) => r.goals), 0.9).toFixed(0)} / ${Math.max(...rows.map((r) => r.goals))} (${rows.length})` : '–'
     })
     out.push(`| ${g} | ${cells.join(' | ')} |`)
+  }
+  // Career goal volume (playtest Tur 2: 407 goals in 459 games): goals per game over each career and in its best season.
+  out.push('', '### Kariyer gol hacmi: maç başına gol (kariyer / en iyi sezon, ≥15 maç)', '')
+  out.push('| Grup | Kariyer medyan | Kariyer max | En iyi sezon medyan | En iyi sezon max | n |', '|---|---|---|---|---|---|')
+  for (const g of ['ST', 'LW/RW/AM', 'CM/DM']) {
+    const ts = traces.filter((t) => t.samples.length && grp(t.samples[t.samples.length - 1].position) === g)
+    const career = ts.map((t) => t.samples.reduce((a, r) => a + r.goals, 0) / Math.max(1, t.samples.reduce((a, r) => a + r.apps, 0)))
+    const best = ts.map((t) => Math.max(0, ...t.samples.filter((r) => r.apps >= 15).map((r) => r.goals / r.apps)))
+    if (ts.length) out.push(`| ${g} | ${med(career).toFixed(2)} | ${Math.max(...career).toFixed(2)} | ${med(best).toFixed(2)} | ${Math.max(...best).toFixed(2)} | ${ts.length} |`)
   }
   out.push('', '### Lig gol kralı (NPC) kademeye göre (medyan / p90 / max, n)', '')
   out.push('| Kademe | Gol kralı |', '|---|---|')
