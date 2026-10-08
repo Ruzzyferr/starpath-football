@@ -7,7 +7,7 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type HorseRaceResult, type HorseView } from '../../store'
-import { BetPicker, casinoMoney, CasinoAgeLock, HorseSvg } from './shared'
+import { BetPicker, casinoMoney, CasinoAgeLock, HorseSvg, LimitBand } from './shared'
 
 const RACE_MS = 6500
 
@@ -95,6 +95,7 @@ function HorsesMain() {
 
   return (
     <Page title={t('casino.games.horses')} backTo="casino" wide actions={<span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={money} compact /></span>}>
+      <LimitBand />
       <div class="hr-layout">
         <div class="hr-track" role="img" aria-label={t('casino.games.horses')}>
           <div class="hr-finish" aria-hidden="true"><span>{t('casino.hr.finish')}</span></div>

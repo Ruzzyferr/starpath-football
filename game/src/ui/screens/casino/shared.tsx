@@ -1,7 +1,8 @@
 /** Casino-wide pieces: header strip, bet picker, playing card, slot symbols. */
 import type { ComponentChildren } from 'preact'
 import { t } from '../../../i18n'
-import { Button, Card, IconButton, Money, Page } from '../../components'
+import { useEffect, useState } from 'preact/hooks'
+import { Button, Card, Chip, IconButton, Money, Page, Slider } from '../../components'
 import { formatMoney } from '../../format'
 import { Icon } from '../../icons'
 import { haptic } from '../../haptics'
@@ -9,6 +10,46 @@ import { data, gameState, navigate, type CardView, type Suit } from '../../store
 
 export function casinoMoney(): number {
   return gameState.value?.life.money ?? 0
+}
+
+// Session clock: minutes since the player walked in; a 15 minute gap starts a new session.
+let sessionStart = 0
+let sessionSeen = 0
+function sessionMinutes(): number {
+  const now = Date.now()
+  if (!sessionStart || now - sessionSeen > 15 * 60_000) sessionStart = now
+  sessionSeen = now
+  return Math.floor((now - sessionStart) / 60_000)
+}
+
+/** 2.7#87: fixed band on every casino screen: balance, today's loss limit and session time. */
+export function LimitBand() {
+  const st = data.casinoStatus()
+  const [mins, setMins] = useState(sessionMinutes)
+  useEffect(() => {
+    const id = setInterval(() => setMins(sessionMinutes()), 30_000)
+    return () => clearInterval(id)
+  }, [])
+  const limited = st.lossLimit > 0
+  const left = Math.max(0, st.lossLimit - st.lostToday)
+  return (
+    <div class="cas-limitband" role="group" aria-label={t('casino.band.label')} data-testid="casino-band">
+      <span class="cas-band-item"><Icon name="coins" size={15} /><span class="micro t-mid">{t('casino.band.balance')}</span><b class="num">{formatMoney(casinoMoney(), { compact: true })}</b></span>
+      <span class="cas-band-item" data-testid="casino-band-limit">
+        <Icon name="shield" size={15} />
+        <span class="micro t-mid">{t('casino.band.limit')}</span>
+        {limited ? (
+          <>
+            <b class="num">{t('casino.band.used', { lost: formatMoney(st.lostToday, { compact: true }), limit: formatMoney(st.lossLimit, { compact: true }) })}</b>
+            {left === 0 ? <Chip tone="neg">{t('casino.band.exhausted')}</Chip> : <span class="t-xs t-mid">{t('casino.band.left', { left: formatMoney(left, { compact: true }) })}</span>}
+          </>
+        ) : (
+          <b>{t('casino.band.noLimit')}</b>
+        )}
+      </span>
+      <span class="cas-band-item" data-testid="casino-band-session"><Icon name="stopwatch" size={15} /><span class="micro t-mid">{t('casino.band.session')}</span><b class="num">{t('casino.band.minutes', { n: mins })}</b></span>
+    </div>
+  )
 }
 
 export function chipValues(min: number, max: number): number[] {
@@ -55,6 +96,18 @@ export function BetPicker({ bet, setBet, disabled }: { bet: number; setBet: (n: 
           <ChipToken key={v} value={v} onClick={() => !disabled && setBet(Math.min(cap, bet + v))} />
         ))}
       </div>
+      {cap >= st.minBet && (
+        <Slider
+          label={t('casino.band.slider')}
+          value={Math.min(bet, cap)}
+          min={0}
+          max={cap}
+          step={st.minBet}
+          onChange={(v) => !disabled && setBet(v)}
+          format={(v) => formatMoney(v)}
+          id="cas-bet-slider"
+        />
+      )}
       {money < st.minBet && <p class="t-sm t-neg">{t('casino.noMoney')}</p>}
     </div>
   )

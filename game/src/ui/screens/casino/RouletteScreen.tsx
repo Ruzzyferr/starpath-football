@@ -7,7 +7,7 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type RouletteBet, type RouletteResult } from '../../store'
-import { casinoMoney, chipValues, ChipToken, CasinoAgeLock } from './shared'
+import { casinoMoney, chipValues, ChipToken, CasinoAgeLock, LimitBand } from './shared'
 
 export const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const RED = new Set([1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36])
@@ -134,6 +134,7 @@ function RouletteMain() {
 
   return (
     <Page title={t('casino.games.roulette')} backTo="casino" wide actions={<span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={money} compact /></span>}>
+      <LimitBand />
       <div class="rl-layout">
         <div class="rl-stage cas-felt">
           <Wheel rotation={rotation} />

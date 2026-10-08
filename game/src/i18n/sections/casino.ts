@@ -49,6 +49,10 @@ export const tr = {
   },
   bet: 'Bahis',
   betAmount: 'Bahis tutarı',
+  band: {
+    label: 'Kumarhane durumu', balance: 'Bakiye', limit: 'Günlük kayıp limiti', used: '{lost} / {limit} kullanıldı', noLimit: 'Limit yok',
+    left: '{left} kaldı', exhausted: 'Limit doldu', session: 'Oturum', minutes: '{n} dk', setLimit: 'Limit koy', slider: 'Bahis kaydırıcısı',
+  },
   clearBet: 'Temizle',
   limits: 'Min {min} · Maks {max}',
   noMoney: 'Bu bahis için paran yetmiyor',
@@ -190,6 +194,10 @@ export const en: Shape<typeof tr> = {
   },
   bet: 'Bet',
   betAmount: 'Bet amount',
+  band: {
+    label: 'Casino status', balance: 'Balance', limit: 'Daily loss limit', used: '{lost} / {limit} used', noLimit: 'No limit',
+    left: '{left} left', exhausted: 'Limit reached', session: 'Session', minutes: '{n} min', setLimit: 'Set a limit', slider: 'Bet slider',
+  },
   clearBet: 'Clear',
   limits: 'Min {min} · Max {max}',
   noMoney: 'You can’t afford this bet',

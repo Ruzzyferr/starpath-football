@@ -6,7 +6,7 @@ import { formatMoney } from '../../format'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, blackjack, data, type BlackjackHandView, type BlackjackView, type CardView } from '../../store'
-import { BetPicker, casinoMoney, PlayingCard, CasinoAgeLock } from './shared'
+import { BetPicker, casinoMoney, PlayingCard, CasinoAgeLock, LimitBand } from './shared'
 
 function Hand({ cards, label, total, dealer, revealed }: { cards: CardView[]; label: string; total: number | null; dealer?: boolean; revealed?: boolean }) {
   return (
@@ -77,6 +77,7 @@ function BlackjackMain() {
   const result = view?.phase === 'done' ? view.result : null
   return (
     <Page title={t('casino.games.blackjack')} backTo="casino" wide actions={<span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={money} compact /></span>}>
+      <LimitBand />
       <div class="bj-layout">
         <div class="bj-table cas-felt">
           <div class="bj-shoe" aria-hidden="true" />

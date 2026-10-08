@@ -3,7 +3,7 @@ import '../../../styles/screens/casino.css'
 import { Button, Card, Money, Page, StatBar } from '../../components'
 import { Icon } from '../../icons'
 import { data, gameState, navigate, type ScreenId } from '../../store'
-import { HorseSvg, PlayingCard, SlotSymbol, CasinoAgeLock } from './shared'
+import { HorseSvg, PlayingCard, SlotSymbol, CasinoAgeLock, LimitBand } from './shared'
 import { ExclusionLock, HelplineNote, ResponsiblePanel } from './ResponsiblePanel'
 import { casinoExclusion } from '../../../sim/life/casino'
 
@@ -67,6 +67,7 @@ function CasinoMain() {
   const net = st.won - st.lost
   return (
     <Page title={t('casino.title')} sub={t('casino.sub')} backTo="life" wide actions={s && <span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={s.life.money} compact /></span>}>
+      <LimitBand />
       <div class="cas-lobby">
         {s && casinoExclusion(s.life) > 0 ? <ExclusionLock /> : <div class="cas-tiles">
           {GAMES.map((g) => (

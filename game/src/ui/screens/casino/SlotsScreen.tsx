@@ -7,7 +7,7 @@ import { prefersReducedMotion } from '../../hooks/motion'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { actions, data, type SlotRules, type SlotsResult } from '../../store'
-import { BetPicker, CasinoAgeLock, casinoMoney, SLOT_SYMBOLS, SlotSymbol } from './shared'
+import { BetPicker, CasinoAgeLock, casinoMoney, SLOT_SYMBOLS, SlotSymbol, LimitBand } from './shared'
 
 /** Filler cells scrolled past before the result lands. */
 const FILL = 15
@@ -129,6 +129,7 @@ function SlotsGame() {
 
   return (
     <Page title={t('casino.games.slots')} backTo="casino" wide actions={<span class="cas-bar-money"><Icon name="coins" size={16} /><Money value={money} compact /></span>}>
+      <LimitBand />
       <div class="slot-layout">
         <div class={`slot-machine${paid ? ' is-win' : ''}${spinning ? ' is-spinning' : ''}`}>
           <div class="slot-marquee" aria-hidden="true">

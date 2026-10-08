@@ -376,6 +376,9 @@ export interface CasinoStatus {
   visitsThisWeek: number
   minBet: number
   maxBet: number
+  /** Daily loss limit the player set (0 = none) and the net loss so far today (2.7#87). */
+  lossLimit: number
+  lostToday: number
   /** Non-null while the hero is under the legal gambling age. */
   ageLock: { minAge: number; yearsLeft: number } | null
   slots: SlotRules

@@ -377,7 +377,7 @@ export const mockData: GameData = {
     const s = getState()
     const c = s?.life.casino ?? { addiction: 0, won: 0, lost: 0, visitsThisWeek: 0 }
     return {
-      ...c, minBet: 50, maxBet: Math.max(500, Math.min(50000, Math.round((s?.life.money ?? 0) * 0.25 / 50) * 50)),
+      ...c, lossLimit: 0, lostToday: 0, minBet: 50, maxBet: Math.max(500, Math.min(50000, Math.round((s?.life.money ?? 0) * 0.25 / 50) * 50)),
       ageLock: s ? casinoAgeLock(s.hero, s.calendar.season) : null, slots: slotRulesView(),
     }
   },

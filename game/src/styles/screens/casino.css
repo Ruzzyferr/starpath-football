@@ -572,3 +572,11 @@
   content: ''; position: absolute; left: 7px; right: 7px; top: -9px; height: 14px; border-radius: 3px;
   background: repeating-linear-gradient(45deg, #b3122a 0 3px, #d42a40 3px 6px); box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.35);
 }
+
+/* WP-U 2.7#87: fixed responsible-play band */
+.cas-limitband {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-5);
+  padding: var(--sp-2) var(--sp-3); margin-bottom: var(--sp-3);
+  border: 1px solid var(--border); border-radius: var(--r-btn); background: var(--surface-1);
+}
+.cas-band-item { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }

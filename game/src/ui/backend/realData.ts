@@ -4,6 +4,7 @@
  * memoise expensive work per state object (see session.cached).
  */
 import { Rng, clamp, hashString } from '../../core/rng'
+import { casinoLimits } from '../../sim/game/casinoLimits'
 import type {
   AttributeGroup, AttributeKey, Club, GameState, LText, NewsItem, SponsorDeal, TableRow,
 } from '../../core/types'
@@ -707,10 +708,10 @@ export const realData: GameData = {
   casinoStatus(): CasinoStatus {
     const s = S()
     const c = s?.life.casino ?? { addiction: 0, won: 0, lost: 0, visitsThisWeek: 0 }
-    const money = s?.life.money ?? 0
+    const lim = s ? casinoLimits(s.life) : { lossLimit: 0, lostToday: 0, maxStake: 0 }
     return {
       addiction: Math.round(c.addiction), won: Math.round(c.won), lost: Math.round(c.lost), visitsThisWeek: c.visitsThisWeek,
-      minBet: 50, maxBet: Math.max(500, Math.min(250_000, Math.floor((money * 0.5) / 50) * 50)),
+      minBet: 50, maxBet: Math.floor(lim.maxStake / 50) * 50, lossLimit: lim.lossLimit, lostToday: Math.round(lim.lostToday),
       ageLock: s ? casinoAgeLock(s.hero, s.calendar.season) : null,
       slots: slotRulesView(),
     }
