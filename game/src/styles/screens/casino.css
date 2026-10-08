@@ -28,7 +28,7 @@
     radial-gradient(140% 120% at 50% 40%, var(--cas-felt) 0%, var(--cas-felt-deep) 100%);
   border: 10px solid var(--cas-wood);
   box-shadow: inset 0 0 0 2px var(--accent-gold-deep), inset 0 0 60px rgba(0, 0, 0, 0.5), var(--sh-raised);
-  border-radius: 28px;
+  border-radius: 20px;
 }
 
 /* ── Lobby ── */
@@ -364,7 +364,7 @@
   align-items: center;
   gap: var(--sp-3);
   padding: var(--sp-4) var(--sp-4) var(--sp-5);
-  border-radius: 28px;
+  border-radius: 20px;
   background: radial-gradient(120% 80% at 50% 0%, rgba(255, 77, 94, 0.4), transparent 60%), linear-gradient(180deg, #3a1020, #1a0710);
   border: 4px solid var(--accent-gold-deep);
   box-shadow: inset 0 0 0 2px var(--accent-gold), var(--sh-raised);

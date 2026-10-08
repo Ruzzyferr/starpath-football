@@ -601,7 +601,7 @@
 .list-row.is-clickable:active { background: rgba(255, 255, 255, 0.06); }
 .list-row.is-active { background: rgba(31, 212, 122, 0.08); box-shadow: inset 3px 0 0 var(--brand-pitch); }
 .list-row:disabled { opacity: 0.5; }
-.list-row-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 11px; background: var(--surface-2); color: var(--text-mid); flex: none; }
+.list-row-icon { display: grid; place-items: center; width: 38px; height: 38px; border-radius: 10px; background: var(--surface-2); color: var(--text-mid); flex: none; }
 .list-row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
 .list-row-title { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .list-row-sub { font-size: var(--fs-xs); color: var(--text-lo); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }

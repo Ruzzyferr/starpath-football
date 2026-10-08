@@ -8,7 +8,7 @@
 .obj-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--sp-2); }
 .obj-title { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); line-height: 1.15; color: var(--text-hi); }
 .obj-time { flex: none; white-space: nowrap; }
-.obj-bar { height: 8px; border-radius: 99px; background: var(--surface-3); overflow: hidden; }
+.obj-bar { height: 8px; border-radius: 999px; background: var(--surface-3); overflow: hidden; }
 .obj-bar-fill { display: block; height: 100%; border-radius: inherit; background: linear-gradient(90deg, var(--brand-pitch-deep), var(--brand-pitch)); transition: width 300ms var(--ease-out); }
 .obj-foot { display: flex; align-items: center; justify-content: space-between; gap: var(--sp-2); flex-wrap: wrap; }
 .obj-count { font-size: var(--fs-lg); color: var(--text-mid); }

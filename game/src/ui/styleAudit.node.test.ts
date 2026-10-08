@@ -97,7 +97,23 @@ describe('frozen debt (may only go down)', () => {
     for (const f of css) {
       for (const m of f.matchAll(/border-radius:\s*(\d+)px/g)) if (!ok.has(Number(m[1]))) n++
     }
-    expect(n).toBeLessThanOrEqual(40)
+    expect(n).toBe(0)
+  })
+
+  it('spacing (gap/padding/margin px) outside the 4/8 grid', () => {
+    // GAP 2.7#7: node audit instead of stylelint (no new dependency). 1px hairlines are allowed.
+    const ok = new Set([0, 1, 2, 4, 6, 8, 10, 12, 14, 16, 20, 24, 28, 32, 40, 48, 64])
+    let n = 0
+    for (const f of css) {
+      for (const m of f.matchAll(/(?:^|[s;{])(?:gap|row-gap|column-gap|padding(?:-[a-z]+)?|margin(?:-[a-z]+)?):s*([^;}{]+)/g)) {
+        for (const v of m[1].matchAll(/(?<![w.-])(d+(?:.d+)?)px/g)) if (!ok.has(Number(v[1]))) n++
+      }
+    }
+    expect(n).toBeLessThanOrEqual(44)
+  })
+
+  it('--sp-* tokens are multiples of 4px', () => {
+    for (const m of read('styles/tokens.css').matchAll(/--sp-d+:s*(d+)px/g)) expect(Number(m[1]) % 4).toBe(0)
   })
 
   it('font sizes under 12px', () => {
