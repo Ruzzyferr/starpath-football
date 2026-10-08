@@ -87,3 +87,17 @@ describe('render scale (DPR profile, WP-P 2.9#13)', () => {
     expect(renderScale({ dpr: 2, cssW: 390, cssH: 844, coarse: true, profile: 'low' })).toBe(1.25)
   })
 })
+
+import { profileOfSettings } from './quality'
+describe('profileOfSettings (createMatchGame input)', () => {
+  it('maps explicit profile, legacy lowFx and none', () => {
+    expect(profileOfSettings({ quality: 'medium', lowFx: true })).toBe('medium')
+    expect(profileOfSettings({ lowFx: true })).toBe('low')
+    expect(profileOfSettings({})).toBeUndefined()
+  })
+  it('the Low profile caps the render scale that createMatchGame applies', () => {
+    const dims = { dpr: 2, cssW: 800, cssH: 450, coarse: false }
+    expect(renderScale({ ...dims, profile: profileOfSettings({ quality: 'low' }) })).toBe(1.25)
+    expect(renderScale({ ...dims, profile: profileOfSettings({ quality: 'high' }) })).toBe(2)
+  })
+})

@@ -12,6 +12,7 @@ import { settings } from '../../store'
 import { rewatchMoment, type HighlightSession } from '../../backend/highlightBridge'
 import { listMoments, momentsVersion, topMoments, type MomentRecording } from '../../../game/moments'
 import type { ReplayAngleChoice } from '../../../game/presentation'
+import { ClipButton } from './ClipButton'
 import { MOMENT_ICON } from './shared'
 
 const L = {
@@ -82,6 +83,7 @@ function MomentPlayer({ m, onClose }: { m: MomentRecording; onClose: () => void 
       <div class="mo-stage" ref={host} data-testid="moment-stage" />
       <div class="mo-controls">
         <Segmented<ReplayAngleChoice> label={lt(L.angle)} value={angle} onChange={setAngle} options={opts} />
+        <ClipButton live={!ended} getCanvas={() => host.current?.querySelector('canvas') ?? null} name={`starpath-moment-${m.minute}`} />
         {ended && <Button size="sm" icon="play" onClick={() => setRun((r) => r + 1)}>{lt(L.again)}</Button>}
       </div>
     </Modal>

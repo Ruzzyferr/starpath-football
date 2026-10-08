@@ -43,17 +43,18 @@ import {
 } from './presentation'
 import type { AimAssist } from './kick'
 import { shotSpeed } from './kick'
-import { clampN, dist, type Agent } from './model'
+import { clampN, dist, type Agent, type Vec2 } from './model'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
-import { applyInput, InputRecorder } from './inputReplay'
+import { applyInput, InputRecorder, type InputRecording } from './inputReplay'
+import type { AimState } from './runtime'
 import { queueGoalReplay } from '../sim/game/saveHistory'
 import { setReportAttachment } from '../telemetry/errorLog'
 import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './setPiecePicker'
 import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
-import { ParticleBudget, QUALITY, renderScale, type QualityProfile, type QualitySpec } from './quality'
+import { ParticleBudget, QUALITY, profileOfSettings, renderScale, type QualityProfile, type QualitySpec } from './quality'
 import { IDLE_FRAMES, WALK_FRAMES, kickStyleFor, type KickStyle } from './figureAnim'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
@@ -110,6 +111,11 @@ export interface StartHighlightOptions {
   matchKey?: string
   /** Replay camera ('auto' = director cuts). */
   replayAngle?: ReplayAngleChoice
+  /**
+   * Goal reel: drives the hero from a stored input recording (its runtime options and seed win over
+   * the live settings) so the moment replays exactly. Nothing is recorded or queued again.
+   */
+  inputReplay?: InputRecording
 }
 
 /** Handle returned by {@link startHighlight}. */
@@ -362,6 +368,8 @@ export class MatchScene extends Phaser.Scene {
   private pickerCooldown = 0
   /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
   private inputRec = new InputRecorder()
+  /** Stored-input playback cursor (goal reel); null when a human / the autopilot plays. */
+  private reel: { frames: InputRecording['frames']; i: number; acc: number; move: Vec2; sprint: boolean; aim: AimState | null } | null = null
   private assistText: Phaser.GameObjects.Text | null = null
   /** Bullet-time desaturation filter (lazily created). */
   private desat: { f: Phaser.Filters.ColorMatrix; amt: number } | null = null
@@ -413,15 +421,18 @@ export class MatchScene extends Phaser.Scene {
     const names = { ...(opts.names ?? {}) }
     const heroP = highlight.scenario.players.find((p) => p.isHero)
     if (heroP) names[heroP.id] = opts.heroName ?? this.s.you
-    this.rt = new HighlightRuntime(highlight, {
-      aimAssist: effectiveAimAssist(opts.settings.aimAssist),
-      slowMoAim: opts.settings.slowMoAim,
-      difficulty: opts.difficulty,
-      weather: opts.weather,
-      names,
-      importance: opts.importance,
-      timingMult: getControlPrefs().timingAssist ? TIMING_ASSIST_MULT : 1,
-    })
+    this.reel = opts.inputReplay && !this.data0.replayOnly ? { frames: opts.inputReplay.frames, i: 0, acc: 0, move: { x: 0, y: 0 }, sprint: false, aim: null } : null
+    this.rt = new HighlightRuntime(highlight, opts.inputReplay && this.reel
+      ? { ...opts.inputReplay.opts, names }
+      : {
+        aimAssist: effectiveAimAssist(opts.settings.aimAssist),
+        slowMoAim: opts.settings.slowMoAim,
+        difficulty: opts.difficulty,
+        weather: opts.weather,
+        names,
+        importance: opts.importance,
+        timingMult: getControlPrefs().timingAssist ? TIMING_ASSIST_MULT : 1,
+      })
     this.sfx = new Sfx(opts.settings.sound)
     const replayOnly = this.data0.replayOnly
     this.auto = opts.autopilot && !replayOnly ? createAutopilot(highlight.id.length) : null
@@ -1125,8 +1136,10 @@ export class MatchScene extends Phaser.Scene {
     if (this.mode === 'play' && this.paused) {
       this.renderLive(0)
     } else if (this.mode === 'play') {
-      this.updatePicker(dt, intent)
-      if (this.auto) {
+      if (!this.reel) this.updatePicker(dt, intent)
+      if (this.reel) {
+        this.stepReel(dt)
+      } else if (this.auto) {
         autopilotStep(rt, this.auto)
         rt.update(dt)
       } else {
@@ -1143,6 +1156,30 @@ export class MatchScene extends Phaser.Scene {
     }
     this.drawOverlay(dt)
     this.updateHud(dt, intent)
+  }
+
+  /** Feeds stored input frames (each at its recorded dt) so a goal reel reproduces the moment exactly. */
+  private stepReel(dt: number): void {
+    const r = this.reel
+    if (!r) return
+    const rt = this.rt
+    r.acc += dt
+    for (let n = 0; n < 8 && !rt.finished; n++) {
+      const f = r.frames[r.i]
+      if (!f) {
+        // Recording ran out before the moment ended: let it play out with no input.
+        applyInput(rt, { move: { x: 0, y: 0 }, sprint: false, actions: [], aim: null }, r.acc)
+        r.acc = 0
+        break
+      }
+      if (r.acc + 1e-9 < f.dt) break
+      if (f.move) r.move = f.move
+      if (f.sprint !== undefined) r.sprint = f.sprint
+      if (f.aim !== undefined) r.aim = f.aim
+      applyInput(rt, { move: r.move, sprint: r.sprint, actions: f.actions ?? [], aim: r.aim }, f.dt)
+      r.acc -= f.dt
+      r.i++
+    }
   }
 
   // ───────────────────────── Set-piece picker ─────────────────────────
@@ -1271,7 +1308,7 @@ export class MatchScene extends Phaser.Scene {
 
   private afterPlay(): void {
     const rt = this.rt
-    this.recordThisMoment()
+    if (!this.reel) this.recordThisMoment()
     // Bug reports (plan 2.1#34): the kicks of the moment just played as {t, dx, dy, curve, lift}.
     const kicks = this.inputRec.kicks()
     const hl = this.data0.highlight
@@ -1288,8 +1325,8 @@ export class MatchScene extends Phaser.Scene {
       })
     }
     const r = rt.result
-    if (r?.outcome === 'goal' && !this.data0.replayOnly && (!r.scorerId || r.scorerId === rt.hero.id)) {
-      queueGoalReplay(hl.minute, this.inputRec.toRecording(hl.id, { aimAssist: rt.assist, slowMoAim: rt.slowMoAim, difficulty: this.data0.opts.difficulty, weather: this.data0.opts.weather, importance: this.data0.opts.importance, timingMult: rt.timingMult }))
+    if (r?.outcome === 'goal' && !this.data0.replayOnly && !this.reel && (!r.scorerId || r.scorerId === rt.hero.id)) {
+      queueGoalReplay(hl.minute, this.inputRec.toRecording(hl.id, { aimAssist: rt.assist, slowMoAim: rt.slowMoAim, difficulty: this.data0.opts.difficulty, weather: this.data0.opts.weather, importance: this.data0.opts.importance, timingMult: rt.timingMult }), hl)
     }
     if (r?.outcome === 'goal' && (!r.scorerId || r.scorerId === rt.hero.id) && !this.data0.replayOnly) {
       this.startCelebration()
@@ -2810,16 +2847,17 @@ function safeAreaTop(canvas: HTMLCanvasElement): number {
  * with zoom = 1/DPR, resized by a ResizeObserver) because Phaser's RESIZE mode
  * maps 1 CSS px to 1 canvas px (blurry on retina). On DPR = 1 it uses
  * Phaser.Scale.RESIZE directly. Handles orientation changes via the observer.
+ * `profile` is the active graphics quality profile: Low caps the render scale at 1.25x.
  * Destroy with `game.destroy(true)`; observers are disconnected automatically.
  */
-export function createMatchGame(parent: HTMLElement): Phaser.Game {
+export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): Phaser.Game {
   // Capped at 2: a 3x backing store costs ~2.25x the fill rate for no visible gain on phones.
   const rect = parent.getBoundingClientRect()
   const cssW = Math.max(1, Math.floor(rect.width || parent.clientWidth || 800))
   const cssH = Math.max(1, Math.floor(rect.height || parent.clientHeight || 450))
   // DPR profile (WP-P, 2.9#13): device ratio capped by a pixel budget, tighter on touch-first devices.
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
-  const dpr = renderScale({ dpr: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, cssW, cssH, coarse })
+  const dpr = renderScale({ dpr: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, cssW, cssH, coarse, profile })
   const hiDpi = dpr > 1.01
   const game = new Phaser.Game({
     type: Phaser.AUTO,
@@ -2868,7 +2906,7 @@ export function startHighlight(
   replayOnly?: MomentRecording,
 ): HighlightHandle {
   const owned = !(target instanceof Phaser.Game)
-  const game = target instanceof Phaser.Game ? target : createMatchGame(target)
+  const game = target instanceof Phaser.Game ? target : createMatchGame(target, profileOfSettings(opts.settings))
   let stopped = false
   const finish = (r: HighlightResult) => {
     if (stopped) return

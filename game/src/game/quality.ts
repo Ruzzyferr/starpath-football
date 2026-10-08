@@ -165,3 +165,8 @@ export function renderScale(opts: { dpr: number; cssW: number; cssH: number; coa
   s = Math.min(s, Math.sqrt(budget / area))
   return Math.max(1, Math.floor(s * 20) / 20)
 }
+
+/** The quality profile a highlight's settings ask for (explicit profile, else the legacy low-effects flag). */
+export function profileOfSettings(s: { quality?: QualityProfile; lowFx?: boolean }): QualityProfile | undefined {
+  return s.quality ?? (s.lowFx ? 'low' : undefined)
+}

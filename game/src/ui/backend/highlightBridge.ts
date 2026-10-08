@@ -15,6 +15,7 @@ import { resolveQuality } from '../../game/quality'
 import { emitHintEvent } from '../tutorial/hints'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from '../../game/presentation'
 import type { MomentRecording } from '../../game/moments'
+import type { InputRecording } from '../../game/inputReplay'
 
 export interface HighlightRequest {
   highlight: Highlight
@@ -154,6 +155,68 @@ export function rewatchMoment(
     })
     .catch(() => {
       if (!stopped) onDone()
+    })
+  return {
+    stop() {
+      stopped = true
+      handle?.stop()
+    },
+  }
+}
+
+export interface GoalReelRequest {
+  highlight: Highlight
+  rec: InputRecording
+  heroColors: KitColors
+  oppColors: KitColors
+  heroName: string
+  lang: Lang
+  settings: UiSettings
+  gender?: 'male' | 'female'
+}
+
+/**
+ * Goal reel: replays a stored goal by feeding its input recording into the interactive scene
+ * (same seed + options, so the moment unfolds exactly as played). `onDone` gets the outcome.
+ */
+export function rewatchGoal(container: HTMLElement, req: GoalReelRequest, onDone: (r: HighlightResult) => void): HighlightSession {
+  let stopped = false
+  let handle: { stop(): void } | null = null
+  import('../../game/MatchScene')
+    .then((mod) => {
+      if (stopped) return
+      handle = mod.startHighlight(
+        container,
+        req.highlight,
+        {
+          heroTeamColors: req.heroColors,
+          oppColors: req.oppColors,
+          settings: {
+            aimAssist: req.rec.opts.aimAssist ?? 'half',
+            slowMoAim: !!req.rec.opts.slowMoAim,
+            vibration: false,
+            sound: req.settings.sound,
+            reducedMotion: req.settings.reducedMotion,
+            lowFx: req.settings.lowFx,
+            quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
+          },
+          matchKey: 'goal-reel',
+          lang: req.lang,
+          difficulty: req.rec.opts.difficulty ?? 'normal',
+          weather: req.rec.opts.weather ?? 'clear',
+          heroName: req.heroName,
+          gender: req.gender,
+          replay: !req.settings.reducedMotion,
+          inputReplay: req.rec,
+        },
+        (r) => {
+          if (import.meta.env.DEV) (globalThis as { __spLastReel?: unknown }).__spLastReel = r
+          if (!stopped) onDone(r)
+        },
+      )
+    })
+    .catch(() => {
+      if (!stopped) onDone({ outcome: 'timeout', passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 })
     })
   return {
     stop() {

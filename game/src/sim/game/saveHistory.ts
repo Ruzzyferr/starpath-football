@@ -6,6 +6,7 @@
 import { ATTRIBUTE_KEYS, type AttributeKey, type GameState } from '../../core/types'
 import type { InputFrame, InputRecording } from '../../game/inputReplay'
 import type { SlotThumb } from '../../state/save'
+import type { Highlight } from '../match/types'
 import { heroClub } from './internal'
 
 // ───────────── Attribute history (2.7#55) ─────────────
@@ -82,6 +83,8 @@ export interface GoalReplay {
   week: number
   minute: number
   rec: PackedRecording
+  /** The scored moment itself (scenario), so the goal reel can replay the input. Absent on older saves. */
+  hl?: Highlight
 }
 
 export function packRecording(r: InputRecording): PackedRecording {
@@ -105,19 +108,19 @@ export function unpackRecording(p: PackedRecording): InputRecording {
   return { version: 1, highlightId: p.highlightId, opts: { ...p.opts }, frames }
 }
 
-interface QueuedReplay { minute: number; rec: InputRecording }
+interface QueuedReplay { minute: number; rec: InputRecording; hl?: Highlight }
 const queue: QueuedReplay[] = []
 
 /** Called by the match scene when the hero scores; stored into the state on the next save. */
-export function queueGoalReplay(minute: number, rec: InputRecording): void {
-  queue.push({ minute, rec })
+export function queueGoalReplay(minute: number, rec: InputRecording, hl?: Highlight): void {
+  queue.push({ minute, rec, hl })
   if (queue.length > MAX_GOAL_REPLAYS) queue.shift()
 }
 
 /** Moves queued goal replays into the state (bounded) and returns how many were added. */
 export function drainGoalReplays(state: GameState): number {
   const n = queue.length
-  for (const q of queue.splice(0)) addGoalReplay(state, { season: state.calendar.season, week: state.calendar.week, minute: q.minute, rec: packRecording(q.rec) })
+  for (const q of queue.splice(0)) addGoalReplay(state, { season: state.calendar.season, week: state.calendar.week, minute: q.minute, rec: packRecording(q.rec), ...(q.hl ? { hl: q.hl } : {}) })
   return n
 }
 

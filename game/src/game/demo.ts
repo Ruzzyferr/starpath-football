@@ -12,6 +12,9 @@ import { createMatchGame, replayMoment, startHighlight, type HighlightHandle } f
 import { listMoments } from './moments'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from './presentation'
 import { isQualityChoice } from './quality'
+import { startClip } from './clipExport'
+import type { InputRecording } from './inputReplay'
+import { headlessOutcome, scriptedRecording } from './reelProbe'
 
 const HERO: KitColors = { primary: '#c8102e', secondary: '#ffffff', pattern: 'stripes' }
 const OPP: KitColors = { primary: '#1d4ed8', secondary: '#0b1b44', pattern: 'hoops' }
@@ -22,7 +25,9 @@ const kindsEl = $<HTMLDivElement>('kinds')
 const resultEl = $<HTMLSpanElement>('result')
 
 const params = new URLSearchParams(location.search)
-const game = createMatchGame(stage)
+const qParam = params.get('q')
+const quality = isQualityChoice(qParam) && qParam !== 'auto' ? qParam : undefined
+const game = createMatchGame(stage, quality)
 let current: HighlightKind = (ALL_KINDS as readonly string[]).includes(params.get('kind') ?? '') ? (params.get('kind') as HighlightKind) : 'edge_of_box'
 let seed = Number(params.get('seed') ?? 1) || 1
 const auto = params.get('auto') === '1'
@@ -35,8 +40,6 @@ const celebration = (params.get('celeb') ?? 'auto') as CelebrationChoice
 const ALL_CELEBS: CelebrationId[] = ['knee_slide', 'airplane', 'point_sky', 'badge_kiss', 'team_huddle', 'shush', 'corner_flag', 'backflip', 'robot', 'heart_hands', 'ice_cold', 'cartwheel']
 const reducedMotion = params.get('rm') === '1'
 const lowFx = params.get('lowfx') === '1'
-const qParam = params.get('q')
-const quality = isQualityChoice(qParam) && qParam !== 'auto' ? qParam : undefined
 let handle: HighlightHandle | null = null
 /** ?hero=CB: play the moment as another position (fk_wall as the captain in the wall). */
 const HERO_POSITIONS: readonly Position[] = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST']
@@ -118,6 +121,33 @@ function play(): void {
       handle = null
     },
   )
+}
+
+/** Dev / e2e goal-reel probe: see reelProbe.ts. */
+;(window as unknown as { __spReel?: unknown }).__spReel = {
+  scripted: scriptedRecording,
+  headless: headlessOutcome,
+  play(kind: HighlightKind, sd: number, rec: InputRecording) {
+    handle?.stop()
+    return new Promise((resolve) => {
+      handle = startHighlight(
+        game,
+        makeDemoHighlight(kind, sd, 'en', 72),
+        {
+          heroTeamColors: HERO, oppColors: OPP, settings: { aimAssist: 'full', slowMoAim: true, vibration: false, sound: 0, reducedMotion, lowFx, quality },
+          lang: 'en', difficulty: 'hard', weather: 'rain', replay: false, matchKey: 'goal-reel', inputReplay: rec,
+        },
+        (r) => { handle = null; resolve(r) },
+      )
+    })
+  },
+  /** Records the canvas for `ms` (clip export capability probe). */
+  async clip(ms: number) {
+    const r = startClip(game.canvas, { maxMs: ms })
+    if (!r) return null
+    const blob = await r.done
+    return { size: blob.size, type: blob.type, capped: r.capped }
+  },
 }
 
 play()

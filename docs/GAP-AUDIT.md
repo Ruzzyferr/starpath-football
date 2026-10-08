@@ -21,17 +21,17 @@
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 2.1 Maç motoru | 60 | 2 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
-| 2.3 Kariyer | 34 | 6 | 0 | 0 | 3 | 0 | 43 |
-| 2.4 Sosyal, olaylar | 21 | 0 | 0 | 0 | 18 | 0 | 39 |
-| 2.5 Ekonomi | 28 | 0 | 0 | 4 | 17 | 0 | 49 |
+| 2.3 Kariyer | 35 | 6 | 0 | 0 | 2 | 0 | 43 |
+| 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
+| 2.5 Ekonomi | 31 | 0 | 0 | 4 | 14 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
-| 2.7 UI/UX | 35 | 0 | 0 | 1 | 29 | 0 | 65 |
+| 2.7 UI/UX | 52 | 0 | 0 | 1 | 12 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 1 | 1 | 0 | 19 |
 | 2.9 Platform | 56 | 2 | 0 | 16 | 5 | 0 | 79 |
-| 2.10 Meta, online | 18 | 1 | 0 | 5 | 0 | 1 | 25 |
+| 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
-| **Toplam** | **405 (%71)** | 12 | 0 | 32 | 80 | 40 | **569** |
+| **Toplam** | **430 (%76)** | 11 | 0 | 32 | 56 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -276,7 +276,7 @@ Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-
 | 2.12#27, #28, #29 | KAPANDI | assets/LICENSES.csv, ci.yml (`licenses:check`), `npm run legal` | Kredi/lisans sayfaları üretilen dosyadan; CI eşitliği denetliyor |
 | 2.12#42 | TAMAM | core/contentFlags.ts (`CASINO_BUILD`), core/contentFlags.test.ts, ui/store.ts, SettingsScreen.tsx | `VITE_FEATURE_CASINO=0` kumarhaneyi derlemede kalıcı gizler ve ayar anahtarını kaldırır |
 | 2.12#70 | TAMAM | store-iap/demo.ts, main.tsx | Kiosk demo flavor mevcut (sabit tohum, boşta sıfırlama) |
-| 2.12#73 | ERTELENDİ | - | v2: klip kaydı (canvas MediaRecorder) kapsam dışı |
+| 2.12#73 | TAMAM | game/clipExport.ts, ui/screens/match/ClipButton.tsx, e2e/goalreel.spec.ts | Klip dışa aktarma: canvas.captureStream + MediaRecorder (WebM), 15 sn sınırı, paylaş/indir; destek yoksa düğme gizli; birim (sınır, özellik algılama) + yetenek kapılı e2e [WP-V] |
 | 2.12#86 | TAMAM | .github/workflows/nightly.yml | Gece 02:17: 1000 kariyer x 10 sezon = 10.000 sezon, iflas eşiği korumalı, ardından birim testler + bütçe |
 | 2.12#87 | TAMAM | sim/game/balanceSim.ts, nightly.yml | Persona'lı otomatik kariyer botu gecelik koşuyor (`humanBot` maç içi botu ayrı) |
 | 2.12#88 | TAMAM | state/saveFuzz.test.ts | 2000 rastgele bozma, her karakter değişimi, k. yazımda çökme enjeksiyonu: hep yüklenebilir kayıt |
@@ -402,7 +402,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.2#37 | TAMAM | game/presentation.ts:98,168 | Kutlama yönü, ilişkiye göre yanına gelenler |
 | 2.2#38 | TAMAM | game/presentation.ts (CELEBRATIONS) | WP-16: 12 kutlama (robot, heart_hands, ice_cold, cartwheel eklendi); pakette 5 kozmetik |
 | 2.2#47 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
-| 2.2#48 | TAMAM | game/src/sim/game/saveHistory.ts, state/saveV3.test.ts | Son 12 gol tekrarı kayıtta: seed+girdi, koşu uzunluğu kodlu (konum yok); MatchScene kuyruğa atar, saveGame state'e yazar [WP-V] |
+| 2.2#48 | TAMAM | game/src/sim/game/saveHistory.ts, ui/screens/profile/GoalReel.tsx, MatchScene.ts (inputReplay), game/reel.test.ts, e2e/goalreel.spec.ts | Son 12 gol tekrarı kayıtta (seed+girdi + sahne); Profil > Gol kaseti MatchScene'de girdiyi yeniden oynatır, aynı sonuç (birim + e2e kabul ölçütü) [WP-V] |
 | 2.2#49 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
 | 2.2#63 | TAMAM | game/quality.ts (ParticleBudget), MatchScene.fxN | WP-16: profil başına sabit canlı parçacık bütçesi (120/260/480) |
 | 2.2#66 | TAMAM | game/art.ts:430 | S21: koda karşı yeniden denetlendi, kapandı. (eski: File dalgası var; verlet ızgara yok) |
@@ -628,7 +628,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#13 | TAMAM | styles/tokens.css data-theme=light, styles/theme-light.css, SettingsScreen tema anahtarı, e2e/wp27.spec.ts | AA kontrastlı açık tema (axe color-contrast 14 ekranda 0), Sistem seçeneği; maç gecesi ekranları koyu kalır |
 | 2.7#14 | TAMAM | styles/fonts.css, e2e/fonts.spec.ts | Fontlar @fontsource ile self-host |
 | 2.7#15 | TAMAM | ui/styleAudit.node.test.ts | .num tabular-nums test edilir; piksel görsel regresyon altyapısı ayrı iş (ertelendi) |
-| 2.7#16 | ERTELENDİ | styles/tokens.css | Ölçek 1.125; 1.25 her ekranı yeniden akıtır, görsel regresyon altyapısı yok (aynı gerekçe) |
+| 2.7#16 | ERTELENDİ-INT | styles/tokens.css | Ölçek 1.125; 1.25 her ekranı yeniden akıtır, görsel regresyon altyapısı yok (aynı gerekçe) |
 | 2.7#21 | ERTELENDİ-INT | ui/layout/Shell.tsx | Sekmeler Ana Sayfa/Kariyer/Yaşam/Dünya/Menü: bilinçli IA kararı (Takım içeriği Kariyer ve Dünya altında) |
 | 2.7#22 | TAMAM | e2e/wpu.spec.ts (single CTA) | #main içinde en fazla bir dolu buton, 15 ekran + yaşam/dünya sekmeleri taranır; liste içi Buy/Play drill ikincil yapıldı |
 | 2.7#23 | TAMAM | e2e/wp27.spec.ts | Hub kutucukları 1 dokunuş, Menü kutucukları 2 dokunuşla açılır; e2e ile sabitlendi |
@@ -646,7 +646,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#44 | TAMAM | ui/components/StatBar.tsx | Önizleme ve 3 sn'lik değişim "+3 ▲ / −1 ▼" |
 | 2.7#48 | TAMAM | sim/game/undoSale.ts, assetUndo.test.ts, ui/screens/life/Assets.tsx, e2e/wpu.spec.ts | Satış onaysız, 6 sn Geri al toast; eşya aynı sıraya döner, gelir geri alınır |
 | 2.7#50 | TAMAM | ui/components/Controls.tsx Slider slider-step | Slider ± adım düğmeleri, 44 px, klavye gerekmez |
-| 2.7#55 | ERTELENDİ-INT | sim/game/saveHistory.ts sampleAttrHistory, state/save.ts MIGRATIONS[2] | Haftalık örnekleme + sezon sıkıştırma kayıtta (v3); Radar.tsx'in `attrSeries` ile bağlanması UI ajanında [WP-V] |
+| 2.7#55 | TAMAM | ui/screens/profile/AttrGrowth.tsx, growthCompare.ts, career/Radar.tsx, e2e/goalreel.spec.ts | Profilde özellik gelişimi: `attrSeries` ile şimdi ve bir sezon önce radar bindirmesi (kesikli çizgi), en çok gelişenler ve çizgi grafik; birim + e2e (axe temiz) [WP-V] |
 | 2.7#56 | TAMAM | ui/components/Charts.tsx Sparkline, e2e/wp27.spec.ts | Dokun, sürükle veya ok tuşlarıyla noktanın değerini okur |
 | 2.7#59 | TAMAM | ui/components/Donut.tsx, ui/screens/profile/FinanceCharts.tsx, sim/game/financeHistory.ts | Gelir/gider halka grafikleri (dokunulabilir) ve haftalık net çubukları; son 12 hafta. Bank ekranı başka ajanın alanı, Profil kartında |
 | 2.7#60 | TAMAM | ui/components/LeagueTable.tsx:14 | Bölge şeritleri ve vurgu var |
@@ -674,7 +674,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#91 | ERTELENDİ-INT | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım; v1.1 |
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
 | 2.7#94 | TAMAM | ui/screens/ProfileScreen.tsx (club-stats), sim/game/clubStats.ts, clubStats.test.ts | Sezon/Kariyer tablosuna kulüp bazlı kırılım; gol krallığı NPC sıralaması WorldScreen scorers sekmesinde mevcut |
-| 2.7#98 | ERTELENDİ-INT | sim/game/saveHistory.ts slotThumb/thumbSvg, summary.thumb | Prosedürel küçük resim özeti kayıtta (v3); SavesScreen.tsx'te `thumbSvg` çizimi UI ajanında [WP-V] |
+| 2.7#98 | TAMAM | ui/screens/SavesScreen.tsx, ui/backend/persistence.ts, e2e/goalreel.spec.ts | Kayıt yuvası kartında `thumbSvg` portresi (summary.thumb SaveSlotInfo'ya taşındı); e2e [WP-V] |
 | 2.7#99 | TAMAM | ui/screens/SettingsScreen.tsx | WP-16: Gizlilik ve Bulut ("Yakında", bağlantısız) grupları |
 | 2.7#103 | TAMAM | styles/tokens.css:136 | Hareket token'ları var |
 | 2.7#105 | TAMAM | ui/hooks/motion.ts:20 | Count-up var |
@@ -722,7 +722,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.9#5 | TAMAM | game/eslint.config.js:30 | sim/core kısıtları |
 | 2.9#6 | ERTELENDİ-EXT | game/src/platform/index.ts:38 | IAP var (2.9#65), paylaşım kartı var; bulut BLOCKED-EXTERNAL (backend) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#12 | TAMAM | game/view.ts:fitZoom | FIT tasarım alanı, birim testli |
-| 2.9#13 | TAMAM | game/quality.ts:renderScale | Mobil DPR profili piksel bütçesiyle, birim testli |
+| 2.9#13 | TAMAM | game/quality.ts:renderScale, profileOfSettings, MatchScene.createMatchGame(parent, profile) | Mobil DPR profili piksel bütçesiyle, birim testli; Düşük profil 1.25x sınırı artık oluşturma anında uygulanıyor (e2e: 2x ekranda canvas oranı) |
 | 2.9#14 | TAMAM | game/src/game/MatchScene.ts:1290 | Phaser yalnızca maçta yaşıyor |
 | 2.9#15 | ERTELENDİ-INT | - | Atlas paketleyecek doku dosyası yok: tüm maç görselleri prosedürel (v2, sanat varlığı gelince) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#16 | TAMAM | game/pool.ts | ObjectPool; uçan yazılar geri dönüştürülüyor (parçacıklar Phaser yayıcılarında zaten havuzlu) |
@@ -808,7 +808,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.10#18 | TAMAM | ui/screens/board/BoardScreen.tsx | Yerel meydan okuma profili: seri, en iyi seri, geçmiş. Çevrimiçi paylaşım BLOCKED-EXTERNAL |
 | 2.10#19 | TAMAM | sim/game/localMeta.ts AttemptRecord, liveOps.test.ts | Sınırsız deneme; ilk ve en iyi deneme ayrı tutulur (yerel tablo) |
 | 2.10#34 | TAMAM | game/src/sim/game/saveHistory.ts packRecording, MatchScene.ts afterPlay | Seed+girdi kaydı kayıpsız paketlenir ve kayıtla taşınır (v3); video klip WP-V kalanı [WP-V] |
-| 2.10#40 | KISMİ | ui/share/cards.ts, ShareButtons.tsx, e2e/board.spec.ts | Maç sonu ve kariyer PNG kartı (paylaşım sayfası/indirme) TAMAM; video klip ve fotoğraf modu ertelendi (maç tekrarı seed+girdi yok) |
+| 2.10#40 | TAMAM | ui/share/cards.ts, ui/share/clips.ts, game/clipExport.ts, e2e/goalreel.spec.ts | Maç sonu ve kariyer PNG kartı + video klip (tekrar oynatıcıda kaydet, 15 sn); fotoğraf modu ertelendi [WP-V] |
 | 2.10#60 | TAMAM | sim/game/mods.ts, sim/game/modWorld.ts, newGame.ts, modWorld.test.ts | Yalnızca veri JSON modları: şema, boyut sınırı, bilinmeyen alan reddi. `world` bölümü (lig/kulüp adı, kısa kod, şehir, stadyum adı, forma renkleri) ve isim listeleri YENİ kariyerin dünyasına deterministik yeniden adlandırma geçişiyle uygulanır; moddan bağımsız dünya bayt bayt aynı. Yeni ülke eklemek (statik kayıt defteri) ve sezon içi doğan gençlerin mod isimleri ertelendi |
 | 2.10#62 | TAMAM | ui/backend/meta.ts c:mods, mods.ts checkModSignature | Kariyer kaydı mod kimlik@sürüm imzasını saklar; eksik veya farklı modda yüklemede uyarı |
 | 2.10#70 | N/A | - | Yol haritası taahhüdü |
