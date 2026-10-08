@@ -14,7 +14,7 @@ describe('betting on your own match (2.5#102)', () => {
     let caught = 0
     let missed = 0
     for (let seed = 1; seed <= 60; seed++) {
-      const state = makeTestState(seed)
+      const state = makeTestState({ seed })
       state.life.money = 1_000_000
       state.life.sponsors = [{ id: 's', brand: 'Volt', category: 'boots', weekly: 1000, untilSeason: 2099, minReputation: 5 }]
       const vars = { stake: 10_000 }

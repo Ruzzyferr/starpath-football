@@ -1071,7 +1071,16 @@ export function casinoCareerCost(life: Life, hero: Pick<Hero, 'form'>, visited: 
 }
 
 /** Weekly casino tick: addiction decay and visit counter reset. */
-export function weeklyCasinoTick(life: Life, hero?: Pick<Hero, 'form' | 'perks'>): Lines {
+/** Gambling-tendency level (addiction meter) from which the press may get wind of it (2.5#99). */
+export const LEAK_ADDICTION = 60
+/** Weekly chance of a press leak while at or above {@link LEAK_ADDICTION}. */
+export const LEAK_CHANCE = 0.15
+
+export function weeklyCasinoTick(
+  life: Life,
+  hero?: Pick<Hero, 'form' | 'perks'>,
+  leak?: { rng: Rng; calendar: Calendar; hero: Pick<Hero, 'firstName' | 'lastName' | 'nickname'> },
+): Lines {
   const visits = life.casino.visitsThisWeek
   const cost = hero ? casinoCareerCost(life, hero, visits > 0) : []
   life.casino.addiction = meter(life.casino.addiction - (visits === 0 ? 5 : 1), 0)
@@ -1085,6 +1094,13 @@ export function weeklyCasinoTick(life: Life, hero?: Pick<Hero, 'form' | 'perks'>
   lines.push(...cost)
   if (life.casino.addiction >= 70) {
     lines.push(lt('Kumar düşüncesi aklından çıkmıyor. Belki birinden yardım almalısın.', "You can't stop thinking about gambling. Maybe you should get help."), HELPLINE_MESSAGE)
+  }
+  // 2.5#99: a high gambling tendency leaks to the papers (15 %/week from 60).
+  if (leak && life.casino.addiction >= LEAK_ADDICTION && leak.rng.chance(LEAK_CHANCE)) {
+    changeRelation(life, 'press', -4, { cause: 'casino', week: absWeek(leak.calendar), why: lt('Kumar alışkanlığı basına sızdı', 'Gambling habit leaked to the press') })
+    life.discipline = meter(life.discipline - 3)
+    pushNews(life, leak.rng, leak.calendar, casinoHeadline(leak.rng, leak.hero, life, { matchTomorrow: false }), -1, 'Gece Bekçisi')
+    lines.push(lt('📰 Kumar alışkanlığın basına sızdı: gazeteler konuşuyor. Disiplin −3.', '📰 Your gambling habit leaked to the press. Discipline −3.'))
   }
   return lines
 }

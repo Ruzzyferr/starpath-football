@@ -146,7 +146,7 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
     weeklyTrustTick(hero, life)
     logAll(state, out, weeklyInjuryTick(hero, physioSessionsThisWeek(life, cal)), 'injury', '🩺')
     logAll(state, out, weeklyAging(hero, cal.season), 'career')
-    logAll(state, out, weeklyCasinoTick(life, hero), 'event', '🎰')
+    logAll(state, out, weeklyCasinoTick(life, hero, { rng, calendar: cal, hero }), 'event', '🎰')
     logAll(state, out, weeklyWellbeing(life, hero, {
       assetHappiness: assetHappiness(life), weeklyNet: eco.net, matchesPlayed: wk.matches, offSeason: isOffSeason(cal.week),
     }), 'event')

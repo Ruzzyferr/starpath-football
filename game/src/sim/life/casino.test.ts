@@ -378,3 +378,28 @@ describe('casino bookkeeping', () => {
     for (let i = 0; i < 50; i++) expect(visitCasino(rng, life, hero, { calendar: { season: 2026, week: 0, day: 0, slot: 2 }, inSeason: false }).spotted).toBe(false)
   })
 })
+
+describe('gambling leak (2.5#99)', () => {
+  it('leaks to the press about 15% of weeks from addiction 60, never below', async () => {
+    const { makeHeroLife } = await import('../career/testFixtures')
+    const { weeklyCasinoTick, LEAK_ADDICTION } = await import('./casino')
+    const { life, hero } = makeHeroLife({ age: 27 })
+    const cal = { season: 2026, week: 10, day: 1 } as never
+    const run = (addiction: number, n: number): number => {
+      const rng = new Rng(5)
+      let leaks = 0
+      for (let i = 0; i < n; i++) {
+        life.casino.addiction = addiction
+        const press0 = life.relationships.press?.value ?? 0
+        weeklyCasinoTick(life, hero, { rng, calendar: cal, hero })
+        if ((life.relationships.press?.value ?? 0) < press0 - 1) leaks++
+        if (life.relationships.press) life.relationships.press.value = 0
+      }
+      return leaks
+    }
+    expect(run(LEAK_ADDICTION - 10, 400)).toBe(0)
+    const hit = run(LEAK_ADDICTION + 10, 800) / 800
+    expect(hit).toBeGreaterThan(0.1)
+    expect(hit).toBeLessThan(0.2)
+  })
+})
