@@ -9,7 +9,7 @@
 import type { Attributes } from '../../core/types'
 import { outcomeProbabilities } from './autoResolve'
 import type { HighlightKind, HighlightScenario, Vec2 } from './types'
-import { DEFENSIVE_KINDS, PITCH_LENGTH } from './types'
+import { DEFENSIVE_KINDS, KEEPER_KINDS, PITCH_LENGTH } from './types'
 
 /** Moments estimated below this success chance are not generated. */
 export const MIN_MOMENT_CHANCE = 0.08
@@ -49,7 +49,7 @@ export function scenarioFactor(kind: HighlightKind, sc: HighlightScenario): numb
   const mates = sc.players.filter((p) => p.side === heroSide && p.role !== 'GK' && !p.isHero)
   let f = 1
   if (DEFENSIVE.has(kind)) {
-    if (kind === 'gk_save' || kind === 'gk_penalty') return 1
+    if (KEEPER_KINDS.has(kind)) return 1
     const ball = sc.ball.pos
     const att = opps.filter((o) => d2(o.pos, ball) < 16).length
     const def = mates.filter((m) => d2(m.pos, ball) < 16).length + 1

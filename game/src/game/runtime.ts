@@ -1170,6 +1170,19 @@ export class HighlightRuntime {
     return true
   }
 
+  /** A crosser delivers an aerial ball to `to`'s run (header / back_post moments). */
+  private crossFor(a: Agent, to: Agent, z: number): void {
+    const from = { x: this.ball.x, y: this.ball.y }
+    const lead = leadPosition(from, { id: to.id, pos: to.pos, vel: to.vel }, 18, 3)
+    const goalX = attackDir(a.team) > 0 ? PITCH_LENGTH : 0
+    const near = goalX - attackDir(a.team) * 4
+    const far = goalX - attackDir(a.team) * 16
+    const target = { x: clampN(lead.x, Math.min(near, far), Math.max(near, far)), y: clampN(lead.y, GOAL_CENTER_Y - 12, GOAL_CENTER_Y + 12) }
+    const noiseScale = a.team === 'opp' ? 1.1 / this.difficulty : 1.25
+    const plan = planKick({ kind: 'cross', from, target, targetZ: z, power: 0.7, curl: 0.4 * Math.sign(GOAL_CENTER_Y - a.pos.y), attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale }, this.rng)
+    this.kickBall(a, plan, 'cross', 0.7, null)
+  }
+
   /** The receiver plays the return pass first time into the hero's run. */
   private playOneTwo(a: Agent): void {
     this.oneTwo = null
@@ -1602,6 +1615,8 @@ export class HighlightRuntime {
       speed = Math.max(speed, topSpeed(a))
       if (dist(a.pos, this.ball) < 2) target = { x: this.ball.x + this.ball.vx * 0.2, y: this.ball.y + this.ball.vy * 0.2 }
     }
+    // gk_sweep (2.1#85): their forward races the keeper for the ball over the top.
+    if (this.kind === 'gk_sweep' && a.team === 'opp' && !a.isKeeper && !this.owner && intent?.kind === 'run') speed = topSpeed({ ...a, sprint: true })
     let desired = target ? arrive(a, target, speed, chasing ? 0.4 : a.isKeeper ? 1.2 : 2.2) : { x: 0, y: 0 }
     desired = add(desired, scale(separation(a, this.agents), 2.2))
     const dv = sub(desired, a.vel)
@@ -1702,6 +1717,15 @@ export class HighlightRuntime {
     if (a.team === 'hero' && this.oneTwo?.armed && this.oneTwo.id === a.id) {
       if (oneTouchReturn(a.attrs.passing) || heldFor > ONE_TWO_SET_TOUCH) this.playOneTwo(a)
       return
+    }
+    // header (2.1#67, #119): the wide team-mate whips it in for the hero's run.
+    if (this.kind === 'header' && a.team === 'hero' && heldFor > 0.55) return this.crossFor(a, this.hero, 1.9)
+    // back_post (2.1#124): their winger crosses for the runner arriving at the far post.
+    if (this.kind === 'back_post' && a.team === 'opp' && heldFor > 0.6) {
+      const runner = this.agents
+        .filter((q) => q.team === 'opp' && q !== a && !q.isKeeper && q.pos.x < 18)
+        .sort((p, q) => Math.abs(q.pos.y - a.pos.y) - Math.abs(p.pos.y - a.pos.y))[0]
+      if (runner) return this.crossFor(a, runner, 1.8)
     }
     // Hero called for the ball.
     if (a.team === 'hero' && this.heroRequest && this.time - this.heroRequest.t < 1.6 && heldFor > (this.heroRequest.explicit ? 0.05 : 0.2)) {

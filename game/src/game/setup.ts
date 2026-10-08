@@ -6,7 +6,7 @@
 import type { Attributes, Position } from '../core/types'
 import type { Rng } from '../core/rng'
 import type { Highlight, HighlightKind, ScenarioPlayer } from '../sim/match/types'
-import { DEFENSIVE_KINDS, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { DEFENSIVE_KINDS, KEEPER_KINDS, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import { GOAL_CENTER_Y } from './physics'
 import { add, dist, norm, scale, sub, type Agent, type Team, type Vec2 } from './model'
 
@@ -34,7 +34,7 @@ export interface Cast {
 }
 
 export const isDefendingKind = (k: HighlightKind) => DEFENSIVE_KINDS.has(k)
-export const isKeeperKind = (k: HighlightKind) => k === 'gk_save' || k === 'gk_penalty'
+export const isKeeperKind = (k: HighlightKind) => KEEPER_KINDS.has(k)
 
 /** Neutral attribute block used when synthesising extra players. */
 export function flatAttrs(v: number, gk = false): Attributes {
@@ -290,8 +290,21 @@ export function buildCast(h: Highlight, rng: Rng, names?: Record<string, string>
       ownerId = null
       break
     }
+    case 'gk_sweep': {
+      // A ball over the top (2.1#85): it rolls toward the box, their forward chasing it.
+      const aim = { x: 17 + rng.range(0, 4), y: GOAL_CENTER_Y + (ball.y - GOAL_CENTER_Y) * 0.4 }
+      const d = norm(sub(aim, { x: ball.x, y: ball.y }))
+      const sp = 9 + rng.range(0, 2.5)
+      Object.assign(ball, { z: 0, vx: d.x * sp, vy: d.y * sp })
+      ownerId = null
+      const dupS = agents.findIndex((a) => a.team === 'hero' && a.isKeeper && !a.isHero)
+      if (dupS >= 0) agents.splice(dupS, 1)
+      break
+    }
+    case 'gk_1v1':
     case 'gk_save': {
-      setPos(hero, { x: Math.max(0.6, Math.min(hero.pos.x, 4)), y: clampY(hero.pos.y, GOAL_CENTER_Y - 3, GOAL_CENTER_Y + 3) })
+      const maxX = kind === 'gk_1v1' ? 6 : 4
+      setPos(hero, { x: Math.max(0.6, Math.min(hero.pos.x, maxX)), y: clampY(hero.pos.y, GOAL_CENTER_Y - 3, GOAL_CENTER_Y + 3) })
       const owner = agents.find((a) => a.id === ownerId)
       if (!owner || owner.team !== 'opp') {
         const n = nearest(agents.filter((a) => a.team === 'opp' && !a.isKeeper), { x: ball.x, y: ball.y })

@@ -109,7 +109,7 @@ describe('position guarantees', () => {
 
   it('a centre-back gets at least 3 defensive moments in a full match', () => {
     for (let seed = 1; seed <= 25; seed++) {
-      const r = count('CB', ['defend', 'interception', 'defend_1v1', 'block'], seed)
+      const r = count('CB', ['defend', 'interception', 'defend_1v1', 'block', 'back_post'], seed)
       if (r.full) expect(r.n).toBeGreaterThanOrEqual(3)
     }
   })
@@ -185,11 +185,13 @@ describe('rating breakdown & floor', () => {
   it('log sums to the final rating and the map is filled', () => {
     for (const pos of ['ST', 'CB', 'GK'] as Position[]) {
       const sim = new MatchSim(heroMatch(11, pos), 'en')
+      let attacked = false
       while (!sim.finished) {
         const h = sim.pendingHighlight
         if (h) {
           const hero = h.scenario.players.find((p) => p.isHero)!
           const def = isDefensiveKind(h.kind)
+          if (!def) attacked = true
           sim.resolveHighlight(blank(def ? 'defended' : 'saved', {
             shots: def ? 0 : 1, shotsOnTarget: def ? 0 : 1,
             track: [hero.pos, { x: hero.pos.x + 3, y: hero.pos.y }],
@@ -206,10 +208,10 @@ describe('rating breakdown & floor', () => {
       const map = snap.heroMap!
       expect(map.heat).toHaveLength(HEAT_COLS * HEAT_ROWS)
       expect(map.heat.reduce((a, v) => a + v, 0)).toBeGreaterThan(snap.heroStats.minutes * 0.9)
-      if (pos !== 'GK') {
+      if (pos !== 'GK' && attacked) {
         expect(map.shots.length).toBeGreaterThan(0)
         for (const s of map.shots) {
-          expect(s.x).toBeGreaterThan(0.45) // build-up shots can start just inside our half
+          expect(s.x).toBeGreaterThan(0.35) // build-up moments start 40-55 m out (highlightGen placeBuildUp)
           expect(s.xg).toBeGreaterThan(0)
         }
       } else {

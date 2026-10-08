@@ -10,7 +10,7 @@ import type { Rng } from '../../core/rng'
 import { clamp } from '../../core/rng'
 import type { AttributeKey, Attributes } from '../../core/types'
 import type { HighlightKind, HighlightOutcome, HighlightResult } from './types'
-import { DEFENSIVE_KINDS } from './types'
+import { DEFENSIVE_KINDS, KEEPER_KINDS } from './types'
 
 type Outcome = HighlightOutcome
 type Weights = Partial<Record<Outcome, number>>
@@ -38,6 +38,11 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   corner_kick: { crossing: 0.45, setPieces: 0.35, vision: 0.2 },
   // Keeper or captain organising the wall: reading the taker and the angles.
   fk_wall: { positioning: 0.45, leadership: 0.3, composure: 0.25 },
+  dribble: { dribbling: 0.45, agility: 0.2, pace: 0.15, finishing: 0.2 },
+  header: { heading: 0.45, jumping: 0.3, positioning: 0.25 },
+  gk_1v1: { reflexes: 0.35, positioning: 0.35, pace: 0.15, composure: 0.15 },
+  gk_sweep: { positioning: 0.45, pace: 0.3, handling: 0.25 },
+  back_post: { positioning: 0.4, heading: 0.3, jumping: 0.15, strength: 0.15 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -64,6 +69,12 @@ const BASE: Record<HighlightKind, Weights> = {
   corner_kick: { assist: 0.08, goal: 0.02, pass_complete: 0.3, cleared: 0.55, lost_ball: 0.05 },
   // Direct free kick from 18–28 m: the wall and the keeper keep most of them out.
   fk_wall: { defended: 0.86, conceded: 0.14 },
+  // Take-on: beat the man, then the chance; most end in a lost ball or a pass on.
+  dribble: { goal: 0.06, assist: 0.05, saved: 0.1, missed: 0.12, blocked: 0.05, pass_complete: 0.22, lost_ball: 0.32, foul_won: 0.08 },
+  header: { goal: 0.11, saved: 0.24, missed: 0.36, blocked: 0.08, lost_ball: 0.18, woodwork: 0.03 },
+  gk_1v1: { defended: 0.6, conceded: 0.4 },
+  gk_sweep: { defended: 0.78, conceded: 0.1, foul_committed: 0.04, shot_conceded: 0.08 },
+  back_post: { defended: 0.52, shot_conceded: 0.2, conceded: 0.13, foul_committed: 0.05, lost_ball: 0.1 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
@@ -142,7 +153,7 @@ function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
       if (rng.chance(0.5)) r.passes += 1
       break
     case 'defended':
-      if (DEFENSIVE_KINDS.has(kind) && kind !== 'gk_save' && kind !== 'gk_penalty') r.tackles += 1
+      if (DEFENSIVE_KINDS.has(kind) && !KEEPER_KINDS.has(kind)) r.tackles += 1
       break
     case 'foul_won':
       r.dribbles += 1
@@ -168,6 +179,6 @@ export function autoResolve(kind: HighlightKind, attrs: Attributes, difficulty: 
   const outcome = rng.weighted(outcomes, (o) => probs[o] ?? 0)
   const r = emptyResult(outcome)
   fillStats(kind, r, rng)
-  if (kind !== 'gk_save' && kind !== 'gk_penalty' && rng.chance(AUTO_INJURY_CHANCE * injuryMult)) r.injured = true
+  if (!KEEPER_KINDS.has(kind) && rng.chance(AUTO_INJURY_CHANCE * injuryMult)) r.injured = true
   return r
 }

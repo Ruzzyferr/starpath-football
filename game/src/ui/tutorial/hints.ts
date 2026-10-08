@@ -32,6 +32,11 @@ const MATCH_GROUPS: Record<string, HintGroup[]> = {
   block: ['defend'],
   corner_kick: ['cornerPick', 'header'],
   fk_wall: ['wallSet', 'keeper'],
+  dribble: ['move', 'shoot'],
+  header: ['header'],
+  gk_1v1: ['keeper'],
+  gk_sweep: ['keeper', 'move'],
+  back_post: ['header', 'defend'],
 }
 
 const DRILL_GROUPS: Record<string, HintGroup> = {

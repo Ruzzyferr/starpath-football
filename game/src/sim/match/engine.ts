@@ -84,6 +84,7 @@ import type {
   ShotMapEntry,
   Side,
 } from './types'
+import { KEEPER_KINDS } from './types'
 
 export type { MatchSimOptions } from './engineState'
 
@@ -1222,7 +1223,8 @@ export class MatchSim {
     const diff = this.s.score[idx(side)] - this.s.score[idx(other(side))]
     const slotsLeft = h.plan.filter((m) => m >= this.s.clock).length
     const forced = hero.position === 'GK' ? null : guaranteedKind(hero.position, h.kinds ?? {}, slotsLeft, this.rng)
-    const kind = hero.position === 'GK' ? 'gk_save' : forced ?? pickHighlightKind(hero.position, this.rng, diff, this.s.clock, h.stats.goals, hero.ovr)
+    // Keepers draw from their own pool (save / 1v1 / sweep, plan 2.1#85).
+    const kind = forced ?? pickHighlightKind(hero.position, this.rng, diff, this.s.clock, h.stats.goals, hero.ovr)
     const att = isDefensiveKind(kind) ? other(side) : side
     const share = att === 'home' ? 0.6 : 0.4
     this.s.teams.home.possession += share
@@ -1273,7 +1275,7 @@ export class MatchSim {
       const attrs = this.player(h.id as string).attrs
       const chance = (g: typeof gen, k: HighlightKind) => momentChance(k, g.scenario, attrs, this.s.setup.difficulty)
       for (let i = 0; i < 2 && chance(gen, kind) < MIN_MOMENT_CHANCE; i++) gen = build(kind)
-      if (chance(gen, kind) < MIN_MOMENT_CHANCE && kind !== 'build_up' && kind !== 'gk_save') {
+      if (chance(gen, kind) < MIN_MOMENT_CHANCE && kind !== 'build_up' && !KEEPER_KINDS.has(kind)) {
         kind = 'build_up'
         gen = build(kind)
       }
@@ -1441,7 +1443,7 @@ export class MatchSim {
   private heroFoulWon(p: PendingRuntime, vars: CommentaryVars): void {
     const side = this.s.hero.side as Side
     const kind = p.highlight.kind
-    const inBox = kind === 'one_on_one' || kind === 'counter' || kind === 'cross' || kind === 'edge_of_box'
+    const inBox = kind === 'one_on_one' || kind === 'counter' || kind === 'cross' || kind === 'edge_of_box' || kind === 'dribble' || kind === 'header'
     const def = other(side)
     const fouler = this.pickFrom(def, (x) => FOUL_WEIGHT[x.position], { excludeHero: true })
     this.s.teams[def].fouls++
@@ -1476,7 +1478,8 @@ export class MatchSim {
           return this.emit('shot', opp, this.say('heroWallHeld', vars), { playerId: heroId })
         }
         // Outfield defending (tackle, interception, 1v1): no shot, no save.
-        if (kind !== 'gk_save' && kind !== 'gk_penalty') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
+        // A sweeper keeper gets there first: no shot either.
+        if (kind !== 'gk_save' && kind !== 'gk_penalty' && kind !== 'gk_1v1') return this.emit('commentary', side, this.say('heroDefended', vars), { playerId: heroId })
         oppTeam.shots++
         oppTeam.onTarget++
         this.recordSave(side, heroId)

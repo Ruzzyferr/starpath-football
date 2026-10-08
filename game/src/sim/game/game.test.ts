@@ -148,7 +148,9 @@ describe('full season', () => {
     const size = packedSize(s)
     console.log(`season: ${ms.toFixed(0)} ms (${(ms / Math.max(1, stats.days)).toFixed(1)} ms/day over ${stats.days} days), hero matches ${stats.heroMatches}, events ${stats.events}, save ${(size / 1024).toFixed(0)} KB, OVR ${heroOvr(s.hero)}, money ${Math.round(s.life.money)}`)
     expect(s.calendar.season).toBe(START_YEAR + 1)
-    expect(s.calendar.week).toBe(0)
+    // The run stops at the first stop of the new season: pre-season week 0, or week 1 when the hero has no
+    // week-0 fixture (seed-dependent since the S21 moment kinds shifted the match RNG).
+    expect(s.calendar.week).toBeLessThanOrEqual(1)
     expect(findNonFinite(s)).toEqual([])
     expect(s.life.money).toBeGreaterThan(-1)
     expect(s.life.money).toBeLessThan(1e8)

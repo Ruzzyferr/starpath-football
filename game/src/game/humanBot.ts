@@ -261,6 +261,11 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   }
 
   // ── Keeper ──
+  // Sweeping (2.1#85): a ball over the top: come off the line once it is read.
+  if (rt.heroIsKeeper && rt.kind === 'gk_sweep' && !rt.owner && st.real > st.skill.reaction + 0.15) {
+    moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+    return
+  }
   if (rt.heroIsKeeper) {
     const shotIncoming = !rt.owner && Math.hypot(rt.ball.vx, rt.ball.vy) > 9 && rt.ball.vx < 0
     if (!shotIncoming) st.shotSeenReal = -1
@@ -354,6 +359,11 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       }
     }
     const dGoal = dist(hero.pos, goal)
+    // Take-on (2.1#36): a skill move when the defender steps in.
+    if (rt.kind === 'dribble') {
+      const man = rt.agents.filter((a) => a.team === 'opp' && !a.isKeeper && a.pos.x > hero.pos.x - 0.5).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      if (man && dist(man.pos, hero.pos) < 2.6 && st.rng.chance(0.5)) act({ kind: 'skill' })
+    }
     // On a break there is space to run into: no panic shot from distance.
     const patience = rt.kind === 'counter_2v1' || rt.kind === 'counter' ? 7 : 2.4
     if (dGoal < st.shootAt || (held > patience && dGoal < 30)) {

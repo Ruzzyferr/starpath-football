@@ -90,6 +90,11 @@ export const tr = {
     block: 'Şut bloğu',
     corner_kick: 'Korner kullanımı',
     fk_wall: 'Baraj kurma',
+    dribble: 'Çalım',
+    header: 'Kafa vuruşu',
+    gk_1v1: 'Kaleci 1’e 1',
+    gk_sweep: 'Kaleci çıkışı',
+    back_post: 'Arka direk',
   },
   post: {
     title: 'Maç Sonu',
@@ -211,6 +216,11 @@ export const en: Shape<typeof tr> = {
     block: 'Shot block',
     corner_kick: 'Corner delivery',
     fk_wall: 'Setting the wall',
+    dribble: 'Take-on',
+    header: 'Header',
+    gk_1v1: 'Keeper 1v1',
+    gk_sweep: 'Sweeping',
+    back_post: 'Back post',
   },
   post: {
     title: 'Full Time',

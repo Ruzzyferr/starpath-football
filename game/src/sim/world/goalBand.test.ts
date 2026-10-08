@@ -38,7 +38,8 @@ function seasonTopScorer(rng: Rng, leagueId: string): number {
 
 describe('season goal band (2.1#129)', () => {
   const leagues = ['EN1', 'TR1', 'JP1']
-  const seasons = Number(process.env.GOAL_BAND_SEASONS) || 24
+  const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
+  const seasons = Number(env.GOAL_BAND_SEASONS) || 24
 
   it('top scorers sit in the realistic band; extreme seasons stay ≤ 0.1%', () => {
     const rng = new Rng(77)

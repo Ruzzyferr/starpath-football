@@ -111,9 +111,17 @@ export type HighlightKind =
   | 'block' // an opponent winds up a shot from the edge: get in the line and block it
   | 'corner_kick' // the hero takes a corner: pick delivery zone, height and curl, team-mates attack it
   | 'fk_wall' // opposition free kick near our box: the hero (keeper or captain) sets the wall, then the kick
+  | 'dribble' // take-on (2.1#36): one defender squared up in front, beat him with the ball (3–8 s)
+  | 'header' // open-play cross from a team-mate to the hero in the box: time the header (2.1#67, #119)
+  | 'gk_1v1' // keeper (2.1#85): an attacker is through on goal, come out and narrow the angle
+  | 'gk_sweep' // keeper (2.1#85): a ball over the top, come off the line and sweep it up first
+  | 'back_post' // full-back / defender (2.1#124): a cross from the far flank, cover the back post
+
+/** Keeper-hero kinds (2.1#85: save, penalty, 1v1, sweeping). */
+export const KEEPER_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['gk_save', 'gk_penalty', 'gk_1v1', 'gk_sweep'])
 
 /** Kinds where the hero's team is defending (WP-14 adds defend_1v1 and block). */
-export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall'])
+export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall', 'gk_1v1', 'gk_sweep', 'back_post'])
 
 export interface Vec2 {
   x: number

@@ -977,6 +977,11 @@ export const HIGHLIGHT_PROMPTS = {
   block: { tr: 'Şut geliyor! Şut yoluna gir ve blokla!', en: 'Shot coming! Get in the line and block it!' },
   corner_kick: { tr: 'Korner sende! Bölgeyi, yüksekliği ve kavisi seç, arkadaşların koşuya çıksın!', en: 'Your corner! Pick the zone, height and curl, your team-mates will attack it!' },
   fk_wall: { tr: 'Tehlikeli serbest vuruş! Barajı kur: kaç oyuncu, nereye. Sonra vuruşu karşıla!', en: 'Dangerous free kick! Set the wall: how many and where. Then deal with the kick!' },
+  dribble: { tr: 'Önünde tek savunmacı! Topu sür, çalımla geç!', en: 'One defender in front of you! Take him on and beat him!' },
+  header: { tr: 'Kanattan orta geliyor! Zamanla ve kafayı vur!', en: 'Cross coming in from the wing! Time it and head it!' },
+  gk_1v1: { tr: 'Forvet kaleye doğru tek başına! Çık, açıyı daralt!', en: 'An attacker is clean through! Come out and narrow the angle!' },
+  gk_sweep: { tr: 'Savunmanın arkasına top! Çizgiden çık, önce sen ulaş!', en: 'Ball over the top! Come off your line and get there first!' },
+  back_post: { tr: 'Uzak kanattan orta! Arka direği kapat!', en: 'Cross from the far side! Cover the back post!' },
 } as const satisfies Record<string, Record<Lang, string>>
 
 const PLACEHOLDER = /\{(\w+)(?::(gen|dat|acc|loc|abl|ins))?\}/g

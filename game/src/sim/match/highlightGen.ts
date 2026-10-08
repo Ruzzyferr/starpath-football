@@ -77,6 +77,15 @@ const BANDS: Record<HighlightKind, readonly [number, number, number, number]> = 
   corner_kick: [55, 96, 4, 22],
   // Opposition free kick 18–28 m from our goal: everyone is back.
   fk_wall: [4, 30, 56, 88],
+  // Take-on 30–40 m out: a back line set, one defender stepping out.
+  dribble: [36, 78, 14, 44],
+  // Open-play cross: both teams in and around the box.
+  header: [44, 92, 6, 34],
+  // Keeper 1v1 / sweeper: our line beaten, their forwards through.
+  gk_1v1: [10, 46, 46, 86],
+  gk_sweep: [14, 50, 48, 82],
+  // Cross from their far flank into our box.
+  back_post: [4, 34, 56, 92],
 }
 
 /** Seconds before the moment auto-ends. */
@@ -102,6 +111,12 @@ export const TIME_LIMITS: Record<HighlightKind, number> = {
   // The delivery picker / wall setup does not count against the clock.
   corner_kick: 9,
   fk_wall: 8,
+  // Plan 2.1#36: a dribbling moment lasts 3–8 s.
+  dribble: 8,
+  header: 8,
+  gk_1v1: 8,
+  gk_sweep: 8,
+  back_post: 8,
 }
 
 const SLOT_X_MIN = 16
@@ -646,6 +661,85 @@ const placeBlock: Placer = (l) => {
   return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
 }
 
+const placeDribble: Placer = (l) => {
+  const rng = l.input.rng
+  const hp = { x: rng.range(62, 76), y: rng.range(12, 56) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  const skip = new Set([gk?.player.id ?? ''])
+  // One defender squared up in front, a second covering behind him.
+  const [man, cover] = nearest(l, l.opps, hp, 2, skip)
+  if (man) set(l, man.player.id, { x: hp.x + rng.range(4.5, 6), y: hp.y + rng.range(-1, 1) })
+  if (cover) set(l, cover.player.id, { x: hp.x + rng.range(11, 15), y: hp.y + (34 - hp.y) * 0.4 })
+  const passer = pickMate(l, (m) => relationWeight(m) * (['CM', 'DM', 'LB', 'RB'].includes(roleOf(m)) ? 2 : 0.5))
+  if (passer) set(l, passer.player.id, { x: hp.x - rng.range(8, 12), y: hp.y + rng.range(-8, 8) })
+  return { ball: owned(hp, l.input.heroId), passerId: passer?.player.id ?? null, finisherId: null, opponentId: man?.player.id ?? null }
+}
+
+const placeHeader: Placer = (l) => {
+  const rng = l.input.rng
+  const flankY = rng.chance(0.5) ? 5 : PITCH_WIDTH - 5
+  const gk = oppKeeper(l)
+  set(l, gk?.player.id, { x: 102, y: 34 + (flankY - 34) * 0.1 })
+  const crosser = pickMate(l, (m) => (m.player.id === l.input.heroId ? 0 : relationWeight(m) * (WIDE.has(roleOf(m)) ? 3 : 0.3) * (m.player.attrs.crossing + 1)))
+  const cp = { x: rng.range(84, 92), y: flankY }
+  set(l, crosser?.player.id, cp)
+  const hp = { x: rng.range(92, 97), y: rng.range(28, 40) }
+  set(l, l.input.heroId, hp)
+  const others = l.mates.filter((m) => ATTACKERS.has(roleOf(m)) && m.player.id !== l.input.heroId && m !== crosser).slice(0, 2)
+  fillBox(l, others, new Set([gk?.player.id ?? '']))
+  closeDown(l, nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? ''])), hp, 1.4, PITCH_LENGTH)
+  closeDown(l, nearest(l, l.opps, cp, 1, new Set([gk?.player.id ?? ''])), cp, 4, PITCH_LENGTH)
+  return { ball: owned(cp, crosser?.player.id ?? null), passerId: crosser?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
+}
+
+const placeGk1v1: Placer = (l) => {
+  const rng = l.input.rng
+  const att = oppAttacker(l)
+  const ap = { x: rng.range(22, 30), y: rng.range(24, 44) }
+  set(l, att?.player.id, ap)
+  set(l, l.input.heroId, { x: 3.5, y: 34 + (ap.y - 34) * 0.3 })
+  // Our defenders are beaten: chasing from behind the attacker.
+  const chasers = nearest(l, l.mates, ap, 2, new Set([l.input.heroId]))
+  chasers.forEach((c, i) => set(l, c.player.id, { x: ap.x + 3 + i * 3, y: ap.y + (i ? 3 : -3) }))
+  return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
+}
+
+const placeGkSweep: Placer = (l) => {
+  const rng = l.input.rng
+  const att = oppAttacker(l)
+  // The ball has just been played over our line from midfield (the runtime gives it pace).
+  const bp = { x: rng.range(30, 36), y: rng.range(22, 46) }
+  // Their forward is already running in behind, a stride or two ahead of the ball.
+  const ap = { x: bp.x - rng.range(1, 3), y: bp.y + rng.range(-3, 3) }
+  set(l, att?.player.id, ap)
+  set(l, l.input.heroId, { x: 3, y: 34 + (bp.y - 34) * 0.2 })
+  const backs = nearest(l, l.mates, ap, 2, new Set([l.input.heroId]))
+  backs.forEach((c, i) => set(l, c.player.id, { x: ap.x + 6 + i * 3, y: ap.y + (i ? 6 : -6) }))
+  return { ball: owned(bp, null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
+}
+
+const placeBackPost: Placer = (l) => {
+  const rng = l.input.rng
+  // Their winger on the far flank (we defend x = 0); the hero tucks in at the back post.
+  const top = rng.chance(0.5)
+  const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
+  const crosser = pool.length ? rng.weighted(pool, (o) => (WIDE.has(roleOf(o)) ? 3 : 0.3) * (o.player.attrs.crossing + 5)) : undefined
+  const cp = { x: rng.range(12, 20), y: top ? 4 : PITCH_WIDTH - 4 }
+  set(l, crosser?.player.id, cp)
+  const farY = top ? 34 + rng.range(4, 7) : 34 - rng.range(4, 7)
+  const runner = pool.find((o) => o !== crosser && ATTACKERS.has(roleOf(o)))
+  set(l, runner?.player.id, { x: rng.range(9, 13), y: farY + (top ? 3 : -3) })
+  set(l, l.input.heroId, { x: rng.range(5, 8), y: farY })
+  const keeper = mateKeeper(l)
+  set(l, keeper?.player.id, { x: 1.2, y: 34 + (cp.y - 34) * 0.12 })
+  const near = l.opps.filter((o) => o !== crosser && o !== runner && ATTACKERS.has(roleOf(o))).slice(0, 2)
+  near.forEach((n, i) => set(l, n.player.id, { x: rng.range(8, 12), y: 34 + (top ? -1 : 1) * (2 + i * 4) }))
+  const cbs = nearest(l, l.mates, { x: 8, y: 34 }, 2, new Set([l.input.heroId, keeper?.player.id ?? '']))
+  cbs.forEach((c, i) => set(l, c.player.id, { x: rng.range(6, 9), y: 34 + (top ? -1 : 1) * (1 + i * 4) }))
+  return { ball: owned(cp, crosser?.player.id ?? null), passerId: null, finisherId: null, opponentId: runner?.player.id ?? null }
+}
+
 const PLACERS: Record<HighlightKind, Placer> = {
   build_up: placeBuildUp,
   counter: placeCounter,
@@ -667,6 +761,11 @@ const PLACERS: Record<HighlightKind, Placer> = {
   block: placeBlock,
   corner_kick: placeCornerKick,
   fk_wall: placeFkWall,
+  dribble: placeDribble,
+  header: placeHeader,
+  gk_1v1: placeGk1v1,
+  gk_sweep: placeGkSweep,
+  back_post: placeBackPost,
 }
 
 function toScenarioPlayer(sp: SlotPlayer, side: Side, pos: Vec2): ScenarioPlayer {
@@ -718,16 +817,20 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
 
 /** How often each highlight kind occurs for a hero playing a given position. */
 const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
-  ST: { build_up: 1.6, counter: 1.2, one_on_one: 1.7, cross: 1.5, edge_of_box: 1.4, corner: 0.8, defend: 0.3, counter_2v1: 0.7, long_ball_control: 1.4, rebound: 0.9, hold_up: 1.6 },
-  LW: { build_up: 1.8, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.6 },
-  RW: { build_up: 1.8, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.6 },
-  AM: { build_up: 2.8, counter: 1, one_on_one: 0.8, cross: 0.6, edge_of_box: 1.8, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6 },
-  CM: { build_up: 2.8, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3 },
+  // Plan 2.1#119 (S21): ST ≈ 45 % shot, 20 % header, 23 % pass/link, 10 % dribble; the shot share
+  // stays at the BALANCE goal-tally level (docs/BALANCE.md) instead of the plan's 50 %.
+  ST: { build_up: 1.0, counter: 1.2, one_on_one: 1.7, header: 1.8, edge_of_box: 1.4, corner: 0.8, defend: 0.3, counter_2v1: 0.7, long_ball_control: 1.0, rebound: 0.9, hold_up: 1.0, dribble: 1.3 },
+  LW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9 },
+  RW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9 },
+  AM: { build_up: 2.0, counter: 1, one_on_one: 0.8, cross: 0.6, edge_of_box: 1.8, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6, dribble: 0.8 },
+  CM: { build_up: 2.5, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3, dribble: 0.3 },
   DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5, block: 0.9, defend_1v1: 0.6 },
-  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1, defend_1v1: 1.4, block: 0.5 },
-  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1, defend_1v1: 1.4, block: 0.5 },
-  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.6, rebound: 0.3, interception: 2, defend_1v1: 1.2, block: 1.1 },
-  GK: { gk_save: 1 },
+  // Full-backs (plan 2.1#124): overlap + cross going forward, and the back post when the ball is on the far side; 50/50.
+  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2 },
+  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2 },
+  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.0, rebound: 0.3, interception: 2, defend_1v1: 1.2, block: 1.1, back_post: 0.6 },
+  // Keeper career (plan 2.1#85): shot-stopping, 1v1s and sweeping (+ penalties / free kicks from set pieces).
+  GK: { gk_save: 0.55, gk_1v1: 0.25, gk_sweep: 0.2 },
 }
 
 /** Base number of open-play highlights per 90 minutes by position. */
@@ -740,7 +843,10 @@ export const HIGHLIGHTS_MIN_90 = 4
 export const HIGHLIGHTS_MAX_90 = 9
 
 /** Kinds that end in a shot at goal for the hero. */
-const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'one_on_one', 'cross', 'edge_of_box', 'corner', 'counter_2v1', 'rebound'])
+const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'one_on_one', 'cross', 'edge_of_box', 'corner', 'counter_2v1', 'rebound', 'dribble', 'header'])
+
+/** Keeper moments per 90 (plan 2.1#85): 4–8. */
+export const GK_HIGHLIGHTS_MAX_90 = 8
 
 /** Kind weights for a position (copy, safe to mutate). */
 export function kindWeights(pos: Position, ovr?: number): Partial<Record<HighlightKind, number>> {
@@ -775,7 +881,7 @@ export function isDefensiveKind(kind: HighlightKind): boolean {
 export function guaranteedKind(pos: Position, counts: Partial<Record<HighlightKind, number>>, slotsLeft: number, rng: Rng): HighlightKind | null {
   const need = (kinds: HighlightKind[], n: number) => Math.max(0, n - kinds.reduce((a, k) => a + (counts[k] ?? 0), 0))
   if (pos === 'CB') {
-    const missing = need(['defend', 'interception', 'defend_1v1', 'block'], 3)
+    const missing = need(['defend', 'interception', 'defend_1v1', 'block', 'back_post'], 3)
     if (missing > 0 && slotsLeft <= missing) return rng.chance(0.5) ? 'defend' : 'interception'
   }
   if (pos === 'LW' || pos === 'RW') {
@@ -879,7 +985,7 @@ export function plannedHighlightCount(input: HighlightPlanInput, rng: Rng): numb
   n += focusPositioningMoments(input)
   n *= 1 - COUNT_TIGHTENING * tightening(input.ovr)
   n += rng.normal(0, 0.8)
-  const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, HIGHLIGHTS_MAX_90)
+  const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, input.position === 'GK' ? GK_HIGHLIGHTS_MAX_90 : HIGHLIGHTS_MAX_90)
   if (input.minutes >= 89) return full
   if (input.minutes < 10) return 0
   return Math.max(1, Math.round((full * input.minutes) / 90))
