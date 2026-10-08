@@ -27,6 +27,22 @@ export const COUNTRY_TAX: Readonly<Record<string, number>> = {
   TR: 0.27, EN: 0.4, ES: 0.38, DE: 0.38, IT: 0.38, FR: 0.38, PT: 0.28, NL: 0.35, BR: 0.27, AR: 0.3, US: 0.36, JP: 0.4,
 }
 /** Income-tax rate for the club's country (flat default when unknown). */
+/**
+ * Top-end brackets (Tur 3b): a star's weekly gross (wage + sponsors) is taxed
+ * extra on the slices above each threshold, on top of the country rate. Early
+ * and mid careers (weekly gross below the first threshold) are untouched; this
+ * is what keeps a 26-year-old star's fortune in the 8-20M band.
+ */
+export const TAX_BRACKETS: readonly { from: number; extra: number }[] = [{ from: 120_000, extra: 0.1 }, { from: 300_000, extra: 0.2 }]
+export function topBracketTax(weeklyGross: number): number {
+  let t = 0
+  for (let i = 0; i < TAX_BRACKETS.length; i++) {
+    const lo = TAX_BRACKETS[i]!.from
+    const hi = TAX_BRACKETS[i + 1]?.from ?? Infinity
+    t += Math.max(0, Math.min(weeklyGross, hi) - lo) * TAX_BRACKETS[i]!.extra
+  }
+  return t
+}
 export const incomeTaxRate = (countryId?: string | null): number => (countryId ? COUNTRY_TAX[countryId] : undefined) ?? INCOME_TAX
 /** Tax on passive rent/business profit (lower: deductions, corporate wrappers). */
 export const PASSIVE_TAX = 0.2
@@ -77,6 +93,10 @@ export const INVESTMENT_KINDS: Readonly<Record<Investment['kind'], {
 export const LIVING_RATE = 0.06
 export const LIVING_MIN = 25
 export const LIVING_MAX = 3_000
+/** Lifestyle upkeep of the very rich (staff, security, travel): a share of the wage above this line. */
+export const LIFESTYLE_FROM = 80_000
+export const LIFESTYLE_RATE = 0.06
+export const lifestyleCost = (weeklyWage: number): number => Math.round(Math.max(0, finite(weeklyWage) - LIFESTYLE_FROM) * LIFESTYLE_RATE)
 export const livingCost = (weeklyWage: number): number => Math.round(clamp(finite(weeklyWage) * LIVING_RATE, LIVING_MIN, LIVING_MAX))
 
 /** Minimum investment ticket. */
@@ -439,7 +459,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   }
   b.sponsors = life.sponsors.reduce((s, d) => s + Math.max(0, finite(d.weekly)), 0)
   if (hero.contract?.imageRights && !hero.retired) b.sponsors = Math.round(b.sponsors * IMAGE_RIGHTS_BONUS)
-  b.tax = -(b.wage + b.sponsors) * (ctx.taxRate ?? INCOME_TAX)
+  b.tax = -(b.wage + b.sponsors) * (ctx.taxRate ?? INCOME_TAX) - topBracketTax(b.wage + b.sponsors)
   b.agentFee = life.agent ? -(b.wage + b.sponsors) * clamp(finite(life.agent.commission), 0, 0.3) : 0
 
   for (const d of ownedAssetDefs(life)) {
@@ -475,7 +495,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   b.trainer = life.trainer ? -Math.max(0, finite(life.trainer.weeklyFee)) : 0
   lines.push(...tickTrainerContract(life))
   b.upkeep = -assetUpkeep(life) - proj.upkeep
-  b.living = -livingCost(b.wage)
+  b.living = -(livingCost(b.wage) + lifestyleCost(b.wage))
 
   const flow = b.wage + b.sponsors + b.tax + b.agentFee + b.rent + b.business + b.investmentYield + b.trainer + b.upkeep + b.living
   life.money = finite(life.money + flow)

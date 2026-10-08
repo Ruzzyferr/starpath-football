@@ -113,6 +113,9 @@ const CONFIGS_R3: PtConfig[] = [
   { seed: 7171, first: 'Ali', last: 'Güler', gender: 'male', nationality: 'TR', archetype: 'winger', background: 'footballFamily', persona: 'pro', startAge: 16, legacyOf: 6, seasons: 4 },
 ]
 
+// Round 3b (PLAYTEST_PLAN=r3b): the same seeds as r3 for the ST, the CB and the investor (before/after of the Tur 3b changes).
+const CONFIGS_R3B: PtConfig[] = [CONFIGS_R3[0]!, CONFIGS_R3[3]!, CONFIGS_R3[2]!]
+
 type Phase = 'genç (≤20)' | 'yükseliş (21–24)' | 'zirve (25–30)' | 'düşüş (31+)'
 const PHASES: Phase[] = ['genç (≤20)', 'yükseliş (21–24)', 'zirve (25–30)', 'düşüş (31+)']
 const phaseOf = (a: number): Phase => (a <= 20 ? PHASES[0] : a <= 24 ? PHASES[1] : a <= 30 ? PHASES[2] : PHASES[3])
@@ -885,9 +888,10 @@ describe('playtest harness', () => {
   it(FULL ? 'plays full careers and writes transcripts' : 'smoke: a few weeks of a human-like career', () => {
     const r2 = FULL && env.PLAYTEST_PLAN === 'r2'
     const r3 = FULL && env.PLAYTEST_PLAN === 'r3'
-    const set = r3 ? CONFIGS_R3 : r2 ? CONFIGS_R2 : CONFIGS
-    const n = FULL ? Number(env.PLAYTEST_N ?? (r3 || r2 ? set.length : 5)) : 1
-    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? (r3 ? 10 : r2 ? 8 : 6)) : 1
+    const r3b = FULL && env.PLAYTEST_PLAN === 'r3b'
+    const set = r3b ? CONFIGS_R3B : r3 ? CONFIGS_R3 : r2 ? CONFIGS_R2 : CONFIGS
+    const n = FULL ? Number(env.PLAYTEST_N ?? (r3 || r3b || r2 ? set.length : 5)) : 1
+    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? (r3 || r3b ? 10 : r2 ? 8 : 6)) : 1
     const runs: CareerOut[] = []
     for (let i = 0; i < n; i++) {
       const cfg = set[i % set.length]

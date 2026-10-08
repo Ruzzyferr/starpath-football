@@ -372,3 +372,17 @@ describe('basic living costs (2.5#15)', () => {
     }
   })
 })
+
+describe('top-end brackets (Tur 3b)', () => {
+  it('leave normal incomes alone and bite only the slices above each threshold', async () => {
+    const { topBracketTax, lifestyleCost, TAX_BRACKETS, LIFESTYLE_FROM } = await import('./economy')
+    expect(topBracketTax(50_000)).toBe(0)
+    expect(topBracketTax(TAX_BRACKETS[0]!.from)).toBe(0)
+    expect(topBracketTax(200_000)).toBeCloseTo(8_000, 5)
+    const rich = topBracketTax(500_000)
+    expect(rich).toBeCloseTo(18_000 + 40_000, 5)
+    expect(rich / 500_000).toBeLessThan(0.15) // a surcharge, never a confiscation
+    expect(lifestyleCost(LIFESTYLE_FROM)).toBe(0)
+    expect(lifestyleCost(400_000)).toBeGreaterThan(15_000)
+  })
+})

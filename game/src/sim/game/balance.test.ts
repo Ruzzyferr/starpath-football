@@ -29,13 +29,13 @@ export function report(traces: CareerTrace[]): string {
   const highPot = (t: CareerTrace) => (t.samples[0]?.potential ?? 0) >= 85
 
   out.push('### Sezon sonu dağılımı (medyan [p25–p75])', '')
-  out.push('| Sezon | Yaş | OVR | OVR (pot≥85) | İtibar | Lig 1. kademe | Haftalık maaş (medyan / p90) | Net servet (medyan / p90 / max) | Kupa (ort.) |')
-  out.push('|---|---|---|---|---|---|---|---|---|')
+  out.push('| Sezon | Yaş | OVR | OVR (pot≥85) | İtibar | Lig 1. kademe | Haftalık maaş (medyan / p90) | Net servet (medyan / p90 / max) | Net servet (pot≥85 medyan) | Kupa (ort.) |')
+  out.push('|---|---|---|---|---|---|---|---|---|---|')
   for (let i = 0; i < seasons; i++) {
     const rows = traces.map((t) => t.samples[i]).filter(Boolean)
     const hp = traces.filter(highPot).map((t) => t.samples[i]).filter(Boolean)
     const ovr = rows.map((r) => r!.ovr)
-    out.push(`| ${i + 1} | ${med(rows.map((r) => r!.age))} | ${med(ovr).toFixed(0)} [${q(ovr, 0.25).toFixed(0)}–${q(ovr, 0.75).toFixed(0)}] | ${med(hp.map((r) => r!.ovr)).toFixed(0)} | ${med(rows.map((r) => r!.reputation)).toFixed(0)} | ${pct(rows.filter((r) => r!.tier === 1).length / rows.length)} | ${money(med(rows.map((r) => r!.wage)))} / ${money(q(rows.map((r) => r!.wage), 0.9))} | ${money(med(rows.map((r) => r!.netWorth)))} / ${money(q(rows.map((r) => r!.netWorth), 0.9))} / ${money(Math.max(...rows.map((r) => r!.netWorth)))} | ${f1(mean(rows.map((r) => r!.trophies)))} |`)
+    out.push(`| ${i + 1} | ${med(rows.map((r) => r!.age))} | ${med(ovr).toFixed(0)} [${q(ovr, 0.25).toFixed(0)}–${q(ovr, 0.75).toFixed(0)}] | ${med(hp.map((r) => r!.ovr)).toFixed(0)} | ${med(rows.map((r) => r!.reputation)).toFixed(0)} | ${pct(rows.filter((r) => r!.tier === 1).length / rows.length)} | ${money(med(rows.map((r) => r!.wage)))} / ${money(q(rows.map((r) => r!.wage), 0.9))} | ${money(med(rows.map((r) => r!.netWorth)))} / ${money(q(rows.map((r) => r!.netWorth), 0.9))} / ${money(Math.max(...rows.map((r) => r!.netWorth)))} | ${money(med(hp.map((r) => r!.netWorth)))} | ${f1(mean(rows.map((r) => r!.trophies)))} |`)
   }
 
   out.push('', '### İtibar kaynakları (sezon başına ortalama)', '')

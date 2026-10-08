@@ -658,3 +658,23 @@ En ağır yedisi düzeltildi; kalanlar aşağıda sıralı.
 - **Pas ağı otomatik çözümde görünmüyor:** Maçların çoğu otomatik çözülüyor. Pas ağı yalnızca canlı maçta ve maç sonu ekranında. Bir "seni dışlayan takım arkadaşı" kart zinciri, sistemi otomatik oyuncuya da taşır.
 - **Harness'te itibar tavanı:** İnsan gibi PR yapan oyuncu 24–26 yaşında 96–100 itibara çıkıyor (BALANCE'ta 25 yaşında 75–79). Bu fark Tur 2'den beri sürüyor; harness personası sponsor ve röportajı her fırsatta kullanıyor.
 - **Kumarbaz persona payı:** Tohuma göre %12–33. Hedef bandı (%15–35) ortalamada tutuyor, tek tohumda tutmayabiliyor.
+
+## Tur 3b (Ekim 2026): evreye göre hedefler, çoğunluk hissesi, stoper hikâyeleri
+
+**Yöntem.** `PLAYTEST=1 PLAYTEST_PLAN=r3b` (Tur 3'ün ST, CB ve yatırımcı tohumları, 10 sezon, 1.320 hafta). "Önce" `r3-final`; RNG akışı değiştiği için kariyerler birebir aynı değil.
+
+**Yapılanlar.**
+- **Hedefler (`objectives.ts`):** genç, yükselen, zirve, veteran evreleri ve stoper/kaleci rolleri için ayrı havuzlar (gol yememe serisi, kafa golü, top kapma, kaptan olarak maç, genç takım arkadaşına akıl hocalığı, büyük rakibe karşı performans, kıtasal turnuvada gol, Altın Yıldız adaylığı reytingi, kurtarış, veteran için sezonda 30 maç).
+- **Para:** çoğunluk hissesi (%51+) ve tepe vergi dilimleri, ayrıntı BALANCE.md "Tur 3b".
+- **Stoper:** 22 yeni kart (15+ spontan): marking düellosu → tünel sohbeti, kırmızı kart → disiplin kurulu, korner rutini, kaptan stoper, Yılın Savunmacısı töreni. Pas ağı artık sezonluk tutuluyor (`g:links`); en çok pas alışverişi yaptığın takım arkadaşı üç adımlık zinciri başlatıyor (`cb_link_noticed` → `routine` → `signature`).
+
+| Metrik | Önce (Tur 3) | Sonra (3b) |
+|---|---|---|
+| CB: stoper kartı (10 sezon) | 0 | 30+ (pas ağı zinciri 3 kez tetiklendi) |
+| CB hedef çeşidi | genel havuz | + "İkili mücadele ustası", "Duvar ördün", "Büyüklerle hesaplaşma" |
+| Hedef başarı oranı | %57 (8 kariyer) | %52 (3 kariyer) |
+| ST 27 yaşında net servet | 17,3M | 24,3M (tek örnek) |
+| Yatırımcı CM 27 yaşında net servet | 32,5M | 34,8M, hisse %10 |
+| Kart / hafta | 1,75 | 1,76 |
+
+**Açık kalanlar.** (1) Harness yatırımcısı hisseyi 27 yaşından sonra %5'lik parçalarla alıyor, 10 sezonda %51'e ulaşmadı; çoğunluk akışı birim testlerle ve `club_majority_offer` kartıyla doğrulandı, uzun bir yatırımcı koşusu hâlâ gerekiyor. (2) Hedef başarı oranı biraz düştü; ödül/süre ayarı sonraya. (3) Tek örnekli servetler tohum gürültüsü; ölçüt için BALANCE tablosu.

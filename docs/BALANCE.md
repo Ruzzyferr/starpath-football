@@ -50,7 +50,7 @@ gerçek dışı kolay ("1. sezondan sonra amatör ligden PSG'ye"), birkaç sezon
 | OVR gelişimi | 17–21 yaş arası sezonda +5–7. Potansiyeli yüksek (≥ 85) oyuncu 80+ OVR'ye 25 yaşına kadar (tercihen 22–24) ulaşır. Potansiyel yumuşak tavandır (aşım ≤ +3). |
 | Kulüp/kademe | İyi bir oyuncu 1. kademe lige 21–23 yaşında çıkar, elit kulübe (itibar ≥ 80) 22–24 yaşında. Sezonda en fazla ~1 kulüp değişikliği. |
 | İtibar | 18 yaşında ~15, 21'de ~50, 25'te 75–85. 100 neredeyse ulaşılmaz. |
-| Para | 3. sezon sonunda medyan net servet ≤ 300K, en zengin ≤ 2M (erken patlama yok). 26 yaşında medyan 5–20M, yıldızlar 30–60M. |
+| Para | 3. sezon sonunda medyan net servet ≤ 300K, en zengin ≤ 2M (erken patlama yok). 26 yaşında medyan 5–15M; yıldız (pot ≥ 85) medyanı 8–20M, p90 ≤ 35M, en zengin ≤ 50M (Tur 3b: eskiden yıldızlar 20–48M idi, servet boşta kalıyordu). |
 | Lüks | Ada yalnızca süperstarlara (itibar 85+, ~25 yaş üstü). Harcama, gelirin anlamlı bir kısmını (%40–70) yutar. |
 | İflas | Normal oyuncu iflas etmez. Kumarbaz/savurgan personada az sayıda (≤ %10). |
 | Kumarhane | Kumarbaz personada harcamanın %15–35'i. Bütün oyuncularda ≤ %5. Futboldan fazla kazandırmaz. |
@@ -610,3 +610,21 @@ Ayrıntı: `docs/PLAYTEST-REPORT.md` Tur 3. Sonuçları değiştiren sim kararla
 Tohum gürültüsü: Tohum 1000'de kumarbaz payı, bu turdaki ara ölçümlerde değişiklik zinciri boyunca %12 ile %22 arasında oynadı. Tohum 2000'de 1. kademe yaşı 20,0 ile 20,5 arasında oynadı. Ölçütler iki tohumun ortalamasında hedefte.
 
 `STATS_GUARD=1` (40 × 10) tolerans içinde kaldı; `statsBaseline.json` yeniden merkezlenmedi. **Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit).
+
+## Tur 3b: tepe gelir ve çoğunluk hissesi
+
+**Sorun.** 26 yaşındaki yıldızın (pot ≥ 85) net servet medyanı 20,3M / 28,6M'ydi (tohum 1000 / 2000), p90 27–32M; harcayacak yer yoktu. İki hamle yapıldı:
+
+1. **Daha büyük hedef: çoğunluk hissesi.** Kulüp hissesi tavanı %25'ten %75'e çıktı (fiyat doğrusal, %1 = 400K; %51 ≈ 20,4M). %51 ve üstü kulüp sahibi/başkan demek: temettü %7'den %9'a, Onur Listesi'ne +45 puan, "en iyi anlar"da sahiplik satırı, emeklilikte başkanlık epilogu (`summary.owner`) ve Legacy çocuğuna +2 itibar.
+2. **Tepe gelir frenlendi.** `economy.ts`: haftalık brüt (maaş + sponsor) için ülke vergisine ek dilimler (120K üstü %10, 300K üstü %20, yalnızca dilimin üzerine) ve maaşın 80K üstü kısmına %6 yaşam tarzı gideri. Haftalık brütü 120K altındaki erken ve orta kariyer etkilenmez.
+
+| Ölçüt (30 × 10, 26 yaş) | Önce (s1000 / s2000) | Sonra (s1000 / s2000) | Hedef |
+|---|---|---|---|
+| Net servet medyan | 8,4M / 9,5M | 7,5M / 10,0M | 5–15M |
+| Net servet pot ≥ 85 medyan | 20,3M / 28,6M | 14,4M / 17,1M | 8–20M |
+| Net servet p90 / max | 26,7M / 38,6M ; 32,1M / 39,9M | 19,2M / 30,3M ; 24,2M / 50,2M | p90 ≤ 35M |
+| 3. sezon medyan / max | 120K / 834K ; 165K / 1,1M | aynı | ≤ 300K / ≤ 2M |
+| İflas | %0 / %0 | %0 / %0 | ≤ %5 |
+| Kumarbaz kumarhane payı | %27 / %20 | %16 / %18 | ≤ %30 |
+
+`statsBaseline.json` yalnızca bilinçli kaymada yeniden merkezlendi: `netWorthLog` 7,07 → 6,885 (STATS_GUARD 40 × 10: itibar 81 → 80, kupa 2,35 → 1,9, gol 8,3 → 8,1 tolerans içinde, dokunulmadı). Rapora "Net servet (pot ≥ 85 medyan)" sütunu eklendi. **Golden master bilinçli yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): yeni hedef havuzları, kartlar, vergi dilimleri ve pas ağı kaydı kariyer akışını değiştirdi.
