@@ -1,8 +1,10 @@
 /**
  * Dribbling drill: cone slalom with skill-move timing.
  *
- * Carry the ball up a slalom of cone gates (in order), around two mannequin
- * defenders and over the finish line, as many laps as the clock allows.
+ * Cone slalom (2.3#22): 20 s, 8 cones (4 cone gates) laid straight, zigzag
+ * or at random by drill level; carry the ball through them (in order), past
+ * two mannequins and over the finish line, as many laps as the clock allows.
+ * Every cone touch costs 8; each 0.1 s under the lap par earns 1.
  * Close control matters: the ball is pushed ahead on every touch (further when
  * sprinting, less with good dribbling), and clipping a cone costs points and
  * knocks the ball loose. Beat a mannequin with a skill move timed when it is
@@ -13,12 +15,13 @@ import { createTracker, stepBall, type BallState, type BallTracker, type Physics
 import { flatAttrs } from '../../setup'
 import { a01, accel, add, angleDiff, clampN, dist, fromAngle, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming } from '../scoring'
+import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming, slalomLayout } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, GateView, LineView } from '../types'
 
 const START: Vec2 = { x: 45, y: 34 }
 const FINISH_X = 89
-const GATE_COUNT = 6
+const GATE_COUNT = 4
+const GATE_SPACING = 8.8
 const GATE_HALF = 1.3
 const CONE_R = 0.2
 /** Par lap time (s) for the time bonus. */
@@ -65,14 +68,16 @@ export class DribblingDrill extends DrillBase {
     this.lap++
     this.mirror = this.lap % 2 === 1 ? 1 : -1
     this.gates = []
+    const layout = slalomLayout(this.difficulty)
     for (let i = 0; i < GATE_COUNT; i++) {
       const side = (i % 2 === 0 ? -1 : 1) * this.mirror
-      this.gates.push({ x: 51 + i * 6.6, y: 34 + side * 3.1 + this.rng.range(-0.4, 0.4), state: 'pending', knocked: [false, false] })
+      const off = layout === 'straight' ? 0 : layout === 'zigzag' ? side * 3.1 + this.rng.range(-0.4, 0.4) : this.rng.range(-3.6, 3.6)
+      this.gates.push({ x: 51 + i * GATE_SPACING, y: 34 + off, state: 'pending', knocked: [false, false] })
     }
-    // Mannequins between gates 1–2 and 3–4, in the running lane.
+    // Mannequins between gates 0–1 and 2–3, in the running lane.
     this.dummies.forEach((d, i) => {
-      const a = this.gates[1 + i * 2]
-      const b = this.gates[2 + i * 2]
+      const a = this.gates[i * 2]
+      const b = this.gates[1 + i * 2]
       place(d.agent, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 }, Math.PI)
       d.beaten = false
     })

@@ -17,7 +17,7 @@ const clamp01 = (v: number) => (v < 0 ? 0 : v > 1 ? 1 : v)
 export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
   finishing: 40,
   passing: 35,
-  dribbling: 30,
+  dribbling: 20,
   fitness: 40,
   goalkeeping: 40,
   crossing: 35,
@@ -29,7 +29,7 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
 export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   finishing: 55,
   passing: 1900,
-  dribbling: 2300,
+  dribbling: 200,
   fitness: 1500,
   goalkeeping: 66,
   crossing: 1900,
@@ -157,16 +157,21 @@ export function skillTiming(distance: number): SkillTiming {
   return 'good'
 }
 
-export const SKILL_POINTS: Readonly<Record<SkillTiming, number>> = { perfect: 120, good: 60, early: 0, late: 0 }
-export const GATE_POINTS = 60
-export const GATE_MISS_PENALTY = -20
-export const CONE_PENALTY = -30
-export const TACKLED_PENALTY = -40
+// Cone slalom (2.3#22): 8 cones, 20 s, −8 per cone touch, +1 per 0.1 s under par.
+export const SKILL_POINTS: Readonly<Record<SkillTiming, number>> = { perfect: 12, good: 6, early: 0, late: 0 }
+export const GATE_POINTS = 6
+export const GATE_MISS_PENALTY = -2
+export const CONE_PENALTY = -8
+export const TACKLED_PENALTY = -4
 
-/** Lap bonus: 200 plus 20 per second under par. */
+/** Lap bonus: 20 plus 1 per 0.1 s under par. */
 export function lapPoints(lapTime: number, par: number): number {
-  return Math.round(200 + Math.max(0, par - lapTime) * 20)
+  return Math.round(20 + Math.floor(Math.max(0, par - lapTime) * 10 + 1e-6))
 }
+
+/** Slalom layout by drill level (2.3#22): straight, zigzag, random. */
+export type SlalomLayout = 'straight' | 'zigzag' | 'random'
+export const slalomLayout = (difficulty: number): SlalomLayout => (difficulty < 0.95 ? 'straight' : difficulty < 1.15 ? 'zigzag' : 'random')
 
 // ───────────────────────── Fitness (shuttle beep test) ─────────────────────────
 

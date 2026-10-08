@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { qualityFactor, TRAINING_TYPES } from '../../sim/career/training'
 import {
   DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
-  gkReactionWindow, gridShotPoints, passPoints, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
+  gkReactionWindow, gridShotPoints, passPoints, slalomLayout, CONE_PENALTY, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
   BEATEN_PENALTY, CROSS_ZONE_R, FOUL_PENALTY, crossPoints, crossTiming, headerPoints, jumpTiming, tacklePoints,
 } from './scoring'
 import { DRILL_KINDS } from './types'
@@ -81,8 +81,8 @@ describe('drill scoring', () => {
     expect(skillTiming(2)).toBe('perfect')
     expect(skillTiming(1.1)).toBe('good')
     expect(skillTiming(0.5)).toBe('late')
-    expect(lapPoints(7, 9)).toBe(240)
-    expect(lapPoints(12, 9)).toBe(200)
+    expect(lapPoints(7, 9)).toBe(40) // 2 s under par = +20 (1 per 0.1 s)
+    expect(lapPoints(12, 9)).toBe(20)
   })
 
   it('beep test speeds up and rewards leaving on the beep', () => {
@@ -104,6 +104,14 @@ describe('drill scoring', () => {
     expect(savePoints({ saved: false, held: true, stretch: 1, speed: 30, combo: 0 })).toBe(0)
     expect(savePoints({ saved: true, held: false, stretch: 0, speed: 10, combo: 0 })).toBe(6)
     expect(savePoints({ saved: true, held: true, stretch: 1, speed: 40, combo: 3 })).toBe(10)
+  })
+
+  it('cone slalom: 20 s, −8 per cone, layout by level (2.3#22)', () => {
+    expect(DRILL_DURATION.dribbling).toBe(20)
+    expect(CONE_PENALTY).toBe(-8)
+    expect(lapPoints(8.95, 9)).toBe(20)
+    expect(lapPoints(8.9, 9)).toBe(21)
+    expect([slalomLayout(0.8), slalomLayout(1), slalomLayout(1.3)]).toEqual(['straight', 'zigzag', 'random'])
   })
 
   it('target grid scoring: centre 10, zone 6, other goal 2 (2.3#23)', () => {
