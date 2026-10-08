@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { Rng } from '../../core/rng'
 import { START_YEAR } from '../../core/config'
-import { generateWorld } from './generate'
+import { CREST_BLACKLIST, crestBlacklisted, generateWorld, hueFamily } from './generate'
 
 const world = generateWorld(new Rng(77), { season: START_YEAR, heroCountryId: 'TR', countryIds: ['TR', 'EN', 'ES', 'DE'] })
 
@@ -16,6 +16,20 @@ describe('2.6#11 crest similarity', () => {
       seen.set(key, c.id)
     }
     expect(clash).toEqual([])
+  })
+})
+
+describe('2.12#13 crest blacklist', () => {
+  it('no generated club wears a blacklisted (real-club-like) crest', () => {
+    const bad = Object.values(world.clubs).filter((c) => crestBlacklisted(c.crest.shape, c.crest.symbol, c.crest.colors[0]!)).map((c) => c.id)
+    expect(bad).toEqual([])
+  })
+  it('the blacklist matches by shape, symbol and colour family', () => {
+    expect(CREST_BLACKLIST.length).toBeGreaterThanOrEqual(8)
+    expect(hueFamily('#1d4ed8')).toBe('blue')
+    expect(crestBlacklisted('shield', 7, '#1d4ed8')).toBe(true)
+    expect(crestBlacklisted('shield', 7, '#16a34a')).toBe(false)
+    expect(crestBlacklisted('hexagon', 7, '#1d4ed8')).toBe(false)
   })
 })
 

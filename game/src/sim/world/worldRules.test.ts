@@ -119,4 +119,4 @@ describe('2.6#69/#70 fixture rules', () => {
   })
 })
 
-const PINNED_WORLD_HASH = 3107535913
+const PINNED_WORLD_HASH = 2297840475

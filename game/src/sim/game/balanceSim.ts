@@ -14,6 +14,7 @@ import { ACTIVITY_BY_ID } from '../../data/activities'
 import { heroAge } from '../career/common'
 import { heroOvr } from '../career/progression'
 import { activityBlock, autoPlanDay } from '../life/activities'
+import { maxStakeFor } from '../life/casino'
 import { assetUpkeep, netWorth, purchaseBlock } from '../life/economy'
 import { squadPlayers } from '../world/queries'
 import { advanceDay, isHeroMatchday } from './calendar'
@@ -206,7 +207,8 @@ function weeklyManagement(s: GameState, cfg: CareerConfig, rng: Rng, spent: { as
 /** Gambler evening: a few bets sized to the bankroll. */
 function gamble(s: GameState, rng: Rng): void {
   // Same table limit as the UI (casino maxBet ≤ 250K).
-  const stake = Math.min(250_000, Math.max(50, Math.round((s.life.money * rng.range(0.01, 0.05)) / 50) * 50))
+  // A heavy gambler sits at the table limit (which grows with the VIP tier, life/casino maxStakeFor).
+  const stake = Math.min(250_000, maxStakeFor(s.life), Math.max(50, Math.round((s.life.money * rng.range(0.01, 0.05)) / 50) * 50))
   for (let i = 0; i < rng.int(2, 6); i++) {
     if (s.life.money < stake) break
     const g = rng.int(0, 3)

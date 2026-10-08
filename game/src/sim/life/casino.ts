@@ -754,6 +754,12 @@ export const CASINO_FLAGS = {
   lossStreak: 'casino_loss_streak',
   /** Weeks left of a voluntary self-exclusion (0/absent = none). */
   excludedWeeks: 'casino_excluded_weeks',
+  /** Total amount wagered over the career (VIP tiers). */
+  turnover: 'casino_turnover',
+  /** Consecutive winning bets (hot streak). */
+  winStreak: 'casino_win_streak',
+  /** Accepted the VIP room invitation (event card). */
+  vipRoom: 'casino_vip_room',
 } as const
 
 const numFlag = (life: Life, k: string): number => {
@@ -802,7 +808,24 @@ export function setLossLimit(life: Life, amount: number): Lines {
 }
 
 /** Table stake limit scales with the bankroll: 1.5% of cash (floor 500), so one bet never moves a career. */
-export const maxStakeFor = (life: Life): number => Math.max(500, Math.floor(Math.max(0, life.money) * 0.015))
+/** Career turnover (sum of stakes) needed for VIP tier 1..3. */
+export const VIP_TURNOVER: readonly number[] = [0, 150_000, 1_500_000, 12_000_000]
+/** Table limit as a share of the bankroll: 1.5 % + 0.5 % per VIP tier (+0.5 % in the VIP room). */
+export const BASE_STAKE_SHARE = 0.015
+export const VIP_STAKE_STEP = 0.005
+
+/** VIP tier 0..3 from the career turnover: loyal guests get higher limits (and a steeper career cost). */
+export function casinoVipTier(life: Life): number {
+  const t = numFlag(life, CASINO_FLAGS.turnover)
+  let tier = 0
+  for (let i = 1; i < VIP_TURNOVER.length; i++) if (t >= VIP_TURNOVER[i]!) tier = i
+  return tier
+}
+/** Share of the bankroll the table accepts as a single bet. */
+export const stakeShareFor = (life: Life): number =>
+  BASE_STAKE_SHARE + VIP_STAKE_STEP * casinoVipTier(life) + (life.flags[CASINO_FLAGS.vipRoom] === true && casinoVipTier(life) > 0 ? VIP_STAKE_STEP : 0)
+
+export const maxStakeFor = (life: Life): number => Math.max(500, Math.floor(Math.max(0, life.money) * stakeShareFor(life)))
 
 /** Can the hero place this stake now? Respects cash and the daily loss limit. */
 export function canBet(life: Life, stake: number): { ok: boolean; reason: LText | null } {
@@ -812,7 +835,7 @@ export function canBet(life: Life, stake: number): { ok: boolean; reason: LText 
   if (stake > life.money) return { ok: false, reason: lt('Bu bahis için yeterli nakdin yok.', "You don't have enough cash for this bet.") }
   const cap = maxStakeFor(life)
   if (stake > cap) {
-    return { ok: false, reason: fill(lt('Masa limiti: kasanın %1,5\'ine ({m}) kadar bahis alınır.', 'Table limit: bets up to 1.5% of your bankroll ({m}).'), { m: fmtMoney(cap) }) }
+    return { ok: false, reason: fill(lt('Masa limiti: kasanın %{p}\'ine ({m}) kadar bahis alınır.', 'Table limit: bets up to {p}% of your bankroll ({m}).'), { m: fmtMoney(cap), p: Math.round(stakeShareFor(life) * 1000) / 10 }) }
   }
   const limit = numFlag(life, CASINO_FLAGS.lossLimit)
   if (limit > 0 && numFlag(life, CASINO_FLAGS.lostToday) + stake > limit) {
@@ -855,6 +878,8 @@ export function settleBet(life: Life, hero: Pick<Hero, 'perks'> | null, stake: n
   if (net > 0) life.casino.won += net
   else life.casino.lost += -net
   life.flags[CASINO_FLAGS.lostToday] = numFlag(life, CASINO_FLAGS.lostToday) - net
+  life.flags[CASINO_FLAGS.turnover] = numFlag(life, CASINO_FLAGS.turnover) + s
+  const tierBefore = (() => { const t = numFlag(life, CASINO_FLAGS.turnover) - s; let k = 0; for (let i = 1; i < VIP_TURNOVER.length; i++) if (t >= VIP_TURNOVER[i]!) k = i; return k })()
 
   const lines: Lines = []
   let streak = numFlag(life, CASINO_FLAGS.lossStreak)
@@ -877,7 +902,16 @@ export function settleBet(life: Life, hero: Pick<Hero, 'perks'> | null, stake: n
     } else lines.push(lt('Berabere, paran iade edildi.', 'Push, your stake is returned.'))
   }
   life.flags[CASINO_FLAGS.lossStreak] = streak
+  // Hot streak: the table feels "warm", which is exactly what hooks people.
+  const wins = net > 0 ? numFlag(life, CASINO_FLAGS.winStreak) + 1 : 0
+  life.flags[CASINO_FLAGS.winStreak] = wins
+  if (wins === 3 || wins === 5 || wins === 8) {
+    add += 0.5
+    lines.push(fill(lt('🔥 Üst üste {n} kazanç: masa sıcak. Bu his seni masaya bağlar, dikkat.', '🔥 {n} wins in a row: the table feels hot. That feeling is what ties you to the table, careful.'), { n: wins }))
+  }
   addAddiction(life, hero, add)
+  const tierNow = casinoVipTier(life)
+  if (tierNow > tierBefore) lines.push(fill(lt('💎 Kumarhane seni VIP kademe {n} yaptı: daha yüksek masa limiti, daha çok ikram. Kariyerinde bunun bedeli de var.', '💎 The casino promoted you to VIP tier {n}: higher table limit, more comps. There is a career cost to that, too.'), { n: tierNow }))
   for (const [th, text] of ADDICTION_WARNINGS) if (before < th && life.casino.addiction >= th) lines.push(text)
   return { net, lines }
 }
@@ -930,6 +964,10 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
   const triggerTags = ['casino', 'nightlife']
   addAddiction(life, hero, 1.5 + Math.max(0, v - 2) * 2)
   lines.push(lt('🎰 Kumarhanenin ışıkları seni içeri çekti.', '🎰 The casino lights pull you inside.'))
+  if (casinoVipTier(life) >= 1) {
+    addHappiness(life, 2)
+    lines.push(lt('🥂 VIP ikramı: ücretsiz akşam yemeği ve içecek. Hoş, ama masa seni bekliyor.', '🥂 VIP comp: a free dinner and drinks. Pleasant, but the table is waiting for you.'))
+  }
   let spotted = false
   let headline = false
   if (ctx.inSeason) {
@@ -989,9 +1027,53 @@ export function resetCasinoDay(life: Life): void {
   life.flags[CASINO_FLAGS.lostToday] = 0
 }
 
+/**
+ * The visible career cost of heavy gambling (playtest round 2: "weak and invisible").
+ * Applied once a week while the addiction meter is high, and itemised in the log:
+ *  - addiction 30+: happiness -1.5 (sleepless nights), form -1..-3 for visiting weeks
+ *  - 40+: discipline -0.5 (late arrivals), partner and family drift -1
+ *  - 55+: stress +2, press -1 (rumours), discipline -1
+ *  - VIP tier 2+: everything x1.25 (the high-roller lifestyle costs more)
+ */
+export function casinoCareerCost(life: Life, hero: Pick<Hero, 'form'>, visited: boolean): Lines {
+  const a = life.casino.addiction
+  if (a < 30) return []
+  const vip = casinoVipTier(life) >= 2 ? 1.25 : 1
+  const lines: Lines = []
+  const happy = -1.5 * vip
+  addHappiness(life, happy)
+  const formHit = Math.round(clamp((a - 25) / 25, 1, 3) * (visited ? 1 : 0.5) * vip)
+  if (formHit > 0) hero.form = clamp(hero.form - formHit, 0, 100)
+  let disc = 0
+  if (a >= 40) disc += 0.5
+  if (a >= 55) disc += 1
+  if (disc > 0) life.discipline = meter(life.discipline - disc * vip)
+  if (a >= 40) {
+    const kinds = ['partner', 'mother', 'bestFriend'] as const
+    for (const r of Object.values(life.relationships)) {
+      if ((kinds as readonly string[]).includes(r.kind)) changeRelation(life, r.id, -1 * vip, { cause: 'casino', why: lt('Kumar yüzünden ilgisizlik', 'Neglect because of gambling') })
+    }
+  }
+  if (a >= 55) {
+    addStress(life, null, 2)
+    const press = Object.values(life.relationships).find((r) => r.kind === 'press')
+    if (press) changeRelation(life, press.id, -1, { cause: 'casino', why: lt('Kumar söylentileri', 'Gambling rumours') })
+  }
+  lines.push(fill(
+    lt('🎰 Kumarın bu haftaki bedeli: mutluluk {h}, form -{f}{d}{r}.', '🎰 The cost of gambling this week: happiness {h}, form -{f}{d}{r}.'),
+    {
+      h: happy.toFixed(1), f: formHit,
+      d: disc > 0 ? fill(lt(', disiplin -{d}', ', discipline -{d}'), { d: (disc * vip).toFixed(1) }) : lt('', ''),
+      r: a >= 40 ? lt(', yakınlar uzaklaşıyor', ', loved ones drift away') : lt('', ''),
+    },
+  ))
+  return lines
+}
+
 /** Weekly casino tick: addiction decay and visit counter reset. */
-export function weeklyCasinoTick(life: Life): Lines {
+export function weeklyCasinoTick(life: Life, hero?: Pick<Hero, 'form' | 'perks'>): Lines {
   const visits = life.casino.visitsThisWeek
+  const cost = hero ? casinoCareerCost(life, hero, visits > 0) : []
   life.casino.addiction = meter(life.casino.addiction - (visits === 0 ? 5 : 1), 0)
   life.casino.visitsThisWeek = 0
   const lines: Lines = []
@@ -1000,6 +1082,7 @@ export function weeklyCasinoTick(life: Life): Lines {
     life.flags[CASINO_FLAGS.excludedWeeks] = excl - 1
     if (excl - 1 === 0) lines.push(lt('Kumarhane yasağın bitti. Gitmek zorunda değilsin.', 'Your casino self-exclusion has ended. You don\'t have to go back.'))
   }
+  lines.push(...cost)
   if (life.casino.addiction >= 70) {
     lines.push(lt('Kumar düşüncesi aklından çıkmıyor. Belki birinden yardım almalısın.', "You can't stop thinking about gambling. Maybe you should get help."), HELPLINE_MESSAGE)
   }

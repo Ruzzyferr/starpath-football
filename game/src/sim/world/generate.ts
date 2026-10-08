@@ -146,6 +146,44 @@ function chooseShortName(cc: CountryContext, name: string, city: string): string
   return (c + 'XXX').slice(0, 3)
 }
 
+/**
+ * 2.12#13 crest blacklist: shape + charge + colour-family combinations that read as
+ * the badge of a well-known real club. Generated clubs never get them (the symbol is
+ * bumped like a duplicate). Symbol indices follow ui/art/crest.ts (6 eagle, 7 lion,
+ * 8 wolf, 13 bull, 2 crown, 0 star, 14 wave, 5 bolt).
+ */
+export type HueFamily = 'red' | 'blue' | 'yellow' | 'green' | 'dark' | 'white' | 'other'
+export const CREST_BLACKLIST: readonly { shape: CrestSpec['shape']; symbol: number; hue: HueFamily }[] = [
+  { shape: 'shield', symbol: 7, hue: 'blue' }, // lion on a blue shield
+  { shape: 'shield', symbol: 7, hue: 'red' },
+  { shape: 'circle', symbol: 6, hue: 'blue' }, // eagle in a blue roundel
+  { shape: 'circle', symbol: 6, hue: 'white' },
+  { shape: 'shield', symbol: 8, hue: 'yellow' }, // wolf
+  { shape: 'shield', symbol: 8, hue: 'red' },
+  { shape: 'shield', symbol: 13, hue: 'red' }, // bull
+  { shape: 'shield', symbol: 2, hue: 'white' }, // crown
+  { shape: 'hexagon', symbol: 5, hue: 'yellow' }, // bolt
+  { shape: 'diamond', symbol: 0, hue: 'red' }, // star
+]
+/** Rough colour family of a #rrggbb colour. */
+export function hueFamily(hex: string): HueFamily {
+  const m = /^#?([0-9a-f]{2})([0-9a-f]{2})([0-9a-f]{2})$/i.exec(hex)
+  if (!m) return 'other'
+  const [r, g, b] = [parseInt(m[1]!, 16), parseInt(m[2]!, 16), parseInt(m[3]!, 16)]
+  const mx = Math.max(r, g, b)
+  const mn = Math.min(r, g, b)
+  if (mx < 70) return 'dark'
+  if (mn > 190) return 'white'
+  if (mx - mn < 30) return 'other'
+  if (r >= g && r >= b) return g > 140 && g > b + 40 ? 'yellow' : 'red'
+  if (g >= r && g >= b) return r > 150 ? 'yellow' : 'green'
+  return 'blue'
+}
+export const crestBlacklisted = (shape: CrestSpec['shape'], symbol: number, primary: string): boolean => {
+  const hue = hueFamily(primary)
+  return CREST_BLACKLIST.some((e) => e.shape === shape && e.symbol === symbol && e.hue === hue)
+}
+
 function crestFor(rng: Rng, cc: CountryContext, name: string, primary: string, secondary: string): CrestSpec {
   const tokens = distinctiveTokens(name)
   const initials = (tokens.length > 1 ? tokens.map((t) => t[0]).join('') : (tokens[0] ?? 'FC').slice(0, 1)).slice(0, 3)
@@ -155,7 +193,7 @@ function crestFor(rng: Rng, cc: CountryContext, name: string, primary: string, s
   // 2.6#11: no two clubs of a country look alike (shape + symbol + primary colour); bump the symbol, then the shape.
   const keyOf = (sh: string, sy: number) => `${sh}|${sy}|${primary}`
   let sh = shape
-  for (let i = 0; i < CREST_SYMBOLS * CREST_SHAPES.length && cc.usedCrests.has(keyOf(sh, symbol)); i++) {
+  for (let i = 0; i < CREST_SYMBOLS * CREST_SHAPES.length && (cc.usedCrests.has(keyOf(sh, symbol)) || crestBlacklisted(sh, symbol, primary)); i++) {
     symbol = (symbol + 1) % CREST_SYMBOLS
     if (symbol === 0) sh = CREST_SHAPES[(CREST_SHAPES.indexOf(sh) + 1) % CREST_SHAPES.length]!
   }
