@@ -19,9 +19,9 @@
 
 | Bölüm | TAMAM | KISMİ | EKSİK | ERTELENDİ (BLOCKED-EXT) | ERTELENDİ (iç) | N/A-süreç | Toplam |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| 2.1 Maç motoru | 60 | 2 | 0 | 0 | 0 | 0 | 62 |
+| 2.1 Maç motoru | 61 | 1 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
-| 2.3 Kariyer | 35 | 6 | 0 | 0 | 2 | 0 | 43 |
+| 2.3 Kariyer | 39 | 2 | 0 | 0 | 2 | 0 | 43 |
 | 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
 | 2.5 Ekonomi | 31 | 0 | 0 | 4 | 14 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
@@ -31,7 +31,7 @@
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
-| **Toplam** | **430 (%76)** | 11 | 0 | 32 | 56 | 40 | **569** |
+| **Toplam** | **435 (%76)** | 6 | 0 | 32 | 56 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -307,7 +307,7 @@ Bölüm 2.1, 2.2 ve 2.3 tablolarındaki her KISMİ/EKSİK satır koda karşı ye
 - **Erteleme gerekçeleri:** kaleci tutma/atma kontrolü ve atış pozu (2.1#85 korner yakalama, oyun kurma), BALANCE hedefleriyle çelişki (2.1#6 şut tepkisi, 2.1#119 %50 şut, 2.3#3 40 puan, 2.3#13 yaş çarpanları, 2.3#39 perk sayısı), kayıt migrasyonu (2.2#48, 2.3#11), gerçek cihaz (2.2#119), takvim yapısı (2.3#70 8 haftalık yaz), tasarım çelişkisi (2.3#82 ↔ 2.4#46), v2 dünya verisi (2.3#10 ayrı kadın ligleri).
 - **Perf (4x kısma, mobil):** Düşük ~163 fps, Orta ~136 fps; e2e demo/match/setpieces/controls/training/postmatch/perf yeşil.
 
-Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci formülü yok), 2.3#60 (form maddesi var, garanti/sigorta/imaj hakkı yok), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
+Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (ikinci kaleci drili ertelendi; formül ve Altın Eldiven tamam), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
 
 **GDD (2.13), TAMAM'a dönenler:** gizli potansiyel yıldızı (`legacy/CareerCards.tsx:69`), emeklilik kararı ve Onur Listesi (`ui/backend/meta.ts:205`, `HallOfFameScreen.tsx:28`), ısı ve şut haritası (`PostMatchScreen.tsx:223`), kalabalık/tezahürat/ıslık/yuhalama (`audio/crowd.ts`), hukuk olayları (`events/content/legal.ts`), milli turnuva + Ayın Oyuncusu + Yılın Golü (`sim/game/national.ts`, `awards.ts`), deneme + Tam Kariyer kilidi + kozmetikler (`store-iap/catalog.ts`), menü sesleri ve dinamik müzik (`audio/uiSfx.ts`, `music.ts`).
 
@@ -360,7 +360,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.1#81 | TAMAM | game/ai.ts:408 | Kaleci 2D hareket ediyor, tepki Refleks'e bağlı |
 | 2.1#82 | TAMAM | game/ai.ts (punchChance), game/runtime.ts (punch) | Yüksek topta kalabalık/yükseklik/hız/tutuş: yumruk ya da tutma |
 | 2.1#83 | TAMAM | game/ai.ts:478 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Kurtarış fonksiyonu var; 1.000 şut tutarlılık testi yok) |
-| 2.1#85 | KISMİ | sim/match/highlightGen.ts:456 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Kaleci kariyerinde yalnızca kurtarış ve penaltı anı var |
+| 2.1#85 | TAMAM | game/runtime.ts keeperHold/checkKeeperHold, game/keeper.test.ts | WP-C: kaleci kahraman topu eline alınca bırakılmaz (6 sn kuralı), kaydırarak atar ya da vurur; dağıtım takım arkadaşına ulaşırsa pass_complete. Çıkış: gk_sweep. İşaretli sınır: korner yakalama sahnesi yok |
 | 2.1#86 | TAMAM | game/runtime.ts:963 | Uzanma penceresi Refleks'e bağlı |
 | 2.1#87 | TAMAM | game/runtime.ts:1238 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Vücut açısı ipucu var; erken ipucu ve ceza yok) |
 | 2.1#93 | TAMAM | game/runtime.ts:377 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Penaltı panik titremesi var; eşik ve değerler farklı) |
@@ -422,10 +422,10 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.3#1 | TAMAM | core/types.ts:18, sim/match/highlightGen.ts:85 | 10 mevki, mevkiye göre an havuzu |
-| 2.3#2 | KISMİ | game/training/drills/goalkeeping.ts:1 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Tek GK drili; Altın Eldiven ve GK reyting formülü yok |
+| 2.3#2 | KISMİ | sim/match/rating.ts keeperSaveScore, sim/world/awards.ts goalkeeperAwardScore, wp15.test.ts | WP-C: kaleci reyting terimi (kurtarış, kurtarış yüzdesi, gol yememe) ve Altın Eldiven formülü (temiz maç + kurtarış + reyting) testli. Ek ikinci kaleci drili ertelendi: yeni TrainingType UI haritalarına ve DrillOverlay/i18n'e dokunur (UI paketi) |
 | 2.3#3 | KISMİ | sim/career/createHero.ts:48 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Arketip bonusu 80–90 puan (plan 40); uyumsuzluk kuralı yok |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
-| 2.3#10 | KISMİ | ui/screens/NewCareerScreen.tsx:173 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Cinsiyet seçimi var; ayrı lig yapısı ve metin testi eksik |
+| 2.3#10 | ERTELENDİ-INT | core/gender.ts, sim/game/gender.test.ts, sim/career/genderText.test.ts | WP-C: kadın dünyası (isimler, yüzler, serbest oyuncular) ve TR/EN cinsiyet metin testi tamam. Ayrı kadın lig piramidi kulüp adı/arma ve hukuk taramasına bağlı; v2 |
 | 2.3#11 | TAMAM | ui/screens/profile/OvrExplainer.tsx, sim/game/ovrBreakdown.ts, ovrBreakdown.test.ts | "OVR nasıl hesaplanır?" ekranı: mevkiye göre ağırlık payı, değer, puan; toplam OVR |
 | 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
 | 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | S21: Yaş çarpanları plandan farklı |
@@ -440,20 +440,20 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.3#27 | TAMAM | game/training/drills/{crossing,heading,tackling}.ts | 3 yeni drill |
 | 2.3#28 | TAMAM | game/training/drills/{crossing,heading,tackling}.ts | 3 yeni drill |
 | 2.3#29 | TAMAM | game/training/drills/goalkeeping.ts:1 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Refleks drili var; formül farklı) |
-| 2.3#39 | KISMİ | sim/career/progression.ts:203 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Perk puanı var; 3 dal × 3 kademe değil |
+| 2.3#39 | TAMAM | data/perks.ts PERK_BRANCH/perkTier, sim/career/perks.ts perkBlock (tier), data/perkTree.test.ts | WP-C: 3 dal (Teknik, Fiziksel, Zihinsel) × 3 kademe; kademe 2 için dalda 1, kademe 3 için 2 sahip olunan perk gerekir (neden: `tier`) |
 | 2.3#40 | TAMAM | sim/career/matchPerks.ts:15 | Maç perkleri maça etki ediyor |
 | 2.3#55 | TAMAM | sim/career/condition.ts:51, sim/match/engine.ts:1374 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Maçta ve antrenmanda sakatlık ve rehab var; süreler ve risk faktörleri farklı) |
-| 2.3#60 | KISMİ | sim/career/contract.ts:40 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Temel maddeler var; garanti, sigorta ve imaj hakkı yok |
+| 2.3#60 | TAMAM | sim/career/contract.ts, squadRole.ts, condition.ts, matchPay.ts, wp15.test.ts, s21career.test.ts | WP-C: form ve süre garantisi, sakatlık sigortası, imaj hakkı (sponsor +%15) pazarlıkta ve ContractScreen'de; testli. Performans bonusu şablonu 2.5#55'te |
 | 2.3#61 | TAMAM | sim/career/contract.ts:319 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Sabır ve tur var; maddeler arası takas yok) |
 | 2.3#62 | TAMAM | sim/career/market.ts:39, contract.ts:474 | Piyasa referansı, son teklif kuralı |
 | 2.3#63 | TAMAM | sim/career/market.ts:39, contract.ts:474 | Piyasa referansı, son teklif kuralı |
-| 2.3#70 | KISMİ | sim/game/internal.ts:136 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Kış penceresi 3 hafta (plan 4) |
+| 2.3#70 | TAMAM | sim/game/internal.ts transferWindow, s21career.test.ts | WP-C: kış penceresi 4 hafta (22-25), test "winter window is 4 weeks" |
 | 2.3#71 | TAMAM | ui/backend/realData.ts:389 | S21: koda karşı yeniden denetlendi, kapandı. (eski: İlgi listesi var; neden ve 1–5 ölçeği yok) |
 | 2.3#72 | TAMAM | sim/career/transfers.ts:109 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Yumuşak uyum var; −6 OVR kuralı yok) |
 | 2.3#73 | TAMAM | ui/backend/realData.ts:406 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Bonservis var; değer dökümü yok) |
 | 2.3#74 | TAMAM | sim/career/transfers.ts:254 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Transfer talebi var; değerler farklı) |
 | 2.3#81 | TAMAM | ui/screens/legacy/CareerCards.tsx:14, sim/career/squadRole.ts:200 | Beklenen dakika, form maddesi (≥7,5) |
-| 2.3#82 | ERTELENDİ-INT | sim/career/squadRole.ts:109 | S21: TD güveni eşikleri plandaki gibi değil |
+| 2.3#82 | TAMAM | sim/career/squadRole.ts trustBand/TRUST_BAND_CUTS, squadRole.test.ts | WP-C: bantlar <40 / 40-59 / 60-79 / 80+. 2.4#46 ile çözüm: bant rol merdivenini kapılar (düşük güven rolü rotasyonla sınırlar, 80+ yıldız eşiğini 8→6 indirir); haftalık ilk 11 zarında form+reyting %75, güven en çok %25 kalır |
 | 2.3#83 | TAMAM | ui/screens/legacy/CareerCards.tsx:14, sim/career/squadRole.ts:200 | Beklenen dakika, form maddesi (≥7,5) |
 | 2.3#84 | TAMAM | PostMatchScreen.tsx:267 | Güven değişim nedenleri |
 | 2.3#91 | TAMAM | sim/game/national.ts:33,116 | A/U21/U19, çağrı göstergesi |
