@@ -388,3 +388,273 @@ Tüm veri `sim/game` cephesinden geliyor: `objectivesView(state)` (`ObjectivesVi
 - **Kumarbaz persona payı (BALANCE):** %5–6, hedef %15–35. Bu tur öncesinden kalma; kumarbaz otomatik kariyerin bahis davranışı masa limitiyle birlikte yeniden ayarlanmalı.
 - **Kart içeriği:** 10+ sezon için 60–80 kart daha, özellikle `business` (iş kararları), `national` (turnuva hikâyeleri) ve evreye özgü hedefler.
 - **İşletme:** Karar üreten bir sistem değil, pasif gelir. İş başına aylık bir karar kartı ya da kriz zinciri gerekiyor.
+
+
+---
+
+# Tur 3 (baş tasarımcı, Ekim 2026): yeni sistemler gerçekten oyunun parçası mı?
+
+**Soru:** Tur 2'den sonra eklenen sistemler (geç kariyer kartları, projeler, iş kararları, kumarhane VIP'i ve ağır kumar bedeli, maç içi karar pencereleri, pas ağı ve kişiliğe bağlı takım arkadaşı ilişkileri, kaleci nitelikleri, milli takım adaleti, dünya tepe çapası) bir NSS hayranının gözünde hikâye üretiyor mu, yoksa kenarda duran menüler mi?
+
+**Kısa cevap:** Kart destesi, iş kararları ve kumar bedeli artık hikâye üretiyor. Kaleci kariyeri forvet kadar dolu. Ancak dört sistem ölçüldüğünde ya görünmüyordu ya da kendi amacına ters çalışıyordu:
+- **Projeler:** Yatırımcı olmayan oyuncu 10 sezonda tek bir proje teklifi görmedi.
+- **Maç içi kararlar:** Pencerelerin yarısı aynı "kışkırtma" anıydı. Penaltı penceresi hiç açılmadı. Kaleciye frikik kullanıp kullanmayacağı soruldu.
+- **Takım arkadaşı ilişkileri:** Bir sezonda +80…+100'e doyuyordu. Kişilik farkı ve pas ağı anlamını yitiriyordu.
+- **Takipçi sayısı:** Ünlü bir kariyerde 45 milyara çıktı.
+
+En ağır yedisi düzeltildi; kalanlar aşağıda sıralı.
+
+## Yöntem
+
+- Harness'e üçüncü plan eklendi (`PLAYTEST=1 PLAYTEST_PLAN=r3`, `game/src/sim/game/playtest.node.test.ts`). Toplam 3.606 hafta, 2.740 maç oynandı.
+  - **6 kariyer × 10 sezon:**
+    - ST (TR, pro)
+    - LW (BR, **ağır kumarbaz**, akşamların çoğu masa limitinde)
+    - CM (TR, **yatırımcı**: akademi, stadyum, kulüp hissesi, miras fonu, 3 iş)
+    - CB (DE, party)
+    - GK (TR, social)
+    - **kadın** AM (TR, spender)
+  - **Uzun koşu:** TR ST, yatırımcı, 17 yaşından 18 sezon. Emeklilik, belgesel ve Legacy çocuğu (LW) ile 4 sezon daha.
+- **Yeni ölçümler:**
+  - **"Canlı izlenen" maçlar:** Maçların %40'ı canlı merkezdeki gibi dakika dakika oynanıyor. Karar pencereleri aynı saf kurallarla (`pickDecision`) açılıyor, cevaplar rastgele.
+  - **Maç içi karar dağılımı:** Pencere türleri ve kumar sonucu tutup tutmadığı.
+  - **Pas ağı:** En çok ve en az pas veren takım arkadaşı arasındaki fark.
+  - **Takım arkadaşı ilişkileri:** Her sezon en düşük, ortalama ve en yüksek değer.
+  - **Kartlar ve kumar:** Proje ve iş kartı sayıları, VIP kademesi.
+- **"Önce" ölçümü:** Aynı harness ile bu turun düzeltmelerinden önceki kodla alındı (`r3-before`). "Sonra" son koddan (`r3-final`). Aynı tohumlar kullanıldı, ama RNG akışı değiştiği için kariyerler birebir aynı değil.
+
+## Bulgular (oyuncu etkisine göre sıralı)
+
+### 1. 75 OVR'lik forvet efsane oldu: 546 maçta 563 gol, 7 Gol Kralı, 106 ödül (NSS #47 geri döndü)
+- **Kanıt:** Uzun koşudaki TR forvetin zirvesi 75 OVR. Buna rağmen:
+  - Tur 3 önce: 543 maç / 536 gol (0,99/maç), 95 ödül, miras puanı 5.821. Ara koşuda 546 / 563, 106 ödül.
+  - Dünya Gol Kralı 7 kez, Ligin En İyi Oyuncusu 12 kez.
+  - 10 sezonluk TR forvetin (OVR 72–73) itibarı 26 yaşında 100.
+- **Kök neden:** Elit markaj yalnızca OVR'ye bağlıydı (74'ten başlıyor). 72–75 OVR'lik bir golcü sezonda 40 gol atsa da savunmalar ona "sıradan" davranıyordu. Gol, itibarı; itibar da sponsor parasını şişiriyordu. BALANCE sim'inde ST 71–76 bandında p90 41, max 41: aynı kuyruk orada da var.
+- **Düzeltme (`sim/game/match.ts` `markedMan`, `sim/match/highlightGen.ts`):** "Adam adama markaj" artık forma da bakıyor.
+  - Maç başına 0,8 golün üstündeki bir seri (bu sezon; sezon başında geçen sezonla harmanlanıyor) elit markajla aynı şekilde temiz fırsatları azaltıyor.
+  - Maç başına 1,3 golde tam etki.
+  - Normal kariyerde değer 0; yalnızca uç değerleri frenliyor.
+
+| Metrik (uzun koşu, TR ST, zirve OVR 75) | Önce | Sonra |
+|---|---|---|
+| Kariyer maç / gol (gol/maç) | 543 / 536 (0,99) | 505 / 373 (0,74) |
+| Ödül / miras puanı | 95 / 5.821 | 50 / 3.509 (yine "Ölümsüz Efsane") |
+| 10 sezonluk TR ST gol/maç | ~0,95 | 0,77 |
+
+- BALANCE'ta ST kariyer medyanı 0,73 / 0,70 (hedef 0,6–0,8), en iyi sezon 1,10 / 0,96. Ayrıntı "Denge" bölümünde.
+
+### 2. Projeler yatırımcı olmayana hiç görünmüyordu (para 5. sezondan sonra yine boşta)
+- **Kanıt (önce):** Projeyi yalnızca harness'in "yatırımcı" personası (doğrudan Projeler ekranını kullanan) kurdu. Diğer altı kariyerde 10 sezonda:
+  - akademi teklifi (`money.academy_blueprint`) 0
+  - kulüp hissesi teklifi 0
+  - miras fonu fikri 0
+  - stadyum planı 1 kez
+- Bu sırada GK 24 yaşında 8,7M nakitle oturuyordu, ST 26 yaşında 12M ile.
+- **Kök neden:** Teklif kartları 27–29 yaş kapısındaydı. 10 sezonluk bir kariyer 26–28 yaşında bitiyor; zengin oyuncu ise ilk milyonunu 22–23 yaşında görüyor. Proje oyuncunun önüne hiç düşmüyordu.
+- **Düzeltme (`events/content/projects.ts`):** Kapılar yaş yerine artık servetle açılıyor:
+  - stadyum 22 yaş
+  - akademi 23
+  - miras fonu 24
+  - kulüp hissesi 25
+  - akademinin ilk mezunu 24
+- **Sonra:** Yatırımcı olmayan beş kariyerin dördü en az bir projeye girdi:
+  - ST: akademi, %5 hisse
+  - GK: 2 akademi aşaması, fon, %10 hisse
+  - kadın AM: fon, %5 hisse
+  - CB: fon
+- Proje kartı sayısı 120'den 176'ya çıktı. Kariyer başına 18–34 kart; kumarbazda bile 23.
+- **Legacy dengesi:** Fon büyüdükçe çocuğa giden pay da büyüyordu (tavan 350K). Çocuk 17 yaşında 376K net servet ve 15 lüks alımla başladı.
+  - Tavan **120K**'ya indi. Fon artık asıl karşılığını Onur Listesi'nde veriyor: kilitli her 1M için +1 miras puanı, en çok +10 (`projectsLegacyPoints`).
+  - Legacy çocuğunun 1. sezon net serveti 376K'dan 216K'ya indi.
+
+### 3. Maç içi kararlar: yarısı aynı kışkırtma, penaltı hiç yok, kaleciye frikik
+- **Kanıt (önce, 1.101 canlı maç, 1.444 pencere):**
+  - "Kışkırtma" %48 (kalecide 231 pencerenin 116'sı).
+  - "Taktik çıkış" %23.
+  - **Penaltı penceresi 0.**
+  - Kaleci 25 kez "Frikik fırsatı: Ben atarım" seçeneğiyle karşılaştı.
+- **Kök nedenler (`sim/match/decisions.ts`):**
+  - Kışkırtma dakika başına %3,5 ile açılıyordu: geride ya da berabereyken maç başına ~%75.
+  - Motor "penaltı verildi" olayını ve atışı aynı dakikada yayınlıyor. Kural yalnızca son olaya baktığı için penaltıyı hiç görmüyordu. Bu, canlı merkezde de aynı.
+  - Pozisyon bilgisi yoktu.
+- **Düzeltme:**
+  - Kurallar son dakikanın tüm olaylarına bakıyor (`recent`).
+  - Kaleciye penaltı ve frikik penceresi açılmıyor; kışkırtma yarı oranda.
+  - Kışkırtma %0,8/dk, taktik çıkış %3 (geride) ve %1,2 (berabere), frikik penceresi %30.
+
+| Pencere payı (tüm koşu) | Önce | Sonra |
+|---|---|---|
+| Kışkırtma | %48 | %20 |
+| Gol sevinci | %15 | %32 |
+| Frikik | %14 | %20 (kalecide 0) |
+| Taktik çıkış | %23 | %22 |
+| Penaltı | %0 | %6 |
+| Toplam pencere / canlı maç | 1.444 / 1.101 (1,31) | 997 / 1.027 (0,97) |
+
+- **Arayüz işi (aşağıda UI 1):** Canlı merkez `recent` ve `isKeeper` alanlarını geçmeden penaltı penceresi oyunda hâlâ açılmaz.
+
+### 4. Takım arkadaşı ilişkileri bir sezonda doyuyordu: kişilik ve pas ağı anlamsızlaşıyordu
+- **Kanıt (önce):**
+  - Takım arkadaşı ortalaması yeni kulüpte ~10'dan başlıyor, bir sezon sonra 79–93'e çıkıyor (en düşük −13, en yüksek 100).
+  - Ateşli (hothead) ile şakacı (joker) arasındaki fark bir sezonda kayboluyordu.
+  - Galibiyet, takım yemeği, röportaj ve karar pencereleri bütün soyunma odasını birlikte yükseltiyordu.
+  - Yan etki: `relationAvg` maç başına ~+1,3 an ekliyordu. Bu, golcü enflasyonunun ikinci kaynağıydı.
+- **Düzeltme (`sim/life/relationships.ts`):**
+  - Her takım arkadaşının kişiliğinden gelen bir **mizaç tabanı** var (`baseline`; eski kayıtlarda hash'ten türetiliyor).
+  - İlişki her hafta tabana doğru %4 çekiliyor; kin için bu oran %2.
+  - Emek hâlâ dostluk kazandırıyor, ama ateşli oyuncu şakacıdan soğuk kalıyor.
+  - Defterde "Mizacı: kendi hâline döndü" satırı görünüyor.
+- **Sonra:** Kurulu kadroda ortalama 40–56 aralığında, dağılım −14…+82 (önce 79–93 ortalama, 100 tavan). Pas ağı farkı (en çok − en az pas veren) maç başına 7–10 pas; kişilik sahada görünüyor.
+
+### 5. 45 milyar takipçi (ve "3 haftada 80990574 yeni takipçi" hedefi)
+- **Kanıt:**
+  - Uzun koşu 14. sezonda 45.158,8 Mn takipçi, sponsor hedefi "85063935273 yeni takipçi".
+  - 10 sezonluk TR forvet 2 milyar takipçide.
+- **Kök neden:** Maç sonrası takipçi artışı orantılı (maç başına %0,4–1,6) ve ün tavanını (`followerCeiling`, itibar 100'de 150M) tanımıyordu. Tavanın üstündeki erime haftada yalnızca %1'di.
+- **Düzeltme:**
+  - Maçın orantılı artışı tavana kalan boşlukla çarpılıyor (`matchOutcome.ts`).
+  - Tavan üstü fazla haftada %8 eriyor (`OVER_CEILING_FADE`). Denge değeri ≈ tavanın 1,3 katı.
+  - Hedef başlığındaki sayı biçimleniyor (`fmtNum`: "3,2 Mn").
+  - Sponsor değeri log ölçekli olduğu için (1M'da doyuyor) para etkilenmedi.
+
+### 6. Ağır kumarbazın manşetleri tekrar ediyordu; VIP ikramı 312 kez aynı satır
+- **Kanıt (önce):**
+  - 482 kumarhane gecesinde 175 "Gece Bekçisi" manşeti.
+  - "Objektifler yine … peşinde" ×25, "Gece yarısı, yeşil çuha" ×19.
+  - "VIP ikramı" satırı ×312, "🎰 🎰 Kumarın bu haftaki bedeli" (çift ikon) ×407.
+- **Düzeltme (`sim/life/casino.ts`):**
+  - **Tabloid yorgunluğu:** 6 hafta içinde ikinci kumarhane manşeti basılmıyor. Disiplin ve basın bedeli yine ödeniyor; günlükte "gazeteler aynı haberi basmadı ama kulüpte herkes biliyor" satırı çıkıyor. Maç öncesi gece her zaman haber.
+  - Bağımlılık 55+ iken tonu değişen 6 yeni manşet: danışmanlık, soyunma odası, taraftar grubu açıklaması, eski takım arkadaşı.
+  - VIP ikramı haftada bir kez.
+  - Çift ikon kaldırıldı.
+- **Sonra:** 481 gecede 120 manşet. En sık manşet ×14 (önce ×25). Kumarın bedeli görünür:
+  - itibar 28 yaşında 72 (aynı dönemdeki diğer forvetlerde 96–100)
+  - net kumar −1,15M
+  - VIP 2
+
+### 7. Stoper kariyeri en sönüğüydü: 10 sezon, birinci lig, 0 ödül
+- **Kanıt (önce):**
+  - DE CB, OVR 80, 10 sezonun 6'sı birinci ligde: 0 ödül, 0 A milli maç, 28 yaşında itibar 56.
+  - Aynı turda GK: 10 ödül, 53 milli maç, itibar 99. Forvet: 47 ödül.
+  - Kalecinin Altın Eldiveni var; savunmacının kendine ait bir sezon ödülü yoktu.
+- **Düzeltme (`sim/game/awards.ts`):**
+  - Yeni **"Ligin En İyi Savunmacısı"** ödülü: Ligin En İyi Oyuncusu ile aynı skor, yalnızca CB, LB ve RB arasında.
+  - İtibar ağırlığı Altın Eldiven'le aynı.
+  - Belgeselde ağırlık 60.
+- **Sonra:** CB'nin ilk ödülleri geldi (S8 Ligin En İyi Savunmacısı ve Sezonun 11'i, S10 Sezonun 11'i), 5 A milli maç.
+- Stoper yine forvetten sakin. Bu doğal, ama artık hedefi var. Kalan iş: savunmacıya özgü hedefler ve kartlar (Açık maddeler).
+
+### 8. Türkçe ve tutarlılık
+- **Düzeltildi:**
+  - `Sezonun 11'i ödülünü kazandı` → "X Sezonun 11'ine seçildi".
+  - `Altın Yıldız 2.si ödülünü kazandı` → "X Altın Yıldız podyumunda: Altın Yıldız 2.si".
+  - Kadın oyuncuya "Abi" diyen dört satır `{g:abi|abla}` oldu: akademi mezunu, veteran yılları ×2, söylenti.
+  - "dizi yıldızı Ela Dağ habersiz…" küçük harfle başlıyordu → "Ünlü bir konuk habersiz Mavi Tabak'a geldi: dizi yıldızı Ela Dağ."
+- **Temiz:** `{n}`, `undefined` ve İngilizce sızıntısı yok; cinsiyet ve yaş bayrağı 0.
+- **Kalan:**
+  - "Caps'i" (×33) ve "VIP'de" (×18) bilinçli okunuşlar; Tur 2 kararı korundu.
+  - `hayalet-ajan` 4 bayrak: `scam.fake_agent` sahte menajer kartı, yanlış alarm.
+
+### 9. Tekrar, tempo ve para (evreye göre)
+
+| Metrik | Tur 2 (sonra) | Tur 3 önce | Tur 3 sonra |
+|---|---|---|---|
+| Görülen farklı kart | 265 | 337 | 342 |
+| İlk kez görülen kart payı S8 / S10 | %6 / %9 | %8 / %5 | %12 / %8 |
+| Bir kariyerde en çok tekrar eden kart | ×17 (15 sezon) | ×22 (`fans.autograph_swarm`, 18 sezon) | ×25 (`health.minor_knock`, 18 sezon) |
+| `casino.teammate_cards` (tümü) | – | 84 (kumarbaz olmayanda ×18) | 10 kariyer tavanı, 20 hafta bekleme |
+| Manşet benzersizliği | %60 | %53 | %57 |
+| Ölü hafta / ardışık ölü hafta | %0,7 / 0 | %0,7 / 0 | %0,8 / 0 |
+| Kart/hafta | 1,8 | 1,73 | 1,75 |
+
+- **Tekrar sınırı:** İmza seli, şaka savaşı, rakip laf atması ve hastane ziyareti için kariyer başına 12 tavanı geldi. En sık tekrar artık "küçük darbe" (`health.minor_knock`), 18 sezonda ×25; gerçekçi bir dolgu.
+- **Evre temposu:**
+
+| Evre | Kart/hf | Yeni kart | Kahraman haberi/hf | Hedef/hf | Ölü % |
+|---|---|---|---|---|---|
+| Genç (≤20) | 1,78 | %56 | 0,75 | 0,91 | 0,7 |
+| Yükseliş (21–24) | 1,76 | %18 | 0,96 | 0,90 | 1,1 |
+| Zirve (25–30) | 1,71 | %8 | 0,95 | 0,90 | 0,5 |
+| Düşüş (31+) | 1,61 | %10 | 0,72 | 0,89 | 0,6 (sessiz %2,9) |
+
+- Düşüş evresi Tur 2'deki gibi veteran kartlarıyla canlı. Ama milli takım sesi bitiyor (0,01/hf) ve hedefler hâlâ evreye özgü değil (Açık maddeler).
+- **Para:**
+  - 10 sezonun sonunda net servet: kumarbazda 3,8M, CB'de 4,5M, yıldız GK'de 48M.
+  - Uzun koşuda 95M (fon 64M dahil, çünkü yatırımcı her şeyi fona koyuyor).
+  - Projeler artık parayı geç oyunda bir hedefe bağlıyor: akademi mezunları, stadyum mutluluğu, hisse temettüsü, miras puanı.
+  - Yine de yatırımcı olmayan bir yıldız 26 yaşında 20–48M ile oturuyor. Projelerin toplam maliyeti (~16M + hisse 10M) yıldızın 2–3 sezonluk geliri. Para geç oyunda NSS'den anlamlı, ama hâlâ "bitmeyen kaynak".
+
+## Denge ve doğrulama
+
+- **BALANCE** (`BALANCE=1`, 30 × 10). Son kodla iki tohum (1000 · 2000):
+
+| Hedef | Son ölçüm | Durum |
+|---|---|---|
+| İtibar 18 / 21 / 25 yaş (~15 / ~50 / 75–85) | 12/51/75 · 13/46/79 | Tutuyor (25 yaşta tohum 1000 alt sınırda) |
+| İlk 1. kademe (21–23) / ilk elit kulüp (22–24) | 21,0 · 20,0 / 23,0 · 22,0 | Elit tutuyor. 1. kademe tohum 2000'de 20,0. Aynı tohumda değişiklik zinciri boyunca 20,5 ↔ 20,0 oynadı (RNG gürültüsü). |
+| Pot ≥ 85 → 25 yaşına kadar OVR 80+ | 9/9 · 11/11 | Tutuyor |
+| 3. sezon net servet medyan ≤ 300K / max ≤ 2M | 135K/746K · 143K/719K | Tutuyor |
+| İflas yok | %0 · %0 | Tutuyor |
+| Kart/hafta 1,5–2,5 | 1,7 · 1,8 | Tutuyor |
+| Sakatlık 1–2 / 3–6 hafta | 1,4/3,5 · 1,5/3,7 | Tutuyor |
+| Kumarhane: kumarbaz %15–35 / herkes ≤ %5 | %12 · %23 / %2 · %2 | Ortalama %17,5. Tohum 1000'de bu tur boyunca %12–22 arasında oynadı (6 kumarbaz kariyer; BALANCE.md'deki tohum gürültüsü notu) |
+| ST kariyer gol/maç ~0,6–0,8 / en iyi sezon ~1,0–1,3 | 0,73 · 0,70 / 1,10 · 0,96 | Tutuyor (tohum 2000'de en iyi sezon alt sınırın hemen altında) |
+| ST sezonluk gol 71–76: 18–28 / 77–82: 25–35 | 23 · 22 / 24 · 25 | Tutuyor (77–82 tohum 1000'de bir gol altta) |
+
+- **Gece drift bekçisi** (`STATS_GUARD=1`, 40 × 10): tolerans içinde. `statsBaseline.json` yeniden merkezlenmedi.
+- **Golden master bilinçli yenilendi** (`UPDATE_GOLDEN=1`, aynı commit). Sebepler: maç sonu takipçi artışı (tavan), "markaj" alanı, kumarhane manşet RNG'si ve kart tavanları kariyer akışını değiştiriyor.
+- Yeni testler:
+  - `markedMan.test.ts`
+  - `decisions.test.ts`: penaltı aynı dakikada, kaleci, kışkırtma oranı
+  - `relationships.test.ts`: mizaç tabanı
+  - `projects.test.ts` ve `closeFriends.test.ts` yeni sabitlere uyarlandı.
+- `npx vitest run`: 186 dosya, 1.527 test geçti (5 atlandı). `npm run lint`: 0 hata (40 uyarı; değiştirilen dosyalarda yalnızca harness'teki eski `take` uyarısı). `npm run lint:i18n` ve `npm run build`: temiz.
+
+## NSS'de sevilenler: bizde var mı, daha iyi mi? (Tur 3)
+
+| NSS'de sevilen | Bizde (Tur 3) | Karar |
+|---|---|---|
+| Kararlar ve sonuçları | 342 farklı kart, evreye bağlı ve geç kariyer kartları, iş ve proje zincirleri | **Daha iyi**; 15+ sezonda dolgu kartlar yine dönüyor |
+| İlişkiler | Defter, mizaç tabanı, kişiliğe göre pas ağı, Legacy ebeveyn | **Daha iyi**. Kişilik artık bir sezonda silinmiyor |
+| Lüks alımlar ve mülk | Kariyer başına 35–78 alım, koleksiyon, projeler | **Daha iyi**. Geç oyunda para artık bir hedefe bağlı, ama yıldız için hâlâ bitmiyor |
+| Kumarhane ve at yarışı | 5 oyun, masa limiti, VIP, görünür kariyer bedeli, sorumlu oyun | **Daha mantıklı**. Bedel artık skorda görünüyor (itibar 72 vs 96–100). Manşetler daha az tekrarlıyor |
+| Transferler | Pazarlık, kiralık, kariyer başına 3–10 transfer | **Daha iyi** |
+| Milli takım | Performans payı, adalet, veda | **Daha iyi**. Güçlü ülkelerde (DE, BR) çağrı nadir ama artık sıfır değil (5 maç) |
+| Ödüller | Aylık, sezonluk, Altın Yıldız, yeni Savunmacı ödülü | **Daha iyi**. Artık 75 OVR'lik forvete 106 ödül yok, stoperin de ödülü var |
+| Highlight maç ve "ben" odağı | Kilit anlar, maç içi karar pencereleri | **Daha iyi**: kararlar çeşitlendi, penaltı geldi. His testi sim dışı |
+| Röportaj mini oyunu | Maç önü, maç sonu, basın toplantısı | **Daha iyi** |
+| 16'dan efsaneye, emeklilik ve Legacy | Karar kartı, jübile, belgesel, Onur Listesi, fon ve akademi mirası | NSS'de yok. **Bizim artımız** |
+| Kaleci ve stoper kariyeri | GK: Altın Eldiven, 49 milli maç, itibar 100. CB: yeni ödül | GK **forvet kadar dolu**. CB hâlâ en sakin rol |
+
+**Yeni sistemler entegre mi?**
+- **İş kararları:** Entegre. İş sahibi kariyerde 47–93 iş kartı: denetim, ünlü misafir, kuzen, kriz. Kumarbaz gibi iş kurmayanlarda 2. Haftada ~0,5 karar; kendi hikâyesini yazıyor.
+- **Projeler:** Bu tura kadar yalnızca menüdeydi. Kapılar servete bağlandıktan sonra entegre: proje kartı kariyer başına 18–34, akademi mezunu ve yönetim kurulu kartları geliyor.
+- **Maç içi kararlar:** Tekdüzeydi, artık çeşitli. Kariyer etkisi (hoca güveni, takım, taraftar) yalnızca canlı izlenen maçlarda.
+- **Pas ağı ve kişilik:** Mizaç tabanıyla anlamlı. Hâlâ yalnızca canlı maçta ve maç sonu ekranında görünüyor; kart veya hedefe bağlanmıyor.
+- **Kumar bedeli:** Entegre ve görünür.
+
+## Arayüz için yapılacaklar (sim tarafı hazır)
+
+1. **Canlı merkez karar kuralları (`ui/backend/liveMatch.ts`, `maybeOpenDecision`):** `pickDecision` çağrısına iki alan eklenmeli. Bu yapılmadan **penaltı penceresi oyunda açılmaz** ve kaleciye frikik sorulur.
+   ```ts
+   recent: snap.events.filter((e) => snap.minute - e.minute <= 1).map((e) => ({ type: e.type, own: e.side ? e.side === side : null, minute: e.minute })),
+   isKeeper: s.hero.position === 'GK',
+   ```
+2. **İlişki defteri:** Yeni "Mizacı: kendi hâline döndü" satırı `decay` nedeniyle geliyor ve ihmal satırıyla birleşebiliyor. Takım arkadaşı kartında mizaç tabanı (`relationship.baseline`) küçük bir işaret olarak gösterilebilir: "doğal mesafesi".
+3. **Projeler ekranı:** Miras fonu metni artık 120K tavanı ve "her 1M için +1 miras puanı (en çok +10)" demeli. Sabitler: `LEGACY_FUND_CAP`, `FUND_POINTS_PER_M`, `FUND_POINTS_MAX`.
+4. **Maç önü ekranı:** "Adam adama markaj" (`markedMan(hero)` > 0) bir ipucu olarak gösterilmeli: "Savunmalar seni çift adamla tutuyor". Oyuncu gol kıtlığının nedenini görmeli.
+5. **Ödül töreni:** "Ligin En İyi Savunmacısı" (`defender_of_season`) adını `Award.name` üzerinden zaten taşıyor. Törende ikon veya renk eşlemesi varsa eklenmeli.
+
+## Açık maddeler (sonraki tur)
+
+- **Evreye özgü hedefler (Tur 2'den kalma):** Hedefler 17 ve 33 yaşta aynı. Eklenmesi gerekenler:
+  - veteran için "gence asist"
+  - yıldız için "Altın Yıldız yarışı"
+  - stoper için "temiz sayfa serisi"
+  - proje sahibi için "akademinden ilk profesyonel"
+- **Geç oyun parası:** Projeler yetmiyor. Yıldız 26 yaşında 20–48M ile oturuyor. Daha büyük ve kalıcı karşılığı olan bir hedef gerekiyor: çoğunluk hissesi (başkanlık), kendi kulübünü alt ligden çıkarmak.
+- **Stoper ve bek kariyeri:** Ödül geldi, ama hikâye kartları (forvetle kapışma, son dakika kurtarışı, kaptanlık) ve savunma hedefleri az.
+- **Pas ağı otomatik çözümde görünmüyor:** Maçların çoğu otomatik çözülüyor. Pas ağı yalnızca canlı maçta ve maç sonu ekranında. Bir "seni dışlayan takım arkadaşı" kart zinciri, sistemi otomatik oyuncuya da taşır.
+- **Harness'te itibar tavanı:** İnsan gibi PR yapan oyuncu 24–26 yaşında 96–100 itibara çıkıyor (BALANCE'ta 25 yaşında 75–79). Bu fark Tur 2'den beri sürüyor; harness personası sponsor ve röportajı her fırsatta kullanıyor.
+- **Kumarbaz persona payı:** Tohuma göre %12–33. Hedef bandı (%15–35) ortalamada tutuyor, tek tohumda tutmayabiliyor.

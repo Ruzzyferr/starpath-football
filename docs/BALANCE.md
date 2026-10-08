@@ -586,3 +586,27 @@ Uzun koşuda (18 sezon) ST örneklemi küçük (n=2), bu yüzden "uzun" sütunu 
 **Golden master.** `sim/golden.test.ts` bu değişikliklerle (dünya çapası rng tüketimi, an ağırlıkları) bilinçli olarak kırmızı. Yenileme baş mühendiste.
 
 **Gecelik drift tabanı (`statsBaseline.json`) yenilendi.** Eski tabana göre tolerans içinde kaldı ama merkez bilinçli olarak kaydı, bu yüzden taban yeni değerlere çekildi (40 kariyer × 10 sezon): itibar (son) 76,5 → 81, net servet log10 6,89 → 7,07, kupa (son) 1,85 → 2,35, sezon başına gol 9,0 → 8,3, sakat hafta 3,27 → 3,89. OVR S3/S6/son 68/78/82 → 67,5/78/82; iflas 0.
+
+## Playtest Tur 3 denge notu (Ekim 2026)
+
+Ayrıntı: `docs/PLAYTEST-REPORT.md` Tur 3. Sonuçları değiştiren sim kararları şunlar:
+
+- **"Adam adama markaj" forma bağlandı** (`sim/game/match.ts` `markedMan`). Maç başına 0,8 golün üstündeki seri (bu sezon; sezonun ilk 15 maçında geçen sezonla harmanlanıyor) highlight üretiminde OVR markajıyla aynı freni uyguluyor. Fren 1,3 gol/maçta tam (`kindWeights`, `plannedHighlightCount`, `marked`). İnsan gibi oynanan 75 OVR'lik forvet 0,99'dan 0,74 gol/maça indi. BALANCE ST kariyer medyanı 0,73 · 0,70 (tohum 1000 · 2000).
+- **Takım arkadaşı mizaç tabanı** (`sim/life/relationships.ts`). İlişki her hafta kişilik tabanına %4 çekiliyor (kinde %2). `relationAvg`'nin highlight sayısına katkısı doygun +1,3'ten +0,6 civarına indi.
+- **Takipçi tavanı:** Maçın orantılı takipçi artışı ün tavanına kalan boşlukla çarpılıyor; tavan üstü fazla haftada %8 eriyor. Sponsor değeri log ölçekli olduğu için para etkilenmedi.
+- **Legacy fon tavanı** 350K'dan 120K'ya indi; fon her 1M için +1 miras puanı veriyor (en çok +10).
+- **Kumarhane:** 6 haftalık manşet aralığı; VIP ikramı haftada bir.
+
+| Ölçüt (son kod, tohum 1000 · 2000) | Değer | Hedef |
+|---|---|---|
+| İtibar 18 / 21 / 25 | 12/51/75 · 13/46/79 | ~15 / ~50 / 75–85 |
+| İlk 1. kademe / elit kulüp yaşı | 21,0 · 20,0 / 23,0 · 22,0 | 21–23 / 22–24 |
+| 3. sezon net servet medyan / max | 135K/746K · 143K/719K | ≤300K / ≤2M |
+| ST gol/maç kariyer / en iyi sezon | 0,73/1,10 · 0,70/0,96 | ~0,6–0,8 / ~1,0–1,3 |
+| ST sezonluk gol 71–76 / 77–82 | 23/24 · 22/25 | 18–28 / 25–35 |
+| Kumarhane payı kumarbaz / herkes | %12/%2 · %23/%2 | %15–35 / ≤%5 |
+| Kart/hafta, sakatlık/sezon, sakat hafta | 1,7/1,4/3,5 · 1,8/1,5/3,7 | 1,5–2,5 / 1–2 / 3–6 |
+
+Tohum gürültüsü: Tohum 1000'de kumarbaz payı, bu turdaki ara ölçümlerde değişiklik zinciri boyunca %12 ile %22 arasında oynadı. Tohum 2000'de 1. kademe yaşı 20,0 ile 20,5 arasında oynadı. Ölçütler iki tohumun ortalamasında hedefte.
+
+`STATS_GUARD=1` (40 × 10) tolerans içinde kaldı; `statsBaseline.json` yeniden merkezlenmedi. **Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit).
