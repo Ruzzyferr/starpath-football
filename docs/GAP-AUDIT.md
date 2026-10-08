@@ -37,7 +37,7 @@
 
 | TAMAM | KISMİ | EKSİK | ERTELENDİ (BLOCKED-EXT) | ERTELENDİ (iç) | N/A-süreç | Toplam |
 |---:|---:|---:|---:|---:|---:|---:|
-| **126** | **1** | **0** | **1** | **0** | **0** | **128** |
+| **127** | **0** | **0** | **1** | **0** | **0** | **128** |
 <!-- counts:end -->
 
 - Tek doğruluk kaynağı bölüm 2.1-2.13 ham tablolarıdır: her satırda tek güncel durum vardır (TAMAM / KISMİ / EKSİK / ERTELENDİ-EXT / ERTELENDİ-INT / N/A) ve kanıt/not güncel durumu açıklar. Yukarıdaki sayılar `npm run audit:counts` (`game/scripts/audit-counts.mjs`) ile bu tablolardan üretilir; CI (`audit:counts` + `git diff --exit-code`) bayat sayımı reddeder.
@@ -953,7 +953,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.1 Prosedürel avatar | TAMAM | ui/screens/newcareer/AppearanceEditor.tsx:15 | Ten, saç, sakal, göz, yüz, aksesuar |
 | 2.1 Başlangıç arketipi | TAMAM | sim/career/createHero.ts:23 | Bonus dağılımı var |
 | 2.1 Geçmiş hikâyesi | TAMAM | sim/career/createHero.ts:83 | 4 geçmiş |
-| 2.2 Özellik grupları | KISMİ | core/types.ts:26 | Kalecide 2 özellik (reflexes, handling), plan 4 ister. 3./4. anahtar `Attributes` tipini, kayıt migrasyonunu, dünya üretimini, OVR ağırlıklarını ve golden.json'u değiştirir (sim/** ve golden başka paketlerin alanı); OVR açıklama ekranı (2.3#11) hazır, anahtar eklenince listeler |
+| 2.2 Özellik grupları | TAMAM | core/types.ts ATTRIBUTE_KEYS, state/save.ts MIGRATIONS[3], sim/world/attributes.ts, game/ai.ts keeperTarget, game/kick.ts handsSkill | Kalecide 4 özellik: Refleks, Top Tutma, Pozisyon (Kaleci) `gkPositioning`, Oyun Kurma (Kaleci) `gkDistribution`. Kayıt v4 (eski kayıtlar eski sayfadan türetir, attrHistory sütunları eklenir), NPC türetme, kahraman yaratma, kaleci OVR ağırlıkları, takım modeli ve otomatik çözüm, kaleci AI (açı/derinlik/çıkış/orta alma/penaltı okuma), elden çıkış isabeti (GK tutma-atma, AI kaleciler, Distribution drili), antrenman, profil kaleci grupları, TR/EN |
 | 2.2 Pozisyon ağırlıklı OVR | TAMAM | sim/career/progression.ts:146 | heroOvr |
 | 2.2 Gizli potansiyel + yıldız | TAMAM | ui/screens/legacy/CareerCards.tsx:69 | Gizli potansiyel yıldızı UI'da |
 | 2.2 Yaş eğrisi | TAMAM | sim/career/progression.ts:100 | Var |
