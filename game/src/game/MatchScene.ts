@@ -40,16 +40,21 @@ import {
   stadiumLook, upper, windReadout, type CelebrationChoice, type CelebrationId, type CelebrationPose, type ReplayAngle, type ReplayAngleChoice, type StadiumLook,
 } from './presentation'
 import type { AimAssist } from './kick'
+import { shotSpeed } from './kick'
 import { clampN, dist, type Agent } from './model'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder } from './inputReplay'
+import { setReportAttachment } from '../telemetry/errorLog'
 import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './setPiecePicker'
 import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
+import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
+import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
+import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { PPM, TILT, ZS, crossCamFit, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -117,6 +122,8 @@ interface SceneData {
 }
 
 const SCENE_KEY = 'starpath-match'
+/** Longest the moment-start frame holds before following play (s, 2.2#4). */
+const OPEN_CAM_HOLD = 1.4
 
 /** Pitch-space box (meters) a static Graphics fits in; `z` = tallest point drawn. */
 interface BakeBox {
@@ -270,6 +277,10 @@ export class MatchScene extends Phaser.Scene {
   private cam = { x: 0, y: 0, zoom: 1, base: 1, punch: 0 }
   /** Cross camera: a still frame (world px) fitted at delivery, its zoom multiplier, and when it ends (sim time). */
   private crossCam: { fx: number; fy: number; zoomMult: number; until: number } | null = null
+  /** Moment-start framing (2.2#4). */
+  private openCam: { x: number; y: number; zoomMult: number; t0: number; fromX: number; fromY: number; fromZoom: number } | null = null
+  /** Live follow spring (2.2#2). */
+  private camSpring: Spring2 | null = null
   /** Height (game px) of the HUD band at the top; the play camera renders below it so the HUD never covers play. */
   private hudTop = 0
   /** Safe-area inset (notch) at the top of the canvas, game px. */
@@ -337,6 +348,10 @@ export class MatchScene extends Phaser.Scene {
   /** Deterministic input log of this moment (debugging / bug reports, WP-13). */
   private inputRec = new InputRecorder()
   private assistText: Phaser.GameObjects.Text | null = null
+  /** Bullet-time desaturation filter (lazily created). */
+  private desat: { f: Phaser.Filters.ColorMatrix; amt: number } | null = null
+  /** Launch speed read-out at the power ring (2.1#21). */
+  private speedText: Phaser.GameObjects.Text | null = null
   private paused = false
   private auto: AutopilotState | null = null
   private kits!: { hero: KitColors; opp: KitColors; heroGk: KitColors; oppGk: KitColors }
@@ -360,10 +375,14 @@ export class MatchScene extends Phaser.Scene {
     this.labels = null
     this.labelsOn = false
     this.offsideFx = null
+    this.openCam = null
+    this.camSpring = null
     this.passLineX = null
     this.lastKeyT = -1
     this.windText = null
     this.assistText = null
+    this.speedText = null
+    this.desat = null
     this.inputRec = new InputRecorder()
     this.ring2 = null
     this.baked = []
@@ -449,6 +468,8 @@ export class MatchScene extends Phaser.Scene {
     this.cam.x = b.x
     this.cam.y = b.y
     this.cam.zoom = this.cam.base * 0.82
+    this.camSpring = null
+    this.startOpenCam()
     // Player name labels on demand (N).
     this.onKey = (e: KeyboardEvent) => {
       if (e.code === 'KeyN' && !e.repeat && !(e.target instanceof HTMLInputElement)) this.labelsOn = !this.labelsOn
@@ -911,6 +932,7 @@ export class MatchScene extends Phaser.Scene {
     this.bannerSub = this.text(19, '#f2f5fa', '700').setAlpha(0)
     this.focusText = this.text(12, '#9fe8ff', '700', 'display', false).setAlpha(0)
     this.tagText = this.text(13, '#1a1405', '700', 'display', false)
+    this.speedText = this.text(11, '#ffffff', '700', 'display', false).setOrigin(0, 1).setStroke('#000000', 3).setAlpha(0)
     this.sprintText = this.text(14, '#ffffff', '700')
     this.skillText = this.text(13, '#ffffff', '700')
     this.replayText = this.text(17, '#ffffff', '700').setAlpha(0)
@@ -1216,6 +1238,10 @@ export class MatchScene extends Phaser.Scene {
   private afterPlay(): void {
     const rt = this.rt
     this.recordThisMoment()
+    // Bug reports (plan 2.1#34): the kicks of the moment just played as {t, dx, dy, curve, lift}.
+    const kicks = this.inputRec.kicks()
+    const hl = this.data0.highlight
+    setReportAttachment('last moment kicks', () => JSON.stringify({ highlight: hl.id, kind: hl.kind, minute: hl.minute, kicks }))
     // Dev / bug reports: the deterministic input log of the moment just played.
     if (import.meta.env.DEV) {
       ;(globalThis as { __spInputLog?: unknown }).__spInputLog = this.inputRec.toRecording(this.data0.highlight.id, {
@@ -1532,12 +1558,26 @@ export class MatchScene extends Phaser.Scene {
     if (rt.phase !== 'live') return
     const hero = rt.hero
     const hp = project(hero.pos.x, hero.pos.y)
+    // Composure ring (2.2#15): the bullet-time window closes as a ring shrinking around the ball.
+    if (this.mode === 'play' && rt.bulletFrac > 0) {
+      const bp = project(rt.ball.x, rt.ball.y)
+      const rr = composureRingRadius(rt.bulletFrac) * PPM
+      const warn = rt.bulletFrac < 0.25
+      g.lineStyle(0.16 * PPM, 0x000000, 0.3)
+      g.strokeEllipse(bp.x, bp.y, rr * 2, rr * 2 * TILT, 32)
+      g.lineStyle(0.09 * PPM, warn ? 0xffb02e : 0x9fe8ff, 0.9)
+      g.strokeEllipse(bp.x, bp.y, rr * 2, rr * 2 * TILT, 32)
+    }
     // Aim preview: dotted predicted path.
     const pv = rt.preview()
+    const showPath = previewVisible(rt.difficulty, rt.assist)
+    this.speedText?.setAlpha(0)
     if (pv) {
       const shot = pv.kind === 'shot' || pv.kind === 'chip' || pv.kind === 'penalty' || pv.kind === 'freekick'
       const col = shot ? 0xffd23f : 0xffffff
-      const n = pv.points.length
+      // Vision (and technique) decide how much of the path the hero "sees" (2.1#20, 2.2#16); Hard/manual hide it.
+      const tech = techniqueOf(hero.attrs)
+      const n = showPath ? Math.max(2, Math.ceil(pv.points.length * previewFraction(hero.attrs.vision ?? 50, tech))) : 0
       // Continuous path under the dots (dark halo first so it reads on any grass/weather).
       if (n > 2) {
         for (const [w, c, al] of [[0.13, 0x000000, 0.3], [0.05, col, 0.55]] as const) {
@@ -1554,7 +1594,7 @@ export class MatchScene extends Phaser.Scene {
       }
       // Pass target: the team-mate the ball is heading for (clearer the better the hero's vision).
       if (!shot) {
-        const end = pv.points[n - 1]
+        const end = pv.points[pv.points.length - 1]
         let best: Agent | null = null
         let bd = 7
         for (const a of rt.agents) {
@@ -1588,13 +1628,36 @@ export class MatchScene extends Phaser.Scene {
           g.fillCircle(s.x, s.y, 0.09 * PPM)
         }
       }
-      const last = pv.points[n - 1]
-      const lp = project(last.x, last.y, last.z)
-      g.lineStyle(0.07 * PPM, col, 0.9)
-      g.strokeEllipse(lp.x, lp.y, 0.9 * PPM, 0.9 * PPM * (shot ? 1 : TILT))
-      // Power ring around the hero (red beyond 100%).
+      const land = showPath && LANDING_KINDS.has(pv.kind) ? firstLanding(pv.points) : -1
+      if (land >= 0) {
+        // Lofted balls: X at the first bounce inside a Technique error ellipse (2.2#18).
+        const q = project(pv.points[land].x, pv.points[land].y)
+        const er = landingErrorRadius(tech) * PPM
+        g.fillStyle(0xffffff, 0.08)
+        g.fillEllipse(q.x, q.y, er * 2, er * 2 * TILT)
+        g.lineStyle(0.05 * PPM, 0xffffff, 0.55)
+        g.strokeEllipse(q.x, q.y, er * 2, er * 2 * TILT)
+        const xr = 0.45 * PPM
+        for (const [w, c, al] of [[0.17, 0x000000, 0.45], [0.09, 0xffffff, 0.95]] as const) {
+          g.lineStyle(w * PPM, c, al)
+          g.lineBetween(q.x - xr, q.y - xr * TILT, q.x + xr, q.y + xr * TILT)
+          g.lineBetween(q.x - xr, q.y + xr * TILT, q.x + xr, q.y - xr * TILT)
+        }
+      } else if (n > 0) {
+        const last = pv.points[n - 1]
+        const lp = project(last.x, last.y, last.z)
+        g.lineStyle(0.07 * PPM, col, 0.9)
+        g.strokeEllipse(lp.x, lp.y, 0.9 * PPM, 0.9 * PPM * (shot ? 1 : TILT))
+      }
+      // Power ring around the hero (4 bands, 2.1#19 / 2.2#17).
       const pw = this.lastIntent?.power ?? pv.power
       this.drawPowerRing(g, hp.x, hp.y, pw, this.lastIntent?.oscillating ?? false)
+      // Absolute launch speed at the ring (2.1#21): same power, same speed.
+      if (shot && this.speedText) {
+        const ms = shotSpeed(Math.min(1.15, pw), hero.attrs, pv.kind)
+        const sp = this.worldToScreen(hp.x + 1.25 * PPM, hp.y - 1.25 * PPM * TILT)
+        this.speedText.setText(speedLabel(ms)).setPosition(sp.x, sp.y).setAlpha(0.95)
+      }
     } else if (rt.heroOnBall && rt.setPiece) {
       // Set piece idle: pulsing reticle in the goal + panic tremble.
       const pan = rt.panicOffset()
@@ -1678,16 +1741,50 @@ export class MatchScene extends Phaser.Scene {
     }
     const steps = 48
     const frac = Math.min(1.15, power) / 1.15
+    const cb = getControlPrefs().cbMode !== 'off'
     g.lineStyle(0.18 * PPM, 0x000000, 0.35)
     g.strokeEllipse(x, y, r * 2, r * 2 * TILT)
     for (let i = 0; i < steps * frac; i++) {
       const a0 = -Math.PI / 2 + (i / steps) * Math.PI * 2
       const a1 = -Math.PI / 2 + ((i + 1) / steps) * Math.PI * 2
       const pf = ((i + 1) / steps) * 1.15
-      const col = pf > 1 ? 0xff3b3b : pf > 0.85 ? 0xffb02e : 0x5dff8a
-      g.lineStyle(0.16 * PPM, col, 0.95)
+      const band = powerBand(pf)
+      g.lineStyle(0.16 * PPM, BAND_COLOR[band], 0.95)
       g.lineBetween(x + Math.cos(a0) * r, y + Math.sin(a0) * r * TILT, x + Math.cos(a1) * r, y + Math.sin(a1) * r * TILT)
+      // Colour-blind mode: a pattern per band so it reads without hue (2.2#17).
+      if (cb && BAND_PATTERN[band] !== 'solid') {
+        const pat = BAND_PATTERN[band]
+        const am = (a0 + a1) / 2
+        const cx = x + Math.cos(am) * r
+        const cy = y + Math.sin(am) * r * TILT
+        const nx = Math.cos(am) * 0.2 * PPM
+        const ny = Math.sin(am) * 0.2 * PPM * TILT
+        g.lineStyle(0.05 * PPM, 0x000000, 0.85)
+        if (pat === 'ticks' && i % 3 === 0) g.lineBetween(cx - nx, cy - ny, cx + nx, cy + ny)
+        else if (pat === 'dashes' && i % 2 === 0) g.lineBetween(x + Math.cos(a0) * r, y + Math.sin(a0) * r * TILT, cx, cy)
+        else if (pat === 'hatch') {
+          g.lineBetween(cx - nx - ny * 0.5, cy - ny + nx * 0.5, cx + nx + ny * 0.5, cy + ny - nx * 0.5)
+          g.lineBetween(cx - nx + ny * 0.5, cy - ny - nx * 0.5, cx + nx - ny * 0.5, cy + ny + nx * 0.5)
+        }
+      }
     }
+  }
+
+  /** Slow-motion desaturation through a camera colour-matrix filter, active only while slowed; off on Low (2.2#14). */
+  private applyDesaturation(slow: number): void {
+    const amt = bulletDesaturation(slow)
+    if (amt <= 0.002 && !this.desat) return
+    if (!this.desat) {
+      if (!this.q.desaturate || this.game.renderer.type !== Phaser.WEBGL) return
+      const f = this.cameras.main.filters?.internal.addColorMatrix()
+      if (!f) return
+      this.desat = { f, amt: -1 }
+    }
+    const d = this.desat
+    if (Math.abs(d.amt - amt) < 0.01) return
+    d.amt = amt
+    d.f.active = amt > 0.002
+    d.f.colorMatrix.saturate(-amt)
   }
 
   private updateNets(dt: number): void {
@@ -1775,49 +1872,106 @@ export class MatchScene extends Phaser.Scene {
     let tx: number
     let ty: number
     if (this.debugCam) target = this.debugCam
-    if (target) {
+    const w = this.scale.width
+    const h = this.scale.height - this.hudTop
+    // Moment-start framing (2.2#4): ease in 350 ms to ball + hero + 3 pass options, hold until play starts.
+    const open = !target && !replay && this.mode === 'play' ? this.openCamStep() : null
+    if (open) {
+      this.cam.x = open.x
+      this.cam.y = open.y
+      this.cam.zoom = open.zoom
+      this.camSpring = newSpring(open.x, open.y)
+    } else if (target) {
       tx = target.x
       ty = target.y
     } else {
-      // Target in pitch space: ball + velocity look-ahead + lean toward the action.
+      // Target in pitch space: ball + lean toward the action.
       let px = bx
-      let py = by
+      const py = by
       const cc = !replay && this.crossCam && !rt.owner && rt.time < this.crossCam.until ? this.crossCam : null
       if (!cc) this.crossCam = null
+      let lead = { x: 0, y: 0 }
       if (!cc && !replay) {
-        const look = 0.38
-        px += clampN(rt.ball.vx * look, -9, 9)
-        py += clampN(rt.ball.vy * look, -6, 6)
-        if (rt.heroOnBall) px += 5
         if (rt.heroIsKeeper) px += 7
+        // Look-ahead (2.2#3): 18 % of the screen along the carrier's run (the ball's flight when loose).
+        const carrier = rt.owner
+        lead = lookAheadOffset(carrier ? carrier.vel : { x: rt.ball.vx, y: rt.ball.vy }, { w, h }, this.cam.zoom)
       }
       const b = cc ? { x: cc.fx, y: cc.fy } : project(px, py, bz * 0.5)
-      tx = b.x
-      ty = b.y
+      tx = b.x + lead.x
+      ty = b.y + lead.y
     }
-    const k = 1 - Math.exp(-dt * (target ? 3 : replay ? 2.2 : 3.4))
-    this.cam.x += (tx - this.cam.x) * k
-    this.cam.y += (ty - this.cam.y) * k
-    this.cam.punch *= Math.exp(-dt * 5)
-    if (this.rm) this.cam.punch = 0
-    const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
-    const crossZoom = this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1
-    const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
-    this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
-    // Clamp to the stadium.
-    const w = this.scale.width
-    const h = this.scale.height - this.hudTop
-    const hw = w / (2 * this.cam.zoom)
-    const hh = h / (2 * this.cam.zoom)
-    const minX = -13 * PPM
-    const maxX = (PITCH_WIDTH + 13) * PPM
-    const minY = project(PITCH_LENGTH + 13, 0).y
-    const maxY = project(-9, 0).y
-    this.cam.x = maxX - minX < hw * 2 ? (minX + maxX) / 2 : clampN(this.cam.x, minX + hw, maxX - hw)
-    this.cam.y = maxY - minY < hh * 2 ? (minY + maxY) / 2 : clampN(this.cam.y, minY + hh, maxY - hh)
+    if (!open) {
+      if (target || replay) {
+        const k = 1 - Math.exp(-dt * (target ? 3 : 2.2))
+        this.cam.x += (tx! - this.cam.x) * k
+        this.cam.y += (ty! - this.cam.y) * k
+        this.camSpring = newSpring(this.cam.x, this.cam.y)
+      } else {
+        // Live follow (2.2#2): critically damped spring, fixed 60 Hz, ≤ 1200 px/s on screen.
+        const sp = this.camSpring ?? newSpring(this.cam.x, this.cam.y)
+        sp.x = this.cam.x
+        sp.y = this.cam.y
+        springStep(sp, tx!, ty!, dt, this.cam.zoom)
+        this.camSpring = sp
+        this.cam.x = sp.x
+        this.cam.y = sp.y
+      }
+      this.cam.punch *= Math.exp(-dt * 5)
+      if (this.rm) this.cam.punch = 0
+      const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
+      const crossZoom = this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1
+      const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
+      this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
+    }
+    // Clamp to the stadium: at most 6 m past the lines (2.2#7); wider views centre and show the stands.
+    const c = clampCamera(this.cam.x, this.cam.y, w / (2 * this.cam.zoom), h / (2 * this.cam.zoom))
+    if (this.camSpring && (c.x !== this.cam.x || c.y !== this.cam.y)) {
+      if (c.x !== this.cam.x) this.camSpring.vx = 0
+      if (c.y !== this.cam.y) this.camSpring.vy = 0
+      this.camSpring.x = c.x
+      this.camSpring.y = c.y
+    }
+    this.cam.x = c.x
+    this.cam.y = c.y
     const cam = this.cameras.main
     cam.setZoom(this.cam.zoom)
     cam.centerOn(this.cam.x, this.cam.y)
+  }
+
+  /**
+   * Moment-start framing state (2.2#4). Returns the camera pose while the
+   * opening frame is active, null once play has started (ball moving, hero
+   * acted) or after {@link OPEN_CAM_HOLD} s.
+   */
+  private openCamStep(): { x: number; y: number; zoom: number } | null {
+    const o = this.openCam
+    if (!o) return null
+    const rt = this.rt
+    const t = this.elapsed - o.t0
+    const started = Math.hypot(rt.ball.vx, rt.ball.vy) > 4 || Math.hypot(rt.hero.vel.x, rt.hero.vel.y) > 1.5 || !!rt.aim || (this.lastIntent?.power ?? 0) > 0
+    if (t > OPEN_CAM_HOLD || rt.setPiece || (t > MOMENT_FRAME_TIME && started)) {
+      this.openCam = null
+      return null
+    }
+    const e = easeOut(t / MOMENT_FRAME_TIME)
+    const zoom = o.fromZoom + (this.cam.base * o.zoomMult - o.fromZoom) * e
+    return { x: o.fromX + (o.x - o.fromX) * e, y: o.fromY + (o.y - o.fromY) * e, zoom }
+  }
+
+  /** Builds the opening frame from the current runtime state. */
+  private startOpenCam(): void {
+    const rt = this.rt
+    if (rt.setPiece || this.data0.replayOnly) return
+    const hero = rt.hero
+    const ids = rt.passOptions()
+    const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
+    const picked = ids.map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m).slice(0, 3)
+    const rest = nearestPoints(rt.ball, mates.filter((m) => !picked.includes(m)).map((m) => m.pos), 3 - picked.length)
+    const opts = [...picked.map((m) => m.pos), ...rest]
+    const h = this.scale.height - this.hudTop
+    const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base)
+    this.openCam = { x: f.x, y: f.y, zoomMult: f.zoomMult, t0: this.elapsed, fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom }
   }
 
   // ───────────────────────── Replay ─────────────────────────
@@ -2439,11 +2593,9 @@ export class MatchScene extends Phaser.Scene {
     const slow = this.mode === 'play' ? 1 - rt.timeScale : 0
     // A soft broadcast vignette always frames the play (deeper at night); bullet time and replays push it further.
     const vBase = this.night ? 0.42 : 0.26
-    this.vignette.setAlpha(this.rm ? vBase : Math.min(0.85, vBase + clampN(slow * 0.75, 0, 0.6) + (this.mode === 'replay' ? 0.2 : 0)))
-    if (focus > 0) {
-      g.fillStyle(0x9fe8ff, 0.9)
-      g.fillRoundedRect(bx + bw / 2 - (bw * 0.5 * focus) / 2, by + 9 * u, bw * 0.5 * focus, 3 * u, 1.5 * u)
-    }
+    // Bullet time adds at most 15 % vignette and a slight desaturation (2.2#14).
+    this.vignette.setAlpha(this.rm ? vBase : Math.min(0.85, vBase + bulletVignette(slow) + (this.mode === 'replay' ? 0.2 : 0)))
+    this.applyDesaturation(this.rm ? 0 : slow)
 
     // Prompt: visible for the first seconds.
     this.promptT += dt

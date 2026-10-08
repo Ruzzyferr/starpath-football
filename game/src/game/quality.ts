@@ -30,12 +30,14 @@ export interface QualitySpec {
   lampStep: number
   /** LED ad glow and celebration confetti. */
   glow: boolean
+  /** Bullet-time desaturation (a full-screen colour-matrix pass while slowed; 2.2#14). */
+  desaturate: boolean
 }
 
 export const QUALITY: Readonly<Record<QualityProfile, QualitySpec>> = {
-  low: { profile: 'low', particleScale: 0.4, particleBudget: 120, crowdScale: 0.6, tifo: false, weatherRate: 0.5, lampStep: 2, glow: false },
-  medium: { profile: 'medium', particleScale: 0.7, particleBudget: 260, crowdScale: 0.82, tifo: true, weatherRate: 0.75, lampStep: 1, glow: true },
-  high: { profile: 'high', particleScale: 1, particleBudget: 480, crowdScale: 1, tifo: true, weatherRate: 1, lampStep: 1, glow: true },
+  low: { profile: 'low', particleScale: 0.4, particleBudget: 120, crowdScale: 0.6, tifo: false, weatherRate: 0.5, lampStep: 2, glow: false, desaturate: false },
+  medium: { profile: 'medium', particleScale: 0.7, particleBudget: 260, crowdScale: 0.82, tifo: true, weatherRate: 0.75, lampStep: 1, glow: true, desaturate: true },
+  high: { profile: 'high', particleScale: 1, particleBudget: 480, crowdScale: 1, tifo: true, weatherRate: 1, lampStep: 1, glow: true, desaturate: true },
 }
 
 export const isQualityChoice = (v: unknown): v is QualityChoice => v === 'auto' || v === 'low' || v === 'medium' || v === 'high'
