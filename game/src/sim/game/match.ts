@@ -18,6 +18,7 @@ import { applyMatchToHero, type HeroMatchInput } from '../career/matchOutcome'
 import { heroOvr } from '../career/progression'
 import { rollSelection } from '../career/squadRole'
 import { heroMatchAttributes } from '../career/matchPerks'
+import { objectivesAfterMatch } from './objectives'
 import { LAST_MATCH_FLAG, heroGoalKinds, updateRecordsAfterMatch, type MatchFeats } from './records'
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
@@ -433,8 +434,10 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       penaltyGoals: result.scorers.filter((x) => x.playerId === HERO_ID && x.penalty).length, headerGoals: kinds.header,
       rating: st.minutes > 0 ? st.rating : 0, motm: !!input.motm, won, drew, goalsFor: gf, goalsAgainst: ga, cleanSheet: ga === 0,
       saves: st.saves, isKeeper: state.hero.position === 'GK', red: !!input.red, injured,
+      tackles: st.tackles, passesCompleted: st.passesCompleted,
     }
     writeJson(state.life, LAST_MATCH_FLAG, feats)
+    objectivesAfterMatch(state, lines)
     updateRecordsAfterMatch(state, feats)
 
     // ── Counters & flags ──

@@ -499,6 +499,8 @@ export interface PostMatchView {
   heroMap?: HeroMapView
   /** Manager trust before/after with the reasons that moved it. */
   trust?: TrustChangeView
+  /** Manager expectations after this match, with the ones that were met marked (2.4#47). */
+  expectations?: { title: LText; progress: number; target: number; status: 'done' | 'failed' | 'open' }[]
   /** Relationship changes this match caused (largest first). */
   relations?: RelationChangeView[]
   /** WP-16: what this match earned (bonuses paid now + this match's share of the weekly wage/sponsors). */

@@ -35,7 +35,7 @@ export const MAX_ACTIVE = 3
 export type ObjectiveSource = 'manager' | 'fans' | 'sponsor' | 'family' | 'agent' | 'board' | 'self'
 export type ObjectiveKind =
   | 'goals' | 'assists' | 'cleanSheets' | 'rating' | 'apps' | 'wins' | 'followers' | 'familyVisit' | 'noCards'
-  | 'leaguePos' | 'seasonGoals' | 'seasonCleanSheets' | 'seasonApps'
+  | 'leaguePos' | 'seasonGoals' | 'seasonCleanSheets' | 'seasonApps' | 'press' | 'teamPlay'
 
 export interface ObjectiveReward {
   money?: number
@@ -215,6 +215,36 @@ export function objectivesDaily(state: GameState, out: LText[]): void {
   save(state, st)
 }
 
+/** Flag holding what the last match did to the manager's expectations (post-match report, 2.4#47). */
+export const MATCH_EXPECT_FLAG = 'g:matchExpect'
+
+export interface ExpectationMark {
+  title: LText
+  progress: number
+  target: number
+  status: 'done' | 'failed' | 'open'
+}
+
+/**
+ * Settles objectives right after the hero's match (instead of waiting for the
+ * next daily tick) and records the manager's expectations with their outcome
+ * so the post-match report can mark the ones that were met.
+ */
+export function objectivesAfterMatch(state: GameState, out: LText[]): void {
+  const before = new Set(load(state).active.filter((o) => o.source === 'manager').map((o) => o.id))
+  objectivesDaily(state, out)
+  const st = load(state)
+  const marks: ExpectationMark[] = []
+  for (const o of st.active) if (o.source === 'manager' && before.has(o.id)) marks.push({ title: o.title, progress: o.progress, target: o.target, status: 'open' })
+  for (const o of st.history.slice(0, 4)) {
+    if (o.source === 'manager' && before.has(o.id)) marks.push({ title: o.title, progress: o.progress, target: o.target, status: o.status === 'done' ? 'done' : 'failed' })
+  }
+  writeJson(state.life, MATCH_EXPECT_FLAG, marks)
+}
+
+/** Manager expectations as of the last match (empty when none). */
+export const matchExpectations = (state: GameState): ExpectationMark[] => readJson<ExpectationMark[]>(state.life, MATCH_EXPECT_FLAG, [])
+
 /** Weekly hook (new week): expire overdue objectives, maybe hand out a new one. */
 export function objectivesWeekly(state: GameState, out: LText[]): void {
   if (state.hero.retired) return
@@ -293,6 +323,8 @@ function countMatch(o: Objective, f: MatchFeats): void {
     case 'apps': o.progress++; break
     case 'noCards': if (f.red) o.progress = -99; else o.progress++; break
     case 'rating': o.progress++; o.sum = (o.sum ?? 0) + f.rating; break
+    case 'press': o.progress += f.tackles ?? 0; break
+    case 'teamPlay': o.progress += f.passesCompleted ?? 0; break
     default: break
   }
 }
@@ -438,6 +470,20 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
         fill(lt('4 hafta içinde {n} asist yap', 'Make {n} assist(s) within 4 weeks'), { n: target }),
         lt('Hoca: "Oyunu kur, arkadaşlarını gole sok."', 'The manager: "Create. Put your teammates through."'),
         target, 4, { trust: 4, rel: { manager: 4 }, money: Math.round(wage * 0.25) }, { trust: -2 }) })
+    }
+    if (!isGk(pos)) {
+      // Plan 2.4#47: explicit tactical expectations ("press", "play for the team").
+      const grp = ATTACK.includes(pos) ? 0 : isDef(pos) ? 2 : 1
+      const pressN = [3, 6, 8][grp]!
+      const passN = [20, 60, 50][grp]!
+      cands.push({ w: 2, make: () => mk(state, st, 'manager', 'press',
+        fill(lt('Pres yap: 4 hafta içinde {n} top kapma', 'Press hard: win the ball {n} times within 4 weeks'), { n: pressN }),
+        lt('Hoca: "Topu kaybedince hemen üstüne git."', 'The manager: "When we lose it, go straight back at them."'),
+        pressN, 4, { trust: 4, rel: { manager: 4 } }, { trust: -1 }) })
+      cands.push({ w: 2, make: () => mk(state, st, 'manager', 'teamPlay',
+        fill(lt('Takım oyunu: 4 hafta içinde {n} isabetli pas', 'Play for the team: complete {n} passes within 4 weeks'), { n: passN }),
+        lt('Hoca: "Bireysel oynama, topu arkadaşlarınla paylaş."', 'The manager: "Stop playing solo. Share the ball."'),
+        passN, 4, { trust: 4, rel: { manager: 4 } }, { trust: -1 }) })
     }
     if (isGk(pos) || isDef(pos)) {
       cands.push({ w: 3, make: () => mk(state, st, 'manager', 'cleanSheets',

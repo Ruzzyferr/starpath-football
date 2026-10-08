@@ -86,6 +86,7 @@ export const tr = {
       agent: 'Menajer komisyonu',
     },
   },
+  expect: { title: 'Hocanın beklentileri', met: 'Karşılandı ✓', missed: 'Kaçtı' },
   trust: {
     title: 'Teknik direktör güveni',
     before: 'Önce',
@@ -202,6 +203,7 @@ export const en: Shape<typeof tr> = {
       agent: 'Agent commission',
     },
   },
+  expect: { title: "The manager's expectations", met: 'Met ✓', missed: 'Missed' },
   trust: {
     title: 'Manager trust',
     before: 'Before',

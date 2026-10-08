@@ -41,6 +41,9 @@ export interface MatchFeats {
   isKeeper: boolean
   red: boolean
   injured: boolean
+  /** Tackles and completed passes (manager expectations 'press' / 'team play'); missing on old saves. */
+  tackles?: number
+  passesCompleted?: number
 }
 
 export const LAST_MATCH_FLAG = 'c:lastMatch'

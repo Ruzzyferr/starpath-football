@@ -28,6 +28,7 @@ import { RELATION_LABEL, diffSnapshots, fixtureView, snapshot } from './mapping'
 import { playHighlight, type HighlightSession } from './highlightBridge'
 import { celebrationForMatch } from './celebration'
 import { isEveningFixture } from '../../game/presentation'
+import { matchExpectations } from '../../sim/game/objectives'
 import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
@@ -572,8 +573,8 @@ function finalize(): void {
 /** Rating breakdown, maps, trust reasons and relationship rows for the post-match flow. */
 function postDetails(
   s: GameState, snap: MatchSnapshot, report: ReturnType<typeof finishHeroMatch>, trustBefore: number, relBefore: Record<string, number>,
-): Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'relations'> {
-  const out: Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'relations'> = {}
+): Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'expectations' | 'relations'> {
+  const out: Pick<PostMatchView, 'ratingBase' | 'ratingLog' | 'heroMap' | 'trust' | 'expectations' | 'relations'> = {}
   try {
     const log = ratingLogView(snap.heroLog)
     if (report.minutes > 0) {
@@ -584,6 +585,8 @@ function postDetails(
     if (map && report.minutes > 0) out.heroMap = map
     const h = snap.heroStats
     const resultLine = log.find((e) => e.source === 'final' && e.key === 'result')
+    const marks = matchExpectations(s)
+    if (marks.length) out.expectations = marks
     out.trust = buildTrustReasons({
       before: trustBefore, after: s.hero.managerTrust, rating: report.minutes > 0 ? report.rating : 0, minutes: report.minutes,
       goals: h.goals, assists: h.assists, yellow: h.yellow, red: h.red, won: report.won, drew: report.drew,

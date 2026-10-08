@@ -299,6 +299,19 @@ function TrustStep({ pm }: { pm: PostMatchView }) {
           ))}
         </ul>
       )}
+      {pm.expectations && pm.expectations.length > 0 && (
+        <>
+          <h3 class="micro t-mid">{t('postmatch.expect.title')}</h3>
+          <ul class="ptrust-list pexpect-list" data-testid="post-expectations">
+            {pm.expectations.map((x, i) => (
+              <li key={i} class={x.status === 'done' ? 't-pos' : x.status === 'failed' ? 't-neg' : ''}>
+                <span>{lt(x.title)}</span>
+                <b class="num">{x.status === 'done' ? t('postmatch.expect.met') : x.status === 'failed' ? t('postmatch.expect.missed') : `${Math.round(x.progress)}/${x.target}`}</b>
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
     </section>
   )
 }

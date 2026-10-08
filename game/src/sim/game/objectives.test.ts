@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { makeGame, autoRun } from './testHelpers'
-import { OBJECTIVES_FLAG, objectivesDaily, objectivesView, objectivesWeekly, type Objective } from './objectives'
+import { OBJECTIVES_FLAG, matchExpectations, objectivesAfterMatch, objectivesDaily, objectivesView, objectivesWeekly, type Objective } from './objectives'
 import { LAST_MATCH_FLAG, type MatchFeats } from './records'
 import { readJson, writeJson } from './internal'
 import { absWeek } from '../career/common'
@@ -86,5 +86,28 @@ describe('career-start objectives', () => {
     expect(v.active.some((o) => o.seasonal && o.source !== 'board')).toBe(true)
     expect(v.active.filter((o) => !o.seasonal)).toHaveLength(1)
     expect(v.active.find((o) => o.source === 'manager')?.rewardParts.some((p) => p.key === 'relation' && p.rel === 'manager')).toBe(true)
+  })
+})
+
+describe('manager expectations (2.4#47)', () => {
+  it('press and team-play expectations count tackles / completed passes and are marked after the match', () => {
+    const s = makeGame(43)
+    seed(s, { kind: 'press', target: 5, title: { tr: 'Pres yap', en: 'Press hard' } })
+    const trust0 = s.hero.managerTrust
+    writeJson(s.life, LAST_MATCH_FLAG, feats({ fixtureId: 'p1', tackles: 3, passesCompleted: 40 }))
+    objectivesAfterMatch(s, [])
+    let marks = matchExpectations(s)
+    expect(marks).toHaveLength(1)
+    expect(marks[0]).toMatchObject({ status: 'open', progress: 3, target: 5 })
+    writeJson(s.life, LAST_MATCH_FLAG, feats({ fixtureId: 'p2', tackles: 4, passesCompleted: 10 }))
+    objectivesAfterMatch(s, [])
+    marks = matchExpectations(s)
+    expect(marks[0]).toMatchObject({ status: 'done' })
+    expect(s.hero.managerTrust).toBeGreaterThan(trust0) // +4 paid at once, visible in the same post-match report
+
+    seed(s, { id: 'o2', kind: 'teamPlay', target: 50, title: { tr: 'Takım oyunu', en: 'Play for the team' } })
+    writeJson(s.life, LAST_MATCH_FLAG, feats({ fixtureId: 'p3', passesCompleted: 55 }))
+    objectivesAfterMatch(s, [])
+    expect(matchExpectations(s)[0]).toMatchObject({ status: 'done' })
   })
 })
