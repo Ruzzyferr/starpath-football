@@ -10,10 +10,11 @@
  * career_conflict → long_distance, paparazzi_partner, ex_resurfaces.
  */
 import {
-  PARTNER_NAMES, boss, canAfford, endRel, energy, fans, fatigue, flags, folPct, follow, form, fx, getFlag, happy, hasFlag, hasRel, money, morale,
+  boss, canAfford, endRel, energy, fans, fatigue, flags, folPct, follow, form, fx, getFlag, happy, hasFlag, hasRel, money, morale,
   news, num, press, rel, relVal, rep, sharp, stress, t, chain, trust, wageX, age,
 } from '../dsl'
 import type { EventDef } from '../types'
+import { partnerNamePool } from '../../../game/partnerPref'
 
 /** Flags to clear when a relationship ends. */
 const SINGLE = { romance_stage: null, long_distance: null }
@@ -26,7 +27,7 @@ export const romanceEvents: EventDef[] = [
     weight: 1.2,
     cooldownWeeks: 12,
     conditions: ({ state }) => !hasRel(state, 'partner') && getFlag(state, 'romance_stage') !== 'crush' && age(state) >= 18,
-    vars: (_ctx, rng) => ({ crush: rng.pick(PARTNER_NAMES) }),
+    vars: (ctx, rng) => ({ crush: rng.pick(partnerNamePool(ctx.state)) }),
     title: t('Kafede Biri', 'Someone at the Café'),
     text: t(
       '{friendName}\'ın doğum günü kutlamasında {crush} ile aynı masaya düştün. Futbolla hiç ilgisi yok; ne iş yaptığını sorunca "Top mu oynuyorsun? Hobi olarak mı?" dedi. İlk kez kimse seni tanımıyor ve bu… hoş.',

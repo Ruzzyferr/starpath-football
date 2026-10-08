@@ -15,6 +15,13 @@ export const tr = {
     pace: 'Hız', shooting: 'Şut', passing: 'Pas', dribbling: 'Top sürme', defending: 'Savunma', physical: 'Fizik',
   },
   ovrHistory: 'Reyting gelişimi',
+  ovrExplain: {
+    button: 'OVR nasıl hesaplanır?',
+    title: 'OVR nasıl hesaplandı? ({pos})',
+    intro: 'OVR, mevkine göre ağırlıklı özellik ortalamasıdır. Şu an {ovr}. Bir özelliğin payı ne kadar büyükse, onu geliştirmek OVR’ni o kadar çok yükseltir.',
+    attr: 'Özellik', weight: 'Ağırlık', value: 'Değer', points: 'Puan', total: 'OVR (puanların toplamı)',
+    note: 'Listede olmayan özellikler bu mevkinin OVR’sine girmez. Ağırlıklar mevkiye göre sabittir.',
+  },
   contract: {
     title: 'Sözleşme',
     wage: 'Haftalık maaş',
@@ -79,6 +86,13 @@ export const en: Shape<typeof tr> = {
     pace: 'Pace', shooting: 'Shooting', passing: 'Passing', dribbling: 'Dribbling', defending: 'Defending', physical: 'Physical',
   },
   ovrHistory: 'Rating progression',
+  ovrExplain: {
+    button: 'How is OVR calculated?',
+    title: 'How OVR is calculated ({pos})',
+    intro: 'OVR is a position-weighted average of your attributes. Right now it is {ovr}. The bigger an attribute’s share, the more raising it lifts your OVR.',
+    attr: 'Attribute', weight: 'Weight', value: 'Value', points: 'Points', total: 'OVR (sum of points)',
+    note: 'Attributes not listed do not count toward this position’s OVR. Weights are fixed per position.',
+  },
   contract: {
     title: 'Contract',
     wage: 'Weekly wage',

@@ -105,6 +105,44 @@ export function SettingsScreen() {
           </Field>
         </Group>
 
+        <Group title={t('settings.gameSection')} icon="trophy">
+          <Field label={t('settings.moneyStyle')} hint={t('settings.moneyStyleDesc')}>
+            <Segmented
+              label={t('settings.moneyStyle')}
+              value={s.moneyStyle}
+              onChange={(moneyStyle) => updateSettings({ moneyStyle })}
+              options={[
+                { id: 'symbol', label: t('settings.moneySymbol') },
+                { id: 'code', label: t('settings.moneyCode') },
+                { id: 'star', label: t('settings.moneyStar') },
+              ]}
+            />
+          </Field>
+          <Field label={t('settings.eventTransparency')} hint={t('settings.eventTransparencyDesc')}>
+            <Segmented
+              label={t('settings.eventTransparency')}
+              value={s.eventTransparency}
+              onChange={(eventTransparency) => updateSettings({ eventTransparency })}
+              options={[
+                { id: 'full', label: t('settings.transFull') },
+                { id: 'direction', label: t('settings.transDirection') },
+              ]}
+            />
+          </Field>
+          <Field label={t('settings.partnerPref')} hint={t('settings.partnerPrefDesc')}>
+            <Segmented
+              label={t('settings.partnerPref')}
+              value={s.partnerPref}
+              onChange={(partnerPref) => updateSettings({ partnerPref })}
+              options={[
+                { id: 'any', label: t('settings.partnerAny') },
+                { id: 'women', label: t('settings.partnerWomen') },
+                { id: 'men', label: t('settings.partnerMen') },
+              ]}
+            />
+          </Field>
+        </Group>
+
         <Group title={t('settings.sections.audio')} icon="speaker">
           <AudioMixerPanel />
           <Switch label={t('settings.vibration')} desc={t('settings.vibrationDesc')} checked={s.vibration} onChange={(vibration) => updateSettings({ vibration })} />

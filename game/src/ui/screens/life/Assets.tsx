@@ -1,11 +1,12 @@
 import { useState } from 'preact/hooks'
 import type { AssetCategory, AssetDef } from '../../../core/types'
 import { lt, t, tx } from '../../../i18n'
-import { Button, Chip, EmptyState, Modal, Money, SectionTitle, Tabs, toast } from '../../components'
+import { Button, Chip, EmptyState, Modal, Money, SectionTitle, Tabs, toast, toastUndo } from '../../components'
 import { formatMoney, formatSigned } from '../../format'
 import { Icon } from '../../icons'
 import { actions, data, gameState } from '../../store'
 import { assetIcon, categoryIcon } from './util'
+import { shelfInfo } from '../../../sim/game/assetView'
 import { INCOME_TAX, weeklyIncome } from '../../../sim/life/economy'
 import { NewTag, UnlockGate } from '../../tutorial/UnlockGate'
 import { features } from '../../tutorial/unlocks'
@@ -31,11 +32,11 @@ function AssetCard({ a, owned, locked, onBuy }: { a: AssetDef; owned: boolean; l
       </div>
       <h3 class="h3 life-asset-name">{lt(a.name)}</h3>
       <div class="life-asset-cat micro t-lo">{t(`data.assetCat.${a.category}`)}</div>
-      <dl class="life-asset-specs">
-        <div><dt>{t('life.assets.upkeep')}</dt><dd class="num">{formatMoney(a.upkeep, { compact: true })}{t('common.perWeek')}</dd></div>
-        <div><dt>{t('life.assets.happiness')}</dt><dd class="num t-pos">{formatSigned(a.happiness)}</dd></div>
-        <div><dt>{t('life.assets.fame')}</dt><dd class="num t-gold">{formatSigned(a.fame)}</dd></div>
-      </dl>
+      <div class="life-asset-specs" data-testid="asset-chips">
+        <Chip tone="neutral" icon="gear">{t('life.assets.weeklyUpkeep', { amount: formatMoney(a.upkeep, { compact: true }) })}</Chip>
+        <Chip tone="pos" icon="smile">{formatSigned(a.happiness)}</Chip>
+        <Chip tone="gold" icon="star">{formatSigned(a.fame)}</Chip>
+      </div>
       {eff && <Chip tone="violet" icon="sparkle">{eff}</Chip>}
       <div class="life-asset-foot">
         <span class="life-asset-price money num">{formatMoney(a.price, { compact: true })}</span>
@@ -51,7 +52,6 @@ export function Assets() {
   const s = gameState.value
   const [cat, setCat] = useState<Cat>('all')
   const [buying, setBuying] = useState<AssetDef | null>(null)
-  const [selling, setSelling] = useState<number | null>(null)
   if (!s) return null
   const catalog = data.assetCatalog()
   const byId = new Map(catalog.map((a) => [a.id, a]))
@@ -69,14 +69,15 @@ export function Assets() {
     else toast(t('life.assets.failed'), 'error')
     setBuying(null)
   }
-  const sellItem = selling !== null ? s.life.assets[selling] : null
-  const sellDef = sellItem ? byId.get(sellItem.defId) : undefined
-  const sellValue = sellItem && sellDef ? Math.round(sellItem.pricePaid * sellDef.resale) : 0
-  const confirmSell = () => {
-    if (selling === null || !sellDef) return
-    const got = actions.sell(selling)
-    toast(t('life.assets.sold', { name: lt(sellDef.name), amount: formatMoney(got) }), 'success', 'coins')
-    setSelling(null)
+  const sellNow = (i: number) => {
+    const o = s.life.assets[i]
+    const d = o ? byId.get(o.defId) : undefined
+    if (!o || !d) return
+    const got = actions.sell(i)
+    toastUndo(t('life.assets.sold', { name: lt(d.name), amount: formatMoney(got) }), () => {
+      if (actions.undoSell()) toast(t('life.assets.restored', { name: lt(d.name) }), 'success', 'history')
+      else toast(t('life.assets.undoFailed'), 'error')
+    })
   }
 
   return (
@@ -90,14 +91,19 @@ export function Assets() {
             {s.life.assets.map((o, i) => {
               const d = byId.get(o.defId)
               if (!d) return null
+              const info = shelfInfo(o, d, s.calendar)
               return (
                 <div key={`${o.defId}-${i}`} class="life-shelf-item" role="listitem">
                   <span class={`life-asset-badge cat-${d.category}`}><Icon name={assetIcon(d.icon, d.category)} size={22} /></span>
                   <div class="grow">
                     <div class="life-shelf-name truncate">{lt(d.name)}</div>
                     <div class="t-xs t-lo">{t('life.assets.boughtOn', { season: o.boughtSeason, week: o.boughtWeek + 1 })}</div>
+                    <div class="life-shelf-stats" data-testid="shelf-stats">
+                      <Chip tone={info.condition >= 70 ? 'pos' : info.condition >= 50 ? 'warning' : 'neg'}>{t('life.assets.condition', { n: info.condition })}</Chip>
+                      <Chip tone="gold" icon="coins">{t('life.assets.secondHand', { amount: formatMoney(info.resale, { compact: true }) })}</Chip>
+                    </div>
                   </div>
-                  <Button size="sm" variant="ghost" icon="coins" onClick={() => setSelling(i)}>{t('life.assets.sell')}</Button>
+                  <Button size="sm" variant="danger" icon="coins" onClick={() => sellNow(i)}>{t('life.assets.sell')}</Button>
                 </div>
               )
             })}
@@ -172,20 +178,6 @@ export function Assets() {
         )}
       </Modal>
 
-      <Modal
-        open={selling !== null}
-        onClose={() => setSelling(null)}
-        title={sellDef ? t('life.assets.sellTitle', { name: lt(sellDef.name) }) : ''}
-        size="sm"
-        footer={
-          <>
-            <Button variant="ghost" onClick={() => setSelling(null)}>{t('common.cancel')}</Button>
-            <Button variant="danger" icon="coins" onClick={confirmSell}>{t('life.assets.sell')}</Button>
-          </>
-        }
-      >
-        <p class="t-mid">{t('life.assets.sellBody', { amount: formatMoney(sellValue) })}</p>
-      </Modal>
     </div>
   )
 }

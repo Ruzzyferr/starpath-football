@@ -563,6 +563,9 @@ export const mockActions: GameActions = {
     commit(s)
     return true
   },
+  undoSell() {
+    return false
+  },
   sell(assetIndex) {
     const s = get()
     const o = s.life.assets[assetIndex]

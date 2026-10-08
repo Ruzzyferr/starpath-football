@@ -1,9 +1,12 @@
 import { useState } from 'preact/hooks'
 import type { RelationCause, RelationKind, Relationship } from '../../../core/types'
 import { relationCauseTotals, relationHistory } from '../../../sim/life/relationships'
+import { INTERACT_COST } from '../../../sim/game/interactCost'
+import { passPercent, relBand, relGroup, relTrend } from '../../../sim/game/relationView'
+import { formatMoney } from '../../format'
 import { START_YEAR } from '../../../core/config'
 import { lt, t } from '../../../i18n'
-import { Avatar, Button, EmptyState, Hearts, Modal, SectionTitle, toast } from '../../components'
+import { Avatar, Button, Chip, EmptyState, Hearts, Modal, SectionTitle, toast } from '../../components'
 import { Icon, type IconName } from '../../icons'
 import { actions, gameState, type InteractionKind } from '../../store'
 import { deltasText, relAge, relAppearance } from './util'
@@ -97,10 +100,23 @@ function WhyPanel({ rel, onClose }: { rel: Relationship; onClose: () => void }) 
   )
 }
 
+const costText = (k: InteractionKind): string => {
+  const c = INTERACT_COST[k]
+  const parts = [t('life.rel.cost.energy', { n: c.energy })]
+  if (c.money > 0) parts.push(formatMoney(c.money))
+  return parts.join(' · ')
+}
+
+const TREND_ICON: Record<'up' | 'down' | 'flat', IconName> = { up: 'trend-up', down: 'trend-down', flat: 'arrow-right' }
+
 function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
   const s = gameState.value
   const [why, setWhy] = useState(false)
   const ago = Math.max(0, week - rel.lastContactWeek)
+  const band = relBand(rel.value)
+  const group = relGroup(rel.kind)
+  const pct = passPercent(rel.value)
+  const trend = relTrend(rel, week)
   const memory = rel.memory[0]
   const interact = (k: InteractionKind) => {
     const deltas = actions.interact(rel.id, k)
@@ -114,8 +130,19 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
           <div class="life-person-kind micro">{t(`data.relation.${rel.kind}`)}</div>
           <h3 class="h3 truncate">{rel.name}</h3>
           <Hearts value={rel.value} />
+          <div class="life-person-band" data-testid="rel-band" data-band={band}>
+            <Chip tone={band === 'enemy' || band === 'cold' ? 'neg' : band === 'neutral' ? 'neutral' : 'pos'}>{t(`life.rel.band.${band}`)}</Chip>
+            <span class="num t-xs t-mid">{Math.round(rel.value)}</span>
+            <span class={`life-person-trend is-${trend.trend}`} title={t(`life.rel.trend.${trend.trend}`)} data-testid="rel-trend">
+              <Icon name={TREND_ICON[trend.trend]} size={14} weight={2.4} />
+              <span class="sr-only">{t(`life.rel.trend.${trend.trend}`)}</span>
+            </span>
+          </div>
         </div>
       </div>
+      <p class="life-person-effect t-xs t-mid" data-testid="rel-effect">
+        <span class="micro">{t('life.rel.bandsTitle')}</span> {t(`life.rel.effect.${group}.${band}`, { pct: `${pct > 0 ? '+' : ''}${pct}%` })}
+      </p>
       <p class={`life-person-memory t-sm ${memory ? 't-mid' : 't-lo'}`}>{memory ? `“${lt(memory)}”` : t('life.rel.noMemory')}</p>
       {rel.memory.length > 1 && (
         <ul class="life-person-memories t-xs t-lo" data-testid="rel-memories">
@@ -129,8 +156,9 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
       {why && <WhyPanel rel={rel} onClose={() => setWhy(false)} />}
       <div class="life-person-actions" role="group" aria-label={t('life.rel.interactLabel', { name: rel.name })}>
         {INTERACTIONS[rel.kind].map((k) => (
-          <Button key={k} size="sm" variant="ghost" icon={INTERACT_ICON[k]} onClick={() => interact(k)}>
+          <Button key={k} size="sm" variant="ghost" icon={INTERACT_ICON[k]} onClick={() => interact(k)} title={costText(k)} aria-label={`${t(`data.interaction.${k}`)}, ${costText(k)}`}>
             {t(`data.interaction.${k}`)}
+            <span class="life-act-cost num" aria-hidden="true">{costText(k)}</span>
           </Button>
         ))}
       </div>

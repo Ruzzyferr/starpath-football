@@ -5,7 +5,7 @@ import { lt, t } from '../../i18n'
 import { Avatar, Button, DeltaChip, DeltaList, Modal, RiskBadge } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
-import { actions, activeEvent, data, gameState, type EventCategory, type EventOutcomeView, type EventView } from '../store'
+import { actions, activeEvent, data, gameState, settings, type EventCategory, type EventOutcomeView, type EventView } from '../store'
 
 export const EVENT_ICON: Record<EventCategory, IconName> = {
   team: 'users', family: 'house', love: 'heart', press: 'megaphone', social: 'instagram', fans: 'flag',
@@ -84,7 +84,7 @@ function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; on
                     {!c.requirement.met && <span class="sr-only"> — {t('event.unmet')}</span>}
                   </span>
                 )}
-                {c.preview.length > 0 && <DeltaList deltas={c.preview} compact />}
+                {c.preview.length > 0 && <DeltaList deltas={c.preview} compact={settings.value.eventTransparency === 'full'} direction={settings.value.eventTransparency === 'direction'} />}
               </button>
             )
           })}

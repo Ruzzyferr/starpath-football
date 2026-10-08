@@ -2,6 +2,7 @@ import '../../../styles/screens/board.css'
 import { useState } from 'preact/hooks'
 import { currentLang, lt, t } from '../../../i18n'
 import { financeSummary } from '../../../sim/game/financeHistory'
+import { weeklyStatement } from '../../../sim/game/weeklyStatement'
 import { Card, CardHeader, DonutChart, WeekBars } from '../../components'
 import { formatMoney } from '../../format'
 import { gameState } from '../../store'
@@ -19,6 +20,7 @@ export function FinanceCharts() {
   const mk = (list: typeof f.income) => list.map((x) => ({ id: x.key, label: lt(x.label), value: x.value, text: formatMoney(x.value, { compact: true }) }))
   const selFor = (kind: 'in' | 'out') => (sel?.kind === kind ? sel.id : null)
   const net = bar !== null ? f.net[bar] ?? 0 : f.net.reduce((a, b) => a + b, 0)
+  const st = s ? weeklyStatement(s, bar ?? f.net.length - 1) : null
   return (
     <Card pad="md" data-testid="finance-charts">
       <CardHeader title={t('board.finance.title')} icon="chart-bar" sub={t('board.finance.sub', { n: f.weeks })} />
@@ -39,6 +41,27 @@ export function FinanceCharts() {
         </div>
         <WeekBars values={f.net} label={t('board.finance.net')} format={(v) => formatMoney(v, { compact: true })} selected={bar} onSelect={setBar} />
       </div>
+      {st && (
+        <section class="fin-statement" aria-label={t('board.finance.statement')} data-testid="finance-statement">
+          <div class="row-between">
+            <h4 class="micro t-mid">{t('board.finance.statement')}</h4>
+            <span class="t-xs t-lo">{t('board.finance.statementWeek', { w: st.week + 1 })}</span>
+          </div>
+          <ul class="fin-statement-list">
+            {[...st.income, ...st.expense].map((l) => (
+              <li key={l.key} class={l.amount >= 0 ? 't-pos' : 't-neg'} data-testid={`stmt-${l.key}`}>
+                <span class="t-hi">{lt(l.label)}</span>
+                <b class="num">{formatMoney(l.amount, { sign: true })}</b>
+              </li>
+            ))}
+            <li class="fin-statement-net">
+              <span>{t('board.finance.statementNet')}</span>
+              <b class="num" data-testid="stmt-net">{formatMoney(st.net, { sign: true })}</b>
+            </li>
+          </ul>
+          <p class="t-xs t-lo">{t('board.finance.statementHint')}</p>
+        </section>
+      )}
     </Card>
   )
 }

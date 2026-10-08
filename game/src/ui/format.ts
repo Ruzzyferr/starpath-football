@@ -9,10 +9,19 @@
  *   en: "€12,500", "€1.2M", "€850K"
  */
 import type { Calendar, Lang } from '../core/types'
+import { signal } from '@preact/signals'
 import { currentLang } from '../i18n'
 import type { StatKey } from './store'
 
 export const CURRENCY = { symbol: '€', trailingInTr: true }
+
+/** 2.5#1: how money is written. 'symbol' = €, 'code' = EUR, 'star' = the fictional Star unit. UI amounts only. */
+export type MoneyStyle = 'symbol' | 'code' | 'star'
+export const MONEY_SYMBOLS: Record<MoneyStyle, string> = { symbol: '€', code: 'EUR', star: '✦' }
+export const moneyStyle = signal<MoneyStyle>('symbol')
+export function setMoneyStyle(s: MoneyStyle): void {
+  moneyStyle.value = s
+}
 
 const nf = (lang: Lang, opts?: Intl.NumberFormatOptions) =>
   new Intl.NumberFormat(lang === 'tr' ? 'tr-TR' : 'en-GB', opts)
@@ -49,8 +58,11 @@ export function formatMoney(n: number, opts: MoneyOpts = {}): string {
   const abs = Math.abs(Math.round(n))
   const body = opts.compact ? formatCompact(abs, lang, 100_000) : formatNumber(abs, lang)
   const sign = n < 0 ? '−' : opts.sign && n > 0 ? '+' : ''
-  if (lang === 'tr' && CURRENCY.trailingInTr) return `${sign}${body} ${CURRENCY.symbol}`
-  return `${sign}${CURRENCY.symbol}${body}`
+  const st = moneyStyle.value
+  const symbol = st === 'symbol' ? CURRENCY.symbol : MONEY_SYMBOLS[st]
+  if (st === 'code') return `${sign}${body} ${symbol}`
+  if (lang === 'tr' && CURRENCY.trailingInTr && st === 'symbol') return `${sign}${body} ${symbol}`
+  return `${sign}${symbol}${body}`
 }
 
 export function formatSigned(n: number, lang: Lang = currentLang.value, digits = 0): string {

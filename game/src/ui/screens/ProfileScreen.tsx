@@ -11,6 +11,7 @@ import { data, gameState, heroClub, navigate } from '../store'
 import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGroup } from './career/attrs'
 import { Radar } from './career/Radar'
 import { FinanceCharts } from './profile/FinanceCharts'
+import { OvrExplainer } from './profile/OvrExplainer'
 import { ProfileCareerExtras } from './legacy/CareerCards'
 import '../../styles/screens/profile.css'
 import { InfoTip } from '../tutorial/InfoTip'
@@ -167,6 +168,7 @@ export function ProfileScreen() {
             <div class="prof-ovr-badge">
               <span class="micro t-mid label-with-tip">{t('profile.ovr')}<InfoTip term="ovr" /></span>
               <span class="score-font">{ovr}</span>
+              <OvrExplainer />
             </div>
           </Card>
 

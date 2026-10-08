@@ -20,6 +20,7 @@ import type {
   SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender, RelationKind,
 } from '../core/types'
 import { currentLang } from '../i18n'
+import { setMoneyStyle, type MoneyStyle } from './format'
 import { setControlPrefs } from '../input/prefs'
 import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
@@ -630,6 +631,8 @@ export interface GameActions {
   interact(relationshipId: string, kind: InteractionKind): Delta[]
   buy(assetId: string): boolean
   sell(assetIndex: number): number
+  /** Undo the most recent asset sale (2.7#48). False when it can no longer be restored. */
+  undoSell(): boolean
   bankDeposit(amount: number): void
   /** Lock cash in a fixed-term deposit (13/26/52 weeks). */
   bankTermDeposit(amount: number, weeks: number): void
@@ -806,6 +809,12 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   /** Accessibility: wider match timing windows (slow-mo, one-two, slower power meter). */
   timingAssist: boolean
   hideCasino: boolean
+  /** 2.5#1 money notation. */
+  moneyStyle: MoneyStyle
+  /** 2.4#113 event choice previews: exact numbers or direction chips only. */
+  eventTransparency: 'full' | 'direction'
+  /** 2.4#24 which genders of partner the dating events introduce (mirrored onto the career). */
+  partnerPref: 'any' | 'women' | 'men'
   /** Never flash the screen (goal/celebration/offside flashes); stricter than reduced motion for photosensitivity. */
   reduceFlashes: boolean
   /** Show on-screen captions for key match sounds (whistle, crowd roar). */
@@ -841,6 +850,9 @@ export const DEFAULT_SETTINGS: UiSettings = {
   visionHints: true,
   timingAssist: false,
   hideCasino: false,
+  moneyStyle: 'symbol',
+  eventTransparency: 'full',
+  partnerPref: 'any',
   reduceFlashes: false,
   soundCaptions: false,
   ...DEFAULT_AUDIO_SETTINGS,
@@ -873,9 +885,11 @@ function withDerivedFx(s: UiSettings): UiSettings {
 }
 export const settings = signal<UiSettings>(loadSettings())
 currentLang.value = settings.value.lang
+setMoneyStyle(settings.value.moneyStyle)
 export function updateSettings(patch: Partial<UiSettings>): void {
   settings.value = withDerivedFx({ ...settings.value, ...patch })
   currentLang.value = settings.value.lang
+  setMoneyStyle(settings.value.moneyStyle)
   try {
     globalThis.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(settings.value))
   } catch {

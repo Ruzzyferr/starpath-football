@@ -10,6 +10,7 @@
  *   &seed=<n>               deterministic career seed
  *   &storage=memory         in-memory saves (headless testing)
  */
+import { installPrefsSync } from './prefsSync'
 import type { NewGameInput, ScreenId } from '../store'
 import { effect } from '@preact/signals'
 import { activeEvent, gameState, installBackend, match, navigate, pendingNav, screen } from '../store'
@@ -116,6 +117,7 @@ export function installRealBackend(): void {
   installBackend({ actions: realActions, data: realData })
   meta.installMeta()
   installObjectivesFeed()
+  installPrefsSync()
   effect(() => {
     void screen.value
     flushObjectiveToasts()

@@ -7,10 +7,23 @@ import type { Delta, Risk, StatKey } from '../store'
 
 export type ChipTone = 'neutral' | 'pos' | 'neg' | 'gold' | 'info' | 'violet' | 'warning'
 
+/**
+ * 2.7#42: a coloured chip never carries meaning by colour alone, so a tone with
+ * meaning gets a default icon when the call site passes none. Neutral chips are
+ * plain text by design.
+ */
+export const TONE_ICONS: Record<ChipTone, IconName | undefined> = {
+  neutral: undefined, pos: 'check', neg: 'warning', gold: 'star', info: 'info', violet: 'sparkle', warning: 'warning',
+}
+export function chipIcon(tone: ChipTone, icon?: IconName): IconName | undefined {
+  return icon ?? TONE_ICONS[tone]
+}
+
 export function Chip({ tone = 'neutral', icon, children, solid, title }: { tone?: ChipTone; icon?: IconName; children: ComponentChildren; solid?: boolean; title?: string }) {
+  const shown = chipIcon(tone, icon)
   return (
     <span class={`chip chip-${tone}${solid ? ' chip-solid' : ''}`} title={title}>
-      {icon && <Icon name={icon} size={13} weight={2.4} />}
+      {shown && <Icon name={shown} size={13} weight={2.4} />}
       {children}
     </span>
   )
@@ -40,11 +53,22 @@ export function statLabel(key: StatKey, override?: LText | string): string {
 }
 
 /** "+5 Mutluluk" / "−€2.000" chip, coloured by whether the change is good. */
-export function DeltaChip({ delta, compact }: { delta: Delta; compact?: boolean }) {
+export function DeltaChip({ delta, compact, direction }: { delta: Delta; compact?: boolean; direction?: boolean }) {
   const tone = deltaTone(delta.key, delta.value)
   const icon = (delta.key === 'relation' && delta.rel ? REL_ICONS[delta.rel] : undefined) ?? STAT_ICONS[delta.key] ?? (delta.key in STAT_ICONS ? undefined : 'sparkle')
   const label = statLabel(delta.key, delta.label)
   const value = formatDelta(delta.key, delta.value)
+  if (direction) {
+    // 2.4#113: exact numbers hidden; arrow + word so the direction never relies on colour alone.
+    const up = delta.value > 0
+    return (
+      <span class={`chip delta-chip chip-${tone}${delta.uncertain ? ' is-uncertain' : ''}`} title={label} data-dir={up ? 'up' : 'down'}>
+        <Icon name={up ? 'trend-up' : 'trend-down'} size={13} weight={2.4} />
+        <span class="delta-label">{label}</span>
+        <span class="sr-only">{up ? t('settings.dirUp') : t('settings.dirDown')}</span>
+      </span>
+    )
+  }
   const glyph = tone === 'pos' ? '▲' : tone === 'neg' ? '▼' : ''
   return (
     <span
@@ -59,12 +83,12 @@ export function DeltaChip({ delta, compact }: { delta: Delta; compact?: boolean 
   )
 }
 
-export function DeltaList({ deltas, compact, max }: { deltas: Delta[]; compact?: boolean; max?: number }) {
+export function DeltaList({ deltas, compact, max, direction }: { deltas: Delta[]; compact?: boolean; max?: number; direction?: boolean }) {
   const list = max ? deltas.slice(0, max) : deltas
   return (
     <div class="delta-list">
       {list.map((d, i) => (
-        <DeltaChip key={`${d.key}-${i}`} delta={d} compact={compact} />
+        <DeltaChip key={`${d.key}-${i}`} delta={d} compact={compact} direction={direction} />
       ))}
       {max && deltas.length > max ? <span class="chip chip-neutral">+{deltas.length - max}</span> : null}
     </div>

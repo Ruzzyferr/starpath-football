@@ -31,6 +31,8 @@ import {
   type BlackjackHandView, type BlackjackView, type CardView, type Delta, type EventOutcomeView, type GameActions, type InteractionKind, type NegotiationView,
   type OfferTerms, type PostKind, type TrainingOutcomeView, type Rank, type SocialPostView, type Suit,
 } from '../store'
+import { captureSale, undoSale, type SaleReceipt } from '../../sim/game/undoSale'
+import { INTERACT_COST } from '../../sim/game/interactCost'
 import { eventDeltas, diffSnapshots, snapshot, teamViewOr } from './mapping'
 import { slotSpinView } from './casinoView'
 import { markDone, plannedSlots, doneSlots, setPlanned } from './plan'
@@ -257,15 +259,17 @@ const ROULETTE_TYPE: Record<string, RouletteBetType> = {
 // ───────────────────────── Relations ─────────────────────────
 
 const INTERACT: Record<InteractionKind, { rel: number; money: number; energy: number; happiness?: number; stress?: number; discipline?: number; memory: LText }> = {
-  call: { rel: 3, money: 0, energy: 2, memory: L('Telefonda uzun uzun konuştunuz', 'You had a long phone call') },
-  dinner: { rel: 6, money: 250, energy: 8, happiness: 3, memory: L('Birlikte yemeğe çıktınız', 'You went out for dinner') },
-  gift: { rel: 8, money: 1500, energy: 4, memory: L('Hediye aldın', 'You bought a gift') },
-  train: { rel: 5, money: 0, energy: 15, memory: L('Birlikte antrenman yaptınız', 'You trained together') },
-  party: { rel: 5, money: 600, energy: 15, happiness: 4, discipline: -2, memory: L('Partide eğlendiniz', 'You partied together') },
-  holiday: { rel: 15, money: 9000, energy: 10, stress: -12, happiness: 6, memory: L('Birlikte tatile çıktınız', 'You went on holiday together') },
-  apologize: { rel: 10, money: 0, energy: 3, memory: L('Özür diledin', 'You apologised') },
+  call: { rel: 3, ...INTERACT_COST.call, memory: L('Telefonda uzun uzun konuştunuz', 'You had a long phone call') },
+  dinner: { rel: 6, ...INTERACT_COST.dinner, happiness: 3, memory: L('Birlikte yemeğe çıktınız', 'You went out for dinner') },
+  gift: { rel: 8, ...INTERACT_COST.gift, memory: L('Hediye aldın', 'You bought a gift') },
+  train: { rel: 5, ...INTERACT_COST.train, memory: L('Birlikte antrenman yaptınız', 'You trained together') },
+  party: { rel: 5, ...INTERACT_COST.party, happiness: 4, discipline: -2, memory: L('Partide eğlendiniz', 'You partied together') },
+  holiday: { rel: 15, ...INTERACT_COST.holiday, stress: -12, happiness: 6, memory: L('Birlikte tatile çıktınız', 'You went on holiday together') },
+  apologize: { rel: 10, ...INTERACT_COST.apologize, memory: L('Özür diledin', 'You apologised') },
 }
 const INTERACT_FLAG = 'g:int'
+/** Most recent asset sale, kept for the 6 s Undo toast. */
+let lastSale: SaleReceipt | null = null
 
 // ───────────────────────── Social ─────────────────────────
 
@@ -500,10 +504,20 @@ export const realActions: GameActions = {
   sell(assetIndex) {
     const s = get()
     const m0 = s.life.money
+    const receipt = captureSale(s, assetIndex)
     const r = G.sellAsset(s, assetIndex)
     if (!r.ok) notify(r.error)
+    else lastSale = receipt
     commit(s)
     return Math.round(s.life.money - m0)
+  },
+  undoSell() {
+    const s = get()
+    const r = lastSale
+    lastSale = null
+    if (!r || !undoSale(s, r)) return false
+    commit(s)
+    return true
   },
   bankDeposit(amount) {
     const s = get()

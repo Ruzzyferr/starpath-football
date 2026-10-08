@@ -242,3 +242,11 @@
 .prof-tl-rating { font-weight: 700; }
 .prof-tl-club { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-lg); }
 .prof-tl-trophies { margin-top: var(--sp-2); }
+
+/* WP-U 2.3#11: OVR explainer table */
+.ovr-table { width: 100%; border-collapse: collapse; font-size: var(--fs-sm); }
+.ovr-table th, .ovr-table td { padding: var(--sp-1) var(--sp-2); text-align: start; border-bottom: 1px solid var(--border); }
+.ovr-table thead th { font-size: var(--fs-micro); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mid); }
+.ovr-table td.num, .ovr-table tfoot td { text-align: end; }
+.ovr-bar { display: inline-block; width: 56px; height: 6px; border-radius: 3px; background: var(--bg-1); margin-inline-end: var(--sp-2); vertical-align: middle; overflow: hidden; }
+.ovr-bar > span { display: block; height: 100%; background: var(--brand-pitch); }

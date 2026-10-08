@@ -108,14 +108,12 @@
 .life-asset-badge.cat-pet { color: var(--state-warning); background: linear-gradient(145deg, rgba(255, 210, 63, 0.18), var(--surface-1)); }
 .life-asset-name { line-height: 1.1; }
 .life-asset-specs {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
+  display: flex;
+  flex-wrap: wrap;
   gap: var(--sp-2);
   margin: 0;
-  padding: var(--sp-2);
-  border-radius: var(--r-btn);
-  background: var(--bg-1);
 }
+.life-shelf-stats { display: flex; flex-wrap: wrap; gap: var(--sp-1); margin-top: var(--sp-1); }
 .life-asset-specs div, .bank-loan-specs div, .cas-stats div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .life-asset-specs dt, .bank-loan-specs dt { font-size: var(--fs-micro); color: var(--text-lo); text-transform: uppercase; letter-spacing: 0.06em; font-weight: 600; }
 .life-asset-specs dd, .bank-loan-specs dd { margin: 0; font-size: var(--fs-sm); font-weight: 600; }
@@ -309,3 +307,12 @@
 .fan-replies { list-style: none; margin: var(--sp-1) 0 0; padding-inline-start: var(--sp-3); border-inline-start: 2px solid var(--hairline); display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); }
 
 .life-person-memories { margin: 0; padding-left: var(--sp-4, 16px); display: grid; gap: 2px; }
+
+/* WP-U: relationship band, trend and interaction cost (2.4#3, 2.7#81) */
+.life-person-band { display: flex; align-items: center; gap: var(--sp-2); margin-top: var(--sp-1); }
+.life-person-trend { display: inline-flex; }
+.life-person-trend.is-up { color: var(--state-success, var(--brand-pitch)); }
+.life-person-trend.is-down { color: var(--state-danger); }
+.life-person-trend.is-flat { color: var(--text-mid); }
+.life-person-effect { margin: 0; }
+.life-act-cost { display: block; font-size: var(--fs-micro, 11px); opacity: 0.8; font-weight: 500; }
