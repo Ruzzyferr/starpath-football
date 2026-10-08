@@ -190,6 +190,15 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
   const lines: Lines = []
   const familySlow = hero ? clamp(perkValue(hero, 'family_bond'), 0, 0.9) : 0
   life.flags[REL_WEEK_FLAG] = week
+  // Lost captaincy vote (2.4#53): the winner stays a rival for the season; the bond cools by 1 every 3rd week.
+  const rivalUntil = life.flags.captain_rival_until
+  if (typeof rivalUntil === 'number') {
+    if (week >= rivalUntil) { delete life.flags.captain_rival_until; delete life.flags.captain_rival_id }
+    else if (week % 3 === 0 && typeof life.flags.captain_rival_id === 'string' && life.flags.captain_rival_id) {
+      const rid = teammateId(life.flags.captain_rival_id)
+      if (life.relationships[rid]) changeRelation(life, rid, -1, { week, cause: 'event', why: lt('Kaptanlık rekabeti', 'Captaincy rivalry') })
+    }
+  }
   for (const r of Object.values(life.relationships)) {
     if (r.kind === 'fans' || r.kind === 'press') {
       const b = r.value

@@ -108,3 +108,20 @@ describe('relationships', () => {
     expect(neglectStep('fans', 50)).toBe(0)
   })
 })
+
+describe('captaincy rivalry (2.4#53)', () => {
+  it('a lost vote cools the winner for the rivalry window, then the flag clears', () => {
+    const { life } = makeHeroLife()
+    ensureTeammates(life, [{ npcId: 'rv', name: 'Rival' }])
+    const id = 'tm_rv'
+    const rel = life.relationships[id] ?? Object.values(life.relationships).find((r) => r.npcId === 'rv')!
+    rel.value = 30
+    rel.lastContactWeek = 0
+    life.flags.captain_rival_until = 20
+    life.flags.captain_rival_id = 'rv'
+    for (let w = 1; w <= 18; w++) { rel.lastContactWeek = w; weeklyRelationDecay(life, w) }
+    expect(rel.value).toBeLessThan(30)
+    weeklyRelationDecay(life, 21)
+    expect(life.flags.captain_rival_until).toBeUndefined()
+  })
+})

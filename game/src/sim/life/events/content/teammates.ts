@@ -5,6 +5,9 @@ import {
 } from '../dsl'
 import type { EventDef } from '../types'
 
+/** Weeks a lost captaincy vote keeps a rivalry with the winner (relation drifts down, see sim/life/relationships). */
+export const CAPTAIN_RIVALRY_WEEKS = 40
+
 export const teammatesEvents: EventDef[] = [
   {
     id: 'teammates.loan_request',
@@ -166,6 +169,22 @@ export const teammatesEvents: EventDef[] = [
           ),
       },
       {
+        label: t('Kıdemlilerle yemek ye, oylarını iste', 'Have dinner with the seniors and ask for their votes'),
+        hint: t('Para harcarsın; kıdemliler yanında olur, {mate} kırılır.', "It costs money; the seniors back you, {mate} takes offence."),
+        risk: 'medium',
+        requires: (ctx) => canAfford(ctx.state, 1500),
+        lockedHint: t('Yemek için nakdin yetmiyor.', "You can't afford the dinner."),
+        effects: (ctx) =>
+          fx(
+            t('Kıdemlilerle uzun bir akşam yemeği yedin; kimse söz vermedi ama herkes başını salladı. {mate} duyunca yüzünü ekşitti.', 'A long dinner with the seniors; nobody promised anything but everyone nodded. {mate} pulled a face when {g:he|she} heard.'),
+            money(-1500),
+            rel('teammate', 5),
+            relNpc(ctx.vars.mateId, ctx.vars.mate, -3),
+            flags({ captain_race_active: true, captain_campaign: 3 }),
+            follow(chain('teammates.captain_vote', 2)),
+          ),
+      },
+      {
         label: t('{mate} için çekil', 'Step aside for {mate}'),
         effects: (ctx) =>
           fx(
@@ -209,7 +228,7 @@ export const teammatesEvents: EventDef[] = [
                 relNpc(ctx.vars.mateId, ctx.vars.mate, 10),
                 trust(2),
                 morale(-4),
-                flags({ captain_race_active: null, captain_campaign: null }),
+                flags({ captain_race_active: null, captain_campaign: null, captain_rival_until: ctx.absWeek + CAPTAIN_RIVALRY_WEEKS, captain_rival_id: String(ctx.vars.mateId ?? '') }),
               ),
       },
       {
@@ -230,7 +249,7 @@ export const teammatesEvents: EventDef[] = [
                 morale(-8),
                 rel('teammate', -3),
                 relNpc(ctx.vars.mateId, ctx.vars.mate, -6),
-                flags({ captain_race_active: null, captain_campaign: null }),
+                flags({ captain_race_active: null, captain_campaign: null, captain_rival_until: ctx.absWeek + CAPTAIN_RIVALRY_WEEKS, captain_rival_id: String(ctx.vars.mateId ?? '') }),
               ),
       },
     ],
