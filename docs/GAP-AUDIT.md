@@ -247,6 +247,21 @@ Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-
 
 **Sayım (S29):** 2.8: 19 satır, 18 KAPANDI/TAMAM, 1 ERTELENDİ (+ #51 cihaz notu). 2.9: bu süpürmede 34 KAPANDI, 21 ERTELENDİ. 2.12: 16 KAPANDI, 6 ERTELENDİ.
 
+### 2.0b S21 süpürmesi: 2.1-2.3 KISMİ/EKSİK satırları (hepsi [v1][P0])
+
+Bölüm 2.1, 2.2 ve 2.3 tablolarındaki her KISMİ/EKSİK satır koda karşı yeniden denetlendi; satırlar tabloda yerinde güncellendi (not sütunu `S21:` ile başlar, kanıt yolları `game/src/` köküne göre). Bölüm 2.0'da zaten kapanmış 34 satır tabloda da TAMAM'a çekildi.
+
+| Bölüm | Denetlenen | TAMAM | KISMİ | ERTELENDİ |
+|---|---|---|---|---|
+| 2.1 Maç motoru, his, kontroller | 40 | 37 | 3 (#6, #85, #128) | 0 |
+| 2.2 Animasyon, kamera, efekt | 17 | 13 | 3 (#24, #26, #119) | 1 (#48) |
+| 2.3 Kariyer ve oyun mantığı | 24 | 14 | 7 (#2, #3, #10, #39, #60, #70, #117) | 3 (#11, #13, #82) |
+
+- **Yeni an tipleri (uçtan uca):** `dribble` (çalım), `header` (açık oyun kafa), `gk_1v1`, `gk_sweep` (kaleci), `back_post` (bek arka direk): yerleştirici, runtime, otomatik çözüm, TR/EN istem, bot, his bandı, demo e2e.
+- **Testler:** `game/planRules.test.ts`, `game/runtimeRules.test.ts`, `sim/match/kinds21.test.ts`, `sim/match/injuryRisk.test.ts`, `sim/match/sim21.test.ts`, `sim/career/s21career.test.ts`, `game/camera.test.ts`, `game/aimView.test.ts`, `game/bulletTime.test.ts`, `game/netCloth.test.ts`; golden master bilinçli yenilendi (`UPDATE_GOLDEN=1`).
+- **Erteleme gerekçeleri:** kaleci tutma/atma kontrolü ve atış pozu (2.1#85 korner yakalama, oyun kurma), BALANCE hedefleriyle çelişki (2.1#6 şut tepkisi, 2.1#119 %50 şut, 2.3#3 40 puan, 2.3#13 yaş çarpanları, 2.3#39 perk sayısı), kayıt migrasyonu (2.2#48, 2.3#11), gerçek cihaz (2.2#119), takvim yapısı (2.3#70 8 haftalık yaz), tasarım çelişkisi (2.3#82 ↔ 2.4#46), v2 dünya verisi (2.3#10 ayrı kadın ligleri).
+- **Perf (4x kısma, mobil):** Düşük ~163 fps, Orta ~136 fps; e2e demo/match/setpieces/controls/training/postmatch/perf yeşil.
+
 Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci formülü yok), 2.3#60 (form maddesi var, garanti/sigorta/imaj hakkı yok), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
 
 **GDD (2.13), TAMAM'a dönenler:** gizli potansiyel yıldızı (`legacy/CareerCards.tsx:69`), emeklilik kararı ve Onur Listesi (`ui/backend/meta.ts:205`, `HallOfFameScreen.tsx:28`), ısı ve şut haritası (`PostMatchScreen.tsx:223`), kalabalık/tezahürat/ıslık/yuhalama (`audio/crowd.ts`), hukuk olayları (`events/content/legal.ts`), milli turnuva + Ayın Oyuncusu + Yılın Golü (`sim/game/national.ts`, `awards.ts`), deneme + Tam Kariyer kilidi + kozmetikler (`store-iap/catalog.ts`), menü sesleri ve dinamik müzik (`audio/uiSfx.ts`, `music.ts`).
