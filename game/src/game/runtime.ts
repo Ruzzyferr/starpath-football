@@ -261,6 +261,12 @@ export const STATE_CODES: readonly AgentState[] = ['run', 'slide', 'dive', 'jump
 
 const DT = PHYSICS_DT
 const REPLAY_SECONDS = 6
+/** Six-second rule: how long a keeper may hold the ball in his hands (2.1#85). */
+export const KEEPER_HOLD_SECONDS = 6
+/** After the release, how long the distribution has to find a team-mate. */
+export const KEEPER_RELEASE_SECONDS = 4.5
+/** Keeper moments where a hero keeper who holds the ball gets to distribute it. */
+const KEEPER_HOLD_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['gk_save', 'gk_1v1', 'gk_sweep'])
 /** fk_wall outcomes that all mean "the free kick was kept out". */
 const FK_WALL_HELD: ReadonlySet<HighlightOutcome> = new Set<HighlightOutcome>(['timeout', 'shot_conceded', 'saved', 'missed', 'blocked', 'woodwork', 'pass_complete', 'lost_ball'])
 const SHOT_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['shot', 'chip', 'header', 'penalty', 'freekick'])
@@ -428,6 +434,8 @@ export class HighlightRuntime {
   private bulletScale = 0.25
   private lossT = 0
   private oppClearedAt = -1
+  /** Hero keeper with the ball in his hands: `until` = six-second limit, `releasedAt` = when he threw / kicked it (-1 while held). */
+  private keeperHold: { until: number; releasedAt: number; thrown: boolean } | null = null
   private heroRequest: { at: Vec2 | null; t: number; explicit?: boolean } | null = null
   /** Game time the hero last raised his hand (renderer: arm up), −1 = never. */
   heroCallAt = -1
@@ -545,6 +553,12 @@ export class HighlightRuntime {
   /** True when the hero is on the ball (or is the set-piece taker). */
   get heroOnBall(): boolean {
     return this.owner === this.hero || (this.setPiece?.takerId === this.hero.id && this.phase !== 'post' && this.phase !== 'done')
+  }
+
+  /** Seconds left before the six-second rule forces the hero keeper to let go (0 when not holding). */
+  get keeperHoldLeft(): number {
+    const h = this.keeperHold
+    return h && h.releasedAt < 0 && this.owner === this.hero ? Math.max(0, h.until - this.time) : 0
   }
 
   /** True when the hero is the goalkeeper in this moment. */
@@ -906,7 +920,11 @@ export class HighlightRuntime {
     if (this.heroOnBall) {
       if (act.kind === 'skill') return this.skillMove()
       const k = this.resolveHeroKick(act, false)
-      if (k) this.kickBall(hero, k.plan, k.kind, k.power, k.passTo)
+      if (k) {
+        this.kickBall(hero, k.plan, k.kind, k.power, k.passTo)
+        // Keeper distribution: a rolled / thrown pass or a lofted kick out of the hands.
+        if (this.keeperHold && this.keeperHold.releasedAt < 0) this.keeperHold = { ...this.keeperHold, releasedAt: this.time, thrown: k.kind === 'pass' || k.kind === 'through' }
+      }
       return
     }
     this.offBallAction(act)
@@ -2718,9 +2736,42 @@ export class HighlightRuntime {
       } else {
         this.finish('lost_ball', 'keeper claims')
       }
+    } else if (k.isHero && this.phase === 'live' && KEEPER_HOLD_KINDS.has(this.kind) && !this.keeperHold) {
+      // Hero keeper: the ball is in his hands, now he decides where it goes (2.1#85).
+      this.shot = null
+      k.vel = { x: 0, y: 0 }
+      this.keeperHold = { until: this.time + KEEPER_HOLD_SECONDS, releasedAt: -1, thrown: false }
     } else {
       this.finish('defended', 'keeper holds')
     }
+  }
+
+  /** Six-second rule and the fate of the distribution. Returns true when it ended the moment. */
+  private checkKeeperHold(): boolean {
+    const h = this.keeperHold
+    if (!h) return false
+    if (h.releasedAt < 0) {
+      if (this.owner !== this.hero) this.keeperHold = null // lost the ball some other way
+      else if (this.time >= h.until) {
+        this.finish('defended', 'six seconds')
+        return true
+      }
+      return false
+    }
+    const o = this.owner
+    if (o && o.team === 'hero' && o !== this.hero) {
+      this.finish('pass_complete', h.thrown ? 'throw found a team-mate' : 'kick found a team-mate')
+      return true
+    }
+    if (o && o.team === 'opp') {
+      this.finish('lost_ball', 'distribution intercepted')
+      return true
+    }
+    if (this.time - h.releasedAt > KEEPER_RELEASE_SECONDS) {
+      this.finish('defended', 'distribution ran out')
+      return true
+    }
+    return false
   }
 
   // ───────────────────────── Ending ─────────────────────────
@@ -2783,6 +2834,10 @@ export class HighlightRuntime {
     if (this.kind === 'long_ball_control' && o === this.hero && this.time - this.ownerSince > 1.0) return this.finish('pass_complete', 'held up')
     // hold_up: kept it under the marker long enough for the team to come up.
     if (this.kind === 'hold_up' && o === this.hero && this.time - this.ownerSince > HOLD_UP_SECONDS) return this.finish('pass_complete', 'held up')
+    if (this.keeperHold) {
+      if (this.checkKeeperHold()) return
+      if (this.keeperHold && this.time < this.timeLimit + KEEPER_HOLD_SECONDS) return
+    }
     if (!this.defending) {
       if (o && o.team === 'opp' && !o.isKeeper) {
         this.lossT += DT

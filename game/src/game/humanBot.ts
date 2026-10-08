@@ -266,6 +266,12 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
     return
   }
+  // Holding the ball in his hands: look up, then roll it out to a free team-mate (six-second rule).
+  if (rt.heroIsKeeper && rt.keeperHoldLeft > 0) {
+    if (st.heldSinceReal < 0) st.heldSinceReal = st.real
+    if (st.real - st.heldSinceReal > st.skill.reaction + 0.6) act({ kind: 'pass', dir: { x: 1, y: st.rng.range(-0.4, 0.4) } })
+    return
+  }
   if (rt.heroIsKeeper) {
     const shotIncoming = !rt.owner && Math.hypot(rt.ball.vx, rt.ball.vy) > 9 && rt.ball.vx < 0
     if (!shotIncoming) st.shotSeenReal = -1
