@@ -248,14 +248,14 @@ test('progressive unlocks: locked message, then New! tag and one-time explainer'
 
   // Ten weeks later: unlocked, flagged New! with a one-time explainer.
   await sp(page, `(() => { const s = sp.state(); s.life.flags['ux:start'] = s.calendar.season * 44 + s.calendar.week - 10; sp.actions.planSlot(2, null); sp.navigate('life', { tab: 'sponsors' }) })()`)
-  await expect(page.locator('#life-sponsors .new-tag')).toBeVisible()
+  await expect(page.locator('.ph-app-bar .new-tag')).toBeVisible()
   const exp = page.locator('.unlock-explainer[data-explainer="sponsors"]')
   await expect(exp).toBeVisible()
   await page.waitForTimeout(600)
   await snapWp6(page, P, '42-unlock-explainer')
   await exp.getByRole('button', { name: 'Got it' }).click()
   await expect(exp).toHaveCount(0)
-  await expect(page.locator('#life-sponsors .new-tag')).toHaveCount(0)
+  await expect(page.locator('.ph-app-bar .new-tag')).toHaveCount(0)
 })
 
 test('first match moment shows a platform-aware control hint', async ({ page, isMobile }, info) => {

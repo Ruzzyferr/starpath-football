@@ -19,7 +19,7 @@ import { Projects } from './life/Projects'
 import { Sponsors } from './life/Sponsors'
 import { AddictionMeter } from './casino/AddictionMeter'
 import { InfoTip } from '../tutorial/InfoTip'
-import { UnlockGate } from '../tutorial/UnlockGate'
+import { NewTag, UnlockGate } from '../tutorial/UnlockGate'
 import { features } from '../tutorial/unlocks'
 
 type LifeTab = 'relations' | 'assets' | 'bank' | 'business' | 'social' | 'sponsors' | 'projects'
@@ -178,6 +178,9 @@ export function LifeScreen() {
                 <button type="button" class="ph-back" onClick={goHome} aria-label={t('life.phone.home')}><Icon name="arrow-left" size={20} /></button>
                 <AppTile app={cur.id} icon={cur.icon} size={28} />
                 <h2 id="ph-app-title" class="ph-app-title" tabIndex={-1} ref={title}>{t(`life.tabs.${app}`)}</h2>
+                {app === 'sponsors' && <NewTag feature="sponsors" />}
+                {app === 'bank' && <NewTag feature="investments" />}
+                {app === 'business' && <NewTag feature="business" />}
               </div>
               <AddictionMeter />
               <div class="ph-app-body" id={`life-panel-${app}`}>
