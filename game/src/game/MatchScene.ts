@@ -125,6 +125,8 @@ interface SceneData {
 }
 
 const SCENE_KEY = 'starpath-match'
+/** HUD band height (hud units; 2.2#92: 36 × 1.25 = 45 px ≤ 6 % of 800). */
+const HUD_ROW = 36
 /** Longest the moment-start frame holds before following play (s, 2.2#4). */
 const OPEN_CAM_HOLD = 1.4
 
@@ -1028,12 +1030,12 @@ export class MatchScene extends Phaser.Scene {
     const u = this.hudU
     const landscape = w >= h
     this.safeTop = safeAreaTop(this.game.canvas) * u
-    // HUD band: row 1 = score bug + moment timer, row 2 = prompt / focus label.
+    // HUD band (2.2#92): one slim row = score bug + stamina, moment timer, weather; ≤ 6 % of a 1280×800 screen.
+    // The prompt / focus label floats over the top of the pitch and fades out.
     this.promptText.setFontSize(Math.round((landscape ? 16 : 14) * u))
     this.promptText.setWordWrapWidth(landscape ? Math.min(w * 0.7, 900 * u) : w - 28 * u)
-    const row1 = 40 * u
-    const row2 = Math.max(24 * u, this.promptText.height + 8 * u)
-    this.hudTop = Math.round(this.safeTop + row1 + row2)
+    const row1 = HUD_ROW * u
+    this.hudTop = Math.round(this.safeTop + row1)
     const vh = Math.max(1, h - this.hudTop)
     this.cameras.main.setViewport(0, this.hudTop, w, vh)
     this.uiCam.setSize(w, h)
@@ -1048,7 +1050,7 @@ export class MatchScene extends Phaser.Scene {
     this.flash.setSize(w, h)
     const top = this.safeTop
     // Score bug: [minute | ▌HOME  2-1  AWAY▐]
-    const cyB = top + 20 * u
+    const cyB = top + 17 * u
     const sx = this.sb.x
     sx.min = 12 * u
     sx.minW = this.sb.min.width + 14 * u
@@ -1066,12 +1068,13 @@ export class MatchScene extends Phaser.Scene {
     const bx = Math.max(w / 2 - bw0 / 2, sbRight + 14 * u)
     const reserve = this.windText ? this.windText.width + 34 * u : 0
     const bwMax = w - 16 * u - bx - reserve
-    this.bar = { x: bx, y: top + 15 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
-    this.windText?.setPosition(w - 12 * u, top + 20 * u)
+    this.bar = { x: bx, y: top + 11 * u, w: Math.max(40 * u, Math.min(bw0, bwMax)) }
+    this.windText?.setPosition(w - 12 * u, top + 18 * u)
     // Aim-assist read-out sits under the right end of the timer (never on the prompt's row).
-    this.assistText?.setPosition(this.bar.x + this.bar.w, top + 32 * u)
-    this.promptText.setPosition(w / 2, top + row1 + row2 / 2 - 2 * u)
-    this.focusText.setPosition(w / 2, top + row1 + row2 / 2)
+    this.assistText?.setPosition(this.bar.x + this.bar.w, top + 27 * u)
+    const promptY = this.hudTop + 8 * u + this.promptText.height / 2
+    this.promptText.setPosition(w / 2, promptY)
+    this.focusText.setPosition(w / 2, promptY)
     this.bannerText.setPosition(w / 2, this.hudTop + vh * 0.3)
     this.bannerSub.setPosition(w / 2, this.hudTop + vh * 0.3 + 52 * u)
     this.replayText.setPosition(w - 70 * u, 26 * u)
@@ -2563,23 +2566,44 @@ export class MatchScene extends Phaser.Scene {
     for (const t of [this.sb.min, this.sb.home, this.sb.score, this.sb.away]) t.setVisible(showBug)
     this.assistText?.setVisible(showBug)
     const sx = this.sb.x
-    const bugY = top + 7 * u
+    const bugY = top + 4 * u
     const bugH = 26 * u
     if (showBug) {
-    g.fillStyle(0x000000, 0.35)
-    g.fillRoundedRect(sx.min + 1 * u, bugY + 2 * u, sx.end - sx.min, bugH, 6 * u)
-    g.fillStyle(0x131c2e, 1)
-    g.fillRoundedRect(sx.min, bugY, sx.end - sx.min, bugH, 6 * u)
-    g.fillStyle(0xffffff, 0.07)
-    g.fillRect(sx.min + 6 * u, bugY, sx.end - sx.min - 12 * u, 1 * u)
-    g.fillStyle(0xffc83d, 1)
-    g.fillRoundedRect(sx.min, bugY, sx.minW, bugH, { tl: 6 * u, bl: 6 * u, tr: 0, br: 0 })
-    g.fillStyle(this.sbColors[0], 1)
-    g.fillRect(sx.min + sx.minW, bugY, 4 * u, bugH)
-    g.fillStyle(0xf2f5fa, 1)
-    g.fillRect(sx.score, bugY + 3 * u, sx.scoreW, bugH - 6 * u)
-    g.fillStyle(this.sbColors[1], 1)
-    g.fillRoundedRect(sx.end - 4 * u, bugY, 4 * u, bugH, { tl: 0, bl: 0, tr: 4 * u, br: 4 * u })
+      // Slanted TV strip (2.2#92): a parallelogram bug with the minute block, team ticks and score.
+      const sk = 7 * u
+      const para = (x0: number, x1: number, y0: number, hh: number, col: number, al: number) => {
+        g.fillStyle(col, al)
+        g.beginPath()
+        g.moveTo(x0 + sk, y0)
+        g.lineTo(x1 + sk, y0)
+        g.lineTo(x1 - sk * 0, y0 + hh)
+        g.lineTo(x0, y0 + hh)
+        g.closePath()
+        g.fillPath()
+      }
+      para(sx.min + 2 * u, sx.end + 2 * u, bugY + 2 * u, bugH, 0x000000, 0.35)
+      para(sx.min, sx.end, bugY, bugH, 0x131c2e, 1)
+      para(sx.min, sx.min + sx.minW, bugY, bugH, 0xffc83d, 1)
+      para(sx.min + sx.minW, sx.min + sx.minW + 4 * u, bugY, bugH, this.sbColors[0], 1)
+      g.fillStyle(0xf2f5fa, 1)
+      g.fillRect(sx.score, bugY + 3 * u, sx.scoreW, bugH - 6 * u)
+      para(sx.end - 4 * u, sx.end, bugY, bugH, this.sbColors[1], 1)
+      // Stamina (condition) bar under the bug: the hero's sprint stamina.
+      const st = clampN(rt.hero.stamina, 0, 1)
+      const sw = sx.end - sx.min
+      g.fillStyle(0x000000, 0.55)
+      g.fillRect(sx.min, bugY + bugH + 1 * u, sw, 3 * u)
+      g.fillStyle(st > 0.3 ? 0x5dff8a : 0xffb02e, 0.95)
+      g.fillRect(sx.min, bugY + bugH + 1 * u, sw * st, 3 * u)
+    }
+    // Floating prompt / focus label over the pitch: a soft pill while visible.
+    const pa0 = Math.max(this.promptText.alpha, this.focusText.alpha)
+    if (pa0 > 0.02) {
+      const t = this.promptText.alpha >= this.focusText.alpha ? this.promptText : this.focusText
+      const pw = t.width + 28 * u
+      const ph = t.height + 8 * u
+      g.fillStyle(0x070b14, 0.55 * pa0)
+      g.fillRoundedRect(w / 2 - pw / 2, t.y - ph / 2, pw, ph, ph / 2)
     }
 
     // Moment timer bar.
