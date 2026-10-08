@@ -21,7 +21,7 @@
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 2.1 Maç motoru | 61 | 1 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
-| 2.3 Kariyer | 39 | 2 | 0 | 0 | 2 | 0 | 43 |
+| 2.3 Kariyer | 40 | 1 | 0 | 0 | 2 | 0 | 43 |
 | 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
 | 2.5 Ekonomi | 31 | 0 | 0 | 4 | 14 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
@@ -31,7 +31,7 @@
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
-| **Toplam** | **435 (%76)** | 6 | 0 | 32 | 56 | 40 | **569** |
+| **Toplam** | **436 (%77)** | 5 | 0 | 32 | 56 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -307,7 +307,7 @@ Bölüm 2.1, 2.2 ve 2.3 tablolarındaki her KISMİ/EKSİK satır koda karşı ye
 - **Erteleme gerekçeleri:** kaleci tutma/atma kontrolü ve atış pozu (2.1#85 korner yakalama, oyun kurma), BALANCE hedefleriyle çelişki (2.1#6 şut tepkisi, 2.1#119 %50 şut, 2.3#3 40 puan, 2.3#13 yaş çarpanları, 2.3#39 perk sayısı), kayıt migrasyonu (2.2#48, 2.3#11), gerçek cihaz (2.2#119), takvim yapısı (2.3#70 8 haftalık yaz), tasarım çelişkisi (2.3#82 ↔ 2.4#46), v2 dünya verisi (2.3#10 ayrı kadın ligleri).
 - **Perf (4x kısma, mobil):** Düşük ~163 fps, Orta ~136 fps; e2e demo/match/setpieces/controls/training/postmatch/perf yeşil.
 
-Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (ikinci kaleci drili ertelendi; formül ve Altın Eldiven tamam), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
+Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
 
 **GDD (2.13), TAMAM'a dönenler:** gizli potansiyel yıldızı (`legacy/CareerCards.tsx:69`), emeklilik kararı ve Onur Listesi (`ui/backend/meta.ts:205`, `HallOfFameScreen.tsx:28`), ısı ve şut haritası (`PostMatchScreen.tsx:223`), kalabalık/tezahürat/ıslık/yuhalama (`audio/crowd.ts`), hukuk olayları (`events/content/legal.ts`), milli turnuva + Ayın Oyuncusu + Yılın Golü (`sim/game/national.ts`, `awards.ts`), deneme + Tam Kariyer kilidi + kozmetikler (`store-iap/catalog.ts`), menü sesleri ve dinamik müzik (`audio/uiSfx.ts`, `music.ts`).
 
@@ -422,7 +422,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (ikinci kaleci drili ertelendi; 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.3#1 | TAMAM | core/types.ts:18, sim/match/highlightGen.ts:85 | 10 mevki, mevkiye göre an havuzu |
-| 2.3#2 | KISMİ | sim/match/rating.ts keeperSaveScore, sim/world/awards.ts goalkeeperAwardScore, wp15.test.ts | WP-C: kaleci reyting terimi (kurtarış, kurtarış yüzdesi, gol yememe) ve Altın Eldiven formülü (temiz maç + kurtarış + reyting) testli. Ek ikinci kaleci drili ertelendi: yeni TrainingType UI haritalarına ve DrillOverlay/i18n'e dokunur (UI paketi) |
+| 2.3#2 | TAMAM | game/training/drills/distribution.ts, sim/career/training.ts (distribution), sim/match/rating.ts keeperSaveScore, sim/world/awards.ts goalkeeperAwardScore | Kaleci reyting terimi ve Altın Eldiven formülü (WP-C) + ikinci kaleci drili "Çıkış & Hâkimiyet": ortayı havada kap (Kaleci/Handling), 6 sn içinde koşan arkadaşa at (≤24 m) ya da vur; puan 0..1, not, bot ve testli, TR/EN, cihaz başına ipucu (`distribute`) |
 | 2.3#3 | KISMİ | sim/career/createHero.ts:48 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Arketip bonusu 80–90 puan (plan 40); uyumsuzluk kuralı yok |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
 | 2.3#10 | ERTELENDİ-INT | core/gender.ts, sim/game/gender.test.ts, sim/career/genderText.test.ts | WP-C: kadın dünyası (isimler, yüzler, serbest oyuncular) ve TR/EN cinsiyet metin testi tamam. Ayrı kadın lig piramidi kulüp adı/arma ve hukuk taramasına bağlı; v2 |

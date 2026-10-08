@@ -213,6 +213,7 @@ export const ACTIVITIES: readonly ActivityDef[] = [
   train('crossing', '📐', T('Orta İstasyonu', 'Cross Station')),
   train('heading', '⚽', T('Kafa Topu Makinesi', 'Header Machine')),
   train('tackling', '🛡️', T('Top Kapma Düellosu', 'Tackle Duel')),
+  train('distribution', '🧤', T('Çıkış & Hâkimiyet', 'Distribution & Claiming')),
   train('recovery', '🧘', T('Yoga & Toparlanma', 'Yoga & Recovery'), true),
   { id: 'gym', icon: '💪', category: 'training', slots: 1, allowedSlots: ALL, energy: 15, fatigue: 8, health: 1, stress: -2,
     special: 'gym', name: T('Spor Salonu', 'Gym Session'), desc: T('Kendi başına ağırlık çalış: güç ve dayanıklılık.', 'Lift on your own: strength and stamina.'),

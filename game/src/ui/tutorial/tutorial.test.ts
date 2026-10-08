@@ -151,7 +151,7 @@ describe('control hints', () => {
   })
 
   it('new drills get their own control hints', () => {
-    for (const [d, g] of [['crossing', 'cross'], ['heading', 'headMachine'], ['tackling', 'tackleDuel']] as const) {
+    for (const [d, g] of [['crossing', 'cross'], ['heading', 'headMachine'], ['tackling', 'tackleDuel'], ['distribution', 'distribute']] as const) {
       expect(pickDrillHint(d, undefined, () => false)).toBe(g)
     }
   })
@@ -185,7 +185,7 @@ describe('control hints', () => {
   it('has hint copy for every group on every platform in both languages', () => {
     for (const dict of [tr, en]) {
       for (const p of ['touch', 'mouse', 'pad'] as const) {
-        for (const g of ['shoot', 'pass', 'move', 'header', 'defend', 'keeper', 'setPiece', 'fitness', 'cross', 'headMachine', 'tackleDuel'] as const) {
+        for (const g of ['shoot', 'pass', 'move', 'header', 'defend', 'keeper', 'setPiece', 'fitness', 'cross', 'headMachine', 'tackleDuel', 'distribute'] as const) {
           expect(dict.help.hints[p][g].length, `${p}.${g}`).toBeGreaterThan(10)
         }
       }

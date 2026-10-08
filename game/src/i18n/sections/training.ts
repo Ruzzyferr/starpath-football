@@ -34,6 +34,7 @@ export const tr = {
     crossing: 'Orta İstasyonu',
     heading: 'Kafa Topu Makinesi',
     tackling: 'Top Kapma Düellosu',
+    distribution: 'Çıkış & Hâkimiyet',
     howTo: 'Nasıl oynanır',
     start: 'Başla',
     quit: 'Bırak',
@@ -53,6 +54,7 @@ export const tr = {
       crossing: 'Kanattan ortayı yanan bölgeye indir. Top, koşan arkadaşın bölgeye vardığı anda orada olsun.',
       heading: 'Makine topu işarete yollar. İşarete geç, top gelirken zıpla ve kafayla kaleciyi geç.',
       tackling: 'Dripling yapan rakip sana geliyor. Önünde kal, top ayağından açılınca kap; faul yapma, geçilme.',
+      distribution: 'Kanattan gelen ortayı halkanın altında havada kap (eldiven: Kaleci özelliğin), sonra 6 sn içinde koşan arkadaşına at ya da vur. Yakın: atış, uzak: vuruş. Hızlı çıkış ve uzun bulma bonus.',
     },
     pcControls: {
       finishing: 'Fareyi kaleye tut, basılı tut-bırak: şut (süre = güç). Ctrl/E: aşırtma.',
@@ -63,6 +65,7 @@ export const tr = {
       crossing: 'Bölgeye tıkla: orta · basılı tut-bırak: o yöne (süre = mesafe) · Boşluk/F: yanan bölgeye.',
       heading: 'WASD: işarete geç · kaleye tıkla: zıpla ve oraya kafa vur · Boşluk/F: yanan hedefe.',
       tackling: 'WASD: pozisyon al · Shift: depar · Boşluk/F/tıkla: müdahale · basılı tut-bırak: kayarak müdahale.',
+      distribution: 'WASD: halkanın altına geç · arkadaşa tıkla / basılı tut-bırak: at ya da vur (önüne) · Boşluk/F: ışıklı arkadaşa.',
     },
     touchControls: {
       finishing: 'Kaleye doğru kaydır: şut (hız = güç, kavis = falso). İki parmak: aşırtma.',
@@ -73,6 +76,7 @@ export const tr = {
       crossing: 'Bölgeye dokun ya da ona doğru kaydır: orta · ORTA düğmesi: yanan bölgeye.',
       heading: 'Sol başparmak: işarete geç · kaleye dokun / kaydır: zıpla ve kafa vur · KAFA düğmesi.',
       tackling: 'Sol başparmak: pozisyon · KAP düğmesi / dokun: müdahale · topa doğru kaydır: kayarak müdahale.',
+      distribution: 'Sol başparmak: halkaya geç · koşan arkadaşa dokun / ona doğru kaydır: at ya da vur · AT düğmesi: ışıklı arkadaşa.',
     },
   },
   result: {
@@ -158,6 +162,7 @@ export const en: Shape<typeof tr> = {
     crossing: 'Cross Station',
     heading: 'Header Machine',
     tackling: 'Tackle Duel',
+    distribution: 'Distribution & Claiming',
     howTo: 'How to play',
     start: 'Start',
     quit: 'Quit',
@@ -177,6 +182,7 @@ export const en: Shape<typeof tr> = {
       crossing: 'Whip crosses from the wing into the lit zone, landing just as your team-mate’s run gets there.',
       heading: 'The machine fires the ball at the mark. Get on it, jump as it arrives and head it past the keeper.',
       tackling: 'A dribbler runs at you. Stay goal-side and nick the ball when it is pushed loose; don’t foul, don’t get beaten.',
+      distribution: 'Catch the wing cross out of the air under the ring (your Handling counts), then throw or kick it to a running team-mate within 6 s. Close is a throw, far is a kick. Quick restarts and long finds earn bonus points.',
     },
     pcControls: {
       finishing: 'Point at the goal, hold & release: shoot (hold = power). Ctrl/E: chip.',
@@ -187,6 +193,7 @@ export const en: Shape<typeof tr> = {
       crossing: 'Click the zone: cross · hold & release toward it (hold = distance) · Space/F: to the lit zone.',
       heading: 'WASD: get on the mark · click the goal: jump and head it there · Space/F: at the lit target.',
       tackling: 'WASD: jockey · Shift: sprint · Space/F/click: tackle · hold & release: slide tackle.',
+      distribution: 'WASD: get under the ring · click a runner / hold & release: throw or kick (lead him) · Space/F: to the lit runner.',
     },
     touchControls: {
       finishing: 'Swipe toward goal: shoot (speed = power, curve = curl). Two fingers: chip.',
@@ -197,6 +204,7 @@ export const en: Shape<typeof tr> = {
       crossing: 'Tap the zone or swipe toward it: cross · CROSS button: to the lit zone.',
       heading: 'Left thumb: get on the mark · tap / swipe at the goal: jump and head · HEAD button.',
       tackling: 'Left thumb: jockey · TACKLE button / tap: tackle · swipe at the ball: slide tackle.',
+      distribution: 'Left thumb: get under the ring · tap a runner or swipe toward him: throw or kick · THROW button: to the lit runner.',
     },
   },
   result: {

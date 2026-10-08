@@ -88,6 +88,17 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
           <path d="M84 96L96 20M136 100L126 18" stroke={OPP} {...dash} />
         </>
       )
+    case 'distribution':
+      return (
+        <>
+          <Player x={110} y={26} c="#ffc83d" />
+          <circle cx="104" cy="40" r="13" fill="none" stroke={RUN} stroke-opacity=".6" />
+          <Ball x={176} y={96} />
+          <path d="M176 96C150 40 120 40 106 40" stroke={OPP} {...dash} />
+          <Player x={60} y={84} c={MATE} /><Player x={110} y={112} c={MATE} /><Player x={160} y={80} c={MATE} />
+          <path d="M110 30L60 80M110 30L160 76" stroke={PASS} {...dash} />
+        </>
+      )
     case 'tackling':
       return (
         <>

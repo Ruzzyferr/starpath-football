@@ -53,7 +53,7 @@ type Strings = {
   prompt: Record<DrillPrompt, string>
   label: Record<DrillLabel, string>
   hud: { combo: string; level: string; stamina: string; beat: string; power: string; timing: string; go: string; grade: string; points: string; wind: string }
-  buttons: { sprint: string; skill: string; loft: string; go: string; dive: string; cross: string; head: string; tackle: string }
+  buttons: { sprint: string; skill: string; loft: string; go: string; dive: string; throw: string; cross: string; head: string; tackle: string }
 }
 
 const T: Record<Lang, Strings> = {
@@ -75,6 +75,8 @@ const T: Record<Lang, Strings> = {
       headNow: 'ZIPLA! (KAFA / Boşluk / kaleye dokun)',
       tackling: 'Önünde kal, top açılınca kap. Kaydır: kayarak müdahale',
       tackleNow: 'ŞİMDİ! Topu kap (KAP / Boşluk / dokun)',
+      claim: 'Halkanın altına geç: orta gelince eller topu alır',
+      distribute: 'Topu elinde: koşan arkadaşına dokun / kaydır. 6 sn içinde at!',
       ready: 'Hazır ol…',
       done: 'Antrenman bitti',
     },
@@ -87,7 +89,7 @@ const T: Record<Lang, Strings> = {
       delivery: 'İYİ ORTA', won: 'KAPTIN!', foul: 'FAUL', beaten: 'GEÇİLDİN', whiff: 'BOŞA',
     },
     hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', timing: 'ZAMANLAMA', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN', wind: 'RÜZGÂR {n} KM/SA' },
-    buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
+    buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', throw: 'AT', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
   },
   en: {
     prompt: {
@@ -107,6 +109,8 @@ const T: Record<Lang, Strings> = {
       headNow: 'JUMP! (HEAD / Space / tap the goal)',
       tackling: 'Stay goal-side, nick it when it is exposed. Swipe: slide tackle',
       tackleNow: 'NOW! Win the ball (TACKLE / Space / tap)',
+      claim: 'Get under the ring: the hands take the cross',
+      distribute: 'Ball in hand: tap / swipe at a runner. Release within 6 s!',
       ready: 'Get ready…',
       done: 'Session over',
     },
@@ -119,7 +123,7 @@ const T: Record<Lang, Strings> = {
       delivery: 'GOOD BALL', won: 'WON IT!', foul: 'FOUL', beaten: 'BEATEN', whiff: 'MISSED',
     },
     hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', timing: 'TIMING', go: 'GO!', grade: 'GRADE', points: 'PTS', wind: 'WIND {n} KM/H' },
-    buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
+    buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', throw: 'THROW', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
   },
 }
 
@@ -133,6 +137,7 @@ const CONTROLS: Record<DrillKind, { button: keyof Strings['buttons'] | null; spr
   crossing: { button: 'cross', sprint: false, stick: false, level: false },
   heading: { button: 'head', sprint: false, stick: true, level: false },
   tackling: { button: 'tackle', sprint: true, stick: true, level: false },
+  distribution: { button: 'throw', sprint: false, stick: true, level: false },
 }
 
 const TONE: Record<Tone, number> = {

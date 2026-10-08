@@ -17,8 +17,8 @@ import type { AimAssist } from '../kick'
 import type { AgentState, Vec2 } from '../model'
 import type { AimState, HeroAction } from '../runtime'
 
-export type DrillKind = 'finishing' | 'passing' | 'dribbling' | 'fitness' | 'goalkeeping' | 'crossing' | 'heading' | 'tackling'
-export const DRILL_KINDS: readonly DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling']
+export type DrillKind = 'finishing' | 'passing' | 'dribbling' | 'fitness' | 'goalkeeping' | 'crossing' | 'heading' | 'tackling' | 'distribution'
+export const DRILL_KINDS: readonly DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution']
 
 /** Optional variation of a drill (set-piece finishing = free kicks over a wall). */
 export type DrillVariant = 'standard' | 'setPiece' | 'rondo'
@@ -139,7 +139,7 @@ export interface MeterView {
 /** Prompt shown under the score (localised by the scene). */
 export type DrillPrompt =
   | 'finishing' | 'setPiece' | 'passGround' | 'passLoft' | 'dribble' | 'skillNow' | 'fitnessRun' | 'fitnessWait' | 'fitnessGo'
-  | 'keeper' | 'crossing' | 'crossNow' | 'heading' | 'headNow' | 'tackling' | 'tackleNow' | 'ready' | 'done'
+  | 'keeper' | 'crossing' | 'crossNow' | 'heading' | 'headNow' | 'tackling' | 'tackleNow' | 'claim' | 'distribute' | 'ready' | 'done'
 
 export interface DrillHud {
   points: number

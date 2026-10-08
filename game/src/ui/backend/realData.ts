@@ -274,7 +274,7 @@ function formHistory(s: GameState): number[] {
 const TRAINING_GROUP: Record<TrainingType, TrainingSessionView['group']> = {
   shooting: 'technical', passing: 'technical', dribbling: 'technical', physical: 'physical', tactical: 'tactical',
   setPiece: 'technical', goalkeeping: 'goalkeeping', recovery: 'recovery',
-  crossing: 'technical', heading: 'technical', tackling: 'technical',
+  crossing: 'technical', heading: 'technical', tackling: 'technical', distribution: 'goalkeeping',
 }
 const TRAINING_DESC: Record<TrainingType, LText> = {
   shooting: L('Bitiricilik ve şut tekniği. Kaleye yüzlerce vuruş.', 'Finishing and shooting technique. Hundreds of strikes on goal.'),
@@ -288,13 +288,14 @@ const TRAINING_DESC: Record<TrainingType, LText> = {
   crossing: L('Kanattan ceza sahasındaki hedef bölgelere ve koşan arkadaşına orta.', 'Wing crosses into target zones in the box, timed for a runner.'),
   heading: L('Makine topu yollar: doğru anda zıpla, kafayla kaleciyi geç.', 'The machine fires balls in: time your jump and head past the keeper.'),
   tackling: L('Bire bir gelen driplingcilerden faul yapmadan topu kap.', 'One-on-one dribblers come at you: win the ball without fouling.'),
+  distribution: L('Ortaları havada kap, sonra koşan takım arkadaşlarına elle ya da ayakla çıkış yap.', 'Claim crosses out of the air, then throw or kick it out to team-mates on the run.'),
 }
 
 function trainingSessions(s: GameState): TrainingSessionView[] {
   return cached(s, 'trainingSessions', () => {
     const ctx = activityContext(s)
     return (Object.keys(TRAINING_TYPES) as TrainingType[])
-      .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping'))
+      .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping' && t !== 'distribution'))
       .map((t): TrainingSessionView => {
         const d = TRAINING_TYPES[t]
         const focus = Object.entries(d.attrs).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)).map(([k]) => k as AttributeKey).slice(0, 4)

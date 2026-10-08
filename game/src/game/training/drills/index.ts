@@ -2,6 +2,7 @@
 import type { Drill, DrillConfig, DrillKind } from '../types'
 import type { DrillBase } from '../base'
 import { CrossingDrill } from './crossing'
+import { DistributionDrill } from './distribution'
 import { DribblingDrill } from './dribbling'
 import { FinishingDrill } from './finishing'
 import { FitnessDrill } from './fitness'
@@ -11,7 +12,7 @@ import { PassingDrill } from './passing'
 import { RondoDrill } from './rondo'
 import { TacklingDrill } from './tackling'
 
-export { CrossingDrill, DribblingDrill, FinishingDrill, FitnessDrill, GoalkeepingDrill, HeadingDrill, PassingDrill, RondoDrill, TacklingDrill }
+export { CrossingDrill, DistributionDrill, DribblingDrill, FinishingDrill, FitnessDrill, GoalkeepingDrill, HeadingDrill, PassingDrill, RondoDrill, TacklingDrill }
 
 /** Creates a drill of `kind` (config: hero attributes, seed, assist, difficulty, variant). */
 export function createDrill(kind: DrillKind, cfg: DrillConfig): Drill & DrillBase {
@@ -32,5 +33,7 @@ export function createDrill(kind: DrillKind, cfg: DrillConfig): Drill & DrillBas
       return new HeadingDrill(cfg)
     case 'tackling':
       return new TacklingDrill(cfg)
+    case 'distribution':
+      return new DistributionDrill(cfg)
   }
 }

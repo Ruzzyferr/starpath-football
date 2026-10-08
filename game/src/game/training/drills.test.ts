@@ -4,7 +4,7 @@ import { cloneBall, predictPlaneCrossing } from '../physics'
 import { dist, norm, sub, type Vec2 } from '../model'
 import { DIVE_PEAK } from '../ai'
 import type { HeroAction } from '../runtime'
-import { createDrill, type CrossingDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
+import { createDrill, type CrossingDrill, type DistributionDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
 import { JUMP_PEAK } from './drills/heading'
 import type { RondoDrill } from './drills/rondo'
 import type { Attributes } from '../../core/types'
@@ -188,6 +188,27 @@ const tacklingBot = (good: boolean): Bot => (d, s) => {
   return { move, sprint: good && l > 3, actions, aim: null }
 }
 
+const stepToward = (from: Vec2, to: Vec2): Vec2 => {
+  const off = sub(to, from)
+  const l = Math.hypot(off.x, off.y)
+  return l > 0.1 ? { x: (off.x / l) * Math.min(1, l * 2), y: (off.y / l) * Math.min(1, l * 2) } : { x: 0, y: 0 }
+}
+
+/** Distribution & claiming: good = under the ring, quick release leading the runner; meh = waits, aims at his feet. */
+const distributionBot = (good: boolean): Bot => (d, s) => {
+  const t = d as DistributionDrill
+  const move = good && t.crossing ? stepToward(t.hero.pos, t.landing) : { x: 0, y: 0 }
+  if (!t.holding) {
+    s.mem.holdAt = -1
+    return { ...idle, move }
+  }
+  if (s.mem.holdAt < 0 || s.mem.holdAt === undefined) s.mem.holdAt = s.t
+  const waited = s.t - s.mem.holdAt
+  if (good && waited > 0.5) return act({ kind: 'tapAt', at: t.leadPoint(t.featuredMate) })
+  if (!good && waited > 2.4) return act({ kind: 'tapAt', at: t.mateAt(t.featuredMate) })
+  return idle
+}
+
 const BOTS: Record<DrillKind, { good: Bot; meh: Bot }> = {
   finishing: { good: finishingGood, meh: finishingMeh },
   passing: { good: passingGood, meh: passingMeh },
@@ -197,16 +218,18 @@ const BOTS: Record<DrillKind, { good: Bot; meh: Bot }> = {
   crossing: { good: crossingGood, meh: crossingMeh },
   heading: { good: headingBot(true), meh: headingBot(false) },
   tackling: { good: tacklingBot(true), meh: tacklingBot(false) },
+  distribution: { good: distributionBot(true), meh: distributionBot(false) },
 }
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
-const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling']
-const NEW_KINDS: DrillKind[] = ['crossing', 'heading', 'tackling']
+const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution']
+const NEW_KINDS: DrillKind[] = ['crossing', 'heading', 'tackling', 'distribution']
 /** The attributes each new drill is about. */
 const KEY_ATTRS: Record<string, (keyof Attributes)[]> = {
   crossing: ['crossing', 'passing'],
   heading: ['heading', 'jumping'],
   tackling: ['tackling', 'positioning', 'strength'],
+  distribution: ['handling', 'passing'],
 }
 
 describe('training drills (headless)', () => {
@@ -269,6 +292,16 @@ describe('training drills (headless)', () => {
     const r = play(make('goalkeeping', 4), BOTS.goalkeeping.good)
     expect(r.stats.shots).toBe(12)
     expect(r.played).toBeLessThanOrEqual(40)
+  })
+
+  it('distribution & claiming: catches crosses, then throws or kicks to a runner (2.3#2)', () => {
+    const r = play(make('distribution', 5), BOTS.distribution.good)
+    expect(r.stats.crosses).toBeGreaterThanOrEqual(5)
+    expect(r.stats.claims ?? 0).toBeGreaterThan(0)
+    expect((r.stats.throws ?? 0) + (r.stats.kicks ?? 0)).toBeGreaterThan(0)
+    expect(r.stats.found ?? 0).toBeGreaterThan(0)
+    const hold = make('distribution', 6)
+    expect(hold.view().heroIsKeeper).toBe(true)
   })
 
   it('set-piece finishing builds a wall and still rewards good strikes', () => {

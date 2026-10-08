@@ -23,6 +23,7 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
   crossing: 35,
   heading: 30,
   tackling: 30,
+  distribution: 40,
 }
 
 /** Points that count as a top session (performance ≈ 1). Calibrated with scripted bots (drills.test.ts). */
@@ -35,6 +36,7 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   crossing: 1900,
   heading: 1700,
   tackling: 1150,
+  distribution: 650,
 }
 
 /** Which drill a training session plays (null = no mini-game, auto only). */
@@ -49,6 +51,7 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
   crossing: { kind: 'crossing', variant: 'standard' },
   heading: { kind: 'heading', variant: 'standard' },
   tackling: { kind: 'tackling', variant: 'standard' },
+  distribution: { kind: 'distribution', variant: 'standard' },
   recovery: null,
 }
 
@@ -316,6 +319,40 @@ export function tacklePoints(i: TackleScoreInput): number {
 
 export const FOUL_PENALTY = -40
 export const BEATEN_PENALTY = -25
+
+// ───────────────────────── Distribution & claiming (2.3#2) ─────────────────────────
+
+/** A team-mate counts as found when the ball comes to within this many metres of him (below head height). */
+export const DIST_RECEIVE_R = 1.7
+/** Up to this range the keeper throws / rolls it; beyond it he kicks from his hands. */
+export const DIST_THROW_RANGE = 24
+/** Release within this many seconds of the catch earns the quick-restart bonus. */
+export const DIST_QUICK_S = 2
+/** Held cross / punched-away cross. */
+export const DIST_CLAIM_POINTS = 25
+export const DIST_PUNCH_POINTS = 8
+
+export interface DistributionScoreInput {
+  /** 0..1: 1 = ball met the team-mate exactly. */
+  accuracy: number
+  /** Released within {@link DIST_QUICK_S}. */
+  quick: boolean
+  /** Found a team-mate with a kick beyond the throwing range. */
+  far: boolean
+  combo: number
+}
+
+/** Points for a distribution that found a team-mate. */
+export function distributionPoints(i: DistributionScoreInput): number {
+  const base = 70 + clamp01(i.accuracy) * 50 + (i.quick ? 25 : 0) + (i.far ? 25 : 0)
+  return Math.round(base * comboMultiplier(i.combo))
+}
+
+/** Chance that the keeper's hands hold a cross he got to (handling 0..100). */
+export function claimChance(handling: number, contested: boolean, stretched: boolean, difficulty: number): number {
+  const p = 0.4 + clamp01(handling / 100) * 0.55 - (contested ? 0.18 : 0) - (stretched ? 0.08 : 0) - (difficulty - 1) * 0.15
+  return Math.max(0.1, Math.min(0.97, p))
+}
 
 // ───────────────────────── XP preview ─────────────────────────
 

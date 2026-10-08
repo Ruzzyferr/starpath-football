@@ -6,7 +6,7 @@
  */
 import { signal } from '@preact/signals'
 
-export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness' | 'cross' | 'headMachine' | 'tackleDuel' | 'cornerPick' | 'wallSet'
+export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness' | 'cross' | 'headMachine' | 'tackleDuel' | 'distribute' | 'cornerPick' | 'wallSet'
 export type InputPlatform = 'touch' | 'mouse' | 'pad'
 export type HintContext = 'match' | 'drill'
 
@@ -49,6 +49,7 @@ const DRILL_GROUPS: Record<string, HintGroup> = {
   crossing: 'cross',
   heading: 'headMachine',
   tackling: 'tackleDuel',
+  distribution: 'distribute',
 }
 
 export const hintId = (ctx: HintContext, g: HintGroup) => `${ctx}:${g}`
@@ -101,6 +102,8 @@ export function isHintSuccess(g: HintGroup, e: HintEvent, heroId?: string | null
     case 'keeper':
       return (e.type === 'dive' && (byHero || e.by === undefined)) || (e.type === 'save' && byHero)
     case 'cross':
+      return heroKick
+    case 'distribute':
       return heroKick
     case 'headMachine':
       return heroKick || (e.type === 'header' && byHero)
