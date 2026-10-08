@@ -5,8 +5,8 @@ name: Nightly soak
 # full unit suite and the size budgets (GAP-AUDIT 2.12#86). The balance tables, a 100-season world
 # ability report (mean / p95 / p99 / max) and the drift guard are uploaded as artifacts and summarised on the run page (2.5#125).
 on:
-  schedule:
-    - cron: '17 2 * * *'
+  # Scheduled runs are disabled to protect a private repo's Actions minutes.
+  # Re-enable with:  schedule: [{ cron: '17 2 * * *' }]
   workflow_dispatch:
 
 defaults:
