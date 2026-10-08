@@ -100,6 +100,7 @@ export function eventDeltas(s: GameState, deltas: readonly AppliedDelta[], uncer
       case 'discipline': out.push({ key: 'discipline', value: Math.round(d.amount), ...u }); break
       case 'injury': out.push({ key: 'health', value: -Math.max(1, Math.round(d.weeks)), label: { tr: `Sakatlık (${d.weeks} hf)`, en: `Injury (${d.weeks} wk)` }, ...u }); break
       case 'suspension': out.push({ key: 'discipline', value: -d.matches, label: { tr: `Ceza (${d.matches} maç)`, en: `Ban (${d.matches} match)` }, ...u }); break
+      case 'sponsorLoss': out.push({ key: 'reputation', value: 0, label: { tr: `Sponsor feshi: ${d.label ?? ''}`, en: `Sponsors out: ${d.label ?? ''}` }, ...u }); break
       case 'endRelation': out.push({ key: 'relation', value: -100, rel: d.target, label: RELATION_LABEL[d.target], ...u }); break
       case 'brand': out.push({ key: 'reputation', value: Math.round(d.amount), label: { tr: `Marka${d.label ? `: ${d.label}` : ''}`, en: `Brand${d.label ? `: ${d.label}` : ''}` }, ...u }); break
     }

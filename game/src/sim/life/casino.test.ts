@@ -209,6 +209,17 @@ describe('slots', () => {
     expect(rtp).toBeGreaterThan(0.9)
     expect(rtp).toBeLessThan(0.98)
   })
+
+  // 2.5#92: the plan's 10M-spin check; runs in ~1 s, so it is part of CI (RTP >= 1 breaks the build).
+  it('Monte Carlo RTP over 10M spins is inside 92-96% and below 1', () => {
+    const rng = new Rng(2026)
+    let ret = 0
+    const N = 10_000_000
+    for (let i = 0; i < N; i++) ret += spinSlot(rng, 5).payout
+    const rtp = ret / (N * 5)
+    expect(rtp).toBeGreaterThan(0.92)
+    expect(rtp).toBeLessThan(0.96)
+  }, 600_000)
 })
 
 describe('horse racing', () => {

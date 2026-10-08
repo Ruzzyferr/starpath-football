@@ -12,9 +12,13 @@
  * - Partner ultimatum (2 steps): casino.partner_ultimatum → casino.recovery_week
  * - Racehorse (3 steps): casino.horse_offer → casino.horse_race_day → casino.horse_retirement
  */
-import { addiction, boss, canAfford, chain, chairman, disc, fans, flags, fol, follow, fx, form, happy, hasClub, hasFlag, hasRel, money, morale, news, nice, num, press, rel, relNpc, rep, stress, t, trust, wageX } from '../dsl'
+import { addiction, ban, boss, canAfford, chain, chairman, disc, fans, flags, fol, follow, fx, form, happy, hasClub, hasFlag, hasRel, money, sponsorLoss, morale, news, nice, num, press, rel, relNpc, rep, stress, t, trust, wageX } from '../dsl'
 import { casinoVipTier } from '../../casino'
 import type { EventDef } from '../types'
+
+/** Exposure chance of betting on your own match, and the resulting ban (matches; ~ 6 months of fixtures). 2.5#102. */
+export const OWN_BET_EXPOSURE = 0.35
+export const OWN_BET_BAN = 25
 
 const addic = (s: { life: { casino: { addiction: number } } }): number => s.life.casino.addiction
 
@@ -143,7 +147,20 @@ export const casinoCareerEvents: EventDef[] = [
     choices: [
       { label: t('Reddet ve ayrıl', 'Refuse and leave'), effects: () => fx(t('Bahis ekranına bir kez daha bakmadın. Dışarıdaki hava buz gibi ve temiz.', 'You did not look at the board again. The air outside was icy and clean.'), stress(-2), trust(2), addiction(-2)) },
       { label: t('Kulübün entegrasyon birimine bildir', 'Report to the club integrity unit'), effects: () => fx(t('Birim teşekkür etti ve konu sessizce kapandı; "içeriden" kişi bir daha görünmedi. Hoca "doğru olan" dedi.', 'The unit thanked you and the matter was closed quietly; the "insider" never reappeared. The gaffer said: "the right thing."'), trust(4), boss(3), chairman(3), disc(3), stress(2)) },
-      { label: t('Kendi galibiyetine küçük bahis oyna ({stake:money})', 'Place a small bet on your own win ({stake:money})'), risk: 'high', requires: (c) => canAfford(c.state, num(c, 'stake')), lockedHint: t('Çipin yok.', 'No chips.'), effects: (c, rng) => rng.chance(0.2) ? fx(t('Kupon yattı, ama bahis kaydı yarım gün sonra federasyona düştü. Ceza ağır: iki maç ve manşet.', 'The slip came in, but the betting record reached the federation half a day later. A heavy penalty: two matches and a headline.'), money(num(c, 'stake')), disc(-12), press(-8), trust(-8), rep(-3), news(t('{heroName} kendi maçına bahis oynadı', '{heroName} bet on own match'), -1)) : fx(t('Kupon yattı. Kimse fark etmedi; ama sen farkındaydın ve maçta pasların titredi.', 'The slip lost. Nobody noticed, but you knew, and your passes trembled in the match.'), money(-num(c, 'stake')), form(-3), stress(5), disc(-3)) },
+      {
+        label: t('Kendi galibiyetine küçük bahis oyna ({stake:money})', 'Place a small bet on your own win ({stake:money})'),
+        hint: t('Ağır yasal risk: %35 ihtimalle ortaya çıkar (uzun men, sponsor feshi).', 'Severe legal risk: 35% chance it comes out (long ban, sponsors out).'),
+        risk: 'high',
+        requires: (c) => canAfford(c.state, num(c, 'stake')),
+        lockedHint: t('Çipin yok.', 'No chips.'),
+        effects: (c, rng) => rng.chance(OWN_BET_EXPOSURE)
+          ? fx(
+            t('Kupon yattı, ama bahis kaydı yarım gün sonra federasyona düştü. Ceza ağır: uzun men, sponsorlar çekildi ve manşet.', 'The slip came in, but the betting record reached the federation half a day later. A heavy penalty: a long ban, sponsors walking away and a headline.'),
+            money(num(c, 'stake')), ban(OWN_BET_BAN), sponsorLoss(4), disc(-15), press(-10), fans(-10), trust(-10), rep(-12),
+            news(t('{heroName} kendi maçına bahis oynadı: uzun men', '{heroName} bet on own match: long ban'), -1),
+          )
+          : fx(t('Kupon yattı. Kimse fark etmedi; ama sen farkındaydın ve maçta pasların titredi.', 'The slip lost. Nobody noticed, but you knew, and your passes trembled in the match.'), money(-num(c, 'stake')), form(-3), stress(5), disc(-3)),
+      },
     ],
   },
 

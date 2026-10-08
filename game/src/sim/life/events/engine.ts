@@ -19,6 +19,7 @@
 import { replaceWithSuffix } from '../../career/trSuffix'
 import type { Calendar, GameState, Lang, LText, NpcPlayer, PendingEvent, RelationKind, Relationship } from '../../../core/types'
 import { clamp, type Rng } from '../../../core/rng'
+import { checkMoralityClause } from '../sponsors'
 import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
 import { ADULT_AGE, absWeek, heroAge } from '../../career/common'
@@ -601,7 +602,7 @@ export function applyEffectResult(
   const memory = formatBoth(def.title, vars)
   const applied: AppliedDelta[] = []
   for (const d of result.deltas) {
-    const a = applyDelta(state, d, memory, abs, vars)
+    const a = d.kind === 'sponsorLoss' ? applySponsorLoss(state, rng, d.level) : applyDelta(state, d, memory, abs, vars)
     if (a) applied.push(a)
   }
   for (const [k, v] of Object.entries(result.setFlags ?? {})) {
@@ -671,6 +672,12 @@ function bump(r: Relationship, amount: number, memory: LText, abs: number): numb
   r.lastContactWeek = abs
   recordRelationChange(r, r.value - before, 'event', memory, abs)
   return r.value - before
+}
+
+function applySponsorLoss(state: GameState, rng: Rng, level: 1 | 2 | 3 | 4): AppliedDelta | null {
+  const { terminated } = checkMoralityClause(rng, state.life, state.hero, level, state.calendar)
+  if (terminated.length === 0) return null
+  return { kind: 'sponsorLoss', level, label: terminated.map((s) => s.brand).join(', ') }
 }
 
 function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars: EventVars): AppliedDelta | null {
@@ -748,6 +755,7 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
       else h.injury = { name: formatBoth(d.name, vars), weeksLeft: w, severity }
       return { kind: 'injury', weeks: w, name: formatBoth(d.name, vars) }
     }
+    case 'sponsorLoss': return null // handled in applyEffectResult (needs the rng)
     case 'suspension': {
       const m = Math.max(0, Math.round(num(d.matches)))
       if (m === 0) return null

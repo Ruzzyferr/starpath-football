@@ -114,7 +114,7 @@ function deltaSign(d: Delta): number {
     case 'money': case 'reputation': case 'followers': case 'discipline': case 'attr': case 'brand': case 'relation':
       return Math.sign(d.amount)
     case 'stat': return GOOD_STATS.has(d.key) ? Math.sign(d.amount) : -Math.sign(d.amount)
-    case 'injury': case 'suspension': case 'endRelation': return -1
+    case 'injury': case 'suspension': case 'endRelation': case 'sponsorLoss': return -1
   }
   return 0
 }

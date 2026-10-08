@@ -120,6 +120,8 @@ export type Delta =
   | { kind: 'discipline'; amount: number }
   | { kind: 'injury'; weeks: number; name: LText }
   | { kind: 'suspension'; matches: number }
+  /** Morality-clause scandal: sponsors drop out (level 4 = all of them; see sim/life/sponsors). */
+  | { kind: 'sponsorLoss'; level: 1 | 2 | 3 | 4 }
   /** Removes a relationship (break-up, falling out). */
   | { kind: 'endRelation'; target: RelationKind; npcId?: string }
   /** Brand reputation of an owned business (life/business); no-op without one. */
