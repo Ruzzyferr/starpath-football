@@ -143,13 +143,15 @@ export function resolveSave(rng: Rng, k: Agent, b: BallState, touch: KeeperTouch
  * ball (as in the runtime's keeperLogic). Returns a function to call every
  * step until it returns true (decision made).
  */
-export function aiKeeperReact(k: Agent, w: () => AiWorld, difficulty: number): (now: number) => boolean {
+export function aiKeeperReact(k: Agent, w: () => AiWorld, difficulty: number, extraDelay = 0): (now: number) => boolean {
   let at = -1
   let lastNow = 0
   return (now: number) => {
     lastNow = now
-    if (at < 0) at = now + keeperReaction(k, difficulty)
+    if (at < 0) at = now + keeperReaction(k, difficulty) + extraDelay
     if (now < at || k.state === 'dive') return k.state === 'dive'
+    // Still on the ground (getting up after a parry): he cannot dive yet.
+    if (k.state === 'down') return false
     const plan = planSave(k, w(), 0)
     if (!plan || !plan.onTarget) return true
     const lateral = Math.abs(plan.point.y - k.pos.y)

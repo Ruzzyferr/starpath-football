@@ -11,7 +11,9 @@
  * the wall and is struck between the two posts (on target, saved or not)
  * scores 20. Every kick gets its own wind, shown in km/h with an arrow.
  */
+import { Rng } from '../../../core/rng'
 import { PITCH_LENGTH } from '../../../sim/match/types'
+import { DRILL_SCENARIO_WEIGHTS, applyKeeperScenario, buildKeeperScenario, momentumDelay, pickScenarioKind, type KeeperScenario, type KeeperScenarioKind } from '../../keeperScenario'
 import { createTracker, GOAL_CENTER_Y, isOnTarget, predictPlaneCrossing, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { add, dist, norm, scale, sub, type Agent, type Vec2 } from '../../model'
@@ -63,9 +65,15 @@ export class FinishingDrill extends DrillBase {
   /** Shuffled 3×3 zone sequence (standard variant). */
   private readonly sequence: number[] = []
   private aim: DrillInput['aim'] = null
+  /** Keeper motion scenario of the current attempt (keeperScenario.ts); own seeded stream. */
+  private readonly gkRng: Rng
+  private scn: KeeperScenario | null = null
+  private scnT = 0
+  private scnFrom: Vec2 = { x: 0, y: 0 }
 
   constructor(cfg: DrillConfig) {
     super('finishing', cfg)
+    this.gkRng = new Rng(`finishing-gk:${String(cfg.seed ?? 0)}:${this.variant}`)
     this.hero = makeActor('hero', 'hero', 'ST', { x: 80, y: GOAL_CENTER_Y }, this.attrs, { hero: true, number: 9 })
     const kq = 56 + (this.difficulty - 1) * 40
     this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(kq, true), { number: 1 })
@@ -116,6 +124,20 @@ export class FinishingDrill extends DrillBase {
     this.keeper.noTouch = 0
     place(this.keeper, this.keeperLive ? this.keeper.pos : { x: PITCH_LENGTH - 0.4, y: GOAL_CENTER_Y + 5.2 }, Math.PI)
     this.keeperHome = keeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty))
+    // Moving keeper (grid attempts with a keeper): start him in a seeded motion scenario.
+    this.scn = null
+    this.scnT = 0
+    if (this.keeperLive && this.variant !== 'setPiece') {
+      const kind = pickScenarioKind(this.gkRng, DRILL_SCENARIO_WEIGHTS)
+      const sc = buildKeeperScenario(kind, this.gkRng, this.keeper, { goalX: PITCH_LENGTH, inward: -1, home: this.keeperHome, ball: this.spot, difficulty: this.difficulty, holdScale: 1.6 })
+      if (sc.kind !== 'set') {
+        this.keeper.state = 'run'
+        this.keeper.stateT = 0
+        applyKeeperScenario(this.keeper, sc, 0.5)
+        this.scn = sc
+      }
+    }
+    this.scnFrom = { ...this.keeper.pos }
     this.react = null
     this.touched = null
     this.woodwork = false
@@ -162,7 +184,7 @@ export class FinishingDrill extends DrillBase {
         w.state = 'jump'
         w.stateT = 0
       }
-      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty), this.difficulty)
+      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty), this.difficulty, momentumDelay(this.keeper, plan.aim.y))
       return
     }
   }
@@ -199,6 +221,26 @@ export class FinishingDrill extends DrillBase {
 
   override get heroStatic(): boolean {
     return true
+  }
+
+  /** The current attempt's keeper scenario ('set' when none). */
+  get keeperScenarioKind(): KeeperScenarioKind {
+    return this.scn?.kind ?? 'set'
+  }
+
+  /** Seconds since the ball was set for this attempt (0 once struck). */
+  get attemptT(): number {
+    return this.state === 'ready' ? this.stateT : 0
+  }
+
+  /** Seconds the keeper scenario has been playing. */
+  get keeperScenarioT(): number {
+    return this.scnT
+  }
+
+  /** The keeper has visibly moved since the attempt began. */
+  get keeperScenarioMoved(): boolean {
+    return dist(this.keeper.pos, this.scnFrom) > 0.3
   }
 
   protected busy(): boolean {
@@ -243,8 +285,10 @@ export class FinishingDrill extends DrillBase {
     // Keeper.
     if (this.react && this.state === 'flight' && this.react(this.time)) this.react = null
     const intent = this.keeper.intent
-    const tgt = this.state === 'flight' && intent?.kind === 'run' ? intent.to : this.state === 'ready' ? this.keeperHome : null
-    integrateKeeper(this.keeper, dt, tgt, this.state === 'flight' ? 4.2 : 2.6)
+    if (this.state === 'ready') this.scnT += dt
+    const scn = this.state === 'ready' && this.scn && this.scnT < this.scn.hold ? this.scn : null
+    const tgt = this.state === 'flight' && intent?.kind === 'run' ? intent.to : scn ? scn.to : this.state === 'ready' ? this.keeperHome : null
+    integrateKeeper(this.keeper, dt, tgt, this.state === 'flight' ? 4.2 : scn ? scn.speed : 2.6)
     if (this.state !== 'flight') this.keeper.intent = null
 
     if (this.state === 'flight') this.flight()

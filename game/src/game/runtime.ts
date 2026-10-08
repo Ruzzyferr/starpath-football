@@ -87,6 +87,7 @@ import { ASSIST_REWARD } from '../sim/match/rating'
 import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
 import { arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
+import { KEEPER_GETUP, KEEPER_SCENARIO_WEIGHTS, applyKeeperScenario, buildKeeperScenario, momentumDelay, pickScenarioKind, type KeeperScenario, type KeeperScenarioKind } from './keeperScenario'
 import {
   CHOICE_TIMEOUT,
   DEFAULT_CORNER,
@@ -166,6 +167,11 @@ export const HERO_BLOCK_R = 0.62
 export const HERO_BLOCK_SLIDE_R = 0.9
 
 export interface RuntimeOptions {
+  /**
+   * Opposition keeper's opening motion (keeperScenario.ts): 'auto' (default) picks a seeded
+   * scenario by highlight kind, 'off' keeps him set, or force one kind (tests / demo).
+   */
+  keeperScenario?: KeeperScenarioKind | 'auto' | 'off'
   aimAssist?: AimAssist
   /** Enable bullet-time aiming windows. */
   slowMoAim?: boolean
@@ -520,6 +526,7 @@ export class HighlightRuntime {
     this.refAdvantage = clamp01(highlight.referee?.advantage ?? DEFAULT_ADVANTAGE)
     const habit = this.kind === 'penalty' ? bookHabit(highlight.keeperBook, true) : null
     this.keeperRead = habit ? { zone: habit.zone, share: habit.share } : null
+    this.keeperScn = this.initKeeperScenario(opts)
     this.introLeft = this.setPiece ? 0.7 : 0.35
     this.events.push({ type: 'whistle', long: false })
     // Stagger AI thinking so they don't all decide on the same frame.
@@ -857,6 +864,46 @@ export class HighlightRuntime {
     }
     this.fkKickAt = this.time + 0.9
     this.events.push({ type: 'setPieceChoice', choice: 'wall' })
+  }
+
+  /** Opposition keeper's opening motion (null = set keeper / not applicable). */
+  private keeperScn: { keeper: Agent; sc: KeeperScenario; until: number } | null = null
+
+  /** The opening keeper scenario of this highlight ('set' when none). */
+  get keeperScenarioKind(): KeeperScenarioKind {
+    return this.keeperScn?.sc.kind ?? 'set'
+  }
+
+  /**
+   * Seeded keeper scenario (separate stream: the main rng, and with it every
+   * other outcome of the highlight, is untouched).
+   */
+  private initKeeperScenario(opts: RuntimeOptions): { keeper: Agent; sc: KeeperScenario; until: number } | null {
+    const mode = opts.keeperScenario ?? 'auto'
+    const weights = KEEPER_SCENARIO_WEIGHTS[this.kind]
+    if (mode === 'off' || (mode === 'auto' && !weights) || this.setPiece || this.defending) return null
+    const gk = this.agents.find((a) => a.team === 'opp' && a.isKeeper && !a.isHero)
+    if (!gk) return null
+    const rng = new Rng(`${String(opts.seed ?? `hl:${this.highlight.id}`)}:gk-scenario`)
+    const kind = mode === 'auto' ? pickScenarioKind(rng, weights!) : mode
+    if (kind === 'set') return null
+    const home = keeperTarget(gk, this.aiWorld()).pos
+    const sc = buildKeeperScenario(kind, rng, gk, { goalX: ownGoalX('opp'), inward: attackDir('opp'), home, ball: { x: this.ball.x, y: this.ball.y }, difficulty: this.difficulty })
+    if (sc.kind === 'set') return null
+    applyKeeperScenario(gk, sc)
+    gk.intent = { kind: 'run', to: sc.to, until: sc.hold + 1 }
+    return { keeper: gk, sc, until: this.introLeft + sc.hold }
+  }
+
+  /** The keeper is still playing out his opening scenario (no shot yet, the attack still on). */
+  private keeperScnActive(a: Agent): boolean {
+    const k = this.keeperScn
+    if (!k || k.keeper !== a) return false
+    if (this.time >= k.until || this.shot || !this.owner || this.owner.team === a.team || a.state === 'dive') {
+      this.keeperScn = { ...k, until: -1 }
+      return false
+    }
+    return true
   }
 
   private goLive(): void {
@@ -1430,6 +1477,8 @@ export class HighlightRuntime {
         } else {
           const isPen = wasSetPiece?.kind === 'penalty'
           let reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
+          // Moving the wrong way (shuffling across, still backpedalling): he has to stop first.
+          if (!isPen) reaction += momentumDelay(keeper, plan.aim.y)
           if (wasSetPiece?.kind === 'freekick' && by.team === 'opp') reaction += Math.max(0, wasSetPiece.wall.length - 2) * 0.06
           // A keeper who knows the hero's favourite corner is quicker to it (open play).
           const shotHabit = by.isHero && !isPen ? bookHabit(this.highlight.keeperBook, false) : null
@@ -1586,7 +1635,8 @@ export class HighlightRuntime {
       return
     }
     if (this.phase === 'intro') {
-      a.vel = scale(a.vel, 0.85)
+      // Everyone settles during the intro, except a keeper already on the move (opening scenario).
+      if (this.keeperScn?.keeper !== a) a.vel = scale(a.vel, 0.85)
       return
     }
     if (this.phase === 'post') {
@@ -1620,6 +1670,7 @@ export class HighlightRuntime {
       if (dist(a.pos, target) > 7) speed = topSpeed({ ...a, sprint: true })
       // A keeper coming off his line to narrow the angle does it at full speed.
       if (a.isKeeper && this.owner && this.owner.team !== a.team && dist(a.pos, target) > 1.2) speed = topSpeed({ ...a, sprint: true })
+      if (a.isKeeper && this.keeperScnActive(a)) speed = this.keeperScn!.sc.speed
     } else if (intent?.kind === 'press') {
       target = pressTarget(a, this.aiWorld())
       a.sprint = true
@@ -1663,6 +1714,11 @@ export class HighlightRuntime {
     if (a.isKeeper) {
       if (this.owner === a) {
         a.intent = { kind: 'hold' }
+        return
+      }
+      // Opening scenario (rushing back, shuffling across, coming out, getting up): carry on until he reads it.
+      if (this.keeperScnActive(a)) {
+        a.intent = { kind: 'run', to: this.keeperScn!.sc.to, until: this.time + 1 }
         return
       }
       // Claim crosses.
@@ -2109,7 +2165,7 @@ export class HighlightRuntime {
       }
       case 'down': {
         a.vel = scale(a.vel, 0.85)
-        if (a.stateT > 0.55) {
+        if (a.stateT > KEEPER_GETUP) {
           a.state = 'run'
           a.stateT = 0
         }
@@ -2705,6 +2761,11 @@ export class HighlightRuntime {
     this.keeperAlert = null
     const k = al.keeper
     if (k.state === 'dive' || this.owner) return
+    if (k.state === 'down') {
+      // Still getting up (opening scenario after a parry): he can only react once on his feet.
+      this.keeperAlert = { ...al, at: this.time + Math.max(DT, KEEPER_GETUP - k.stateT) }
+      return
+    }
     const plan = planSave(k, this.aiWorld(), 0)
     if (!plan) return
     if (al.penaltyGuess) {
