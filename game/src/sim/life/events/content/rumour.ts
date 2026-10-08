@@ -41,7 +41,7 @@ export const rumourEvents: EventDef[] = [
         effects: (ctx) =>
           fx(
             t('Sadece bir uçak emojisi paylaştın. İnternet kırk sekiz saat boyunca başka bir şey konuşmadı.', 'You posted a single aeroplane emoji. The internet talked about nothing else for forty-eight hours.'),
-            folPct(ctx, 4), fans(-5), rel('agent', 3), chairman(-3),
+            folPct(ctx, 4), fans(-4), rel('agent', 3), chairman(-3),
             { addFlags: { transfer_buzz: 3 } }, flags({ rumour_active: true, rumour_fuelled: true }),
             follow(chain('rumour.transfer_club_reacts', 1)),
           ),
@@ -282,7 +282,7 @@ export const rumourEvents: EventDef[] = [
       {
         label: t('"Aslında... biraz haklı" diye espri yap', 'Joke: "well... it\'s not entirely wrong"'),
         risk: 'high',
-        effects: (ctx) => fx(t('İnternet güldü. {managerName} gülmedi.', 'The internet laughed. {managerName} didn\'t.'), folPct(ctx, 3), boss(-10), trust(-6), press(3)),
+        effects: (ctx) => fx(t('İnternet güldü. {managerName} gülmedi.', 'The internet laughed. {managerName} didn\'t.'), folPct(ctx, 3), boss(-4), trust(-6), press(3)),
       },
     ],
   },

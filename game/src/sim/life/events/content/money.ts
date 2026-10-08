@@ -463,7 +463,7 @@ export const moneyEvents: EventDef[] = [
       },
       {
         label: t('Hayır de', 'Say no'),
-        effects: () => fx(t('Bayram sofrası biraz gergin geçecek.', 'The next family dinner is going to be a little tense.'), rel('mother', -5), rel('father', 3), happy(-2)),
+        effects: () => fx(t('Bayram sofrası biraz gergin geçecek.', 'The next family dinner is going to be a little tense.'), rel('mother', -4), rel('father', 3), happy(-2)),
       },
     ],
   },
@@ -496,7 +496,7 @@ export const moneyEvents: EventDef[] = [
       },
       {
         label: t('Tabelayı indirmesini iste', 'Demand the sign comes down'),
-        effects: () => fx(t('Tabela indi. {uncle} amcan bir süre telefonlarını açmadı.', 'The sign came down. Uncle {uncle} stopped answering your calls for a while.'), rel('mother', -6), rel('father', 2), stress(2)),
+        effects: () => fx(t('Tabela indi. {uncle} amcan bir süre telefonlarını açmadı.', 'The sign came down. Uncle {uncle} stopped answering your calls for a while.'), rel('mother', -3), rel('father', 2), stress(2)),
       },
     ],
   },

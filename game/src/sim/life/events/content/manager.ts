@@ -179,7 +179,7 @@ export const managerEvents: EventDef[] = [
         label: t('Suçu {mate}\'ye at', 'Pin it on {mate}'),
         risk: 'high',
         effects: () =>
-          fx(t('Basın inandı, soyunma odası inanmadı. Kimse sana pas vermek istemiyor.', 'The press bought it. The dressing room didn\'t. Nobody wants to pass to you.'), press(2), rel('teammate', -10), trust(-3)),
+          fx(t('Basın inandı, soyunma odası inanmadı. Kimse sana pas vermek istemiyor.', 'The press bought it. The dressing room didn\'t. Nobody wants to pass to you.'), press(2), rel('teammate', -3), trust(-3)),
       },
       {
         label: t('"Yorum yok."', '"No comment."'),

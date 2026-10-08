@@ -352,7 +352,7 @@ export const clubEvents: EventDef[] = [
             t('İnternet seni kahraman ilan etti. Yönetim ise ceza kesti.', 'The internet declared you a hero. The board issued a fine.'),
             folPct(ctx, 8),
             fans(6),
-            chairman(-15),
+            chairman(-9),
             money(-wageX(ctx.state, 1, 500)),
             disc(-8),
           ),

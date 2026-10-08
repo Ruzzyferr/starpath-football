@@ -646,7 +646,7 @@ export const casinoEvents: EventDef[] = [
         effects: (ctx) =>
           fx(
             t('Soruşturma sessizce yürüdü, {mate} ceza aldı. Kulüp yönetimi teşekkür etti; soyunma odasında bazıları seninle konuşmayı kesti.', '{mate} was quietly investigated and fined. The board thanked you; some in the dressing room stopped talking to you.'),
-            disc(5), chairman(4), relNpc(ctx.vars.mateId, ctx.vars.mate, -20), rel('teammate', -4),
+            disc(5), chairman(4), relNpc(ctx.vars.mateId, ctx.vars.mate, -6), rel('teammate', -4),
           ),
       },
       {

@@ -125,7 +125,7 @@ export const nationalEvents: EventDef[] = [
         risk: 'high',
         effects: (_ctx, rng) =>
           rng.chance(0.6)
-            ? fx(t('İki maç oynadın, ağrı geçti. {managerName} bir hafta seninle konuşmadı.', 'You played twice and the ache faded. {managerName} gave you the silent treatment for a week.'), rep(3), fans(3), boss(-6), trust(-4))
+            ? fx(t('İki maç oynadın, ağrı geçti. {managerName} bir hafta seninle konuşmadı.', 'You played twice and the ache faded. {managerName} gave you the silent treatment for a week.'), rep(3), fans(3), boss(-4), trust(-4))
             : fx(t('İkinci maçta sakatlık büyüdü. Kulübe koltuk değnekleriyle döndün.', 'It worsened in the second game. You returned to the club on crutches.'), injury(4, t('Kasık sakatlığı', 'Groin strain')), boss(-10), trust(-6), stress(8)),
       },
       {

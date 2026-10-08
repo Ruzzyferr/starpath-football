@@ -61,7 +61,7 @@ export const pressEvents: EventDef[] = [
         effects: () =>
           fx(
             t('Manşet hazır: "Soyunma odasında isyan!" Hoca seni ofisine çağırdı.', 'Headline writes itself: "Dressing-room revolt!" The gaffer summoned you to his office.'),
-            boss(-15),
+            boss(-12),
             trust(-8),
             press(6),
             fans(2),
@@ -98,7 +98,7 @@ export const pressEvents: EventDef[] = [
         label: t('Kayıt kaydını yayınla', 'Release the full audio'),
         risk: 'medium',
         effects: (ctx) =>
-          fx(t('Ses kaydı her şeyi gösterdi. Gazete köşeye sıkıştı, sen haklı çıktın.', 'The tape proves it. The paper is cornered, you\'re vindicated.'), fans(4), press(-8), folPct(ctx, 3), follow(chain('press.misquote_fallout', 1)), flags({ misquote_proof: true })),
+          fx(t('Ses kaydı her şeyi gösterdi. Gazete köşeye sıkıştı, sen haklı çıktın.', 'The tape proves it. The paper is cornered, you\'re vindicated.'), fans(4), press(-6), folPct(ctx, 3), follow(chain('press.misquote_fallout', 1)), flags({ misquote_proof: true })),
       },
       {
         label: t('Görmezden gel', 'Ignore it'),

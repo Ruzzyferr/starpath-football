@@ -108,7 +108,7 @@ export const familyEvents: EventDef[] = [
         effects: (_ctx, rng) =>
           rng.chance(0.6)
             ? fx(t('Uzun bir sessizlik. Sonra "Peki" dedi, sesi titriyordu.', 'A long silence. Then "Alright," voice cracking.'), rel('father', 14), happy(6))
-            : fx(t('"Ben kimseden sadaka almam!" Telefon suratına kapandı. Annen arada kaldı.', '"I don\'t take handouts!" He hung up. Mum is stuck in the middle.'), rel('father', -8), rel('mother', 4), stress(4)),
+            : fx(t('"Ben kimseden sadaka almam!" Telefon suratına kapandı. Annen arada kaldı.', '"I don\'t take handouts!" He hung up. Mum is stuck in the middle.'), rel('father', -6), rel('mother', 4), stress(4)),
       },
       {
         label: t('Karşılığında maça gelmesini iste', 'Ask him to come to a match instead'),

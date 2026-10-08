@@ -265,7 +265,7 @@ export const communityEvents: EventDef[] = [
       },
       {
         label: t('Avukat mektubu gönder', "Send a lawyer's letter"),
-        effects: () => fx(t('Tabela iki gün içinde indi. Hukuken haklısın; kafe sahibi yerel gazeteye ağladı.', 'The sign came down within two days. You were legally right; the owner cried to the local paper.'), fans(-5), press(-3), rel('agent', 3)),
+        effects: () => fx(t('Tabela iki gün içinde indi. Hukuken haklısın; kafe sahibi yerel gazeteye ağladı.', 'The sign came down within two days. You were legally right; the owner cried to the local paper.'), fans(-4), press(-3), rel('agent', 3)),
       },
     ],
   },

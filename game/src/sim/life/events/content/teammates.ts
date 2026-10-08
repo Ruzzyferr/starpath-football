@@ -148,7 +148,7 @@ export const teammatesEvents: EventDef[] = [
             t('Herkese tek tek kahve ısmarladın. {mate} buna "siyaset" dedi.', 'You bought everyone a coffee, one by one. {mate} called it "politics".'),
             money(-300),
             rel('teammate', 3),
-            relNpc(ctx.vars.mateId, ctx.vars.mate, -10),
+            relNpc(ctx.vars.mateId, ctx.vars.mate, -4),
             flags({ captain_race_active: true, captain_campaign: 2 }),
             follow(chain('teammates.captain_vote', 2)),
           ),
@@ -337,7 +337,7 @@ export const teammatesEvents: EventDef[] = [
               )
             : fx(
                 t('Yanlış araba. Başkan {chairmanName}\'in arabasıymış.', "Wrong car. It belonged to chairman {chairmanName}."),
-                chairman(-8),
+                chairman(-6),
                 disc(-5),
                 rel('teammate', 4),
                 happy(2),
@@ -437,7 +437,7 @@ export const teammatesEvents: EventDef[] = [
           fx(
             t('{managerName} ikinizi odasına çağırdı. Sorun çözüldü ama "ispiyoncu" fısıltıları başladı.', '{managerName} hauled you both in. Problem solved, but the "snitch" whispers began.'),
             boss(4),
-            relNpc(ctx.vars.mateId, ctx.vars.mate, -12),
+            relNpc(ctx.vars.mateId, ctx.vars.mate, -6),
             rel('teammate', -3),
           ),
       },

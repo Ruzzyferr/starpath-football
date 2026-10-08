@@ -165,7 +165,7 @@ export const veteran2Events: EventDef[] = [
     icon: '🥅',
     choices: [
       { label: t('Kenarda sessiz izle', 'Watch silently from the side'), effects: () => fx(t('Sessizce izledin; çocuk ilk tüneli attı ve gülümsedi.', 'You watched quietly; the child nutmegged somebody and grinned.'), happy(10), rel('partner', 3)) },
-      { label: t('Sahaya in, birkaç ipucu ver', 'Step on and give a few tips'), risk: 'medium', effects: () => fx(t('Hoca "aile müdahalesi" dedi. Çocuk utandı; ama pas verirken güzel gülüyordu.', 'The coach said "family interference". The child blushed, but smiled lovely while passing.'), happy(4), rel('partner', -2), press(1)) },
+      { label: t('Sahaya in, birkaç ipucu ver', 'Step on and give a few tips'), risk: 'medium', effects: () => fx(t('Hoca "aile müdahalesi" dedi. Çocuk utandı; ama pas verirken güzel gülüyordu.', 'The coach said "family interference". The child blushed, but smiled lovely while passing.'), happy(4), rel('partner', -1), press(1)) },
       { label: t('Gelme, çocuk kendi adını kursun', 'Stay away; let them make their own name'), effects: () => fx(t('Çocuk bir mesaj attı: "Sensiz daha rahattım." Gururlu ve biraz kırgın hissettin.', 'The child sent a message: "I was more relaxed without you." You felt proud and a bit hurt.'), happy(5), stress(-1)) },
     ],
   },

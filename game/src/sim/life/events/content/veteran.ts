@@ -130,7 +130,7 @@ export const veteranEvents: EventDef[] = [
     choices: [
       { label: t('Gururla alkışla', 'Applaud with pride'), effects: () => fx(t('Gazeteler fotoğrafı "Usta ve Çırak" diye yayınladı. İçinde hem keder hem gurur vardı.', 'Papers ran the picture as "Master and Apprentice". Sorrow and pride sat side by side.'), happy(8), press(4), fans(3), rep(1), news(t('{heroName}: "Onun yükselişi benim zaferim"', '{heroName}: "His rise is my victory"'), 1)) },
       { label: t('Yedekte kalmayı kabullen, rol yap', 'Accept the bench and make it your role'), effects: () => fx(t('Hocaya "gerekirse yedekten gelirim" dedin. Rol küçüldü ama saygı büyüdü.', 'You told the gaffer, "I will come off the bench if needed." The role shrank but the respect grew.'), boss(4), trust(3), stress(-2), sharp(-2)) },
-      { label: t('Yerinde ısrar et: "Daha bitmedi"', 'Insist: "I am not finished"'), risk: 'medium', effects: () => fx(t('Bir hafta sert çalıştın. Hoca not aldı. Çocukla aranız soğudu.', 'You trained hard for a week. The manager noticed. The kid and you cooled off.'), sharp(3), fatigue(5), rel('teammate', -3), boss(1)) },
+      { label: t('Yerinde ısrar et: "Daha bitmedi"', 'Insist: "I am not finished"'), risk: 'medium', effects: () => fx(t('Bir hafta sert çalıştın. Hoca not aldı. Çocukla aranız soğudu.', 'You trained hard for a week. The manager noticed. The kid and you cooled off.'), sharp(3), fatigue(5), rel('teammate', -1), boss(1)) },
     ],
   },
   {
