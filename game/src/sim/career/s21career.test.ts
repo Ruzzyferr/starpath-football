@@ -152,3 +152,26 @@ describe('training score formula (2.3#21)', async () => {
     expect(trainingScore(0.734)).toBe(73)
   })
 })
+
+describe('injury table and risk factors (2.3#55)', async () => {
+  const { INJURY_TABLE, injuryRiskMultiplier, injuryWeeks, rollInjury } = await import('./condition')
+  it('durations follow the plan bands (minor 3–10 d, moderate 2–6 w, serious 2–9 months)', () => {
+    for (const t of INJURY_TABLE) {
+      const [lo, hi] = t.days
+      if (t.severity === 1) expect(lo >= 3 && hi <= 10).toBe(true)
+      if (t.severity === 2) expect(lo >= 14 && hi <= 42).toBe(true)
+      if (t.severity === 3) expect(lo >= 60 && hi <= 270).toBe(true)
+    }
+    expect(injuryWeeks(3)).toBe(0.5)
+    expect(injuryWeeks(42)).toBe(6)
+    const { hero, life } = makeHeroLife()
+    const r = rollInjury(new Rng(4), hero, life, [0, 0, 1])
+    expect(r.weeksLeft).toBeGreaterThanOrEqual(5.5)
+  })
+  it('fatigue over 80 doubles the risk; surface, proneness and the opponent scale it', () => {
+    expect(injuryRiskMultiplier({ fatigue: 81 }) / injuryRiskMultiplier({ fatigue: 79 })).toBeCloseTo(2, 5)
+    expect(injuryRiskMultiplier({ fatigue: 10, surface: 'wet' })).toBeCloseTo(1.2, 5)
+    expect(injuryRiskMultiplier({ fatigue: 10, oppTackling: 100 })).toBeCloseTo(1.3, 5)
+    expect(injuryRiskMultiplier({ fatigue: 10, proneness: 1.5 })).toBeCloseTo(1.5, 5)
+  })
+})

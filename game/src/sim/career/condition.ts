@@ -45,23 +45,44 @@ export function weeklySharpnessDecay(hero: Hero, minutesThisWeek: number): void 
 interface InjuryTemplate {
   name: LText
   severity: 1 | 2 | 3
-  weeks: [number, number]
+  /** Lay-off in days (data-driven, 2.3#55). */
+  days: [number, number]
 }
 
-/** Injury catalogue: severity 1 = knocks (1–2 w), 2 = muscle (3–6 w), 3 = serious (8–30 w). */
+/**
+ * Injury catalogue (2.3#55): minor 3–10 days, moderate 2–6 weeks, serious
+ * 2–9 months. Lay-offs are kept in weeks with half-week steps.
+ */
 export const INJURY_TABLE: readonly InjuryTemplate[] = [
-  { name: lt('Ayak bileği burkulması', 'Twisted ankle'), severity: 1, weeks: [1, 2] },
-  { name: lt('Darbe (diz)', 'Knee knock'), severity: 1, weeks: [1, 1] },
-  { name: lt('Kas yorgunluğu', 'Muscle fatigue'), severity: 1, weeks: [1, 2] },
-  { name: lt('Kasık gerilmesi', 'Groin strain'), severity: 1, weeks: [1, 3] },
-  { name: lt('Arka adale zorlanması', 'Hamstring strain'), severity: 2, weeks: [3, 6] },
-  { name: lt('Baldır yırtığı', 'Calf tear'), severity: 2, weeks: [3, 5] },
-  { name: lt('Kaburga çatlağı', 'Cracked rib'), severity: 2, weeks: [3, 5] },
-  { name: lt('Ayak bileği bağ hasarı', 'Ankle ligament damage'), severity: 2, weeks: [4, 7] },
-  { name: lt('Menisküs yırtığı', 'Torn meniscus'), severity: 3, weeks: [8, 14] },
-  { name: lt('Kırık ayak (metatars)', 'Broken metatarsal'), severity: 3, weeks: [8, 12] },
-  { name: lt('Çapraz bağ kopması', 'Cruciate ligament rupture'), severity: 3, weeks: [24, 32] },
+  { name: lt('Ayak bileği burkulması', 'Twisted ankle'), severity: 1, days: [4, 10] },
+  { name: lt('Darbe (diz)', 'Knee knock'), severity: 1, days: [3, 7] },
+  { name: lt('Kas yorgunluğu', 'Muscle fatigue'), severity: 1, days: [3, 8] },
+  { name: lt('Kasık gerilmesi', 'Groin strain'), severity: 1, days: [5, 10] },
+  { name: lt('Arka adale zorlanması', 'Hamstring strain'), severity: 2, days: [18, 42] },
+  { name: lt('Baldır yırtığı', 'Calf tear'), severity: 2, days: [14, 35] },
+  { name: lt('Kaburga çatlağı', 'Cracked rib'), severity: 2, days: [14, 35] },
+  { name: lt('Ayak bileği bağ hasarı', 'Ankle ligament damage'), severity: 2, days: [21, 42] },
+  { name: lt('Menisküs yırtığı', 'Torn meniscus'), severity: 3, days: [60, 100] },
+  { name: lt('Kırık ayak (metatars)', 'Broken metatarsal'), severity: 3, days: [60, 90] },
+  { name: lt('Çapraz bağ kopması', 'Cruciate ligament rupture'), severity: 3, days: [180, 270] },
 ]
+
+/** Days → lay-off weeks in half-week steps (at least half a week). */
+export const injuryWeeks = (days: number): number => Math.max(0.5, Math.round((days / 7) * 2) / 2)
+
+/**
+ * Injury risk multiplier (2.3#55) from the plan's factors: fatigue over 80
+ * doubles it; the player's proneness (1 = average); the surface (wet/frozen
+ * pitch ×1.2); the opponent's tackling aggression (0..100, 50 = neutral,
+ * ±30%).
+ */
+export function injuryRiskMultiplier(f: { fatigue: number; proneness?: number; surface?: 'dry' | 'wet' | 'frozen'; oppTackling?: number }): number {
+  const fat = f.fatigue > 80 ? 2 : 1
+  const prone = clamp(f.proneness ?? 1, 0.5, 2.5)
+  const surface = f.surface === 'wet' || f.surface === 'frozen' ? 1.2 : 1
+  const opp = 1 + clamp(((f.oppTackling ?? 50) - 50) / 50, -1, 1) * 0.3
+  return fat * prone * surface * opp
+}
 
 /**
  * Roll an injury. `severityWeights` default [0.7, 0.25, 0.05] (most knocks are
@@ -71,9 +92,9 @@ export const INJURY_TABLE: readonly InjuryTemplate[] = [
 export function rollInjury(rng: Rng, hero: Hero, life: Life, severityWeights: [number, number, number] = [0.7, 0.25, 0.05]): Injury {
   const sev = rng.weighted([1, 2, 3] as const, (s) => severityWeights[s - 1])
   const t = rng.pick(INJURY_TABLE.filter((i) => i.severity === sev))
-  const base = rng.int(t.weeks[0], t.weeks[1])
+  const base = rng.int(t.days[0], t.days[1])
   const reduce = clamp((recoveryMultiplier(hero, life) - 1) * 0.6, 0, 0.35)
-  return { name: t.name, severity: t.severity, weeksLeft: Math.max(1, Math.round(base * (1 - reduce))) }
+  return { name: t.name, severity: t.severity, weeksLeft: injuryWeeks(base * (1 - reduce)) }
 }
 
 /** Injury-insurance clause payout: wage × (severity + 1) weeks, 0 without the clause. */
