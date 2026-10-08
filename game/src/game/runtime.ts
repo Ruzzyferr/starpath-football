@@ -309,6 +309,22 @@ export function passCompletedBy(receiver: { team: string; isHero: boolean }): bo
   return receiver.team === 'hero' && !receiver.isHero
 }
 
+/**
+ * Penalty panic (plan 2.1#93): Composure under 50 in a critical moment (90th
+ * minute or later, scores level) makes the aim point tremble ±0.4 m at 0.5 Hz.
+ * Otherwise the aim is steady.
+ */
+export function penaltyPanic(composure: number, minute: number, score: readonly [number, number], t: number): number {
+  if (composure >= 50 || minute < 90 || score[0] !== score[1]) return 0
+  return 0.4 * Math.sin(2 * Math.PI * 0.5 * t)
+}
+
+/** Penalty run-up: the taker's tell shows this long after the run starts (s); Reflexes ≥ 70 read it 0.15 s earlier (2.1#87). */
+export const PENALTY_TELL_DELAY = 0.45
+export const penaltyTellDelay = (reflexes: number): number => PENALTY_TELL_DELAY - (reflexes >= 70 ? 0.15 : 0)
+/** Chance a taker who sees the keeper go early rolls it down the middle. */
+export const EARLY_DIVE_CENTRE = 0.65
+
 /** Ball distance at the carrier's feet (m) between knock-ons. */
 export const DRIBBLE_FOOT = 0.42
 
@@ -419,7 +435,7 @@ export class HighlightRuntime {
   private heroTackleResolved = false
   private ballX0: number
   private defendCache: { t: number; team: Team; map: Map<string, DefendAssignment> } | null = null
-  private penaltyPlan: { target: Vec2; z: number; runStart: number } | null = null
+  private penaltyPlan: { target: Vec2; z: number; runStart: number; punished?: boolean } | null = null
   private crossBulletArmed = false
   private readonly physEvents: PhysicsEvent[] = []
   private lastTouchBefore: Agent | null = null
@@ -606,8 +622,12 @@ export class HighlightRuntime {
    */
   panicOffset(): { y: number; z: number } {
     if (!this.setPiece || this.setPiece.takerId !== this.hero.id) return { y: 0, z: 0 }
+    if (this.setPiece.kind === 'penalty') {
+      const hl = this.highlight
+      return { y: penaltyPanic(this.hero.attrs.composure, hl.minute, hl.score, this.realTime), z: 0 }
+    }
     const comp = a01(this.hero.attrs.composure)
-    const amp = clamp01((0.75 - comp) / 0.75) * (0.6 + this.importance * 0.8) * (this.setPiece.kind === 'penalty' ? 1.3 : 0.8)
+    const amp = clamp01((0.75 - comp) / 0.75) * (0.6 + this.importance * 0.8) * 0.8
     const t = this.realTime
     return { y: amp * (Math.sin(t * 9.1) + 0.6 * Math.sin(t * 15.7 + 1.3)), z: amp * 0.5 * Math.sin(t * 7.3 + 0.4) }
   }
@@ -1964,9 +1984,16 @@ export class HighlightRuntime {
       // Run-up: approach the ball; a good keeper may read the taker's body shape.
       const behind = { x: sp.spot.x + 0.5, y: sp.spot.y + 0.25 }
       taker.vel = arrive(taker, behind, 4.2, 0.4)
+      // The tell (body shape / plant foot) shows from penaltyTellAt; Reflexes ≥ 70 read it 0.15 s earlier (2.1#87).
       const readSkill = a01(this.hero.attrs.positioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2
       const look = Math.atan2(pp.target.y - taker.pos.y, pp.target.x - taker.pos.x)
-      taker.facing = Math.PI + angleDiff(look, Math.PI) * readSkill
+      const tell = this.time >= pp.runStart + penaltyTellDelay(this.hero.attrs.reflexes) ? readSkill : 0
+      taker.facing = Math.PI + angleDiff(look, Math.PI) * tell
+      // Going early gives the taker the middle (2.1#87).
+      if (this.hero.isKeeper && this.hero.state === 'dive' && !pp.punished) {
+        pp.punished = true
+        if (this.rng.chance(EARLY_DIVE_CENTRE)) pp.target = { x: -0.2, y: GOAL_CENTER_Y + this.rng.range(-0.4, 0.4) }
+      }
       if (dist(taker.pos, behind) < 0.35) {
         const plan = planKick({ kind: 'penalty', from: sp.spot, target: pp.target, targetZ: pp.z, power: this.rng.range(0.78, 0.95), curl: 0, attrs: taker.attrs, pressure: 0.3, assist: 'manual', env: this.env, noiseScale: 0.9 }, this.rng)
         this.ball.x = sp.spot.x

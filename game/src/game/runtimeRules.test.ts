@@ -2,12 +2,14 @@
  * Scenario tests for live-match rules (GAP-AUDIT 2.1 rows closed in the S21 sweep).
  */
 import { describe, expect, it } from 'vitest'
+import { Rng } from '../core/rng'
+import { saveChance } from './ai'
 import { makeDemoHighlight } from './demoHighlights'
 import { PITCH_LENGTH } from '../sim/match/types'
 import { visionOptionCount } from './kick'
 import { GOAL_CENTER_Y } from './physics'
 import { crossCamFit } from './view'
-import { HighlightRuntime, ONE_TWO_WINDOW, oneTouchReturn, type RuntimeEvent } from './runtime'
+import { HighlightRuntime, ONE_TWO_WINDOW, oneTouchReturn, penaltyPanic, penaltyTellDelay, type RuntimeEvent } from './runtime'
 
 function runUntil(rt: HighlightRuntime, pred: () => boolean, maxS: number, evs: RuntimeEvent[] = []): RuntimeEvent[] {
   for (let i = 0; i < maxS * 60 && !rt.finished && !pred(); i++) {
@@ -149,5 +151,87 @@ describe('2.1#111 team-mates run onto through balls', () => {
     }
     expect(tried).toBeGreaterThan(20)
     expect(reached / tried).toBeGreaterThanOrEqual(0.85)
+  })
+})
+
+describe('2.1#87 / #93 penalties', () => {
+  it('tell shows 0.15 s earlier for Reflexes ≥ 70', () => {
+    expect(penaltyTellDelay(69) - penaltyTellDelay(70)).toBeCloseTo(0.15, 6)
+  })
+  it('a keeper who goes early gets it down the middle more often', () => {
+    const centreShare = (early: boolean) => {
+      let centre = 0
+      let n = 0
+      for (let seed = 1; seed <= 40; seed++) {
+        const rt = new HighlightRuntime(makeDemoHighlight('gk_penalty', seed), { aimAssist: 'half', slowMoAim: false, seed })
+        let dived = false
+        for (let i = 0; i < 60 * 8 && !rt.finished; i++) {
+          if (early && !dived && rt.phase === 'live' && rt.time > 0.75) {
+            rt.queueAction({ kind: 'dive', dir: { x: 0, y: 1 } })
+            dived = true
+          }
+          rt.update(1 / 60)
+          const kick = rt.drainEvents().find((e) => e.type === 'kick')
+          if (kick) {
+            runUntil(rt, () => rt.ball.x < 1, 2)
+            n++
+            if (Math.abs(rt.ball.y - 34) < 1.2) centre++
+            break
+          }
+        }
+      }
+      return centre / Math.max(1, n)
+    }
+    expect(centreShare(true)).toBeGreaterThan(centreShare(false) + 0.2)
+  })
+  it('panic: Composure < 50 at 90+ with the scores level trembles ±0.4 m at 0.5 Hz', () => {
+    expect(penaltyPanic(45, 92, [1, 1], 0.5)).toBeCloseTo(0.4, 6)
+    expect(penaltyPanic(45, 92, [1, 1], 1)).toBeCloseTo(0, 6)
+    expect(penaltyPanic(55, 92, [1, 1], 0.5)).toBe(0)
+    expect(penaltyPanic(45, 60, [1, 1], 0.5)).toBe(0)
+    expect(penaltyPanic(45, 92, [2, 1], 0.5)).toBe(0)
+  })
+})
+
+describe('2.1#83 keeper consistency', () => {
+  it('save chance is a continuous, monotone function of stretch and ball speed (no cliffs)', () => {
+    const rt = new HighlightRuntime(makeDemoHighlight('one_on_one', 1), { aimAssist: 'half', slowMoAim: false, seed: 1 })
+    const gk = rt.agents.find((a) => a.isKeeper && a.team === 'opp')!
+    let prev = Infinity
+    for (let st = 0; st <= 1.0001; st += 0.02) {
+      let prevS = Infinity
+      for (let sp = 10; sp <= 36; sp += 1) {
+        const p = saveChance(gk, st, sp)
+        expect(p).toBeLessThanOrEqual(prevS + 1e-9)
+        if (prevS !== Infinity) expect(prevS - p).toBeLessThan(0.03)
+        prevS = p
+      }
+      const p0 = saveChance(gk, st, 20)
+      if (prev !== Infinity) {
+        expect(p0).toBeLessThanOrEqual(prev + 1e-9)
+        expect(prev - p0).toBeLessThan(0.04)
+      }
+      prev = p0
+    }
+  })
+  it('the same shot fired 1,000 times: the save rate sits inside the binomial band of its mean', () => {
+    const N = 1000
+    let saves = 0
+    let sumP = 0
+    const rt = new HighlightRuntime(makeDemoHighlight('one_on_one', 1), { aimAssist: 'half', slowMoAim: false, seed: 1 })
+    const gk = rt.agents.find((a) => a.isKeeper && a.team === 'opp')!
+    const rng = new Rng(99)
+    for (let i = 0; i < N; i++) {
+      // Same shot: stretch 0.55, 27 m/s; keeper reaction noise ±0.08 stretch (as in the runtime).
+      const st = Math.min(1, Math.max(0, 0.55 + rng.normal(0, 0.08)))
+      const p = saveChance(gk, st, 27)
+      sumP += p
+      if (rng.chance(p)) saves++
+    }
+    const mean = sumP / N
+    const sd = Math.sqrt(N * mean * (1 - mean))
+    expect(Math.abs(saves - N * mean)).toBeLessThan(3 * sd)
+    expect(mean).toBeGreaterThan(0.3)
+    expect(mean).toBeLessThan(0.98)
   })
 })
