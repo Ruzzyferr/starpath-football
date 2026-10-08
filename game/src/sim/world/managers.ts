@@ -8,6 +8,7 @@ import { Rng } from '../../core/rng'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { randomName } from './players'
 import { seasonCompetitions } from './queries'
+import { managerProfile } from './profiles'
 import { sortTable } from './table'
 
 export const emptyRecords = (): ClubRecords => ({ titles: 0, bestFinish: null, mostPoints: null, biggestWin: null, heaviestDefeat: null })
@@ -55,18 +56,24 @@ export function reviewManagers(world: World, season: number): void {
     const n = table.length
     if (n < 6) continue
     const expected = [...table].sort((a, b) => (world.clubs[b.clubId]?.reputation ?? 0) - (world.clubs[a.clubId]?.reputation ?? 0) || (a.clubId < b.clubId ? -1 : 1))
-    const relegated = league && league.tier < 3 ? 3 : 0
+    const relegated = league?.relegate ?? 0
     table.forEach((row, i) => {
       const club = world.clubs[row.clubId]
       if (!club) return
       const exp = expected.findIndex((e) => e.clubId === row.clubId)
       const down = relegated > 0 && i >= n - relegated
-      const underperformed = i - exp >= Math.max(5, Math.round(n * 0.3))
+      // 2.6#39: an impatient manager is sacked one place earlier.
+      const underperformed = i - exp >= Math.max(5, Math.round(n * 0.3)) - (managerProfile(club).patience < 35 ? 1 : 0)
       if (!down && !underperformed) return
       const def = COUNTRY_DEFS.find((c) => c.id === club.countryId)
-      const nm = randomName(new Rng(`mgr:${club.id}:${season}`), def?.nameStyle ?? 'english')
-      const to = `${nm.firstName} ${nm.lastName}`
+      const pickRng = new Rng(`mgr:${club.id}:${season}`)
+      const nm = randomName(pickRng, def?.nameStyle ?? 'english')
+      // 2.6#47: a retired legend of the same country sometimes takes the job.
+      const legend = pickRng.chance(0.3) ? (world.legends ?? []).find((l) => !l.managerOf && l.nationality === club.countryId && l.retiredSeason < season) : undefined
+      const to = legend ? legend.name : `${nm.firstName} ${nm.lastName}`
       if (to === club.managerName) return
+      for (const l of world.legends ?? []) if (l.managerOf === club.id) delete l.managerOf
+      if (legend) legend.managerOf = club.id
       log.push({ season, clubId: club.id, from: club.managerName, to, reason: down ? 'relegated' : 'sacked' })
       club.managerName = to
     })

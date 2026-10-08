@@ -1,6 +1,6 @@
 import { Rng, hashString } from '../../core/rng'
 import type { MatchResultSummary, World } from '../../core/types'
-import { continentalCompId, continentalQualifyingCompId, cupCompId, finalRound, isQualifyingComp, leagueCompId, playoffCompId } from './competitions'
+import { autoPromotionPlaces, continentalCompId, continentalQualifyingCompId, cupCompId, finalRound, isQualifyingComp, leagueCompId, playoffCompId } from './competitions'
 import { SEASON_WEEKS } from './fixtures'
 import { generateWorld } from './generate'
 import { clubFixtures, seasonCompetitions } from './queries'
@@ -158,18 +158,20 @@ describe('a full season', () => {
       expect(nt.map((h) => h.compKey).sort()).toEqual(['nt:EU', 'nt:OC', 'nt:youth:U19', 'nt:youth:U21'])
     })
 
-    it('promotes and relegates exactly 3 clubs between adjacent tiers', () => {
-      const pairs = 7 + 2 // 7 countries × 1 boundary + TR × 2 boundaries
-      expect(summary.movements.filter((m) => m.kind === 'promoted').length).toBe(3 * pairs)
-      expect(summary.movements.filter((m) => m.kind === 'relegated').length).toBe(3 * pairs)
+    it('promotes and relegates the places each country\'s rules define between adjacent tiers', () => {
+      let expected = 0
+      for (const l of Object.values(world.leagues)) expected += l.relegate
+      expect(expected).toBeGreaterThan(9 * 2)
+      expect(summary.movements.filter((m) => m.kind === 'promoted').length).toBe(expected)
+      expect(summary.movements.filter((m) => m.kind === 'relegated').length).toBe(expected)
       for (const m of summary.movements) {
         const before = preTables.get(m.fromLeagueId)!
         const idx = before.indexOf(m.clubId)
-        if (m.kind === 'relegated') expect(idx).toBeGreaterThanOrEqual(before.length - 3)
+        if (m.kind === 'relegated') expect(idx).toBeGreaterThanOrEqual(before.length - world.leagues[m.fromLeagueId].relegate)
         else {
-          // Top two go up automatically, the third place goes to the 3rd–6th play-off winner.
+          // The automatic places go up directly, the last place goes to the play-off winner (3rd-6th).
           const po = world.competitions[playoffCompId(S, m.fromLeagueId)]
-          expect(idx < 2 || m.clubId === po.winnerId).toBe(true)
+          expect(idx < autoPromotionPlaces(world, m.fromLeagueId) || m.clubId === po.winnerId).toBe(true)
           expect(idx).toBeLessThan(6)
         }
         expect(world.clubs[m.clubId].leagueId).toBe(m.toLeagueId)

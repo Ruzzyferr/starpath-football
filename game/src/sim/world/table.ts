@@ -2,7 +2,26 @@
  * League / group standings: incremental updates, full recomputation and
  * sorting (points → goal difference → goals for → head-to-head mini-table → id).
  */
-import type { Fixture, TableRow } from '../../core/types'
+import type { Fixture, LText, TableRow } from '../../core/types'
+
+/**
+ * Tie-break rule sets (2.6#65). 'gd' = points, goal difference, goals for, then the head-to-head mini-table
+ * (default); 'h2h' = points, then the head-to-head mini-table, then overall goal difference and goals for.
+ */
+export type TieRule = 'gd' | 'h2h'
+const H2H_COUNTRIES: ReadonlySet<string> = new Set(['ES', 'IT', 'PT', 'FR'])
+export const tieRuleFor = (countryId: string | null | undefined): TieRule => (countryId && H2H_COUNTRIES.has(countryId) ? 'h2h' : 'gd')
+/** League competition ids look like "L-2026-TR1"; anything else (cups, groups) uses the default rule. */
+export function tieRuleOfFixtures(fixtures: readonly Fixture[] | undefined): TieRule {
+  const m = /^L-[0-9]+-([A-Z]{2,3})[0-9]/.exec(fixtures?.[0]?.compId ?? '')
+  return tieRuleFor(m?.[1])
+}
+/** Short hint shown under a league table saying how ties are separated. */
+export function tieBreakHint(rule: TieRule): LText {
+  return rule === 'h2h'
+    ? { tr: 'Averaj sırası: puan, ikili maç sonuçları, genel averaj, atılan gol', en: 'Tie-break: points, head-to-head, overall goal difference, goals scored' }
+    : { tr: 'Averaj sırası: puan, genel averaj, atılan gol, ikili maç sonuçları', en: 'Tie-break: points, goal difference, goals scored, head-to-head' }
+}
 
 /** Number of recent results kept in `TableRow.form` (oldest first, newest last). */
 export const FORM_LENGTH = 5
@@ -80,7 +99,8 @@ function primaryCompare(a: TableRow, b: TableRow): number {
  * and GF are separated by a head-to-head mini-table among exactly those clubs.
  * Final tiebreak is club id, so sorting is total and deterministic.
  */
-export function sortTable(rows: readonly TableRow[], fixtures?: readonly Fixture[]): TableRow[] {
+export function sortTable(rows: readonly TableRow[], fixtures?: readonly Fixture[], rule: TieRule = tieRuleOfFixtures(fixtures)): TableRow[] {
+  if (rule === 'h2h' && fixtures) return sortHeadToHeadFirst(rows, fixtures)
   const sorted = [...rows].sort((a, b) => primaryCompare(a, b) || (a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0))
   if (!fixtures) return sorted
   let i = 0
@@ -90,6 +110,24 @@ export function sortTable(rows: readonly TableRow[], fixtures?: readonly Fixture
     if (j - i > 1) {
       const tied = sorted.slice(i, j)
       sorted.splice(i, j - i, ...sortByHeadToHead(tied, fixtures))
+    }
+    i = j
+  }
+  return sorted
+}
+
+function sortHeadToHeadFirst(rows: readonly TableRow[], fixtures: readonly Fixture[]): TableRow[] {
+  const sorted = [...rows].sort((a, b) => b.pts - a.pts || (a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0))
+  let i = 0
+  while (i < sorted.length) {
+    let j = i + 1
+    while (j < sorted.length && sorted[j].pts === sorted[i].pts) j++
+    if (j - i > 1) {
+      const tied = sorted.slice(i, j)
+      const ids = new Set(tied.map((r) => r.clubId))
+      const mini = new Map(computeTable([...ids], fixtures.filter((f) => f.result && ids.has(f.homeId) && ids.has(f.awayId))).map((r) => [r.clubId, r]))
+      tied.sort((a, b) => primaryCompare(mini.get(a.clubId) as TableRow, mini.get(b.clubId) as TableRow) || goalDifference(b) - goalDifference(a) || b.gf - a.gf || (a.clubId < b.clubId ? -1 : a.clubId > b.clubId ? 1 : 0))
+      sorted.splice(i, j - i, ...tied)
     }
     i = j
   }

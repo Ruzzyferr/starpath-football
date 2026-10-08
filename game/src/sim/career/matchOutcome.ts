@@ -259,7 +259,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   lines.push(...applyXpBundle(hero, bundle, cal.season).lines.filter((l) => l.en.startsWith('Overall') || l.en.startsWith('🌟')))
 
   // ── Injury ──
-  if (m.injured) lines.push(...applyInjury(hero, life, rollInjury(rng, hero, life, [0.55, 0.35, 0.1])))
+  if (m.injured) lines.push(...applyInjury(hero, life, rollInjury(rng, hero, life, [0.4, 0.42, 0.18])))
 
   if (followersDelta !== 0) lines.push(fill(lt('Takipçi {d} ({t})', 'Followers {d} ({t})'), { d: followersDelta > 0 ? `+${fmtNum(followersDelta).tr}` : `-${fmtNum(-followersDelta).tr}`, t: fmtNum(life.followers) }))
 

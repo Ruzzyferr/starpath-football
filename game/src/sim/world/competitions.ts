@@ -32,7 +32,7 @@ import { COUNTRY_BY_ID, CONTINENTAL_CUP_NAME } from '../../data/world/countries'
 import { CONTINENTAL_QUALIFYING_NAME, PLAYOFF_NAME } from '../../data/world/nations'
 import { coefficientRanking } from './coefficients'
 import {
-  CONTINENTAL_DAY, CONTINENTAL_GROUP_ROUNDS, CONTINENTAL_GROUP_WEEKS, CONTINENTAL_QUALIFYING_WEEKS, CUP_DAY, CUP_WEEKS,
+  CONTINENTAL_DAY, QUALIFYING_DAY, derbyKey, CONTINENTAL_GROUP_ROUNDS, CONTINENTAL_GROUP_WEEKS, CONTINENTAL_QUALIFYING_WEEKS, CUP_DAY, CUP_WEEKS,
   LOWER_TIER_LAST_WEEK, PLAYOFF_DAY, PLAYOFF_WEEKS,
   buildLeagueFixtures, continentalKoLegs, cupRoundWeek, doubleRoundRobin, fixtureId,
 } from './fixtures'
@@ -202,6 +202,13 @@ export function tieAggregate(comp: Competition, fixture: Fixture): [number, numb
 
 // ───────────────────────── Creation ─────────────────────────
 
+/** Same-city club pairs of a league (derbies, 2.6#69). */
+function derbiesOf(world: World, clubIds: readonly string[]): Set<string> {
+  const out = new Set<string>()
+  for (let i = 0; i < clubIds.length; i++) for (let j = i + 1; j < clubIds.length; j++) if (world.clubs[clubIds[i]]?.city === world.clubs[clubIds[j]]?.city) out.add(derbyKey(clubIds[i], clubIds[j]))
+  return out
+}
+
 function createLeagueCompetition(world: World, rng: Rng, season: number, leagueId: string): Competition {
   const league = world.leagues[leagueId]
   const id = leagueCompId(season, leagueId)
@@ -209,7 +216,7 @@ function createLeagueCompetition(world: World, rng: Rng, season: number, leagueI
   return {
     id, type: 'league', name: { tr: league.name, en: league.name }, season,
     countryId: league.countryId, leagueId, participantIds: [...league.clubIds],
-    fixtures: buildLeagueFixtures(rng, id, league.clubIds, lastWeek), table: createTable(league.clubIds), alive: null, winnerId: null,
+    fixtures: buildLeagueFixtures(rng, id, league.clubIds, lastWeek, derbiesOf(world, league.clubIds)), table: createTable(league.clubIds), alive: null, winnerId: null,
   }
 }
 
@@ -397,7 +404,7 @@ function createContinentalCompetitions(world: World, rng: Rng, season: number): 
     const seeded = rng.shuffle(sorted.slice(0, half))
     const unseeded = rng.shuffle(sorted.slice(half))
     const pairs: [string, string][] = seeded.map((s, i) => [unseeded[i], s])
-    q.fixtures = twoLegFixtures(q, 0, pairs, CONTINENTAL_QUALIFYING_WEEKS, CONTINENTAL_DAY)
+    q.fixtures = twoLegFixtures(q, 0, pairs, CONTINENTAL_QUALIFYING_WEEKS, QUALIFYING_DAY)
     q.meta!.draws!.push({ round: 0, week: CONTINENTAL_QUALIFYING_WEEKS[0], pairs, seeded: sorted.slice(0, half), twoLegged: true })
     out.push(q)
   } else {

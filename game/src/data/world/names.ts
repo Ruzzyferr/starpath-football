@@ -529,3 +529,37 @@ export function firstNameGender(fullName: string): 'male' | 'female' | null {
   if (e.f > 0 && e.m > 0) return null
   return e.f > 0 ? 'female' : 'male'
 }
+
+// ───────────────────────── Real-person blacklist & city tiers (2.6#10, #7) ─────────────────────────
+
+/** Well-known real players/managers: a generated player must never carry one of these full names (checked in names.test.ts). */
+const REAL_PERSON_NAMES = list(`
+  Lionel Messi, Cristiano Ronaldo, Neymar Junior, Kylian Mbappe, Erling Haaland, Kevin De Bruyne, Mohamed Salah,
+  Robert Lewandowski, Luka Modric, Karim Benzema, Harry Kane, Vinicius Junior, Jude Bellingham, Bukayo Saka,
+  Phil Foden, Rodri Hernandez, Virgil van Dijk, Sadio Mane, Son Heung Min, Antoine Griezmann, Paul Pogba,
+  Zlatan Ibrahimovic, Wayne Rooney, Steven Gerrard, Frank Lampard, David Beckham, Thierry Henry, Zinedine Zidane,
+  Ronaldo Nazario, Ronaldinho Gaucho, Diego Maradona, Pele Nascimento, Johan Cruyff, Marco van Basten,
+  Andres Iniesta, Xavi Hernandez, Sergio Ramos, Iker Casillas, Gianluigi Buffon, Andrea Pirlo, Francesco Totti,
+  Paolo Maldini, Franco Baresi, Roberto Baggio, Michel Platini, Franz Beckenbauer, Gerd Muller, Lothar Matthaus,
+  Manuel Neuer, Thomas Muller, Toni Kroos, Marco Reus, Mesut Ozil, Arda Turan, Hakan Sukur, Burak Yilmaz,
+  Hakan Calhanoglu, Arda Guler, Kenan Yildiz, Pep Guardiola, Jose Mourinho, Jurgen Klopp, Carlo Ancelotti,
+  Alex Ferguson, Arsene Wenger, Diego Simeone, Zinedine Zidane, Mauricio Pochettino, Antonio Conte
+`)
+const REAL_PERSON_SET: ReadonlySet<string> = new Set(REAL_PERSON_NAMES.map(normalizeClubName))
+
+/** True when "first last" matches a known real footballer/manager (diacritics/case-insensitive). */
+export function isRealPersonName(firstName: string, lastName: string): boolean {
+  return REAL_PERSON_SET.has(normalizeClubName(`${firstName} ${lastName}`))
+}
+
+export type CityTier = 'metropolis' | 'city' | 'town' | 'village'
+
+/** Population tier from the city's rank in CITIES (lists run biggest first). */
+export function cityTier(countryId: string, city: string): CityTier {
+  const rank = (CITIES[countryId] ?? []).indexOf(city)
+  if (rank < 0) return 'town'
+  return rank < 4 ? 'metropolis' : rank < 12 ? 'city' : rank < 24 ? 'town' : 'village'
+}
+
+/** Stadium capacity ceiling a city of that tier can sustain (club fan base is capped by the city). */
+export const CITY_CAPACITY_CAP: Readonly<Record<CityTier, number>> = { metropolis: 100000, city: 70000, town: 45000, village: 25000 }

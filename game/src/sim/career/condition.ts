@@ -74,11 +74,11 @@ export const injuryWeeks = (days: number): number => Math.max(0.5, Math.round((d
 export { injuryRiskMultiplier } from '../match/injuryRisk'
 
 /**
- * Roll an injury. `severityWeights` default [0.7, 0.25, 0.05] (most knocks are
+ * Roll an injury. `severityWeights` default [0.6, 0.3, 0.1] (most knocks are
  * minor); matches pass heavier weights than training.
  * Duration is reduced by recovery perks/facilities (up to −35%).
  */
-export function rollInjury(rng: Rng, hero: Hero, life: Life, severityWeights: [number, number, number] = [0.7, 0.25, 0.05]): Injury {
+export function rollInjury(rng: Rng, hero: Hero, life: Life, severityWeights: [number, number, number] = [0.6, 0.3, 0.1]): Injury {
   const sev = rng.weighted([1, 2, 3] as const, (s) => severityWeights[s - 1])
   const t = rng.pick(INJURY_TABLE.filter((i) => i.severity === sev))
   const base = rng.int(t.days[0], t.days[1])

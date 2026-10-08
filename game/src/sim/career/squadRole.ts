@@ -13,6 +13,7 @@ import type { Calendar, Hero, Life, SquadRole } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, heroAge, lt, meter, type Lines } from './common'
 import { heroOvr } from './progression'
+import { youthTrustBonus } from '../world/profiles'
 import { perkValue } from './perks'
 import { changeRelation } from '../life/relationships'
 import { ROLE_NAMES } from './contract'
@@ -112,6 +113,8 @@ export interface SquadContext {
   season: number
   /** Whether the captaincy is available to the hero (club decides, e.g. old captain left). */
   captaincyOpen?: boolean
+  /** The club manager's youth trust 0-100 (2.6#39): helps players of 21 and under earn minutes. */
+  youthTrust?: number
 }
 
 /**
@@ -120,7 +123,7 @@ export interface SquadContext {
  * average with neutral trust is a starter, ~10 above is the star.
  */
 export function roleScore(hero: Hero, ctx: SquadContext): number {
-  return heroOvr(hero) - ctx.squadAvgOvr + (hero.managerTrust - 50) * 0.15
+  return heroOvr(hero) - ctx.squadAvgOvr + (hero.managerTrust - 50) * 0.15 + youthTrustBonus(ctx.youthTrust, heroAge(hero, ctx.season))
 }
 
 /** The role the hero's current merit deserves (no hysteresis). */

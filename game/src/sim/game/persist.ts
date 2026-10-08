@@ -5,6 +5,7 @@
  * core type. `saveGame` / `loadGame` wrap SaveManager so the UI never sees
  * the packed form; `unpackState` passes unpacked (legacy) states through.
  */
+import { applyDataUpdates } from '../world/dataUpdate'
 import type { Appearance, GameState, NpcPlayer, SeasonStats } from '../../core/types'
 import type { LoadResult, SaveManager } from '../../state/save'
 import { saveSummary } from './summary'
@@ -86,6 +87,9 @@ export async function saveGame(mgr: SaveManager, slot: number, state: GameState,
 /** Load through SaveManager and unpack. */
 export async function loadGame(mgr: SaveManager, slot: number): Promise<LoadResult> {
   const r = await mgr.load(slot)
-  if (r.ok) unpackState(r.state)
+  if (r.ok) {
+    unpackState(r.state)
+    applyDataUpdates(r.state.world) // 2.6#128: newer data pack steps, once per career
+  }
   return r
 }

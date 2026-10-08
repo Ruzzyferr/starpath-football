@@ -21,11 +21,11 @@
 | 2.3 Kariyer | 2 → 19 | 31 → 23 | 10 → 1 |
 | 2.4 Sosyal, olaylar | 5 → 14 | 25 → 20 | 9 → 5 |
 | 2.5 Ekonomi, monetizasyon | 11 → 15 | 21 → 24 | 17 → 10 |
-| 2.6 Dünya, kupalar, milli takım | 2 → 21 | 32 → 22 | 15 → 6 |
+| 2.6 Dünya, kupalar, milli takım | 2 → 48 | 32 → 0 | 15 → 0 |
 | 2.7 UI/UX | 7 → 21 | 45 → 39 | 13 → 5 |
 | 2.8 Ses ve müzik | 0 → 10 | 9 → 4 | 10 → 5 |
 | 2.9 Platform ve teknik | 14 → 25 | 38 → 34 | 27 → 20 |
-| 2.10 Meta, online, canlı operasyon | 5 → 6 | 1 → 3 | 18 → 15 |
+| 2.10 Meta, online, canlı operasyon | 5 → 18 | 1 → 1 | 18 → 0 |
 | 2.11 Erişilebilirlik, yerelleştirme | 1 → 10 | 15 → 12 | 17 → 11 |
 | 2.12 Risk, hukuk, mağaza, QA | 9 → 17 | 13 → 13 | 15 → 7 |
 | **Toplam** | **60 → 179** (%11 → %31) | **295 → 260** | **174 → 94** (+ 40 N/A-süreç) |
@@ -61,11 +61,11 @@ GDD bölümleri şimdi (TAMAM/KISMİ/EKSİK): 2 Karakter 20/4/2, 3 Maç 34/3/0, 
 | 2.3 | Kariyer ve oyun mantığı | 43 | 2 | 31 | 10 | 0 |
 | 2.4 | Sosyal hayat, ilişkiler, olaylar | 39 | 5 | 25 | 9 | 0 |
 | 2.5 | Ekonomi, lüks, kumarhane, monetizasyon | 49 | 11 | 21 | 17 | 0 |
-| 2.6 | Dünya, ligler, kupalar, milli takım | 49 | 2 | 32 | 15 | 0 |
+| 2.6 | Dünya, ligler, kupalar, milli takım | 49 | 48 | 0 | 0 | 1 |
 | 2.7 | UI/UX ve görsellik | 65 | 7 | 45 | 13 | 0 |
 | 2.8 | Ses ve müzik | 19 | 0 | 9 | 10 | 0 |
 | 2.9 | Platform ve teknik | 79 | 14 | 38 | 27 | 0 |
-| 2.10 | Meta, online, canlı operasyon | 25 | 5 | 1 | 18 | 1 |
+| 2.10 | Meta, online, canlı operasyon | 25 | 18 | 1 | 0 | 5 |
 | 2.11 | Erişilebilirlik ve yerelleştirme | 33 | 1 | 15 | 17 | 0 |
 | 2.12 | Risk, hukuk, mağaza, QA, etik | 76 | 9 | 13 | 15 | 39 |
 | **Toplam** | | **569** | **60** | **295** | **174** | **40** |
@@ -522,55 +522,55 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.6#1 | KISMİ | sim/world/generate.ts:281 | Deterministik üretim var; cihazlar arası hash testi yok |
-| 2.6#2 | KISMİ | data/world/countries.ts:18 | 12 ülke, gerçek ülke adlarıyla |
-| 2.6#5 | KISMİ | data/world/names.ts:49 | İsim tekilliği yok |
-| 2.6#7 | KISMİ | data/world/names.ts:286 | Nüfus kademesi yok |
-| 2.6#9 | KISMİ | sim/world/generate.ts:105 | Kuruluş yılı ve kısa ad yok |
-| 2.6#10 | KISMİ | data/world/names.ts:487 | Kara liste yalnızca kulüp adlarında |
-| 2.6#11 | EKSİK | - | Arma benzerlik kontrolü yok |
-| 2.6#16 | KISMİ | sim/world/generate.ts:220 | İtibar ölçeği farklı |
-| 2.6#17 | KISMİ | sim/world/quickSim.test.ts:45 | Eşikli 1.000 maç testi yok |
-| 2.6#18 | EKSİK | - | Kupa sürpriz oranı testi yok |
-| 2.6#19 | KISMİ | sim/world/season.ts:696 | Gelir/gider kalemleri yok |
-| 2.6#32 | KISMİ | ui/screens/ClubScreen.tsx:74 | Forma numarası yok |
-| 2.6#33 | KISMİ | ui/screens/ClubScreen.tsx:130 | İlk 11, ceza ve sözleşme yok |
-| 2.6#34 | KISMİ | ui/screens/match/PreMatchScreen.tsx:97 | Formdaki rakip oyuncu yok |
-| 2.6#36 | KISMİ | core/types.ts:119 | 2–4 trait yok |
-| 2.6#39 | KISMİ | sim/world/generate.ts:223 | TD yalnızca bir isim |
-| 2.6#40 | EKSİK | - | TD kovulma ve atama yok |
+| 2.6#1 | TAMAM | sim/world/worldRules.test.ts | Sabitlenmiş dünya karması (aynı seed her cihazda aynı bayt); üretim değişirse test bilerek güncellenir |
+| 2.6#2 | TAMAM | sim/world/worldRules.test.ts, data/world/countries.ts | 12 ülke, 450 kulüp (testle sabit); ülke adları gerçek yer adları (marka değil), lig ve kupa adları kurgusal |
+| 2.6#5 | TAMAM | sim/world/generate.ts generateSquad, season.ts youthIntake, worldRules.test.ts | Aynı kulüpte aynı ad-soyad üretilmez (yalnızca çakışmada yeniden çekilir) |
+| 2.6#7 | TAMAM | data/world/names.ts cityTier, CITY_CAPACITY_CAP, worldRules.test.ts | Köy/kasaba/şehir/metropol kademesi şehir sırasından; stadyum kapasitesi kademeyle sınırlı |
+| 2.6#9 | TAMAM | sim/world/generate.ts foundedYear, sim/world/profiles.ts shortClubName, ClubScreen Info | Kuruluş yılı (kimlikten türetilir, RNG yok), tam ad + 3 harfli kod + en çok 12 karakterlik kısa ad |
+| 2.6#10 | TAMAM | data/world/names.ts isRealPersonName, sim/world/players.ts randomName, worldRules.test.ts | Kara liste kulüp, lig ve gerçek kişi adlarını kapsar; oyuncu ve TD adları gerçek bir futbolcuyla çakışırsa yeniden çekilir |
+| 2.6#11 | TAMAM | sim/world/generate.ts crestFor, worldQuality.test.ts | Aynı ülkede iki kulübün arması (şekil + sembol + ana renk) aynı olamaz |
+| 2.6#16 | ERTELENDİ | sim/world/generate.ts:220 | İtibar 1-100 ölçeğinde kaldı; 0-10.000 gösterimi 100+ çağrı noktasını etkiler, oyuncuya fark yaratmaz (görünüm ölçeği v1.1) |
+| 2.6#17 | TAMAM | sim/world/quickSim.test.ts | 1.000 maçlık eşikli test |
+| 2.6#18 | TAMAM | sim/world/worldQuality.test.ts | Kupa sürpriz oranı testi |
+| 2.6#19 | TAMAM | sim/world/profiles.ts clubFinanceSheet, ClubScreen FinanceCard | Gelir (bilet, yayın, sponsor, ödül, transfer) ve gider (maaş, tesis, transfer) kalemleri; maaş her kulüpte gelirin %55-70'i (testli) |
+| 2.6#32 | TAMAM | ui/screens/ClubScreen.tsx | Forma numarası |
+| 2.6#33 | TAMAM | ui/screens/match/PreMatchScreen.tsx | Maç öncesi ceza ve sözleşme kartı |
+| 2.6#34 | TAMAM | sim/game (pickKeyPlayer) | Rakip anahtar oyuncu form/mevki skoruyla seçilir |
+| 2.6#36 | TAMAM | sim/world/profiles.ts npcTraits, season.ts applyMatchStats, ClubScreen MateSheet, profiles.test.ts | 10 trait, oyuncu başına 2-4 (kimlikten türetilir, saklama yok); kart, sakatlık ve soyunma odası morali etkilenir |
+| 2.6#39 | TAMAM | sim/world/profiles.ts managerProfile, sim/career/squadRole.ts, ClubScreen ManagerCard | TD adı, yaşı, formasyon/stil tercihi, gençlere güven (genç oyuncunun rol skoru ±2,5) ve sabır (düşük sabırlı TD bir sıra erken gönderilir) |
+| 2.6#40 | TAMAM | sim/world/managers.ts | TD kovma ve atama, efsane oyuncular dugout'a dönebilir |
 | 2.6#45 | TAMAM | sim/world/season.ts:539 | NPC gelişimi ve düşüşü var |
-| 2.6#46 | KISMİ | sim/world/season.ts:409 | AI transferleri var; hacim testi yok |
-| 2.6#47 | KISMİ | sim/world/season.ts:554 | Emeklilik var; efsane listesi yok |
-| 2.6#48 | KISMİ | sim/world/season.ts:634 | Altyapı var; akademi seviyesi yok |
+| 2.6#46 | TAMAM | sim/world/season.test.ts | Transfer hacmi testi |
+| 2.6#47 | TAMAM | sim/world/season.ts addLegend, managers.ts, WorldScreen LegendsCard, longRun.test.ts | Emekli yıldızlar (OVR 74+) world.legends listesine girer, en çok 150; bazıları TD olur |
+| 2.6#48 | TAMAM | sim/world/season.ts academyLevel, longRun.test.ts | Akademi seviyesi 1-5 (kulüp itibarından): 4+ seviye ek genç getirir; 50 sezonda nüfus ±%8 bandında |
 | 2.6#54 | TAMAM | sim/world/players.ts:81 | Kadın dünyasında sakal yok |
-| 2.6#55 | KISMİ | sim/life/events/content.test.ts:149 | Maç anlatımı zamir kapsamı belirsiz |
-| 2.6#62 | KISMİ | sim/world/season.ts:493 | Yükselme ve düşme sabit 3 takım |
-| 2.6#63 | EKSİK | - | Play-off yok |
-| 2.6#65 | KISMİ | sim/world/table.ts:83 | Ülkeye özel kural yok |
-| 2.6#68 | KISMİ | ui/screens/HomeScreen.tsx:72 | Sonraki turnuva bilgisi yok |
-| 2.6#69 | KISMİ | sim/world/fixtures.ts:77 | Derbi kuralı yok |
-| 2.6#70 | KISMİ | sim/world/fixtures.ts:22 | Dinlenme kuralları yok |
-| 2.6#71 | KISMİ | sim/world/season.test.ts:43 | 100 sezonluk test yok |
-| 2.6#72 | KISMİ | ui/backend/realActions.ts:89 | Kupa maçları oynanabiliyor; ama "İlerle" maçı sessizce simüle ediyor |
-| 2.6#76 | KISMİ | sim/world/competitions.ts:240 | Yerel kupa oynanıyor; kura ekranı yok |
-| 2.6#79 | KISMİ | sim/world/competitions.ts:186 | Kıtasal kupa oynanıyor; ön eleme ve çift maç yok |
-| 2.6#84 | EKSİK | - | Kupa galibine kıtasal kontenjan yok |
-| 2.6#87 | EKSİK | sim/world/competitions.ts:129 | Katsayı sistemi yok |
-| 2.6#91 | EKSİK | sim/game/season.ts:43 | Milli takım kadrosu yok |
-| 2.6#92 | EKSİK | sim/game/season.ts:47 | Çağrı puanı gizli |
-| 2.6#93 | EKSİK | - | Eleme grupları ve milli fikstür yok |
-| 2.6#94 | EKSİK | sim/game/season.ts:63 | Dünya Turnuvası yok; milli maç rastgele "cap" |
-| 2.6#102 | KISMİ | sim/world/season.ts:215 | Ödül skoru var; aday listesi ve Ayın Oyuncusu yok |
-| 2.6#103 | EKSİK | sim/game/season.ts:245 | Altın Yıldız ilk 30 listesi ve töreni yok |
-| 2.6#106 | KISMİ | ui/screens/WorldScreen.tsx:135 | Kupa istatistikleri yok |
-| 2.6#107 | EKSİK | - | Kulüp rekorları yok |
-| 2.6#116 | KISMİ | sim/world/generate.ts:286 | Kadın dünyası, erkek dünyasının cinsiyet bayraklı kopyası |
-| 2.6#119 | KISMİ | data/world/countries.ts:1 | Ayrı veri paketi yok |
-| 2.6#120 | EKSİK | - | Veri şeması yok |
-| 2.6#121 | EKSİK | - | Veri paketi doğrulayıcı yok |
-| 2.6#127 | KISMİ | core/config.ts:4 | dataVersion yok |
-| 2.6#128 | EKSİK | - | Kariyere veri güncellemesi yok |
+| 2.6#55 | TAMAM | gender.test.ts | Zamir kapsamı testli |
+| 2.6#62 | TAMAM | data/world/rules.ts, sim/world/generate.ts, longRun.test.ts | Kademe başına yükselme/düşme sayısı ülkeye göre veri (2/3/4 takım), play-off ile birlikte; her kademenin takım sayısı sezonlar boyunca değişmez (testli) |
+| 2.6#63 | TAMAM | sim/world/competitions.ts | Yükselme play-off'u |
+| 2.6#65 | TAMAM | sim/world/table.ts tieRuleFor, tieBreakHint, worldRules.test.ts | İki kural seti: averaj önce (varsayılan) veya ikili maç önce (ES, IT, PT, FR); lig tablosu altında ipucu |
+| 2.6#68 | TAMAM | ui/screens/national/NationalCard.tsx | Sonraki turnuva bilgisi |
+| 2.6#69 | TAMAM | sim/world/fixtures.ts limitVenueStreaks, deferDerbies, worldRules.test.ts | Art arda en çok 2 iç/dış saha, aynı şehir derbileri ilk 3 haftada oynanmaz |
+| 2.6#70 | TAMAM | sim/world/fixtures.ts QUALIFYING_DAY, worldRules.test.ts | Hiçbir kulüp 72 saatten kısa aralıkla maç oynamaz (eleme turu Salı'ya alındı) |
+| 2.6#71 | TAMAM | sim/world/longRun.test.ts, sim/world/anchor.ts | 50 sezon (LONGRUN=1 ile 100): kademe boyutları, nüfus, kadro sınırları ve ortalama yetenek sabit; dünya enflasyonu giderildi |
+| 2.6#72 | TAMAM | ui/tutorial/MatchdayConfirm.tsx | İlerle maç günü onayı |
+| 2.6#76 | TAMAM | ui/screens/cup/CupDrawScreen.tsx | Yerel kupa kurası ekranı |
+| 2.6#79 | TAMAM | sim/world/competitions.ts | Kıtasal kupa ön eleme ve çift maç |
+| 2.6#84 | TAMAM | sim/world/competitions.ts | Kupa galibine kıtasal kontenjan |
+| 2.6#87 | TAMAM | sim/world/coefficients.ts | Katsayı sistemi |
+| 2.6#91 | TAMAM | sim/world/national.ts | Milli takım kadrosu |
+| 2.6#92 | TAMAM | sim/world/national.ts | Çağrı sayacı görünür |
+| 2.6#93 | TAMAM | sim/world/national.ts | Eleme grupları ve milli fikstür |
+| 2.6#94 | TAMAM | sim/world/national.ts | Dünya Turnuvası |
+| 2.6#102 | TAMAM | sim/world/awards.ts | Aday listesi ve Ayın Oyuncusu |
+| 2.6#103 | TAMAM | sim/world/awards.ts | Altın Yıldız ilk 30 listesi |
+| 2.6#106 | TAMAM | ui/screens/cup/CupsPanel.tsx | Kupa istatistikleri |
+| 2.6#107 | TAMAM | sim/world/managers.ts updateClubRecords, sim/game/records.ts | Kulüp rekorları |
+| 2.6#116 | TAMAM | sim/world/generate.ts (WOMEN_*), profiles.test.ts | Kadın dünyası ayrı rastgele akış, itibar (×0,88), bütçe (×0,5) ve stadyum (×0,4); erkek dünyasının bayraklı kopyası değil |
+| 2.6#119 | TAMAM | data/world/*.ts, data/world/version.ts, sim/game/mods.ts | Statik veri paketi sim kodundan ayrı, şemalı, doğrulayıcılı ve sürümlü (DATA_VERSION); mod paketleri aynı şemayla JSON olarak girer |
+| 2.6#120 | TAMAM | data/world/validate.ts WORLD_DATA_SCHEMA | Veri şeması |
+| 2.6#121 | TAMAM | data/world/validate.ts | Veri paketi doğrulayıcı (CI testli) |
+| 2.6#127 | TAMAM | data/world/version.ts, sim/world/generate.ts | Dünya dataVersion taşır |
+| 2.6#128 | TAMAM | sim/world/dataUpdate.ts, sim/game/persist.ts loadGame, profiles.test.ts | Eski kariyerler yüklenirken veri adımları bir kez uygulanır (v2: kuruluş yılları, efsane listesi); adımlar eklemelidir, kariyer sonucunu değiştirmez |
 
 ### 2.7 UI/UX ve Görsellik
 
@@ -764,7 +764,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.10#19 | TAMAM | sim/game/localMeta.ts AttemptRecord, liveOps.test.ts | Sınırsız deneme; ilk ve en iyi deneme ayrı tutulur (yerel tablo) |
 | 2.10#34 | ERTELENDİ | game/src/game/MatchScene.ts:35 | Seed+girdi kaydı src/game sahibinin işi; fotoğraf ve klip modu buna bağlı |
 | 2.10#40 | KISMİ | ui/share/cards.ts, ShareButtons.tsx, e2e/board.spec.ts | Maç sonu ve kariyer PNG kartı (paylaşım sayfası/indirme) TAMAM; video klip ve fotoğraf modu ertelendi (maç tekrarı seed+girdi yok) |
-| 2.10#60 | KISMİ | sim/game/mods.ts, CommunityScreen, mods.test.ts | Yalnızca veri JSON modları: şema, boyut sınırı, bilinmeyen alan reddi, world validator kuralları yeniden kullanılır; yeni dünya üretimine uygulanması sim/world sahibinde (ertelendi) |
+| 2.10#60 | TAMAM | sim/game/mods.ts, sim/game/modWorld.ts, newGame.ts, modWorld.test.ts | Yalnızca veri JSON modları: şema, boyut sınırı, bilinmeyen alan reddi. `world` bölümü (lig/kulüp adı, kısa kod, şehir, stadyum adı, forma renkleri) ve isim listeleri YENİ kariyerin dünyasına deterministik yeniden adlandırma geçişiyle uygulanır; moddan bağımsız dünya bayt bayt aynı. Yeni ülke eklemek (statik kayıt defteri) ve sezon içi doğan gençlerin mod isimleri ertelendi |
 | 2.10#62 | TAMAM | ui/backend/meta.ts c:mods, mods.ts checkModSignature | Kariyer kaydı mod kimlik@sürüm imzasını saklar; eksik veya farklı modda yüklemede uyarı |
 | 2.10#70 | N/A-süreç | - | Yol haritası taahhüdü |
 | 2.10#72 | TAMAM | - | Sezon kartı yok (kısıt sağlanıyor) |

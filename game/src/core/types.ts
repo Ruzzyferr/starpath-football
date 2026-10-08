@@ -104,6 +104,8 @@ export interface Club {
   awayColors: KitColors
   crest: CrestSpec
   reputation: number // 1..100
+  /** Founding year (2.6#9); derived from the club id, absent in older saves. */
+  founded?: number
   budget: number // transfer budget, in currency units
   wageBudget: number // weekly
   stadium: { name: string; capacity: number }
@@ -221,6 +223,20 @@ export interface ClubRecords {
   heaviestDefeat: { gf: number; ga: number; opponentId: string; season: number } | null
 }
 
+/** A retired star (2.6#47): kept in world.legends; some return as managers. */
+export interface Legend {
+  id: string
+  name: string
+  nationality: string
+  position: Position
+  /** Ability at retirement. */
+  ovr: number
+  retiredSeason: number
+  lastClubId: string | null
+  /** Club he now manages, once a legend takes a dugout job. */
+  managerOf?: string
+}
+
 export interface ManagerChange { season: number; clubId: string; from: string; to: string; reason: 'sacked' | 'relegated' }
 
 export interface World {
@@ -240,6 +256,12 @@ export interface World {
   records?: Record<string, ClubRecords>
   /** Manager sackings/appointments (2.6#40), newest last. */
   managerChanges?: ManagerChange[]
+  /** Retired stars, strongest first (2.6#47). */
+  legends?: Legend[]
+  /** Mean ability of club players when the world was first measured; keeps long careers from inflating (see sim/world/anchor.ts). */
+  abilityAnchor?: number
+  /** Version of the static data pack this world was made from (2.6#127). */
+  dataVersion?: number
   /** Free agents are NpcPlayers with clubId null. */
 }
 

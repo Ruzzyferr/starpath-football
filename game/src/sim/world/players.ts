@@ -6,7 +6,7 @@ import type { Appearance, Foot, Gender, NpcPlayer, Personality, Position, Season
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID, COUNTRY_DEFS } from '../../data/world/countries'
-import { NAME_POOLS } from '../../data/world/names'
+import { NAME_POOLS, isRealPersonName } from '../../data/world/names'
 import type { NameStyle } from '../../data/world/names'
 
 // ───────────────────────── Economy ─────────────────────────
@@ -118,7 +118,11 @@ export function nameStyleOf(countryId: string): NameStyle {
 /** Random "First Last" pair for a name style. */
 export function randomName(rng: Rng, style: NameStyle, gender: Gender = 'male'): { firstName: string; lastName: string } {
   const pool = NAME_POOLS[style]
-  return { firstName: rng.pick(gender === 'female' ? pool.firstFemale : pool.first), lastName: rng.pick(pool.last) }
+  const firstName = rng.pick(gender === 'female' ? pool.firstFemale : pool.first)
+  let lastName = rng.pick(pool.last)
+  // 2.6#10: never compose a real footballer/manager (re-rolls only on a hit, so the stream is untouched otherwise).
+  for (let tries = 0; isRealPersonName(firstName, lastName) && tries < 8; tries++) lastName = rng.pick(pool.last)
+  return { firstName, lastName }
 }
 
 /**

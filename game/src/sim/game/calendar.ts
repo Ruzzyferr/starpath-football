@@ -28,6 +28,7 @@ import {
   END_OF_SEASON_WEEK, INTERNATIONAL_BREAK_WEEKS, SEASON_WEEKS, SQUAD_ANNOUNCE_WEEKS, WINTER_WINDOW_WEEK,
 } from '../world/fixtures'
 import { clubStrength } from '../world/queries'
+import { managerProfile } from '../world/profiles'
 import { aiTransferWindow, playFixturesFor, weeklyTick } from '../world/season'
 import { rollEvents } from './eventsAdapter'
 import {
@@ -149,7 +150,7 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
     // Role review every 4 weeks in season.
     const club = heroClub(state)
     if (club && isInSeason(cal.week) && cal.week % 4 === 0) {
-      logAll(state, out, evaluateRoleChange(hero, life, { squadAvgOvr: clubStrength(state.world, club.id).overall, season: cal.season }, cal), 'career', '📋')
+      logAll(state, out, evaluateRoleChange(hero, life, { squadAvgOvr: clubStrength(state.world, club.id).overall, season: cal.season, youthTrust: managerProfile(club).youthTrust }, cal), 'career', '📋')
     }
   }
   weeklyTick(state.world)

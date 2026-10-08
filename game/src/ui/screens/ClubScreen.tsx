@@ -1,4 +1,7 @@
 import { useState } from 'preact/hooks'
+import type { Club } from '../../core/types'
+import { clubFinanceSheet, managerProfile, npcTraits } from '../../sim/world/profiles'
+import { tieBreakHint, tieRuleFor } from '../../sim/world/table'
 import { lt, t } from '../../i18n'
 import {
   Avatar, Button, Card, CardHeader, Chip, Crest, EmptyState, Hearts, Kit, LeagueTable, Modal, Page, SectionTitle, StatBar,
@@ -38,6 +41,9 @@ function MateSheet({ m, onClose }: { m: SquadMemberView | null; onClose: () => v
               <Chip tone="info">{t(`data.pos.${p.position}`)}</Chip>
               <Chip>{t('club.squad.age', { n: ageOf(p.birthYear, s.calendar) })}</Chip>
               <Chip tone="violet">{t(`data.personality.${p.personality}`)}</Chip>
+            </div>
+            <div class="row wrap" aria-label={t('club.traitsTitle')}>
+              {npcTraits(p).map((tr) => <Chip key={tr}>{t(`club.trait.${tr}`)}</Chip>)}
             </div>
             <span class="score-font club-mate-ovr" style={{ color: attrColor(p.ovr) }}>{p.ovr}</span>
           </div>
@@ -217,8 +223,45 @@ function Table() {
   return (
     <div class="stack">
       {lg && <p class="t-sm t-mid">{t('club.table.league', { name: lg.name, tier: lg.tier })}</p>}
+      {lg && <p class="t-xs t-lo">{lt(tieBreakHint(tieRuleFor(lg.countryId)))}</p>}
       <LeagueTable rows={table} team={(id) => data.team(id)} highlightId={club.id} zones={zonesFor(club, s.world.leagues)} caption={t('ui.table.caption', { league: lg?.name ?? '' })} />
     </div>
+  )
+}
+
+function ManagerCard({ club }: { club: Club }) {
+  const m = managerProfile(club)
+  return (
+    <Card pad="md">
+      <CardHeader title={t('club.profile.title')} icon="whistle" sub={m.name} />
+      <dl class="club-dl">
+        <div><dt>{t('club.profile.age')}</dt><dd class="num">{m.age}</dd></div>
+        <div><dt>{t('club.profile.formation')}</dt><dd class="num">{m.formation}</dd></div>
+      </dl>
+      <StatBar label={t('club.profile.youthTrust')} value={m.youthTrust} color="var(--accent-blue)" />
+      <StatBar label={t('club.profile.patience')} value={m.patience} color="var(--accent-gold)" />
+    </Card>
+  )
+}
+
+function FinanceCard({ club }: { club: Club }) {
+  const w = gameState.value?.world
+  if (!w) return null
+  const f = clubFinanceSheet(w, club)
+  const rows: ['tickets' | 'broadcast' | 'sponsors' | 'prize' | 'transfersIn' | 'wages' | 'facilities' | 'transfersOut', number][] = [
+    ['tickets', f.income.tickets], ['broadcast', f.income.broadcast], ['sponsors', f.income.sponsors], ['prize', f.income.prize], ['transfersIn', f.income.transfers],
+    ['wages', f.spending.wages], ['facilities', f.spending.facilities], ['transfersOut', f.spending.transfers],
+  ]
+  return (
+    <Card pad="md" data-testid="club-finance">
+      <CardHeader title={t('club.finance.title')} icon="coins" />
+      <dl class="club-dl">
+        {rows.map(([k, v]) => <div key={k}><dt>{t(`club.finance.${k}`)}</dt><dd class="num">{formatMoney(v, { compact: true })}</dd></div>)}
+        <div><dt><b>{t('club.finance.income')}</b></dt><dd class="num">{formatMoney(f.totalIncome, { compact: true })}</dd></div>
+        <div><dt><b>{t('club.finance.spending')}</b></dt><dd class="num">{formatMoney(f.totalSpending, { compact: true })}</dd></div>
+      </dl>
+      <p class="t-xs t-lo">{t('club.finance.wageRatio', { p: Math.round(f.wageRatio * 100) })}</p>
+    </Card>
   )
 }
 
@@ -229,6 +272,7 @@ function Info() {
     { label: t('club.info.stadium'), value: club.stadium.name },
     { label: t('club.info.capacity'), value: formatNumber(club.stadium.capacity) },
     { label: t('club.info.manager'), value: club.managerName },
+    ...(club.founded ? [{ label: t('club.info.founded'), value: String(club.founded) }] : []),
     { label: t('club.info.formation'), value: club.formation },
     { label: t('club.info.style'), value: t(`club.style.${club.style}`) },
     { label: t('club.info.budget'), value: formatMoney(club.budget, { compact: true }) },
@@ -260,6 +304,8 @@ function Info() {
           <figure><Kit kit={club.awayColors} size={110} number={gameState.value?.hero.shirtNumber} /><figcaption>{t('club.info.away')}</figcaption></figure>
         </div>
       </Card>
+      <ManagerCard club={club} />
+      <FinanceCard club={club} />
       <ClubRecordsCard clubId={club.id} />
     </div>
   )

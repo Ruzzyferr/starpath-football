@@ -171,7 +171,7 @@ function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
  * difficulty. Scorer/assist ids are left for the engine to fill.
  */
 /** Base injury chance of an auto-resolved outfield moment (scaled by injuryRiskMultiplier, 2.3#55). */
-export const AUTO_INJURY_CHANCE = 0.004
+export const AUTO_INJURY_CHANCE = 0.0054
 
 export function autoResolve(kind: HighlightKind, attrs: Attributes, difficulty: number, rng: Rng, injuryMult = 1): HighlightResult {
   const probs = outcomeProbabilities(kind, attrs, difficulty)

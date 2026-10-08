@@ -28,6 +28,10 @@ export const PRESEASON_WEEK = 0
 export const LEAGUE_DAY = 5
 export const CUP_DAY = 2
 export const CONTINENTAL_DAY = 3
+/** Qualifying legs are on Tuesday so a club never plays Thursday then Saturday (2.6#70: 72 h rest). */
+export const QUALIFYING_DAY = 1
+/** Derbies (same-city pairs) are kept out of the first rounds (2.6#69). */
+export const DERBY_FREE_ROUNDS = 3
 export const INTERNATIONAL_BREAK_WEEKS: readonly number[] = [11, 24, 35]
 export const FIRST_MATCH_WEEK = 1
 export const LAST_MATCH_WEEK = 41
@@ -189,10 +193,80 @@ export function fixtureId(compId: string, round: number, index: number): string 
   return `${compId}-r${round}-m${index}`
 }
 
+const pairKey = (a: string, b: string): string => (a < b ? `${a}|${b}` : `${b}|${a}`)
+/** Key of an unordered club pair, as used by the `derbies` set of {@link buildLeagueFixtures}. */
+export const derbyKey = pairKey
+
+/**
+ * Venue repair (2.6#69): no team plays 3 home or 3 away games in a row. Greedy local search with a short
+ * tabu list: for the first offending streak, try flipping each of its three games (together with the mirrored
+ * game of the other half, so every pair still meets once at each ground) and keep the flip that leaves the
+ * fewest streaks in total. Always terminates; in practice leagues of 16-20 clear in a handful of steps.
+ */
+export function limitVenueStreaks<T>(rounds: Pairing<T>[][], maxIter = 400): void {
+  const half = rounds.length / 2
+  const mirrored = Number.isInteger(half) && half > 0
+  const teams = new Set<T>()
+  for (const round of rounds) for (const [h, a] of round) { teams.add(h); teams.add(a) }
+  const home = new Map<T, (boolean | null)[]>()
+  for (const t of teams) home.set(t, rounds.map(() => null))
+  rounds.forEach((round, r) => round.forEach(([h, a]) => { home.get(h)![r] = true; home.get(a)![r] = false }))
+  const streaks = (): [T, number][] => {
+    const out: [T, number][] = []
+    for (const [t, s] of home) for (let r = 2; r < s.length; r++) if (s[r] !== null && s[r] === s[r - 1] && s[r] === s[r - 2]) out.push([t, r])
+    return out
+  }
+  const flip = (t: T, r: number): void => {
+    for (const rr of mirrored ? [r, r < half ? r + half : r - half] : [r]) {
+      const i = rounds[rr].findIndex(([x, y]) => x === t || y === t)
+      if (i < 0) continue
+      const [h, a] = rounds[rr][i]
+      rounds[rr][i] = [a, h]
+      home.get(h)![rr] = false
+      home.get(a)![rr] = true
+    }
+  }
+  const tabu = new Map<string, number>()
+  const keyOf = (t: T, k: number): string => `${String(t)}@${mirrored && k >= half ? k - half : k}`
+  let current = streaks()
+  for (let iter = 0; iter < maxIter && current.length; iter++) {
+    const [t, r] = current[iter % current.length]
+    let best = -1
+    let bestCount = Infinity
+    for (const k of [r - 1, r, r - 2]) {
+      if ((tabu.get(keyOf(t, k)) ?? -99) > iter - 12) continue
+      flip(t, k)
+      const n = streaks().length
+      flip(t, k) // undo
+      if (n < bestCount) { bestCount = n; best = k }
+    }
+    if (best < 0) continue
+    flip(t, best)
+    tabu.set(keyOf(t, best), iter)
+    current = streaks()
+  }
+}
+
+/** Derby avoidance (2.6#69): rounds holding a derby swap out of the first `free` rounds (both halves identically). */
+export function deferDerbies(rounds: Pairing<string>[][], derbies: ReadonlySet<string>, free: number = DERBY_FREE_ROUNDS): void {
+  const half = rounds.length / 2
+  const hasDerby = (round: Pairing<string>[]) => round.some(([h, a]) => derbies.has(pairKey(h, a)))
+  for (let r = 0; r < Math.min(free, half); r++) {
+    if (!hasDerby(rounds[r])) continue
+    for (let k = free; k < half; k++) {
+      if (hasDerby(rounds[k])) continue
+      for (const off of [0, half]) [rounds[r + off], rounds[k + off]] = [rounds[k + off], rounds[r + off]]
+      break
+    }
+  }
+}
+
 /** Build a full double-round-robin league schedule on Saturdays. */
-export function buildLeagueFixtures(rng: Rng, compId: string, clubIds: readonly string[], lastWeek: number = LAST_MATCH_WEEK): Fixture[] {
+export function buildLeagueFixtures(rng: Rng, compId: string, clubIds: readonly string[], lastWeek: number = LAST_MATCH_WEEK, derbies?: ReadonlySet<string>): Fixture[] {
   const order = rng.shuffle([...clubIds])
   const rounds = doubleRoundRobin(order)
+  if (derbies?.size) deferDerbies(rounds, derbies)
+  limitVenueStreaks(rounds)
   const fixtures: Fixture[] = []
   rounds.forEach((pairs, round) => {
     const week = leagueRoundWeek(round, rounds.length, lastWeek)

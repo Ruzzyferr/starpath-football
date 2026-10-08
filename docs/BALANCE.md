@@ -518,3 +518,15 @@ Lig 3. kademede genç oyuncu çok az kazanıyor, büyük kulüpte düzenli oynay
 
 Aynı koşuda diğer hedefler: gol kralı (NPC) 1. kademe 27, ST 71–76 25, 77–82 30 (66–70 grubu n=4, 24); sezonda 1,3 sakatlık / 2,9 hafta (alt sınırda, 2.3#55 gün bazlı süreler); 3. sezon net servet medyanı 185K; ilk elit kulüp 23,0 yaş. S21 an tipleri (`dribble`, `header`) otomatik çözümde gol oranı 0,04 / 0,09 ile gol tablosunu taşımayacak şekilde ayarlandı.
 
+
+## Dünya enflasyonu, sakatlık ve golcü izlemesi (2.6 süpürmesi)
+
+**Dünya enflasyonu (yeni).** 100 sezonluk dünya koşusunda kulüp oyuncularının ortalama OVR'si 65,1'den 76'ya çıkıyordu (~+0,1 / sezon): akademi gençleri takım ortalamasının 20 puan altından değil, ilk 11 ortalamasına göre `-20` ile başlayıp tavan potansiyele gidiyor, geri besleme oluşuyordu. Düzeltme: gençlik OVR'si `seviye - 24` (eskiden `-20`), `sim/world/anchor.ts` ayrıca ortalamayı başlangıç ortalamasına bağlayan hafif bir yaylı ayar (±0,25 ölü bant, yaş ≥ 22, hem OVR hem potansiyel ±1). Sonuç: 50 sezonda 65,1 → 65,1; nüfus ±%5 bandında (`longRun.test.ts`, `LONGRUN=1` ile 100 sezon).
+
+**Sakatlık.** Gün bazlı sürelere geçişten sonra sezonda 1,3 / 2,9 hafta ölçülüyordu (hedef 3–6). Ayar: maçta ciddiyet ağırlıkları `[0.55,0.35,0.10]` → `[0.40,0.42,0.18]`, antrenmanda `[0.70,0.25,0.05]` → `[0.60,0.30,0.10]`, `AUTO_INJURY_CHANCE` 0,004 → 0,0054. Süre bantları (3–10 gün / 2–6 hafta / 2–9 ay) aynı kaldı (test sabit).
+
+| Ölçüt | Önce | Sonra (tohum 1000 / 2000) | Hedef |
+|---|---|---|---|
+| Sezonda sakatlık / sakat hafta | 1,3 / 2,9 | 1,6 / 4,1 ve 1,4 / 3,4 | 1–2 / 3–6 |
+
+**Forvet 66–70 OVR gol.** Önceki 24 gol n=4 örneklemdi. İki tohumla yeniden ölçüldü: ST 66–70 medyan 16 (n=4) ve 15 (n=6), hedef 12–22 içinde; **gol ağırlıklarına dokunulmadı.** NPC gol kralı 1. kademe 27–28, 3. kademe 20–21 (hedef 18–30 / 18–25).

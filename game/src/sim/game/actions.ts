@@ -27,6 +27,7 @@ import { ensureRelation } from '../life/relationships'
 import type { PostType } from '../life/social'
 import { acceptSponsor as acceptSponsorFn } from '../life/sponsors'
 import { clubStrength } from '../world/queries'
+import { managerProfile } from '../world/profiles'
 import { advanceDay, type AdvanceReport } from './calendar'
 import { describeEvent, resolveEvent, rollEvents, type ResolvedEffect } from './eventsAdapter'
 import { GFLAG, absDayOf, activityContext, clubContextOf, heroClub, log, logAll, readJson, withRng, writeJson } from './internal'
@@ -456,7 +457,7 @@ export function complainAboutBench(state: GameState, approach: ComplaintApproach
   if (!club) return fail(lt('Bir kulübün yok.', 'You have no club.'))
   if (state.life.flags.can_complain !== true) return fail(lt('Şu an şikâyet etmen için bir sebep yok.', 'There is nothing to complain about right now.'))
   return withRng(state, (rng) => {
-    const r = benchComplaint(rng, state.hero, state.life, approach, { squadAvgOvr: clubStrength(state.world, club.id).overall, season: state.calendar.season }, state.calendar)
+    const r = benchComplaint(rng, state.hero, state.life, approach, { squadAvgOvr: clubStrength(state.world, club.id).overall, season: state.calendar.season, youthTrust: managerProfile(club).youthTrust }, state.calendar)
     logAll(state, [], r.lines, 'career')
     return okr(r.lines, r.outcome)
   })

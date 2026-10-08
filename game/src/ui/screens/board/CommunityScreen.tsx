@@ -115,7 +115,7 @@ function Mods() {
             <li key={m.id} class="cm-item cm-mod">
               <div class="grow stack" style={{ gap: '2px', minWidth: 0 }}>
                 <b class="truncate">{m.name} <span class="t-xs t-lo">v{m.version}</span></b>
-                <span class="t-xs t-mid">{t('community.mods.contents', { c: m.pack.countries?.length ?? 0, n: m.pack.names?.length ?? 0 })}</span>
+                <span class="t-xs t-mid">{t('community.mods.contents', { c: m.pack.countries?.length ?? 0, n: m.pack.names?.length ?? 0, w: (m.pack.world?.leagues?.length ?? 0) + (m.pack.world?.clubs?.length ?? 0) })}</span>
                 <Chip tone={m.official ? 'pos' : 'neutral'} icon={m.official ? 'check' : 'flag'}>{t(m.official ? 'community.mods.official' : 'community.mods.unofficial')}</Chip>
               </div>
               <Switch label={t('community.mods.enable')} checked={m.enabled} onChange={(v) => setModEnabled(m.id, v)} />

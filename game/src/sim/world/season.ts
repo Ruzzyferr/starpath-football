@@ -30,10 +30,12 @@ import {
   advanceNationalCompetition, createNationalCompetitions, ensureNational, playNationalFixture, recordInternationalStats, resetInternationalStats,
 } from './national'
 import type { GoldenStarResult, SeasonAwardRecord } from './worldTypes'
+import { anchorAbility } from './anchor'
+import { effectsOf } from './profiles'
 import { slotCount } from './formations'
 import { FREE_AGENT_COUNT, generateFreeAgents } from './generate'
 import {
-  ageIn, budgetForReputation, createNpcPlayer, emptySeasonStats, playerValue, playerWage, rollPotential, roundMoney,
+  ageIn, budgetForReputation, createNpcPlayer, emptySeasonStats, nameStyleOf, randomName, playerValue, playerWage, rollPotential, roundMoney,
 } from './players'
 import { quickSimDetailed } from './quickSim'
 import type { QuickSimDetail } from './quickSim'
@@ -81,14 +83,15 @@ function applyMatchStats(world: World, rng: Rng, d: QuickSimDetail): void {
       p.stats.minutes += minutes
       p.stats.ratingSum += rating
       if (side.ga === 0 && (positionGroup(side.slots[i]) === 'GK' || positionGroup(side.slots[i]) === 'DEF')) p.stats.cleanSheets++
-      const yellowAdded = rng.chance(YELLOW_CHANCE)
+      const fx = effectsOf(p) // 2.6#36: traits shift cards, injuries and locker-room mood (same number of draws)
+      const yellowAdded = rng.chance(YELLOW_CHANCE * fx.cards)
       if (yellowAdded) p.stats.yellow++
-      const red = rng.chance(RED_CHANCE)
+      const red = rng.chance(RED_CHANCE * fx.cards)
       if (red) p.stats.red++
       addNpcBan(p, { red, yellowAdded }, `${id}:${p.stats.apps}:${p.stats.red}`)
       p.form = Math.round(p.form * 0.7 + rating * 10 * 0.3)
-      p.morale = clamp(p.morale + moraleDelta, 0, 100)
-      if (rng.chance(INJURY_CHANCE_PER_MATCH)) p.injuredWeeks = rng.weighted([1, 2, 3, 4, 6, 10], (w) => 12 / w)
+      p.morale = clamp(p.morale + moraleDelta + (side.gf > side.ga ? fx.winMorale : side.gf < side.ga ? fx.lossMorale : 0), 0, 100)
+      if (rng.chance(INJURY_CHANCE_PER_MATCH * fx.injury)) p.injuredWeeks = rng.weighted([1, 2, 3, 4, 6, 10], (w) => 12 / w)
     })
   }
   d.result.scorers.forEach((s, i) => {
@@ -566,6 +569,17 @@ function retirementChance(p: NpcPlayer, nextAge: number): number {
   return clamp(c, 0, 1)
 }
 
+/** Retired players at or above this ability enter the legends list (2.6#47). */
+export const LEGEND_MIN_OVR = 74
+export const LEGENDS_KEPT = 150
+
+function addLegend(world: World, p: NpcPlayer, season: number): void {
+  const list = (world.legends ??= [])
+  list.push({ id: p.id, name: `${p.firstName} ${p.lastName}`, nationality: p.nationality, position: p.position, ovr: p.ovr, retiredSeason: season, lastClubId: p.clubId })
+  list.sort((a, b) => b.ovr - a.ovr || b.retiredSeason - a.retiredSeason || (a.id < b.id ? -1 : 1))
+  if (list.length > LEGENDS_KEPT) list.length = LEGENDS_KEPT
+}
+
 /** Develop/decline every player by one year and retire veterans. */
 function ageAndRetire(world: World, rng: Rng, season: number): RetiredPlayer[] {
   const retired: RetiredPlayer[] = []
@@ -576,6 +590,7 @@ function ageAndRetire(world: World, rng: Rng, season: number): RetiredPlayer[] {
     if (rng.chance(retirementChance(p, nextAge))) {
       retired.push({ id: p.id, name: `${p.firstName} ${p.lastName}`, clubId: p.clubId, age: nextAge })
       retiredIds.add(p.id)
+      if (p.ovr >= LEGEND_MIN_OVR) addLegend(world, p, season)
       continue
     }
     const d = developmentDelta(rng, p, age)
@@ -633,15 +648,19 @@ function neediestPosition(world: World, club: Club): Position {
 }
 
 /** 1–3 academy graduates (16–18) per club, quality scaled by club level and reputation. */
+/** Academy level 1..5 from club standing (2.6#48): better academies bring more and stronger prospects. */
+export const academyLevel = (club: Club): number => clamp(1 + Math.floor(club.reputation / 20), 1, 5)
+
 function youthIntake(world: World, rng: Rng, nextSeason: number): string[] {
   const ids: string[] = []
   let n = 0
   for (const club of Object.values(world.clubs)) {
     const level = teamRating(world, club).overall
-    const count = rng.int(1, 3)
+    const level0 = academyLevel(club)
+    const count = rng.int(1, 3) + (level0 >= 4 ? 1 : 0)
     for (let i = 0; i < count; i++) {
       const age = rng.int(16, 18)
-      const ovr = clamp(Math.round(level - 20 + (age - 16) * 2 + rng.normal(0, 4)), 35, 72)
+      const ovr = clamp(Math.round(level - 24 + (age - 16) * 2 + rng.normal(0, 4)), 35, 72)
       const p = createNpcPlayer(rng, {
         id: `y${nextSeason}_${n++}`,
         nationality: rng.chance(0.9) ? club.countryId : rng.pick(Object.keys(world.countries)),
@@ -649,6 +668,12 @@ function youthIntake(world: World, rng: Rng, nextSeason: number): string[] {
         potential: rollPotential(rng, ovr, age, (club.reputation - 50) / 10),
         clubId: club.id, clubReputation: club.reputation, contractYears: 3, gender: worldGender(world),
       })
+      const taken = new Set(club.squad.map((id) => { const q = world.players[id]; return q ? `${q.firstName} ${q.lastName}` : '' }))
+      for (let tries = 0; taken.has(`${p.firstName} ${p.lastName}`) && tries < 12; tries++) {
+        const nm = randomName(rng, nameStyleOf(p.nationality), worldGender(world))
+        p.firstName = nm.firstName
+        p.lastName = nm.lastName
+      }
       world.players[p.id] = p
       club.squad.push(p.id)
       ids.push(p.id)
@@ -761,6 +786,7 @@ export function endOfSeason(world: World, rng: Rng, season: number, opts: EndOfS
   resetClubFinances(world, rng)
   const transfers = aiTransferWindow(world, rng, next, { maxPerClub: 3, intensity: 1 })
   const balanced = balanceSquads(world, rng, next)
+  anchorAbility(world, rng, next)
   maintainFreeAgents(world, rng, next)
   recomputeWageBudgets(world)
   for (const p of Object.values(world.players)) p.stats = emptySeasonStats()

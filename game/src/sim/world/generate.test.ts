@@ -1,3 +1,4 @@
+import { boundarySpots } from '../../data/world/rules'
 import { Rng, hashString } from '../../core/rng'
 import type { World } from '../../core/types'
 import { POSITIONS } from '../../core/types'
@@ -37,8 +38,8 @@ describe('generateWorld', () => {
       expect(l.clubIds.length).toBeLessThanOrEqual(20)
       for (const id of l.clubIds) expect(world.clubs[id].leagueId).toBe(l.id)
       const below = Object.values(world.leagues).find((x) => x.countryId === l.countryId && x.tier === l.tier + 1)
-      expect(l.relegate).toBe(below ? 3 : 0)
-      expect(l.promote).toBe(l.tier > 1 ? 3 : 0)
+      expect(l.relegate).toBe(below ? boundarySpots(l.countryId, l.tier) : 0)
+      expect(l.promote).toBe(l.tier > 1 ? boundarySpots(l.countryId, l.tier - 1) : 0)
     }
   })
 

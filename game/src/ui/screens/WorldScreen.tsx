@@ -1,8 +1,9 @@
 import { useState } from 'preact/hooks'
+import { tieBreakHint, tieRuleFor } from '../../sim/world/table'
 import type { Club } from '../../core/types'
 import { lt, t } from '../../i18n'
 import {
-  Avatar, Button, Card, Chip, Crest, EmptyState, Flag, Kit, LeagueTable, Modal, Page, SectionTitle, StatBar, Tabs, TabPanel,
+  Avatar, Button, Card, CardHeader, Chip, Crest, EmptyState, Flag, Kit, LeagueTable, Modal, Page, SectionTitle, StatBar, Tabs, TabPanel,
 } from '../components'
 import { attrColor, formatNumber } from '../format'
 import { Icon } from '../icons'
@@ -93,6 +94,30 @@ function ClubSheet({ club, onClose }: { club: Club | null; onClose: () => void }
 /** 1..5 interest scale (same as sim/career/transfers `interestStars`; bids from 3). */
 const interestStars = (n: number): number => Math.max(1, Math.min(5, Math.ceil(n / 20)))
 
+/** Retired stars of the world (2.6#47); those who took a dugout job say where. */
+function LegendsCard() {
+  const w = gameState.value?.world
+  const list = (w?.legends ?? []).slice(0, 12)
+  return (
+    <Card pad="md" data-testid="legends">
+      <CardHeader title={t('club.legends.title')} icon="trophy" />
+      {!w || !list.length ? (
+        <p class="t-sm t-lo">{t('club.legends.empty')}</p>
+      ) : (
+        <ul class="stack" style={{ ['--gap' as string]: '6px', listStyle: 'none', padding: 0, margin: 0 }}>
+          {list.map((l) => (
+            <li key={l.id}>
+              <b>{l.name}</b>
+              <div class="t-xs t-lo">{t('club.legends.row', { pos: t(`data.pos.${l.position}`), nat: w.countries[l.nationality] ? lt(w.countries[l.nationality].name) : l.nationality, ovr: l.ovr, season: l.retiredSeason })}</div>
+              {l.managerOf && w.clubs[l.managerOf] && <div class="t-xs t-mid">{t('club.legends.manager', { club: w.clubs[l.managerOf].name })}</div>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </Card>
+  )
+}
+
 function interestLevel(n: number): 'low' | 'mid' | 'high' {
   return n >= 70 ? 'high' : n >= 40 ? 'mid' : 'low'
 }
@@ -134,6 +159,7 @@ export function WorldScreen() {
         ) : (
           <EmptyState icon="list" title={t('world.noTable')} />
         )}
+        {table && league && <p class="t-xs t-lo">{lt(tieBreakHint(tieRuleFor(league.countryId)))}</p>}
       </div>
     )
   } else if (tab === 'scorers') {
@@ -210,6 +236,7 @@ export function WorldScreen() {
           <Button variant="secondary" size="sm" icon="shuffle" onClick={() => navigate('cupDraw')}>{t('intl.cups.viewDraw')}</Button>
         </div>
         <CupsPanel />
+        <LegendsCard />
       </div>
     )
   } else {

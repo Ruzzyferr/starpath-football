@@ -13,17 +13,20 @@ import { worldGender } from '../../core/gender'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID, COUNTRY_DEFS, toCountry } from '../../data/world/countries'
+import { boundarySpots } from '../../data/world/rules'
 import type { CountryDef } from '../../data/world/countries'
 import {
-  CITIES, CLUB_PATTERNS, NAME_POOLS, STADIUM_PATTERNS, formatPattern, isRealClubName, normalizeClubName,
+  CITIES, CITY_CAPACITY_CAP, CLUB_PATTERNS, NAME_POOLS, cityTier, STADIUM_PATTERNS, formatPattern, isRealClubName, normalizeClubName,
 } from '../../data/world/names'
+import { meanAbility } from './anchor'
+import { DATA_VERSION } from '../../data/world/version'
 import { generateKits } from './colors'
 import { createSeasonCompetitions } from './competitions'
 import { createNationalCompetitions, ensureNational } from './national'
 import { ensureCoefficients } from './coefficients'
 import { FORMATION_SLOTS, slotCount } from './formations'
 import {
-  budgetForReputation, createNpcPlayer, pickForeignNationality, randomName, randomPosition, rollPotential,
+  budgetForReputation, createNpcPlayer, nameStyleOf, pickForeignNationality, randomName, randomPosition, rollPotential,
 } from './players'
 
 export interface GenerateWorldOptions {
@@ -89,6 +92,8 @@ interface CountryContext {
   usedShort: Set<string>
   usedCrests: Set<string>
   clubCounter: number
+  /** Women's pyramid (2.6#116): its own streams, reputations, budgets and grounds. */
+  female: boolean
 }
 
 // ───────────────────────── Club identity ─────────────────────────
@@ -161,8 +166,9 @@ function crestFor(rng: Rng, cc: CountryContext, name: string, primary: string, s
 function stadiumFor(rng: Rng, def: CountryDef, city: string, reputation: number): { name: string; capacity: number } {
   const surname = rng.pick(NAME_POOLS[def.nameStyle].last)
   const name = formatPattern(rng.pick(STADIUM_PATTERNS[def.nameStyle]), { city, surname })
-  const capacity = Math.round((3000 + Math.pow(reputation / 100, 2.2) * 80000 * rng.range(0.8, 1.15)) / 500) * 500
-  return { name, capacity }
+  const raw = Math.round((3000 + Math.pow(reputation / 100, 2.2) * 80000 * rng.range(0.8, 1.15)) / 500) * 500
+  // 2.6#7: a city's population tier caps its stadium.
+  return { name, capacity: Math.min(raw, CITY_CAPACITY_CAP[cityTier(def.id, city)]) }
 }
 
 function pickStyle(rng: Rng, quality: number): TacticStyle {
@@ -202,6 +208,7 @@ function generateSquad(rng: Rng, ctx: GenContext, club: Club, level: number, tie
   const size = rng.int(MIN_SQUAD, MAX_SQUAD)
   const foreignChance = tier === 1 ? clamp((def.reputation - 55) / 150, 0.03, 0.3) : 0.05
   const seen = new Map<Position, number>()
+  const usedNames = new Set<string>()
   for (const position of squadPositions(rng, club.formation, size)) {
     const rank = seen.get(position) ?? 0
     seen.set(position, rank + 1)
@@ -215,12 +222,32 @@ function generateSquad(rng: Rng, ctx: GenContext, club: Club, level: number, tie
       potential: rollPotential(rng, ovr, age, talent),
       clubId: club.id, clubReputation: club.reputation, gender: worldGender(ctx.world),
     })
+    // 2.6#5: no two players of a club share a full name (re-roll only on a clash, so the stream is untouched otherwise).
+    for (let tries = 0; usedNames.has(`${p.firstName} ${p.lastName}`) && tries < 12; tries++) {
+      const nm = randomName(rng, nameStyleOf(p.nationality), worldGender(ctx.world))
+      p.firstName = nm.firstName
+      p.lastName = nm.lastName
+    }
+    usedNames.add(`${p.firstName} ${p.lastName}`)
     ctx.world.players[p.id] = p
     club.squad.push(p.id)
   }
 }
 
 // ───────────────────────── Leagues & clubs ─────────────────────────
+
+/** Founding year from the club id (no RNG): older, bigger clubs. 2.6#9. */
+export function foundedYear(clubId: string, reputation: number): number {
+  let h = 2166136261
+  for (let i = 0; i < clubId.length; i++) h = Math.imul(h ^ clubId.charCodeAt(i), 16777619)
+  return 1862 + ((h >>> 0) % 60) + Math.round((100 - reputation) * 0.4)
+}
+
+/** Women's clubs sit a little lower on the shared 1-100 scale, spend less and play in smaller grounds. */
+export const WOMEN_REPUTATION_SCALE = 0.88
+export const WOMEN_BUDGET_SCALE = 0.5
+export const WOMEN_GROUND_SCALE = 0.4
+const womenGround = (g: { name: string; capacity: number }) => ({ name: g.name, capacity: Math.max(1500, Math.round(g.capacity * WOMEN_GROUND_SCALE / 500) * 500) })
 
 function createClub(rng: Rng, cc: CountryContext, league: League, quality: number): Club {
   const def = cc.def
@@ -230,7 +257,8 @@ function createClub(rng: Rng, cc: CountryContext, league: League, quality: numbe
   cc.usedNames.add(normalizeClubName(name))
   const shortName = chooseShortName(cc, name, city)
   cc.usedShort.add(shortName)
-  const reputation = clamp(Math.round(def.reputation * 0.55 + quality * 35 - (league.tier - 1) * 14 + 5 + rng.normal(0, 3)), 5, 99)
+  let reputation = clamp(Math.round(def.reputation * 0.55 + quality * 35 - (league.tier - 1) * 14 + 5 + rng.normal(0, 3)), 5, 99)
+  if (cc.female) reputation = clamp(Math.round(reputation * WOMEN_REPUTATION_SCALE), 5, 99)
   const kits = generateKits(rng)
   const id = `${def.id}-${String(++cc.clubCounter).padStart(2, '0')}`
   const manager = randomName(rng, def.nameStyle)
@@ -239,9 +267,10 @@ function createClub(rng: Rng, cc: CountryContext, league: League, quality: numbe
     colors: kits.home, awayColors: kits.away,
     crest: crestFor(rng, cc, name, kits.home.primary, kits.home.secondary),
     reputation,
-    budget: Math.round(budgetForReputation(reputation) * rng.range(0.8, 1.2) / 1000) * 1000,
+    founded: foundedYear(id, reputation),
+    budget: Math.round(budgetForReputation(reputation) * rng.range(0.8, 1.2) * (cc.female ? WOMEN_BUDGET_SCALE : 1) / 1000) * 1000,
     wageBudget: 0,
-    stadium: stadiumFor(rng, def, city, reputation),
+    stadium: cc.female ? womenGround(stadiumFor(rng, def, city, reputation)) : stadiumFor(rng, def, city, reputation),
     formation: rng.weighted(FORMATION_WEIGHTS, (f) => f.w).v,
     style: pickStyle(rng, quality),
     managerName: `${manager.firstName} ${manager.lastName}`,
@@ -254,7 +283,7 @@ function generateLeague(rng: Rng, ctx: GenContext, cc: CountryContext, tier: num
   const size = leagueSize(def.reputation, tier)
   const league: League = {
     id: `${def.id}${tier}`, countryId: def.id, name: def.leagueNames[tier - 1] ?? `${def.name.en} Division ${tier}`,
-    tier, clubIds: [], promote: tier > 1 ? RELEGATION_SPOTS : 0, relegate: tier < tiers ? RELEGATION_SPOTS : 0,
+    tier, clubIds: [], promote: tier > 1 ? boundarySpots(def.id, tier - 1) : 0, relegate: tier < tiers ? boundarySpots(def.id, tier) : 0,
   }
   const { lo, hi } = tierLevelRange(def.reputation, tier)
   for (let i = 0; i < size; i++) {
@@ -301,8 +330,9 @@ export function generateWorld(rng: Rng, opts: GenerateWorldOptions): World {
 
   for (const def of defs) {
     world.countries[def.id] = toCountry(def)
-    const crng = rng.fork(def.id)
-    const cc: CountryContext = { def, cityUse: new Map(), usedNames: new Set(), usedShort: new Set(), usedCrests: new Set(), clubCounter: 0 }
+    const female = opts.gender === 'female'
+    const crng = rng.fork(female ? `${def.id}:w` : def.id) // a separate stream, never the men's world with flipped flags
+    const cc: CountryContext = { def, cityUse: new Map(), usedNames: new Set(), usedShort: new Set(), usedCrests: new Set(), clubCounter: 0, female }
     const tiers = def.id === opts.heroCountryId ? HERO_COUNTRY_TIERS : DEFAULT_TIERS
     for (let tier = 1; tier <= tiers; tier++) {
       const league = generateLeague(crng, ctx, cc, tier, tiers)
@@ -311,6 +341,8 @@ export function generateWorld(rng: Rng, opts: GenerateWorldOptions): World {
   }
 
   generateFreeAgents(rng.fork('free-agents'), world, opts.season, FREE_AGENT_COUNT, 'fa')
+  world.abilityAnchor = meanAbility(world)
+  world.dataVersion = DATA_VERSION
   ensureCoefficients(world)
   createSeasonCompetitions(world, rng.fork('competitions'), opts.season)
   ensureNational(world)
