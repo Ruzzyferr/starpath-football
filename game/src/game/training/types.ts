@@ -193,6 +193,10 @@ export interface Drill {
   readonly kind: DrillKind
   readonly duration: number
   readonly finished: boolean
+  /** True while the hero may act. */
+  readonly live: boolean
+  /** The hero never moves in this drill: the whole screen takes swipes (no joystick zone). */
+  readonly heroStatic: boolean
   /** Advance by real seconds with this frame's input. */
   update(realDt: number, input: DrillInput): void
   drainEvents(): DrillEvent[]

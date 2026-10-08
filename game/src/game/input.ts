@@ -438,6 +438,15 @@ export class InputController {
     return m
   }
 
+  /** The browser's coalesced samples of a move (oldest first, the event itself last), if any. */
+  private coalesced(e: PointerEvent): PointerEvent[] {
+    try {
+      return typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : []
+    } catch {
+      return []
+    }
+  }
+
   /** Appends a move (and the browser's coalesced in-between samples) to a path. */
   private sample(pts: GesturePoint[], e: PointerEvent, p: { x: number; y: number }, t: number): void {
     const s = this.unit()
@@ -445,13 +454,7 @@ export class InputController {
       const last = pts[pts.length - 1]
       if (!last || (tq >= last.t && Math.hypot(q.x / s - last.sx, q.y / s - last.sy) > 0.002)) pts.push(this.point(q, tq))
     }
-    let co: PointerEvent[] = []
-    try {
-      co = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : []
-    } catch {
-      co = []
-    }
-    for (const c of co.length > 1 ? co.slice(0, -1) : []) push(this.toGame(c), this.stamp(c))
+    for (const c of this.coalesced(e).slice(0, -1)) push(this.toGame(c), this.stamp(c))
     push(p, t)
   }
 

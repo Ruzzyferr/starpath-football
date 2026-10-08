@@ -145,8 +145,12 @@ describe('swipe power mapping', () => {
 
 class FakeCanvas extends EventTarget {
   style: Record<string, string> = {}
-  constructor(readonly w: number, readonly h: number) {
+  readonly w: number
+  readonly h: number
+  constructor(w: number, h: number) {
     super()
+    this.w = w
+    this.h = h
   }
   getBoundingClientRect() {
     return { left: 0, top: 0, width: this.w, height: this.h }
