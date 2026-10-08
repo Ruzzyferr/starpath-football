@@ -21,6 +21,12 @@ import { businessesValue, sellBusiness, weeklyBusinessTick } from './business'
  * statement readable for players.
  */
 export const INCOME_TAX = 0.35
+/** Country income-tax rates (fiction-calibrated 27-40%; the table mean stays near {@link INCOME_TAX}). */
+export const COUNTRY_TAX: Readonly<Record<string, number>> = {
+  TR: 0.27, EN: 0.4, ES: 0.38, DE: 0.38, IT: 0.38, FR: 0.38, PT: 0.28, NL: 0.35, BR: 0.27, AR: 0.3, US: 0.36, JP: 0.4,
+}
+/** Income-tax rate for the club's country (flat default when unknown). */
+export const incomeTaxRate = (countryId?: string | null): number => (countryId ? COUNTRY_TAX[countryId] : undefined) ?? INCOME_TAX
 /** Tax on passive rent/business profit (lower: deductions, corporate wrappers). */
 export const PASSIVE_TAX = 0.2
 /** Annual savings interest: low but safe — beats a mattress, loses to the index fund. */
@@ -362,6 +368,8 @@ export function netWorth(life: Life, cal: Pick<Calendar, 'season' | 'week'>): nu
 
 export interface EconomyContext {
   calendar: Calendar
+  /** Income-tax rate of the hero's club country (default {@link INCOME_TAX}). */
+  taxRate?: number
 }
 
 /** Itemized weekly statement (positive = income, negative = expense). */
@@ -417,8 +425,8 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   }
   b.sponsors = life.sponsors.reduce((s, d) => s + Math.max(0, finite(d.weekly)), 0)
   if (hero.contract?.imageRights && !hero.retired) b.sponsors = Math.round(b.sponsors * IMAGE_RIGHTS_BONUS)
-  b.tax = -(b.wage + b.sponsors) * INCOME_TAX
-  b.agentFee = life.agent ? -b.wage * clamp(finite(life.agent.commission), 0, 0.3) : 0
+  b.tax = -(b.wage + b.sponsors) * (ctx.taxRate ?? INCOME_TAX)
+  b.agentFee = life.agent ? -(b.wage + b.sponsors) * clamp(finite(life.agent.commission), 0, 0.3) : 0
 
   for (const d of ownedAssetDefs(life)) {
     if (d.effect?.key === 'rent_income') b.rent += d.effect.value
@@ -447,6 +455,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
 
   // 2. Expenses.
   b.trainer = life.trainer ? -Math.max(0, finite(life.trainer.weeklyFee)) : 0
+  lines.push(...tickTrainerContract(life))
   b.upkeep = -assetUpkeep(life)
 
   const flow = b.wage + b.sponsors + b.tax + b.agentFee + b.rent + b.business + b.investmentYield + b.trainer + b.upkeep
@@ -515,6 +524,26 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
     lines.unshift(fill(lt('Haftalık bakiye: {n}', 'Weekly balance: {n}'), { n: fmtMoney(net) }))
   }
   return { lines, net, breakdown: b }
+}
+
+/** Personal-trainer contract length in weeks (2.5#11). */
+export const TRAINER_CONTRACT_WEEKS = 44
+/** Weeks before the end when the trainer warns that the deal is expiring. */
+export const TRAINER_WARN_WEEKS = 4
+
+/** Count the trainer contract down one week; warns near the end and releases the trainer at 0. */
+export function tickTrainerContract(life: Life): Lines {
+  const t = life.trainer
+  if (!t || t.weeksLeft === undefined) return []
+  t.weeksLeft -= 1
+  if (t.weeksLeft <= 0) {
+    life.trainer = null
+    return [fill(lt('{n} ile sözleşmen bitti; yeni antrenör tutabilirsin.', "Your contract with {n} has ended; you can hire a new trainer."), { n: t.name })]
+  }
+  if (t.weeksLeft === TRAINER_WARN_WEEKS) {
+    return [fill(lt('{n} ile sözleşmen {w} hafta sonra bitiyor.', 'Your contract with {n} ends in {w} weeks.'), { n: t.name, w: TRAINER_WARN_WEEKS })]
+  }
+  return []
 }
 
 /** life.flags key: season*100+week of the last low-cash warning (so it does not repeat every week). */

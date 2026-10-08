@@ -301,6 +301,7 @@ const POST_TEXT: Record<PostKind, [string, string]> = {
   charity: ['Bugün çocuklarla harika bir gündü. Teşekkürler!', 'Amazing day with the kids today. Thank you!'],
   provocative: ['Bazıları konuşur, biz gol atarız. 🤫', 'Some talk, we score. 🤫'],
   fans: ['Bu armayı taşımak bir onur. Cumartesi görüşürüz! 🔥', 'Wearing this badge is an honour. See you Saturday! 🔥'],
+  rival: ['Cumartesi sahada konuşuruz. 😏', "We'll talk on the pitch on Saturday. 😏"],
 }
 const POST_DELTAS: Record<PostKind, MDelta[]> = {
   training: [{ key: 'followers', value: 4000 }, { key: 'managerTrust', value: 1 }],
@@ -308,6 +309,7 @@ const POST_DELTAS: Record<PostKind, MDelta[]> = {
   family: [{ key: 'followers', value: 6000 }, { key: 'happiness', value: 3 }],
   charity: [{ key: 'followers', value: 5000 }, { key: 'reputation', value: 2 }],
   provocative: [{ key: 'followers', value: 15000 }, { key: 'discipline', value: -4 }, { key: 'relation', value: -6, rel: 'press', label: L('Basın', 'Press') }],
+  rival: [{ key: 'followers', value: 10000 }, { key: 'discipline', value: -2 }, { key: 'relation', value: -3, rel: 'press', label: L('Basın', 'Press') }],
   fans: [{ key: 'followers', value: 7000 }, { key: 'relation', value: 5, rel: 'fans', label: L('Taraftar', 'Fans') }],
 }
 const INTERACT: Record<InteractionKind, { rel: number; money: number; energy: number; extra?: MDelta[]; memory: [string, string] }> = {

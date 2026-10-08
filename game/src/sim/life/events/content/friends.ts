@@ -1,6 +1,6 @@
 /** Friends: the people who knew you before the badge on your chest. */
 import {
-  canAfford, disc, energy, flags, follow, folPct, fx, happy, hasFlag, hasRel, injury, money, nice, num, rel, relVal, rep, stress, t, chain, trust, wageX, boss, fatigue, news, press,
+  canAfford, disc, energy, fans, flags, follow, folPct, fx, happy, hasFlag, hasRel, injury, money, nice, num, rel, relVal, rep, stress, t, chain, trust, wageX, boss, fatigue, news, press,
 } from '../dsl'
 import type { EventDef } from '../types'
 
@@ -109,7 +109,59 @@ export const friendsEvents: EventDef[] = [
       {
         label: t('"Bugün olmaz, maç var."', '"Not today, I\'ve got a match."'),
         effects: () =>
-          fx(t('Kapıyı kapattın. Telefonuna gelen mesaj kısa: "Anladım."', 'You closed the door. The text that followed was short: "Got it."'), rel('bestFriend', -8), trust(1), flags({ friend_debt_open: null })),
+          fx(t('Kapıyı kapattın. Telefonuna gelen mesaj kısa: "Anladım."', 'You closed the door. The text that followed was short: "Got it."'), rel('bestFriend', -8), trust(1), flags({ friend_debt_open: null }), follow(chain('friends.debt_press', 10))),
+      },
+    ],
+  },
+  {
+    id: 'friends.debt_press',
+    category: 'friends',
+    weight: 1,
+    cooldownWeeks: 0,
+    followUpOnly: true,
+    conditions: () => true,
+    title: t('"Unutulan Çocukluk Arkadaşı"', '"The Forgotten Childhood Friend"'),
+    text: t(
+      'Yerel bir gazete, mahalleden bir fotoğrafla manşet attı: "Yıldız futbolcu, kapısını çalan çocukluk arkadaşını geri çevirdi." On hafta önce kapattığın kapı şimdi herkesin gündeminde.',
+      'A local paper runs a neighbourhood photo under the headline: "Star footballer turns away the childhood friend at his door." The door you closed ten weeks ago is now everyone\'s talking point.',
+    ),
+    icon: '📰',
+    choices: [
+      {
+        label: t('Açıkça özür dile, onunla görüş', 'Apologise publicly and meet them'),
+        effects: () =>
+          fx(t('Mahalle kahvesinde bir çay içtiniz, fotoğrafı bu sefer gülerek çekildi.', 'You had tea at the neighbourhood café; this time the photo shows both of you laughing.'), rel('bestFriend', 14), press(3), fans(2), stress(-2), follow(chain('friends.debt_reunion', 4))),
+      },
+      {
+        label: t('Yorum yapma', 'Say nothing'),
+        risk: 'medium',
+        effects: () => fx(t('Haber üç gün konuşuldu, sonra unutuldu. Ama arkadaşın unutmadı.', 'The story ran for three days, then faded. Your friend did not forget.'), press(-3), fans(-2), rel('bestFriend', -6), follow(chain('friends.debt_reunion', 8))),
+      },
+    ],
+  },
+  {
+    id: 'friends.debt_reunion',
+    category: 'friends',
+    weight: 1,
+    cooldownWeeks: 0,
+    followUpOnly: true,
+    conditions: () => true,
+    title: t('Eski Mahalle, Yeni Başlangıç', 'Old Neighbourhood, New Start'),
+    text: t(
+      'Haberden sonra {friendName} bir mesaj yolladı: mahalle takımının forma sponsoru arıyormuş. Yılların hatırı için bir şans daha?',
+      'After the story, {friendName} sends a message: the neighbourhood team needs a shirt sponsor. One more chance for old times\' sake?',
+    ),
+    icon: '🏘️',
+    choices: [
+      {
+        label: t('Formaları sen sponsor ol', 'Sponsor the shirts yourself'),
+        requires: (ctx) => canAfford(ctx.state, 2000),
+        lockedHint: t('Şimdilik bütçen yetmiyor.', 'You cannot afford it right now.'),
+        effects: () => fx(t('Formalarda adın var. Mahalle seni yeniden "bizden biri" sayıyor.', 'Your name is on the shirts. The neighbourhood counts you as one of their own again.'), money(-2000), rel('bestFriend', 15), fans(4), happy(5), flags({ friend_debt_open: null })),
+      },
+      {
+        label: t('Sadece maça git', 'Just go to the match'),
+        effects: () => fx(t('Tribünde yan yana oturdunuz. Konuşmadan çok şey söylediniz.', 'You sat side by side in the stands, saying a lot without talking.'), rel('bestFriend', 7), happy(3), flags({ friend_debt_open: null })),
       },
     ],
   },

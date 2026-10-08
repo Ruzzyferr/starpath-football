@@ -55,7 +55,7 @@ const S = (): GameState | null => gameState.value
 const HIDDEN_ACTIVITIES = new Set(['hire_trainer', 'fire_trainer'])
 
 const ACT_ICON: Record<string, string> = {
-  rest: 'bed', sleep_in: 'bed', train_shooting: 'target', train_passing: 'link', train_dribbling: 'run', train_physical: 'barbell',
+  rest: 'bed', sleep_in: 'bed', energy_drink: 'energy', train_shooting: 'target', train_passing: 'link', train_dribbling: 'run', train_physical: 'barbell',
   train_tactical: 'tactics', train_setPiece: 'flag', train_goalkeeping: 'shield-check', train_recovery: 'heartbeat', gym: 'barbell',
   train_crossing: 'crosshair', train_heading: 'goal', train_tackling: 'shield',
   video: 'eye', physio: 'first-aid', family_visit: 'house', friend_hangout: 'users', team_dinner: 'fork-knife', date_night: 'heart',

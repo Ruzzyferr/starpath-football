@@ -412,7 +412,7 @@ export const romanceEvents: EventDef[] = [
             t('Hoca kaşlarını çattı: "Fikstürü bilmiyor musun?" Ama {crush} sana hiç bu kadar güvenmemişti.', 'The coach frowned: "Have you seen the fixture list?" But {crush} has never trusted you more.'),
             rel('partner', 18),
             happy(14),
-            boss(-6),
+            boss(-4),
             trust(-3),
             flags({ has_kids: true }),
           ),

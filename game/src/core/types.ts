@@ -443,7 +443,7 @@ export interface Investment {
 export interface SponsorDeal {
   id: string
   brand: string
-  category: 'boots' | 'watch' | 'drink' | 'fashion' | 'gaming' | 'car'
+  category: 'boots' | 'watch' | 'drink' | 'fashion' | 'gaming' | 'car' | 'cosmetics' | 'food' | 'jewelry' | 'finance'
   weekly: number
   untilSeason: number
   minReputation: number
@@ -488,7 +488,7 @@ export interface Life {
   agent: Agent | null
   sponsors: SponsorDeal[]
   /** Personal trainer; `quality` 1..3 (missing on old saves → treated as 2). */
-  trainer: { name: string; group: AttributeGroup; weeklyFee: number; quality?: 1 | 2 | 3 } | null
+  trainer: { name: string; group: AttributeGroup; weeklyFee: number; quality?: 1 | 2 | 3; /** Contract weeks remaining (2.5#11); absent on old saves = open-ended. */ weeksLeft?: number } | null
   casino: { addiction: number; won: number; lost: number; visitsThisWeek: number }
   /** Free-form flags for event chains: 'has_tattoo', 'scandal_bet', counters… */
   flags: Record<string, number | string | boolean>

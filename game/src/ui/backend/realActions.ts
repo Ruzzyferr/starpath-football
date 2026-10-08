@@ -269,7 +269,7 @@ const INTERACT_FLAG = 'g:int'
 // ───────────────────────── Social ─────────────────────────
 
 const POST_TYPE: Record<PostKind, PostType> = {
-  training: 'training', luxury: 'luxury', family: 'family', charity: 'charity', provocative: 'provocation', fans: 'training',
+  training: 'training', luxury: 'luxury', family: 'family', charity: 'charity', provocative: 'provocation', fans: 'thanks', rival: 'rival',
 }
 const POST_TEXT: Record<PostKind, LText> = {
   training: L('Ekstra mesai. Hedef: daha iyisi. ⚽', 'Extra hours. Target: better. ⚽'),
@@ -278,6 +278,7 @@ const POST_TEXT: Record<PostKind, LText> = {
   charity: L('Bugün çocuklarla harika bir gündü. Teşekkürler!', 'Amazing day with the kids today. Thank you!'),
   provocative: L('Bazıları konuşur, biz gol atarız. 🤫', 'Some talk, we score. 🤫'),
   fans: L('Bu armayı taşımak bir onur. Maçta görüşürüz! 🔥', 'Wearing this badge is an honour. See you at the game! 🔥'),
+  rival: L('Cumartesi sahada konuşuruz. 😏', "We'll talk on the pitch on Saturday. 😏"),
 }
 
 // ───────────────────────── Negotiation ─────────────────────────

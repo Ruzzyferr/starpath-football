@@ -64,6 +64,8 @@ export interface MatchEarningsInput {
   sponsorsWeekly: number
   /** Agent commission (0..0.3) or 0 without an agent. */
   agentCommission: number
+  /** Income-tax rate of the club's country (default flat rate). */
+  taxRate?: number
   /** Matches played this week (the weekly wage/sponsor money is shared between them). */
   matchesThisWeek: number
   retired?: boolean
@@ -83,8 +85,8 @@ export function matchEarnings(x: MatchEarningsInput): MatchEarnings {
   if (b.cleanSheet > 0) lines.push({ key: 'cleanSheet', amount: b.cleanSheet, when: 'now' })
   if (sponsor > 0) lines.push({ key: 'sponsor', amount: sponsor, when: 'week' })
   if (image > 0) lines.push({ key: 'imageRights', amount: image, when: 'week' })
-  const tax = -Math.round((wage + sponsor + image) * INCOME_TAX)
-  const agent = -Math.round(wage * Math.min(0.3, Math.max(0, x.agentCommission)))
+  const tax = -Math.round((wage + sponsor + image) * (x.taxRate ?? INCOME_TAX))
+  const agent = -Math.round((wage + sponsor) * Math.min(0.3, Math.max(0, x.agentCommission)))
   if (tax < 0) lines.push({ key: 'tax', amount: tax, when: 'week' })
   if (agent < 0) lines.push({ key: 'agent', amount: agent, when: 'week' })
   const paidNow = b.total

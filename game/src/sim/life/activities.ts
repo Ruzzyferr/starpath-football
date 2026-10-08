@@ -19,6 +19,7 @@ import { changeRelation, teammateAverage } from './relationships'
 import { casinoExclusion } from './casino'
 import { makePost, type PostType } from './social'
 import { sponsorShootPay } from './sponsors'
+import { TRAINER_CONTRACT_WEEKS } from './economy'
 import { addHappiness, addHealth, addStress, energyCap, isBurnedOut, wellbeingXpMultiplier } from './wellbeing'
 import { contentFlags } from '../../core/contentFlags'
 
@@ -276,7 +277,7 @@ export function performActivity(
       const q = opts.trainerQuality ?? 1
       const group = opts.trainerGroup ?? 'technical'
       const name = trainerName(group, q)
-      life.trainer = { name, group, weeklyFee: TRAINER_FEES[q], quality: q }
+      life.trainer = { name, group, weeklyFee: TRAINER_FEES[q], quality: q, weeksLeft: TRAINER_CONTRACT_WEEKS }
       lines.push(fill(lt('{n} artık özel antrenörün ({f}/hafta).', '{n} is now your personal trainer ({f}/week).'), { n: name, f: fmtMoney(TRAINER_FEES[q]) }))
       break
     }

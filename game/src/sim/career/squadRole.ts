@@ -176,15 +176,27 @@ export const ROLE_START_BASE: Readonly<Record<SquadRole, number>> = {
 }
 
 /**
+ * Selection weights (2.4#46): form (±0.12) and recent ratings (±0.12) carry 75%
+ * of the swing; the manager relationship / trust at most 25% (±0.08).
+ */
+export const formTerm = (hero: Hero): number => ((hero.form - 50) / 50) * 0.12
+export const trustTerm = (hero: Hero): number => ((hero.managerTrust - 50) / 50) * 0.08
+/** Average of the last 3 match ratings vs 6.5 (0 without a rating). */
+export function ratingTerm(life: Life): number {
+  const last = recentRatings(life).slice(-3)
+  if (!last.length) return 0
+  return clamp((last.reduce((a, b) => a + b, 0) / last.length - 6.5) / 1.5, -1, 1) * 0.12
+}
+
+/**
  * Probability the hero starts the next match.
- * Adjustments: form ±0.1, trust ±0.1, fatigue > 60 up to −0.3 (rotation for
+ * Adjustments: form ±0.12, recent ratings ±0.12, trust ±0.08, fatigue > 60 up to −0.3 (rotation for
  * freshness), sharpness < 40 −0.1, promised start +0.15. Injured/suspended → 0.
  */
 export function startProbability(hero: Hero, life: Life): number {
   if (hero.injury || hero.suspendedMatches > 0 || !hero.contract) return 0
   let p = ROLE_START_BASE[hero.contract.role]
-  p += ((hero.form - 50) / 50) * 0.1
-  p += ((hero.managerTrust - 50) / 50) * 0.1
+  p += formTerm(hero) + ratingTerm(life) + trustTerm(hero)
   if (hero.fatigue > 60) p -= ((hero.fatigue - 60) / 40) * 0.3
   if (hero.sharpness < 40) p -= 0.1
   if (life.flags.promised_start === true) p += 0.15

@@ -32,7 +32,7 @@ describe('matchEarnings', () => {
     expect(by.sponsor).toBe(200)
     expect(by.imageRights).toBe(Math.round(200 * (IMAGE_RIGHTS_BONUS - 1)))
     expect(by.tax).toBe(-Math.round((500 + 200 + by.imageRights) * INCOME_TAX))
-    expect(by.agent).toBe(-50)
+    expect(by.agent).toBe(-70)
     expect(by.goal).toBe(400)
     expect(e.paidNow).toBe(570)
     expect(e.net).toBe(e.lines.reduce((a, l) => a + l.amount, 0))

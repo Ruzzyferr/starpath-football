@@ -7,12 +7,12 @@ import { Icon, type IconName } from '../../icons'
 import { actions, data, gameState, heroClub, type PostKind, type SocialPostView } from '../../store'
 import { FanPanel, PressRoom } from './SocialExtras'
 
-const KINDS: PostKind[] = ['training', 'family', 'fans', 'charity', 'luxury', 'provocative']
+const KINDS: PostKind[] = ['training', 'family', 'fans', 'charity', 'luxury', 'rival', 'provocative']
 const KIND_ICON: Record<PostKind, IconName> = {
-  training: 'barbell', family: 'house', fans: 'megaphone', charity: 'hand-heart', luxury: 'watch', provocative: 'fire',
+  training: 'barbell', family: 'house', fans: 'megaphone', charity: 'hand-heart', luxury: 'watch', rival: 'target', provocative: 'fire',
 }
 const KIND_RISK: Record<PostKind, 'safe' | 'low' | 'medium' | 'high'> = {
-  training: 'safe', family: 'safe', fans: 'safe', charity: 'low', luxury: 'medium', provocative: 'high',
+  training: 'safe', family: 'safe', fans: 'safe', charity: 'low', luxury: 'medium', rival: 'medium', provocative: 'high',
 }
 
 function Post({ p }: { p: SocialPostView }) {

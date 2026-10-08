@@ -13,12 +13,15 @@ import { addStress } from './wellbeing'
 
 export type SponsorCategory = SponsorDeal['category']
 
-export const SPONSOR_CATEGORIES: readonly SponsorCategory[] = ['boots', 'watch', 'drink', 'fashion', 'gaming', 'car']
+export const SPONSOR_CATEGORIES: readonly SponsorCategory[] = ['boots', 'watch', 'drink', 'fashion', 'gaming', 'car', 'cosmetics', 'food', 'jewelry', 'finance']
+/** Concurrent sponsor deals are capped so the wider category list does not inflate income. */
+export const MAX_ACTIVE_SPONSORS = 6
 
 /** Localized category names. */
 export const SPONSOR_CATEGORY_NAMES: Readonly<Record<SponsorCategory, LText>> = {
   boots: lt('Krampon', 'Boots'), watch: lt('Saat', 'Watch'), drink: lt('İçecek', 'Drinks'),
   fashion: lt('Moda', 'Fashion'), gaming: lt('Oyun', 'Gaming'), car: lt('Otomobil', 'Cars'),
+  cosmetics: lt('Kozmetik', 'Cosmetics'), food: lt('Yiyecek', 'Food'), jewelry: lt('Takı', 'Jewelry'), finance: lt('Finans', 'Finance'),
 }
 
 export interface BrandDef {
@@ -51,6 +54,14 @@ export const BRANDS: readonly BrandDef[] = [
   { brand: 'Volta Motors', category: 'car', tier: 1, minReputation: 20, strictness: 0.5 },
   { brand: 'Kestrel Auto', category: 'car', tier: 2, minReputation: 40, strictness: 0.6 },
   { brand: 'Furia Automobili', category: 'car', tier: 3, minReputation: 70, strictness: 0.7 },
+  { brand: 'Glimmer Lab', category: 'cosmetics', tier: 1, minReputation: 12, strictness: 0.3 },
+  { brand: 'Aurelle Paris', category: 'cosmetics', tier: 2, minReputation: 38, strictness: 0.5 },
+  { brand: 'Sofra Kitchen', category: 'food', tier: 1, minReputation: 6, strictness: 0.7 },
+  { brand: 'Harvest Bowl', category: 'food', tier: 2, minReputation: 28, strictness: 0.8 },
+  { brand: 'Lumen Gems', category: 'jewelry', tier: 2, minReputation: 36, strictness: 0.5 },
+  { brand: 'Oro Regale', category: 'jewelry', tier: 3, minReputation: 62, strictness: 0.6 },
+  { brand: 'Nimbus Bank', category: 'finance', tier: 2, minReputation: 32, strictness: 0.9 },
+  { brand: 'Zenit Capital', category: 'finance', tier: 3, minReputation: 58, strictness: 0.9 },
 ]
 
 export const BRAND_BY_NAME: Readonly<Record<string, BrandDef>> = Object.fromEntries(BRANDS.map((b) => [b.brand, b]))
@@ -93,6 +104,7 @@ export function sponsorOffers(rng: Rng, hero: Hero, life: Life, ctx: { season: n
   let p = 0.08 + hero.reputation / 250
   if (life.followers >= 100000) p += 0.05
   if (!rng.chance(p)) return []
+  if (life.sponsors.length >= MAX_ACTIVE_SPONSORS) return []
   const held = heldCategories(life)
   const eligible = BRANDS.filter((b) => !held.has(b.category) && b.minReputation <= hero.reputation)
   if (eligible.length === 0) return []
@@ -122,6 +134,9 @@ export function sponsorOffers(rng: Rng, hero: Hero, life: Life, ctx: { season: n
 export function acceptSponsor(life: Life, offer: SponsorOffer): { ok: boolean; lines: Lines } {
   if (heldCategories(life).has(offer.deal.category)) {
     return { ok: false, lines: [fill(lt('Zaten bir {c} sponsorun var; münhasırlık maddesi buna izin vermiyor.', 'You already have a {c} sponsor; exclusivity forbids another.'), { c: SPONSOR_CATEGORY_NAMES[offer.deal.category] })] }
+  }
+  if (life.sponsors.length >= MAX_ACTIVE_SPONSORS) {
+    return { ok: false, lines: [lt('Sponsor kotan dolu (en fazla 6 anlaşma).', 'Your sponsor slots are full (max 6 deals).')] }
   }
   life.sponsors.push({ ...offer.deal })
   life.money += offer.signingBonus

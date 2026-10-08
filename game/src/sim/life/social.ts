@@ -21,7 +21,7 @@ import { assetEffectTotal } from './assetEffects'
 import { changeRelation } from './relationships'
 import { addHappiness, addStress } from './wellbeing'
 
-export type PostType = 'training' | 'luxury' | 'family' | 'charity' | 'provocation' | 'sponsored'
+export type PostType = 'training' | 'luxury' | 'family' | 'charity' | 'provocation' | 'sponsored' | 'thanks' | 'rival'
 
 export interface PostDef {
   id: PostType
@@ -59,6 +59,8 @@ export const POST_TYPES: Readonly<Record<PostType, PostDef>> = {
   family: { id: 'family', icon: '👨‍👩‍👦', name: lt('Aile paylaşımı', 'Family post'), pct: 0.005, fans: 1, press: 1, happiness: 4, stress: -2, discipline: 0, viral: 0.03, controversy: 0.01, tags: ['social', 'family'] },
   charity: { id: 'charity', icon: '🤲', name: lt('Hayır işi paylaşımı', 'Charity post'), pct: 0.006, fans: 2, press: 2, happiness: 2, stress: -1, discipline: 1, viral: 0.05, controversy: 0.01, tags: ['social', 'charity'] },
   provocation: { id: 'provocation', icon: '😈', name: lt('Olay paylaşım', 'Provocative post'), pct: 0.012, fans: 2, press: -3, happiness: 2, stress: 2, discipline: -2, viral: 0.12, controversy: 0.35, tags: ['social', 'provocation'] },
+  thanks: { id: 'thanks', icon: '🙏', name: lt('Taraftara teşekkür', 'Thanks to the fans'), pct: 0.005, fans: 4, press: 0, happiness: 2, stress: -1, discipline: 0, viral: 0.04, controversy: 0.01, tags: ['social', 'fans'] },
+  rival: { id: 'rival', icon: '🥊', name: lt('Rakibe gönderme', 'Dig at a rival'), pct: 0.01, fans: 2, press: -2, happiness: 1, stress: 1, discipline: -1, viral: 0.1, controversy: 0.22, tags: ['social', 'provocation'] },
   sponsored: { id: 'sponsored', icon: '🏷️', name: lt('Sponsorlu paylaşım', 'Sponsored post'), pct: 0.002, fans: 0, press: 0, happiness: 0, stress: 0, discipline: 0, viral: 0.02, controversy: 0.01, tags: ['social', 'sponsor'] },
 }
 

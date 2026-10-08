@@ -2,7 +2,7 @@ import { Rng } from '../../core/rng'
 import type { Calendar, Hero, Life } from '../../core/types'
 import { createHero, createLife } from '../career/createHero'
 import {
-  BRANDS, acceptSponsor, checkMoralityClause, heldCategories, sponsorOffers, sponsorShootPay, sponsorWeeklyValue,
+  BRANDS, MAX_ACTIVE_SPONSORS, SPONSOR_CATEGORIES, acceptSponsor, checkMoralityClause, heldCategories, sponsorOffers, sponsorShootPay, sponsorWeeklyValue,
   weeklySponsorTick,
 } from './sponsors'
 
@@ -108,6 +108,22 @@ describe('sponsors', () => {
 
   it('brand list has all categories and no duplicates', () => {
     expect(new Set(BRANDS.map((b) => b.brand)).size).toBe(BRANDS.length)
-    expect(new Set(BRANDS.map((b) => b.category)).size).toBe(6)
+    expect(new Set(BRANDS.map((b) => b.category)).size).toBe(10)
+  })
+})
+
+describe('sponsor slot cap (2.5#54)', () => {
+  it('offers nothing once 6 deals are held', () => {
+    const rng = new Rng(5)
+    const hero = createHero(rng, {
+      firstName: 'A', lastName: 'B', nickname: 'A', nationality: 'TR', position: 'ST', foot: 'R',
+      appearance: { skin: 0, hairStyle: 0, hairColor: 0, beard: 0, eyeColor: 0, face: 0, accessory: 0 }, archetype: 'poacher', background: 'street', birthYear: 2000,
+    })
+    hero.reputation = 100
+    const life = createLife(rng, hero, 'street')
+    life.followers = 1e6
+    const cats = SPONSOR_CATEGORIES.slice(0, MAX_ACTIVE_SPONSORS)
+    life.sponsors = cats.map((c, i) => ({ id: `s${i}`, brand: 'X', category: c, weekly: 1, untilSeason: 2099, minReputation: 0 }))
+    for (let i = 0; i < 50; i++) expect(sponsorOffers(rng, hero, life, { season: 2026 })).toEqual([])
   })
 })

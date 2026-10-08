@@ -117,6 +117,11 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
         </div>
       </div>
       <p class={`life-person-memory t-sm ${memory ? 't-mid' : 't-lo'}`}>{memory ? `“${lt(memory)}”` : t('life.rel.noMemory')}</p>
+      {rel.memory.length > 1 && (
+        <ul class="life-person-memories t-xs t-lo" data-testid="rel-memories">
+          {rel.memory.slice(1, 5).map((m, i) => <li key={i}>{`“${lt(m)}”`}</li>)}
+        </ul>
+      )}
       <div class="row-between life-person-sub">
         <span class="t-xs t-lo">{ago === 0 ? t('life.rel.thisWeek') : t('life.rel.lastContact', { n: ago })}</span>
         <Button size="sm" variant="ghost" icon="history" class="life-why-btn" onClick={() => setWhy(true)}>{t('life.why.button')}</Button>

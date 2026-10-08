@@ -13,7 +13,8 @@ import {
   GFLAG, HERO_ID, answerInterview, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
   type InterviewDef, type InterviewEffect, type InterviewTone,
 } from '../../sim/game'
-import { readJson, weekCounters, writeJson } from '../../sim/game/internal'
+import { heroClub, readJson, weekCounters, writeJson } from '../../sim/game/internal'
+import { incomeTaxRate } from '../../sim/life/economy'
 import { matchEarnings, type MatchBonuses, type MatchEarnings } from '../../sim/career/matchPay'
 import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
@@ -447,6 +448,7 @@ function earningsFor(s: GameState, bonuses: MatchBonuses): MatchEarnings {
     bonuses,
     sponsorsWeekly: s.life.sponsors.filter((d) => d.untilSeason >= season).reduce((a, d) => a + Math.max(0, d.weekly || 0), 0),
     agentCommission: s.life.agent?.commission ?? 0,
+    taxRate: incomeTaxRate(heroClub(s)?.countryId),
     matchesThisWeek: weekCounters(s.life).matches,
     retired: s.hero.retired,
   })
