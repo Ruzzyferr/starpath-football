@@ -179,6 +179,7 @@ function Negotiation({ n }: { n: NegotiationView }) {
             <CardHeader title={t('contract.compare.you')} icon="sliders" />
             <div class="stack ctr-sliders">
               <Slider id="ctr-wage" label={t('contract.terms.wage')} value={terms.wage} min={r.wage[0]} max={r.wage[1]} step={moneyStep(r.wage[1])} format={formatMoney} marker={n.clubOffer.wage} markerLabel={t('contract.marker')} onChange={(v) => set({ wage: v })} />
+              {terms.wage < n.clubOffer.wage && <p class="t-xs t-mid" data-testid="wage-trade">{t('career4.trade', { p: Math.round((1 - terms.wage / Math.max(1, n.clubOffer.wage)) * 100) })}</p>}
               <Slider id="ctr-years" label={t('contract.terms.years')} value={terms.years} min={r.years[0]} max={r.years[1]} format={(v) => t('common.years', { n: v })} marker={n.clubOffer.years} markerLabel={t('contract.marker')} onChange={(v) => set({ years: v })} />
               <Slider id="ctr-sign" label={t('contract.terms.signingBonus')} value={terms.signingBonus} min={r.signingBonus[0]} max={r.signingBonus[1]} step={moneyStep(r.signingBonus[1])} format={fm} marker={n.clubOffer.signingBonus} markerLabel={t('contract.marker')} onChange={(v) => set({ signingBonus: v })} />
               <Slider id="ctr-goal" label={t('contract.terms.goalBonus')} value={terms.goalBonus} min={r.goalBonus[0]} max={r.goalBonus[1]} step={moneyStep(r.goalBonus[1])} format={fm} marker={n.clubOffer.goalBonus} markerLabel={t('contract.marker')} onChange={(v) => set({ goalBonus: v })} />

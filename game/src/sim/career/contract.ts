@@ -347,8 +347,14 @@ export interface NegotiationState {
   history: NegotiationRound[]
 }
 
-/** Max rounds before the club declares its last offer final. */
-export const MAX_ROUNDS = 6
+/** Max rounds before the club declares its last offer final (club patience 3–5 rounds, 2.3#61). */
+export const MAX_ROUNDS = 5
+export const MIN_ROUNDS = 3
+/**
+ * Trading terms (2.3#61): each 1% of wage given up offsets 3% of over-ask on
+ * other terms (wage −5% ≈ minutes guarantee / bonus ask +15%).
+ */
+export const WAGE_TRADE_RATE = 3
 
 /**
  * Open talks on an offer.
@@ -367,7 +373,7 @@ export function startNegotiation(rng: Rng, offer: ContractOffer, hero: Hero, ctx
   return {
     status: 'open',
     round: 0,
-    maxRounds: MAX_ROUNDS,
+    maxRounds: offer.loan ? MIN_ROUNDS : Math.min(MAX_ROUNDS, MIN_ROUNDS + (q >= 3 ? 1 : 0) + (q >= 5 ? 1 : 0)),
     patience: Math.min(100, 60 + rng.int(0, 20) + 5 * (q - 1)),
     drainDivisor: (1 + perkValue(hero, 'negotiation_patience')) * (1 + 0.06 * (q - 1)),
     offer: { ...offer, terms: { ...t } },
@@ -494,6 +500,17 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
     else { fraction = 1; excess += a / Math.max(1, max) - 1 }
   }
 
+  // Trade: a wage concession buys goodwill on the other terms (2.3#61).
+  const concession = ask.wage !== undefined && Number.isFinite(ask.wage) && ask.wage < cur.wage && cur.wage > 0
+    ? clamp((cur.wage - ask.wage) / cur.wage, 0, 0.3) : 0
+  if (concession > 0 && wantsMore) {
+    let credit = concession * WAGE_TRADE_RATE
+    const used = Math.min(excess, credit)
+    excess -= used
+    credit -= used
+    fraction = Math.max(0, fraction - credit)
+  }
+
   const lines: Lines = []
   const record = (response: NegotiationRound['response']) =>
     s.history.push({ round: s.round, ask: { ...ask }, response, patienceAfter: s.patience })
@@ -530,6 +547,7 @@ export function counterOffer(rng: Rng, state: NegotiationState, ask: Partial<Con
     const max = h[maxKey(k)] as number
     cur[k] = roundNice(a <= max ? cur[k] + (a - cur[k]) * 0.6 : cur[k] + (max - cur[k]) * 0.5)
   }
+  if (concession > 0 && ask.wage !== undefined) cur.wage = roundNice(ask.wage)
   if (ask.years !== undefined) cur.years = clamp(ask.years, h.minYears, h.maxYears)
   if (ask.role !== undefined && roleRank(ask.role) > roleRank(cur.role)) {
     cur.role = ROLE_ORDER[Math.min(roleRank(ask.role), h.maxRoleRank)]

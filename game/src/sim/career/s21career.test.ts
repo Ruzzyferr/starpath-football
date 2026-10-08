@@ -95,3 +95,27 @@ describe('market value breakdown (2.3#73)', () => {
     expect(hi).toBeGreaterThan(heroMarketValue(hero, 2026))
   })
 })
+
+describe('negotiation trades and 3-5 rounds (2.3#61)', async () => {
+  const { startNegotiation, counterOffer, MIN_ROUNDS, MAX_ROUNDS } = await import('./contract')
+  const offer = {
+    clubId: 'c', clubName: 'C', kind: 'new' as const, startSeason: 2026, loan: false,
+    terms: { wage: 10_000, years: 3, signingBonus: 0, goalBonus: 0, assistBonus: 0, releaseClause: null, role: 'reserve' as const },
+  }
+  it('patience lasts 3-5 rounds', () => {
+    const { hero } = makeHeroLife()
+    for (const q of [1, 3, 5]) {
+      const st = startNegotiation(new Rng(1), offer, hero, { season: 2026, agent: { quality: q } as never })
+      expect(st.maxRounds).toBeGreaterThanOrEqual(MIN_ROUNDS)
+      expect(st.maxRounds).toBeLessThanOrEqual(MAX_ROUNDS)
+    }
+  })
+  it('giving up wage buys a clause the club would otherwise refuse', () => {
+    const { hero } = makeHeroLife()
+    const st = startNegotiation(new Rng(2), offer, hero, { season: 2026 })
+    const plain = counterOffer(new Rng(5), st, { minutesGuarantee: true })
+    const traded = counterOffer(new Rng(5), st, { minutesGuarantee: true, wage: 8_500 })
+    expect(traded.state.patience).toBeGreaterThan(plain.state.patience)
+    expect(traded.state.offer.terms.wage).toBeLessThanOrEqual(10_000)
+  })
+})

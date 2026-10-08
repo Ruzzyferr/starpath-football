@@ -8,6 +8,7 @@ export const tr = {
     parts: { ovr: 'GEN', potential: 'Potansiyel', age: 'Yaş', reputation: 'İtibar', form: 'Form', contract: 'Son yıl' },
     total: 'Toplam: {v}',
   },
+  trade: 'Maaştan %{p} vazgeçiyorsun: kulüp diğer maddelerde esneyecek (her %1 maaş ≈ %3 başka talep).',
 }
 
 export const en: Shape<typeof tr> = {
@@ -17,4 +18,5 @@ export const en: Shape<typeof tr> = {
     parts: { ovr: 'OVR', potential: 'Potential', age: 'Age', reputation: 'Reputation', form: 'Form', contract: 'Final year' },
     total: 'Total: {v}',
   },
+  trade: 'You give up {p}% of the wage: the club will bend on other terms (each 1% of wage ≈ 3% of another ask).',
 }
