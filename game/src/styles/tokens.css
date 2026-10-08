@@ -151,11 +151,23 @@
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
   --stagger: 30ms;
 
-  /* ── Safe areas ── */
-  --safe-top: env(safe-area-inset-top, 0px);
-  --safe-right: env(safe-area-inset-right, 0px);
-  --safe-bottom: env(safe-area-inset-bottom, 0px);
-  --safe-left: env(safe-area-inset-left, 0px);
+  /* ── Safe areas ──
+     Status bar / notch / Dynamic Island (top), home indicator / gesture or nav bar
+     (bottom), landscape cutouts (left/right). env() is the source of truth on iOS
+     and modern Android WebViews; Capacitor SystemBars (insetsHandling: "css") also
+     injects --safe-area-inset-* on <html> for Android WebViews where env() reads 0.
+     Take whichever is larger. Every fixed/sticky edge element pads with these. */
+  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
+  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
+  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
+  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
+  /* On-screen keyboard height (px), set by platform/viewport.ts; 0 when closed. */
+  --kb-h: 0px;
+
+  /* Form controls never render below 16px: iOS zooms the page on focus otherwise
+     (and the in-game text scale can go down to 90%). */
+  --fs-input: max(16px, var(--fs-md));
+  --fs-input-lg: max(16px, var(--fs-lg));
 
   /* ── Layout ── */
   --topbar-h: 56px;

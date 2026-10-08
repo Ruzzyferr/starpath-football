@@ -21,8 +21,8 @@ export function QuickMute() {
       data-testid="quick-mute"
       style={{
         position: 'fixed',
-        left: 'calc(env(safe-area-inset-left, 0px) + 12px)',
-        bottom: 'calc(env(safe-area-inset-bottom, 0px) + 72px)',
+        left: 'calc(var(--safe-left, 0px) + 12px)',
+        bottom: 'calc(var(--safe-bottom, 0px) + 72px)',
         zIndex: 40,
         width: '44px',
         height: '44px',

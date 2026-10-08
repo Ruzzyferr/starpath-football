@@ -53,6 +53,21 @@
   -webkit-overflow-scrolling: touch;
 }
 
+/* Status-bar scrim: the system status bar / notch / Dynamic Island overlays the
+   WebView (edge-to-edge), so scrolling content must never run under the clock.
+   Height is 0 wherever there is no top inset (desktop, browsers). */
+#app::after {
+  content: '';
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--safe-top);
+  z-index: var(--z-toast);
+  pointer-events: none;
+  background: linear-gradient(180deg, rgba(7, 11, 20, 0.94), rgba(7, 11, 20, 0.82));
+}
+
 /* ───────────── Top status bar (mobile) ───────────── */
 .topbar {
   position: relative;
@@ -325,12 +340,21 @@
   gap: var(--sp-3);
 }
 .page-footer > * { flex: 1; }
-.immersive .page-footer { padding-bottom: calc(var(--sp-4) + var(--safe-bottom)); }
+/* Shell-less screens (title menus, settings/saves/credits before a career, paywall):
+   no topbar/tabbar absorbs the insets, so the page itself clears the status bar /
+   notch and the home indicator. */
+.immersive .page {
+  padding-top: calc(var(--sp-4) + var(--safe-top));
+  padding-bottom: calc(var(--sp-8) + var(--safe-bottom));
+}
+.immersive .page-footer { padding-bottom: calc(var(--sp-4) + var(--safe-bottom)); margin-bottom: calc(-1 * (var(--sp-8) + var(--safe-bottom))); }
 @media (min-width: 900px) {
   .page { padding-top: var(--sp-6); }
+  .immersive .page { padding-top: calc(var(--sp-6) + var(--safe-top)); }
   .page-head { margin-bottom: var(--sp-5); }
   .page-footer { position: static; background: none; margin: var(--sp-4) 0 0; padding: 0; justify-content: flex-end; }
   .page-footer > * { flex: 0 1 auto; min-width: 220px; }
+  .immersive .page-footer { margin-bottom: 0; }
 }
 
 /* ───────────── Screen transitions (enter only; transform/opacity) ───────────── */

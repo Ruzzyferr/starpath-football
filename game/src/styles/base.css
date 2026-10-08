@@ -11,6 +11,10 @@ html {
   -webkit-text-size-adjust: 100%;
   text-size-adjust: 100%;
   -webkit-tap-highlight-color: transparent;
+  /* No double-tap zoom anywhere in the app shell (pan + tap only). Effective
+     touch-action is the intersection along the ancestor chain, so the Phaser
+     canvases (touch-action: none) keep full control of their gestures. */
+  touch-action: manipulation;
   height: 100%;
   background: var(--bg-0);
 }
@@ -30,6 +34,7 @@ body {
   -moz-osx-font-smoothing: grayscale;
   overscroll-behavior-y: none;
   overflow: hidden;
+  touch-action: manipulation;
 }
 
 #app {
@@ -52,6 +57,13 @@ img, svg {
 button, input, select, textarea {
   font: inherit;
   color: inherit;
+}
+a, label, summary, input, select, textarea, [role='button'], [role='tab'], [role='link'] {
+  touch-action: manipulation;
+}
+/* >= 16px so iOS never zooms the page when a field gets focus (see --fs-input). */
+:where(input:not([type='checkbox'], [type='radio'], [type='range'], [type='color'], [type='file']), select, textarea) {
+  font-size: var(--fs-input);
 }
 button {
   background: none;

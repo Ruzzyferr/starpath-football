@@ -2,7 +2,8 @@
 <html lang="tr">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+    <!-- No browser zoom (double-tap / pinch / input focus): the app scales its own text (Settings > text size, 90-200%). -->
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no" />
     <meta name="theme-color" content="#070b14" />
     <meta name="color-scheme" content="dark light" />
     <meta name="description" content="StarPath Football — futbol kariyeri ve yaşam simülasyonu." />
@@ -15,7 +16,7 @@
     <meta name="apple-mobile-web-app-title" content="StarPath" />
     <title>StarPath Football</title>
     <style>
-      html, body { background: #070b14; }
+      html, body { background: #070b14; touch-action: manipulation; }
     </style>
   </head>
   <body>

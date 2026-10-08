@@ -13,6 +13,7 @@ import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { Avatar } from '../components'
 import { Icon } from '../icons'
+import { readSafeInsets } from '../../platform/viewport'
 import { activeEvent, data, gameState, navigate, screen, type ScreenId } from '../store'
 import { TOUR_STEPS, currentStep } from './machine'
 import { dispatchTour, tour } from './tour'
@@ -172,19 +173,25 @@ export function CoachTour() {
   const hole = rect ? { x: rect.x - PAD, y: rect.y - PAD, w: rect.w + PAD * 2, h: rect.h + PAD * 2 } : null
   const interactive = !!step.waitFor && !!hole
 
-  // Card placement: next to the target when it fits, else docked away from it.
+  // Card placement: next to the target when it fits, else docked away from it,
+  // always clear of the status bar / notch / home indicator.
   const margin = 12
-  const cw = Math.min(380, vp.w - margin * 2)
+  const safe = readSafeInsets()
+  const minX = safe.left + margin
+  const maxX = vp.w - safe.right - margin
+  const minY = safe.top + margin
+  const maxY = vp.h - safe.bottom - margin
+  const cw = Math.min(380, maxX - minX)
   const ch = cardSize.h || 220
-  let left = (vp.w - cw) / 2
-  let top = (vp.h - ch) / 2
+  let left = minX + (maxX - minX - cw) / 2
+  let top = Math.max(minY, minY + (maxY - minY - ch) / 2)
   if (hole) {
-    left = Math.max(margin, Math.min(vp.w - cw - margin, hole.x + hole.w / 2 - cw / 2))
+    left = Math.max(minX, Math.min(maxX - cw, hole.x + hole.w / 2 - cw / 2))
     const below = hole.y + hole.h + 12
     const above = hole.y - 12 - ch
-    if (below + ch <= vp.h - margin) top = below
-    else if (above >= margin) top = above
-    else top = hole.y + hole.h / 2 > vp.h / 2 ? margin : vp.h - ch - margin
+    if (below + ch <= maxY) top = below
+    else if (above >= minY) top = above
+    else top = hole.y + hole.h / 2 > vp.h / 2 ? minY : Math.max(minY, maxY - ch)
   }
 
   const blockers = hole

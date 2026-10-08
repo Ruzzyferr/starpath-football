@@ -19,6 +19,7 @@ import { probeKick } from '../touchProbe'
 import type { AimAssist } from '../kick'
 import { clampN } from '../model'
 import { createMatchGame } from '../MatchScene'
+import { canvasSafeInsets } from '../../platform/viewport'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from '../view'
 import type { ActorView, Drill, DrillEvent, DrillKind, DrillLabel, DrillPrompt, DrillResult, DrillView, Grade, Tone } from './types'
 
@@ -288,6 +289,7 @@ export class TrainingScene extends Phaser.Scene {
       screenDirToWorld: (dx, dy) => screenDirToPitch(dx, dy),
       size: () => ({ w: this.scale.width, h: this.scale.height }),
       ui: () => this.ui,
+      insets: canvasSafeInsets(this.game.canvas, () => this.ui),
     })
     this.layout()
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this)

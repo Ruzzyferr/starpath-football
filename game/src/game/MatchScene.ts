@@ -63,6 +63,7 @@ import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulle
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { ObjectPool } from './pool'
 import { probeKick } from './touchProbe'
+import { canvasSafeInsets } from '../platform/viewport'
 import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -490,6 +491,7 @@ export class MatchScene extends Phaser.Scene {
       screenDirToWorld: (dx, dy) => screenDirToPitch(dx, dy),
       size: () => ({ w: this.scale.width, h: this.scale.height }),
       ui: () => this.ui,
+      insets: canvasSafeInsets(canvas, () => this.ui),
     })
 
     this.layout()
@@ -2848,7 +2850,7 @@ export class MatchScene extends Phaser.Scene {
 function safeAreaTop(canvas: HTMLCanvasElement): number {
   if (typeof document === 'undefined' || !document.body) return 0
   const el = document.createElement('div')
-  el.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top,0px)'
+  el.style.cssText = 'position:fixed;top:0;left:0;width:0;height:0;visibility:hidden;pointer-events:none;padding-top:var(--safe-top,env(safe-area-inset-top,0px))'
   document.body.appendChild(el)
   const inset = parseFloat(getComputedStyle(el).paddingTop) || 0
   el.remove()

@@ -54,6 +54,8 @@ export interface InputMapper {
   size(): { w: number; h: number }
   /** UI scale (device pixel ratio). */
   ui(): number
+  /** Safe-area insets over the canvas (game pixels): touch buttons stay clear of the home indicator / cutouts. */
+  insets?(): { top: number; right: number; bottom: number; left: number }
 }
 
 /** Context the controller needs each frame. */
@@ -300,9 +302,12 @@ export class InputController {
     const prefs = getControlPrefs()
     const r = (Math.min(w, h) * 0.075 + 6 * u) * prefs.touchScale
     const pad = r * 0.6
+    const ins = this.map.insets?.()
+    const side = ins ? Math.max(ins.left, ins.right) : 0
+    const bottom = h - (ins?.bottom ?? 0)
     const m = (x: number) => (prefs.leftHanded ? w - x : x)
-    const sprint = { x: m(w - pad - r), y: h - pad - r, r, down: this.sprintTouch !== null }
-    const skill = { x: m(w - pad - r * 3.4), y: h - pad - r * 0.7, r: r * 0.8, down: this.skillTouch !== null }
+    const sprint = { x: m(w - side - pad - r), y: bottom - pad - r, r, down: this.sprintTouch !== null }
+    const skill = { x: m(w - side - pad - r * 3.4), y: bottom - pad - r * 0.7, r: r * 0.8, down: this.skillTouch !== null }
     const joy = this.joy ? { baseX: this.joy.bx, baseY: this.joy.by, knobX: this.joy.x, knobY: this.joy.y, r: r * 1.25 } : null
     return { enabled: this.touchMode, joystick: joy, sprint, skill }
   }

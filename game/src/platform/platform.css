@@ -1,16 +1,3 @@
-/*
- * Native shells: on Android WebViews older than Chromium 140 env(safe-area-inset-*)
- * reports 0 while Capacitor's SystemBars (insetsHandling: "css") injects
- * --safe-area-inset-* instead. Take whichever is larger.
- */
-html.platform-android,
-html.platform-ios {
-  --safe-top: max(env(safe-area-inset-top, 0px), var(--safe-area-inset-top, 0px));
-  --safe-right: max(env(safe-area-inset-right, 0px), var(--safe-area-inset-right, 0px));
-  --safe-bottom: max(env(safe-area-inset-bottom, 0px), var(--safe-area-inset-bottom, 0px));
-  --safe-left: max(env(safe-area-inset-left, 0px), var(--safe-area-inset-left, 0px));
-}
-
 /* Native apps: no text selection / long-press callouts outside form fields, no pull-to-refresh. */
 html.platform-native body {
   -webkit-user-select: none;
@@ -22,4 +9,46 @@ html.platform-native input,
 html.platform-native textarea {
   -webkit-user-select: text;
   user-select: text;
+}
+
+/* On-screen keyboard (platform/viewport.ts): the tab bar would ride up on top of
+   the keyboard and eat the space the focused field needs. */
+html.kb-open {
+  --safe-bottom: 0px;
+}
+html.kb-open .tabbar {
+  display: none;
+}
+html.kb-open .modal-root {
+  padding-bottom: var(--kb-h);
+}
+
+/* Dev-only safe-area debug overlay (?safedebug=1 or Ctrl+Shift+S). */
+.sa-debug {
+  position: fixed;
+  inset: 0;
+  z-index: 2147483000;
+  pointer-events: none;
+}
+.sa-debug > i {
+  position: absolute;
+  background: rgba(255, 45, 85, 0.35);
+  outline: 1px dashed rgba(255, 45, 85, 0.9);
+}
+.sa-debug-t { top: 0; left: 0; right: 0; height: var(--safe-top); }
+.sa-debug-b { bottom: 0; left: 0; right: 0; height: var(--safe-bottom); }
+.sa-debug-l { top: 0; bottom: 0; left: 0; width: var(--safe-left); }
+.sa-debug-r { top: 0; bottom: 0; right: 0; width: var(--safe-right); }
+.sa-debug > i.sa-debug-kb { bottom: 0; left: 0; right: 0; height: var(--kb-h); background: rgba(10, 132, 255, 0.3); outline-color: rgba(10, 132, 255, 0.9); }
+.sa-debug > span {
+  position: absolute;
+  top: max(2px, calc(var(--safe-top) - 24px));
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.78);
+  color: #fff;
+  font: 600 12px/1.4 ui-monospace, monospace;
+  white-space: nowrap;
 }

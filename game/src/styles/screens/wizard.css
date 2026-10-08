@@ -127,6 +127,7 @@
   max-width: 420px;
 }
 .wiz-search:focus-within { border-color: var(--accent-blue); box-shadow: var(--focus-ring); }
+.wiz-search input:focus-visible { box-shadow: none; } /* the field wrapper carries the ring */
 .wiz-search input {
   flex: 1;
   min-width: 0;
@@ -134,6 +135,7 @@
   background: none;
   border: 0;
   color: var(--text-hi);
+  font-size: var(--fs-input);
   outline: none;
 }
 .wiz-flags {
@@ -475,10 +477,27 @@
   background: var(--bg-1);
   color: var(--text-hi);
   border: 1px solid var(--border-strong);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-input-lg);
 }
 .text-field select:focus { border-color: var(--brand-pitch); }
 .text-field select:focus-visible { box-shadow: var(--focus-ring); }
+
+/* Starting age trade-off (owner feedback): level now vs ceiling vs years to peak */
+.wiz-age-trade {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border-radius: var(--r-card);
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+}
+.wiz-age-cell { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.wiz-age-val { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-h3); }
+.wiz-age-val.is-up, .wiz-age-delta.is-up { color: var(--pos); }
+.wiz-age-val.is-down, .wiz-age-delta.is-down { color: var(--neg); }
+.wiz-age-delta { font-size: var(--fs-sm); color: var(--text-lo); }
+.wiz-age-note { grid-column: 1 / -1; }
 
 /* Position roles (owner feedback): role cards + live preview panel */
 .wiz-role { display: grid; gap: var(--sp-4); }
@@ -501,6 +520,8 @@
   background: var(--surface-2);
 }
 .wiz-role-key.is-strong { color: var(--pos); border-color: color-mix(in srgb, var(--pos) 35%, transparent); background: color-mix(in srgb, var(--pos) 10%, transparent); }
+.wiz-role-key .num { margin-left: 2px; font-variant-numeric: tabular-nums; opacity: 0.9; }
+.wiz-role-style { font-family: var(--font-body); font-size: var(--fs-xs); letter-spacing: 0; }
 .wiz-role-key.is-weak { color: var(--neg); border-color: color-mix(in srgb, var(--neg) 30%, transparent); background: color-mix(in srgb, var(--neg) 8%, transparent); }
 .wiz-role-panel {
   display: grid;

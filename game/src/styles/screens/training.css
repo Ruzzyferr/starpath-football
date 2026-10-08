@@ -268,7 +268,7 @@ html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
 .trn-drill-card {
   position: relative;
   width: min(460px, calc(100vw - 32px));
-  max-height: calc(100dvh - 32px);
+  max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
   overflow: auto;
   padding: var(--sp-5);
   border-radius: var(--r-card);
@@ -294,8 +294,8 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
 .trn-drill-actions { justify-content: flex-end; gap: var(--sp-2); }
 .trn-drill-quit {
   position: absolute;
-  top: calc(8px + env(safe-area-inset-top, 0px));
-  right: 10px;
+  top: calc(8px + var(--safe-top));
+  right: calc(10px + var(--safe-right));
   z-index: 2;
   display: inline-flex;
   align-items: center;

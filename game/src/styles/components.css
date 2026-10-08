@@ -464,12 +464,12 @@
   border-radius: var(--r-btn);
   background: var(--bg-1);
   border: 1px solid var(--border-strong);
-  font-size: var(--fs-lg);
+  font-size: var(--fs-input-lg);
 }
 .text-field input:focus { border-color: var(--brand-pitch); }
 
 /* ───────────── Modal / bottom sheet ───────────── */
-.modal-root { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: flex-end; justify-content: center; }
+.modal-root { position: fixed; inset: 0; z-index: var(--z-modal); display: flex; align-items: flex-end; justify-content: center; padding: 0 var(--safe-right) 0 var(--safe-left); }
 .modal-scrim { position: absolute; inset: 0; background: var(--scrim); animation: fade-in var(--dur-screen) var(--ease-out); }
 .modal-panel {
   position: relative;
@@ -508,7 +508,7 @@
 }
 .modal-foot > * { flex: 1; }
 @media (min-width: 900px) {
-  .modal-root { align-items: center; padding: var(--sp-8); }
+  .modal-root { align-items: center; padding: calc(var(--sp-8) + var(--safe-top)) calc(var(--sp-8) + var(--safe-right)) calc(var(--sp-8) + var(--safe-bottom)) calc(var(--sp-8) + var(--safe-left)); }
   .modal-panel { border-radius: var(--r-modal); border-bottom: 1px solid var(--border-strong); animation: dialog-in var(--dur-screen) var(--ease-out); max-height: min(86dvh, 860px); padding-bottom: 0; }
   .sheet-grabber { display: none; }
   .modal-head { padding-top: var(--sp-5); }
@@ -523,8 +523,8 @@
   position: fixed;
   z-index: var(--z-toast);
   top: calc(var(--safe-top) + 8px);
-  left: 12px;
-  right: 12px;
+  left: calc(var(--safe-left) + 12px);
+  right: calc(var(--safe-right) + 12px);
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -893,7 +893,7 @@
 :root:not([data-cb='off']) .zone-key::before { background-image: repeating-linear-gradient(45deg, transparent 0 2px, rgba(0, 0, 0, 0.35) 2px 3px); }
 
 /* Sound captions (2.11#29) */
-.sound-caption { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; pointer-events: none; max-width: min(92vw, 520px); }
+.sound-caption { position: fixed; left: 50%; bottom: calc(96px + var(--safe-bottom)); transform: translateX(-50%); z-index: 60; pointer-events: none; max-width: min(92vw, 520px); }
 .sound-caption-text { display: inline-block; padding: 6px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.82); color: #fff; font-size: var(--fs-md); font-weight: 600; text-align: center; }
 
 /* Sparkline tap readout */

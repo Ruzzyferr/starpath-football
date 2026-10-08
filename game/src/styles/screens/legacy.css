@@ -216,7 +216,7 @@
 .trial-wrap {
   max-width: 640px;
   margin: 0 auto;
-  padding: 16px;
+  padding: calc(var(--sp-4) + var(--safe-top)) calc(var(--sp-4) + var(--safe-right)) calc(var(--sp-4) + var(--safe-bottom)) calc(var(--sp-4) + var(--safe-left));
   display: flex;
   flex-direction: column;
   gap: 14px;

@@ -175,7 +175,7 @@ const STR = {
 } as const
 
 const CSS = `
-.sp-pick{position:absolute;left:50%;bottom:max(14px,env(safe-area-inset-bottom));transform:translateX(-50%);z-index:5;
+.sp-pick{position:absolute;left:50%;bottom:max(14px,var(--safe-bottom,env(safe-area-inset-bottom)));transform:translateX(-50%);z-index:5;
   display:flex;flex-direction:column;align-items:center;gap:8px;padding:10px 12px;border-radius:14px;
   background:rgba(6,12,20,.78);border:1px solid rgba(255,255,255,.18);color:#fff;
   font:700 13px system-ui,'Segoe UI',Roboto,Arial,sans-serif;max-width:calc(100% - 24px);box-sizing:border-box;touch-action:manipulation;user-select:none}

@@ -402,7 +402,7 @@
   outline: none;
   color: var(--text-hi);
   font: inherit;
-  font-size: var(--fs-md);
+  font-size: var(--fs-input);
 }
 .gloss-list { display: grid; gap: var(--sp-2); margin: 0; }
 @media (min-width: 900px) {
