@@ -96,7 +96,7 @@
   line-height: 1;
   text-transform: uppercase;
 }
-.wiz-step-title:focus-visible { box-shadow: none; outline: 2px solid var(--accent-blue); outline-offset: 4px; border-radius: 4px; }
+.wiz-step-title:focus-visible { outline: none; border-radius: 0; box-shadow: 0 3px 0 0 var(--accent-blue); } /* keyboard cue without boxing the title */
 
 .wiz-identity {
   display: flex;

@@ -948,7 +948,7 @@ export class MatchScene extends Phaser.Scene {
     this.flash = this.addH(this.add.rectangle(0, 0, 10, 10, 0xffffff, 1).setOrigin(0, 0).setAlpha(0))
     this.hudG = this.addH(this.add.graphics())
     this.sb = {
-      min: this.text(19, '#1a1405', '700', 'score', false).setOrigin(0.5, 0.42),
+      min: this.text(19, '#03120a', '700', 'score', false).setOrigin(0.5, 0.42),
       home: this.text(16, '#f2f5fa', '700', 'display', false).setOrigin(0, 0.5),
       score: this.text(21, '#0b1220', '700', 'score', false).setOrigin(0.5, 0.42),
       away: this.text(16, '#f2f5fa', '700', 'display', false).setOrigin(0, 0.5),
@@ -2630,7 +2630,7 @@ export class MatchScene extends Phaser.Scene {
     g.fillStyle(0x1fd47a, 0.35)
     g.fillRect(0, this.hudTop - 1 * u, w, 1 * u)
 
-    // Score bug: gold minute block, team colour ticks, white score block (hidden under the replay letterbox).
+    // Score bug: pitch-green minute block (same as the live hub bug), team colour ticks, white score block (hidden under the replay letterbox).
     const showBug = this.mode !== 'replay'
     for (const t of [this.sb.min, this.sb.home, this.sb.score, this.sb.away]) t.setVisible(showBug)
     this.assistText?.setVisible(showBug)
@@ -2652,7 +2652,7 @@ export class MatchScene extends Phaser.Scene {
       }
       para(sx.min + 2 * u, sx.end + 2 * u, bugY + 2 * u, bugH, 0x000000, 0.35)
       para(sx.min, sx.end, bugY, bugH, 0x131c2e, 1)
-      para(sx.min, sx.min + sx.minW, bugY, bugH, 0xffc83d, 1)
+      para(sx.min, sx.min + sx.minW, bugY, bugH, 0x1fd47a, 1)
       para(sx.min + sx.minW, sx.min + sx.minW + 4 * u, bugY, bugH, this.sbColors[0], 1)
       g.fillStyle(0xf2f5fa, 1)
       g.fillRect(sx.score, bugY + 3 * u, sx.scoreW, bugH - 6 * u)

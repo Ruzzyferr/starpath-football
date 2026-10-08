@@ -69,3 +69,6 @@
   --btn-bevel: 0 2px 0 var(--border);
 }
 :root[data-theme='light'] .btn-ghost:disabled { --btn-bg: transparent; --btn-bevel: 0 0 0 transparent; }
+/* Locked achievement medals: brushed steel in daylight instead of navy hexes. */
+:root[data-theme='light'] .ach-card:not(.is-unlocked) .ach-medal { background: linear-gradient(160deg, #c9d3e3, #9fb0cc 70%); }
+:root[data-theme='light'] .ach-card:not(.is-unlocked) .ach-medal::before { background: linear-gradient(160deg, #f4f7fb, #dbe3ef); }
