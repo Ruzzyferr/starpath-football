@@ -68,12 +68,13 @@ describe('camera distance', () => {
     for (const [w, vh] of sizes) {
       const zs = modes.map((m) => fitZoom(w, vh, w >= vh, m))
       for (let i = 0; i < modes.length; i++) {
-        const f = FIT_BY_DISTANCE[modes[i]]
-        expect(vh / (zs[i] * PPM * TILT)).toBeGreaterThanOrEqual(f.ahead - 1e-6)
-        expect(w / (zs[i] * PPM)).toBeGreaterThanOrEqual((w >= vh ? f.landscape : f.portrait) - 1e-6)
+        const f = FIT_BY_DISTANCE[modes[i]!]
+        const z = zs[i]!
+        expect(vh / (z * PPM * TILT)).toBeGreaterThanOrEqual(f.ahead - 1e-6)
+        expect(w / (z * PPM)).toBeGreaterThanOrEqual((w >= vh ? f.landscape : f.portrait) - 1e-6)
       }
-      expect(zs[0]).toBeLessThanOrEqual(zs[1])
-      expect(zs[1]).toBeLessThanOrEqual(zs[2])
+      expect(zs[0]!).toBeLessThanOrEqual(zs[1]!)
+      expect(zs[1]!).toBeLessThanOrEqual(zs[2]!)
     }
   })
   it('Close on a 390x844 phone makes figures >= 20 px (14 px at Normal)', () => {

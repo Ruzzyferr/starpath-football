@@ -330,6 +330,9 @@
 .tabs-line .tab.is-active::after { transform: scaleX(1); }
 .tabs-pill { background: var(--bg-1); border: 1px solid var(--border); border-radius: 12px; padding: 4px; }
 .tabs-pill .tab { min-height: 38px; border-radius: 9px; font-size: var(--fs-md); padding: 0 12px; }
+/* Non-scrolling pill strips wrap instead of clipping their last tab on phones. */
+.tabs-pill:not(.tabs-scroll) { flex-wrap: wrap; }
+.tabs-pill:not(.tabs-scroll) .tab { flex: 1 1 auto; justify-content: center; }
 .tabs-pill .tab.is-active { background: var(--surface-3); color: var(--text-hi); box-shadow: 0 2px 0 rgba(0, 0, 0, 0.3); }
 .tab-badge {
   min-width: 18px;

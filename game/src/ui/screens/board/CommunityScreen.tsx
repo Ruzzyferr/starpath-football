@@ -241,6 +241,7 @@ export function CommunityScreen() {
     <Page title={t('community.title')} sub={t('community.sub')} class="bd-page">
       <Tabs<Tab>
         variant="pill"
+        scroll={false}
         idPrefix="community"
         label={t('community.title')}
         value={tab}
