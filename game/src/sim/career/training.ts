@@ -93,11 +93,11 @@ export const TRAINING_TYPES: Readonly<Record<TrainingType, TrainingDef>> = {
   },
   goalkeeping: {
     id: 'goalkeeping', icon: '🧤', name: lt('Kaleci Antrenmanı', 'Goalkeeping Drill'),
-    attrs: { reflexes: 4, handling: 4, positioning: 1.5, agility: 1.5, jumping: 1 }, baseXp: 32, energy: 20, fatigue: 10, injuryRisk: 0.005, sharpness: 3, stress: 1,
+    attrs: { reflexes: 4, handling: 4, gkPositioning: 3, agility: 1.5, jumping: 1 }, baseXp: 32, energy: 20, fatigue: 10, injuryRisk: 0.005, sharpness: 3, stress: 1,
   },
   distribution: {
     id: 'distribution', icon: '🧤', name: lt('Çıkış & Hâkimiyet', 'Distribution & Claiming'),
-    attrs: { handling: 4, passing: 2.5, positioning: 1.5, vision: 1.5, jumping: 0.5 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+    attrs: { gkDistribution: 4, handling: 2.5, passing: 1.5, gkPositioning: 1, vision: 0.5, jumping: 0.5 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
   },
   recovery: {
     id: 'recovery', icon: '🧘', name: lt('Yoga & Toparlanma', 'Yoga & Recovery'),

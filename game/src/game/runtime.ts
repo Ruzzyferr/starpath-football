@@ -871,7 +871,7 @@ export class HighlightRuntime {
     const lead = leadPosition(from, heroC, 16, 2)
     const back = norm(sub(from, lead))
     const target = add(lead, scale(back, 1.6))
-    const plan = planKick({ kind: 'lofted', from, target, targetZ: 0.7, power: 0.75, curl: 0, attrs: by.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 0.9 }, this.rng)
+    const plan = planKick({ kind: 'lofted', from, target, targetZ: 0.7, power: 0.75, curl: 0, attrs: by.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 0.9, fromHands: by.isKeeper }, this.rng)
     this.kickBall(by, plan, 'lofted', 0.75, this.hero.id)
   }
 
@@ -942,7 +942,9 @@ export class HighlightRuntime {
     const pressure = this.pressureOn(hero)
     const sp = this.setPiece && this.setPiece.takerId === hero.id ? this.setPiece : null
     const rng = preview ? undefined : this.rng
-    const base = { from, fromZ: this.ball.z, attrs: hero.attrs, pressure, assist: this.assist, env: this.env, assistPull: this.assistPull() }
+    // Out of the hands (GK hold): the release leans on Distribution (GK).
+    const fromHands = !!(hero.isKeeper && this.keeperHold && this.keeperHold.releasedAt < 0)
+    const base = { from, fromZ: this.ball.z, attrs: hero.attrs, pressure, assist: this.assist, env: this.env, assistPull: this.assistPull(), fromHands }
 
     const shot = (target: Vec2, power: number, curl: number, chip: boolean, placed = false) => {
       const kind: KickKind = chip ? 'chip' : sp?.kind === 'penalty' ? 'penalty' : sp?.kind === 'freekick' ? 'freekick' : 'shot'
@@ -1422,7 +1424,7 @@ export class HighlightRuntime {
           if (shotHabit && goalZoneOf(plan.aim.y, GOAL_CENTER_Y) === shotHabit.zone) reaction *= 0.8
           let penaltyGuess: KeeperAlert['penaltyGuess']
           if (isPen) {
-            const pRead = clampN(PENALTY_READ_BASE + a01(keeper.attrs.positioning) * 0.25 + (this.difficulty - 1) * 0.4 - (power > 0.9 ? 0.08 : 0), 0.1, 0.6)
+            const pRead = clampN(PENALTY_READ_BASE + a01(keeper.attrs.gkPositioning) * 0.25 + (this.difficulty - 1) * 0.4 - (power > 0.9 ? 0.08 : 0), 0.1, 0.6)
             penaltyGuess = { read: this.rng.chance(pRead), centre: this.rng.chance(0.1) }
             // Did his homework: commits to the hero's habit (the surer the book, the likelier).
             const read = by.isHero ? this.keeperRead : null
@@ -1756,7 +1758,7 @@ export class HighlightRuntime {
         this.events.push({ type: 'callRefused', by: a.id, reason: lane < CALL_LANE_MIN ? 'lane' : 'relation' })
       } else {
         const lofted = dist(a.pos, target) > 26
-        const plan = planKick({ kind: lofted ? 'lofted' : 'pass', from: { x: this.ball.x, y: this.ball.y }, target, power: 0.6, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale: 0.9 }, this.rng)
+        const plan = planKick({ kind: lofted ? 'lofted' : 'pass', from: { x: this.ball.x, y: this.ball.y }, target, power: 0.6, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale: 0.9, fromHands: a.isKeeper }, this.rng)
         this.kickBall(a, plan, lofted ? 'lofted' : 'pass', 0.6, null)
         return
       }
@@ -1781,7 +1783,7 @@ export class HighlightRuntime {
       return
     }
     const from = { x: this.ball.x, y: this.ball.y }
-    const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env }
+    const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env, fromHands: a.isKeeper }
     const oppNoise = a.team === 'opp' ? 1.15 / this.difficulty : 1
     switch (dec.kind) {
       case 'shoot': {
@@ -1829,7 +1831,7 @@ export class HighlightRuntime {
     const shotBias = this.kind === 'gk_save' ? 0.6 + heldFor * 0.6 : 0
     const dec = evaluateCarrier(a, w, this.rng, { heldFor, noise, heroBias, shotBias })
     const from = { x: this.ball.x, y: this.ball.y }
-    const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env }
+    const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env, fromHands: a.isKeeper }
     const oppNoise = a.team === 'opp' ? 1.15 / this.difficulty : 1
     switch (dec.kind) {
       case 'shoot': {
@@ -2027,7 +2029,7 @@ export class HighlightRuntime {
       const behind = { x: sp.spot.x + 0.5, y: sp.spot.y + 0.25 }
       taker.vel = arrive(taker, behind, 4.2, 0.4)
       // The tell (body shape / plant foot) shows from penaltyTellAt; Reflexes ≥ 70 read it 0.15 s earlier (2.1#87).
-      const readSkill = a01(this.hero.attrs.positioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2
+      const readSkill = a01(this.hero.attrs.gkPositioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2
       const look = Math.atan2(pp.target.y - taker.pos.y, pp.target.x - taker.pos.x)
       const tell = this.time >= pp.runStart + penaltyTellDelay(this.hero.attrs.reflexes) ? readSkill : 0
       taker.facing = Math.PI + angleDiff(look, Math.PI) * tell
@@ -2664,7 +2666,7 @@ export class HighlightRuntime {
     if (!k || k.state !== 'run' || k.cd > 0 || k.noTouch > 0 || !this.inOwnBox(k, o.pos)) return false
     if (dist(k.pos, { x: this.ball.x, y: this.ball.y }) > 1.5 && dist(k.pos, o.pos) > 1.3) return false
     k.cd = 1.2
-    const g = a01(k.attrs.handling) * 0.35 + a01(k.attrs.agility) * 0.35 + a01(k.attrs.positioning) * 0.3
+    const g = a01(k.attrs.handling) * 0.35 + a01(k.attrs.agility) * 0.35 + a01(k.attrs.gkPositioning) * 0.3
     const c = a01(o.attrs.dribbling) * 0.6 + a01(o.attrs.agility) * 0.25 + a01(o.attrs.composure) * 0.15
     const diffAdj = k.team === 'opp' ? (this.difficulty - 1) * 0.3 : 0
     const p = clampN(0.33 + (g - c) * 0.8 + (this.exposure(o) - 0.55) * 0.7 + diffAdj, 0.1, 0.9)

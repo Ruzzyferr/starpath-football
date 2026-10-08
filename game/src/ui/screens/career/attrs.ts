@@ -7,7 +7,7 @@ export const ATTR_GROUP: Record<AttributeKey, AttributeGroup> = {
   passing: 'technical', shooting: 'technical', finishing: 'technical', dribbling: 'technical', firstTouch: 'technical',
   crossing: 'technical', heading: 'technical', tackling: 'technical', setPieces: 'technical',
   vision: 'mental', composure: 'mental', positioning: 'mental', leadership: 'mental', workRate: 'mental',
-  reflexes: 'goalkeeping', handling: 'goalkeeping',
+  reflexes: 'goalkeeping', handling: 'goalkeeping', gkPositioning: 'goalkeeping', gkDistribution: 'goalkeeping',
 }
 
 export const GROUPS: AttributeGroup[] = ['physical', 'technical', 'mental', 'goalkeeping']
@@ -21,12 +21,12 @@ export function groupAvg(attrs: Attributes, group: AttributeGroup): number {
   return Math.round(ks.reduce((s, k) => s + attrs[k], 0) / ks.length)
 }
 
-/** Goalkeeper specialism groups (GDD 2.1): the profile shows these instead of the 2-attribute goalkeeping block. */
+/** Goalkeeper specialism groups (GDD 2.1): the profile shows these instead of the plain goalkeeping block. */
 export type GkGroup = 'shotStopping' | 'commandArea' | 'distribution'
 export const GK_GROUPS: Record<GkGroup, AttributeKey[]> = {
   shotStopping: ['reflexes', 'handling', 'agility'],
-  commandArea: ['positioning', 'jumping', 'leadership'],
-  distribution: ['passing', 'firstTouch', 'vision'],
+  commandArea: ['gkPositioning', 'positioning', 'jumping', 'leadership'],
+  distribution: ['gkDistribution', 'passing', 'firstTouch', 'vision'],
 }
 export const GK_GROUP_IDS = Object.keys(GK_GROUPS) as GkGroup[]
 
@@ -47,7 +47,7 @@ export function groupsFor(pos: Position): AttributeGroup[] {
 }
 
 const KEY_STATS: Record<Position, AttributeKey[]> = {
-  GK: ['reflexes', 'handling', 'positioning', 'jumping', 'passing', 'composure'],
+  GK: ['reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'jumping', 'composure'],
   CB: ['pace', 'tackling', 'strength', 'heading', 'positioning', 'passing'],
   LB: ['pace', 'tackling', 'crossing', 'stamina', 'positioning', 'passing'],
   RB: ['pace', 'tackling', 'crossing', 'stamina', 'positioning', 'passing'],

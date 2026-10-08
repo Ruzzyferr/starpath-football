@@ -72,6 +72,24 @@ describe('save migrations', () => {
     expect(s.hero.gender).toBe('male')
   })
 
+  it('v3 → v4 derives gkPositioning / gkDistribution (keepers high, outfielders low) and extends the attribute history', async () => {
+    const { migrate } = await import('./save')
+    const keeper = { reflexes: 70, handling: 66, positioning: 60, passing: 50, vision: 40 }
+    const old = {
+      version: 3, hero: { firstName: 'Can', gender: 'male', attrs: { ...keeper } }, calendar: { season: 2027, week: 4 },
+      attrHistory: { v: 1, keys: ['reflexes', 'handling', 'positioning', 'passing', 'vision'], rows: [[2026, 1, 60, 56, 50, 40, 30], [2027, 4, 70, 66, 60, 50, 40]] },
+    }
+    const s = migrate(JSON.parse(JSON.stringify(old)), 3) as unknown as { hero: { attrs: Record<string, number> }; attrHistory: { keys: string[]; rows: number[][] } }
+    expect(s.hero.attrs.gkPositioning).toBe(Math.round(0.5 * 66 + 0.3 * 60 + 0.2 * 70))
+    expect(s.hero.attrs.gkDistribution).toBe(Math.round(0.55 * 66 + 0.3 * 50 + 0.15 * 40))
+    const striker = migrate({ version: 3, hero: { attrs: { reflexes: 12, handling: 10, positioning: 65, passing: 55, vision: 50 } } }, 3) as unknown as { hero: { attrs: Record<string, number> } }
+    expect(striker.hero.attrs.gkPositioning).toBeLessThan(35)
+    expect(striker.hero.attrs.gkDistribution).toBeLessThan(35)
+    expect(s.attrHistory.keys.slice(-2)).toEqual(['gkPositioning', 'gkDistribution'])
+    expect(s.attrHistory.rows.every((r) => r.length === 2 + s.attrHistory.keys.length)).toBe(true)
+    expect(s.attrHistory.rows[1]?.slice(-2)).toEqual([s.hero.attrs.gkPositioning, s.hero.attrs.gkDistribution])
+  })
+
   it('keeps a female hero through save → load', async () => {
     const m = new SaveManager(new MemoryStorage())
     const st = { version: 2, hero: { firstName: 'Ece', gender: 'female' } } as unknown as GameState

@@ -8,15 +8,15 @@ import type { MatchPlayer, MatchSetup, MatchTeam, Side, Weather } from './types'
 
 /** Attributes a position is strong / weak in (relative to its overall). */
 const PROFILE: Record<Position, { hi: AttributeKey[]; lo: AttributeKey[] }> = {
-  GK: { hi: ['reflexes', 'handling', 'positioning', 'jumping'], lo: ['finishing', 'dribbling', 'shooting', 'crossing', 'tackling'] },
-  CB: { hi: ['tackling', 'heading', 'strength', 'positioning', 'jumping'], lo: ['finishing', 'dribbling', 'reflexes', 'handling'] },
-  LB: { hi: ['pace', 'tackling', 'crossing', 'stamina'], lo: ['finishing', 'reflexes', 'handling'] },
-  RB: { hi: ['pace', 'tackling', 'crossing', 'stamina'], lo: ['finishing', 'reflexes', 'handling'] },
-  DM: { hi: ['tackling', 'passing', 'positioning', 'workRate'], lo: ['finishing', 'reflexes', 'handling'] },
-  CM: { hi: ['passing', 'vision', 'stamina', 'firstTouch'], lo: ['reflexes', 'handling', 'heading'] },
-  AM: { hi: ['vision', 'dribbling', 'passing', 'shooting'], lo: ['tackling', 'reflexes', 'handling', 'strength'] },
-  LW: { hi: ['pace', 'dribbling', 'crossing', 'agility'], lo: ['tackling', 'reflexes', 'handling', 'heading'] },
-  RW: { hi: ['pace', 'dribbling', 'crossing', 'agility'], lo: ['tackling', 'reflexes', 'handling', 'heading'] },
+  GK: { hi: ['reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'gkPositioning', 'gkDistribution', 'positioning', 'jumping'], lo: ['finishing', 'dribbling', 'shooting', 'crossing', 'tackling'] },
+  CB: { hi: ['tackling', 'heading', 'strength', 'positioning', 'jumping'], lo: ['finishing', 'dribbling', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution'] },
+  LB: { hi: ['pace', 'tackling', 'crossing', 'stamina'], lo: ['finishing', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution'] },
+  RB: { hi: ['pace', 'tackling', 'crossing', 'stamina'], lo: ['finishing', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution'] },
+  DM: { hi: ['tackling', 'passing', 'positioning', 'workRate'], lo: ['finishing', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution'] },
+  CM: { hi: ['passing', 'vision', 'stamina', 'firstTouch'], lo: ['reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'heading'] },
+  AM: { hi: ['vision', 'dribbling', 'passing', 'shooting'], lo: ['tackling', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'strength'] },
+  LW: { hi: ['pace', 'dribbling', 'crossing', 'agility'], lo: ['tackling', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'heading'] },
+  RW: { hi: ['pace', 'dribbling', 'crossing', 'agility'], lo: ['tackling', 'reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'heading'] },
   ST: { hi: ['finishing', 'shooting', 'composure', 'heading'], lo: ['tackling', 'reflexes', 'handling'] },
 }
 
@@ -26,7 +26,9 @@ export function makeAttributes(rng: Rng, pos: Position, ovr: number): Attributes
   const a = {} as Attributes
   for (const k of ATTRIBUTE_KEYS) {
     const bias = prof.hi.includes(k) ? 6 : prof.lo.includes(k) ? -30 : -6
-    a[k] = Math.round(clamp(ovr + bias + rng.normal(0, 5), 5, 99))
+    // The v4 goalkeeping pair takes no draw, so every fixture rolled before it keeps its stream.
+    const v4 = k === 'gkPositioning' || k === 'gkDistribution'
+    a[k] = Math.round(clamp(ovr + bias + (v4 ? 0 : rng.normal(0, 5)), 5, 99))
   }
   return a
 }

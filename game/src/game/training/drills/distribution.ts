@@ -142,7 +142,8 @@ export class DistributionDrill extends DrillBase {
   }
 
   private reach(): number {
-    return 0.8 + a01(this.attrs.handling) * 0.5 + a01(this.attrs.jumping) * 0.2
+    // Command of area: Positioning (GK) has him set where the cross drops, so it lands within reach more often.
+    return 0.8 + a01(this.attrs.handling) * 0.45 + a01(this.attrs.gkPositioning) * 0.15 + a01(this.attrs.jumping) * 0.2
   }
 
   private flightCross(): void {
@@ -195,7 +196,7 @@ export class DistributionDrill extends DrillBase {
   /** Noiseless time for a release of `kind` to run from the hands to `target` (closest approach). */
   private flightTime(kind: KickKind, target: Vec2): number {
     const from = { x: this.hero.pos.x + Math.cos(this.hero.facing) * 0.3, y: this.hero.pos.y + Math.sin(this.hero.facing) * 0.3 }
-    const plan = planKick({ kind, from, fromZ: kind === 'pass' ? 1.1 : 0.4, target, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: 'manual', env: this.env })
+    const plan = planKick({ kind, from, fromZ: kind === 'pass' ? 1.1 : 0.4, target, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: 'manual', env: this.env, fromHands: true })
     const b: BallState = { x: from.x, y: from.y, z: kind === 'pass' ? 1.1 : 0.4, vx: plan.vx, vy: plan.vy, vz: plan.vz, spin: { ...plan.spin } }
     const tr = createTracker()
     const ev: PhysicsEvent[] = []
@@ -286,7 +287,7 @@ export class DistributionDrill extends DrillBase {
       const h = this.hero
       const from = { x: h.pos.x + Math.cos(h.facing) * 0.3, y: h.pos.y + Math.sin(h.facing) * 0.3 }
       const plan = planKick(
-        { kind, from, fromZ: kind === 'pass' ? 1.1 : 0.4, target, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: 1.1 },
+        { kind, from, fromZ: kind === 'pass' ? 1.1 : 0.4, target, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: 1.1, fromHands: true },
         this.rng,
       )
       Object.assign(this.ball, { x: from.x, y: from.y, z: kind === 'pass' ? 1.1 : 0.4, vx: plan.vx, vy: plan.vy, vz: plan.vz })

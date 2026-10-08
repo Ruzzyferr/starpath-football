@@ -28,10 +28,14 @@ export const ATTRIBUTE_KEYS = [
   'passing', 'shooting', 'finishing', 'dribbling', 'firstTouch', 'crossing', 'heading', 'tackling', 'setPieces',
   // mental
   'vision', 'composure', 'positioning', 'leadership', 'workRate',
-  // goalkeeping
-  'reflexes', 'handling',
+  // goalkeeping (GDD: Refleks, Top Tutma, Pozisyon (kaleci), Oyun Kurma (kaleci)); new keys append at the end
+  // so the per-key derivation draws of the older keys keep their order.
+  'reflexes', 'handling', 'gkPositioning', 'gkDistribution',
 ] as const
 export type AttributeKey = (typeof ATTRIBUTE_KEYS)[number]
+/** The goalkeeping group: outfielders carry them as near-floor values. */
+export const GK_ATTRIBUTE_KEYS: readonly AttributeKey[] = ['reflexes', 'handling', 'gkPositioning', 'gkDistribution']
+export const isGoalkeepingAttr = (k: AttributeKey): boolean => k === 'reflexes' || k === 'handling' || k === 'gkPositioning' || k === 'gkDistribution'
 export type Attributes = Record<AttributeKey, number>
 export type AttributeGroup = 'physical' | 'technical' | 'mental' | 'goalkeeping'
 

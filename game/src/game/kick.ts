@@ -163,6 +163,8 @@ export interface KickRequest {
   assistPull?: number
   /** Placed (side-foot) finish (plan 2.1#47): accuracy +15 %, pace −25 %. */
   placed?: boolean
+  /** Keeper distribution out of the hands (throw / roll / kick-out): accuracy leans on Distribution (GK). */
+  fromHands?: boolean
 }
 
 /** Placed-shot modifiers (plan 2.1#47). */
@@ -220,6 +222,14 @@ export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number
     case 'pass':
       return a01(at.passing * 0.85 + at.firstTouch * 0.15)
   }
+}
+
+/**
+ * Skill (0..1) of a keeper's release from the hands: Distribution (GK) carries most of it, the
+ * kick kind's own skill (passing / vision) the rest. Sheets without the attribute fall back to passing.
+ */
+export function handsSkill(kind: KickKind, at: Attributes, distance = 18): number {
+  return a01((at.gkDistribution ?? at.passing) * 0.65) + kickSkill(kind, at, distance) * 0.35
 }
 
 /** Maximum carry of a header (m), GDD 2.1#71. */
@@ -458,7 +468,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
  */
 export function planKick(req: KickRequest, rng?: Rng): KickPlan {
   const distance = dist(req.from, req.target)
-  const skill = kickSkill(req.kind, req.attrs, distance)
+  const skill = req.fromHands ? handsSkill(req.kind, req.attrs, distance) : kickSkill(req.kind, req.attrs, distance)
   let target = req.target
   let targetZ = req.targetZ
   const isShot = req.kind === 'shot' || req.kind === 'penalty' || req.kind === 'freekick' || req.kind === 'header'

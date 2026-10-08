@@ -25,7 +25,7 @@ export function positionGroup(pos: Position): PositionGroup {
 }
 
 const RAW_WEIGHTS: Record<Position, WeightTable> = {
-  GK: { reflexes: 34, handling: 26, positioning: 12, composure: 6, agility: 8, jumping: 6, passing: 4, firstTouch: 2, leadership: 2 },
+  GK: { reflexes: 32, handling: 24, gkPositioning: 12, gkDistribution: 6, composure: 6, agility: 8, jumping: 6, passing: 2, firstTouch: 2, leadership: 2 },
   CB: { tackling: 22, positioning: 20, heading: 14, strength: 13, jumping: 8, composure: 6, pace: 7, passing: 5, workRate: 4, leadership: 1 },
   LB: { tackling: 17, pace: 17, positioning: 13, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 5, firstTouch: 5 },
   RB: { tackling: 17, pace: 17, positioning: 13, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 5, firstTouch: 5 },
@@ -81,7 +81,7 @@ const OUTFIELD_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
   passing: -6, shooting: -12, finishing: -14, dribbling: -8, firstTouch: -6, crossing: -12, heading: -10,
   tackling: -14, setPieces: -14,
   vision: -8, composure: -6, positioning: -8, leadership: -12, workRate: -4,
-  reflexes: -62, handling: -62,
+  reflexes: -62, handling: -62, gkPositioning: -58, gkDistribution: -54,
 }
 
 const GK_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
@@ -89,12 +89,12 @@ const GK_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
   passing: -14, shooting: -40, finishing: -50, dribbling: -35, firstTouch: -18, crossing: -40, heading: -35,
   tackling: -40, setPieces: -30,
   vision: -20, composure: -2, positioning: 0, leadership: -8, workRate: -15,
-  reflexes: 3, handling: 2,
+  reflexes: 3, handling: 2, gkPositioning: 1, gkDistribution: -4,
 }
 
 /** Offsets from OVR that give each position its recognisable profile. */
 const TEMPLATES: Readonly<Record<Position, WeightTable>> = {
-  GK: { reflexes: 4, handling: 2, positioning: 1, agility: 1 },
+  GK: { reflexes: 4, handling: 2, gkPositioning: 2, positioning: 1, agility: 1 },
   CB: { tackling: 4, positioning: 4, heading: 4, strength: 5, jumping: 3, pace: -6, dribbling: -16, finishing: -28, shooting: -22, crossing: -18 },
   LB: { pace: 4, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
   RB: { pace: 4, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
@@ -108,7 +108,7 @@ const TEMPLATES: Readonly<Record<Position, WeightTable>> = {
 
 /** Player "flavours" within a position; one is chosen per player from styleSeed. */
 const FLAVOURS: Readonly<Record<Position, readonly WeightTable[]>> = {
-  GK: [{}, { reflexes: 4, handling: -3 }, { passing: 10, firstTouch: 8, composure: 3 }, { jumping: 5, strength: 6, agility: -3 }],
+  GK: [{}, { reflexes: 4, handling: -3, gkPositioning: -2 }, { gkDistribution: 12, passing: 10, firstTouch: 8, composure: 3 }, { jumping: 5, strength: 6, agility: -3, gkPositioning: 3 }],
   CB: [{}, { pace: 8, agility: 4, strength: -4 }, { passing: 8, vision: 6, composure: 4 }, { heading: 6, strength: 6, pace: -6 }],
   LB: [{}, { crossing: 6, dribbling: 6, tackling: -4 }, { tackling: 6, positioning: 4, crossing: -5 }],
   RB: [{}, { crossing: 6, dribbling: 6, tackling: -4 }, { tackling: 6, positioning: 4, crossing: -5 }],

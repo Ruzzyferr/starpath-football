@@ -29,8 +29,10 @@ function play(d: Drill & DrillBase, bot: Bot): DrillResult {
 }
 
 const ATTRS = flatAttrs(65)
+/** Keeper drills: the flat sheet with a keeper's Positioning (GK) (it reads the angle like positioning did before v4). */
+const GK_DRILL_ATTRS = { ...ATTRS, gkPositioning: 65 }
 const make = (kind: DrillKind, seed: number, variant?: 'setPiece') =>
-  createDrill(kind, { attrs: ATTRS, seed, aimAssist: 'half', ...(variant ? { variant } : {}) })
+  createDrill(kind, { attrs: kind === 'goalkeeping' ? GK_DRILL_ATTRS : ATTRS, seed, aimAssist: 'half', ...(variant ? { variant } : {}) })
 
 /** Waits `delay` seconds after `ready` becomes true, then fires once. */
 function after(ready: boolean, s: Mem, delay: number): boolean {
@@ -343,6 +345,12 @@ describe('training drills (headless)', () => {
       expect(strong).toBeGreaterThan(weak * 1.1)
     })
   }
+
+  it('distribution: Distribution (GK) alone makes releases from the hands land closer', () => {
+    const run = (v: number) =>
+      avg([1, 2, 3, 4, 5, 6].map((seed) => play(createDrill('distribution', { attrs: { ...flatAttrs(60), gkDistribution: v }, seed, aimAssist: 'half' }), BOTS.distribution.good).points))
+    expect(run(92)).toBeGreaterThan(run(20))
+  })
 
   it('is deterministic for the same seed and inputs', () => {
     const a = play(make('passing', 9), passingGood)

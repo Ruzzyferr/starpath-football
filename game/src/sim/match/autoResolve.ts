@@ -26,8 +26,8 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   penalty: { composure: 0.5, finishing: 0.3, setPieces: 0.2 },
   corner: { heading: 0.45, jumping: 0.3, strength: 0.25 },
   defend: { tackling: 0.4, positioning: 0.3, pace: 0.15, strength: 0.15 },
-  gk_save: { reflexes: 0.45, positioning: 0.3, handling: 0.25 },
-  gk_penalty: { reflexes: 0.6, composure: 0.2, positioning: 0.2 },
+  gk_save: { reflexes: 0.45, gkPositioning: 0.3, handling: 0.25 },
+  gk_penalty: { reflexes: 0.6, composure: 0.2, gkPositioning: 0.2 },
   counter_2v1: { pace: 0.25, finishing: 0.3, vision: 0.25, dribbling: 0.2 },
   long_ball_control: { firstTouch: 0.4, strength: 0.2, composure: 0.2, jumping: 0.1, agility: 0.1 },
   rebound: { finishing: 0.35, agility: 0.25, positioning: 0.2, composure: 0.2 },
@@ -40,8 +40,8 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   fk_wall: { positioning: 0.45, leadership: 0.3, composure: 0.25 },
   dribble: { dribbling: 0.45, agility: 0.2, pace: 0.15, finishing: 0.2 },
   header: { heading: 0.45, jumping: 0.3, positioning: 0.25 },
-  gk_1v1: { reflexes: 0.35, positioning: 0.35, pace: 0.15, composure: 0.15 },
-  gk_sweep: { positioning: 0.45, pace: 0.3, handling: 0.25 },
+  gk_1v1: { reflexes: 0.35, gkPositioning: 0.35, pace: 0.15, composure: 0.15 },
+  gk_sweep: { gkPositioning: 0.35, gkDistribution: 0.15, pace: 0.3, handling: 0.2 },
   back_post: { positioning: 0.4, heading: 0.3, jumping: 0.15, strength: 0.15 },
 }
 

@@ -5,7 +5,7 @@
 import type {
   Appearance, Archetype, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship,
 } from '../../core/types'
-import { ATTRIBUTE_KEYS } from '../../core/types'
+import { ATTRIBUTE_KEYS, isGoalkeepingAttr } from '../../core/types'
 import { Rng, hashString } from '../../core/rng'
 import { clamp, emptyStats } from './common'
 import { POSITION_WEIGHTS, checkPerkUnlock, heroOvr } from './progression'
@@ -53,7 +53,7 @@ export const ARCHETYPE_TEMPLATES: Readonly<Record<Archetype, Partial<Record<Attr
   winger: { pace: 18, dribbling: 16, crossing: 12, agility: 12, stamina: 7, firstTouch: 8, finishing: 4, passing: 3 },
   wall: { tackling: 18, heading: 14, strength: 14, positioning: 12, jumping: 10, leadership: 7, composure: 5, workRate: 3 },
   boxToBox: { stamina: 18, workRate: 16, passing: 10, tackling: 10, strength: 8, shooting: 7, positioning: 5, vision: 6, firstTouch: 4 },
-  keeper: { reflexes: 24, handling: 22, positioning: 12, jumping: 8, agility: 8, composure: 6, leadership: 3 },
+  keeper: { reflexes: 22, handling: 20, gkPositioning: 12, gkDistribution: 5, positioning: 4, jumping: 8, agility: 6, composure: 4, leadership: 2 },
 }
 
 /** Positions each archetype is built for (2.3#3). Elsewhere only half its bonus applies. */
@@ -137,15 +137,19 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
   const archShare = archetypeFits(input.position, input.archetype) ? 1 : ARCHETYPE_MISMATCH_SHARE
 
   const attrs = {} as Attributes
+  // The v4 goalkeeping pair draws its noise from a side stream read off (not consumed from) the
+  // career stream, so everything rolled after the sheet (potential, perks…) is unchanged.
+  const st = rng.state
+  const gkRng = new Rng((st.a ^ st.d ^ hashString('gk-attrs-v4')) >>> 0)
   for (const key of ATTRIBUTE_KEYS) {
-    const gk = key === 'reflexes' || key === 'handling'
+    const gk = isGoalkeepingAttr(key)
     let v = gk && !isKeeper ? OUTFIELD_GK_ATTR : BASE_ATTR
     // Keepers are poor at outfield technique.
     if (isKeeper && !gk && (key === 'finishing' || key === 'dribbling' || key === 'tackling' || key === 'crossing' || key === 'shooting')) v -= 8
     v += (arch[key] ?? 0) * archShare
     v += (POSITION_BOOST * (posW[key] ?? 0)) / maxW
     v += bg.attrs[key] ?? 0
-    v += rng.normal(0, ATTR_NOISE_SD)
+    v += (key === 'gkPositioning' || key === 'gkDistribution' ? gkRng : rng).normal(0, ATTR_NOISE_SD)
     attrs[key] = clamp(Math.round(v), 5, 75)
   }
 

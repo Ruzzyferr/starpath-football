@@ -81,14 +81,19 @@ const mirror = (p: Vec2): Vec2 => ({ x: PITCH_LENGTH - p.x, y: p.y })
 
 function attrsFor(rng: Rng, ovr: number, role: Position): Attributes {
   const a = {} as Attributes
-  for (const k of ATTRIBUTE_KEYS) a[k] = Math.round(Math.max(20, Math.min(97, rng.normal(ovr, 7))))
+  // gkPositioning / gkDistribution are set below without a draw (keeps the demo stream unchanged).
+  for (const k of ATTRIBUTE_KEYS) if (k !== 'gkPositioning' && k !== 'gkDistribution') a[k] = Math.round(Math.max(20, Math.min(97, rng.normal(ovr, 7))))
   if (role === 'GK') {
     a.reflexes = Math.round(Math.min(95, ovr + 8))
     a.handling = Math.round(Math.min(95, ovr + 5))
     a.positioning = Math.round(Math.min(95, ovr + 3))
+    a.gkPositioning = Math.round(Math.min(95, ovr + 4))
+    a.gkDistribution = Math.round(Math.min(95, ovr))
   } else {
     a.reflexes = 25
     a.handling = 25
+    a.gkPositioning = 25
+    a.gkDistribution = 25
   }
   return a
 }

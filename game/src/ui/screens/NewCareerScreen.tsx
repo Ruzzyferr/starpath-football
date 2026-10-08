@@ -74,7 +74,7 @@ const PREVIEW: Record<Archetype, [AttributeKey, number][]> = {
   winger: [['pace', 68], ['crossing', 60], ['passing', 52], ['dribbling', 64], ['tackling', 32], ['agility', 62]],
   wall: [['pace', 50], ['heading', 63], ['passing', 46], ['positioning', 58], ['tackling', 66], ['strength', 64]],
   boxToBox: [['pace', 58], ['shooting', 50], ['passing', 56], ['stamina', 66], ['tackling', 54], ['workRate', 64]],
-  keeper: [['reflexes', 66], ['handling', 62], ['positioning', 58], ['jumping', 55], ['composure', 52], ['passing', 44]],
+  keeper: [['reflexes', 66], ['handling', 62], ['gkPositioning', 58], ['gkDistribution', 50], ['jumping', 55], ['composure', 52]],
 }
 
 const FALLBACK_COUNTRY: Country = {

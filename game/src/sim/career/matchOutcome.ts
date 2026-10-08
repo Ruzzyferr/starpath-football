@@ -101,7 +101,7 @@ export const ACTION_XP: Readonly<Record<'goals' | 'assists' | 'shotsOnTarget' | 
   passesCompleted: { passing: 0.04 },
   tackles: { tackling: 0.5 },
   dribbles: { dribbling: 0.5, agility: 0.2 },
-  saves: { reflexes: 0.6, handling: 0.3 },
+  saves: { reflexes: 0.55, handling: 0.25, gkPositioning: 0.15 },
 }
 /** Action XP may take at most this share of the match XP budget. */
 export const ACTION_XP_MAX_SHARE = 0.45

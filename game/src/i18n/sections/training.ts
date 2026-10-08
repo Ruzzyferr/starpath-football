@@ -54,7 +54,7 @@ export const tr = {
       crossing: 'Kanattan ortayı yanan bölgeye indir. Top, koşan arkadaşın bölgeye vardığı anda orada olsun.',
       heading: 'Makine topu işarete yollar. İşarete geç, top gelirken zıpla ve kafayla kaleciyi geç.',
       tackling: 'Dripling yapan rakip sana geliyor. Önünde kal, top ayağından açılınca kap; faul yapma, geçilme.',
-      distribution: 'Kanattan gelen ortayı halkanın altında havada kap (eldiven: Kaleci özelliğin), sonra 6 sn içinde koşan arkadaşına at ya da vur. Yakın: atış, uzak: vuruş. Hızlı çıkış ve uzun bulma bonus.',
+      distribution: 'Kanattan gelen ortayı halkanın altında havada kap (eldiven: Top Tutma, yerleşme: Pozisyon (Kaleci)), sonra 6 sn içinde koşan arkadaşına at ya da vur (isabet: Oyun Kurma (Kaleci)). Yakın: atış, uzak: vuruş. Hızlı çıkış ve uzun bulma bonus.',
     },
     pcControls: {
       finishing: 'Fareyi kaleye tut, basılı tut-bırak: şut (süre = güç). Ctrl/E: aşırtma.',
@@ -182,7 +182,7 @@ export const en: Shape<typeof tr> = {
       crossing: 'Whip crosses from the wing into the lit zone, landing just as your team-mate’s run gets there.',
       heading: 'The machine fires the ball at the mark. Get on it, jump as it arrives and head it past the keeper.',
       tackling: 'A dribbler runs at you. Stay goal-side and nick the ball when it is pushed loose; don’t foul, don’t get beaten.',
-      distribution: 'Catch the wing cross out of the air under the ring (your Handling counts), then throw or kick it to a running team-mate within 6 s. Close is a throw, far is a kick. Quick restarts and long finds earn bonus points.',
+      distribution: 'Catch the wing cross out of the air under the ring (Handling holds it, Positioning (GK) gets you there), then throw or kick it to a running team-mate within 6 s (Distribution (GK) sets the accuracy). Close is a throw, far is a kick. Quick restarts and long finds earn bonus points.',
     },
     pcControls: {
       finishing: 'Point at the goal, hold & release: shoot (hold = power). Ctrl/E: chip.',

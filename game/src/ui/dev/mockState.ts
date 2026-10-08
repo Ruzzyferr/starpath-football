@@ -2,7 +2,7 @@
 import { Rng, clamp } from '../../core/rng'
 import { SAVE_VERSION } from '../../core/config'
 import {
-  ATTRIBUTE_KEYS, type AttributeKey, type Attributes, type GameState, type Hero, type Life, type LogEntry,
+  ATTRIBUTE_KEYS, isGoalkeepingAttr, type AttributeKey, type Attributes, type GameState, type Hero, type Life, type LogEntry,
   type NewsItem, type Position, type Relationship, type SeasonStats, type Archetype,
 } from '../../core/types'
 import type { NewGameInput } from '../store'
@@ -11,7 +11,7 @@ import { buildWorld, emptyStats, SEASON } from './mockWorld'
 export const START_WEEK = 12
 
 const POS_WEIGHTS: Record<Position, Partial<Record<AttributeKey, number>>> = {
-  GK: { reflexes: 4, handling: 4, positioning: 2, composure: 1, jumping: 1, agility: 1 },
+  GK: { reflexes: 4, handling: 4, gkPositioning: 2, gkDistribution: 1, composure: 1, jumping: 1, agility: 1 },
   CB: { tackling: 3, heading: 3, strength: 2, positioning: 3, jumping: 1, composure: 1 },
   LB: { pace: 2, tackling: 2, crossing: 2, stamina: 2, positioning: 1 },
   RB: { pace: 2, tackling: 2, crossing: 2, stamina: 2, positioning: 1 },
@@ -40,13 +40,13 @@ const ARCH_BONUS: Record<Archetype, AttributeKey[]> = {
   winger: ['pace', 'dribbling', 'crossing'],
   wall: ['tackling', 'strength', 'heading'],
   boxToBox: ['stamina', 'workRate', 'tackling'],
-  keeper: ['reflexes', 'handling', 'positioning'],
+  keeper: ['reflexes', 'handling', 'gkPositioning'],
 }
 
 function makeAttrs(rng: Rng, arch: Archetype, base: number): Attributes {
   const a = {} as Attributes
   for (const k of ATTRIBUTE_KEYS) {
-    const gk = k === 'reflexes' || k === 'handling'
+    const gk = isGoalkeepingAttr(k)
     a[k] = clamp(Math.round(rng.normal(gk && arch !== 'keeper' ? 25 : base, 6)), 10, 90)
   }
   for (const k of ARCH_BONUS[arch]) a[k] = clamp(a[k] + rng.int(8, 13), 10, 92)

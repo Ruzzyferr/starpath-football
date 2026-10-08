@@ -22,7 +22,7 @@ type AttrKey = keyof Attributes
 
 /** FUT-style six headline stats by position. */
 export function cardStatKeys(pos: Position): AttrKey[] {
-  if (pos === 'GK') return ['reflexes', 'handling', 'positioning', 'jumping', 'composure', 'passing']
+  if (pos === 'GK') return ['reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'jumping', 'composure']
   if (pos === 'CB' || pos === 'DM') return ['pace', 'tackling', 'heading', 'strength', 'passing', 'positioning']
   if (pos === 'LB' || pos === 'RB') return ['pace', 'tackling', 'crossing', 'stamina', 'passing', 'dribbling']
   return ['pace', 'shooting', 'passing', 'dribbling', 'tackling', 'strength']

@@ -29,11 +29,13 @@ type Mix = Partial<Record<keyof Attributes, number>>
 const DEF_MIX: Mix = { tackling: 0.3, positioning: 0.25, strength: 0.15, heading: 0.15, pace: 0.15 }
 const MID_MIX: Mix = { passing: 0.3, vision: 0.2, firstTouch: 0.15, workRate: 0.15, stamina: 0.1, dribbling: 0.1 }
 const ATT_MIX: Mix = { finishing: 0.3, shooting: 0.15, dribbling: 0.2, pace: 0.15, composure: 0.1, firstTouch: 0.1 }
-const GK_MIX: Mix = { reflexes: 0.4, handling: 0.3, positioning: 0.2, composure: 0.1 }
+const GK_MIX: Mix = { reflexes: 0.38, handling: 0.27, gkPositioning: 0.2, positioning: 0.05, composure: 0.1 }
+/** A keeper's share of the build-up is his distribution (throws, kicks out of the hands). */
+const GK_DIST_MIX: Mix = { gkDistribution: 0.6, passing: 0.25, vision: 0.15 }
 
 /** Contribution weight of each position to [def, mid, att]. */
 const UNIT_WEIGHTS: Record<Position, readonly [number, number, number]> = {
-  GK: [0, 0, 0],
+  GK: [0, 0.08, 0],
   CB: [1.0, 0.1, 0],
   LB: [0.8, 0.35, 0.15],
   RB: [0.8, 0.35, 0.15],
@@ -62,7 +64,7 @@ export function unitSkills(p: MatchPlayer): UnitSkills {
   return {
     gk: blend(mix(p.attrs, GK_MIX)),
     def: blend(mix(p.attrs, DEF_MIX)),
-    mid: blend(mix(p.attrs, MID_MIX)),
+    mid: blend(mix(p.attrs, p.position === 'GK' ? GK_DIST_MIX : MID_MIX)),
     att: blend(mix(p.attrs, ATT_MIX)),
   }
 }

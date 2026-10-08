@@ -3,7 +3,9 @@
  * (direction memory) on the hero's penalties.
  */
 import { describe, expect, it } from 'vitest'
-import { punchChance } from './ai'
+import { keeperTarget, punchChance, type AiWorld } from './ai'
+import { handsSkill, kickSkill } from './kick'
+import { flatAttrs } from './setup'
 import { generatedHighlight } from './demoHighlights'
 import { HighlightRuntime, type RuntimeEvent } from './runtime'
 import type { Agent } from './model'
@@ -144,5 +146,23 @@ describe('hero keeper hold and distribution (2.1#85)', () => {
       if (rt.result?.outcome === 'pass_complete') completed++
     }
     expect(completed).toBeGreaterThan(0)
+  })
+})
+
+describe('Positioning (GK) and Distribution (GK) (v4 goalkeeping attributes)', () => {
+  const gkAt = (gkPositioning: number): Agent =>
+    ({ team: 'hero', isKeeper: true, pos: { x: 1, y: 34 }, attrs: { ...flatAttrs(60, true), gkPositioning } } as unknown as Agent)
+  const world = (k: Agent): AiWorld =>
+    ({ agents: [k], ball: { x: 20, y: 16, z: 0, vx: 0, vy: 0, vz: 0, spin: { x: 0, y: 0, z: 0 } }, owner: null, time: 0, difficulty: 1, kind: 'defend' } as unknown as AiWorld)
+  it('a well-positioned keeper holds the angle (toward the near post) and comes further off his line', () => {
+    const good = keeperTarget(gkAt(90), world(gkAt(90))).pos
+    const poor = keeperTarget(gkAt(20), world(gkAt(20))).pos
+    expect(Math.abs(good.y - 34)).toBeGreaterThan(Math.abs(poor.y - 34))
+    expect(good.x).toBeGreaterThan(poor.x)
+  })
+  it('releases from the hands lean on Distribution (GK)', () => {
+    const at = (gkDistribution: number) => ({ ...flatAttrs(60, true), gkDistribution })
+    expect(handsSkill('pass', at(90))).toBeGreaterThan(handsSkill('pass', at(30)))
+    expect(handsSkill('lofted', at(30))).toBeLessThan(kickSkill('lofted', at(30)))
   })
 })

@@ -32,8 +32,8 @@
  * | match_clean_tackle    | tackling                                | ai tackle success                                    |
  * | match_aerial_def      | heading, strength                       | runtime head radius, clearances                      |
  * | match_gk_reaction     | reflexes, agility                       | ai keeper reaction, runtime GK bullet-time           |
- * | match_gk_penalty      | reflexes, positioning                   | runtime penalty read (positioning×0.6+reflexes×0.2)  |
- * | match_gk_sweeper      | agility, pace, passing                  | ai keeper reach / distribution                       |
+ * | match_gk_penalty      | reflexes, gkPositioning                 | runtime penalty read (gkPos×0.6+reflexes×0.2)        |
+ * | match_gk_sweeper      | agility, pace, gkDistribution           | ai keeper reach / distribution                       |
  * | big_game              | composure (flat, important matches)     | everything composure-based                           |
  *
  * Fraction effects (0.15 = +15%) add `value × FACTOR` attribute points (with
@@ -70,8 +70,8 @@ export const MATCH_PERK_ATTRS: Readonly<Record<string, Partial<Record<AttributeK
   match_clean_tackle: { tackling: 0.8 },
   match_aerial_def: { heading: 0.9, strength: 0.6 },
   match_gk_reaction: { reflexes: 1.2, agility: 0.6 },
-  match_gk_penalty: { reflexes: 0.6, positioning: 1 },
-  match_gk_sweeper: { agility: 0.8, pace: 0.8, passing: 0.6 },
+  match_gk_penalty: { reflexes: 0.6, gkPositioning: 1 },
+  match_gk_sweeper: { agility: 0.8, pace: 0.8, gkDistribution: 0.6 },
 }
 
 /** Flat composure in matches with importance ≥ this (big_game perk). */

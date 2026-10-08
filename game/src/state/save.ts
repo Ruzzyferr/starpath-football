@@ -178,6 +178,49 @@ const MIGRATIONS: Record<number, Migration> = {
     s.dataPack ??= `sp-data-${dv}`
     return s
   },
+  /**
+   * v3 → v4 (GDD kaleci özellik grupları): gkPositioning and gkDistribution, derived from what the
+   * old sheet already says about the player (see {@link deriveGkAttrsV4}). The attribute history gains
+   * the two columns, each old row derived from its own values. NPC sheets are derived on demand.
+   */
+  3: (s) => {
+    const attrs = s.hero && typeof s.hero === 'object' ? s.hero.attrs : null
+    if (attrs && typeof attrs === 'object') {
+      const d = deriveGkAttrsV4(attrs)
+      if (!Number.isFinite(attrs.gkPositioning)) attrs.gkPositioning = d.gkPositioning
+      if (!Number.isFinite(attrs.gkDistribution)) attrs.gkDistribution = d.gkDistribution
+    }
+    const hist = s.attrHistory
+    if (hist && typeof hist === 'object' && Array.isArray(hist.keys) && Array.isArray(hist.rows)) {
+      const add = ['gkPositioning', 'gkDistribution'].filter((k) => !hist.keys.includes(k))
+      if (add.length) {
+        const keys: string[] = [...hist.keys]
+        for (const row of hist.rows) {
+          if (!Array.isArray(row)) continue
+          const at: Record<string, number> = {}
+          keys.forEach((k, i) => { at[k] = Number(row[i + 2]) || 0 })
+          const d = deriveGkAttrsV4(at)
+          for (const k of add) row.push(d[k as keyof typeof d])
+        }
+        hist.keys = [...keys, ...add]
+      }
+    }
+    return s
+  },
+}
+
+/**
+ * Frozen v4 derivation (do not change: old saves must migrate the same way forever). Keeper positioning
+ * leans on handling and positioning, distribution on handling and passing/vision; outfielders, whose
+ * handling sits near the floor, land low.
+ */
+export function deriveGkAttrsV4(a: Record<string, unknown>): { gkPositioning: number; gkDistribution: number } {
+  const n = (k: string): number => { const v = Number(a[k]); return Number.isFinite(v) ? v : 30 }
+  const fit = (v: number): number => Math.max(1, Math.min(99, Math.round(v)))
+  return {
+    gkPositioning: fit(0.5 * n('handling') + 0.3 * n('positioning') + 0.2 * n('reflexes')),
+    gkDistribution: fit(0.55 * n('handling') + 0.3 * n('passing') + 0.15 * n('vision')),
+  }
 }
 
 export function migrate(raw: any, fromVersion: number): GameState | null {

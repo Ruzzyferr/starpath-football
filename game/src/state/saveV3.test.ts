@@ -19,14 +19,14 @@ afterEach(() => vi.unstubAllGlobals())
 
 describe('v2 -> v3 migration', () => {
   it('loads a real v2 envelope with sensible defaults and keeps a pre-migration backup', async () => {
-    expect(SAVE_VERSION).toBe(3)
+    expect(SAVE_VERSION).toBeGreaterThanOrEqual(3)
     const st = new MemoryStorage()
     await st.set('sp.save.0', fixture(2))
     const mgr = new SaveManager(st)
     const r = await loadGame(mgr, 0)
     expect(r.ok).toBe(true)
     if (!r.ok) return
-    expect(r.state.version).toBe(3)
+    expect(r.state.version).toBe(SAVE_VERSION)
     expect(r.state.replays).toEqual([])
     expect(r.state.dataPack).toMatch(/^sp-data-\d+$/)
     expect(r.state.attrHistory?.rows.length).toBe(1)
@@ -35,8 +35,21 @@ describe('v2 -> v3 migration', () => {
   })
   it('loads a v1 envelope through both migrations', () => {
     const o = openEnvelope(fixture(1))
-    expect(o?.state.version).toBe(3)
+    expect(o?.state.version).toBe(SAVE_VERSION)
     expect((o!.state as GameState).replays).toEqual([])
+  })
+  it('loads a real v3 envelope into v4: the goalkeeping pair is filled and tracked in the history', async () => {
+    const st = new MemoryStorage()
+    await st.set('sp.save.0', fixture(3))
+    const r = await loadGame(new SaveManager(st), 0)
+    expect(r.ok).toBe(true)
+    if (!r.ok) return
+    for (const k of ['gkPositioning', 'gkDistribution'] as const) {
+      expect(r.state.hero.attrs[k]).toBeGreaterThanOrEqual(1)
+      expect(r.state.hero.attrs[k]).toBeLessThanOrEqual(99)
+      expect(r.state.attrHistory?.keys).toContain(k)
+    }
+    expect(JSON.parse((await st.get('sp.save.0.premigrate'))!).version).toBe(3)
   })
 })
 

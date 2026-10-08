@@ -407,9 +407,15 @@ export function carrierDecision(a: Agent, w: AiWorld, rng: Rng, opts: { heldFor:
 
 // ───────────────────────── Goalkeeper ─────────────────────────
 
+/** Positioning (GK) as 0..1: angle play, starting depth, when to rush and when to come for a cross. */
+export const gkPositioning01 = (gk: Agent): number => a01(gk.attrs.gkPositioning)
+
 /**
  * Keeper positioning: on the bisector of the angle formed by the ball and the
  * posts, further off the line as the ball approaches; rushes out 1v1.
+ * Positioning (GK) sets how faithfully he holds the bisector (a poor keeper
+ * drifts back toward the middle of his goal, leaving the near post) and how
+ * far he dares to come off his line.
  */
 export function keeperTarget(gk: Agent, w: AiWorld): { pos: Vec2; rushing: boolean } {
   const gx = ownGoalX(gk.team)
@@ -428,20 +434,22 @@ export function keeperTarget(gk: Agent, w: AiWorld): { pos: Vec2; rushing: boole
   if (carrier && carrier.team !== gk.team && dBall < 20) {
     const defenders = w.agents.filter((a) => a.team === gk.team && !a.isKeeper)
     const covered = defenders.some((d) => pointSegment(d.pos, carrier.pos, { x: gx, y: GOAL_CENTER_Y }).d < 1.8 && (d.pos.x - gx) * inward < (carrier.pos.x - gx) * inward)
-    const rushBias = a01(gk.attrs.positioning) * 0.5 + 0.5
+    const rushBias = gkPositioning01(gk) * 0.5 + 0.5
     if (!covered && dBall < 14 + rushBias * 4) {
       const stop = add(ballP, scale(norm(sub({ x: gx, y: GOAL_CENTER_Y }, ballP)), 1.6))
       return { pos: inField(stop), rushing: true }
     }
   }
   // Depth off the line, then the point on the bisector ray (from the ball) at that depth.
-  const depth = clampN(1 + (36 - dBall) * 0.09, 0.6, 4.5)
+  const gp = gkPositioning01(gk)
+  const depth = clampN((1 + (36 - dBall) * 0.09) * (0.85 + gp * 0.3), 0.6, 4.5)
   const px = gx + inward * depth
   let py = GOAL_CENTER_Y
   if (Math.abs(bis.x) > 0.05) {
     const s = (px - ballP.x) / bis.x
     if (s > 0) py = ballP.y + bis.y * s
   }
+  py = GOAL_CENTER_Y + (py - GOAL_CENTER_Y) * Math.min(1, 0.6 + gp * 0.5)
   const p = { x: px, y: clampN(py, GOAL_CENTER_Y - 3.2, GOAL_CENTER_Y + 3.2) }
   return { pos: p, rushing: false }
 }
@@ -547,7 +555,7 @@ export function punchChance(gk: Agent, z: number, crowd: number, speed: number):
 
 /** Probability a keeper gets a hand to a ball inside reach (fingertips at the edge). */
 export function saveChance(gk: Agent, stretch: number, ballSpeed: number, difficulty = 1): number {
-  const r = a01(gk.attrs.reflexes) * 0.6 + a01(gk.attrs.agility) * 0.25 + a01(gk.attrs.positioning) * 0.15
+  const r = a01(gk.attrs.reflexes) * 0.6 + a01(gk.attrs.agility) * 0.25 + gkPositioning01(gk) * 0.15
   const diffAdj = gk.isHero ? 0.06 : gk.team === 'opp' ? (difficulty - 1) * 0.3 : 0
   // Balls into the body/hands are nearly always stopped; fingertip stretches are a coin flip.
   const edge = Math.pow(clamp01(stretch), 1.6) * (0.75 - r * 0.35)
@@ -557,7 +565,7 @@ export function saveChance(gk: Agent, stretch: number, ballSpeed: number, diffic
 /** Whether a keeper should come to claim a high ball landing near goal. */
 export function shouldClaimCross(gk: Agent, landing: Vec2, tLand: number): boolean {
   const gx = ownGoalX(gk.team)
-  const inBox = Math.abs(landing.x - gx) < 6.5 + a01(gk.attrs.positioning) * 3 && Math.abs(landing.y - GOAL_CENTER_Y) < 9
+  const inBox = Math.abs(landing.x - gx) < 6.5 + gkPositioning01(gk) * 3 && Math.abs(landing.y - GOAL_CENTER_Y) < 9
   const canReach = dist(gk.pos, landing) / (5.5 + a01(gk.attrs.pace) * 1.5) < tLand + 0.1
   return inBox && canReach
 }

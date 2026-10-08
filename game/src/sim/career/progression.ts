@@ -31,7 +31,7 @@ import { NOMINAL_SEASON_WEEKS, clamp, fill, finite, heroAge, lt, signed, type Li
  * attributes and OVR with the same formula.
  */
 export const POSITION_WEIGHTS: Readonly<Record<Position, Readonly<Partial<Record<AttributeKey, number>>>>> = {
-  GK: { reflexes: 5, handling: 5, positioning: 4, agility: 2, jumping: 2, composure: 2, passing: 1, leadership: 1 },
+  GK: { reflexes: 5, handling: 5, gkPositioning: 4, gkDistribution: 1, agility: 2, jumping: 2, composure: 2, passing: 0.5, leadership: 1 },
   CB: { tackling: 5, heading: 4, positioning: 4, strength: 3, jumping: 3, composure: 2, pace: 2, passing: 1.5, leadership: 1, workRate: 1, stamina: 1 },
   LB: { tackling: 4, pace: 4, crossing: 3, stamina: 3, positioning: 3, workRate: 2, passing: 2, dribbling: 1.5, agility: 1.5 },
   RB: { tackling: 4, pace: 4, crossing: 3, stamina: 3, positioning: 3, workRate: 2, passing: 2, dribbling: 1.5, agility: 1.5 },
@@ -49,7 +49,7 @@ export const ATTRIBUTE_GROUP: Readonly<Record<AttributeKey, AttributeGroup>> = {
   passing: 'technical', shooting: 'technical', finishing: 'technical', dribbling: 'technical', firstTouch: 'technical',
   crossing: 'technical', heading: 'technical', tackling: 'technical', setPieces: 'technical',
   vision: 'mental', composure: 'mental', positioning: 'mental', leadership: 'mental', workRate: 'mental',
-  reflexes: 'goalkeeping', handling: 'goalkeeping',
+  reflexes: 'goalkeeping', handling: 'goalkeeping', gkPositioning: 'goalkeeping', gkDistribution: 'goalkeeping',
 }
 
 /** Position-weighted overall rating (1..99) for an attribute set. */
@@ -172,7 +172,8 @@ export const ATTRIBUTE_NAMES: Readonly<Record<AttributeKey, { tr: string; en: st
   tackling: lt('Top Kapma', 'Tackling'), setPieces: lt('Duran Top', 'Set Pieces'), vision: lt('Vizyon', 'Vision'),
   composure: lt('Soğukkanlılık', 'Composure'), positioning: lt('Pozisyon Alma', 'Positioning'),
   leadership: lt('Liderlik', 'Leadership'), workRate: lt('Çalışkanlık', 'Work Rate'), reflexes: lt('Refleks', 'Reflexes'),
-  handling: lt('Top Tutma', 'Handling'),
+  handling: lt('Top Tutma', 'Handling'), gkPositioning: lt('Pozisyon (Kaleci)', 'Positioning (GK)'),
+  gkDistribution: lt('Oyun Kurma (Kaleci)', 'Distribution (GK)'),
 }
 
 /**
