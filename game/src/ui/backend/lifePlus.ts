@@ -9,6 +9,9 @@ import {
   openBusiness as simOpen, sellBusiness as simSell, setBusinessManager, upgradeBusiness as simUpgrade,
 } from '../../sim/life/business'
 import { selfExclude as simExclude, setLossLimit as simLossLimit } from '../../sim/life/casino'
+import {
+  buildAcademyStage, buildStadiumStage, buyClubStake as simBuyStake, contributeLegacyFund, sellClubStake as simSellStake,
+} from '../../sim/life/projects'
 import { fanFeed, type FanFeed } from '../../sim/life/socialFeed'
 import {
   answerInterview, canHoldPressConference, interviewSession, pressConferenceQuestions,
@@ -41,6 +44,27 @@ export const lifePlus = {
   },
   sellBusiness(id: string): number {
     const r = simSell(get().life, id)
+    done(r.lines, r.ok)
+    return r.amount
+  },
+  buildAcademy(): boolean {
+    const r = buildAcademyStage(get().life)
+    return done(r.lines, r.ok)
+  },
+  buildStadium(): boolean {
+    const r = buildStadiumStage(get().life)
+    return done(r.lines, r.ok)
+  },
+  fundLegacy(amount: number): boolean {
+    const r = contributeLegacyFund(get().life, amount)
+    return done(r.lines, r.ok)
+  },
+  buyStake(clubId: string, pct: number): boolean {
+    const r = simBuyStake(get().life, clubId, pct)
+    return done(r.lines, r.ok)
+  },
+  sellStake(): number {
+    const r = simSellStake(get().life)
     done(r.lines, r.ok)
     return r.amount
   },

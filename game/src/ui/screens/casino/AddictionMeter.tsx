@@ -4,6 +4,7 @@ import { addictionView } from '../../../sim/game/uiViews'
 import { StatBar } from '../../components'
 import { gameState, navigate, settings } from '../../store'
 import { InfoTip } from '../../tutorial/InfoTip'
+import { VipNote } from './VipCosts'
 
 /** Gambling addiction meter shown next to happiness; hidden with the casino or while at zero. */
 export function AddictionMeter() {
@@ -15,6 +16,7 @@ export function AddictionMeter() {
   return (
     <div class="addiction-meter stack" data-testid="addiction-meter" data-level={v.level}>
       <StatBar label={t('casino.responsible.meter')} value={v.value} size="sm" color={color} info={<InfoTip term="addiction" />} />
+      <VipNote />
       <a
         class="addiction-link t-xs"
         href="#casino"

@@ -5,7 +5,7 @@ import { lt, t } from '../../../i18n'
 import {
   BUSINESS_DEFS, BUSINESS_KINDS, businessValue, expectedRevenue, managerWage, upgradeCost,
 } from '../../../sim/life/business'
-import { Button, Card, EmptyState, Modal, Money, SectionTitle, Sparkline, TextField } from '../../components'
+import { Button, Card, Chip, EmptyState, Modal, Money, SectionTitle, Sparkline, TextField } from '../../components'
 import { formatMoney } from '../../format'
 import { Icon } from '../../icons'
 import { gameState } from '../../store'
@@ -39,6 +39,32 @@ function PnlTable({ p }: { p: BusinessPnl | undefined }) {
   )
 }
 
+/** Active decision-card effect (marketing push, crisis) and the last few weekly results with their notes. */
+function DecisionEffect({ b }: { b: Biz }) {
+  const recent = b.history.slice(0, 4)
+  return (
+    <div class="biz-decision" data-testid="biz-decision">
+      <h4 class="micro t-mid">{t('life.biz.decision.title')}</h4>
+      {b.boost ? (
+        <Chip tone={b.boost.mult >= 1 ? 'pos' : 'neg'} icon={b.boost.mult >= 1 ? 'trend-up' : 'warning'}>
+          {t('life.biz.decision.boost', { m: b.boost.mult.toFixed(2), w: b.boost.weeks })}
+        </Chip>
+      ) : <p class="t-xs t-lo">{t('life.biz.decision.none')}</p>}
+      {recent.length > 1 && (
+        <ul class="biz-recent t-xs">
+          {recent.map((p) => (
+            <li key={p.w}>
+              <span class="t-mid">{t('life.biz.decision.week', { w: p.w })}</span>
+              <span class={`num ${p.profit >= 0 ? 't-pos' : 't-neg'}`}>{formatMoney(p.profit, { compact: true, sign: true })}</span>
+              {p.note && <span class="t-lo truncate">{lt(p.note)}</span>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  )
+}
+
 function OwnedCard({ b, reputation, money }: { b: Biz; reputation: number; money: number }) {
   const [sell, setSell] = useState(false)
   const def = BUSINESS_DEFS[b.kind]
@@ -64,6 +90,7 @@ function OwnedCard({ b, reputation, money }: { b: Biz; reputation: number; money
         <div><dt>{t('life.biz.expected')}</dt><dd class="num">{formatMoney(expectedRevenue(b, reputation), { compact: true })}</dd></div>
         <div><dt>{t('life.biz.value')}</dt><dd class="num">{formatMoney(businessValue(b), { compact: true })}</dd></div>
       </dl>
+      <DecisionEffect b={b} />
       <PnlTable p={b.history[0]} key={b.history[0]?.w ?? -1} />
       {series.length > 1 && (
         <div class="biz-spark">

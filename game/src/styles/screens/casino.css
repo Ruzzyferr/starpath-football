@@ -580,3 +580,11 @@
   border: 1px solid var(--border); border-radius: var(--r-btn); background: var(--surface-1);
 }
 .cas-band-item { display: inline-flex; align-items: center; gap: var(--sp-2); min-width: 0; }
+
+/* ── VIP tier and weekly gambling cost ── */
+.cas-vip { gap: var(--sp-3); }
+.cas-vip .row .icon { color: var(--accent-gold); }
+.cas-vip-cost-title { margin-top: var(--sp-1); }
+.cas-vip-costs { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-1); color: var(--text-mid); }
+.cas-vip-costs li.is-active { color: var(--text-hi); font-weight: 600; }
+.cas-vip-costs li.is-active .icon { color: var(--state-danger); }

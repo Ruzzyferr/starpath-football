@@ -4,6 +4,7 @@ import { Button, Card, Money, Page, StatBar } from '../../components'
 import { Icon } from '../../icons'
 import { data, gameState, navigate, type ScreenId } from '../../store'
 import { HorseSvg, PlayingCard, SlotSymbol, CasinoAgeLock, LimitBand } from './shared'
+import { VipCard } from './VipCosts'
 import { ExclusionLock, HelplineNote, ResponsiblePanel } from './ResponsiblePanel'
 import { casinoExclusion } from '../../../sim/life/casino'
 
@@ -103,6 +104,7 @@ function CasinoMain() {
             <HelplineNote />
             <p class="t-xs t-lo">{t('casino.responsible.note')}</p>
           </Card>
+          <VipCard />
           <ResponsiblePanel />
           <Card>
             <dl class="cas-stats">

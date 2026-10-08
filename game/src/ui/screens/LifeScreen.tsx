@@ -10,15 +10,16 @@ import { Bank } from './life/Bank'
 import { Business } from './life/Business'
 import { Relations } from './life/Relations'
 import { Social } from './life/Social'
+import { Projects } from './life/Projects'
 import { Sponsors } from './life/Sponsors'
 import { AddictionMeter } from './casino/AddictionMeter'
 import { InfoTip } from '../tutorial/InfoTip'
 import { LockChip, NewTag, UnlockGate } from '../tutorial/UnlockGate'
 import { features } from '../tutorial/unlocks'
 
-type LifeTab = 'relations' | 'assets' | 'bank' | 'business' | 'social' | 'sponsors'
-const TABS: LifeTab[] = ['relations', 'assets', 'bank', 'business', 'social', 'sponsors']
-const ICONS = { relations: 'users', assets: 'house', bank: 'bank', business: 'storefront', social: 'instagram', sponsors: 'handshake' } as const
+type LifeTab = 'relations' | 'assets' | 'bank' | 'business' | 'social' | 'sponsors' | 'projects'
+const TABS: LifeTab[] = ['relations', 'assets', 'bank', 'business', 'projects', 'social', 'sponsors']
+const ICONS = { relations: 'users', assets: 'house', bank: 'bank', business: 'storefront', social: 'instagram', sponsors: 'handshake', projects: 'trophy' } as const
 
 export function LifeScreen() {
   const p = screen.value.params?.tab
@@ -74,6 +75,7 @@ export function LifeScreen() {
         {tab === 'assets' && <Assets />}
         {tab === 'bank' && <Bank />}
         {tab === 'business' && <Business />}
+        {tab === 'projects' && <Projects />}
         {tab === 'social' && <Social />}
         {tab === 'sponsors' && <UnlockGate feature="sponsors"><Sponsors /></UnlockGate>}
       </TabPanel>

@@ -320,3 +320,17 @@
 /* Tur 2 UI: foundation card */
 .biz-foundation { display: flex; flex-direction: column; gap: var(--sp-2); }
 .biz-tips { margin: 0; padding-inline-start: var(--sp-4, 16px); display: grid; gap: var(--sp-1); color: var(--text-mid); }
+
+/* ── Projects ── */
+.prj-card { display: flex; flex-direction: column; gap: var(--sp-3); }
+.prj-summary { gap: var(--sp-3); }
+.prj-sum-grid { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
+.prj-stages { display: flex; align-items: center; gap: var(--sp-2); }
+.prj-stage { display: grid; place-items: center; width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--border-strong, var(--text-lo)); color: var(--text-mid); font-size: var(--fs-sm); font-weight: 700; }
+.prj-stage.is-done { background: var(--brand-pitch); border-color: var(--brand-pitch); color: var(--on-brand, #04210f); }
+.prj-stage.is-next { border-color: var(--accent-gold); color: var(--accent-gold); }
+.prj-stage-text { margin-inline-start: var(--sp-2); }
+.prj-items { margin: 0; padding: 0; list-style: none; display: grid; gap: var(--sp-1); }
+.biz-decision { display: flex; flex-direction: column; gap: var(--sp-2); }
+.biz-recent { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+.biz-recent li { display: grid; grid-template-columns: 4.5rem 4.5rem 1fr; gap: var(--sp-2); align-items: baseline; }
