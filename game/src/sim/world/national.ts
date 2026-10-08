@@ -156,10 +156,23 @@ function eligiblePlayers(world: World, nationId: string, level: NationalLevel, s
   return list.sort((a, b) => b.s - a.s || (a.p.id < b.p.id ? -1 : 1)).map((x) => x.p)
 }
 
-/** How a national coach rates a player: ability, form, club level and playing time. */
+/**
+ * What the coach reads off a season record (rating, goal involvement or clean
+ * sheets), -2 .. +5 OVR points. Shared by NPCs and the hero so both are judged
+ * on the same scale; needs 4+ appearances.
+ */
+export function recordBonus(st: { apps: number; ratingSum: number; goals: number; assists: number; cleanSheets: number }, group: PositionGroup): number {
+  if (st.apps < 4) return 0
+  let b = clamp((st.ratingSum / st.apps - 6.7) * 3, -2, 3.5)
+  if (group === 'FWD' || group === 'MID') b += clamp(((st.goals + st.assists) / st.apps - (group === 'FWD' ? 0.4 : 0.25)) * 4, 0, 3)
+  else b += clamp((st.cleanSheets / st.apps - 0.25) * 6, 0, 2)
+  return clamp(b, -2, 5)
+}
+
+/** How a national coach rates a player: ability, form, club level, playing time and the season record. */
 export function selectionScore(world: World, p: NpcPlayer): number {
   const club = p.clubId ? world.clubs[p.clubId] : undefined
-  return p.ovr + (p.form - 50) * 0.05 + (club ? (club.reputation - 50) * 0.03 : -2) + Math.min(p.stats.apps, 20) * 0.05
+  return p.ovr + (p.form - 50) * 0.05 + (club ? (club.reputation - 50) * 0.03 : -2) + Math.min(p.stats.apps, 20) * 0.05 + recordBonus(p.stats, positionGroup(p.position))
 }
 
 /** Pick 23 by position quota from a ranked pool (fills from the best remaining when a group is thin). */

@@ -18,7 +18,7 @@ import { positionGroup } from '../world/attributes'
 import { kitsClash } from '../world/colors'
 import { INTERNATIONAL_BREAK_WEEKS, NATIONAL_FINALS_DATES, SEASON_WEEKS, SQUAD_ANNOUNCE_WEEKS } from '../world/fixtures'
 import {
-  LEVEL_MAX_AGE, NATIONAL_SQUAD_SIZE, SENIOR_MIN_AGE, SQUAD_QUOTA, announceSquads, ensureNational, nationalCompetitions,
+  LEVEL_MAX_AGE, NATIONAL_SQUAD_SIZE, SENIOR_MIN_AGE, SQUAD_QUOTA, announceSquads, recordBonus, ensureNational, nationalCompetitions,
   nationalTeamId, nationalTeamPlayers, nationFormation, nationStyle, nextNationalFixture, parseTeamId, selectionScore, teamName,
 } from '../world/national'
 import type { NationalLevel, NationalStatus } from '../world/worldTypes'
@@ -77,7 +77,13 @@ export function clubMinutesShare(state: GameState): number {
   return clamp(state.hero.seasonStats.minutes / (played * 90), 0, 1)
 }
 
-const cutoffCache = new Map<string, number>()
+/** Per-world memo (a WeakMap, so two games never share entries even with equal ids). */
+const memos = new WeakMap<object, { cutoff: Map<string, number>; elite: Map<string, number> }>()
+const memoFor = (w: object) => {
+  let m = memos.get(w)
+  if (!m) memos.set(w, (m = { cutoff: new Map(), elite: new Map() }))
+  return m
+}
 
 /** Selection score of the last player picked in a position group at a level (the bar to clear). */
 export function squadCutoff(state: GameState, level: NationalLevel, position: Position): number {
@@ -85,7 +91,7 @@ export function squadCutoff(state: GameState, level: NationalLevel, position: Po
   const nation = state.hero.nationality
   const group = positionGroup(position)
   const key = `${state.meta.id}|${state.calendar.season}|${state.calendar.week}|${nation}|${level}|${group}`
-  const hit = cutoffCache.get(key)
+  const hit = memoFor(w).cutoff.get(key)
   if (hit !== undefined) return hit
   const maxAge = LEVEL_MAX_AGE[level]
   const scores: number[] = []
@@ -100,13 +106,14 @@ export function squadCutoff(state: GameState, level: NationalLevel, position: Po
   // Thin pools (youth) are filled with generated players around the level's typical OVR.
   const fallback = level === 'A' ? 70 : level === 'U21' ? 60 : 54
   const cut = scores.length >= k ? scores[k - 1] : Math.min(fallback, scores[scores.length - 1] ?? fallback)
-  if (cutoffCache.size > 200) cutoffCache.clear()
-  cutoffCache.set(key, cut)
+  const cc = memoFor(w).cutoff
+  if (cc.size > 200) cc.clear()
+  cc.set(key, cut)
   return cut
 }
 
 /** Most the season's numbers can add to the hero's selection score (OVR points). */
-export const PERFORMANCE_BONUS_MAX = 10
+export const PERFORMANCE_BONUS_MAX = 8
 
 /**
  * What the national coach sees beyond OVR (playtest round 2): a 336-goal striker
@@ -124,11 +131,8 @@ export function heroPerformanceBonus(state: GameState): number {
     assists: cur.assists + last.assists, cleanSheets: cur.cleanSheets + last.cleanSheets,
   }
   if (st.apps < 4) return 0
-  const avg = st.ratingSum / st.apps
-  let b = clamp((avg - 6.7) * 4, -2, 5)
-  const g = positionGroup(h.position)
-  if (g === 'FWD' || g === 'MID') b += clamp(((st.goals + st.assists) / st.apps - (g === 'FWD' ? 0.4 : 0.25)) * 5, 0, 4)
-  else b += clamp((st.cleanSheets / st.apps - 0.25) * 8, 0, 3)
+  // Same record scale the NPC candidates are judged on (world/national recordBonus), plus the hero's fame.
+  let b = recordBonus(st, positionGroup(h.position))
   b += clamp((h.reputation - 60) / 10, 0, 3)
   return clamp(b, -2, PERFORMANCE_BONUS_MAX)
 }
@@ -140,6 +144,38 @@ export function heroSelectionScore(state: GameState): number {
   return heroOvr(h) + (h.form - 50) * 0.05 + (club ? (club.reputation - 50) * 0.03 : -2) + Math.min(h.seasonStats.apps, 20) * 0.05 + heroPerformanceBonus(state)
 }
 
+/**
+ * Share of the world's senior players in a position group who out-rate the
+ * hero. A strong nation's pool can sit above anything a hero reaches, so an
+ * elite hero (top few percent worldwide) gets a lift on the OVR part instead
+ * of being measured only against an inflated national cut-off.
+ */
+export function worldEliteShare(state: GameState): number {
+  const w = state.world
+  const group = positionGroup(state.hero.position)
+  const ovr = heroOvr(state.hero)
+  const key = `${state.meta.id}|${state.calendar.season}|${state.calendar.week}|${group}|${ovr}`
+  const hit = memoFor(w).elite.get(key)
+  if (hit !== undefined) return hit
+  let total = 0
+  let better = 0
+  for (const p of Object.values(w.players)) {
+    if (positionGroup(p.position) !== group || state.calendar.season - p.birthYear < SENIOR_MIN_AGE) continue
+    total++
+    if (p.ovr > ovr) better++
+  }
+  const share = total ? better / total : 1
+  const ec = memoFor(w).elite
+  if (ec.size > 100) ec.clear()
+  ec.set(key, share)
+  return share
+}
+
+/** Meter points the OVR part gains for being world-elite (0..16). */
+export function eliteLift(share: number): number {
+  return share <= 0.01 ? 16 : share <= 0.03 ? 12 : share <= 0.06 ? 9 : share <= 0.1 ? 6 : share <= 0.15 ? 3 : 0
+}
+
 /** Call-up meter for one level. */
 export function callupFor(state: GameState, level: NationalLevel): CallupView {
   const h = state.hero
@@ -147,7 +183,7 @@ export function callupFor(state: GameState, level: NationalLevel): CallupView {
   const heroScore = heroSelectionScore(state)
   const coachRel = state.life.relationships[NT_COACH_REL]?.value ?? 0
   const parts: MeterParts = {
-    ovr: Math.round(clamp(50 + (heroScore - cutoff) * 6, 0, 100)),
+    ovr: Math.round(clamp(50 + (heroScore - cutoff) * (level === 'A' ? 4.5 : 6) + (level === 'A' ? eliteLift(worldEliteShare(state)) : 0), 0, 100)),
     form: Math.round(clamp(h.form, 0, 100)),
     reputation: Math.round(clamp(h.reputation * (level === 'A' ? 1.3 : 2.5), 0, 100)),
     minutes: Math.round(clamp(clubMinutesShare(state) * 110, 0, 100)),

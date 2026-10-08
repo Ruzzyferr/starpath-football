@@ -18,7 +18,7 @@ import { clubFixtures } from '../world/queries'
 import { isHeroMatchday } from './calendar'
 import { unplayedHeroFixtureToday } from './internal'
 import { finishHeroMatch, startHeroMatch } from './match'
-import { callupFor, heroCallup, statusOf } from './national'
+import { CALLUP_THRESHOLD, callupFor, eliteLift, heroCallup, statusOf, worldEliteShare } from './national'
 import { packedSize } from './persist'
 import { autoRun, findNonFinite, makeGame } from './testHelpers'
 
@@ -164,6 +164,32 @@ describe('hero call-up and international match flow', () => {
     const played = nationalCompetitions(s.world, s.calendar.season).flatMap((c) => c.fixtures).find((f) => f.result && (f.homeId === 'TR' || f.awayId === 'TR'))
     expect(played).toBeDefined()
     expect(parseTeamId(played!.homeId)).not.toBeNull()
+  })
+})
+
+describe('fair selection for strong nations', () => {
+  it('eliteLift grows with world standing and a lower share is never worse', () => {
+    expect(eliteLift(0.005)).toBeGreaterThan(eliteLift(0.05))
+    expect(eliteLift(0.05)).toBeGreaterThan(eliteLift(0.2))
+    expect(eliteLift(0.5)).toBe(0)
+  })
+  it('an elite EN / DE / TR midfielder is called up although the nation pool drifted up by +9 OVR', () => {
+    for (const nat of ['EN', 'DE', 'TR']) {
+      const s = makeGame(7, { nationality: nat, position: 'CM', birthYear: 2002 })
+      for (const k of ATTRIBUTE_KEYS) s.hero.attrs[k] = 82
+      s.hero.reputation = 70
+      s.hero.form = 75
+      Object.assign(s.hero.seasonStats, { apps: 12, minutes: 1000, ratingSum: 12 * 7.3, goals: 4, assists: 5 })
+      const before = callupFor(s, 'A').meter
+      // World drift (playtest: top-20 OVR 90 -> 95): every compatriot midfielder is 9 better.
+      for (const p of Object.values(s.world.players)) if (p.nationality === nat) p.ovr += 9
+      s.calendar.week += 1 // new memo key
+      const after = callupFor(s, 'A')
+      expect(after.cutoff, nat).toBeGreaterThan(callupFor(makeGame(7, { nationality: nat, position: 'CM', birthYear: 2002 }), 'A').cutoff)
+      expect(before, nat).toBeGreaterThanOrEqual(CALLUP_THRESHOLD)
+      expect(after.status, nat).not.toBe('out') // still a live candidate with the whole pool 9 OVR stronger
+      expect(worldEliteShare(s), nat).toBeLessThan(0.2)
+    }
   })
 })
 
