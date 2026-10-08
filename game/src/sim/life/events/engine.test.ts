@@ -120,7 +120,7 @@ describe('rollEvents', () => {
     nextWeek(s)
     const [f] = rollEvents(s, rng, ['weekly'], 1, { events: pool, fireChance: 0 })
     expect(f.defId).toBe('a.next')
-    expect(describeEvent(s, f, 'en', pool)!.text).toBe('parrot')
+    expect(describeEvent(s, f, 'en', pool)!.text).toMatch(/^📜 2 week\(s\) ago[\s\S]*parrot$/)
     expect(scheduledFollowUps(s)).toHaveLength(0)
   })
 

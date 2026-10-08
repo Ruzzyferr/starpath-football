@@ -109,6 +109,25 @@ export function careerCount(state: GameState, id: string): number {
 
 // ───────────────────────── Registry ─────────────────────────
 
+/** Follow-ups at least this many weeks away carry a reminder of the decision behind them. */
+export const RECALL_MIN_WEEKS = 2
+
+/** One-line reminder shown above a delayed event's text (empty when there is none). */
+export function recallLine(vars: EventVars, nowWeek: number, lang: Lang): string {
+  const abs = vars['recall_abs']
+  const title = vars[`recall_title_${lang}`]
+  const choice = vars[`recall_choice_${lang}`]
+  if (typeof abs !== 'number' || typeof title !== 'string' || typeof choice !== 'string') return ''
+  const w = Math.max(1, nowWeek - abs)
+  return lang === 'tr'
+    ? `📜 ${w} hafta önce, «${title}» kararın: ${choice}
+
+`
+    : `📜 ${w} week(s) ago, «${title}»: you chose ${choice}
+
+`
+}
+
 export interface QueuedFollowUp {
   id: string
   /** Absolute week from which it may fire. */
@@ -542,7 +561,7 @@ export function describeEvent(state: GameState, pending: PendingEvent, lang: Lan
     category: def.category,
     icon: def.icon,
     title: formatText(def.title, pending.vars, lang),
-    text: formatText(def.text, pending.vars, lang),
+    text: recallLine(pending.vars, absoluteWeek(state.calendar), lang) + formatText(def.text, pending.vars, lang),
     choices: def.choices.map((c) => {
       const enabled = isChoiceAvailable(c.requires, ctx)
       return {
@@ -584,7 +603,7 @@ export function resolveEvent(state: GameState, rng: Rng, pending: PendingEvent, 
     const j = state.pendingEvents.findIndex((p) => p.defId === pending.defId)
     if (j >= 0) state.pendingEvents.splice(j, 1)
   }
-  return applyEffectResult(state, rng, def, pending.vars, result, events)
+  return applyEffectResult(state, rng, def, pending.vars, result, events, formatBoth(choice.label, pending.vars))
 }
 
 /**
@@ -598,6 +617,7 @@ export function applyEffectResult(
   vars: EventVars,
   result: EffectResult,
   events: readonly EventDef[] = ALL_EVENTS,
+  choiceLabel?: LText,
 ): ResolvedEffect {
   const abs = absoluteWeek(state.calendar)
   const memory = formatBoth(def.title, vars)
@@ -618,9 +638,14 @@ export function applyEffectResult(
   if (result.followUps?.length) {
     const q = scheduledFollowUps(state)
     const index = indexOf(events)
+    const baseVars: EventVars = Object.fromEntries(Object.entries(vars).filter(([k]) => !k.startsWith('recall_')))
     for (const f of result.followUps) {
       if (!index.has(f.eventId)) continue
-      q.push({ id: f.eventId, due: abs + Math.max(0, f.inWeeks), vars: { ...vars, ...(f.vars ?? {}) }, from: def.id })
+      // 2.4#114: a delayed consequence reminds the player of the decision that caused it.
+      const recall: EventVars = f.inWeeks >= RECALL_MIN_WEEKS && choiceLabel
+        ? { recall_abs: abs, recall_title_tr: memory.tr, recall_title_en: memory.en, recall_choice_tr: choiceLabel.tr, recall_choice_en: choiceLabel.en }
+        : {}
+      q.push({ id: f.eventId, due: abs + Math.max(0, f.inWeeks), vars: { ...baseVars, ...recall, ...(f.vars ?? {}) }, from: def.id })
       followUps.push(f)
     }
     writeFollowUps(state, q)
