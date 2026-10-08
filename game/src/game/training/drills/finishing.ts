@@ -197,6 +197,10 @@ export class FinishingDrill extends DrillBase {
     snapPrev([this.hero, this.keeper, ...this.wall])
   }
 
+  override get heroStatic(): boolean {
+    return true
+  }
+
   protected busy(): boolean {
     return this.state === 'flight'
   }

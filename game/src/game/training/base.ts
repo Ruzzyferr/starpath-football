@@ -102,6 +102,7 @@ export abstract class DrillBase implements Drill {
 
   protected readonly events: DrillEvent[] = []
   private acc = 0
+  private carry: DrillInput['actions'] = []
   private countdownLeft = COUNTDOWN
   private graceLeft = GRACE
   private postLeft = POST
@@ -132,6 +133,11 @@ export abstract class DrillBase implements Drill {
     return this.phase === 'countdown' ? this.countdownLeft : 0
   }
 
+  /** The hero never moves in this drill: the whole screen takes swipes (no joystick zone). */
+  get heroStatic(): boolean {
+    return false
+  }
+
   /** True while the hero may act. */
   get live(): boolean {
     return this.phase === 'live' || this.phase === 'grace'
@@ -141,7 +147,10 @@ export abstract class DrillBase implements Drill {
     if (this.phase === 'done') return
     this.acc += clampN(realDt, 0, 0.1)
     let n = 0
-    let inp = input
+    // Actions from a frame that ran no fixed step (a 90/120 Hz screen, or frame jitter at 60 Hz)
+    // are carried to the next step instead of being dropped (owner feedback: swipes ignored).
+    let inp = this.carry.length ? { ...input, actions: [...this.carry, ...input.actions] } : input
+    this.carry = []
     while (this.acc >= DT && n < 8) {
       this.step(inp)
       // Discrete actions are consumed by the first step only.
@@ -151,6 +160,7 @@ export abstract class DrillBase implements Drill {
       if ((this.phase as DrillPhase) === 'done') break
     }
     if (n === 8) this.acc = 0
+    if (n === 0 && inp.actions.length) this.carry = inp.actions.slice(-4)
     this.alpha = clampN(this.acc / DT, 0, 1)
   }
 

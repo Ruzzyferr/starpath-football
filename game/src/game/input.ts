@@ -28,6 +28,7 @@ import {
   axisDeadzone,
   chargePower,
   facesGoal,
+  gestureUnit,
   OSC_PERIOD,
   oscillatingPower,
   radialDeadzone,
@@ -41,6 +42,7 @@ import { clampN, dist, len, norm, sub, type Vec2 } from './model'
 import type { AimState, HeroAction } from './runtime'
 import { getBindings, isBound, type BindAction } from '../input/bindings'
 import { getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
+import { probeGesture } from './touchProbe'
 
 /** Maps between canvas pixels and pitch meters. */
 export interface InputMapper {
@@ -78,6 +80,8 @@ export interface InputContext {
   heroIsKeeper: boolean
   /** Team-mate positions (meter scheme: a tap on a team-mate stays a pass). */
   mates?: readonly Vec2[]
+  /** The hero cannot move (e.g. the finishing drill): the whole screen takes swipes, no joystick. */
+  noMove?: boolean
 }
 
 /** Touch UI geometry for rendering. */
@@ -118,7 +122,31 @@ interface TouchGesture {
   called?: boolean
 }
 
+/** A touch that began on an on-screen button: a tap/hold uses the button, a drag becomes a swipe. */
+interface ButtonTouch {
+  id: number
+  kind: 'sprint' | 'skill'
+  x: number
+  y: number
+  t: number
+  pts: GesturePoint[]
+}
+
 const TAP_MAX_TIME = 0.28
+/** A touch on a button that travels this far (gesture units) is a swipe, not a button press. */
+export const BUTTON_DRAG_TO_SWIPE = 0.07
+/**
+ * Joystick-side flick on the ball (owner feedback: swipes starting left of the
+ * swipe zone were swallowed by the joystick): a short-lived, long, fast flick
+ * toward goal from the joystick thumb is a shot, not a dribble.
+ */
+export const JOY_FLICK = { maxLife: 0.6, minLength: 0.14, minSpeed: 1.2 } as const
+/** A finger that has moved less than this (gesture units) is resting, not swiping. */
+const IDLE_FINGER = 0.025
+/** A gesture with no sample for this long is a lost pointer (missed pointerup), not a live swipe. */
+const STALE_GESTURE = 2.5
+/** Seconds the released power stays on the ring after a shot. */
+export const RELEASE_FLASH = 0.8
 const DOUBLE_TAP_TIME = 0.32
 const HOLD_SHOT_MIN = 0.16
 /** Touch: a still press this long off the ball raises the hand and calls for a pass (WP-14). */
@@ -137,9 +165,13 @@ export class InputController {
   private readonly map: InputMapper
   private readonly keys = new Set<string>()
   private readonly queued: HeroAction[] = []
-  private joy: { id: number; bx: number; by: number; x: number; y: number } | null = null
+  private joy: { id: number; bx: number; by: number; x: number; y: number; t0: number; pts: GesturePoint[] } | null = null
   private gesture: TouchGesture | null = null
-  private readonly rightTouches = new Set<number>()
+  private button: ButtonTouch | null = null
+  /** Power of the last released shot gesture and when (power meter feedback on release). */
+  private release: { power: number; t: number } | null = null
+  /** Other fingers down in the swipe zone (not the gesture's): a moving one makes a two-finger chip. */
+  private readonly others = new Map<number, { x: number; y: number; moved: boolean }>()
   private sprintTouch: number | null = null
   private skillTouch: number | null = null
   private lastTap = { t: -1, x: 0, y: 0 }
@@ -171,6 +203,10 @@ export class InputController {
     on(canvas, 'pointermove', (e) => this.onMove(e))
     on(canvas, 'pointerup', (e) => this.onUp(e))
     on(canvas, 'pointercancel', (e) => this.onUp(e, true))
+    // A lost capture without a pointerup (rare WebView quirk) must not leave a stuck gesture behind.
+    on(canvas, 'lostpointercapture', (e) => {
+      if (this.gesture?.id === e.pointerId || this.joy?.id === e.pointerId || this.button?.id === e.pointerId) this.onUp(e, true)
+    })
     on(canvas, 'pointerleave', () => (this.mouse.inside = false))
     on(canvas, 'contextmenu', (e) => e.preventDefault())
     on(
@@ -191,6 +227,10 @@ export class InputController {
       this.oneTap = null
       this.joy = null
       this.gesture = null
+      this.button = null
+      this.sprintTouch = null
+      this.skillTouch = null
+      this.others.clear()
       this.mouseHold = null
       this.meter = null
     })
@@ -219,9 +259,34 @@ export class InputController {
     return performance.now() / 1000
   }
 
-  private point(p: { x: number; y: number }, t: number): GesturePoint {
+  /**
+   * Event time (s). The event's own timestamp, not the handler time: on a busy
+   * phone several touch moves are delivered in one batch, and stamping them
+   * "now" collapsed their spacing and scrambled the swipe speed.
+   */
+  private stamp(e: PointerEvent): number {
+    const now = performance.now()
+    const ts = e.timeStamp
+    return (ts > 0 && Math.abs(now - ts) < 1000 ? Math.min(ts, now) : now) / 1000
+  }
+
+  /** Gesture unit in canvas pixels (see {@link gestureUnit}). */
+  private unit(): number {
     const { w, h } = this.map.size()
-    const s = Math.min(w, h)
+    return gestureUnit(w, h, this.map.ui())
+  }
+
+  /** Released-shot power still worth showing on the ring (fades over {@link RELEASE_FLASH}). */
+  releaseFlash(): { power: number; alpha: number } | null {
+    const r = this.release
+    if (!r) return null
+    const age = this.now() - r.t
+    if (age > RELEASE_FLASH) return null
+    return { power: r.power, alpha: 1 - age / RELEASE_FLASH }
+  }
+
+  private point(p: { x: number; y: number }, t: number): GesturePoint {
+    const s = this.unit()
     const wp = this.map.toWorld(p.x, p.y)
     return { sx: p.x / s, sy: p.y / s, wx: wp.x, wy: wp.y, t }
   }
@@ -247,7 +312,7 @@ export class InputController {
   private onDown(e: PointerEvent): void {
     this.anyFlag = true
     const p = this.toGame(e)
-    const t = this.now()
+    const t = this.stamp(e)
     if (e.pointerType === 'touch' || e.pointerType === 'pen') {
       this.touchMode = true
       try {
@@ -255,34 +320,49 @@ export class InputController {
       } catch {
         /* pointer capture unsupported */
       }
+      // A gesture whose pointer went silent long ago lost its pointerup: drop it so this touch can swipe.
+      const g0 = this.gesture
+      if (g0 && t - g0.pts[g0.pts.length - 1]!.t > STALE_GESTURE) this.gesture = null
       const ui = this.touchUi()
-      if (this.hit(ui.sprint, p)) {
+      const noMove = !!this.lastCtx?.noMove
+      if (!noMove && !this.button && this.hit(ui.sprint, p)) {
         this.sprintTouch = e.pointerId
+        this.button = { id: e.pointerId, kind: 'sprint', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
         return
       }
-      if (this.hit(ui.skill, p)) {
+      if (!noMove && !this.button && this.hit(ui.skill, p)) {
+        // The skill fires on release (a drag off the button is a swipe instead).
         this.skillTouch = e.pointerId
-        this.queued.push({ kind: 'skill' })
+        this.button = { id: e.pointerId, kind: 'skill', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
         return
       }
       const { w } = this.map.size()
       const prefs = getControlPrefs()
-      if (prefs.oneHand) {
+      if (prefs.oneHand && !noMove) {
         // One thumb: hold = joystick, quick tap = contextual pass / shot / tackle.
         if (!this.joy) {
-          this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y }
+          this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y, t0: t, pts: [this.point(p, t)] }
           this.oneTap = { id: e.pointerId, t, x: p.x, y: p.y }
         }
         return
       }
-      const inJoyZone = prefs.leftHanded ? p.x > w * 0.58 : p.x < w * 0.42
+      const inJoyZone = !noMove && (prefs.leftHanded ? p.x > w * 0.58 : p.x < w * 0.42)
       if (inJoyZone && !this.joy) {
-        this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y }
+        this.joy = { id: e.pointerId, bx: p.x, by: p.y, x: p.x, y: p.y, t0: t, pts: [this.point(p, t)] }
         return
       }
-      this.rightTouches.add(e.pointerId)
-      if (!this.gesture) this.gesture = { id: e.pointerId, pts: [this.point(p, t)], fingers: 1, start: t }
-      else this.gesture.fingers = Math.max(this.gesture.fingers, this.rightTouches.size)
+      const g = this.gesture
+      if (g && this.pathLength(g.pts) < IDLE_FINGER) {
+        // The current gesture finger is only resting (a parked thumb): the new finger takes the swipe.
+        const f = g.pts[0]!
+        this.others.set(g.id, { x: f.sx, y: f.sy, moved: false })
+        this.gesture = null
+      }
+      if (!this.gesture) this.gesture = { id: e.pointerId, pts: [this.point(p, t)], fingers: this.fingerCount(), start: t }
+      else {
+        const q = this.point(p, t)
+        this.others.set(e.pointerId, { x: q.sx, y: q.sy, moved: false })
+      }
       return
     }
     // Mouse.
@@ -296,7 +376,7 @@ export class InputController {
 
   private onMove(e: PointerEvent): void {
     const p = this.toGame(e)
-    const t = this.now()
+    const t = this.stamp(e)
     if (e.pointerType === 'mouse') {
       this.mouse = { x: p.x, y: p.y, inside: true }
       if (this.mouseHold) this.mouseHold.path.push(this.point(p, t))
@@ -317,29 +397,93 @@ export class InputController {
       }
       this.joy.x = p.x
       this.joy.y = p.y
+      this.sample(this.joy.pts, e, p, t)
       return
     }
-    if (this.gesture && this.gesture.id === e.pointerId) {
-      const g = this.gesture
-      const last = g.pts[g.pts.length - 1]!
-      const { w, h } = this.map.size()
-      const s = Math.min(w, h)
-      if (Math.hypot(p.x / s - last.sx, p.y / s - last.sy) > 0.002) g.pts.push(this.point(p, t))
-      g.fingers = Math.max(g.fingers, this.rightTouches.size)
+    const b = this.button
+    if (b && b.id === e.pointerId) {
+      this.sample(b.pts, e, p, t)
+      // Dragged off the button: it is a swipe (the thumb started on SPRINT/SKILL on its way to goal).
+      if (!this.gesture && Math.hypot(p.x - b.x, p.y - b.y) / this.unit() > BUTTON_DRAG_TO_SWIPE) {
+        if (this.sprintTouch === b.id) this.sprintTouch = null
+        if (this.skillTouch === b.id) this.skillTouch = null
+        this.button = null
+        this.gesture = { id: b.id, pts: b.pts, fingers: this.fingerCount(), start: b.t }
+      }
+      return
     }
+    const o = this.others.get(e.pointerId)
+    if (o && !o.moved) {
+      const q = this.point(p, t)
+      if (Math.hypot(q.sx - o.x, q.sy - o.y) > IDLE_FINGER) o.moved = true
+    }
+    if (this.gesture) {
+      const g = this.gesture
+      if (g.id === e.pointerId) this.sample(g.pts, e, p, t)
+      g.fingers = Math.max(g.fingers, this.fingerCount())
+    }
+  }
+
+  /** Fingers taking part in the swipe: the gesture's own plus every other one that moves. */
+  private fingerCount(): number {
+    let n = 1
+    for (const o of this.others.values()) if (o.moved) n++
+    return n
+  }
+
+  private pathLength(pts: readonly GesturePoint[]): number {
+    const a = pts[0]
+    let m = 0
+    if (a) for (const q of pts) m = Math.max(m, Math.hypot(q.sx - a.sx, q.sy - a.sy))
+    return m
+  }
+
+  /** Appends a move (and the browser's coalesced in-between samples) to a path. */
+  private sample(pts: GesturePoint[], e: PointerEvent, p: { x: number; y: number }, t: number): void {
+    const s = this.unit()
+    const push = (q: { x: number; y: number }, tq: number) => {
+      const last = pts[pts.length - 1]
+      if (!last || (tq >= last.t && Math.hypot(q.x / s - last.sx, q.y / s - last.sy) > 0.002)) pts.push(this.point(q, tq))
+    }
+    let co: PointerEvent[] = []
+    try {
+      co = typeof e.getCoalescedEvents === 'function' ? e.getCoalescedEvents() : []
+    } catch {
+      co = []
+    }
+    for (const c of co.length > 1 ? co.slice(0, -1) : []) push(this.toGame(c), this.stamp(c))
+    push(p, t)
   }
 
   private onUp(e: PointerEvent, cancel = false): void {
     const p = this.toGame(e)
-    const t = this.now()
+    const t = this.stamp(e)
     if (e.pointerType === 'mouse') {
       if (e.button === 0 && this.mouseHold && !cancel) this.releaseMouse(p, t)
       this.mouseHold = null
       return
     }
+    const ignored = { power: 0, length: 0, speed: 0, duration: 0 }
+    const b = this.button
+    if (b && b.id === e.pointerId) {
+      this.button = null
+      if (b.kind === 'skill' && !cancel) this.queued.push({ kind: 'skill' })
+      probeGesture({ outcome: 'button', ...ignored })
+    }
     if (this.sprintTouch === e.pointerId) this.sprintTouch = null
     if (this.skillTouch === e.pointerId) this.skillTouch = null
-    if (this.joy && this.joy.id === e.pointerId) this.joy = null
+    const joy = this.joy
+    if (joy && joy.id === e.pointerId) {
+      this.joy = null
+      if (!this.oneTap && !cancel) {
+        this.sample(joy.pts, e, p, t)
+        const sw = this.joyFlick(joy.pts, t - joy.t0)
+        if (sw) {
+          this.queueSwipe(sw)
+          probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
+        } else probeGesture({ outcome: 'joystick', ...ignored })
+      }
+    }
     if (this.oneTap && this.oneTap.id === e.pointerId) {
       const ot = this.oneTap
       this.oneTap = null
@@ -358,12 +502,22 @@ export class InputController {
         this.skipFlag = true
       }
     }
-    this.rightTouches.delete(e.pointerId)
+    this.others.delete(e.pointerId)
     const g = this.gesture
     if (g && g.id === e.pointerId) {
       this.gesture = null
-      if (cancel || g.called) return
-      g.pts.push(this.point(p, t))
+      if (g.called) return
+      if (cancel) {
+        // Cancelled mid-swipe (system gesture, lost capture): a real swipe still counts,
+        // from its last sample, since a cancel event carries no reliable position.
+        const sw = this.swipeOf(g)
+        if (!sw.isTap) {
+          this.queueSwipe(sw)
+          probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
+        } else probeGesture({ outcome: 'cancel', ...ignored })
+        return
+      }
+      this.sample(g.pts, e, p, t)
       const sw = this.swipeOf(g)
       const dur = t - g.start
       if (sw.isTap && dur < TAP_MAX_TIME) {
@@ -380,10 +534,30 @@ export class InputController {
           this.lastTap = { t, x: p.x, y: p.y }
         }
         this.skipFlag = true
+        probeGesture({ outcome: 'tap', power: 0, length: sw.length, speed: sw.speed, duration: dur })
       } else if (!sw.isTap) {
-        this.queued.push({ kind: 'swipe', swipe: sw })
-      }
+        this.queueSwipe(sw)
+        probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: dur })
+      } else probeGesture({ outcome: 'ignored', power: 0, length: sw.length, speed: sw.speed, duration: dur })
     }
+  }
+
+  /** Queues a swipe and remembers its power for the release flash on the ring. */
+  private queueSwipe(sw: SwipeFeatures): void {
+    this.queued.push({ kind: 'swipe', swipe: sw })
+    if (this.lastCtx?.heroOnBall) this.release = { power: sw.power, t: this.now() }
+  }
+
+  /**
+   * A joystick-side touch that was really a shot: short-lived, long and fast,
+   * toward goal, with the hero on the ball (see {@link JOY_FLICK}).
+   */
+  private joyFlick(pts: GesturePoint[], life: number): SwipeFeatures | null {
+    const ctx = this.lastCtx
+    if (!ctx || !ctx.heroOnBall || ctx.heroIsKeeper || life > JOY_FLICK.maxLife || pts.length < 2) return null
+    const sw = analyzeSwipe(pts, 1)
+    if (sw.isTap || sw.length < JOY_FLICK.minLength || sw.speed < JOY_FLICK.minSpeed) return null
+    return facesGoal(ctx.ballPos, sw.dir) ? sw : null
   }
 
   /** Swipe features under the active touch scheme (sling-shot reverses the drag). */

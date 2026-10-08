@@ -15,6 +15,7 @@ import { ballTexture, drawGoal, drawPitch, grassGrainTexture, keeperKit, utilTex
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from '../figures'
 import { Sfx } from '../audio'
 import { InputController, type FrameIntent } from '../input'
+import { probeKick } from '../touchProbe'
 import type { AimAssist } from '../kick'
 import { clampN } from '../model'
 import { createMatchGame } from '../MatchScene'
@@ -247,6 +248,8 @@ export class TrainingScene extends Phaser.Scene {
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
     this.s = T[opts.lang] ?? T.en
     this.sfx = new Sfx(opts.settings.sound)
+    // Dev/e2e: expose the drill scene (touch shooting probes). Stripped from production builds.
+    if (import.meta.env.DEV) (globalThis as { __spTraining?: TrainingScene }).__spTraining = this
     this.cameras.main.setBackgroundColor('#0b1410')
     this.worldLayer = this.add.layer()
     this.hudLayer = this.add.layer()
@@ -382,6 +385,27 @@ export class TrainingScene extends Phaser.Scene {
     return { x: (wx - this.cam.x) * this.cam.zoom + w / 2, y: (wy - this.cam.y) * this.cam.zoom + h / 2 }
   }
 
+  /** Dev/e2e probe: drill state and key points in CSS pixels (touch shooting spec). */
+  debugInfo() {
+    const r = this.game.canvas.getBoundingClientRect()
+    const w = this.scale.width
+    const h = this.scale.height
+    const css = (x: number, y: number, z = 0) => {
+      const p = project(x, y, z)
+      return { x: r.left + (((p.x - this.cam.x) * this.cam.zoom + w / 2) * r.width) / Math.max(1, w), y: r.top + (((p.y - this.cam.y) * this.cam.zoom + h / 2) * r.height) / Math.max(1, h) }
+    }
+    const v = this.drill.view()
+    return {
+      live: this.drill.live,
+      finished: this.drill.finished,
+      heroOnBall: v.heroOnBall,
+      hero: css(v.hero.x, v.hero.y),
+      ball: v.ball ? css(v.ball.x, v.ball.y, v.ball.z) : null,
+      goal: css(PITCH_LENGTH, PITCH_WIDTH / 2, 1),
+      canvas: { left: r.left, top: r.top, width: r.width, height: r.height },
+    }
+  }
+
   private screenToPitch(gx: number, gy: number): { x: number; y: number } {
     const w = this.scale.width
     const h = this.scale.height
@@ -399,6 +423,7 @@ export class TrainingScene extends Phaser.Scene {
       ballPos: before.ball ? { x: before.ball.x, y: before.ball.y } : { x: before.hero.x, y: before.hero.y },
       heroOnBall: before.heroOnBall,
       heroIsKeeper: before.heroIsKeeper,
+      noMove: this.drill.heroStatic,
     })
     this.lastIntent = intent
     if (intent.any) {
@@ -650,8 +675,12 @@ export class TrainingScene extends Phaser.Scene {
       }
     }
     // Power ring around the hero while charging.
-    const pw = this.lastIntent?.power ?? 0
-    if (pw > 0.01 && (v.heroOnBall || v.heroIsKeeper)) {
+    // Live power while dragging; after release the ring holds the struck power for a moment.
+    const flash = this.input0.releaseFlash()
+    const live = this.lastIntent?.power ?? 0
+    const pw = live > 0.01 ? live : (flash?.power ?? 0)
+    const ringAlpha = live > 0.01 ? 0.95 : 0.95 * (flash?.alpha ?? 0)
+    if (pw > 0.01 && (v.heroOnBall || v.heroIsKeeper || live <= 0.01)) {
       const hp = project(v.hero.x, v.hero.y)
       const r = 1.25 * PPM
       const steps = 48
@@ -660,7 +689,7 @@ export class TrainingScene extends Phaser.Scene {
         const a0 = -Math.PI / 2 + (i / steps) * Math.PI * 2
         const a1 = -Math.PI / 2 + ((i + 1) / steps) * Math.PI * 2
         const pf = ((i + 1) / steps) * 1.15
-        g.lineStyle(0.16 * PPM, pf > 1 ? 0xff3b3b : pf > 0.85 ? 0xffb02e : 0x5dff8a, 0.95)
+        g.lineStyle(0.16 * PPM, pf > 1 ? 0xff3b3b : pf > 0.85 ? 0xffb02e : 0x5dff8a, ringAlpha)
         g.lineBetween(hp.x + Math.cos(a0) * r, hp.y + Math.sin(a0) * r * TILT, hp.x + Math.cos(a1) * r, hp.y + Math.sin(a1) * r * TILT)
       }
     }
@@ -736,7 +765,10 @@ export class TrainingScene extends Phaser.Scene {
           }
           if (best) best.kickT = 0
           this.sfx.kick(e.power)
-          if (e.hero) this.vibrate(18)
+          if (e.hero) {
+            this.vibrate(18)
+            probeKick({ power: e.power, kick: 'shot' })
+          }
           break
         }
         case 'touch':

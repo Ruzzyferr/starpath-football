@@ -62,7 +62,7 @@ export interface SwipeFeatures {
   length: number
   /** Duration in seconds. */
   duration: number
-  /** Average speed (normalised units / s). */
+  /** Peak finger speed (normalised units / s, see {@link peakSpeed}). */
   speed: number
   /** 0..1.15 power; above 1 = overhit. */
   power: number
@@ -78,13 +78,75 @@ export interface SwipeFeatures {
 export const SWIPE_MIN_LENGTH = 0.045
 
 /**
+ * Gesture unit (owner feedback: power felt stuck mid-range). Swipe lengths and
+ * speeds are measured in units of the viewport's short side, capped at
+ * {@link GESTURE_UNIT_MAX_CSS} CSS px so that on a tablet or a big touch
+ * screen a "full" swipe is the same physical size as on a large phone. `w`/`h`
+ * are canvas pixels and `dpr` the canvas pixels per CSS pixel, so the result
+ * is independent of the device pixel ratio and of the camera zoom (screen
+ * space, not pitch meters).
+ */
+export const GESTURE_UNIT_MAX_CSS = 480
+export function gestureUnit(w: number, h: number, dpr = 1): number {
+  const short = Math.max(1, Math.min(w, h))
+  return Math.min(short, GESTURE_UNIT_MAX_CSS * Math.max(1, dpr))
+}
+
+/** Release-velocity window (s), plan 2.1#18: speeds are measured over at least this span of samples. */
+export const SWIPE_VELOCITY_WINDOW = 0.04
+/** Swipe length (gesture units) that alone gives its full share of power. */
+export const SWIPE_FULL_LENGTH = 0.5
+/** Peak finger speed (units/s) below which speed adds nothing / at which it gives its full share. */
+export const SWIPE_SOFT_SPEED = 0.45
+export const SWIPE_FULL_SPEED = 3.2
+/** Peak speed range that pushes a long swipe past full power into the overhit band. */
+export const SWIPE_OVERHIT_SPEED = [4.6, 7] as const
+/** Short quick flicks read as a chip (plan 2.1#47) — only genuinely tiny, sharp ones. */
+export const CHIP_FLICK = { length: 0.12, duration: 0.15 } as const
+
+/**
+ * Swipe power from its length and peak speed (both in gesture units).
+ * Additive and monotonic in both: a short slow push is soft (~0.12), a long
+ * slow drag or a short sharp flick is mid-range (~0.55–0.7), a long fast
+ * swipe is full power (1.0), and only a violent long flick overhits (≤1.15).
+ */
+export function swipePower(length: number, peakSpeed: number): number {
+  const lenT = clamp01((length - SWIPE_MIN_LENGTH) / (SWIPE_FULL_LENGTH - SWIPE_MIN_LENGTH))
+  const spdT = clamp01((peakSpeed - SWIPE_SOFT_SPEED) / (SWIPE_FULL_SPEED - SWIPE_SOFT_SPEED))
+  const core = 0.1 + 0.9 * (0.45 * lenT + 0.55 * spdT)
+  const [o0, o1] = SWIPE_OVERHIT_SPEED
+  const over = 0.15 * clamp01((peakSpeed - o0) / (o1 - o0)) * lenT
+  return clampN(core + over, 0, 1.15)
+}
+
+/**
+ * Peak speed of a sampled path: the fastest stretch spanning at least
+ * {@link SWIPE_VELOCITY_WINDOW} seconds, so batched or jittery samples
+ * (a busy main thread delivering several touch moves at once) cannot spike it,
+ * and the deceleration before a deliberate release does not erase it.
+ */
+export function peakSpeed(pts: readonly GesturePoint[]): number {
+  const first = pts[0]
+  const last = pts[pts.length - 1]
+  if (!first || !last || pts.length < 2) return 0
+  const total = Math.max(1 / 60, last.t - first.t)
+  let best = Math.hypot(last.sx - first.sx, last.sy - first.sy) / total
+  let j = 0
+  for (let i = 1; i < pts.length; i++) {
+    const pi = pts[i]!
+    while (j + 1 < i && pi.t - pts[j + 1]!.t >= SWIPE_VELOCITY_WINDOW) j++
+    const pj = pts[j]!
+    const dt = pi.t - pj.t
+    if (dt >= SWIPE_VELOCITY_WINDOW) best = Math.max(best, Math.hypot(pi.sx - pj.sx, pi.sy - pj.sy) / dt)
+  }
+  return best
+}
+
+/**
  * Analyses a pointer path.
  * @param pts sampled path, oldest first
  * @param fingers simultaneous touches during the gesture (≥2 → chip)
  */
-/** Release-velocity window (s), plan 2.1#18: last 80 ms of samples. */
-export const SWIPE_VELOCITY_WINDOW = 0.08
-
 export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFeatures {
   const first = pts[0]
   const last = pts[pts.length - 1]
@@ -95,14 +157,7 @@ export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFe
   const cdy = last.sy - first.sy
   const chord = Math.hypot(cdx, cdy)
   const duration = Math.max(1e-3, last.t - first.t)
-  // Release speed from the timestamped samples of the last SWIPE_VELOCITY_WINDOW
-  // seconds (frame-rate independent: 30 or 120 Hz pointer sampling gives the same speed).
-  let k = pts.length - 2
-  while (k > 0 && last.t - pts[k - 1]!.t <= SWIPE_VELOCITY_WINDOW) k--
-  const mid = pts[k]!
-  const tailLen = Math.hypot(last.sx - mid.sx, last.sy - mid.sy)
-  const tailDur = Math.max(1e-3, last.t - mid.t)
-  const speed = Math.max(chord / duration, tailLen / tailDur)
+  const speed = peakSpeed(pts)
 
   const wdir = norm({ x: last.wx - first.wx, y: last.wy - first.wy })
   const dir = len(wdir) > 0 ? wdir : { x: 1, y: 0 }
@@ -119,11 +174,9 @@ export function analyzeSwipe(pts: readonly GesturePoint[], fingers = 1): SwipeFe
   }
   // A path bulging to +normal is drawn like a banana that bends back toward −normal.
   const curl = chord > 1e-6 ? clampN((-dev / chord) * 3.2, -1, 1) : 0
-  const lenTerm = clamp01(chord / 0.55)
-  const spdTerm = clamp01(speed / 4.2)
-  const power = clampN(0.12 + 0.48 * lenTerm + 0.55 * spdTerm, 0, 1.15)
+  const power = swipePower(chord, speed)
   const isTap = chord < SWIPE_MIN_LENGTH
-  const chip = !isTap && (fingers >= 2 || (duration < 0.2 && chord < 0.17))
+  const chip = !isTap && (fingers >= 2 || (duration < CHIP_FLICK.duration && chord < CHIP_FLICK.length))
   return { dir, length: chord, duration, speed, power, curl: Math.abs(curl) < 0.08 ? 0 : curl, chip, isTap }
 }
 

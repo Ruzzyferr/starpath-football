@@ -774,6 +774,12 @@ export class HighlightRuntime {
     if (this.phase === 'live') {
       while (this.actions.length) this.handleAction(this.actions.shift()!)
       this.setPieceAI()
+    } else if (this.phase === 'intro') {
+      // A swipe made during the short intro is kept for the first live step (owner feedback:
+      // an early swipe on the ball was silently dropped); everything else is discarded.
+      const keep = this.actions.filter((a) => a.kind === 'swipe' || a.kind === 'shoot').slice(-1)
+      this.actions.length = 0
+      this.actions.push(...keep)
     } else {
       this.actions.length = 0
     }

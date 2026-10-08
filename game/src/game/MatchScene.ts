@@ -62,6 +62,7 @@ import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from '.
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { ObjectPool } from './pool'
+import { probeKick } from './touchProbe'
 import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -1747,6 +1748,9 @@ export class MatchScene extends Phaser.Scene {
       g.lineBetween(gp.x, gp.y - r * 1.4, gp.x, gp.y + r * 1.4)
     }
     if (!pv && (this.lastIntent?.power ?? 0) > 0 && !rt.heroOnBall) this.drawPowerRing(g, hp.x, hp.y, this.lastIntent!.power)
+    // Released swipe: the ring holds the struck power for a moment (touch power feedback on release).
+    const flash = !pv ? this.input0.releaseFlash() : null
+    if (flash) this.drawPowerRing(g, hp.x, hp.y, flash.power, false, flash.alpha)
     // Vision: the best pass options the hero sees (count/range grow with Vision), when not aiming.
     if (!pv && getControlPrefs().visionHints) {
       const ids = rt.passOptions()
@@ -1815,7 +1819,7 @@ export class MatchScene extends Phaser.Scene {
     return undefined
   }
 
-  private drawPowerRing(g: Phaser.GameObjects.Graphics, x: number, y: number, power: number, oscillating = false): void {
+  private drawPowerRing(g: Phaser.GameObjects.Graphics, x: number, y: number, power: number, oscillating = false, alpha = 1): void {
     if (power <= 0.01) return
     const r = 1.25 * PPM
     if (oscillating) {
@@ -1830,14 +1834,14 @@ export class MatchScene extends Phaser.Scene {
     const steps = 48
     const frac = Math.min(1.15, power) / 1.15
     const cb = getControlPrefs().cbMode !== 'off'
-    g.lineStyle(0.18 * PPM, 0x000000, 0.35)
+    g.lineStyle(0.18 * PPM, 0x000000, 0.35 * alpha)
     g.strokeEllipse(x, y, r * 2, r * 2 * TILT)
     for (let i = 0; i < steps * frac; i++) {
       const a0 = -Math.PI / 2 + (i / steps) * Math.PI * 2
       const a1 = -Math.PI / 2 + ((i + 1) / steps) * Math.PI * 2
       const pf = ((i + 1) / steps) * 1.15
       const band = powerBand(pf)
-      g.lineStyle(0.16 * PPM, BAND_COLOR[band], 0.95)
+      g.lineStyle(0.16 * PPM, BAND_COLOR[band], 0.95 * alpha)
       g.lineBetween(x + Math.cos(a0) * r, y + Math.sin(a0) * r * TILT, x + Math.cos(a1) * r, y + Math.sin(a1) * r * TILT)
       // Colour-blind mode: a pattern per band so it reads without hue (2.2#17).
       if (cb && BAND_PATTERN[band] !== 'solid') {
@@ -2393,6 +2397,7 @@ export class MatchScene extends Phaser.Scene {
       switch (e.type) {
         case 'kick': {
           this.sfx.kick(e.power, e.kick)
+          if (e.hero) probeKick({ power: e.power, kick: e.kick })
           const p = project(e.x, e.y)
           this.burst(this.grassFx, this.fxN(e.hero ? 10 : 5), p.x, p.y)
           // Water kicks up off a wet pitch on contact (2.2#73).
