@@ -29,7 +29,7 @@ export function syncClubRelations(state: GameState): void {
     ensureTeammates(state.life, [], week)
     return
   }
-  const mates = squadPlayers(state.world, club.id).map((p) => ({ npcId: p.id, name: playerDisplayName(p, 'full') }))
+  const mates = squadPlayers(state.world, club.id).map((p) => ({ npcId: p.id, name: playerDisplayName(p, 'full'), personality: p.personality }))
   ensureTeammates(state.life, mates, week)
   ensureRelation(state.life, 'manager', 'manager', club.managerName, 0, week)
 }

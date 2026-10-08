@@ -125,3 +125,21 @@ describe('captaincy rivalry (2.4#53)', () => {
     expect(life.flags.captain_rival_until).toBeUndefined()
   })
 })
+
+describe('initialTeammateRelation', () => {
+  it('is deterministic, personality-driven and bounded', async () => {
+    const { initialTeammateRelation } = await import('./relationships')
+    expect(initialTeammateRelation('p1', 'joker')).toBe(initialTeammateRelation('p1', 'joker'))
+    const ids = Array.from({ length: 200 }, (_, i) => `npc${i}`)
+    const avg = (p: Parameters<typeof initialTeammateRelation>[1]) =>
+      ids.reduce((s, id) => s + initialTeammateRelation(id, p), 0) / ids.length
+    expect(avg('joker')).toBeGreaterThan(avg('hothead') + 15)
+    const values = new Set(ids.map((id) => initialTeammateRelation(id, 'professional')))
+    expect(values.size).toBeGreaterThan(15) // a real spread, not one flat value
+    for (const id of ids) {
+      const v = initialTeammateRelation(id, 'hothead')
+      expect(v).toBeGreaterThanOrEqual(-30)
+      expect(v).toBeLessThanOrEqual(45)
+    }
+  })
+})

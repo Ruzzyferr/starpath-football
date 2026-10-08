@@ -3,7 +3,8 @@
  * neglect decay toward neutral, teammate roster sync, and gameplay effect
  * helpers (pass frequency in matches, family happiness).
  */
-import type { Hero, LText, Life, RelationCause, RelationChange, RelationKind, Relationship } from '../../core/types'
+import { hashString } from '../../core/rng'
+import type { Hero, LText, Life, Personality, RelationCause, RelationChange, RelationKind, Relationship } from '../../core/types'
 import { clamp, fill, lt, signed, type Lines } from '../career/common'
 import { makeRelation } from '../career/createHero'
 import { perkValue } from '../career/perks'
@@ -230,7 +231,28 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
  * neutral-friendly +10 (new dressing room, cautious welcome) and removes ones
  * who left. Returns ids added/removed.
  */
-export function ensureTeammates(life: Life, teammates: readonly { npcId: string; name: string }[], week = 0): { added: string[]; removed: string[] } {
+/**
+ * Starting attitude of a new teammate toward the hero. NSS's dressing room was
+ * memorable because team-mates were not all alike: a joker welcomes you, a
+ * hothead or an ambitious rival at your position starts cold. A per-player hash
+ * adds ±15 so two "professionals" still differ. Pure (no RNG draw), so squad
+ * syncs never shift the career's random stream.
+ */
+const PERSONALITY_WELCOME: Readonly<Record<Personality, number>> = {
+  joker: 20, party: 16, loyal: 14, leader: 12, professional: 10, quiet: 6, ambitious: -2, hothead: -8,
+}
+
+export function initialTeammateRelation(npcId: string, personality?: Personality): number {
+  const base = personality ? PERSONALITY_WELCOME[personality] : 10
+  const jitter = (hashString(npcId) % 31) - 15
+  return clamp(base + jitter, -30, 45)
+}
+
+export function ensureTeammates(
+  life: Life,
+  teammates: readonly { npcId: string; name: string; personality?: Personality }[],
+  week = 0,
+): { added: string[]; removed: string[] } {
   const want = new Set(teammates.map((t) => teammateId(t.npcId)))
   const added: string[] = []
   const removed: string[] = []
@@ -243,7 +265,7 @@ export function ensureTeammates(life: Life, teammates: readonly { npcId: string;
   for (const t of teammates) {
     const id = teammateId(t.npcId)
     if (!life.relationships[id]) {
-      life.relationships[id] = makeRelation(id, 'teammate', t.name, 10, week, t.npcId)
+      life.relationships[id] = makeRelation(id, 'teammate', t.name, initialTeammateRelation(t.npcId, t.personality), week, t.npcId)
       added.push(id)
     }
   }
