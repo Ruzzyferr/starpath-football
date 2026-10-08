@@ -6,7 +6,7 @@ import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRin
 import { Icon, type IconName } from '../../icons'
 import { formatRating, ratingColor } from '../../format'
 import { useCountUp } from '../../hooks/motion'
-import { actions, data, navigate, type Delta, type InterviewOption, type PostMatchView, type RatingLineView } from '../../store'
+import { actions, data, navigate, type Delta, type InterviewOption, type PassRowView, type PostMatchView, type RatingLineView } from '../../store'
 import { CompareBar, MOMENT_ICON } from './shared'
 import { MomentsPanel } from './Moments'
 import { chanceReport } from '../../backend/postMatch'
@@ -25,6 +25,7 @@ const STEP_ICON: Record<PostStep, IconName> = {
   map: 'map-pin',
   trust: 'handshake',
   relations: 'users',
+  passes: 'arrow-right',
   earnings: 'coins',
   interview: 'megaphone',
 }
@@ -381,6 +382,37 @@ function RelationsStep({ pm }: { pm: PostMatchView }) {
   )
 }
 
+function PassRowItem({ r, i }: { r: PassRowView; i: number }) {
+  return (
+    <li class={`ppas-row band-${r.band}`} style={{ ['--i' as string]: String(i) }} data-testid="post-pass-row">
+      <div class="prel-main">
+        <span class="prel-name truncate">{r.name}</span>
+        <span class="t-xs t-mid prel-why">{t(`postmatch.passes.band.${r.band}`)} · {t('postmatch.passes.relation', { v: r.relation })}</span>
+      </div>
+      <b class="num ppas-n">{r.from > 0 ? t('postmatch.passes.fromN', { n: r.from }) : '0'}</b>
+      <span class="t-xs t-lo ppas-to">{t('postmatch.passes.toN', { n: r.to })}</span>
+    </li>
+  )
+}
+
+function PassStep({ pm }: { pm: PostMatchView }) {
+  const net = pm.passNet ?? { fed: [], ignored: [] }
+  return (
+    <section class="post-card post-step-card ppas" aria-labelledby="post-step-h" data-testid="post-passes">
+      <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}><Icon name="users" size={14} /> {t('postmatch.passes.title')}</h2>
+      <h3 class="micro t-lo ppas-h">{t('postmatch.passes.fed')}</h3>
+      {net.fed.length === 0 ? <p class="t-sm t-mid">{t('postmatch.passes.noneFed')}</p> : (
+        <ul class="prel-list" data-testid="post-passes-fed" aria-label={t('postmatch.passes.fed')}>{net.fed.map((r, i) => <PassRowItem key={r.id} r={r} i={i} />)}</ul>
+      )}
+      <h3 class="micro t-lo ppas-h">{t('postmatch.passes.ignored')}</h3>
+      {net.ignored.length === 0 ? <p class="t-sm t-mid">{t('postmatch.passes.noneIgnored')}</p> : (
+        <ul class="prel-list" data-testid="post-passes-ignored" aria-label={t('postmatch.passes.ignored')}>{net.ignored.map((r, i) => <PassRowItem key={r.id} r={r} i={i} />)}</ul>
+      )}
+      <p class="t-xs t-lo">{t('postmatch.passes.hint')}</p>
+    </section>
+  )
+}
+
 type Interview = NonNullable<PostMatchView['interview']>
 type Answer = { id: string; deltas: Delta[] } | null
 
@@ -513,6 +545,7 @@ export function PostMatchScreen() {
         {step === 'map' && <MapStep pm={pm} />}
         {step === 'trust' && <TrustStep pm={pm} />}
         {step === 'relations' && <RelationsStep pm={pm} />}
+        {step === 'passes' && <PassStep pm={pm} />}
         {step === 'earnings' && <EarningsStep pm={pm} />}
         {step === 'interview' && <SummaryStep pm={pm} iv={iv} answer={answer} setAnswer={setAnswer} />}
       </div>

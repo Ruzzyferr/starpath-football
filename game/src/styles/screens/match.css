@@ -1548,3 +1548,21 @@
 .lm-dec-note { margin-top: var(--sp-2); }
 @media (prefers-reduced-motion: reduce) { .lm-dec-bar i { transition: none; } }
 :root[data-motion='reduced'] .lm-dec-bar i { transition: none; }
+
+/* Pass network (2.4#36) */
+.ppas-h { margin: var(--sp-3) 0 var(--sp-1); }
+.ppas-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 8px 10px;
+  border-radius: var(--r-xs);
+  background: var(--surface-2);
+  animation: rise-in var(--dur-screen) var(--ease-out) both;
+  animation-delay: calc(var(--i, 0) * 70ms + 200ms);
+}
+.ppas-row.band-cold { box-shadow: inset 3px 0 0 var(--neg); }
+.ppas-row.band-close { box-shadow: inset 3px 0 0 var(--accent-gold); }
+.ppas-n { text-align: right; }
+.lm-snub { margin: var(--sp-2) 0 0; padding: 6px 10px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--text-mid); box-shadow: inset 3px 0 0 var(--neg); }

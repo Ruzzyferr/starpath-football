@@ -492,6 +492,20 @@ export interface LiveMatchView {
   speed: 0.5 | 1 | 2 | 4
   paused: boolean
   finished: boolean
+  /** Notable snub: a team-mate with a low relation who has not passed to the hero yet. */
+  snub?: { id: string; name: string; relation: number }
+}
+export interface PassRowView {
+  id: string
+  name: string
+  from: number
+  to: number
+  relation: number
+  band: 'cold' | 'cool' | 'warm' | 'close'
+}
+export interface PassNetView {
+  fed: PassRowView[]
+  ignored: PassRowView[]
 }
 export interface InterviewOption {
   id: string
@@ -521,6 +535,8 @@ export interface PostMatchView {
   expectations?: { title: LText; progress: number; target: number; status: 'done' | 'failed' | 'open' }[]
   /** Relationship changes this match caused (largest first). */
   relations?: RelationChangeView[]
+  /** Pass telemetry per team-mate with their relationship band (2.4#36). */
+  passNet?: PassNetView
   /** WP-16: what this match earned (bonuses paid now + this match's share of the weekly wage/sponsors). */
   earnings?: MatchEarnings
 }

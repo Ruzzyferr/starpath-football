@@ -5,7 +5,7 @@
  * Everything here is plain JSON data so `MatchSim.serialize()` can persist a
  * match mid-way and `MatchSim.restore()` resumes it bit-identically.
  */
-import type { HighlightKind, RatingLogEntry, ShotMapEntry } from './types'
+import type { HighlightKind, PassPair, RatingLogEntry, ShotMapEntry } from './types'
 import type { Lang, MatchResultSummary, ShotBook } from '../../core/types'
 import type { RngState } from '../../core/rng'
 import type { HeroMatchStats, Highlight, MatchEvent, MatchSetup, Side } from './types'
@@ -103,6 +103,8 @@ export interface HeroRuntime {
   /** Heat map grid (HEAT_COLS × HEAT_ROWS, hero attacking +x). */
   heat?: number[]
   shots?: ShotMapEntry[]
+  /** Pass telemetry per team-mate (counting only; absent in older saves). */
+  passNet?: Record<string, PassPair>
   /** Moment kinds generated so far (position guarantees). */
   kinds?: Partial<Record<HighlightKind, number>>
   /** Keepers' book on the hero (setup.keeperBook + this match), WP-14. */

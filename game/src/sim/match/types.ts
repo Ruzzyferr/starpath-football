@@ -176,6 +176,14 @@ export type HighlightOutcome =
   | 'foul_won' | 'foul_committed'
   | 'timeout'
 
+/** Passes between the hero and one team-mate. */
+export interface PassPair {
+  /** Passes the team-mate gave the hero. */
+  from: number
+  /** Passes the hero gave the team-mate. */
+  to: number
+}
+
 export interface HighlightResult {
   outcome: HighlightOutcome
   scorerId?: string
@@ -187,6 +195,8 @@ export interface HighlightResult {
   shotsOnTarget: number
   dribbles: number
   tackles: number
+  /** Per-team-mate pass telemetry for the moment: `from` = passes to the hero, `to` = hero passes to them (counting only). */
+  passNet?: Record<string, PassPair>
   /** Optional booking for the hero (rash tackle). */
   card?: 'yellow' | 'red'
   /** Why a straight red was shown (ban length, WP-14). Missing = 'serious'. */
@@ -300,4 +310,6 @@ export interface MatchSnapshot {
   heroLog?: RatingLogEntry[]
   /** Hero heat map & shot map so far. */
   heroMap?: HeroMatchMap
+  /** Per-team-mate pass telemetry so far (player id -> pair). */
+  passNet?: Record<string, PassPair>
 }

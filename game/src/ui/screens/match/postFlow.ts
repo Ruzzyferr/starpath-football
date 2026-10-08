@@ -1,16 +1,17 @@
 /** Pure helpers for the post-match step flow (kept free of Preact for unit tests). */
 import type { PostMatchView, RatingLineView } from '../../store'
 
-export type PostStep = 'result' | 'rating' | 'map' | 'trust' | 'relations' | 'earnings' | 'interview'
+export type PostStep = 'result' | 'rating' | 'map' | 'trust' | 'relations' | 'passes' | 'earnings' | 'interview'
 
 /** Steps shown for a view: data-less steps are skipped; the summary/interview step always closes the flow. */
-export function postSteps(pm: Pick<PostMatchView, 'stats' | 'heroMap' | 'trust' | 'relations' | 'earnings'>): PostStep[] {
+export function postSteps(pm: Pick<PostMatchView, 'stats' | 'heroMap' | 'trust' | 'relations' | 'earnings'> & { passNet?: PostMatchView['passNet'] }): PostStep[] {
   const steps: PostStep[] = ['result']
   const played = pm.stats.minutes > 0
   if (played) steps.push('rating')
   if (played && pm.heroMap) steps.push('map')
   if (pm.trust && (played || pm.trust.reasons.length > 0)) steps.push('trust')
   if (pm.relations && pm.relations.length > 0) steps.push('relations')
+  if (played && pm.passNet && (pm.passNet.fed.length > 0 || pm.passNet.ignored.length > 0)) steps.push('passes')
   if (pm.earnings && pm.earnings.lines.length > 0) steps.push('earnings')
   steps.push('interview')
   return steps

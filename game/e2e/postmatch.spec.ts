@@ -65,11 +65,19 @@ test('pre-match expected moments, then the step-by-step post-match flow', async 
       await expect(page.getByTestId('post-heatmap').locator('svg')).toBeVisible()
       await expect(page.getByTestId('post-shotmap').locator('svg')).toBeVisible()
     }
+    if (step === 'passes') {
+      await expect(page.getByTestId('post-passes')).toBeVisible()
+      await expect(page.getByRole('heading', { name: /Passing network/ })).toBeVisible()
+      await expect(page.getByTestId('post-passes-fed').or(page.getByText('Nobody passed to you this match.'))).toBeVisible()
+      await expect(page.getByTestId('post-pass-row').first()).toContainText(/Relation -?\d+/)
+      await page.waitForTimeout(5000)
+    }
     if (step === 'trust') await expect(page.getByTestId('post-trust-delta')).toHaveText(/^[+−±]\d+(\.\d+)?$/)
     await shot(`pm2-step-${step}`)
   }
   expect(seen[0]).toBe('result')
   expect(seen).toContain('rating')
+  expect(seen).toContain('passes')
   expect(seen[seen.length - 1]).toBe('interview')
 
   // Back to the start via the stepper, then "Skip all" lands on the summary.

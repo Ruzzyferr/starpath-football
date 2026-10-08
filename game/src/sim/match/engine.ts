@@ -35,6 +35,7 @@ import {
   type SlotPlayer,
 } from './highlightGen'
 import { EARLY_BRAKE_MINUTE, MIN_MOMENT_CHANCE, earlyBrake, momentChance } from './fairness'
+import { backgroundPasses, mergePassNet } from './passNet'
 import { HEAT_COLS, HEAT_ROWS, addHeat, backgroundPresence, emptyHeat, shotEntry, typicalShotSpot } from './heroMap'
 import { formationSlots } from './formations'
 import { backgroundRedReason, banMatches, copyBook, noteShot, refCardMult, refFoulMult, type RedReason } from './referee'
@@ -268,6 +269,7 @@ export class MatchSim {
     if (s.shootout) snap.penalties = [s.shootout.goals[0], s.shootout.goals[1]]
     if (s.hero.id) {
       snap.heroLog = (s.hero.log ?? []).map((e) => ({ ...e }))
+      snap.passNet = Object.fromEntries(Object.entries(s.hero.passNet ?? {}).map(([k, v]) => [k, { ...v }]))
       snap.heroMap = { cols: HEAT_COLS, rows: HEAT_ROWS, heat: (s.hero.heat ?? emptyHeat()).map((v) => Math.round(v * 100) / 100), shots: (s.hero.shots ?? []).map((e) => ({ ...e })) }
     }
     return snap
@@ -1327,6 +1329,15 @@ export class MatchSim {
       h.stats.passes++
       if (this.rng.chance(pComplete)) h.stats.passesCompleted++
     }
+    // Pass telemetry (hash-based, no RNG draws): never influences the simulation.
+    backgroundPasses(
+      (h.passNet ??= {}),
+      this.onPitch(h.side).filter((p) => p.id !== h.id).map((p) => ({ id: p.id, relation: p.relationToHero })),
+      this.s.setup.seed >>> 0,
+      `${this.s.period}:${this.s.clock}:${this.s.stoppageUsed}`,
+      inPossession,
+      attempts,
+    )
     const g = positionGroup(hero.position)
     if (!inPossession && (g === 1 || hero.position === 'DM') && this.rng.chance(0.04)) h.stats.tackles++
     if (inPossession && g === 3 && this.rng.chance(0.02)) h.stats.dribbles++
@@ -1339,6 +1350,7 @@ export class MatchSim {
     const kind = p.highlight.kind
     h.stats.highlightsPlayed++
     h.stats.passes += r.passes
+    mergePassNet((h.passNet ??= {}), r.passNet)
     h.stats.passesCompleted += Math.min(r.passes, r.passesCompleted)
     h.stats.shots += r.shots
     h.stats.shotsOnTarget += Math.min(r.shots, r.shotsOnTarget)

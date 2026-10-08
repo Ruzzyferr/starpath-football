@@ -22,7 +22,7 @@
 | 2.1 Maç motoru | 62 | 0 | 0 | 0 | 0 | 0 | 62 |
 | 2.2 Animasyon, kamera | 29 | 0 | 0 | 1 | 0 | 0 | 30 |
 | 2.3 Kariyer | 40 | 0 | 0 | 0 | 3 | 0 | 43 |
-| 2.4 Sosyal, olaylar | 38 | 0 | 0 | 0 | 1 | 0 | 39 |
+| 2.4 Sosyal, olaylar | 39 | 0 | 0 | 0 | 0 | 0 | 39 |
 | 2.5 Ekonomi | 44 | 0 | 0 | 4 | 1 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 57 | 0 | 0 | 1 | 7 | 0 | 65 |
@@ -31,7 +31,7 @@
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 33 | 0 | 0 | 2 | 2 | 39 | 76 |
-| **Toplam** | **474 (%83)** | 1 | 0 | 34 | 20 | 40 | **569** |
+| **Toplam** | **475 (%83)** | 1 | 0 | 34 | 19 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -482,7 +482,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.4#23 | TAMAM | sim/life/wellbeing.ts:67 | Partner yokluğu ceza vermiyor |
 | 2.4#24 | TAMAM | ui/screens/SettingsScreen.tsx (partnerPref), sim/game/partnerPref.ts, partnerPref.test.ts, ui/backend/prefsSync.ts | Ayarlarda Fark etmez/Kadınlar/Erkekler; kariyere yansır, flört olayı adı havuzdan seçer. Mevcut partner değişmez; "Fark etmez" eski seçimi byte-aynı korur |
 | 2.4#25 | TAMAM | sim/life/events/content/romance.ts:415 | TD etkisi −4 (tavan −5) |
-| 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Karar penceresi (Canlı Maç Merkezi) hazır; yine de maç içi pas ikonu ve maç sonu X sana N pas verdi raporu çift bazlı pas telemetrisi ister, ayrı maç-sunumu paketi (v1.1). |
+| 2.4#36 | TAMAM | sim/match/passNet.ts, engine.ts (passNet), game/runtime.ts (kickBall), ui/backend/postMatch.ts buildPassNetView, PostMatchScreen PassStep, LiveMatchScreen lm-snub, passNet.test.ts, e2e/postmatch.spec.ts | Çift bazlı pas telemetrisi (sayım only, RNG yok, golden aynı): oynanan anda runtime, arka planda hash tabanlı; maç sonu Pas ağı adımı (sana pas verenler / görmeyenler + ilişki bandı), canlı hub'da X sana pas vermiyor |
 | 2.4#37 | TAMAM | sim/life/closeFriends.ts, closeFriends.test.ts, ui/screens/life/Relations.tsx, e2e/lifeplus.spec.ts | En fazla 3 yakın arkadaş: kriz haftasında destek (mutluluk +6, stres -5, 4 haftada bir), transfer söylentisinde içeriden bilgi olayı (rumour.insider_tip), takım arkadaşıysa ~%10 pas bonusu (maç motoru relationToHero), ihmal yarısı hızda söner. |
 | 2.4#46 | TAMAM | sim/career/squadRole.ts formTerm/ratingTerm/trustTerm; life/sweep2.test.ts | Form+reyting %75, güven/ilişki en çok %25 |
 | 2.4#47 | TAMAM | sim/game/objectives.ts objectivesAfterMatch, PostMatchScreen.tsx, objectives.test.ts | Hoca beklentileri: pres (top kapma) ve takım oyunu (isabetli pas) hedefleri; hedefler maçtan hemen sonra kapanır (+4 güven, ödül anında), maç sonu raporunda Karşılandı işaretli. |

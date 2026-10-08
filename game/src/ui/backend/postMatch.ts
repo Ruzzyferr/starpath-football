@@ -15,7 +15,8 @@ import type { LText, RelationKind, Relationship } from '../../core/types'
 import { trustBlameShield } from '../../sim/career/squadRole'
 import { expectedMoments } from '../../sim/match'
 import type { ExpectedMoments, HeroMatchMap, HighlightPlanInput, RatingLogEntry } from '../../sim/match'
-import type { HeroMapView, RatingLineView, RelationChangeView, TrustChangeView } from '../store'
+import { relationBand, splitPassNet, type PassNet, type PassRow } from '../../sim/match/passNet'
+import type { PassNetView, HeroMapView, RatingLineView, RelationChangeView, TrustChangeView } from '../store'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 const r1 = (x: number): number => Math.round(x * 10) / 10
@@ -188,4 +189,16 @@ export function chanceReport(log: readonly Pick<RatingLineView, 'source' | 'outc
   const toWin = Math.max(0, theirs - mine + 1)
   const couldHave = toWin > 0 && missed >= toWin ? 'win' : toDraw > 0 && missed >= toDraw ? 'draw' : null
   return { chances, scored, missed, toDraw, toWin, couldHave }
+}
+
+/** Pass network rows (who fed the hero vs who ignored him) with each team-mate's relationship band. */
+export function buildPassNetView(
+  net: PassNet | undefined, mates: readonly { id: string; name: string; relationToHero: number; isHero: boolean }[],
+): PassNetView | undefined {
+  if (!net) return undefined
+  const rows: PassRow[] = mates
+    .filter((m) => !m.isHero)
+    .map((m) => ({ id: m.id, name: m.name, from: net[m.id]?.from ?? 0, to: net[m.id]?.to ?? 0, relation: Math.round(m.relationToHero), band: relationBand(m.relationToHero) }))
+  if (rows.every((r) => r.from === 0 && r.to === 0)) return undefined
+  return splitPassNet(rows)
 }

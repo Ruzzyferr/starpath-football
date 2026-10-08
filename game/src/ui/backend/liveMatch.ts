@@ -17,19 +17,19 @@ import {
 import { heroClub, readJson, weekCounters, writeJson } from '../../sim/game/internal'
 import { incomeTaxRate } from '../../sim/life/economy'
 import { matchEarnings, type MatchBonuses, type MatchEarnings } from '../../sim/career/matchPay'
-import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
+import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchPlayer, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
 import { pickKeyPlayer, playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
 import { match, settings } from '../store'
 import type {
-  Delta, FixtureView, HeroMatchStatsView, InterviewOption, LineupPlayer, LiveMatchView, MatchEventView, PostMatchView, PreMatchView,
+  Delta, FixtureView, HeroMatchStatsView, InterviewOption, LineupPlayer, LiveMatchView, MatchEventView, PassNetView, PostMatchView, PreMatchView,
 } from '../store'
 import { RELATION_LABEL, diffSnapshots, fixtureView, snapshot } from './mapping'
 import { playHighlight, type HighlightSession } from './highlightBridge'
 import { celebrationForMatch } from './celebration'
 import { isEveningFixture } from '../../game/presentation'
 import { matchExpectations } from '../../sim/game/objectives'
-import { buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
+import { buildPassNetView, buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
@@ -107,6 +107,18 @@ const eventView = (e: MatchEvent): MatchEventView => ({
   isHero: e.playerId === HERO_ID || e.assistId === HERO_ID || e.type === 'highlight' ? true : undefined,
 })
 
+/** Notable snub for the live hub: the lowest-relation team-mate who has not fed the hero (needs a few minutes of play). */
+function snubOf(l: Live, snap: MatchSnapshot): { snub?: NonNullable<LiveMatchView['snub']> } {
+  if (!snap.heroOnPitch || snap.minute < 15 || snap.finished) return {}
+  const team = l.heroSide === 'home' ? l.setup.home : l.setup.away
+  let worst: MatchPlayer | null = null
+  for (const p of team.lineup) {
+    if (p.isHero || p.relationToHero > -25 || (snap.passNet?.[p.id]?.from ?? 0) > 0) continue
+    if (!worst || p.relationToHero < worst.relationToHero) worst = p
+  }
+  return worst ? { snub: { id: worst.id, name: worst.name, relation: Math.round(worst.relationToHero) } } : {}
+}
+
 function liveView(l: Live): LiveMatchView {
   const snap = l.sim.snapshot()
   const hl = snap.pendingHighlight
@@ -138,6 +150,7 @@ function liveView(l: Live): LiveMatchView {
     speed: l.speed,
     paused: l.paused,
     finished: snap.finished,
+    ...snubOf(l, snap),
   }
 }
 
@@ -623,6 +636,7 @@ function finalize(): void {
     scorers: res.scorers.map((g) => ({ minute: g.minute, name: nameOf(g.playerId) + (g.ownGoal ? ' (o.g.)' : ''), side: g.team })),
     deltas: diffSnapshots(before, after).filter((d) => d.key !== 'energy'),
     ...postDetails(s, snap, report, trustBefore, relBefore),
+    ...passNetFor(l, snap, report.minutes),
     ...(report.bonuses && s.hero.contract ? { earnings: earningsFor(s, report.bonuses) } : {}),
   }
   const opp = side === 'home' ? l.setup.away : l.setup.home
@@ -636,6 +650,17 @@ function finalize(): void {
   match.value = { ...liveView(l), finished: true, paused: true }
   commit(s)
   scheduleAutosave(300)
+}
+
+function passNetFor(l: Live, snap: MatchSnapshot, minutes: number): { passNet?: PassNetView } {
+  if (minutes <= 0) return {}
+  try {
+    const team = l.heroSide === 'home' ? l.setup.home : l.setup.away
+    const v = buildPassNetView(snap.passNet, team.lineup)
+    return v ? { passNet: v } : {}
+  } catch {
+    return {}
+  }
 }
 
 /** Rating breakdown, maps, trust reasons and relationship rows for the post-match flow. */

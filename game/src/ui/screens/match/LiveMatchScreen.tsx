@@ -190,6 +190,9 @@ export function LiveMatchScreen() {
               <div class="lm-hs"><b class="num">{passPct}%</b><span>{t('match.live.passes')}</span></div>
             </div>
           </div>
+          {m.snub && m.heroOnPitch && (
+            <p class="lm-snub micro" role="status" data-testid="lm-snub">{t('match.live.snub', { name: m.snub.name })}</p>
+          )}
           <MomentsPanel
             matchKey={m.fixture.fixtureId}
             onOpen={() => {

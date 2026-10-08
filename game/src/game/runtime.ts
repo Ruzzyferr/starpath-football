@@ -407,6 +407,8 @@ export class HighlightRuntime {
   private readonly actions: HeroAction[] = []
   private readonly events: RuntimeEvent[] = []
   private readonly frames: ReplayFrame[] = []
+  /** Per-teammate pass telemetry (pure counting, never read by the simulation). */
+  private readonly passNet: Record<string, { to: number; from: number }> = {}
   private readonly stats = { passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 }
   private card: 'yellow' | 'red' | undefined
   private readonly blockWindUp: number
@@ -728,6 +730,7 @@ export class HighlightRuntime {
   /** Builds the HighlightResult for an outcome with current micro-stats. */
   buildResult(outcome: HighlightOutcome, extra: Partial<HighlightResult> = {}): HighlightResult {
     const r: HighlightResult = { outcome, ...this.stats, ...extra }
+    if (Object.keys(this.passNet).length) r.passNet = Object.fromEntries(Object.entries(this.passNet).map(([k, v]) => [k, { ...v }]))
     r.assistMult = ASSIST_REWARD[this.assist]
     if (this.track.length) r.track = this.track.map((p) => ({ ...p }))
     if (this.shotLog.length) {
@@ -1339,6 +1342,8 @@ export class HighlightRuntime {
       this.assistChain = by.id
       this.heroPassTo = null
     }
+    // Pass telemetry: team-mate -> hero feeds (from) and hero -> team-mate deliveries (to).
+    if (!by.isHero && by.team === 'hero' && passTo === this.hero.id) (this.passNet[by.id] ??= { to: 0, from: 0 }).from++
     applyKick(this.ball, plan)
     if (this.ball.z < 0.01 && plan.vz > 0) this.ball.z = 0.02
     // Nobody reads a pass instantly: AI players keep their current plan for their reaction time.
@@ -1381,6 +1386,7 @@ export class HighlightRuntime {
           runner.agent.intent = { kind: 'run', to: runner.point, until: this.time + 0.6, chase: true }
         }
       }
+      if (this.heroPassTo && this.heroPassTo.id !== '*' && !SHOT_KINDS.has(kind)) (this.passNet[this.heroPassTo.id] ??= { to: 0, from: 0 }).to++
       this.oneTwo = passTo && (kind === 'pass' || kind === 'lofted') ? { id: passTo, t: this.time, armed: false, armedAt: -1 } : null
       this.heroDeliveryAt = SHOT_KINDS.has(kind) ? -1 : this.time
       this.heroHeaderAim = null

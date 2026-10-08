@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Relationship } from '../../core/types'
 import {
   buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues, topKinds,
+  buildPassNetView,
 } from './postMatch'
 import { trustRawFromMatch } from '../../sim/career/squadRole'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta } from '../screens/match/postFlow'
@@ -130,6 +131,21 @@ describe('post flow', () => {
     const earnings = { lines: [{ key: 'wage' as const, amount: 100, when: 'week' as const }], paidNow: 0, weekShare: 100, net: 100 }
     expect(postSteps({ stats, earnings })).toEqual(['result', 'rating', 'earnings', 'interview'])
     expect(postSteps({ stats, earnings: { ...earnings, lines: [] } })).toEqual(['result', 'rating', 'interview'])
+  })
+
+  it('adds the passing step only with pass data, and builds fed / ignored rows', () => {
+    const row = { id: 'a', name: 'A', from: 3, to: 1, relation: 50, band: 'warm' as const }
+    expect(postSteps({ stats, passNet: { fed: [row], ignored: [] } })).toEqual(['result', 'rating', 'passes', 'interview'])
+    expect(postSteps({ stats, passNet: { fed: [], ignored: [] } })).toEqual(['result', 'rating', 'interview'])
+    const mates = [
+      { id: 'a', name: 'A', relationToHero: 60, isHero: false },
+      { id: 'b', name: 'B', relationToHero: -50, isHero: false },
+      { id: 'h', name: 'H', relationToHero: 100, isHero: true },
+    ]
+    const v = buildPassNetView({ a: { from: 5, to: 2 } }, mates)
+    expect(v?.fed.map((r) => r.id)).toEqual(['a'])
+    expect(v?.ignored.map((r) => [r.id, r.band])).toEqual([['b', 'cold']])
+    expect(buildPassNetView(undefined, mates)).toBeUndefined()
   })
 
   it('rating groups add up to the final rating via an "other" line', () => {
