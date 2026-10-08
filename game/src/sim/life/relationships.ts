@@ -154,6 +154,28 @@ const DECAY_RULES: Partial<Record<RelationKind, { grace: number; perWeek: number
   agent: { grace: 6, perWeek: 1 },
 }
 
+/**
+ * Analiz-ve-Plan 2.4#4: neglect erodes a bond by 2 % of its value per week
+ * (family: half that), never more than {@link DECAY_MAX_STEP} points in one
+ * tick. The flat per-kind rate above is the floor for very small values, so
+ * a fresh +10 teammate still fades, while a +80 bond erodes by 1.6/week.
+ */
+export const NEGLECT_RATE = 0.02
+export const FAMILY_NEGLECT_FACTOR = 0.5
+export const DECAY_MAX_STEP = 3
+
+/** Weekly neglect decay in points for a relationship value (before perks). */
+export function neglectStep(kind: RelationKind, value: number): number {
+  const rule = DECAY_RULES[kind]
+  if (!rule || value <= 0) return 0
+  const family = CLOSE_KINDS.has(kind) && kind !== 'partner'
+  const pct = value * NEGLECT_RATE * (family ? FAMILY_NEGLECT_FACTOR : 1)
+  // Proportional term, with a small flat floor (a fifth of the legacy rate) so
+  // low values still reach zero; partner keeps its faster romance fade.
+  const flat = rule.perWeek * 0.2 * (kind === 'partner' ? 3 : 1)
+  return Math.min(DECAY_MAX_STEP, Math.max(pct * (kind === 'partner' ? 3 : 1), flat))
+}
+
 /** Fraction of the value fans/press lose per week (toward 0). */
 const PUBLIC_DRIFT = 0.02
 const PUBLIC_FADE = lt('Gündem değişti, ilgi azaldı', 'The news cycle moved on')
@@ -179,7 +201,7 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
     if (!rule || r.value <= 0) continue
     const idle = week - r.lastContactWeek
     if (idle <= rule.grace) continue
-    let d = rule.perWeek
+    let d = neglectStep(r.kind, r.value)
     if (CLOSE_KINDS.has(r.kind) && r.kind !== 'partner') d *= 1 - familySlow
     const before = r.value
     r.value = Math.max(0, Math.round((r.value - d) * 10) / 10)

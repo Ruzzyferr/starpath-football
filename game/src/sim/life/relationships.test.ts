@@ -1,5 +1,6 @@
 import { lt } from '../career/common'
 import { makeHeroLife } from '../career/testFixtures'
+import { neglectStep, DECAY_MAX_STEP, NEGLECT_RATE } from './relationships'
 import {
   MEMORY_SIZE, changeRelation, closeCircleMood, ensureRelation, ensureTeammates, passFactor, relationLabel,
   teammateId, teammatePassFactor, weeklyRelationDecay,
@@ -38,7 +39,8 @@ describe('relationships', () => {
     weeklyRelationDecay(life, 2)
     expect(life.relationships.mother.value).toBe(60) // grace
     for (let w = 4; w < 40; w++) weeklyRelationDecay(life, w)
-    expect(life.relationships.mother.value).toBeLessThan(20)
+    expect(life.relationships.mother.value).toBeLessThan(50) // 2 %/week, family halved
+    expect(life.relationships.mother.value).toBeGreaterThan(20)
     expect(life.relationships.mother.value).toBeGreaterThanOrEqual(0)
   })
 
@@ -96,5 +98,13 @@ describe('relationships', () => {
     const { life } = makeHeroLife()
     for (const id of ['mother', 'father', 'sibling', 'bestFriend']) life.relationships[id].value = 100
     expect(closeCircleMood(life)).toBe(15)
+  })
+
+  it('neglect decay is 2 % of the value per week, family half, capped per tick (2.4#4)', () => {
+    expect(neglectStep('teammate', 80)).toBeCloseTo(80 * NEGLECT_RATE, 5)
+    expect(neglectStep('mother', 80)).toBeCloseTo(80 * NEGLECT_RATE * 0.5, 5)
+    expect(neglectStep('partner', 100)).toBeLessThanOrEqual(DECAY_MAX_STEP)
+    expect(neglectStep('teammate', 5)).toBeGreaterThan(0)
+    expect(neglectStep('fans', 50)).toBe(0)
   })
 })
