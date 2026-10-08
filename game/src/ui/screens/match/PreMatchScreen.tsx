@@ -1,6 +1,6 @@
 import '../../../styles/screens/match.css'
 import { t, lt, tx, currentLang } from '../../../i18n'
-import { Button, Crest, EmptyState, FormDots, IconButton } from '../../components'
+import { Button, Chip, Crest, EmptyState, FormDots, IconButton } from '../../components'
 import { Icon } from '../../icons'
 import { formatNumber } from '../../format'
 import { onColor } from '../../art/svg'
@@ -188,6 +188,12 @@ export function PreMatchScreen() {
             </div>
           </div>
 
+          {(pm.markedMan ?? 0) > 0 && (
+            <div class="pm-marked" data-testid="pm-marked" title={t('match.pre.markedTip')}>
+              <Chip tone="neg" icon="shield">{t('match.pre.marked')}</Chip>
+              <span class="t-xs t-mid">{t('match.pre.markedTip')}</span>
+            </div>
+          )}
           {pm.expectedMoments && pm.expectedMoments.max > 0 && <ExpectedMomentsCard em={pm.expectedMoments} starting={pm.heroStarting} />}
           <FocusPicker />
 

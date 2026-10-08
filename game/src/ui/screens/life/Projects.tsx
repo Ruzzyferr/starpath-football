@@ -5,7 +5,7 @@ import type { GameState } from '../../../core/types'
 import { lt, t } from '../../../i18n'
 import { ownedAssetDefs } from '../../../sim/life/assetEffects'
 import {
-  ACADEMY_UPKEEP, FUND_GROWTH, LEGACY_FUND_CAP, LEGACY_FUND_SHARE, STADIUM_UPKEEP, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT, STAKE_YIELD,
+  ACADEMY_UPKEEP, FUND_GROWTH, FUND_POINTS_MAX, FUND_POINTS_PER_M, LEGACY_FUND_CAP, LEGACY_FUND_SHARE, STADIUM_UPKEEP, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT, STAKE_YIELD,
   PROJECT_FLAGS, academyGraduates, academyLevel, legacyAcademyBonus, legacyFund, legacyFundBonus, nextAcademyPrice, nextStadiumPrice,
   projectUpkeep, projectsLegacyPoints, stadiumLevel, stakeDividend, stakePct, stakeValue,
 } from '../../../sim/life/projects'
@@ -128,7 +128,7 @@ function Fund({ s }: { s: GameState }) {
         <div><dt>{t('life.projects.fund.child')}</dt><dd class="num t-pos">+{money(legacyFundBonus(fund))}</dd></div>
         <div><dt>{t('life.projects.fund.rep')}</dt><dd class="num t-pos">+{legacyAcademyBonus(academyLevel(s.life))}</dd></div>
       </dl>
-      <p class="t-xs t-lo">{t('life.projects.fund.effect', { share: Math.round(LEGACY_FUND_SHARE * 100), cap: money(LEGACY_FUND_CAP) })}</p>
+      <p class="t-xs t-lo">{t('life.projects.fund.effect', { share: Math.round(LEGACY_FUND_SHARE * 100), cap: money(LEGACY_FUND_CAP), pts: FUND_POINTS_PER_M, max: FUND_POINTS_MAX })}</p>
       {canFund
         ? <Slider label={t('life.projects.fund.amount')} value={a} min={10_000} max={cap} step={10_000} onChange={setAmt} format={(v) => money(v)} />
         : <p class="t-xs t-lo">{t('life.projects.fund.noCash')}</p>}

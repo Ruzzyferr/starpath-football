@@ -58,6 +58,7 @@ export const tr = {
     noMemory: 'Henüz ortak bir anınız yok.',
     band: { enemy: 'Düşman', cold: 'Soğuk', neutral: 'Nötr', warm: 'Sıcak', loyal: 'Sadık' },
     bandsTitle: 'Bant etkisi',
+    baseline: { tip: 'Doğal mesafesi {n}: zamanla buna doğru döner' },
     effect: {
       team: {
         enemy: 'Sana pas vermekten kaçınır ({pct} pas sıklığı)',
@@ -289,7 +290,7 @@ export const tr = {
       title: 'Miras fonu',
       body: 'Kariyer bitene kadar kilitli bir fon. Yılda %{growth} büyür.',
       balance: 'Fon bakiyesi', child: 'Çocuğa başlangıç', rep: 'Çocuğa itibar',
-      effect: 'Fonun %{share} kadarı (en çok {cap}) Miras çocuğunun başlangıç parasına eklenir; akademi seviyen itibar verir.',
+      effect: 'Fonun %{share} kadarı (en çok {cap}) Miras çocuğunun başlangıç parasına eklenir; akademi seviyen itibar verir. Kilitli her 1M için +{pts} Onur Listesi puanı (en çok +{max}).',
       amount: 'Yatırılacak tutar',
       add: 'Fona yatır ({amount})',
       noCash: 'Fona yatırmak için en az 10 bin nakit gerekir.',
@@ -430,6 +431,7 @@ export const en: Shape<typeof tr> = {
     noMemory: 'No shared memories yet.',
     band: { enemy: 'Enemy', cold: 'Cold', neutral: 'Neutral', warm: 'Warm', loyal: 'Loyal' },
     bandsTitle: 'Band effect',
+    baseline: { tip: 'Natural distance {n}: returns toward it over time' },
     effect: {
       team: {
         enemy: 'Avoids passing to you ({pct} pass frequency)',
@@ -661,7 +663,7 @@ export const en: Shape<typeof tr> = {
       title: 'Legacy fund',
       body: 'A fund locked until your career ends. It grows {growth}% a year.',
       balance: 'Fund balance', child: 'Child start cash', rep: 'Child reputation',
-      effect: '{share}% of the fund (up to {cap}) is added to your Legacy child’s starting cash; your academy level adds reputation.',
+      effect: '{share}% of the fund (up to {cap}) is added to your Legacy child’s starting cash; your academy level adds reputation. Each locked 1M adds +{pts} Hall of Fame point (max +{max}).',
       amount: 'Amount to move',
       add: 'Move into fund ({amount})',
       noCash: 'You need at least 10K in cash to fund it.',

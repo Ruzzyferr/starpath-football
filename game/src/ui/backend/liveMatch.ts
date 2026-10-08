@@ -34,6 +34,7 @@ import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
 import { DECISION_FLAG, applyPendingDecisions, pendingDecisions, recordDecision } from '../../sim/game/matchDecisions'
+import { markedMan } from '../../sim/game/match'
 import { heroOvr } from '../../sim/career/progression'
 
 /** Live text-feed speeds (2.2#106: 0.5x–4x). */
@@ -223,6 +224,7 @@ export function preMatchView(s: GameState): PreMatchView | null {
     odds: { home: ODDS(pHome * (1 - pDraw)), draw: ODDS(pDraw), away: ODDS((1 - pHome) * (1 - pDraw)) },
     expectedMoments: expectedFor(s, blob),
     referee: blob.setup.referee ? { ...blob.setup.referee } : null,
+    markedMan: markedMan(s.hero),
   }
 }
 
@@ -324,6 +326,11 @@ export function tick(): void {
   publish()
 }
 
+/** Events of the last minute from the hero's point of view (feeds the penalty / free-kick windows). */
+export function recentEvents(snap: { minute: number; events: { type: string; side: 'home' | 'away' | null; minute: number }[] }, side: 'home' | 'away') {
+  return snap.events.filter((e) => snap.minute - e.minute <= 1).map((e) => ({ type: e.type, own: e.side ? e.side === side : null, minute: e.minute }))
+}
+
 /** Open the in-match decision window when the pure rules say so (pauses the ticker). */
 function maybeOpenDecision(l: Live): void {
   if (l.decision || l.finalized || settings.value.matchDecisions === false) return
@@ -337,6 +344,8 @@ function maybeOpenDecision(l: Live): void {
     seed: l.fixtureId, minute: snap.minute, shown: pendingDecisions(s).length, lastMinute: l.decisionMinute,
     heroOnPitch: snap.heroOnPitch, diff,
     last: ev ? { type: ev.type, own: ev.side ? ev.side === side : null, minute: ev.minute } : null,
+    recent: recentEvents(snap, side),
+    isKeeper: s.hero.position === 'GK',
     isCaptain: s.hero.contract?.role === 'captain', heroOvr: heroOvr(s.hero), heroYellow: snap.heroStats.yellow,
   })
   if (!kind) return

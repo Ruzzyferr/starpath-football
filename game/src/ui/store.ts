@@ -427,6 +427,8 @@ export interface PreMatchView {
   expectedMoments?: { min: number; max: number; kinds: { kind: string; share: number }[] } | null
   /** Referee in charge (WP-14): strictness 1..5 and advantage tendency 0..1. */
   referee?: { name: string; strictness: number; advantage: number } | null
+  /** Marking intensity on the hero 0..1 (>0 = defences double up on him). */
+  markedMan?: number
 }
 export interface MatchEventView {
   minute: number

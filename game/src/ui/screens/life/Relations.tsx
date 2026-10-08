@@ -147,6 +147,11 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
           <div class="life-person-band" data-testid="rel-band" data-band={band}>
             <Chip tone={band === 'enemy' || band === 'cold' ? 'neg' : band === 'neutral' ? 'neutral' : 'pos'}>{t(`life.rel.band.${band}`)}</Chip>
             <span class="num t-xs t-mid">{Math.round(rel.value)}</span>
+            {rel.baseline != null && (
+              <span class="life-person-base num t-xs t-lo" data-testid="rel-baseline" title={t('life.rel.baseline.tip', { n: Math.round(rel.baseline) })}>
+                {'↺'} {Math.round(rel.baseline)}<span class="sr-only"> {t('life.rel.baseline.tip', { n: Math.round(rel.baseline) })}</span>
+              </span>
+            )}
             <span class={`life-person-trend is-${trend.trend}`} title={t(`life.rel.trend.${trend.trend}`)} data-testid="rel-trend">
               <Icon name={TREND_ICON[trend.trend]} size={14} weight={2.4} />
               <span class="sr-only">{t(`life.rel.trend.${trend.trend}`)}</span>

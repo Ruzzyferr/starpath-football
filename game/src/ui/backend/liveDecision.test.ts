@@ -3,7 +3,8 @@ import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest'
 import { MemoryStorage } from '../../state/save'
 import { gameState, installBackend, match } from '../store'
 import { DEFAULT_CAREER } from './index'
-import { debugOpenDecision } from './liveMatch'
+import { debugOpenDecision, recentEvents } from './liveMatch'
+import { pickDecision } from '../../sim/match/decisions'
 import { useStorage } from './persistence'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
@@ -52,5 +53,20 @@ describe('in-match decision window', () => {
     const post = D.postMatch()
     expect(post?.ratingLog?.some((l) => l.key === 'decision')).toBe(true)
     A.finishMatch()
+  })
+
+  it('feeds recent events so an own penalty can open the penalty window, never for keepers', () => {
+    const snap = { minute: 30, events: [{ type: 'penalty', side: 'away' as const, minute: 30 }] }
+    const recent = recentEvents(snap, 'away')
+    expect(recent).toEqual([{ type: 'penalty', own: true, minute: 30 }])
+    const base = { minute: 30, shown: 0, lastMinute: -99, heroOnPitch: true, diff: 0, last: null, isCaptain: false, heroOvr: 70, heroYellow: 0, recent }
+    let taker = 0
+    let keeperTaker = 0
+    for (let k = 0; k < 400; k++) {
+      if (pickDecision({ ...base, seed: `p${k}` }) === 'penaltyTaker') taker++
+      if (pickDecision({ ...base, seed: `p${k}`, isKeeper: true }) === 'penaltyTaker') keeperTaker++
+    }
+    expect(taker).toBeGreaterThan(0)
+    expect(keeperTaker).toBe(0)
   })
 })
