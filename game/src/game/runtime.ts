@@ -299,6 +299,11 @@ const zoneY = (z: GoalZone): number => (z === 1 ? GOAL_CENTER_Y : GOAL_CENTER_Y 
  */
 const EMPTY_SET: ReadonlySet<string> = new Set()
 
+/** Header jump height (m) from Jumping (plan 2.1#67): 40 → 0.45 m, 85 → 0.8 m. */
+export function jumpHeight(jumping: number): number {
+  return clampN(0.45 + (jumping - 40) * (0.35 / 45), 0.25, 0.95)
+}
+
 /** A hero pass is completed when it reaches any outfield team-mate (sekme dahil, plan 2.1#58). */
 export function passCompletedBy(receiver: { team: string; isHero: boolean }): boolean {
   return receiver.team === 'hero' && !receiver.isHero
@@ -1974,7 +1979,7 @@ export class HighlightRuntime {
       }
       case 'jump': {
         const dur = 0.56
-        const h = this.wallIds.has(a.id) ? 0.18 + a01(a.attrs.jumping) * 0.2 : 0.3 + a01(a.attrs.jumping) * 0.45
+        const h = this.wallIds.has(a.id) ? 0.18 + a01(a.attrs.jumping) * 0.2 : jumpHeight(a.attrs.jumping)
         a.z = Math.max(0, Math.sin((Math.PI * a.stateT) / dur) * h)
         a.vel = scale(a.vel, 0.97)
         if (a.stateT > dur) {
@@ -2193,7 +2198,7 @@ export class HighlightRuntime {
     for (const a of this.agents) {
       if (pool.has(a) || a.noTouch > 0 || a.state === 'down' || a.isKeeper) continue
       if (a.isHero && a.state !== 'jump') continue
-      const jumpTop = 1.72 + 0.3 + a01(a.attrs.jumping) * 0.45 + 0.28
+      const jumpTop = 1.72 + jumpHeight(a.attrs.jumping) + 0.28
       if (b.z < 1.15 || b.z > jumpTop) continue
       if (dist(a.pos, bp) < 1.15) pool.add(a)
     }

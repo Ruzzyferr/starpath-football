@@ -3,7 +3,10 @@
  */
 import { describe, expect, it } from 'vitest'
 import { makeDemoHighlight } from './demoHighlights'
+import { PITCH_LENGTH } from '../sim/match/types'
 import { visionOptionCount } from './kick'
+import { GOAL_CENTER_Y } from './physics'
+import { crossCamFit } from './view'
 import { HighlightRuntime, ONE_TWO_WINDOW, oneTouchReturn, type RuntimeEvent } from './runtime'
 
 function runUntil(rt: HighlightRuntime, pred: () => boolean, maxS: number, evs: RuntimeEvent[] = []): RuntimeEvent[] {
@@ -73,5 +76,20 @@ describe('2.1#60 Vision pass options and offside frame', () => {
       checked++
     }
     expect(checked).toBeGreaterThan(2)
+  })
+})
+
+describe('2.1#62 cross camera shares one physics state', () => {
+  it('framing a cross moves nothing: ball and players are identical (0 cm) before and after', () => {
+    const rt = new HighlightRuntime(makeDemoHighlight('cross', 4), { aimAssist: 'half', slowMoAim: false, seed: 4 })
+    runUntil(rt, () => rt.phase === 'live', 3)
+    const snap = () => JSON.stringify({ b: [rt.ball.x, rt.ball.y, rt.ball.z], a: rt.agents.map((a) => [a.id, a.pos.x, a.pos.y]) })
+    const before = snap()
+    const from = { x: rt.ball.x, y: rt.ball.y }
+    const landing = { x: 99, y: 34 }
+    const fit = crossCamFit(from, landing, { x: PITCH_LENGTH, y: GOAL_CENTER_Y, halfWidth: 3.66, height: 2.44 }, { w: 1280, h: 720 }, 1)
+    expect(fit).toBeTruthy()
+    expect(from).toEqual({ x: rt.ball.x, y: rt.ball.y })
+    expect(snap()).toBe(before)
   })
 })

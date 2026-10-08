@@ -9,7 +9,7 @@ import { ATTRIBUTE_KEYS, type Attributes } from '../core/types'
 import { analyzeSwipe, chipKeeperFactor, curlBulge, headingNoise, PASS_SPEED_RANGE, curlCap, MAX_CURL_BEND, planKick, POWER_BANDS, powerSpread, type GesturePoint, type KickRequest } from './kick'
 import { DEFAULT_ENV, predictTrajectory } from './physics'
 import { kickEvents } from './inputReplay'
-import { bulletWindowFor, dribbleReach, magnetMate, PASS_MAGNET } from './runtime'
+import { bulletWindowFor, dribbleReach, jumpHeight, magnetMate, PASS_MAGNET } from './runtime'
 import { looseBallWin, standingTackleWin, TACKLE_RANGE } from './ai'
 
 /** A swipe of `dur` seconds along +x with ease-in speed, sampled at `hz`. */
@@ -193,5 +193,12 @@ describe('2.1#57 pass speed range per type', () => {
       }
     }
     expect(PASS_SPEED_RANGE.pass).toEqual([8, 16])
+  })
+})
+
+describe('2.1#67 header jump height', () => {
+  it('Jumping 40 → 0.45 m, 85 → 0.8 m', () => {
+    expect(jumpHeight(40)).toBeCloseTo(0.45, 6)
+    expect(jumpHeight(85)).toBeCloseTo(0.8, 6)
   })
 })
