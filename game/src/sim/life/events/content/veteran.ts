@@ -113,7 +113,7 @@ export const veteranEvents: EventDef[] = [
     id: 'mentor.protege_slump', category: 'mentor', weight: 1, cooldownWeeks: 0, followUpOnly: true,
     conditions: ({ state }) => hasFlag(state, 'protege'),
     title: t('Çırağın Çukurda', 'The Protege Hits a Slump'),
-    text: t('{kid} dört maçtır forma giyemiyor, sosyal medya "yetenek tükendi" yazıyor. Gece mesaj attı: "Abi, bıraksam mı?" Bu soruyu sen de bir zaman kendine sormuştun.', '{kid} has not started in four games and social media says "talent gone". A late-night message arrived: "Should I quit?" You once asked yourself the same.'),
+    text: t('{kid} dört maçtır forma giyemiyor, sosyal medya "yetenek tükendi" yazıyor. Gece mesaj attı: "{g:Abi|Abla}, bıraksam mı?" Bu soruyu sen de bir zaman kendine sormuştun.', '{kid} has not started in four games and social media says "talent gone". A late-night message arrived: "Should I quit?" You once asked yourself the same.'),
     icon: '📉',
     choices: [
       { label: t('Ertesi sabah antrenmandan önce konuş', 'Meet before training the next morning'), effects: () => fx(t('Beraber koşu yaptınız. Çocuk bir şey demedi ama sabaha kadar bir şeyler yazdığını söyledi.', 'You went for a run together. The kid said little but admitted writing through the night.'), happy(5), fatigue(3), rel('teammate', 3), follow(chain('mentor.protege_overtakes', 24))) },
@@ -125,7 +125,7 @@ export const veteranEvents: EventDef[] = [
     id: 'mentor.protege_overtakes', category: 'mentor', weight: 1, cooldownWeeks: 0, followUpOnly: true,
     conditions: ({ state }) => hasClub(state) && hasFlag(state, 'protege'),
     title: t('Çırak Ustayı Geçti', 'The Protege Overtakes You'),
-    text: t('{kid} hafta sonu ilk 11\'de başladı. Üstelik senin pozisyonunda. Maçtan sonra tünelde sarıldınız. "Hepsi senin sayende abi." Ama sen kendi ismini yedek listesinde gördün.', '{kid} started on the weekend, in your position. After the match you hugged in the tunnel. "All thanks to you." But you saw your own name on the bench list.'),
+    text: t('{kid} hafta sonu ilk 11\'de başladı. Üstelik senin pozisyonunda. Maçtan sonra tünelde sarıldınız. "Hepsi senin sayende {g:abi|abla}." Ama sen kendi ismini yedek listesinde gördün.', '{kid} started on the weekend, in your position. After the match you hugged in the tunnel. "All thanks to you." But you saw your own name on the bench list.'),
     icon: '🌱',
     choices: [
       { label: t('Gururla alkışla', 'Applaud with pride'), effects: () => fx(t('Gazeteler fotoğrafı "Usta ve Çırak" diye yayınladı. İçinde hem keder hem gurur vardı.', 'Papers ran the picture as "Master and Apprentice". Sorrow and pride sat side by side.'), happy(8), press(4), fans(3), rep(1), news(t('{heroName}: "Onun yükselişi benim zaferim"', '{heroName}: "His rise is my victory"'), 1)) },

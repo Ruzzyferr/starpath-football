@@ -22,7 +22,7 @@ export const projectEvents: EventDef[] = [
   // ───────────── Youth academy (3-step chain + stage-ups) ─────────────
   {
     id: 'money.academy_blueprint', category: 'money', weight: 1.2, cooldownWeeks: 52, maxPerCareer: 2,
-    conditions: ({ state }) => age(state) >= 27 && academyLevel(state.life) === 0 && rich(state.life.money, ACADEMY_PRICE[1]),
+    conditions: ({ state }) => age(state) >= 23 && academyLevel(state.life) === 0 && rich(state.life.money, ACADEMY_PRICE[1]),
     vars: ({ state }) => ({ price: ACADEMY_PRICE[1], half: Math.round(ACADEMY_PRICE[1] / 2), friend: state.life.relationships.bestFriend?.name ?? 'eski antrenörün' }),
     title: t('Kendi Akademin', 'An Academy of Your Own'),
     text: t(
@@ -81,11 +81,11 @@ export const projectEvents: EventDef[] = [
     ],
   },
   {
-    id: 'mentor.academy_first_graduate', category: 'mentor', weight: 1, cooldownWeeks: 40, maxPerCareer: 3, minAge: 27,
+    id: 'mentor.academy_first_graduate', category: 'mentor', weight: 1, cooldownWeeks: 40, maxPerCareer: 3, minAge: 24,
     conditions: ({ state }) => academyLevel(state.life) >= 1 && academyGraduates(state.life) >= 1,
     vars: ({ state }) => ({ n: academyGraduates(state.life) }),
     title: t('Akademiden Çıkan İlk Yetenek', 'The First Talent Out of the Academy'),
-    text: t('Akademiden toplam {n} genç mezun oldu. Biri ise çok parlak: büyük kulüplerin gözü üstünde. Çocuk seni arıyor: "Abi, ne yapayım?"', '{n} youngsters have graduated from the academy so far. One of them is brilliant, and big clubs are watching. The kid calls you: "What should I do?"'),
+    text: t('Akademiden toplam {n} genç mezun oldu. Biri ise çok parlak: büyük kulüplerin gözü üstünde. Çocuk seni arıyor: "{g:Abi|Abla}, ne yapayım?"', '{n} youngsters have graduated from the academy so far. One of them is brilliant, and big clubs are watching. The kid calls you: "What should I do?"'),
     icon: '🎓',
     choices: [
       { label: t('Büyük kulübe gitmesini söyle', 'Tell them to go to the big club'), effects: () => fx(t('Çocuk gitti, kulüp akademiye transfer hakkı olarak bir bağış yaptı. Mahalle sevindi.', 'The kid left; the club donated a transfer fee to the academy. The neighbourhood cheered.'), money(25_000), rep(1), fans(3), press(2)) },
@@ -97,7 +97,7 @@ export const projectEvents: EventDef[] = [
   // ───────────── Charity stadium ─────────────
   {
     id: 'charity.stadium_plan', category: 'charity', weight: 1.2, cooldownWeeks: 52, maxPerCareer: 2,
-    conditions: ({ state }) => age(state) >= 27 && stadiumLevel(state.life) === 0 && rich(state.life.money, STADIUM_PRICE[1]),
+    conditions: ({ state }) => age(state) >= 22 && stadiumLevel(state.life) === 0 && rich(state.life.money, STADIUM_PRICE[1]),
     vars: () => ({ price: STADIUM_PRICE[1] }),
     title: t('Herkesin Stadyumu', 'A Stadium for Everyone'),
     text: t('Belediyenin kullanılmayan bir stadyum arsası var. Sen finanse edersen çim saha, tribün ve kadınlar ile engelliler için ayrı antrenman saatleri kurulacak. Gelir yok, giderler var; ama bir semt futbola kavuşacak. Birinci aşama {price}.', 'The city owns an unused stadium plot. Fund it and a grass pitch, stands and dedicated training hours for women and disabled players will open. No income, only costs; but a district gets football. Stage one costs {price}.'),
@@ -139,7 +139,7 @@ export const projectEvents: EventDef[] = [
   // ───────────── Club ownership stake ─────────────
   {
     id: 'money.club_stake_offer', category: 'money', weight: 1.1, cooldownWeeks: 78, maxPerCareer: 2,
-    conditions: ({ state }) => age(state) >= 29 && hasClub(state) && state.hero.reputation >= 50 && stakePct(state.life) < STAKE_MAX_PCT && state.life.money >= STAKE_PRICE_PER_PCT * 5 * 1.2,
+    conditions: ({ state }) => age(state) >= 25 && hasClub(state) && state.hero.reputation >= 50 && stakePct(state.life) < STAKE_MAX_PCT && state.life.money >= STAKE_PRICE_PER_PCT * 5 * 1.2,
     vars: ({ state }) => ({ pct5: 5, cost5: 5 * STAKE_PRICE_PER_PCT, pct10: 10, cost10: 10 * STAKE_PRICE_PER_PCT, club: state.world.clubs[state.hero.contract?.clubId ?? '']?.name ?? 'kulüp' }),
     title: t('Kulüpte Hisse Teklifi', 'A Stake in the Club'),
     text: t('{chairmanName} seni odasına çağırdı: "{clubName} yeni ortaklar arıyor. Seni listenin başına yazdık. %5 için {cost5}, %10 için {cost10}." Hisse, yıllık yaklaşık %7 temettü demek; ama kulüp batarsa sen de batarsın.', '{chairmanName} called you in: "{clubName} is looking for new partners. You are at the top of the list. 5% costs {cost5}, 10% costs {cost10}." A stake means roughly 7% a year in dividends; but if the club sinks, so do you.'),
@@ -169,7 +169,7 @@ export const projectEvents: EventDef[] = [
   // ───────────── Legacy fund ─────────────
   {
     id: 'money.legacy_fund_idea', category: 'money', weight: 1.1, cooldownWeeks: 78, maxPerCareer: 2,
-    conditions: ({ state }) => age(state) >= 28 && legacyFund(state.life) === 0 && state.life.money >= 1_200_000,
+    conditions: ({ state }) => age(state) >= 24 && legacyFund(state.life) === 0 && state.life.money >= 1_200_000,
     vars: ({ state }) => ({ quarter: Math.round(state.life.money * 0.1), half: Math.round(state.life.money * 0.2) }),
     title: t('Çocuğun İçin Bir Kumbara', 'A Piggy Bank for the Kid'),
     text: t('Banka müdürü bir "miras fonu" önerdi: Para kilitli kalıyor, yılda %3,5 büyüyor ve kariyerin bitince ileride dünyaya gelecek çocuğunun (ya da bir akrabanın) yoluna ışık oluyor. "Parayı harcamayı unut, bunu bırak."', 'The bank manager proposes a legacy fund: the money stays locked, grows 3.5% a year, and when your career ends it lights the way for a child of yours (or a relative). "Forget about spending it. Leave this behind."'),

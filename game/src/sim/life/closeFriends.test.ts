@@ -57,6 +57,7 @@ describe('close friends (2.4#37)', () => {
     const [ra] = Object.values(a.life.relationships).filter((x) => x.kind === 'teammate')
     const rb = b.life.relationships[ra!.id]!
     ra!.value = rb.value = 60
+    ra!.baseline = rb.baseline = 60 // isolate neglect from the temperament pull
     toggleCloseFriend(b.life, rb.id)
     for (let w = 10; w < 20; w++) { weeklyRelationDecay(a.life, w); weeklyRelationDecay(b.life, w) }
     expect(60 - rb.value).toBeLessThan((60 - ra!.value) * 0.7)

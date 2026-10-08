@@ -178,6 +178,7 @@ export const pressEvents: EventDef[] = [
     id: 'press.rival_trash_talk',
     category: 'press',
     weight: 1,
+    maxPerCareer: 12,
     cooldownWeeks: 16,
     triggers: ['weekly', 'post_match'],
     conditions: ({ state }) => hasClub(state),

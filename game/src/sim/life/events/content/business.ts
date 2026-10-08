@@ -57,7 +57,7 @@ export const businessEvents: EventDef[] = [
     vars: ({ state }, rng) => ({ biz: businessName(state), star: rng.pick(['rapçi Kuzgun', 'şef Mira Volkan', 'oyuncu Tarık Serin', 'dizi yıldızı Ela Dağ']) }),
     title: t('Ünlü Misafir', 'A Famous Guest'),
     text: t(
-      '{star} habersiz {biz}\'a geldi. Herkes telefonunu çıkardı. Çalışanlar senden talimat bekliyor.',
+      'Ünlü bir konuk habersiz {biz}\'a geldi: {star}. Herkes telefonunu çıkardı. Çalışanlar senden talimat bekliyor.',
       '{star} walked into {biz} unannounced. Phones are out everywhere. The staff look to you for instructions.',
     ),
     icon: '🌟',

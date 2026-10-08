@@ -1184,6 +1184,7 @@ export class MatchSim {
     const n = plannedHighlightCount(
       {
         position: hero.position, relationAvg: this.teammateRelationAvg(), morale: this.team(h.side).morale, form: h.form, minutes, ovr: hero.ovr,
+        ...(hero.marked ? { marked: hero.marked } : {}),
         positioning: hero.attrs.positioning, ...(this.s.opts.heroFocus ? { focus: this.s.opts.heroFocus } : {}),
       },
       this.rng,
@@ -1195,7 +1196,7 @@ export class MatchSim {
 
   /** Compensates team chance rates for the goals highlights are expected to add. */
   private computeHeroFactors(hero: MatchPlayer, n: number, minutes: number): void {
-    const w = kindWeights(hero.position, hero.ovr)
+    const w = kindWeights(hero.position, hero.ovr, hero.marked ?? 0)
     let total = 0
     let gf = 0
     let ga = 0
@@ -1226,7 +1227,7 @@ export class MatchSim {
     const slotsLeft = h.plan.filter((m) => m >= this.s.clock).length
     const forced = hero.position === 'GK' ? null : guaranteedKind(hero.position, h.kinds ?? {}, slotsLeft, this.rng)
     // Keepers draw from their own pool (save / 1v1 / sweep, plan 2.1#85).
-    const kind = forced ?? pickHighlightKind(hero.position, this.rng, diff, this.s.clock, h.stats.goals, hero.ovr)
+    const kind = forced ?? pickHighlightKind(hero.position, this.rng, diff, this.s.clock, h.stats.goals, hero.ovr, hero.marked ?? 0)
     const att = isDefensiveKind(kind) ? other(side) : side
     const share = att === 'home' ? 0.6 : 0.4
     this.s.teams.home.possession += share

@@ -92,3 +92,27 @@ describe('decision content and outcomes', () => {
     expect(rate(85)).toBeGreaterThan(rate(45))
   })
 })
+
+describe('decision windows after playtest Tur 3', () => {
+  it('sees a penalty that was followed by the kick in the same minute', () => {
+    let pen = 0
+    for (let k = 0; k < 30; k++) {
+      const recent = [{ type: 'penalty', own: true, minute: 30 }, { type: 'goal', own: true, minute: 30 }]
+      if (pickDecision({ ...base, seed: `r${k}`, last: recent[1]!, recent }) === 'penaltyTaker') pen++
+    }
+    expect(pen).toBeGreaterThan(20)
+  })
+  it('never asks the goalkeeper to take a penalty or a free kick', () => {
+    for (let k = 0; k < 40; k++) {
+      for (const type of ['penalty', 'freekick']) {
+        const kind = pickDecision({ ...base, seed: `k${k}`, isKeeper: true, last: { type, own: true, minute: 30 } })
+        expect(kind === 'penaltyTaker' || kind === 'freeKickTaker').toBe(false)
+      }
+    }
+  })
+  it('keeps the ambient provocation window rare (well under one a match)', () => {
+    let n = 0
+    for (let k = 0; k < 200; k++) for (let m = 1; m <= 90; m++) if (pickDecision({ ...base, seed: `v${k}`, minute: m, diff: 0 }) === 'provocation') n++
+    expect(n / 200).toBeLessThan(0.8)
+  })
+})

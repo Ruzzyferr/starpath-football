@@ -95,7 +95,7 @@ describe('legacy projects', () => {
     const base = { careerId: 'p', name: 'Parent', gender: 'male' as const, legacyScore: 1500, netWorth: 10_000_000 }
     const plain = legacyStartFrom(base)
     const withFund = legacyStartFrom({ ...base, legacyFund: 600_000, academyLevel: 2 })
-    expect(withFund.inheritance).toBe(plain.inheritance + 150_000)
+    expect(withFund.inheritance).toBe(plain.inheritance + LEGACY_FUND_CAP)
     expect(withFund.reputationBonus).toBe(plain.reputationBonus + 2)
     expect(withFund.inheritance).toBeLessThan(600_000)
   })

@@ -14,6 +14,7 @@ import { addFatigue, applyInjury, rollInjury } from './condition'
 import { pushRecentRating, updateTrustFromMatch } from './squadRole'
 import { applyMatchRelations } from '../life/relationships'
 import { assetEffectTotal } from '../life/assetEffects'
+import { followerCeiling } from '../life/social'
 import { yellowAccumulationBan } from '../match/referee'
 import { NO_BONUSES, matchBonuses, type MatchBonuses } from './matchPay'
 
@@ -200,7 +201,9 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   // ── Followers: % growth on good games + flat discovery for goals ──
   const pct = Math.max(0, (rating - 6) * 0.004 + goals * 0.006 + (m.motm ? 0.01 : 0)) * (0.5 + imp) + 0.001
   const flat = goals * 40 * (1 + hero.reputation / 20) + (m.motm ? 100 : 0)
-  let followersDelta = Math.round((life.followers * pct + flat) * (1 + perkValue(hero, 'followers_gain') + assetEffectTotal(life, 'followers')))
+  // The proportional part needs headroom under the fame ceiling (no billions of followers for a 72-rated striker).
+  const room = clamp(1 - life.followers / followerCeiling(hero.reputation), 0.05, 1)
+  let followersDelta = Math.round((life.followers * pct * room + flat) * (1 + perkValue(hero, 'followers_gain') + assetEffectTotal(life, 'followers')))
   if (m.red || rating < 4.5) followersDelta = -Math.round(life.followers * 0.002) // unfollows after a shocker
   life.followers = Math.max(0, life.followers + followersDelta)
 

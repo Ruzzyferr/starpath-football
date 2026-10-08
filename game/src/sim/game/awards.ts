@@ -16,6 +16,7 @@ import {
 } from '../world/awards'
 import type { EndOfSeasonSummary } from '../world/season'
 import { squadPlayers } from '../world/queries'
+import { positionGroup } from '../world/attributes'
 import { heroAwardYearInternational } from './national'
 import { heroClub, log } from './internal'
 
@@ -27,6 +28,7 @@ export const AWARD_NAMES: Record<string, LText> = {
   league_top_scorer: lt('Lig Gol Kralı', 'League Top Scorer'),
   young_player: lt('Yılın Genç Oyuncusu', 'Young Player of the Year'),
   golden_glove: lt('Altın Eldiven', 'Golden Glove'),
+  defender_of_season: lt('Ligin En İyi Savunmacısı', 'League Defender of the Season'),
   goal_of_season: lt('Yılın Golü', 'Goal of the Season'),
   team_of_season: lt('Sezonun 11\'i', 'Team of the Season'),
   player_of_month: lt('Ayın Oyuncusu', 'Player of the Month'),
@@ -35,7 +37,7 @@ export const AWARD_NAMES: Record<string, LText> = {
 /** Reputation (before diminishing returns) per award. */
 export const AWARD_FAME: Readonly<Record<string, number>> = {
   golden_star: 8, golden_star_podium: 2, player_of_season: 3, top_scorer: 3, league_top_scorer: 2, young_player: 3,
-  golden_glove: 2, goal_of_season: 1, team_of_season: 0.75, player_of_month: 0.25,
+  golden_glove: 2, defender_of_season: 2, goal_of_season: 1, team_of_season: 0.75, player_of_month: 0.25,
 }
 
 const MONTHS: readonly LText[] = [
@@ -60,7 +62,11 @@ function grant(state: GameState, rng: Rng, out: LText[], season: number, key: st
   h.awards.push(a)
   h.reputation = meter(h.reputation + fameGain(h.reputation, AWARD_FAME[key] ?? 1))
   log(state, out, fill(lt('🏆 Ödül: {a}!', '🏆 Award: {a}!'), { a: a.name }), 'award', '🏆')
-  pushNews(state.life, rng, state.calendar, fill(lt('{n} {a} ödülünü kazandı', '{n} wins the {a}'), { n: `${h.firstName} ${h.lastName}`, a: a.name }), 1, rng.pick(NEWS_SOURCES))
+  // "Sezonun 11'i ödülünü kazandı" / "Altın Yıldız 2.si ödülünü kazandı" read wrong (playtest Tur 3): selections and podiums get their own verb.
+  const headline = key === 'team_of_season' ? lt("{n} Sezonun 11'ine seçildi", '{n} named in the Team of the Season')
+    : key === 'golden_star_podium' ? lt('{n} Altın Yıldız podyumunda: {a}', '{n} on the Golden Star podium: {a}')
+      : lt('{n} {a} ödülünü kazandı', '{n} wins the {a}')
+  pushNews(state.life, rng, state.calendar, fill(headline, { n: `${h.firstName} ${h.lastName}`, a: a.name }), 1, rng.pick(NEWS_SOURCES))
   return a
 }
 
@@ -125,6 +131,19 @@ export function preSeasonAwards(state: GameState): PreSeasonAwards {
       }
     }
     if (weighted > bestInLeague) keys.push('player_of_season')
+    // Defenders had no season prize of their own (playtest Tur 3: a tier-1 CB, 10 seasons, 0 awards),
+    // keepers have the Golden Glove. Same score, defenders only.
+    if (positionGroup(h.position) === 'DEF') {
+      let bestDef = 0
+      for (const cid of league.clubIds) {
+        for (const p of squadPlayers(w, cid)) {
+          if (positionGroup(p.position) !== 'DEF') continue
+          const sc = playerSeasonScore(p.stats, p.ovr, p.position)
+          if (sc !== null) bestDef = Math.max(bestDef, sc + (w.clubs[cid]?.reputation ?? 30) * 0.1)
+        }
+      }
+      if (weighted > bestDef && !keys.includes('player_of_season')) keys.push('defender_of_season')
+    }
   }
   if (s.goals > 0 && s.apps >= MIN_AWARD_APPS / 2) {
     if (!awards.topScorer || s.goals > awards.topScorer.value) keys.push('top_scorer')

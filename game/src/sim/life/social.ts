@@ -82,6 +82,9 @@ export const followerCeiling = (reputation: number): number => 5000 * Math.pow(3
 export const followerMultiplier = (hero: Pick<Hero, 'perks'>, life: Life): number =>
   1 + perkValue(hero, 'followers_gain') + assetEffectTotal(life, 'followers')
 
+/** Weekly fade of the follower excess above the fame ceiling. */
+export const OVER_CEILING_FADE = 0.08
+
 /** Headroom factor 0.1..1: posts and growth slow down near the ceiling. */
 const headroom = (followers: number, ceiling: number): number => clamp(1 - followers / ceiling, 0.1, 1)
 
@@ -94,7 +97,9 @@ const headroom = (followers: number, ceiling: number): number => clamp(1 - follo
 export function organicFollowerGrowth(hero: Pick<Hero, 'perks' | 'reputation'>, life: Life, ctx: Pick<SocialContext, 'avgRating' | 'goalContributions'> = {}): number {
   const f = Math.max(0, life.followers)
   const ceiling = followerCeiling(hero.reputation)
-  if (f > ceiling) return -Math.round((f - ceiling) * 0.01 + 1)
+  // Above the fame ceiling the excess fades fast (8 %/week): match, post and card gains are proportional,
+  // and a 1 % fade let a famous career snowball to tens of billions of followers (playtest Tur 3).
+  if (f > ceiling) return -Math.round((f - ceiling) * OVER_CEILING_FADE + 1)
   let rate = 0.015
   if (ctx.avgRating !== undefined) {
     const d = ctx.avgRating - 6.5

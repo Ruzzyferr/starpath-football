@@ -253,7 +253,7 @@ export const rumourEvents: EventDef[] = [
         label: t('{mate}\'ye "gerçekten küs müyüz?" diye sor', 'Ask {mate}: "are we actually feuding?"'),
         effects: (ctx, rng) =>
           rng.chance(0.75)
-            ? fx(t('"Ne küslüğü abi, dün beraber döner yedik." Haklı.', '"What feud? We had kebabs together yesterday." Fair.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 4))
+            ? fx(t('"Ne küslüğü {g:abi|abla}, dün beraber döner yedik." Haklı.', '"What feud? We had kebabs together yesterday." Fair.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 4))
             : fx(t('Uzun bir sessizlik. "Aslında... şu pas meselesi var." Demek ki vardı.', 'Long silence. "Well... there is that passing thing." So there was something.'), relNpc(ctx.vars.mateId, ctx.vars.mate, 2), stress(2), boss(1)),
       },
     ],

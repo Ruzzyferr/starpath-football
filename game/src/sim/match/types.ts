@@ -30,6 +30,8 @@ export interface MatchPlayer {
   isHero: boolean
   /** -100..100, teammates with low values pass to the hero less often. */
   relationToHero: number
+  /** Hero only, 0..1: extra marking earned by a prolific scoring run (see sim/game/match markedMan). */
+  marked?: number
 }
 
 export interface MatchTeam {

@@ -178,6 +178,26 @@ export function neglectStep(kind: RelationKind, value: number): number {
   return Math.min(DECAY_MAX_STEP, Math.max(pct * (kind === 'partner' ? 3 : 1), flat))
 }
 
+/**
+ * Dressing-room temperament (playtest Tur 3): whole-squad boosts (wins, team
+ * dinners, rally shouts, interviews) pushed every teammate to +80..+100 within
+ * a season, so personalities and the passing network stopped mattering. Each
+ * teammate now drifts a little toward his personality baseline every week
+ * (4 %, half that for grudges): steady effort still makes friends, but the
+ * hothead stays cooler than the joker and individual bonds keep their shape.
+ */
+export const TEMPERAMENT_PULL = 0.04
+const TEMPERAMENT_WHY = lt('Mizacı: kendi hâline döndü', 'Temperament: back to their usual self')
+
+function teammateTemperament(r: Relationship, week: number): void {
+  const base = r.baseline ?? (r.npcId ? initialTeammateRelation(r.npcId) : 10)
+  const gap = base - r.value
+  if (Math.abs(gap) < 0.5) return
+  const before = r.value
+  r.value = Math.round((r.value + gap * (gap > 0 ? TEMPERAMENT_PULL / 2 : TEMPERAMENT_PULL)) * 10) / 10
+  recordRelationChange(r, r.value - before, 'decay', TEMPERAMENT_WHY, week)
+}
+
 /** Fraction of the value fans/press lose per week (toward 0). */
 const PUBLIC_DRIFT = 0.02
 const PUBLIC_FADE = lt('Gündem değişti, ilgi azaldı', 'The news cycle moved on')
@@ -209,6 +229,7 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
       recordRelationChange(r, r.value - b, 'decay', PUBLIC_FADE, week)
       continue
     }
+    if (r.kind === 'teammate') teammateTemperament(r, week)
     const rule = DECAY_RULES[r.kind]
     if (!rule || r.value <= 0) continue
     const idle = week - r.lastContactWeek
@@ -265,7 +286,8 @@ export function ensureTeammates(
   for (const t of teammates) {
     const id = teammateId(t.npcId)
     if (!life.relationships[id]) {
-      life.relationships[id] = makeRelation(id, 'teammate', t.name, initialTeammateRelation(t.npcId, t.personality), week, t.npcId)
+      const base = initialTeammateRelation(t.npcId, t.personality)
+      life.relationships[id] = { ...makeRelation(id, 'teammate', t.name, base, week, t.npcId), baseline: base }
       added.push(id)
     }
   }

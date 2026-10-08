@@ -143,6 +143,7 @@ export const charityEvents: EventDef[] = [
     id: 'charity.hospital_visit',
     category: 'charity',
     weight: 1,
+    maxPerCareer: 12,
     cooldownWeeks: 20,
     conditions: ({ state }) => !!state.hero.contract,
     vars: (_ctx, rng) => ({ kid: rng.pick(['Mira', 'Efe', 'Ada', 'Kuzey', 'Deniz']) }),

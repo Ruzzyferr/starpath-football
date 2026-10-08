@@ -143,3 +143,20 @@ describe('initialTeammateRelation', () => {
     }
   })
 })
+
+describe('dressing-room temperament (playtest Tur 3)', () => {
+  it('pulls a teammate back toward his personality baseline, so a hothead stays cooler than a joker', () => {
+    const { life } = makeHeroLife()
+    ensureTeammates(life, [{ npcId: 'n1', name: 'Joker', personality: 'joker' }, { npcId: 'n2', name: 'Hot', personality: 'hothead' }], 0)
+    const j = life.relationships[teammateId('n1')]!
+    const h = life.relationships[teammateId('n2')]!
+    expect(j.baseline).toBeGreaterThan(h.baseline!)
+    j.value = h.value = 95
+    for (let w = 1; w <= 26; w++) {
+      j.lastContactWeek = h.lastContactWeek = w
+      weeklyRelationDecay(life, w)
+    }
+    expect(j.value).toBeLessThan(95)
+    expect(j.value).toBeGreaterThan(h.value)
+  })
+})

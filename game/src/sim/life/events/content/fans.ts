@@ -39,6 +39,7 @@ export const fansEvents: EventDef[] = [
     id: 'fans.autograph_swarm',
     category: 'fans',
     weight: 1.2,
+    maxPerCareer: 12,
     cooldownWeeks: 26,
     triggers: ['weekly', 'training'],
     conditions: ({ state }) => hasClub(state) && state.hero.reputation >= 15,

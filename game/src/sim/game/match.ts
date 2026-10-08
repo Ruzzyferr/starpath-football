@@ -8,7 +8,7 @@
  * fixture id while a match is prepared or in progress.
  */
 import type { MatchBonuses } from '../career/matchPay'
-import type { Club, Competition, Fixture, GameState, Lang, LText, MatchResultSummary, NpcPlayer, Position } from '../../core/types'
+import type { Club, Competition, Fixture, GameState, Hero, Lang, LText, MatchResultSummary, NpcPlayer, Position } from '../../core/types'
 import { clamp, Rng } from '../../core/rng'
 import { customMomentOverrides, normalizeCustom } from '../../core/customDifficulty'
 import { MatchSim } from '../match'
@@ -156,10 +156,11 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   }
   const mental = mentalMatchModifier(state.life)
   // Perk hook (career/matchPerks): match_* perks become attribute boosts read by the sim and the Phaser runtime.
+  const marked = markedMan(hero)
   const heroAttrs = heroMatchAttributes(hero, { ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }, { importance })
   const heroPlayer = (slot: Position): MatchPlayer => ({
     id: HERO_ID, name: hero.nickname || hero.lastName, number: hero.shirtNumber, position: slot, ovr: heroOvr(hero),
-    attrs: heroAttrs, isHero: true, relationToHero: 100,
+    attrs: heroAttrs, isHero: true, relationToHero: 100, ...(marked > 0 ? { marked } : {}),
   })
   const used = new Set<number>(heroSide ? [hero.shirtNumber] : [])
   let n = 1
@@ -261,6 +262,26 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
 /** Custom difficulty with the wind off: windy days play as calm (GAP 2.1#128). */
 function customWeather(state: GameState, w: Weather): Weather {
   return state.meta.custom ? customMomentOverrides(state.meta.custom).weather(w) : w
+}
+
+
+/**
+ * "Marked man" (playtest Tur 3): a human-like striker at OVR 72-75 scored ~1 goal a game for
+ * 15 seasons (563 in 546, 7 Golden Boots) because marking only grew with OVR. Defences now also
+ * adapt to a scoring run: above 0.8 goals a game (this season, blended with last season early
+ * on) chances thin out like an elite player's, full effect at 1.3 a game. 0 for everyone else,
+ * so typical careers keep their numbers; it is a brake on outliers.
+ */
+export const MARKED_FROM = 0.8
+export const MARKED_SPAN = 0.5
+export function markedMan(hero: Pick<Hero, 'seasonStats' | 'history'>): number {
+  const cur = hero.seasonStats
+  const last = hero.history[hero.history.length - 1]?.stats
+  const k = last && last.apps >= 10 ? Math.max(0, 1 - (cur?.apps ?? 0) / 15) : 0
+  const apps = (cur?.apps ?? 0) + (last ? last.apps * k : 0)
+  if (apps < 6) return 0
+  const rate = ((cur?.goals ?? 0) + (last ? last.goals * k : 0)) / apps
+  return clamp((rate - MARKED_FROM) / MARKED_SPAN, 0, 1)
 }
 
 /** Prepare + construct the MatchSim (resuming a saved one if present). */

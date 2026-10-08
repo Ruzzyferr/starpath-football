@@ -964,7 +964,8 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
   const triggerTags = ['casino', 'nightlife']
   addAddiction(life, hero, 1.5 + Math.max(0, v - 2) * 2)
   lines.push(lt('🎰 Kumarhanenin ışıkları seni içeri çekti.', '🎰 The casino lights pull you inside.'))
-  if (casinoVipTier(life) >= 1) {
+  // The comp is a weekly courtesy (playtest Tur 3: the same comp line 312 times in one career).
+  if (casinoVipTier(life) >= 1 && v === 1) {
     addHappiness(life, 2)
     lines.push(lt('🥂 VIP ikramı: ücretsiz akşam yemeği ve içecek. Hoş, ama masa seni bekliyor.', '🥂 VIP comp: a free dinner and drinks. Pleasant, but the table is waiting for you.'))
   }
@@ -985,12 +986,25 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
       } else {
         changeRelation(life, 'press', -3, { cause: 'casino', week: absWeek(ctx.calendar), why: lt('Kumarhane fotoğrafları', 'Casino photos') })
         lines.push(fill(lt('📸 Kumarhanede görüntülendin! Disiplin -{d}.', '📸 You were photographed at the casino! Discipline -{d}.'), { d: hit }))
-        pushNews(life, rng, ctx.calendar, casinoHeadline(rng, hero, life, ctx), -1, 'Gece Bekçisi')
+        // Tabloid fatigue (playtest Tur 3: the same casino headline ×25 in one career): one story per
+        // CASINO_NEWS_GAP weeks; a pre-match night is always news.
+        const lastNews = life.flags[CASINO_NEWS_FLAG]
+        const wk = absWeek(ctx.calendar)
+        if (ctx.matchTomorrow || typeof lastNews !== 'number' || wk - lastNews >= CASINO_NEWS_GAP) {
+          life.flags[CASINO_NEWS_FLAG] = wk
+          pushNews(life, rng, ctx.calendar, casinoHeadline(rng, hero, life, ctx), -1, 'Gece Bekçisi')
+        } else {
+          lines.push(lt('🗞️ Fotoğraflar yine çekildi ama gazeteler bu hafta aynı haberi basmadı. Yine de kulüpte herkes biliyor.', '🗞️ The photos were taken again, but the papers did not run the same story twice. Everyone at the club knows anyway.'))
+        }
       }
     }
   }
   return { lines, triggerTags, spotted, headline }
 }
+
+/** Absolute week of the last casino headline, and the minimum gap before the tabloids run another one. */
+export const CASINO_NEWS_FLAG = 'casino_news_week'
+export const CASINO_NEWS_GAP = 6
 
 /**
  * Casino headline that matches what actually happened (no invented roulette
@@ -1012,6 +1026,16 @@ export function casinoHeadline(rng: Rng, hero: Pick<Hero, 'firstName' | 'lastNam
       lt('Krupiyeler artık adını biliyor: {n} haftada {v} gece masada', 'The croupiers know the name now: {n} at the tables {v} nights this week'),
       lt('Taraftar tedirgin: {n} antrenmandan çok kumarhanede mi?', 'Fans uneasy: is {n} at the casino more than at training?'),
     ]), { n, v: life.casino.visitsThisWeek })
+  }
+  if (life.casino.addiction >= 55) {
+    return fill(rng.pick([
+      lt('Kulüp kaynakları: {n} için kumar danışmanlığı gündemde', 'Club sources: gambling counselling on the table for {n}'),
+      lt('{n} ve kumar: soyunma odasında artık açıkça konuşuluyor', '{n} and gambling: the dressing room now talks about it openly'),
+      lt('Yakın çevresi uyarıyor: {n} masadan kalkamıyor', "Those close to {n} are worried: the table won't let go"),
+      lt('Taraftar grubu açıklama yaptı: "{n}, formayı kumar masasına koyma"', 'Supporters\' group statement: "{n}, keep our shirt off the gaming table"'),
+      lt('Sabaha karşı otopark: {n} yine son çıkanlardan', 'Car park at dawn: {n} among the last to leave again'),
+      lt('Eski takım arkadaşı konuştu: "{n} için endişeliyiz"', 'Former team-mate speaks out: "We are worried about {n}"'),
+    ]), { n })
   }
   return fill(rng.pick([
     lt('{n} yine kumarhanede: kulüpte soru işaretleri', '{n} back at the casino: questions at the club'),
@@ -1060,7 +1084,7 @@ export function casinoCareerCost(life: Life, hero: Pick<Hero, 'form'>, visited: 
     if (press) changeRelation(life, press.id, -1, { cause: 'casino', why: lt('Kumar söylentileri', 'Gambling rumours') })
   }
   lines.push(fill(
-    lt('🎰 Kumarın bu haftaki bedeli: mutluluk {h}, form -{f}{d}{r}.', '🎰 The cost of gambling this week: happiness {h}, form -{f}{d}{r}.'),
+    lt('Kumarın bu haftaki bedeli: mutluluk {h}, form -{f}{d}{r}.', 'The cost of gambling this week: happiness {h}, form -{f}{d}{r}.'),
     {
       h: happy.toFixed(1), f: formHit,
       d: disc > 0 ? fill(lt(', disiplin -{d}', ', discipline -{d}'), { d: (disc * vip).toFixed(1) }) : lt('', ''),

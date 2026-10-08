@@ -332,6 +332,7 @@ export const teammatesEvents: EventDef[] = [
     id: 'teammates.prank_war',
     category: 'teammates',
     weight: 1,
+    maxPerCareer: 12,
     cooldownWeeks: 25,
     triggers: ['training', 'weekly'],
     conditions: ({ state }) => hasClub(state),

@@ -20,7 +20,7 @@
  */
 import type { GameState, LText, Position } from '../../core/types'
 import { Rng, hashString } from '../../core/rng'
-import { absWeek, clamp, fameGain, fill, fmtMoney, heroAge, lt, meter } from '../career/common'
+import { absWeek, clamp, fameGain, fill, fmtMoney, fmtNum, heroAge, lt, meter } from '../career/common'
 import { changeRelation } from '../life/relationships'
 import { clubStrength } from '../world/queries'
 import { END_OF_SEASON_WEEK, LAST_MATCH_WEEK } from '../world/fixtures'
@@ -523,7 +523,7 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
     const gain = Math.max(150, Math.round(life.followers * 0.04))
     const brand = life.sponsors[0]!.brand
     cands.push({ w: 1.5, make: () => mk(state, st, 'sponsor', 'followers',
-      fill(lt('{b} kampanyası: 3 haftada {n} yeni takipçi', '{b} campaign: {n} new followers in 3 weeks'), { b: brand, n: gain }),
+      fill(lt('{b} kampanyası: 3 haftada {n} yeni takipçi', '{b} campaign: {n} new followers in 3 weeks'), { b: brand, n: fmtNum(gain) }),
       lt('Sponsorun kampanya dönemine girdi. Görünür ol: paylaşım, röportaj, iyi maç.', 'Your sponsor is running a campaign. Be visible: posts, interviews, big games.'),
       gain, 3, { money: Math.round(Math.max(life.sponsors[0]!.weekly * 1.5, wage * 0.2)) }, undefined, { base: life.followers }) })
   }

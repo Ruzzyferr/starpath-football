@@ -849,10 +849,10 @@ const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['coun
 export const GK_HIGHLIGHTS_MAX_90 = 8
 
 /** Kind weights for a position (copy, safe to mutate). */
-export function kindWeights(pos: Position, ovr?: number): Partial<Record<HighlightKind, number>> {
+export function kindWeights(pos: Position, ovr?: number, marked = 0): Partial<Record<HighlightKind, number>> {
   const w = { ...KIND_WEIGHTS[pos] }
-  const p = tightening(ovr)
-  const e = eliteMarking(ovr)
+  const p = Math.max(tightening(ovr), marked)
+  const e = Math.max(eliteMarking(ovr), marked)
   if (p > 0) for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * (1 - SHOOT_TIGHTENING * p) * (1 - ELITE_SHOOT * e)
   return w
 }
@@ -934,8 +934,8 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
  * Picks the kind of an open-play highlight. A trailing team late on pushes
  * forward (fewer defensive moments); a leading team sits deeper.
  */
-export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number, heroGoals = 0, ovr?: number): HighlightKind {
-  const w = kindWeights(pos, ovr)
+export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number, heroGoals = 0, ovr?: number, marked = 0): HighlightKind {
+  const w = kindWeights(pos, ovr, marked)
   // A hero already on a hat-trick sees fewer shooting chances (realistic goal concentration).
   if (heroGoals > 0) {
     const brake = heroGoals >= 2 ? 0.5 : 0.78
@@ -962,6 +962,8 @@ export interface HighlightPlanInput {
   minutes: number
   /** Hero OVR (optional; tighter defences cut the count of chances above 68). */
   ovr?: number
+  /** 0..1 extra marking for a prolific scorer (defences adapt to form, not only to OVR). */
+  marked?: number
   /** Pre-match focus (GAP 2.1#9): attack +0.6 moments, defend −0.6 (and more defensive kinds downstream). */
   focus?: MatchFocus
   /** Hero Positioning 0..100: off-ball movement relative to his level finds more chances. */
@@ -993,7 +995,8 @@ export function plannedHighlightCount(input: HighlightPlanInput, rng: Rng): numb
   n += (input.morale - 1) * 5
   n += ((input.form - 50) / 50) * 1
   n += focusPositioningMoments(input)
-  n *= (1 - COUNT_TIGHTENING * tightening(input.ovr)) * (1 - ELITE_COUNT * eliteMarking(input.ovr))
+  const mk = input.marked ?? 0
+  n *= (1 - COUNT_TIGHTENING * Math.max(tightening(input.ovr), mk)) * (1 - ELITE_COUNT * Math.max(eliteMarking(input.ovr), mk))
   n += rng.normal(0, 0.8)
   const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, input.position === 'GK' ? GK_HIGHLIGHTS_MAX_90 : HIGHLIGHTS_MAX_90)
   if (input.minutes >= 89) return full

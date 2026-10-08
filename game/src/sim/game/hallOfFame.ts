@@ -202,7 +202,7 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
 
 /** Weight of an award key in the documentary (season awards above monthly ones). */
 const MOMENT_WEIGHT: Readonly<Record<string, number>> = {
-  golden_star: 90, top_scorer: 70, player_of_season: 70, golden_glove: 65, young_player: 60, golden_star_podium: 55,
+  golden_star: 90, top_scorer: 70, player_of_season: 70, golden_glove: 65, defender_of_season: 60, young_player: 60, golden_star_podium: 55,
   league_top_scorer: 50, goal_of_season: 40, team_of_season: 35, player_of_month: 10,
 }
 

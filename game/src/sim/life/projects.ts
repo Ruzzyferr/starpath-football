@@ -47,7 +47,10 @@ export const STAKE_RESALE = 0.9
 export const FUND_GROWTH = 0.035
 /** Legacy child gets this share of the fund, at most {@link LEGACY_FUND_CAP}. */
 export const LEGACY_FUND_SHARE = 0.25
-export const LEGACY_FUND_CAP = 350_000
+export const LEGACY_FUND_CAP = 120_000
+/** Hall of Fame points per million locked in the legacy fund (capped): the fund's main payoff is the name it leaves. */
+export const FUND_POINTS_PER_M = 1
+export const FUND_POINTS_MAX = 10
 
 const num = (life: Life, k: string): number => {
   const v = life.flags[k]
@@ -136,6 +139,7 @@ export function sellClubStake(life: Life): ProjectResult & { amount: number } {
 /** Legacy score points the hero's projects and collection add to the Hall of Fame entry. */
 export const projectsLegacyPoints = (life: Life): number =>
   academyLevel(life) * 12 + stadiumLevel(life) * 10 + (stakePct(life) > 0 ? 6 : 0) + Math.round(assetEffectTotal(life, 'collector')) * 3
+  + Math.min(FUND_POINTS_MAX, Math.floor((legacyFund(life) / 1_000_000) * FUND_POINTS_PER_M))
 
 /** What the Legacy child receives from this career's fund. */
 export const legacyFundBonus = (fund: number): number => Math.round(clamp(Math.max(0, fund) * LEGACY_FUND_SHARE, 0, LEGACY_FUND_CAP))

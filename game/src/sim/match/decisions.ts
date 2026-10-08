@@ -77,7 +77,20 @@ export interface DecisionContext {
   isCaptain: boolean
   heroOvr: number
   heroYellow: number
+  /**
+   * Events of the last minute (optional, oldest first). The engine emits "penalty awarded" and the
+   * kick in the same minute, so the last event alone almost never shows the penalty (playtest Tur 3:
+   * zero penalty windows in 1,100 watched matches).
+   */
+  recent?: { type: string; own: boolean | null; minute: number }[]
+  /** The hero is the goalkeeper: no penalty / free-kick taker windows, fewer provocations. */
+  isKeeper?: boolean
 }
+
+/** Per-minute chances of the ambient windows (tuned in playtest Tur 3: provocation was half of all windows). */
+export const PROVOCATION_P = 0.008
+export const SHOUT_P_LOSING = 0.03
+export const SHOUT_P_LEVEL = 0.012
 
 /** The summed effects of a choice plus the outcome of any gamble: what is actually applied. */
 export interface DecisionOutcome {
@@ -207,15 +220,16 @@ export function pickDecision(ctx: DecisionContext): DecisionKind | null {
   if (ctx.minute < MIN_MINUTE || ctx.minute > MAX_MINUTE) return null
   if (ctx.minute - ctx.lastMinute < COOLDOWN) return null
   if (!ctx.heroOnPitch) return null
-  const fresh = ctx.last && ctx.minute - ctx.last.minute <= 1 ? ctx.last : null
+  const pool = [...(ctx.recent ?? []), ...(ctx.last ? [ctx.last] : [])].filter((e) => ctx.minute - e.minute <= 1)
+  const has = (type: string, own: boolean) => pool.some((e) => e.type === type && e.own === own)
   const cands: [DecisionKind, number][] = []
-  if (fresh?.own && fresh.type === 'penalty') cands.push(['penaltyTaker', 0.9])
-  if (fresh?.own && fresh.type === 'freekick') cands.push(['freeKickTaker', 0.5])
-  if (fresh?.own && fresh.type === 'goal') cands.push(['celebrate', 0.45])
-  if (ctx.isCaptain && fresh && fresh.own === false && (fresh.type === 'yellow' || fresh.type === 'red' || fresh.type === 'penalty')) cands.push(['refCall', 0.7])
-  if (ctx.heroYellow === 0 && ctx.diff <= 0) cands.push(['provocation', 0.035])
-  if (ctx.minute >= 55 && ctx.diff < 0) cands.push(['shout', 0.07])
-  else if (ctx.minute >= 40 && ctx.diff === 0) cands.push(['shout', 0.03])
+  if (!ctx.isKeeper && has('penalty', true)) cands.push(['penaltyTaker', 0.9])
+  if (!ctx.isKeeper && has('freekick', true)) cands.push(['freeKickTaker', 0.3])
+  if (has('goal', true)) cands.push(['celebrate', 0.45])
+  if (ctx.isCaptain && (has('yellow', false) || has('red', false) || has('penalty', false))) cands.push(['refCall', 0.7])
+  if (ctx.heroYellow === 0 && ctx.diff <= 0) cands.push(['provocation', ctx.isKeeper ? PROVOCATION_P / 2 : PROVOCATION_P])
+  if (ctx.minute >= 55 && ctx.diff < 0) cands.push(['shout', SHOUT_P_LOSING])
+  else if (ctx.minute >= 40 && ctx.diff === 0) cands.push(['shout', SHOUT_P_LEVEL])
   for (const [kind, p] of cands) if (roll(ctx.seed, ctx.minute, kind) < p) return kind
   return null
 }

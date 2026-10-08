@@ -403,6 +403,8 @@ export interface Relationship {
   log?: RelationChange[]
   /** Hero's hand-picked "close friend" (max 3; sim/life/closeFriends). Missing on old saves. */
   closeFriend?: boolean
+  /** Teammates: personality-driven resting attitude the bond drifts back to (sim/life/relationships). Missing on old saves. */
+  baseline?: number
 }
 
 /** What moved a relationship: shown in the "why did this change?" panel. */
