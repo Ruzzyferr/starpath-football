@@ -19,6 +19,7 @@ import { heroOvr } from '../career/progression'
 import { rollSelection } from '../career/squadRole'
 import { heroMatchAttributes } from '../career/matchPerks'
 import { objectivesAfterMatch } from './objectives'
+import { recordPassLinks } from './passLinks'
 import { LAST_MATCH_FLAG, heroGoalKinds, updateRecordsAfterMatch, type MatchFeats } from './records'
 import { mentalMatchModifier } from '../life/wellbeing'
 import { teammateId } from '../life/relationships'
@@ -458,6 +459,7 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
       tackles: st.tackles, passesCompleted: st.passesCompleted,
     }
     writeJson(state.life, LAST_MATCH_FLAG, feats)
+    if (st.minutes > 0) recordPassLinks(state, snap.passNet)
     objectivesAfterMatch(state, lines)
     updateRecordsAfterMatch(state, feats)
 
