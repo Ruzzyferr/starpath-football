@@ -551,6 +551,23 @@ export interface PendingEvent {
 
 export type Difficulty = 'easy' | 'normal' | 'hard' | 'legend'
 
+/**
+ * "Custom" difficulty (GAP 2.1#128): each assist set on its own. Stored next to
+ * the base `difficulty` label (kept 'normal' for drills and other label lookups).
+ */
+export interface CustomDifficulty {
+  /** Bullet-time aiming windows on/off. */
+  bulletTime: boolean
+  /** Trajectory preview arc. */
+  arc: boolean
+  /** Target magnet (only with the arc it maps to Full assist). */
+  magnet: boolean
+  /** Opponent sharpness / reaction multiplier, 0.8 (slow) … 1.3 (legend). */
+  aiReaction: number
+  /** Wind on/off (windy days play as calm when off). */
+  wind: boolean
+}
+
 export interface Settings {
   lang: Lang
   sound: number // 0..1
@@ -573,6 +590,8 @@ export interface GameState {
     playTimeSec: number
     seed: number
     difficulty: Difficulty
+    /** Present when the career was started on "Custom" difficulty. */
+    custom?: CustomDifficulty
   }
   rng: RngState
   calendar: Calendar

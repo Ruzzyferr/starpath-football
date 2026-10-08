@@ -8,6 +8,7 @@
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { GameState, LText, NpcPlayer } from '../../core/types'
 import { worldGender } from '../../core/gender'
+import { customMomentOverrides } from '../../core/customDifficulty'
 import { currentLang } from '../../i18n'
 import {
   GFLAG, HERO_ID, answerInterview, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
@@ -194,6 +195,13 @@ export function preMatchView(s: GameState): PreMatchView | null {
     expectedMoments: expectedFor(s, blob),
     referee: blob.setup.referee ? { ...blob.setup.referee } : null,
   }
+}
+
+/** Difficulty + assist settings for a live moment; a Custom career overrides them (GAP 2.1#128). */
+function momentDifficulty(s: GameState): { difficulty: GameState['meta']['difficulty'] | number; settings: typeof settings.value } {
+  if (!s.meta.custom) return { difficulty: s.meta.difficulty, settings: settings.value }
+  const o = customMomentOverrides(s.meta.custom)
+  return { difficulty: o.difficulty, settings: { ...settings.value, aimAssist: o.aimAssist, slowMoAim: o.slowMoAim } }
 }
 
 /** Expected moments for the hero (a bench player gets the cameo estimate). */
@@ -423,7 +431,7 @@ export function playMoment(): void {
     {
       highlight: hl, heroColors: heroTeam.colors, oppColors: oppTeam.colors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
       heroName: s.hero.nickname || s.hero.lastName, names, weather: l.setup.weather, importance: l.setup.importance,
-      difficulty: s.meta.difficulty, lang: currentLang.value, settings: settings.value, gender: worldGender(s.world),
+      ...momentDifficulty(s), lang: currentLang.value, gender: worldGender(s.world),
       stadium: matchStadium(s, l), celebration: celebrationForMatch(s), matchKey: l.fixtureId,
     },
     (result) => done(() => l.sim.resolveHighlight(result)),

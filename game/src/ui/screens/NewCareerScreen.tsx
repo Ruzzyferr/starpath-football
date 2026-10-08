@@ -1,10 +1,11 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks'
 import { archetypeFits } from '../../sim/career/createHero'
 import '../../styles/screens/wizard.css'
-import type { Archetype, AttributeKey, Background, Country, Difficulty, Foot, Gender, Position } from '../../core/types'
+import type { Archetype, AttributeKey, Background, Country, CustomDifficulty, Difficulty, Foot, Gender, Position } from '../../core/types'
+import { AI_REACTION_MAX, AI_REACTION_MIN, DEFAULT_CUSTOM } from '../../core/customDifficulty'
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
-import { Button, Chip, Flag, PlayerCard, Segmented, Switch, TextField, toast, type PlayerCardStat } from '../components'
+import { Button, Chip, Flag, PlayerCard, Segmented, Slider, Switch, TextField, toast, type PlayerCardStat } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, back, data, navigate, screen, type NewGameInput } from '../store'
@@ -26,6 +27,41 @@ const BACKGROUNDS: Background[] = ['street', 'academy', 'footballFamily', 'lateB
 const BG_ICON: Record<Background, IconName> = { street: 'ball', academy: 'building', footballFamily: 'users', lateBloomer: 'sparkle' }
 const DIFFS: Difficulty[] = ['easy', 'normal', 'hard', 'legend']
 const DIFF_ICON: Record<Difficulty, IconName> = { easy: 'smile', normal: 'ball', hard: 'fire', legend: 'crown' }
+/** Opponent sharpness of each preset (sim/game/match DIFFICULTY_FACTOR), the custom slider's starting point. */
+const DIFF_REACTION: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
+
+/** "Custom" difficulty (GAP 2.1#128): bullet time, arc, magnet, AI reaction and wind one by one. */
+function CustomDifficultyPanel({ value, base, onChange }: { value: CustomDifficulty | undefined; base: Difficulty; onChange: (c: CustomDifficulty | undefined) => void }) {
+  const c = value
+  const patch = (p: Partial<CustomDifficulty>) => c && onChange({ ...c, ...p })
+  return (
+    <div class="wiz-custom" data-testid="wiz-custom">
+      <Switch
+        checked={!!c}
+        onChange={(on) => onChange(on ? { ...DEFAULT_CUSTOM, aiReaction: DIFF_REACTION[base] } : undefined)}
+        label={t('wizard.custom.title')}
+        desc={t('wizard.custom.desc')}
+      />
+      {c && (
+        <>
+          <Switch checked={c.bulletTime} onChange={(v) => patch({ bulletTime: v })} label={t('wizard.custom.bulletTime')} />
+          <Switch checked={c.arc} onChange={(v) => patch({ arc: v })} label={t('wizard.custom.arc')} />
+          <Switch checked={c.magnet} onChange={(v) => patch({ magnet: v })} label={t('wizard.custom.magnet')} desc={t('wizard.custom.magnetDesc')} />
+          <Switch checked={c.wind} onChange={(v) => patch({ wind: v })} label={t('wizard.custom.wind')} />
+          <Slider
+            label={t('wizard.custom.ai')}
+            value={c.aiReaction}
+            min={AI_REACTION_MIN}
+            max={AI_REACTION_MAX}
+            step={0.05}
+            onChange={(v) => patch({ aiReaction: v })}
+            format={(v) => `×${v.toFixed(2)}`}
+          />
+        </>
+      )}
+    </div>
+  )
+}
 
 const SUGGEST: Record<Position, Archetype> = {
   GK: 'keeper', CB: 'wall', LB: 'boxToBox', RB: 'boxToBox', DM: 'wall', CM: 'boxToBox', AM: 'playmaker', LW: 'winger', RW: 'winger', ST: 'poacher',
@@ -415,6 +451,7 @@ export function NewCareerScreen() {
                     )
                   })}
                 </div>
+                <CustomDifficultyPanel value={form.custom} base={form.difficulty} onChange={(c) => set('custom', c)} />
               </div>
             </div>
           )}

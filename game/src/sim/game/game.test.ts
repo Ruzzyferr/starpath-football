@@ -190,3 +190,20 @@ describe.skipIf(!env.SOAK)('soak', () => {
     expect(size).toBeLessThan(SAVE_BUDGET)
   }, 300_000)
 })
+
+describe('custom difficulty career (GAP 2.1#128)', () => {
+  it('stores the custom block and drives the match difficulty from the AI reaction', () => {
+    const custom = { bulletTime: false, arc: true, magnet: false, aiReaction: 1.25, wind: false }
+    const s = makeGame(9, { custom })
+    expect(s.meta.custom).toEqual(custom)
+    let guard = 0
+    while (!isHeroMatchday(s) && guard++ < 100) {
+      while (s.pendingEvents.length) resolveEventChoice(s, 0, firstEnabledChoice(s, 0))
+      advanceToNextMatch(s)
+    }
+    const prep = prepareHeroMatch(s)!
+    // Base is the custom AI reaction (1.25), not Normal's 1.0; the mental modifier moves it a little.
+    expect(prep.setup.difficulty).toBeGreaterThan(1.15)
+    expect(prep.setup.weather).not.toBe('wind')
+  })
+})

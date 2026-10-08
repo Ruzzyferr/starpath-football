@@ -2,8 +2,9 @@
  * New career: world generation (save-size aware), hero creation, first club,
  * relationships, calendar, opening log/news and the first decision card.
  */
-import type { Appearance, Archetype, Background, Difficulty, Foot, GameState, Gender, Position, SquadRole } from '../../core/types'
+import type { Appearance, Archetype, Background, CustomDifficulty, Difficulty, Foot, GameState, Gender, Position, SquadRole } from '../../core/types'
 import { Rng } from '../../core/rng'
+import { normalizeCustom } from '../../core/customDifficulty'
 import { SAVE_VERSION, START_YEAR } from '../../core/config'
 import { COUNTRY_BY_ID, COUNTRY_DEFS } from '../../data/world/countries'
 import { createHero, createLife, type FamilyNames } from '../career/createHero'
@@ -42,6 +43,8 @@ export interface NewGameInput {
   /** Hero gender (default 'male'); the generated world's players follow it. */
   gender?: Gender
   difficulty?: Difficulty
+  /** Custom difficulty (GAP 2.1#128); `difficulty` then stays the base label. */
+  custom?: CustomDifficulty
   /** Optional family names. */
   family?: FamilyNames
   /** Save slot this career lives in (meta only). */
@@ -152,7 +155,7 @@ export function newGame(input: NewGameInput, seed: number, now: number = determi
   applyBirthCity(hero, life)
   const state: GameState = {
     version: SAVE_VERSION,
-    meta: { id: rng.id('car'), slot: input.slot ?? 0, createdAt: now, updatedAt: now, playTimeSec: 0, seed, difficulty: input.difficulty ?? 'normal' },
+    meta: { id: rng.id('car'), slot: input.slot ?? 0, createdAt: now, updatedAt: now, playTimeSec: 0, seed, difficulty: input.difficulty ?? 'normal', ...(input.custom ? { custom: normalizeCustom(input.custom) } : {}) },
     rng: rng.state,
     calendar: { season, week: 0, day: 0, slot: 0 },
     world,

@@ -10,6 +10,7 @@
 import type { MatchBonuses } from '../career/matchPay'
 import type { Club, Competition, Fixture, GameState, Lang, LText, MatchResultSummary, NpcPlayer, Position } from '../../core/types'
 import { clamp, Rng } from '../../core/rng'
+import { customMomentOverrides, normalizeCustom } from '../../core/customDifficulty'
 import { MatchSim } from '../match'
 import type { EngineState, MatchSimOptions, MatchPlayer, MatchSetup, MatchTeam, Side, Weather } from '../match'
 import { fmtMoney, fill, lt } from '../career/common'
@@ -221,7 +222,7 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
     const away = national ? nationalTeamSource(state, fixture.awayId) : clubSource(state, state.world.clubs[fixture.awayId])
     if (national) away.colors = nationalKits(home, away).away
     const mental = mentalMatchModifier(state.life)
-    const base = DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
+    const base = state.meta.custom ? normalizeCustom(state.meta.custom).aiReaction : DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
     const importance = importanceOf(competition, fixture, home, away)
     const setup: MatchSetup = {
       home: buildTeamFrom(state, home, isHome, sel.starts, importance),
@@ -229,7 +230,7 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       // Per-match stream: depends only on the career seed and the fixture, never on unrelated RNG consumption.
       seed: matchSeed(state.meta.seed, fixture.id),
       competitionName: competition.name.en,
-      weather: rollWeather(new Rng(state.meta.seed).fork(`weather:${fixture.id}`), home.countryId, fixture.week),
+      weather: customWeather(state, rollWeather(new Rng(state.meta.seed).fork(`weather:${fixture.id}`), home.countryId, fixture.week)),
       heroSide: isHome ? 'home' : 'away',
       heroOnBench: !sel.starts,
       // Two-legged ties are settled on aggregate after the second leg (see finishHeroMatch).
@@ -249,6 +250,11 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
     state.activeMatchId = fixture.id
     return { setup, opts, fixture, competition, starts: sel.starts, isHome }
   })
+}
+
+/** Custom difficulty with the wind off: windy days play as calm (GAP 2.1#128). */
+function customWeather(state: GameState, w: Weather): Weather {
+  return state.meta.custom ? customMomentOverrides(state.meta.custom).weather(w) : w
 }
 
 /** Prepare + construct the MatchSim (resuming a saved one if present). */

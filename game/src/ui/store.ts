@@ -15,7 +15,7 @@
 import { DEFAULT_AUDIO_SETTINGS, type AudioSettingsFields } from '../audio/settings'
 import { signal, computed, effect } from '@preact/signals'
 import type {
-  AssetDef, AttributeGroup, AttributeKey, CrestSpec, Difficulty, Foot, Formation, GameState,
+  AssetDef, AttributeGroup, AttributeKey, CrestSpec, CustomDifficulty, Difficulty, Foot, Formation, GameState,
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
   SquadRole, Appearance, Archetype, Background, Investment, Country, TableRow, Gender, RelationKind,
 } from '../core/types'
@@ -571,6 +571,8 @@ export interface NewGameInput {
   /** Default 'male'. A female hero plays in the women's game of the same leagues. */
   gender?: Gender
   difficulty: Difficulty
+  /** "Custom" difficulty (GAP 2.1#128): assists set one by one on top of the base label. */
+  custom?: CustomDifficulty
   seed?: number
   /** Start with trial invitations instead of an automatic first contract. */
   trials?: boolean
