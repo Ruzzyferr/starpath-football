@@ -160,3 +160,19 @@
     grid-template-columns: 1fr 1fr;
   }
 }
+
+/* Finance charts */
+.fin-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin-bottom: 12px; }
+.donut { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
+.donut-dial { position: relative; flex: none; }
+.donut-arc { cursor: pointer; transition: stroke-width var(--dur-micro) var(--ease-out); }
+.donut-center { position: absolute; inset: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; min-width: 0; }
+.donut-center b { font-size: 1.6rem; line-height: 1; }
+.donut-legend { list-style: none; margin: 0; padding: 0; flex: 1 1 140px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.donut-row { display: flex; align-items: center; gap: 8px; width: 100%; min-height: 44px; padding: 0 8px; border-radius: 10px; text-align: left; }
+.donut-row[aria-pressed='true'] { background: var(--surface-3); }
+.donut-dot { width: 12px; height: 12px; border-radius: 4px; flex: none; }
+.donut-pct { min-width: 3ch; text-align: right; }
+.weekbars { display: block; width: 100%; }
+.weekbars-bar { cursor: pointer; outline: none; }
+.weekbars-bar:focus-visible rect:last-child { stroke: var(--accent-blue); stroke-width: 2; }

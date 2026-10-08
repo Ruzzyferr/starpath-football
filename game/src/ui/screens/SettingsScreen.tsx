@@ -111,6 +111,18 @@ export function SettingsScreen() {
         </Group>
 
         <Group title={t('settings.sections.access')} icon="eye">
+          <Field label={t('settings.theme')} hint={t('settings.themeDesc')}>
+            <Segmented<'dark' | 'light' | 'system'>
+              label={t('settings.theme')}
+              value={s.theme}
+              onChange={(theme) => updateSettings({ theme })}
+              options={[
+                { id: 'dark', label: t('settings.themeDark') },
+                { id: 'light', label: t('settings.themeLight') },
+                { id: 'system', label: t('settings.themeSystem') },
+              ]}
+            />
+          </Field>
           <Field label={t('settings.cbMode')} hint={t('settings.cbModeDesc')}>
             <Segmented<ColorblindMode>
               label={t('settings.cbMode')}

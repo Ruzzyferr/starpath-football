@@ -48,6 +48,7 @@ export const tr = {
     matchText: '{m}, reytingim {r}. StarPath Football',
   },
   why: { button: 'Neden?', title: 'İlk 11 şansın: %{p}', open: 'Nedenini göster', close: 'Gizle', actionable: 'Etkileyebilirsin', fixed: 'Sabit etken', pts: '{n} puan', fixedLabel: 'Bilgi' },
+  finance: { title: 'Finans', sub: 'İzlenen hafta: {n}', income: 'Gelir', expense: 'Gider', net: 'Haftalık net' },
   undo: { action: 'Geri al', cleared: 'Plan silindi.', restored: 'Plan geri yüklendi.' },
   whatsNew: {
     title: 'Yenilikler',
@@ -107,6 +108,7 @@ export const en: Shape<typeof tr> = {
     matchText: '{m}, my rating {r}. StarPath Football',
   },
   why: { button: 'Why?', title: 'Your chance to start: {p}%', open: 'Show the reasons', close: 'Hide', actionable: 'You can change this', fixed: 'Fixed factor', pts: '{n} pts', fixedLabel: 'Info' },
+  finance: { title: 'Finances', sub: 'Weeks tracked: {n}', income: 'Income', expense: 'Expenses', net: 'Weekly net' },
   undo: { action: 'Undo', cleared: 'Plan cleared.', restored: 'Plan restored.' },
   whatsNew: {
     title: "What's New",

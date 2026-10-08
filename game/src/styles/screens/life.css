@@ -307,3 +307,5 @@
 .fan-c-text { margin: var(--sp-1) 0 0; }
 .fan-comment.mood-hater .fan-c-text { color: var(--text-mid); }
 .fan-replies { list-style: none; margin: var(--sp-1) 0 0; padding-inline-start: var(--sp-3); border-inline-start: 2px solid var(--hairline); display: flex; flex-direction: column; gap: var(--sp-1); font-size: var(--fs-sm); }
+
+.life-person-memories { margin: 0; padding-left: var(--sp-4, 16px); display: grid; gap: 2px; }

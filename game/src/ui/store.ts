@@ -257,7 +257,7 @@ export interface NegotiationView {
 
 // Life ----------------------------------------------------------------------
 export type InteractionKind = 'call' | 'dinner' | 'gift' | 'train' | 'party' | 'holiday' | 'apologize'
-export type PostKind = 'training' | 'luxury' | 'family' | 'charity' | 'provocative' | 'fans'
+export type PostKind = 'training' | 'luxury' | 'family' | 'charity' | 'provocative' | 'fans' | 'rival'
 export interface SocialPostView {
   id: string
   author: string
@@ -772,6 +772,8 @@ export const activeEvent = signal<number | null>(null)
 export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' | 'music'> {
   reducedMotion: boolean
   highContrast: boolean
+  /** Colour theme: dark (default), light, or follow the OS. */
+  theme: 'dark' | 'light' | 'system'
   /** Derived from the quality profile (true on Low); kept for older readers (audio quality, CSS data-fx). */
   lowFx: boolean
   /** WP-16 graphics quality profile; 'auto' uses the device benchmark result below. */
@@ -815,6 +817,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   textScale: 1,
   reducedMotion: false,
   highContrast: false,
+  theme: 'dark',
   lowFx: false,
   quality: 'auto',
   qualityAuto: null,
@@ -882,6 +885,9 @@ export function detectQuality(): QualityProfile {
   return auto
 }
 
+/** Match-night screens stay dark in every theme (floodlit pitch, replay, casino felt). */
+const DARK_SCREENS = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'paywall', 'casino', 'blackjack', 'roulette', 'slots', 'horses', 'cupDraw', 'awards'])
+
 /** Reflect settings onto <html> data attributes (browser only). */
 export function bindSettingsToDocument(): () => void {
   if (settings.peek().qualityAuto === null && typeof window !== 'undefined') {
@@ -914,6 +920,8 @@ export function bindSettingsToDocument(): () => void {
       timingAssist: s.timingAssist,
     })
     contentFlags.hideCasino = s.hideCasino
+    const light = s.theme === 'light' || (s.theme === 'system' && globalThis.matchMedia?.('(prefers-color-scheme: light)')?.matches === true)
+    root.dataset.theme = light && !DARK_SCREENS.has(screen.value.id) ? 'light' : 'dark'
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'
     root.dataset.motion = s.reducedMotion ? 'reduced' : 'full'
     root.dataset.fx = s.lowFx ? 'low' : 'full'

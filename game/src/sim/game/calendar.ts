@@ -9,6 +9,7 @@
  * new season, call-ups / international break, offers, weekly event roll).
  * The new day starts with startDay + the casino daily reset.
  */
+import { recordEconomy } from './financeHistory'
 import type { GameState, LText } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { DAYS_PER_WEEK, SLOTS_PER_DAY } from '../../core/config'
@@ -18,7 +19,7 @@ import { weeklyAging } from '../career/progression'
 import { evaluateRoleChange, weeklyTrustTick } from '../career/squadRole'
 import { autoPlanDay, performActivity, physioSessionsThisWeek, startDay } from '../life/activities'
 import { resetCasinoDay, weeklyCasinoTick } from '../life/casino'
-import { assetHappiness, weeklyEconomy } from '../life/economy'
+import { assetHappiness, incomeTaxRate, weeklyEconomy } from '../life/economy'
 import { weeklyRelationDecay } from '../life/relationships'
 import { weeklySocialTick } from '../life/social'
 import { weeklySponsorTick } from '../life/sponsors'
@@ -125,9 +126,10 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
   const { hero, life, calendar: cal } = state
   const wk = weekCounters(life)
   if (!hero.retired) {
-    const eco = weeklyEconomy(rng, life, hero, { calendar: cal })
+    const eco = weeklyEconomy(rng, life, hero, { calendar: cal, taxRate: incomeTaxRate(heroClub(state)?.countryId) })
     logAll(state, out, eco.lines, 'money', '💶')
     const b = eco.breakdown
+    recordEconomy(life, cal, b)
     const income = b.wage + b.sponsors + b.rent + b.business + b.investmentYield + b.tax + b.agentFee
     const earned = readJson<{ season: number; total: number }>(life, GFLAG.earned, { season: cal.season, total: 0 })
     writeJson(life, GFLAG.earned, { season: cal.season, total: Math.round((earned.season === cal.season ? earned.total : 0) + Math.max(0, income)) })

@@ -87,7 +87,7 @@ function Careers() {
             <div class="grow stack" style={{ gap: '1px', minWidth: 0 }}>
               <span class="h3 truncate">{e.name}</span>
               <span class="t-xs t-mid truncate">{e.position} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })}</span>
-              <span class="t-xs t-lo truncate">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })}</span>
+              <span class="t-xs t-lo">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })}</span>
               <span class="bd-actions">
                 <IconButton icon="play" label={t('meta.hof.view')} onClick={() => navigate('documentary', { id: e.careerId })} />
                 <ShareCareerButton sum={e} compact />

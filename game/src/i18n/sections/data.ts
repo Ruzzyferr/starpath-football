@@ -89,11 +89,11 @@ export const tr = {
     call: 'Ara', dinner: 'Yemeğe çık', gift: 'Hediye al', train: 'Birlikte çalış', party: 'Parti', holiday: 'Tatil', apologize: 'Özür dile',
   },
   post: {
-    training: 'Antrenman', luxury: 'Lüks', family: 'Aile', charity: 'Hayır', provocative: 'Provokatif', fans: 'Taraftara mesaj',
+    training: 'Antrenman', luxury: 'Lüks', family: 'Aile', charity: 'Hayır', provocative: 'Provokatif', fans: 'Taraftara mesaj', rival: 'Rakibe gönderme',
   },
   tier: { bronze: 'Bronz', silver: 'Gümüş', gold: 'Altın', elite: 'Elit', legend: 'Efsane' },
   result: { W: 'G', D: 'B', L: 'M' },
-  sponsorCat: { boots: 'Krampon', watch: 'Saat', drink: 'İçecek', fashion: 'Moda', gaming: 'Oyun', car: 'Otomobil' },
+  sponsorCat: { boots: 'Krampon', watch: 'Saat', drink: 'İçecek', fashion: 'Moda', gaming: 'Oyun', car: 'Otomobil', cosmetics: 'Kozmetik', food: 'Yiyecek', jewelry: 'Takı', finance: 'Finans' },
 }
 
 export const en: Shape<typeof tr> = {
@@ -184,9 +184,9 @@ export const en: Shape<typeof tr> = {
     call: 'Call', dinner: 'Dinner', gift: 'Buy a gift', train: 'Train together', party: 'Party', holiday: 'Holiday', apologize: 'Apologise',
   },
   post: {
-    training: 'Training', luxury: 'Luxury', family: 'Family', charity: 'Charity', provocative: 'Provocative', fans: 'Message to fans',
+    training: 'Training', luxury: 'Luxury', family: 'Family', charity: 'Charity', provocative: 'Provocative', fans: 'Message to fans', rival: 'Dig at a rival',
   },
   tier: { bronze: 'Bronze', silver: 'Silver', gold: 'Gold', elite: 'Elite', legend: 'Legend' },
   result: { W: 'W', D: 'D', L: 'L' },
-  sponsorCat: { boots: 'Boots', watch: 'Watch', drink: 'Drink', fashion: 'Fashion', gaming: 'Gaming', car: 'Car' },
+  sponsorCat: { boots: 'Boots', watch: 'Watch', drink: 'Drink', fashion: 'Fashion', gaming: 'Gaming', car: 'Car', cosmetics: 'Cosmetics', food: 'Food', jewelry: 'Jewelry', finance: 'Finance' },
 }

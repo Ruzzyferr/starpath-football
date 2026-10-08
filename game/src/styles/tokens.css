@@ -265,3 +265,65 @@
     --topbar-h: 60px;
   }
 }
+
+/* Light theme (WP-27): AA-checked palette. Text colours that were bright accents on dark become deeper tones;
+   fills keep dark label text via --text-on-*. Toggle in Settings -> Accessibility; "system" follows the OS. */
+:root[data-theme='light'] {
+  --bg-0: #e9eef6;
+  --bg-1: #f4f7fb;
+  --surface-1: #ffffff;
+  --surface-2: #f0f4fa;
+  --surface-3: #e0e8f3;
+  --border: #c5d0e2;
+  --border-strong: #9fb0cc;
+  --hairline: rgba(10, 20, 40, 0.08);
+  --scrim: rgba(10, 20, 40, 0.55);
+
+  --text-hi: #0d1626;
+  --text-mid: #36465f;
+  --text-lo: #536480;
+  --text-on-pitch: #03120a;
+  --text-on-gold: #231500;
+
+  --brand-pitch: #0a8a4a;
+  --brand-pitch-hi: #12a45a;
+  --brand-pitch-deep: #06683a;
+  --accent-gold: #8f5c00;
+  --accent-gold-hi: #b57a0a;
+  --accent-gold-deep: #6b4200;
+  --accent-blue: #1766c2;
+  --accent-blue-deep: #0f4c93;
+  --accent-violet: #6a3fd6;
+  --accent-violet-deep: #4a28a8;
+
+  --state-success: #076a37;
+  --pos: #076a37;
+  --neg: #b01c2e;
+  --state-warning: #8a6100;
+  --state-danger: #c42033;
+  --state-danger-deep: #8f1424;
+  --state-info: #1766c2;
+
+  --attr-1: #c42033;
+  --attr-2: #b85a00;
+  --attr-3: #8a6b00;
+  --attr-4: #3f7d12;
+  --attr-5: #0a8a4a;
+  --attr-6: #0f7a8a;
+
+  --tier-silver: #5f6f89;
+  --tier-bronze: #9a5a22;
+
+  --zone-promo: #0a8a4a;
+  --zone-euro: #1766c2;
+  --zone-playoff: #8f5c00;
+  --zone-releg: #c42033;
+
+  --sh-card: 0 6px 18px rgba(30, 50, 90, 0.12), inset 0 1px 0 rgba(255, 255, 255, 0.8);
+  --sh-raised: 0 12px 32px rgba(30, 50, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
+  --sh-pop: 0 20px 48px rgba(30, 50, 90, 0.28);
+  --bevel-neutral: 0 4px 0 #b6c3da;
+  --focus-ring: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--accent-blue);
+
+  color-scheme: light;
+}

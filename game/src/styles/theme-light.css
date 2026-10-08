@@ -1,0 +1,44 @@
+/*
+ * Light theme overrides (WP-27). Tokens do most of the work (tokens.css);
+ * this file only replaces hard-coded dark chrome. Match-night screens (title,
+ * wizard, match flow, casino) keep the dark theme: the store switches
+ * data-theme to dark while they are open, so every rule here is hub-only.
+ */
+:root[data-theme='light'] {
+  /* Subtle daylight wash instead of floodlights. */
+  --chrome-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.98), rgba(244, 247, 251, 0.94));
+}
+:root[data-theme='light'] .shell,
+:root[data-theme='light'] .immersive {
+  background:
+    radial-gradient(60% 40% at 12% -6%, rgba(23, 102, 194, 0.08), transparent 70%),
+    radial-gradient(50% 36% at 96% -4%, rgba(10, 138, 74, 0.07), transparent 70%),
+    linear-gradient(180deg, var(--bg-1), var(--bg-0) 60%);
+}
+:root[data-theme='light'] .topbar {
+  background: var(--chrome-bg);
+  box-shadow: 0 1px 0 rgba(30, 50, 90, 0.08);
+}
+:root[data-theme='light'] .tabbar {
+  background: var(--chrome-bg);
+}
+@media (min-width: 900px) {
+  :root[data-theme='light'] .sidebar {
+    background: linear-gradient(180deg, #ffffff, #eef2f8);
+  }
+  :root[data-theme='light'] .context-panel {
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.7), rgba(233, 238, 246, 0.9));
+  }
+}
+:root[data-theme='light'] .home-fixture {
+  background: var(--surface-2);
+}
+:root[data-theme='light'] .ctr-seasons,
+:root[data-theme='light'] .ctr-table tbody tr:nth-child(even),
+:root[data-theme='light'] .prof-table tbody tr:nth-child(even) {
+  background: rgba(10, 20, 40, 0.035);
+}
+:root[data-theme='light'] .modal,
+:root[data-theme='light'] .sheet {
+  box-shadow: var(--sh-pop);
+}
