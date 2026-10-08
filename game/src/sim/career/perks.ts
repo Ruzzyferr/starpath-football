@@ -3,7 +3,7 @@
  * Data lives in `data/perks.ts`.
  */
 import type { Hero } from '../../core/types'
-import { PERKS, PERK_BY_ID, type PerkDef } from '../../data/perks'
+import { PERKS, PERK_BRANCH, PERK_BY_ID, perkTier, type PerkDef } from '../../data/perks'
 import { fill, lt, type Lines } from './common'
 import { heroOvr } from './progression'
 
@@ -24,7 +24,20 @@ export function perkValue(hero: Pick<Hero, 'perks'>, key: string): number {
 }
 
 /** Why a perk cannot be unlocked (null = it can). */
-export type PerkBlock = 'owned' | 'innate' | 'points' | 'ovr' | 'attr' | 'position' | 'prereq' | 'reputation' | 'unknown'
+export type PerkBlock = 'owned' | 'innate' | 'points' | 'ovr' | 'attr' | 'position' | 'prereq' | 'tier' | 'reputation' | 'unknown'
+
+/** Perks of the same branch the hero must already own to open tier 2 / tier 3 (2.3#39). */
+export const TIER_ROOTS_NEEDED: Readonly<Record<1 | 2 | 3, number>> = { 1: 0, 2: 1, 3: 2 }
+
+/** Owned perks of a branch below the given tier. */
+export function branchDepth(hero: Pick<Hero, 'perks'>, branch: string, belowTier: number): number {
+  let n = 0
+  for (const id of hero.perks) {
+    const d = PERK_BY_ID[id]
+    if (d && PERK_BRANCH[d.group] === branch && perkTier(d) < belowTier) n++
+  }
+  return n
+}
 
 /** Check whether the hero may unlock a perk now. */
 export function perkBlock(hero: Hero, id: string): PerkBlock | null {
@@ -39,6 +52,9 @@ export function perkBlock(hero: Hero, id: string): PerkBlock | null {
   if (r.attrs) for (const [k, v] of Object.entries(r.attrs)) if (hero.attrs[k as keyof Hero['attrs']] < (v ?? 0)) return 'attr'
   if (r.perks && !r.perks.every((x) => hasPerk(hero, x))) return 'prereq'
   if (r.minReputation !== undefined && hero.reputation < r.minReputation) return 'reputation'
+  const branch = PERK_BRANCH[p.group]
+  const tier = perkTier(p)
+  if (branch && tier > 1 && branchDepth(hero, branch, tier) < TIER_ROOTS_NEEDED[tier]) return 'tier'
   return null
 }
 
