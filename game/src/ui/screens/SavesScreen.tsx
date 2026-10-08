@@ -4,6 +4,7 @@ import { t } from '../../i18n'
 import { Button, Card, Crest, EmptyState, Modal, Page, toast } from '../components'
 import { Icon } from '../icons'
 import { formatDuration, formatMoney, formatTimestamp, seasonLabel } from '../format'
+import { thumbSvg } from '../../sim/game/saveHistory'
 import { actions, data, gameState, navigate, type SaveSlotInfo } from '../store'
 
 type Pending = { kind: 'delete' | 'overwrite'; slot: SaveSlotInfo } | null
@@ -107,7 +108,7 @@ export function SavesScreen() {
           return (
             <Card key={s.slot} class={`saves-card${s.empty ? ' is-empty' : ''}${active ? ' is-active' : ''}`} pad="none">
               <div class="saves-card-top">
-                <span class="saves-slot-no score-font" aria-hidden="true">{s.slot}</span>
+                {!(s.thumb && !s.empty) && <span class="saves-slot-no score-font" aria-hidden="true">{s.slot}</span>}
                 <div class="grow">
                   <div class="row">
                     <span class="micro t-lo">{t('saves.slot', { n: s.slot })}</span>
@@ -119,7 +120,8 @@ export function SavesScreen() {
                     <h2 class="h3 truncate">{s.heroName}</h2>
                   )}
                 </div>
-                {!s.empty && s.crest && <Crest crest={s.crest} size={44} label={s.clubName} />}
+                {!s.empty && s.thumb && <span class="saves-thumb" data-testid={`slot-thumb-${s.slot}`} role="img" aria-label={t('saves.thumbAlt', { name: s.heroName ?? '' })} dangerouslySetInnerHTML={{ __html: thumbSvg(s.thumb, 48) }} />}
+                {!s.empty && s.crest && <Crest crest={s.crest} size={s.thumb ? 36 : 44} label={s.clubName} />}
               </div>
 
               {s.empty ? (

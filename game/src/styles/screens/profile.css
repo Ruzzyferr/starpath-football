@@ -250,3 +250,10 @@
 .ovr-table td.num, .ovr-table tfoot td { text-align: end; }
 .ovr-bar { display: inline-block; width: 56px; height: 6px; border-radius: 3px; background: var(--bg-1); margin-inline-end: var(--sp-2); vertical-align: middle; overflow: hidden; }
 .ovr-bar > span { display: block; height: 100%; background: var(--brand-pitch); }
+
+/* 2.7#55 attribute growth */
+.prof-growth-legend { display: flex; gap: var(--sp-4); justify-content: center; margin-top: var(--sp-2); }
+.prof-growth-key { display: inline-block; width: 14px; height: 0; margin-right: 6px; vertical-align: middle; border-top: 2px solid var(--brand-pitch); }
+.prof-growth-key.is-then { border-top: 2px dashed var(--text-mid); }
+.prof-growth-list { list-style: none; margin: var(--sp-3) 0; padding: 0; display: grid; gap: var(--sp-1); }
+.prof-growth-list li { display: flex; justify-content: space-between; }

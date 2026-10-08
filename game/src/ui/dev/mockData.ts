@@ -17,6 +17,7 @@ import { computeOvr } from './mockState'
 import { emptyObjectives, objectivesUi } from '../backend/objectivesFeed'
 import { OBJECTIVES_FLAG } from '../../sim/game'
 import { objectivesWeekly } from '../../sim/game/objectives'
+import { slotThumb } from '../../sim/game/saveHistory'
 import { refereeFor } from '../../sim/world/referees'
 import { COUNTRIES } from './mockNames'
 
@@ -63,6 +64,7 @@ export function slotInfoOf(s: GameState, slot: number): SaveSlotInfo {
     money: s.life.money,
     updatedAt: s.meta.updatedAt,
     playTimeSec: s.meta.playTimeSec,
+    thumb: slotThumb(s),
   }
 }
 

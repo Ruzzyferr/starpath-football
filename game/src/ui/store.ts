@@ -26,6 +26,7 @@ import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
+import type { SlotThumb } from '../state/save'
 import type { DrillKind, DrillVariant } from '../game/training/types'
 
 // ───────────────────────── Shared view types ─────────────────────────
@@ -559,6 +560,8 @@ export interface SaveSlotInfo {
   money?: number
   updatedAt?: number
   playTimeSec?: number
+  /** Procedural portrait spec for the slot card (rendered by `thumbSvg`). */
+  thumb?: SlotThumb
 }
 
 // New career ----------------------------------------------------------------

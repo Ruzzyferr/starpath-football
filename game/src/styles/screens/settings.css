@@ -286,3 +286,6 @@
   color: var(--accent-gold);
   border: 1px solid currentColor;
 }
+
+.saves-thumb { display: inline-flex; flex: none; width: 48px; height: 48px; box-shadow: 0 0 0 1px var(--border); border-radius: 8px; overflow: hidden; }
+.saves-thumb svg { display: block; width: 48px; height: 48px; }

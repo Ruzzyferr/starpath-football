@@ -10,6 +10,8 @@ import { Icon } from '../icons'
 import { data, gameState, heroClub, navigate } from '../store'
 import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGroup } from './career/attrs'
 import { Radar } from './career/Radar'
+import { AttrGrowth } from './profile/AttrGrowth'
+import { GoalReel } from './profile/GoalReel'
 import { FinanceCharts } from './profile/FinanceCharts'
 import { OvrExplainer } from './profile/OvrExplainer'
 import { statsByClub, type ClubStatsRow } from '../../sim/game/clubStats'
@@ -213,6 +215,10 @@ export function ProfileScreen() {
               <LineChart values={ovrHist} height={110} color="var(--accent-gold)" label={t('profile.ovrHistory')} />
             </Card>
           )}
+
+          <AttrGrowth />
+
+          <GoalReel />
 
           <Card pad="md" class="prof-contract">
             <CardHeader

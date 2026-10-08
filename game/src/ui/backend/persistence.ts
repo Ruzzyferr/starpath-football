@@ -71,7 +71,7 @@ export async function refreshSlots(): Promise<SaveSlotInfo[]> {
       if (!s) return { slot, empty: true }
       return {
         slot, empty: false, heroName: s.heroName, clubName: s.clubName, crest: s.crest, season: s.season, week: s.week,
-        ovr: s.ovr, money: s.money, updatedAt: s.savedAt, playTimeSec: s.playTimeSec,
+        ovr: s.ovr, money: s.money, updatedAt: s.savedAt, playTimeSec: s.playTimeSec, thumb: s.thumb,
       }
     })
   } catch (e) {
