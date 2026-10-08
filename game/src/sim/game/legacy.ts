@@ -17,6 +17,7 @@ import { clamp } from '../../core/rng'
 import { absWeek, fill, fmtMoney, lt, pushLog } from '../career/common'
 import { grantInnatePerk } from '../career/perks'
 import type { HallOfFameEntry } from './hallOfFame'
+import { legacyAcademyBonus, legacyFundBonus } from '../life/projects'
 
 export interface LegacyStart {
   parentCareerId: string
@@ -30,14 +31,14 @@ export interface LegacyStart {
 export const LEGACY_PARENT_FLAG = 'c:legacyParentId'
 
 /** Legacy terms for a child of `entry`. */
-export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'>): LegacyStart {
+export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'> & Partial<Pick<HallOfFameEntry, 'legacyFund' | 'academyLevel'>>): LegacyStart {
   return {
     parentCareerId: entry.careerId,
     parentName: entry.name,
     parentGender: entry.gender,
     legacyScore: entry.legacyScore,
-    inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.02, 5_000, 150_000)),
-    reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)),
+    inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.02, 5_000, 150_000)) + legacyFundBonus(entry.legacyFund ?? 0),
+    reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)) + legacyAcademyBonus(entry.academyLevel ?? 0),
   }
 }
 

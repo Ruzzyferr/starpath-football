@@ -118,6 +118,17 @@ export const ASSETS: readonly AssetDef[] = [
   a('art_impressionist', 'art', 'Empresyonist Peyzaj Tablosu', 'Impressionist Landscape', '🖼️', 1_500_000, 500, 3, 4, 1.18, { ...fx('followers', 0.04), minReputation: 50 }),
   a('art_masterpiece', 'art', 'Modern Ustanın Başyapıtı', 'Modern Master Painting', '🖼️', 12_000_000, 3_000, 4, 8, 1.25, { ...fx('followers', 0.08), minReputation: 70 }),
 
+  // ── Collector items (late-game goals): football memorabilia that appreciates and
+  //    adds Hall of Fame legacy points (effect `collector`, capped in assetEffects). ──
+  a('col_signed_shirt', 'art', 'İmzalı Efsane Forması', 'Signed Legend Shirt', '👕', 15_000, 5, 1, 0, 1.06, fx('collector', 1)),
+  a('col_first_ball', 'art', 'İlk Resmî Maç Topu', 'First Official Match Ball', '⚽', 45_000, 10, 1, 1, 1.1, { ...fx('collector', 1), minReputation: 20 }),
+  a('col_vintage_programmes', 'art', 'Antika Maç Programları Seti', 'Vintage Matchday Programme Set', '📰', 150_000, 40, 1, 1, 1.12, { ...fx('collector', 1), minReputation: 30 }),
+  a('col_legend_boots', 'art', 'Efsane Kramponları', 'Legend Match Boots', '👟', 400_000, 80, 2, 2, 1.14, { ...fx('collector', 2), minReputation: 40 }),
+  a('col_trophy_cabinet', 'art', 'Kupa Dolabı ve Sergi Odası', 'Trophy Cabinet and Exhibition Room', '🏆', 900_000, 300, 3, 2, 0.9, { ...fx('collector', 2), minReputation: 50 }),
+  a('col_cup_replica', 'art', 'Tarihî Kupa Orijinali', 'Original Historic Cup', '🏺', 2_500_000, 500, 2, 3, 1.16, { ...fx('collector', 2), minReputation: 60 }),
+  a('col_worldcup_ball', 'art', 'Final Maçı Topu', 'Cup Final Match Ball', '🌍', 6_000_000, 900, 3, 5, 1.18, { ...fx('collector', 3), minReputation: 70 }),
+  a('col_golden_boot', 'art', 'Orijinal Altın Ayakkabı', 'The Original Golden Boot', '🥇', 15_000_000, 2_000, 4, 7, 1.2, { ...fx('collector', 3), minReputation: 80 }),
+
   // ── Islands: endgame flex; resale ~0.9, large upkeep, top fame ──
   a('island_lake', 'island', 'Göl Adacığı', 'Lake Islet', '🏝️', 3_000_000, 7_000, 6, 4, 0.9, { ...fx('stress_relief', 4), minReputation: 75 }),
   a('island_aegean', 'island', 'Ege Koyu Adası', 'Aegean Cove Island', '🏝️', 15_000_000, 30_000, 9, 7, 0.9, { ...fx('stress_relief', 6), minReputation: 82 }),

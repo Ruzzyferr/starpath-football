@@ -560,6 +560,8 @@ export interface Business {
   totalProfit: number
   /** Last 8 weeks, most recent first. */
   history: BusinessPnl[]
+  /** Temporary revenue multiplier from a decision card (marketing push, crisis); ticks down weekly. */
+  boost?: { mult: number; weeks: number }
 }
 
 // ───────────────────────── Events (decision cards) ─────────────────────────

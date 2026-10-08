@@ -14,6 +14,7 @@
  *  - `followers`         fraction: follower growth bonus (supercars, art, fashion)
  *  - `sleep`             extra energy restored each morning (premium bed / smart home)
  *  - `injury_resist`     fraction: lower injury risk (physio room)
+ *  - `collector`         legacy points (x3 in the Hall of Fame score; capped 12)
  *  - `security`          0..1: lowers burglary/paparazzi event chance (events read it)
  */
 import type { AssetDef, Life } from '../../core/types'
@@ -29,6 +30,7 @@ export const ASSET_EFFECT_CAPS: Readonly<Record<string, number>> = {
   sleep: 15,
   injury_resist: 0.3,
   security: 1,
+  collector: 12,
 }
 
 /** Definitions of every asset the hero owns (unknown ids skipped). */

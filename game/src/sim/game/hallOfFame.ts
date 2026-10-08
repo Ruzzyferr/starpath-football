@@ -13,6 +13,7 @@ import type { Gender, GameState, LText, Position } from '../../core/types'
 import { heroAge, lt } from '../career/common'
 import { heroOvr } from '../career/progression'
 import { netWorth } from '../life/economy'
+import { academyLevel, legacyFund, projectsLegacyPoints } from '../life/projects'
 import { heroClub } from './internal'
 
 export interface TimelineSeason {
@@ -89,6 +90,12 @@ export interface CareerSummary {
   difficulty: string
   /** Post-retirement path chosen on the retirement card. */
   postCareer?: PostCareerPath
+  /** Legacy fund balance at retirement (a share goes to the Legacy child, see legacy.ts). */
+  legacyFund?: number
+  /** Youth academy stage built (0..3); gives the Legacy child a reputation head start. */
+  academyLevel?: number
+  /** Legacy points from projects (academy, stadium, club stake, collection). */
+  projectsScore?: number
 }
 
 /** A Hall of Fame row = the career summary. */
@@ -97,7 +104,7 @@ export type HallOfFameEntry = CareerSummary
 const r1 = (n: number): number => Math.round(n * 10) / 10
 
 /** Legacy score + its breakdown. */
-export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'> & { postCareer?: PostCareerPath }): { total: number; breakdown: ScoreLine[] } {
+export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'> & { postCareer?: PostCareerPath; projectsScore?: number }): { total: number; breakdown: ScoreLine[] } {
   const lines: ScoreLine[] = [
     { key: 'goals', label: lt('Goller', 'Goals'), value: s.totals.goals * 2 },
     { key: 'assists', label: lt('Asistler', 'Assists'), value: s.totals.assists },
@@ -109,6 +116,7 @@ export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awar
     { key: 'fame', label: lt('Şöhret', 'Fame'), value: Math.round(s.reputation * 2) },
     { key: 'wealth', label: lt('Servet', 'Wealth'), value: r1(10 * Math.log10(1 + Math.max(0, s.netWorth) / 10_000)) },
   ]
+  if (s.projectsScore) lines.push({ key: 'projects', label: lt('Vakıf, akademi ve koleksiyon', 'Foundation, academy and collection'), value: s.projectsScore })
   if (s.postCareer) lines.push({ key: 'postCareer', label: POST_CAREER[s.postCareer].label, value: POST_CAREER[s.postCareer].score })
   return { total: Math.round(lines.reduce((a, b) => a + b.value, 0)), breakdown: lines }
 }
@@ -153,7 +161,10 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     reputation: h.reputation,
     netWorth: nw,
   }
-  const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}) })
+  const fund = Math.round(legacyFund(state.life))
+  const academy = academyLevel(state.life)
+  const projectsScore = projectsLegacyPoints(state.life)
+  const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}), ...(projectsScore > 0 ? { projectsScore } : {}) })
   const ovr = heroOvr(h)
   return {
     careerId: state.meta.id,
@@ -183,6 +194,9 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     ...(typeof state.life.flags['c:legacyParentId'] === 'string' ? { parentCareerId: state.life.flags['c:legacyParentId'] } : {}),
     difficulty: state.meta.difficulty,
     ...(opts.postCareer ? { postCareer: opts.postCareer } : {}),
+    ...(fund > 0 ? { legacyFund: fund } : {}),
+    ...(academy > 0 ? { academyLevel: academy } : {}),
+    ...(projectsScore > 0 ? { projectsScore } : {}),
   }
 }
 

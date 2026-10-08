@@ -125,6 +125,15 @@ export const num = (ctx: EventCtx, key: string): number => {
 
 /** Brand reputation change for an owned business (first one, or of a given kind). */
 export const brand = (amount: number, business?: BusinessKind): Delta => (business ? { kind: 'brand', amount, business } : { kind: 'brand', amount })
+/** Marketing push (mult > 1) or crisis (mult < 1) on a business for `weeks` weeks, plus a brand change. */
+export const bizBoost = (amount: number, mult: number, weeks: number, business?: BusinessKind): Delta =>
+  ({ kind: 'brand', amount, boost: { mult, weeks }, ...(business ? { business } : {}) })
+/** Hire / dismiss the general manager of a business (brand change optional). */
+export const bizManager = (hire: boolean, amount = 0, business?: BusinessKind): Delta =>
+  ({ kind: 'brand', amount, manager: hire, ...(business ? { business } : {}) })
+/** Expand a business one level; the caller charges the cash with money(); `invest` raises the resale basis. */
+export const bizExpand = (invest: number, amount = 0, business?: BusinessKind): Delta =>
+  ({ kind: 'brand', amount, expand: { invest: Math.round(invest) }, ...(business ? { business } : {}) })
 /** The hero owns at least one business (of a kind). */
 export const hasBusiness = (s: GameState, kind?: BusinessKind): boolean =>
   (s.life.businesses ?? []).some((b) => !kind || b.kind === kind)

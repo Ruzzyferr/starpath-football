@@ -207,6 +207,10 @@ export function businessWeek(rng: Rng, b: Business, reputation: number, week: nu
     b.brand = meter(b.brand + inc.brand)
     note = inc.note
   }
+  if (b.boost) {
+    revenue *= b.boost.mult
+    if (--b.boost.weeks <= 0) delete b.boost
+  }
   revenue = Math.round(Math.min(revenue, businessRevenueCap(b)))
   const rent = Math.round(d.rent * LEVEL_FIXED[b.level])
   const staff = Math.round(d.staff * LEVEL_FIXED[b.level])

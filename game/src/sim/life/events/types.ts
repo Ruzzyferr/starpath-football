@@ -123,7 +123,17 @@ export type Delta =
   /** Removes a relationship (break-up, falling out). */
   | { kind: 'endRelation'; target: RelationKind; npcId?: string }
   /** Brand reputation of an owned business (life/business); no-op without one. */
-  | { kind: 'brand'; amount: number; business?: BusinessKind }
+  | {
+      kind: 'brand'
+      amount: number
+      business?: BusinessKind
+      /** Temporary revenue multiplier for N weeks (marketing push > 1, crisis < 1). */
+      boost?: { mult: number; weeks: number }
+      /** Hire (true) or let go (false) the general manager. */
+      manager?: boolean
+      /** Free expansion: +1 level (max 3); `invest` is added to the resale basis. */
+      expand?: { invest: number }
+    }
 
 /** Delta after application: amounts are the *actual* change after clamping. */
 export type AppliedDelta = Delta & { label?: string }

@@ -780,7 +780,11 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
       if (!b) return null
       const before = b.brand
       b.brand = clamp(Math.round(before + num(d.amount)), 0, 100)
-      return b.brand === before ? null : { kind: 'brand', amount: b.brand - before, label: b.name }
+      let changed = b.brand !== before
+      if (d.boost && d.boost.weeks > 0) { b.boost = { mult: d.boost.mult, weeks: Math.round(d.boost.weeks) }; changed = true }
+      if (d.manager !== undefined && b.manager !== d.manager) { b.manager = d.manager; changed = true }
+      if (d.expand && b.level < 3) { b.level = (b.level + 1) as 2 | 3; b.invested += Math.max(0, num(d.expand.invest)); changed = true }
+      return changed ? { kind: 'brand', amount: b.brand - before, label: b.name } : null
     }
     case 'endRelation': {
       const r = findRel(state, d.target, d.npcId)

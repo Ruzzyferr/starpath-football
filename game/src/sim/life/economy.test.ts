@@ -47,7 +47,7 @@ function simulate(rng: Rng, hero: Hero, life: Life, seasons: number, each?: (s: 
 
 describe('asset catalogue', () => {
   const CATS: AssetCategory[] = ['house', 'car', 'watch', 'fashion', 'tech', 'pet', 'boat', 'jet', 'art', 'island', 'business', 'facility']
-  const KEYS = new Set(['recovery', 'xp_bonus', 'travel_fatigue', 'happiness_partner', 'stress_relief', 'rent_income', 'business_income', 'followers', 'sleep', 'injury_resist', 'security'])
+  const KEYS = new Set(['recovery', 'xp_bonus', 'travel_fatigue', 'happiness_partner', 'stress_relief', 'rent_income', 'business_income', 'followers', 'sleep', 'injury_resist', 'security', 'collector'])
 
   it('has ≥80 items covering every category with unique ids', () => {
     expect(ASSETS.length).toBeGreaterThanOrEqual(80)

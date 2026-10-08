@@ -12,6 +12,7 @@ import { absWeek, clamp, fill, finite, fmtMoney, lt, type Lines } from '../caree
 import { ASSET_BY_ID } from '../../data/assets'
 import { ownedAssetDefs } from './assetEffects'
 import { businessesValue, sellBusiness, weeklyBusinessTick } from './business'
+import { projectsValue, weeklyProjectsTick } from './projects'
 
 // ───────────────────────── Tuning ─────────────────────────
 
@@ -359,7 +360,7 @@ export function netWorth(life: Life, cal: Pick<Calendar, 'season' | 'week'>): nu
     const d = ASSET_BY_ID[o.defId]
     if (d) w += resaleValue(o, d, cal)
   }
-  w += businessesValue(life) + termDepositsValue(life)
+  w += businessesValue(life) + termDepositsValue(life) + projectsValue(life)
   if (life.bank.loan) w -= life.bank.loan.remaining
   return finite(w)
 }
@@ -438,6 +439,10 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
     b.business += biz.net
     lines.push(...biz.lines)
   }
+  // Legacy projects (life/projects): club-stake dividend now, running costs with the other upkeep below.
+  const proj = weeklyProjectsTick(life, hero, cal)
+  b.business += proj.income
+  lines.push(...proj.lines)
   b.business = Math.round(finite(b.business))
 
   // Investments: random walk + cash yield.
@@ -456,7 +461,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   // 2. Expenses.
   b.trainer = life.trainer ? -Math.max(0, finite(life.trainer.weeklyFee)) : 0
   lines.push(...tickTrainerContract(life))
-  b.upkeep = -assetUpkeep(life)
+  b.upkeep = -assetUpkeep(life) - proj.upkeep
 
   const flow = b.wage + b.sponsors + b.tax + b.agentFee + b.rent + b.business + b.investmentYield + b.trainer + b.upkeep
   life.money = finite(life.money + flow)
