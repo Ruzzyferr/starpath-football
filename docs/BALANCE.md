@@ -546,3 +546,43 @@ Aynı koşuda diğer hedefler: gol kralı (NPC) 1. kademe 27, ST 71–76 25, 77�
 
 Tohum gürültüsü büyük (bir büyük kazanç payı 10 puan oynatıyor); ölçüm `BALANCE=1 npx vitest run src/sim/game/balance.test.ts` ile de tekrarlanmalı. **Golden master bilinçli yenilenmedi** (dünya arması kara listesi dünya karmasını değiştirdi, bahis boyutu ve yeni kartlar kariyer akışını); lider yeniler.
 
+
+## WP-B denge turu v1.1 (Ekim 2026): dünya üst kuyruğu ve yıldız gol hacmi
+
+Playtest Tur 2'nin iki açık maddesi kapatıldı. Ölçümler: dünya için `WORLD_REPORT=1` (`sim/world/worldReport.test.ts`, TR+EN, 2 tohum × 100 sezon); kariyer için `BALANCE=1`, 30 kariyer × 10 sezon (tohum 1000 ve 2000) ve 12 kariyer × 18 sezon (17–34 yaş, tohum 3000). "Önce" değerleri HEAD'in ayrı bir çalışma ağacından alındı.
+
+**1. Dünya üst kuyruğu.** Ortalama çapası (`anchor.ts`) ortalamayı tutuyordu ama dağılım geriliyordu. Gençlik alımı ve geniş potansiyel aralığı tepeyi şişiriyor, ortalama çapası da bunu alttaki oyunculardan telafi ediyordu. Çözüm: dünya ilk ölçümde kulüp oyuncularının OVR dağılımını %0,5 aralıklı 201 noktalık bir nicelik tablosu olarak kaydeder (`world.abilityShape`, `endOfSeason` başında `recordAbilityReference`). Her sezon sonunda oyuncular sıralanır. Sırasındaki niceliğe göre ±1 bandının dışında kalan oyuncu ona doğru 1–3 puan çekilir; potansiyeli de birlikte çekilir, yoksa oyuncu bir sonraki sezon yeniden büyür. Bant dışında 1 puandan az kalanlarda bu %60 olasılıkla, daha uzaktakilerde her zaman olur. Sıralama değişmez: oyuncu hâlâ başkalarını geçerek yükselir, yalnızca dünya "uzamaz". Eski ortalama bandı (±0,25) ikinci kat olarak kaldı. Eski kayıtlar ilk sezon sonunda o anki dağılımı kaydeder.
+
+| Ölçüt (kulüp oyuncusu OVR) | Başlangıç | Önce: 10 / 100. sezon (tohum 9 · 31) | Sonra: 10 / 100. sezon (tohum 9 · 31) | Hedef |
+|---|---|---|---|---|
+| Ortalama | 65,3 · 65,3 | 64,3 / 65,2 · 63,6 / 65,0 | 65,2 / 65,2 · 65,0 / 65,0 | ±2 |
+| p05 | 47 · 47 | 41 / 41 · 41 / 41 | 46 / 46 · 46 / 46 | - |
+| p95 | 82 · 81 | 88 / 90 · 87 / 91 | 83 / 83 · 83 / 83 | ±2 |
+| p99 | 86 · 87 | 94 / 95 · 94 / 95 | 87 / 87 · 89 / 88 | ±2 |
+| İlk 20 ortalaması | 88,7 · 88,8 | 94,6 / 95,0 · 94,8 / 95,0 | 90,0 / 89,8 · 90,7 / 90,3 | ±2 |
+| Max | 92 · 92 | 95 / 95 · 95 / 95 (tavan) | 94 / 94 · 93 / 94 | ±2 |
+
+100 sezon boyunca en yüksek değerler: p95 83, p99 89, ilk 20 ortalaması 90,7, max 94. `longRun.test.ts` artık p95 kaymasını ≤2, ilk 20 ortalamasını ≤2,5 ve max'ı ≤2 ile sınırlıyor (varsayılan 50 sezon, `LONGRUN=1` ile 100). `anchor.test.ts` gerilmiş bir tepenin 4 sezonda geri çekildiğini doğrular.
+
+**2. Yıldız gol hacmi.** Playtest'te 459 maçta 407 gol (0,89/maç) çıkmıştı. Gerçek elit karşılaştırma: kariyer ortalaması ~0,6–0,8, zirve sezonu ~1,0–1,3. Mevcut "sıkılaşan savunma" (OVR 68→84) 84'te doyuyordu. İkinci kademe olarak `highlightGen.ts` `eliteMarking` eklendi: OVR 74'ten 88'e vuruş anı ağırlıkları ×(1−0,5·e), an sayısı ×(1−0,1·e). Yıldız adam adama markaj ve ikili savunma görür. An başına olasılıklar değişmedi, yalnızca temiz fırsat sayısı azaldı. Rapor artık 83–87 / 88+ bantlarını ve kariyer boyu maç başına golü basıyor.
+
+| Ölçüt | Önce (1000 · 2000 · uzun) | Sonra (1000 · 2000 · uzun) | Hedef |
+|---|---|---|---|
+| ST kariyer gol/maç (medyan) | 0,78 · 0,89 · 0,91 | 0,72 · 0,79 · 0,86 | ~0,6–0,8 |
+| ST en iyi sezon gol/maç (medyan) | 1,22 · 1,22 · 1,30 | 1,17 · 1,14 · 1,25 | ~1,0–1,3 |
+| ST 66–70 sezonluk gol | 16 · 20 | 17 · 17 | 12–22 |
+| ST 71–76 | 27 · 23 | 28 · 28 | 18–28 |
+| ST 77–82 | 24 · 29 | 25 · 27 | 25–35 |
+| NPC gol kralı, 1. kademe | 27 · 28 | 26 · 27 | 18–30 |
+| İtibar 18 / 21 / 25 yaş | 13/44/73 · 14/51/75 | 15/48/76 · 16/50/81 | ~15 / ~50 / 75–85 |
+| Sakatlık / sakat hafta (sezon) | 1,6/3,8 · 1,5/3,7 | 1,6/4,0 · 1,5/3,6 | 1–2 / 3–6 |
+| 3. sezon net servet medyan / max | 132K/1,5M · 146K/1,8M | 142K/1,9M · 190K/1,8M | ≤300K / ≤2M |
+| İlk elit kulüp yaşı (ulaşan %) | 24,0 (%57) · 23,0 (%60) | 22,0 (%77) · 22,0 (%83) | 22–24 |
+
+Uzun koşuda (18 sezon) ST örneklemi küçük (n=2), bu yüzden "uzun" sütunu yalnızca yön gösterir. İtibar 25 yaşta yükseldi (73–75'ten 76–81'e). Bunun nedeni dünyanın tepesinin artık kaçmaması: kahramanın 85–88 zirvesi göreli olarak yeniden "yıldız". Kumarhane payı (kumarbaz %29–33) içerik/ekonomi paketinin alanı.
+
+**WP-B satır kararları.** 2.1#6 TAMAM (12% testi `sim21.test.ts`, dik tepki bilinçli). 2.5#125 TAMAM (gecelik iş: denge tablosu + dünya raporu + 100 sezon adımı, özet çalıştırma sayfasında). 2.3#3 ve 2.3#13 ertelendi; sapma önerisi ve gerekçe GAP-AUDIT'te. 2.4#4, 2.5#15/#18/#24/#60 ve kumarhane satırları (2.5#92/#99/#102) `sim/life/**` içinde ve bu turda içerik/ekonomi paketinde.
+
+**Golden master.** `sim/golden.test.ts` bu değişikliklerle (dünya çapası rng tüketimi, an ağırlıkları) bilinçli olarak kırmızı. Yenileme baş mühendiste.
+
+**Gecelik drift tabanı (`statsBaseline.json`) yenilendi.** Eski tabana göre tolerans içinde kaldı ama merkez bilinçli olarak kaydı, bu yüzden taban yeni değerlere çekildi (40 kariyer × 10 sezon): itibar (son) 76,5 → 81, net servet log10 6,89 → 7,07, kupa (son) 1,85 → 2,35, sezon başına gol 9,0 → 8,3, sakat hafta 3,27 → 3,89. OVR S3/S6/son 68/78/82 → 67,5/78/82; iflas 0.

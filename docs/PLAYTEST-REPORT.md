@@ -377,13 +377,13 @@ Tüm veri `sim/game` cephesinden geliyor: `objectivesView(state)` (`ObjectivesVi
 
 ## Açık maddeler (benim alanım dışında ya da sonraki tur)
 
-- **Dünya üst kuyruk enflasyonu (dünya sahibi):** Ortalama sabit, ama:
+- **Dünya üst kuyruk enflasyonu (dünya sahibi):** *WP-B'de kapandı: dağılım (nicelik) çapası, 100 sezonda p95/p99/max ±2 içinde (BALANCE.md "WP-B denge turu").* Ortalama sabit, ama:
   - %90'lık dilim 4 sezonda 79'dan 84'e, top-20 ortalaması 90'dan 95'e çıkıyor.
   - OVR 88+ oyuncu sayısı 23'ten ~230'a çıkıyor.
   - Başlangıçta 219 oyuncunun potansiyeli 90 ve üstü.
   - Kahramanın 80–83 zirvesi göreli olarak "sıradan" kalıyor. EN/DE gibi güçlü ülkelerde milli takım barajı 94–95.
   - Bir kuyruk çapası ve wonderkid durgunluğu denendi ama tek başına yetmedi (genç yıldızlar 24 yaş altında 88+'ya çıkıyor). Potansiyel dağılımının kaynağında (üretim ve altyapı alımı) çözülmeli; dünya hash'i ve dengeyle birlikte ele alınmalı.
-- **Maç motoru gol hacmi:** Uzun koşuda 459 maçta 407 gol; ST OVR 77–82 sezonda 33/43/47 gol (BALANCE tablosu). NSS #47 riski. İtibar enflasyonunun da kaynağı.
+- **Maç motoru gol hacmi:** *WP-B: elit markaj (OVR 74–88) ile ST kariyer gol/maç 0,78–0,91'den 0,72–0,86'ya indi (BALANCE.md).* Uzun koşuda 459 maçta 407 gol; ST OVR 77–82 sezonda 33/43/47 gol (BALANCE tablosu). NSS #47 riski. İtibar enflasyonunun da kaynağı.
 - **İtibar temposu (harness):** İnsan gibi PR yapan oyuncuda kaleci 23 yaşında 95, Legacy çocuğu 24 yaşında 94 itibara çıkıyor. BALANCE sim'inde hedefte (yukarıda); harness'te üst sınırın üstünde.
 - **Kumarbaz persona payı (BALANCE):** %5–6, hedef %15–35. Bu tur öncesinden kalma; kumarbaz otomatik kariyerin bahis davranışı masa limitiyle birlikte yeniden ayarlanmalı.
 - **Kart içeriği:** 10+ sezon için 60–80 kart daha, özellikle `business` (iş kararları), `national` (turnuva hikâyeleri) ve evreye özgü hedefler.

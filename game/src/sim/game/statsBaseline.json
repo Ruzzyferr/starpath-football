@@ -2,12 +2,12 @@
   "careers": 40,
   "seasons": 10,
   "bankruptRate": 0,
-  "ovrS3": 68,
+  "ovrS3": 67.5,
   "ovrS6": 78,
   "ovrLast": 82,
-  "repLast": 76.5,
-  "netWorthLog": 6.887349890645499,
-  "goalsPerSeason": 9.025,
-  "injuredWeeksPerSeason": 3.2675,
-  "trophiesLast": 1.85
+  "repLast": 81,
+  "netWorthLog": 7.070506263875457,
+  "goalsPerSeason": 8.3225,
+  "injuredWeeksPerSeason": 3.8875,
+  "trophiesLast": 2.35
 }
