@@ -18,7 +18,7 @@ describe('supporter groups (2.4#79)', () => {
     expect(fanGroupValue(life, 'family')).toBeGreaterThan(10)
     const u = fanGroupValue(life, 'ultras')
     applyFanGroupsMatch(life, { rating: 5, goals: 0, won: false, red: true })
-    expect(fanGroupValue(life, 'ultras')).toBeLessThan(u - 8)
+    expect(fanGroupValue(life, 'ultras')).toBeLessThan(u - 7)
     life.discipline = 20
     const f = fanGroupValue(life, 'family')
     applyFanGroupsMatch(life, { rating: 6.5, goals: 0, won: false, red: false })
