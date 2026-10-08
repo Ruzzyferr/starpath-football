@@ -404,6 +404,8 @@ export class HighlightRuntime {
   private lastPossTeam: Team
   private shot: ShotTrack | null = null
   private heroPassTo: { id: string; t: number } | null = null
+  /** The hero's last pass was played into space (no named receiver): the runner attacks it (2.1#111). */
+  private heroPassIntoSpace = false
   private assistChain: string | null = null
   private keeperAlert: KeeperAlert | null = null
   private bulletLeft = 0
@@ -1316,6 +1318,16 @@ export class HighlightRuntime {
       if (SHOT_KINDS.has(kind)) this.stats.shots++
       else this.stats.passes++
       this.heroPassTo = passTo ? { id: passTo, t: this.time } : SHOT_KINDS.has(kind) ? null : { id: '*', t: this.time }
+      // Ball into space (2.1#111): the best-placed team-mate reads it at once and runs onto it.
+      this.heroPassIntoSpace = this.heroPassTo?.id === '*'
+      if (this.heroPassIntoSpace) {
+        const runner = this.spaceRunner()
+        if (runner) {
+          this.heroPassTo = { id: runner.agent.id, t: this.time }
+          runner.agent.think = 0
+          runner.agent.intent = { kind: 'run', to: runner.point, until: this.time + 0.6, chase: true }
+        }
+      }
       this.oneTwo = passTo && (kind === 'pass' || kind === 'lofted') ? { id: passTo, t: this.time, armed: false, armedAt: -1 } : null
       this.heroDeliveryAt = SHOT_KINDS.has(kind) ? -1 : this.time
       this.heroHeaderAim = null
@@ -1418,6 +1430,23 @@ export class HighlightRuntime {
 
     // Bullet time each time the hero gains possession.
     if (a.isHero && prevOwner !== a && !a.isKeeper && !this.setPiece && this.phase === 'live') this.startBullet(0.25, this.possessionWindow())
+  }
+
+  /** The outfield team-mate who gets to a ball played into space first, and where. */
+  private spaceRunner(): { agent: Agent; point: Vec2 } | null {
+    const w = this.aiWorld()
+    let best: { agent: Agent; point: Vec2 } | null = null
+    let bestT = Infinity
+    for (const m of this.agents) {
+      if (m.team !== 'hero' || m.isHero || m.isKeeper) continue
+      const ip = interceptPoint(m, w, 3)
+      const t = ip.reachable ? ip.t : 9 + dist(m.pos, ip.point) / 7
+      if (t < bestT) {
+        bestT = t
+        best = { agent: m, point: ip.point }
+      }
+    }
+    return best
   }
 
   /** Distance (m) between the carrier and the ball at his feet. */
@@ -1547,7 +1576,13 @@ export class HighlightRuntime {
     if (this.setPiece && !a.isKeeper && target && dist(target, this.setPiece.spot) < 9.15 && a.id !== this.setPiece.takerId) {
       target = add(this.setPiece.spot, scale(norm(sub(target, this.setPiece.spot)), 9.3))
     }
-    let desired = target ? arrive(a, target, speed, a.isKeeper ? 1.2 : 2.2) : { x: 0, y: 0 }
+    // The hero's pass receiver runs onto the ball at his own pace and attacks it (2.1#111).
+    const chasing = intent?.kind === 'run' && intent.chase && !this.owner && a.team === 'hero' && this.heroPassIntoSpace && !!this.heroPassTo
+    if (chasing) {
+      speed = Math.max(speed, topSpeed(a))
+      if (dist(a.pos, this.ball) < 2) target = { x: this.ball.x + this.ball.vx * 0.2, y: this.ball.y + this.ball.vy * 0.2 }
+    }
+    let desired = target ? arrive(a, target, speed, chasing ? 0.4 : a.isKeeper ? 1.2 : 2.2) : { x: 0, y: 0 }
     desired = add(desired, scale(separation(a, this.agents), 2.2))
     const dv = sub(desired, a.vel)
     const acc = accel(a) * DT * (a.team === 'opp' ? this.difficulty : 1)
@@ -1610,13 +1645,13 @@ export class HighlightRuntime {
       if (bestId === a.id) {
         const heroCloser = a.team === 'hero' && dist(this.hero.pos, ballP) + 1.5 < dist(a.pos, ballP) && !this.hero.isKeeper
         if (!heroCloser) {
-          a.intent = { kind: 'run', to: interceptPoint(a, w, 2.2).point, until: this.time + 0.6 }
+          a.intent = { kind: 'run', to: interceptPoint(a, w, 2.2).point, until: this.time + 0.6, chase: a.team === 'hero' && this.heroPassIntoSpace }
           return
         }
       }
       // Pass target receiver keeps moving to the lead point.
       if (this.heroPassTo && this.heroPassTo.id === a.id) {
-        a.intent = { kind: 'run', to: interceptPoint(a, w, 2.5).point, until: this.time + 0.6 }
+        a.intent = { kind: 'run', to: interceptPoint(a, w, 2.5).point, until: this.time + 0.6, chase: this.heroPassIntoSpace }
         return
       }
     }

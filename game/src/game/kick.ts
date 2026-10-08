@@ -318,7 +318,9 @@ const passRange = (kind: KickKind, v: number): number => {
 }
 
 /** Desired arrival speed of a ground pass over distance d. */
-const passArriveSpeed = (d: number, power: number) => 4.5 + d * 0.12 + power * 4
+const passArriveSpeed = (d: number, power: number, kind: KickKind = 'pass') =>
+  // A ball into space is weighted to die near the point so the runner can take it in stride (2.1#111).
+  kind === 'through' ? 4 + d * 0.1 + power * 3.5 : 4.5 + d * 0.12 + power * 4
 
 /**
  * Solves the launch for a request (no noise). Iterates against the physics so
@@ -345,7 +347,7 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   if (ground) {
     aimZ = 0
     flightT = 0
-    vh = passRange(kind, Math.sqrt(passArriveSpeed(d, req.power) ** 2 + 2 * (env.rollDecel + 0.5) * d))
+    vh = passRange(kind, Math.sqrt(passArriveSpeed(d, req.power, kind) ** 2 + 2 * (env.rollDecel + 0.5) * d))
     vz = 0
   } else if (aerial) {
     // Flight time grows with distance; chips hang longest.
@@ -378,12 +380,12 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
     const b: BallState = { x: from.x, y: from.y, z: z0, vx: dir.x * vh, vy: dir.y * vh, vz, spin: { ...spin } }
     const pr = probe(b, env, req.target, axis, 4.5)
     if (!pr.reached) {
-      vh *= 1.25
+      vh = passRange(kind, vh * 1.25)
       continue
     }
     heading -= Math.atan2(pr.lateral, d) * 0.95
     if (ground) {
-      const want = passArriveSpeed(d, req.power)
+      const want = passArriveSpeed(d, req.power, kind)
       vh = passRange(kind, Math.max(3, vh + (want - pr.arriveSpeed) * 0.8))
     } else if (aerial) {
       vh = passRange(kind, vh * clampN(pr.t / flightT, 0.6, 1.6))
