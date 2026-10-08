@@ -971,11 +971,16 @@ export function casinoHeadline(rng: Rng, hero: Pick<Hero, 'firstName' | 'lastNam
     return fill(rng.pick([
       lt('{n} bu hafta kumarhanenin müdavimi oldu', '{n} becomes a casino regular this week'),
       lt('Bir haftada {v}. ziyaret: {n} kumarhaneden çıkmıyor', "Visit number {v} in a week: {n} can't stay away from the casino"),
+      lt('Krupiyeler artık adını biliyor: {n} haftada {v} gece masada', 'The croupiers know the name now: {n} at the tables {v} nights this week'),
+      lt('Taraftar tedirgin: {n} antrenmandan çok kumarhanede mi?', 'Fans uneasy: is {n} at the casino more than at training?'),
     ]), { n, v: life.casino.visitsThisWeek })
   }
   return fill(rng.pick([
     lt('{n} yine kumarhanede: kulüpte soru işaretleri', '{n} back at the casino: questions at the club'),
     lt('{n} için kumarhane gecesi alışkanlığa mı dönüşüyor?', 'Is the casino night becoming a habit for {n}?'),
+    lt('Gece yarısı, yeşil çuha ve {n}', 'Midnight, green baize and {n}'),
+    lt('{n} fişleri saydı, kulüp de saatleri', '{n} counted the chips, the club counted the hours'),
+    lt('Objektifler yine {n} peşinde: bu kez kumarhane çıkışında', 'The lenses caught {n} again, this time leaving the casino'),
   ]), { n })
 }
 

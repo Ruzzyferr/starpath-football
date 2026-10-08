@@ -312,6 +312,8 @@ export const familyEvents: EventDef[] = [
         label: t('Menajerine bir telefon açtır', 'Have your agent make a call'),
         hint: t('Torpil kokabilir.', 'Might smell of string-pulling.'),
         risk: 'medium',
+        requires: ({ state }) => !!state.life.agent,
+        lockedHint: t('Bir menajerin yok.', 'You have no agent.'),
         effects: () =>
           fx(
             t('{agentName} "Bir bakarım" dedi. Kulüp artık {siblingName} ismini biliyor.', '{agentName} promised to "take a look". The club now knows the name {siblingName}.'),

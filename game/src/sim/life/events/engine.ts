@@ -84,10 +84,12 @@ export const eventRepGain = (rep: number, amount: number): number =>
 export const EXTRA_CARD_FACTOR = 0.5
 /**
  * Novelty decay (playtest: the same card came back up to 12 times in 6 seasons
- * while other cards never showed): weight × 0.7^(times seen this career), floor 0.2.
+ * while other cards never showed): weight × 0.7^(times seen this career), floor 0.1.
+ * Round 2 (8–15 seasons): at floor 0.2 a trigger-boosted card still beat most
+ * unseen ones and showed up 24 times in one career; 0.1 lets the deck rotate.
  */
 export const NOVELTY_DECAY = 0.7
-export const NOVELTY_FLOOR = 0.2
+export const NOVELTY_FLOOR = 0.1
 export const CURRENCY_SYMBOL = '€'
 
 export const FLAG_FOLLOWUPS = 'ev:followups'

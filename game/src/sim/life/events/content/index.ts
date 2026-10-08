@@ -30,6 +30,7 @@ import { businessEvents } from './business'
 import { charityEvents } from './charity'
 import { mentorEvents } from './mentor'
 import { abroadEvents } from './abroad'
+import { careerArcEvents } from './careerArc'
 
 export const ALL_EVENTS: readonly EventDef[] = [
   ...teammatesEvents,
@@ -59,4 +60,5 @@ export const ALL_EVENTS: readonly EventDef[] = [
   ...charityEvents,
   ...mentorEvents,
   ...abroadEvents,
+  ...careerArcEvents,
 ]

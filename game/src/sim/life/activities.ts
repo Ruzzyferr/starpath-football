@@ -91,7 +91,7 @@ const GROUP_INDEX: Readonly<Record<AttributeGroup, number>> = { physical: 0, tec
 /** The trainer on offer for a speciality and tier (the same name the hire uses). */
 export function trainerName(group: AttributeGroup, quality: 1 | 2 | 3): string {
   const list = TRAINER_NAMES[quality]
-  return list[GROUP_INDEX[group] % list.length]
+  return list[(GROUP_INDEX[group] ?? 0) % list.length]
 }
 
 /** Money delta of an activity (negative = cost). Deterministic. */
