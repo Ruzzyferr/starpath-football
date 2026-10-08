@@ -56,6 +56,8 @@ export interface ContractTerms {
   /** Image-rights clause (player keeps the rights → sponsor income bonus). */
   imageRights?: boolean
   appearanceBonus?: number
+  /** Goalkeepers: per-save bonus (2.3#60). */
+  saveBonus?: number
   promotionBonus?: number
   loyaltyBonus?: number
 }
@@ -211,6 +213,7 @@ export function toContract(offer: ContractOffer): Contract {
     ...(t.minutesGuarantee ? { minutesGuarantee: true } : {}),
     ...(t.imageRights ? { imageRights: true } : {}),
     ...(t.appearanceBonus ? { appearanceBonus: t.appearanceBonus } : {}),
+    ...(t.saveBonus ? { saveBonus: t.saveBonus } : {}),
     ...(t.promotionBonus ? { promotionBonus: t.promotionBonus } : {}),
     ...(t.loyaltyBonus ? { loyaltyBonus: t.loyaltyBonus } : {}),
   }
@@ -226,6 +229,9 @@ export function toContract(offer: ContractOffer): Contract {
  *  - Release clause: smaller clubs (rep < 75) insert one 50% of the time at
  *    1.8–3× market value; elite clubs rarely (15%).
  */
+/** Keeper per-save bonus as a share of the weekly wage (2.3#60). */
+export const SAVE_BONUS_FACTOR = 0.02
+
 export function generateContractOffer(rng: Rng, hero: Hero, ctx: OfferContext): ContractOffer {
   const kind = ctx.kind ?? 'new'
   const age = heroAge(hero, ctx.season)
@@ -249,7 +255,10 @@ export function generateContractOffer(rng: Rng, hero: Hero, ctx: OfferContext): 
     kind,
     startSeason: ctx.season,
     loan: kind === 'loan',
-    terms: { wage, years, signingBonus, goalBonus, assistBonus, releaseClause, role: roleForStanding(ovr, ctx.club.squadAvgOvr, age) },
+    terms: {
+      wage, years, signingBonus, goalBonus, assistBonus, releaseClause, role: roleForStanding(ovr, ctx.club.squadAvgOvr, age),
+      ...(hero.position === 'GK' && kind !== 'loan' ? { saveBonus: roundNice(Math.max(10, wage * SAVE_BONUS_FACTOR)) } : {}),
+    },
   }
 }
 

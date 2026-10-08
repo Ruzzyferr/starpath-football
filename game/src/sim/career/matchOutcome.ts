@@ -226,7 +226,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   }
 
   // ── Contract bonuses ──
-  const bonuses = matchBonuses(hero.contract, { goals, assists, minutes, cleanSheet: !!m.cleanSheet, isKeeper: hero.position === 'GK' })
+  const bonuses = matchBonuses(hero.contract, { goals, assists, minutes, cleanSheet: !!m.cleanSheet, isKeeper: hero.position === 'GK', saves: m.saves ?? 0 })
   let bonusPaid = bonuses.goal + bonuses.assist + bonuses.appearance
   if (bonusPaid > 0) {
     life.money += bonusPaid
@@ -238,6 +238,11 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
     life.money += keeperBonus
     bonusPaid += keeperBonus
     lines.push(fill(lt('🧤 Kaleci primi (gol yemedin): {m}', '🧤 Clean-sheet bonus: {m}'), { m: fmtMoney(keeperBonus) }))
+  }
+  if (bonuses.save > 0) {
+    life.money += bonuses.save
+    bonusPaid += bonuses.save
+    lines.push(fill(lt('🧤 Kurtarış primi: {m}', '🧤 Save bonus: {m}'), { m: fmtMoney(bonuses.save) }))
   }
 
   // ── Experience XP ──

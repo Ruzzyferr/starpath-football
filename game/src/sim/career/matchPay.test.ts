@@ -8,7 +8,7 @@ const played = { goals: 2, assists: 1, minutes: 90, cleanSheet: false, isKeeper:
 
 describe('matchBonuses', () => {
   it('itemises goal / assist / appearance bonuses', () => {
-    expect(matchBonuses(contract, played)).toEqual({ goal: 400, assist: 120, appearance: 50, cleanSheet: 0, total: 570 })
+    expect(matchBonuses(contract, played)).toEqual({ goal: 400, assist: 120, appearance: 50, cleanSheet: 0, save: 0, total: 570 })
   })
   it('pays nothing without minutes or a contract', () => {
     expect(matchBonuses(contract, { ...played, minutes: 0 })).toEqual(NO_BONUSES)
@@ -41,5 +41,17 @@ describe('matchEarnings', () => {
   it('omits zero lines (no sponsors, no agent, no image rights)', () => {
     const e = matchEarnings({ contract, bonuses: NO_BONUSES, sponsorsWeekly: 0, agentCommission: 0, matchesThisWeek: 1 })
     expect(e.lines.map((l) => l.key)).toEqual(['wage', 'tax'])
+  })
+})
+
+describe('keeper save bonus (2.3#60)', () => {
+  it('pays saves × saveBonus to keepers only and lists it in the earnings', () => {
+    const c = { clubId: 'c', wage: 5000, untilSeason: 2030, signingBonus: 0, goalBonus: 300, assistBonus: 100, releaseClause: null, role: 'starter' as const, saveBonus: 100 }
+    const b = matchBonuses(c, { goals: 0, assists: 0, minutes: 90, cleanSheet: false, isKeeper: true, saves: 4 })
+    expect(b.save).toBe(400)
+    expect(b.total).toBe(400)
+    expect(matchBonuses(c, { goals: 0, assists: 0, minutes: 90, cleanSheet: false, isKeeper: false, saves: 4 }).save).toBe(0)
+    const e = matchEarnings({ contract: c, bonuses: b, sponsorsWeekly: 0, agentCommission: 0, matchesThisWeek: 1 })
+    expect(e.lines.some((l) => l.key === 'save' && l.amount === 400)).toBe(true)
   })
 })

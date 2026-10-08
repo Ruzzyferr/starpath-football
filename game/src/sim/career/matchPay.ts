@@ -16,6 +16,8 @@ export interface MatchBonusInput {
   minutes: number
   cleanSheet: boolean
   isKeeper: boolean
+  /** Saves made (keepers' per-save bonus, 2.3#60). */
+  saves?: number
 }
 
 export interface MatchBonuses {
@@ -23,10 +25,12 @@ export interface MatchBonuses {
   assist: number
   appearance: number
   cleanSheet: number
+  /** Keeper per-save bonus (2.3#60). */
+  save: number
   total: number
 }
 
-export const NO_BONUSES: MatchBonuses = { goal: 0, assist: 0, appearance: 0, cleanSheet: 0, total: 0 }
+export const NO_BONUSES: MatchBonuses = { goal: 0, assist: 0, appearance: 0, cleanSheet: 0, save: 0, total: 0 }
 
 /** Contract bonuses for one match (nothing when the hero did not play or has no contract). */
 export function matchBonuses(c: Contract | null | undefined, m: MatchBonusInput): MatchBonuses {
@@ -36,10 +40,11 @@ export function matchBonuses(c: Contract | null | undefined, m: MatchBonusInput)
   const appearance = c.appearanceBonus ?? 0
   // Goalkeeper clean-sheet bonus (2.5#4): the goal bonus (min 10% of the weekly wage) per shutout of 60'+.
   const cleanSheet = m.isKeeper && m.cleanSheet && m.minutes >= 60 ? Math.max(c.goalBonus, Math.round(c.wage * 0.1)) : 0
-  return { goal, assist, appearance, cleanSheet, total: goal + assist + appearance + cleanSheet }
+  const save = m.isKeeper ? Math.max(0, m.saves ?? 0) * (c.saveBonus ?? 0) : 0
+  return { goal, assist, appearance, cleanSheet, save, total: goal + assist + appearance + cleanSheet + save }
 }
 
-export type EarningsKey = 'wage' | 'goal' | 'assist' | 'appearance' | 'cleanSheet' | 'sponsor' | 'imageRights' | 'tax' | 'agent'
+export type EarningsKey = 'wage' | 'goal' | 'assist' | 'appearance' | 'cleanSheet' | 'save' | 'sponsor' | 'imageRights' | 'tax' | 'agent'
 
 export interface EarningsLine {
   key: EarningsKey
@@ -83,6 +88,7 @@ export function matchEarnings(x: MatchEarningsInput): MatchEarnings {
   if (b.assist > 0) lines.push({ key: 'assist', amount: b.assist, when: 'now' })
   if (b.appearance > 0) lines.push({ key: 'appearance', amount: b.appearance, when: 'now' })
   if (b.cleanSheet > 0) lines.push({ key: 'cleanSheet', amount: b.cleanSheet, when: 'now' })
+  if (b.save > 0) lines.push({ key: 'save', amount: b.save, when: 'now' })
   if (sponsor > 0) lines.push({ key: 'sponsor', amount: sponsor, when: 'week' })
   if (image > 0) lines.push({ key: 'imageRights', amount: image, when: 'week' })
   const tax = -Math.round((wage + sponsor + image) * (x.taxRate ?? INCOME_TAX))

@@ -269,6 +269,8 @@ export interface Contract {
   imageRights?: boolean
   /** Paid per match played. */
   appearanceBonus?: number
+  /** Goalkeepers: paid per save (2.3#60). */
+  saveBonus?: number
   /** Paid once when the club wins promotion. */
   promotionBonus?: number
   /** Paid when the contract runs its full course at the club. */
