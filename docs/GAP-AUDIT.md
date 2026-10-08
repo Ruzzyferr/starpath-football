@@ -27,11 +27,11 @@
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 58 | 0 | 0 | 1 | 6 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 2 | 0 | 0 | 19 |
-| 2.9 Platform | 58 | 1 | 0 | 16 | 4 | 0 | 79 |
+| 2.9 Platform | 59 | 0 | 0 | 16 | 4 | 0 | 79 |
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 33 | 0 | 0 | 2 | 2 | 39 | 76 |
-| **Toplam** | **476 (%84)** | 1 | 0 | 34 | 18 | 40 | **569** |
+| **Toplam** | **477 (%84)** | 0 | 0 | 34 | 18 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -716,7 +716,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.9#1 | ERTELENDİ-INT | game/package.json:1 | v2: tek paket yeterli, monorepo faydası yok [S29; kanıt yolları game/ köküne göre] D29: pnpm monorepo bölmesi tek geliştirici için faydasız ve tüm import yollarını/CI'yi taşır; çalışan sınır `src/{core,sim,platform}` + ESLint sınır kuralları, v2. |
-| 2.9#2 | KISMİ | game/tsconfig.strict-index.json, scripts/typecheck-strict-index.mjs, .github/workflows/ci.yml | D29: `noUncheckedIndexedAccess` artık src/core + src/state + src/platform için CI kapısı (`npm run typecheck:strict-index`, 0 hata; colorVision/rng/saveV3.test düzeltildi, rng akışı değişmedi). Kalan: sim/ui dizinlerinde ~600 hata, bu dizinler başka paketlerin elinde; dizin dizin genişletilecek (ADR-007) |
+| 2.9#2 | TAMAM | game/tsconfig.app.json | `noUncheckedIndexedAccess` tüm uygulamada açık (tsconfig.app.json); `npm run typecheck:strict-index` uygulama tip kontrolünü çalıştırır, CI kapısı. Not: düzeltmelerin çoğu non-null assertion (`!`); davranış değişmedi (golden/determinizm testleri aynı). Kademeli olarak gerçek koruyuculara çevrilmesi v1.1 kod kalitesi işi. |
 | 2.9#3 | TAMAM | docs/ADR.md ADR-005 | Hedef kararı yazıldı (es2022 derleme, Electron 44 / güncel WebView) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#4 | TAMAM | package.json, package-lock.json | Phaser `4.2.1` sabitlendi [S29; kanıt yolları game/ köküne göre] |
 | 2.9#5 | TAMAM | game/eslint.config.js:30 | sim/core kısıtları |
