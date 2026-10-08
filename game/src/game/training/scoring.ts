@@ -281,4 +281,5 @@ export const BEATEN_PENALTY = -25
  * Mirror of `qualityFactor` in sim/career/training.ts, for UI previews
  * ("+38 XP at this grade"). Kept here so the scene needs no sim import.
  */
-export const xpQuality = (performance: number): number => 0.3 + 1.2 * clamp01(performance)
+export const xpQuality = (performance: number): number =>
+  Math.max(0.15, (1.02 / Math.pow(0.6, 1.2)) * Math.pow(clamp01(performance), 1.2))

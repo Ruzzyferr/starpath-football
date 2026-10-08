@@ -139,3 +139,16 @@ describe('archetype / position mismatch (2.3#3)', async () => {
     expect(fit.attrs.finishing - off.attrs.finishing).toBeGreaterThanOrEqual(bonus * 0.5 - 6)
   })
 })
+
+describe('training score formula (2.3#21)', async () => {
+  const { qualityFactor, trainingXp, MIN_SESSION_XP, trainingScore } = await import('./training')
+  it('(score/100)^1.2 shape, auto score unchanged, failed session ≥ 2 XP', () => {
+    expect(qualityFactor(0.6)).toBeCloseTo(1.02, 5)
+    expect(qualityFactor(1) / qualityFactor(0.5)).toBeCloseTo(Math.pow(2, 1.2), 3)
+    const { hero, life } = makeHeroLife()
+    const xp = trainingXp(hero, life, 'shooting', 0)
+    const total = Object.values(xp).reduce((a, b) => a + (b ?? 0), 0)
+    expect(total).toBeGreaterThanOrEqual(MIN_SESSION_XP - 1e-9)
+    expect(trainingScore(0.734)).toBe(73)
+  })
+})

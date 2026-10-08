@@ -111,8 +111,20 @@ export const INTENSITY: Readonly<Record<TrainingIntensity, { xp: number; energy:
 /** Default performance score when the session is auto-simulated (no mini-game). */
 export const AUTO_PERFORMANCE = 0.6
 
-/** Mini-game quality → XP factor. 0 → 0.3, 0.6 (auto) → 1.02, 1.0 → 1.5. */
-export const qualityFactor = (performance: number): number => 0.3 + 1.2 * clamp(performance, 0, 1)
+/**
+ * Mini-game score (0..100) → XP factor, plan formula `(score/100)^1.2` (2.3#21),
+ * scaled so the auto score (60) keeps its old factor 1.02 (balance-neutral for
+ * the autopilot): 0 → floor, 60 → 1.02, 100 → 1.88.
+ */
+export const QUALITY_EXPONENT = 1.2
+export const QUALITY_SCALE = 1.02 / Math.pow(AUTO_PERFORMANCE, QUALITY_EXPONENT)
+export const QUALITY_FLOOR = 0.15
+export const qualityFactor = (performance: number): number =>
+  Math.max(QUALITY_FLOOR, QUALITY_SCALE * Math.pow(clamp(performance, 0, 1), QUALITY_EXPONENT))
+/** Even a failed session teaches something (2.3#21: at least 2 XP; NSS's "3 fails = nothing" is gone). */
+export const MIN_SESSION_XP = 2
+/** Training score shown to the player, 0..100 (2.3#21). */
+export const trainingScore = (performance: number): number => Math.round(clamp(performance, 0, 1) * 100)
 
 /** A tired body learns less: fatigue 0 → 1.0, 100 → 0.6. */
 export const fatigueEfficiency = (fatigue: number): number => 1 - clamp(fatigue, 0, 100) / 250
@@ -173,8 +185,9 @@ export function trainingXp(hero: Hero, life: Life, type: TrainingType, performan
   const def = TRAINING_TYPES[type]
   const bonus =
     perkValue(hero, 'xp_all') + (def.perkKey ? perkValue(hero, def.perkKey) : 0) + assetEffectTotal(life, 'xp_bonus')
-  const total =
+  const raw =
     SESSION_XP_SCALE * def.baseXp * qualityFactor(performance) * INTENSITY[intensity].xp * fatigueEfficiency(hero.fatigue) * (1 + bonus) * wellbeingXpMultiplier(life)
+  const total = def.baseXp >= 20 ? Math.max(MIN_SESSION_XP, raw) : raw
   const wsum = Object.values(def.attrs).reduce((a, b) => a + (b ?? 0), 0)
   const tb = trainerBonus(life.trainer)
   const xp: Partial<Record<AttributeKey, number>> = {}
