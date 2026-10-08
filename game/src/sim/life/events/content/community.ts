@@ -6,6 +6,64 @@ import {
 import type { EventDef } from '../types'
 
 export const communityEvents: EventDef[] = [
+  // ───────────── Supporter groups (2.4#79) ─────────────
+  {
+    id: 'community.ultras_demand',
+    category: 'community',
+    weight: 1.2,
+    cooldownWeeks: 16,
+    triggers: ['weekly', 'post_match'],
+    conditions: ({ state }) => hasClub(state) && typeof state.life.flags.fg_ultras === 'number' && state.life.flags.fg_ultras < -12,
+    title: t('Ultraların Mektubu', 'A Letter From the Ultras'),
+    text: t(
+      'Kale arkasındaki ultralar soyunma odası kapısına bir pankart bıraktı: "Forma için savaş ya da git." Mektupta imzalar var. Sert ama haksız değiller.',
+      'The ultras behind the goal left a banner at the dressing-room door: "Fight for the shirt or leave." The letter is signed. Harsh, but not unfair.',
+    ),
+    icon: '🚩',
+    choices: [
+      {
+        label: t('Tribüne git, onlarla konuş', 'Walk over and talk to them'),
+        effects: () => fx(t('Antrenman sonrası kale arkasına yürüdün, tek tek elini sıktın. Kimse ıslık çalmadı.', 'After training you walked behind the goal and shook hands one by one. Nobody whistled.'), energy(-6), fans(2), { addFlags: { fg_ultras: 12 } }),
+      },
+      {
+        label: t('Sahada cevap vereceğini söyle', 'Say you will answer on the pitch'),
+        risk: 'medium',
+        effects: () => fx(t('Sözün tutarsa alkış gelir; tutmazsa pankart büyür.', 'Keep your word and the applause returns; break it and the banner gets bigger.'), morale(2), { addFlags: { fg_ultras: 5 } }),
+      },
+      {
+        label: t('Görmezden gel', 'Ignore it'),
+        effects: () => fx(t('Pankart bir sonraki maçta stadyum girişindeydi.', 'By the next match the banner hung at the stadium entrance.'), fans(-3), stress(3), { addFlags: { fg_ultras: -8 } }),
+      },
+    ],
+  },
+  {
+    id: 'community.family_stand_day',
+    category: 'community',
+    weight: 1,
+    cooldownWeeks: 20,
+    triggers: ['weekly', 'post_match'],
+    conditions: ({ state }) => hasClub(state) && typeof state.life.flags.fg_family === 'number' && state.life.flags.fg_family > -10,
+    title: t('Aile Tribünü Günü', 'Family Stand Day'),
+    text: t(
+      'Aile tribünü bu hafta çocuklara imza günü düzenliyor. Annelerin elinde kitlenmiş mini formalar. Biri "{heroName} amca!" diye bağırıyor.',
+      'The family stand is holding a signing day for kids this week. Mini shirts in mums’ hands. Someone shouts "Uncle {heroName}!"',
+    ),
+    icon: '👨‍👩‍👧',
+    choices: [
+      {
+        label: t('Bir saat kal, herkese imza at', 'Stay an hour and sign for everyone'),
+        effects: () => fx(t('Elin ağrıdı ama on yıl sonra bile birileri o forma ile fotoğrafını gösterecek.', 'Your hand ached, but someone will show that shirt photo ten years from now.'), energy(-8), fans(3), press(2), { addFlags: { fg_family: 10, fg_local: 2 } }),
+      },
+      {
+        label: t('Kısa uğra, birkaç fotoğraf', 'Pop in for a few photos'),
+        effects: () => fx(t('Hızlı ama samimi. Aileler memnun.', 'Quick but warm. The families are happy.'), energy(-3), fans(1), { addFlags: { fg_family: 4 } }),
+      },
+      {
+        label: t('Antrenmanı gerekçe göster, gitme', 'Cite training and skip it'),
+        effects: () => fx(t('Mini formalar imzasız kaldı. Bir çocuk o gün ağladı.', 'The mini shirts stayed unsigned. One child cried that day.'), fans(-2), { addFlags: { fg_family: -8 } }),
+      },
+    ],
+  },
   {
     id: 'community.school_visit',
     category: 'community',

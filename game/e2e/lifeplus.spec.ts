@@ -113,3 +113,14 @@ test('sponsor deals list every contract term in one table (2.5#55)', async ({ pa
   await page.waitForTimeout(800)
   await shot('sponsor-terms')
 })
+
+test('supporter groups: three groups with different expectations are listed (2.4#79)', async ({ page, shot }) => {
+  await sp(page, `sp.navigate('life', { tab: 'relations' })`)
+  const box = page.getByTestId('fan-groups')
+  await expect(box).toBeVisible()
+  for (const id of ['ultras', 'family', 'local']) await expect(page.getByTestId(`fan-group-${id}`)).toBeVisible()
+  await expect(box).toContainText('ultras')
+  await box.scrollIntoViewIfNeeded()
+  await page.waitForTimeout(800)
+  await shot('fan-groups')
+})

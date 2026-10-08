@@ -7,6 +7,7 @@ import type { Hero, LText, Life, RelationCause, RelationChange, RelationKind, Re
 import { clamp, fill, lt, signed, type Lines } from '../career/common'
 import { makeRelation } from '../career/createHero'
 import { perkValue } from '../career/perks'
+import { applyFanGroupsMatch, weeklyFanGroups } from './fanGroups'
 
 /** Max memory lines kept per relationship (GDD: "son 5 olay"). */
 export const MEMORY_SIZE = 5
@@ -190,6 +191,7 @@ export function weeklyRelationDecay(life: Life, week: number, hero?: Pick<Hero, 
   const lines: Lines = []
   const familySlow = hero ? clamp(perkValue(hero, 'family_bond'), 0, 0.9) : 0
   life.flags[REL_WEEK_FLAG] = week
+  weeklyFanGroups(life)
   // Lost captaincy vote (2.4#53): the winner stays a rival for the season; the bond cools by 1 every 3rd week.
   const rivalUntil = life.flags.captain_rival_until
   if (typeof rivalUntil === 'number') {
@@ -418,6 +420,7 @@ export function applyMatchRelations(life: Life, hero: Pick<Hero, 'perks' | 'gend
       : d.teammates > 0 ? lt('Galibiyet sevinci', 'Shared joy of a win') : lt('Kötü maçın soyunma odasını gerdi', 'Your poor game frustrated the dressing room')
     for (const r of Object.values(life.relationships)) if (r.kind === 'teammate') changeRelation(life, r.id, d.teammates, { ...opts, why: teamWhy })
   }
+  applyFanGroupsMatch(life, m)
   life.flags.last_match_rating = Math.round(m.rating * 10) / 10
   life.flags.last_match_shone = heroShone(m) && !m.red
   life.flags.last_match_result = m.won ? 'W' : m.drew ? 'D' : 'L'

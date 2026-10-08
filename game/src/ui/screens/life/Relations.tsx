@@ -1,6 +1,7 @@
 import { useState } from 'preact/hooks'
 import type { RelationCause, RelationKind, Relationship } from '../../../core/types'
 import { relationCauseTotals, relationHistory } from '../../../sim/life/relationships'
+import { FAN_GROUPS, fanGroupValue } from '../../../sim/life/fanGroups'
 import { CLOSE_FRIEND_MIN, MAX_CLOSE_FRIENDS, canBeCloseFriend, closeFriends } from '../../../sim/life/closeFriends'
 import { INTERACT_COST } from '../../../sim/game/interactCost'
 import { passPercent, relBand, relGroup, relTrend } from '../../../sim/game/relationView'
@@ -215,6 +216,27 @@ export function Relations() {
           </section>
         )
       })}
+      <section class="stack life-fangroups" data-testid="fan-groups" aria-label={t('life.rel.fanGroups.title')}>
+        <SectionTitle>{t('life.rel.fanGroups.title')}</SectionTitle>
+        <div class="life-people">
+          {FAN_GROUPS.map((g) => {
+            const v = fanGroupValue(s.life, g.id)
+            return (
+              <article key={g.id} class="life-person card card-default pad-md" data-testid={`fan-group-${g.id}`}>
+                <div class="life-person-head">
+                  <div class="grow">
+                    <div class="life-person-kind micro">{t('life.rel.fanGroups.group')}</div>
+                    <h3 class="h3 truncate">{lt(g.name)}</h3>
+                    <Hearts value={v} />
+                    <div class="life-person-band"><Chip tone={v < -10 ? 'neg' : v < 20 ? 'neutral' : 'pos'}>{t(`life.rel.band.${relBand(v)}`)}</Chip><span class="num t-xs t-mid">{Math.round(v)}</span></div>
+                  </div>
+                </div>
+                <p class="t-sm t-mid">{lt(g.wants)}</p>
+              </article>
+            )
+          })}
+        </div>
+      </section>
     </div>
   )
 }
