@@ -53,6 +53,7 @@ import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, type QualityProfile, type QualitySpec } from './quality'
+import { IDLE_FRAMES, WALK_FRAMES, kickStyleFor, type KickStyle } from './figureAnim'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
 import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from './netCloth'
@@ -129,6 +130,8 @@ const SCENE_KEY = 'starpath-match'
 const HUD_ROW = 36
 /** Longest the moment-start frame holds before following play (s, 2.2#4). */
 const OPEN_CAM_HOLD = 1.4
+/** Below this speed (m/s) players walk rather than run (2.2#24). */
+const WALK_MAX_SPEED = 2.4
 
 /** Pitch-space box (meters) a static Graphics fits in; `z` = tallest point drawn. */
 interface BakeBox {
@@ -207,6 +210,8 @@ interface PlayerView {
   lastY: number
   /** Seconds since this player's last kick / header / held save (animation clocks). */
   kickT: number
+  /** Strike style of the last kick (2.2#26). */
+  kickStyle: KickStyle
   headT: number
   catchT: number
 }
@@ -841,7 +846,7 @@ export class MatchScene extends Phaser.Scene {
       c.add(parts)
       this.addW(c)
       const p = project(a.pos.x, a.pos.y)
-      this.views.push({ agent: a, c, shadow, casts: castImgs, chev, rig, ring, arms, phase: (h % 97) / 97, lastX: p.x, lastY: p.y, kickT: 9, headT: 9, catchT: 9 })
+      this.views.push({ agent: a, c, shadow, casts: castImgs, chev, rig, ring, arms, phase: (h % 97) / 97, lastX: p.x, lastY: p.y, kickT: 9, kickStyle: 'side', headT: 9, catchT: 9 })
     }
   }
 
@@ -1395,8 +1400,10 @@ export class MatchScene extends Phaser.Scene {
     const fd = pitchDirToScreen(Math.cos(facing), Math.sin(facing))
     const [gx, gy] = groundDir(fd.x, fd.y)
     const moving = speedM > 0.7
-    const runFrame = `run${Math.floor(v.phase * 8) % 8}` as FigPose
-    let frame: FigPose = moving ? runFrame : v.agent.isKeeper ? 'ready' : 'idle'
+    // Walk (4 frames) below jogging pace, run (8) above; idle breathes over 3 frames (2.2#24).
+    const runFrame = (speedM < WALK_MAX_SPEED ? `walk${Math.floor(v.phase * 2 * WALK_FRAMES) % WALK_FRAMES}` : `run${Math.floor(v.phase * 8) % 8}`) as FigPose
+    const idleFrame = `idle${Math.floor(this.elapsed * 1.6 + v.phase * IDLE_FRAMES) % IDLE_FRAMES}` as FigPose
+    let frame: FigPose = moving ? runFrame : v.agent.isKeeper ? 'ready' : this.rm ? 'idle' : idleFrame
     let lift = z
     let rot = 0
     let shadowLen = 1
@@ -1415,7 +1422,7 @@ export class MatchScene extends Phaser.Scene {
       lift += this.rm ? 0 : Math.abs(Math.sin(stateT * 9)) * 0.3
     } else if (state === 'skill') rot = this.rm ? 0 : Math.sin(stateT * 18) * 0.1
     else if (v.headT < 0.32) frame = 'jump'
-    else if (v.kickT < 0.3) frame = v.kickT < 0.07 ? 'kick1' : 'kick2'
+    else if (v.kickT < 0.3) frame = v.kickT < 0.07 ? `kick_${v.kickStyle}0` : `kick_${v.kickStyle}1`
     else if (v.agent.isKeeper && v.catchT < 0.7) frame = 'catch'
     // Pass-to-me: the hero's arm goes up for a moment after calling (WP-14).
     if (v.agent.isHero && this.mode === 'play' && state === 'run' && this.rt.heroCallAt >= 0 && this.rt.time - this.rt.heroCallAt < 0.9) frame = 'call'
@@ -2323,6 +2330,7 @@ export class MatchScene extends Phaser.Scene {
         if (v) {
           if (e.type === 'kick') {
             v.kickT = 0
+            v.kickStyle = kickStyleFor(e.kick, e.power, Math.abs(rt.ball.spin.side) / 40)
             this.lastKickHero = e.hero
           }
           else if (e.type === 'header') v.headT = 0

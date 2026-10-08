@@ -18,6 +18,7 @@ import Phaser from 'phaser'
 import type { KitColors } from '../core/types'
 import { colorNum, luminance, mixHex } from './art'
 import { PPM, TILT, ZS } from './view'
+import { ANIM_POSES, RUN_FRAMES, WALK_FRAMES, type KickStyle } from './figureAnim'
 
 // ───────────────────────── Skeleton & poses ─────────────────────────
 
@@ -50,9 +51,10 @@ interface Body {
   headF?: number
 }
 
-export const RUN_FRAMES = 8
+export { ANIM_POSES, IDLE_FRAMES, RUN_FRAMES, WALK_FRAMES, kickStyleFor, type KickStyle } from './figureAnim'
 export type FigPose =
-  | 'idle' | `run${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}` | 'kick0' | 'kick1' | 'kick2' | 'jump' | 'slide' | 'down' | 'dive' | 'catch' | 'ready'
+  | 'idle' | `idle${0 | 1 | 2}` | `walk${0 | 1 | 2 | 3}` | `run${0 | 1 | 2 | 3 | 4 | 5 | 6 | 7}` | 'kick0' | 'kick1' | 'kick2'
+  | `kick_${KickStyle}${0 | 1}` | 'jump' | 'slide' | 'down' | 'dive' | 'catch' | 'ready'
   | 'kneel' | 'tuck' | 'up' | 'out' | 'point' | 'call' | 'bare' | 'wall'
 
 const IDLE_LEGS: [Leg, Leg] = [{ t: 0.04, k: 0.12, w: 0.1 }, { t: -0.04, k: 0.12, w: 0.1 }]
@@ -65,8 +67,49 @@ function runBody(i: number): Body {
   return { pu: 0.97 - 0.05 * Math.abs(Math.sin(ph)), lean: 0.2, legs: [leg(ph), leg(ph + Math.PI)], arms: [arm(ph), arm(ph + Math.PI)] }
 }
 
+function walkBody(i: number): Body {
+  const ph = (i / WALK_FRAMES) * Math.PI * 2
+  const leg = (q: number): Leg => ({ t: 0.32 * Math.sin(q), k: 0.1 + 0.45 * Math.max(0, Math.cos(q)) })
+  const arm = (q: number): Arm => ({ a: -0.3 * Math.sin(q), b: 0.15, e: 0.45 })
+  return { pu: 0.975 - 0.012 * Math.abs(Math.sin(ph)), lean: 0.06, legs: [leg(ph), leg(ph + Math.PI)], arms: [arm(ph), arm(ph + Math.PI)] }
+}
+
+function idleBody(i: number): Body {
+  // Breathing: chest rises a touch, arms ease out and back.
+  const b = [0, 0.5, 1][i] ?? 0
+  return { pu: 0.97 + 0.006 * b, lean: 0.05 - 0.015 * b, legs: IDLE_LEGS, arms: [{ ...IDLE_ARM, b: IDLE_ARM.b + 0.05 * b }, { ...IDLE_ARM, b: IDLE_ARM.b + 0.05 * b }] }
+}
+
+/** Contact (0) and follow-through (1) bodies per strike style; the kicking leg is legs[1]. */
+function kickStyleBody(style: KickStyle, f: 0 | 1): Body {
+  switch (style) {
+    case 'power':
+      return f === 0
+        ? { pu: 0.94, lean: 0.1, legs: [{ t: 0.12, k: 0.3 }, { t: 0.35, k: 0.55 }], arms: [{ a: 0.6, b: 1.1, e: 0.3 }, { a: -0.5, b: 0.5, e: 0.5 }] }
+        : { pu: 0.93, lean: -0.22, legs: [{ t: -0.1, k: 0.2 }, { t: 1.45, k: 0.1 }], arms: [{ a: 0.3, b: 1.25, e: 0.2 }, { a: 0.6, b: 0.6, e: 0.4 }] }
+    case 'side':
+      // Inside of the foot / placed: the kicking foot turns across the body and the swing stays low.
+      return f === 0
+        ? { pu: 0.95, lean: 0.08, legs: [{ t: 0.06, k: 0.3 }, { t: 0.3, k: 0.35, w: -0.3 }], arms: [{ a: 0.35, b: 0.85, e: 0.35 }, { a: -0.2, b: 0.45, e: 0.5 }] }
+        : { pu: 0.95, lean: 0.04, legs: [{ t: 0.0, k: 0.25 }, { t: 0.62, k: 0.3, w: -0.36 }], arms: [{ a: 0.25, b: 0.9, e: 0.3 }, { a: 0.1, b: 0.5, e: 0.5 }] }
+    case 'chip':
+      // Stab under the ball: lean back, short follow-through.
+      return f === 0
+        ? { pu: 0.93, lean: -0.24, legs: [{ t: 0.12, k: 0.4 }, { t: 0.28, k: 0.6 }], arms: [{ a: 0.5, b: 1.0, e: 0.3 }, { a: 0.2, b: 0.8, e: 0.4 }] }
+        : { pu: 0.94, lean: -0.2, legs: [{ t: 0.05, k: 0.3 }, { t: 0.55, k: 0.45 }], arms: [{ a: 0.6, b: 1.1, e: 0.2 }, { a: 0.4, b: 0.9, e: 0.3 }] }
+    case 'outside':
+      // Outside of the boot: the foot flicks outward through the ball.
+      return f === 0
+        ? { pu: 0.95, lean: 0.06, legs: [{ t: 0.08, k: 0.3 }, { t: 0.35, k: 0.4, w: 0.22 }], arms: [{ a: 0.4, b: 0.95, e: 0.3 }, { a: -0.3, b: 0.5, e: 0.5 }] }
+        : { pu: 0.95, lean: 0.0, legs: [{ t: 0.02, k: 0.25 }, { t: 0.7, k: 0.3, w: 0.42 }], arms: [{ a: 0.3, b: 1.0, e: 0.3 }, { a: 0.3, b: 0.6, e: 0.4 }] }
+  }
+}
+
 function poseBody(p: FigPose): Body {
   if (p.startsWith('run')) return runBody(Number(p.slice(3)))
+  if (p.startsWith('walk')) return walkBody(Number(p.slice(4)))
+  if (p.startsWith('idle') && p.length > 4) return idleBody(Number(p.slice(4)))
+  if (p.startsWith('kick_')) return kickStyleBody(p.slice(5, -1) as KickStyle, Number(p.slice(-1)) as 0 | 1)
   switch (p) {
     case 'kick0':
       return { pu: 0.94, lean: 0.12, legs: [{ t: 0.15, k: 0.25 }, { t: -0.8, k: 1.45 }], arms: [{ a: 0.5, b: 0.95, e: 0.4 }, { a: -0.45, b: 0.45, e: 0.5 }] }
@@ -108,7 +151,8 @@ function poseBody(p: FigPose): Body {
 }
 
 export const FIG_POSES: readonly FigPose[] = [
-  'idle', 'run0', 'run1', 'run2', 'run3', 'run4', 'run5', 'run6', 'run7', 'kick0', 'kick1', 'kick2', 'jump', 'slide', 'down', 'dive', 'catch', 'ready',
+  ...(ANIM_POSES as readonly FigPose[]),
+  'idle', 'kick0', 'kick1', 'kick2', 'jump', 'slide', 'down', 'dive', 'catch', 'ready',
   'kneel', 'tuck', 'up', 'out', 'point', 'call', 'bare', 'wall',
 ]
 
