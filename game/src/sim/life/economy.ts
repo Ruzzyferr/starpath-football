@@ -68,6 +68,17 @@ export const INVESTMENT_KINDS: Readonly<Record<Investment['kind'], {
   startup: { mu: 0.03, sigma: 0.45, cashYield: 0, bust: 0.003, exit: 0.0004, sellFee: 0.1, name: lt('Girişim Hissesi', 'Startup Equity') },
   crypto: { mu: 0.05, sigma: 0.9, cashYield: 0, bust: 0, exit: 0, sellFee: 0.01, name: lt('Kripto Sepeti', 'Crypto Basket') },
 }
+/**
+ * Basic weekly living costs (rent, food, transport, basic care; 2.5#15):
+ * 6 % of the gross wage, never below 25 or above 3 000. Covered by any
+ * contract by construction (the ratio stays far below the 100 % - tax - agent
+ * share), so only luxury spending (assets, trainer, casino) can create debt.
+ */
+export const LIVING_RATE = 0.06
+export const LIVING_MIN = 25
+export const LIVING_MAX = 3_000
+export const livingCost = (weeklyWage: number): number => Math.round(clamp(finite(weeklyWage) * LIVING_RATE, LIVING_MIN, LIVING_MAX))
+
 /** Minimum investment ticket. */
 export const MIN_INVESTMENT = 1_000
 
@@ -381,6 +392,8 @@ export interface EconomyBreakdown {
   agentFee: number
   trainer: number
   upkeep: number
+  /** Basic living costs: rent, food, transport, basic care (2.5#15). Negative. */
+  living: number
   rent: number
   business: number
   investmentYield: number
@@ -412,7 +425,7 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   const cal = ctx.calendar
   const lines: Lines = []
   const b: EconomyBreakdown = {
-    wage: 0, sponsors: 0, tax: 0, agentFee: 0, trainer: 0, upkeep: 0, rent: 0, business: 0,
+    wage: 0, sponsors: 0, tax: 0, agentFee: 0, trainer: 0, upkeep: 0, living: 0, rent: 0, business: 0,
     investmentYield: 0, loanPayment: 0, savingsInterest: 0, investmentChange: 0, forcedSales: 0,
   }
 
@@ -462,8 +475,9 @@ export function weeklyEconomy(rng: Rng, life: Life, hero: Hero, ctx: EconomyCont
   b.trainer = life.trainer ? -Math.max(0, finite(life.trainer.weeklyFee)) : 0
   lines.push(...tickTrainerContract(life))
   b.upkeep = -assetUpkeep(life) - proj.upkeep
+  b.living = -livingCost(b.wage)
 
-  const flow = b.wage + b.sponsors + b.tax + b.agentFee + b.rent + b.business + b.investmentYield + b.trainer + b.upkeep
+  const flow = b.wage + b.sponsors + b.tax + b.agentFee + b.rent + b.business + b.investmentYield + b.trainer + b.upkeep + b.living
   life.money = finite(life.money + flow)
 
   // 3. Loan.

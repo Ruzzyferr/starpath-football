@@ -4,8 +4,9 @@ import { absWeek } from '../career/common'
 import { resaleValue } from '../life/economy'
 
 /** Condition lost per year of ownership, by category; fixed assets are maintained (0). */
-const WEAR_PER_YEAR: Readonly<Record<AssetDef['category'], number>> = {
-  car: 9, tech: 22, fashion: 14, watch: 3, pet: 0, boat: 7, jet: 6, house: 0, island: 0, art: 0, business: 0, facility: 2,
+/** Plan 2.5#71: only used or mechanical items wear (car, boat, jet, tech, clothes, facility); art, watches, property never do. */
+export const WEAR_PER_YEAR: Readonly<Record<AssetDef['category'], number>> = {
+  car: 9, tech: 22, fashion: 14, watch: 0, pet: 0, boat: 7, jet: 6, house: 0, island: 0, art: 0, business: 0, facility: 2,
 }
 const FLOOR = 35
 

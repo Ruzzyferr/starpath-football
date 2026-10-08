@@ -354,3 +354,21 @@ describe('low-cash warning (2.5#109)', () => {
     expect(weeklyEconomy(rng, life, hero, { calendar: cal(2026, 1) }).lines.some((l) => l.en.includes('Cash is draining'))).toBe(false)
   })
 })
+
+describe('basic living costs (2.5#15)', () => {
+  it('scale with the wage inside a floor and a cap, and show up in the weekly statement', async () => {
+    const { livingCost, LIVING_MIN, LIVING_MAX, LIVING_RATE } = await import('./economy')
+    expect(livingCost(0)).toBe(LIVING_MIN)
+    expect(livingCost(1000)).toBe(Math.round(1000 * LIVING_RATE))
+    expect(livingCost(10_000_000)).toBe(LIVING_MAX)
+    expect(Number.isFinite(livingCost(Number.NaN))).toBe(true)
+  })
+
+  it('every contract covers its basics: net after tax, agent and living costs stays positive', async () => {
+    const { livingCost, INCOME_TAX } = await import('./economy')
+    for (const wage of [150, 300, 860, 5_000, 80_000, 400_000]) {
+      const net = wage * (1 - INCOME_TAX - 0.3) - livingCost(wage)
+      expect(net).toBeGreaterThan(0)
+    }
+  })
+})

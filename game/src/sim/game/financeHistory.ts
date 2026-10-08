@@ -18,7 +18,7 @@ interface Entry {
 }
 
 export const INCOME_CATS: readonly Cat[] = ['wage', 'sponsors', 'business', 'rent', 'investmentYield', 'savingsInterest']
-export const EXPENSE_CATS: readonly Cat[] = ['tax', 'agentFee', 'trainer', 'upkeep', 'loanPayment']
+export const EXPENSE_CATS: readonly Cat[] = ['tax', 'agentFee', 'trainer', 'upkeep', 'living', 'loanPayment']
 
 export const CAT_LABEL: Readonly<Record<Cat, LText>> = {
   wage: lt('Maaş', 'Wage'),
@@ -31,6 +31,7 @@ export const CAT_LABEL: Readonly<Record<Cat, LText>> = {
   agentFee: lt('Menajer', 'Agent'),
   trainer: lt('Özel antrenör', 'Trainer'),
   upkeep: lt('Bakım giderleri', 'Upkeep'),
+  living: lt('Yaşam giderleri', 'Living costs'),
   loanPayment: lt('Kredi taksiti', 'Loan payment'),
 }
 
