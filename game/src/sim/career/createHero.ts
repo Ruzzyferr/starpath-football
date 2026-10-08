@@ -5,8 +5,9 @@
 import type {
   Appearance, AttributeKey, Attributes, Background, Foot, Gender, Hero, Life, Position, Relationship, Role,
 } from '../../core/types'
+import { START_YEAR } from '../../core/config'
 import { clampHeight, normalizeRole } from '../../core/roles'
-import { ATTRIBUTE_KEYS, isGoalkeepingAttr } from '../../core/types'
+import { ATTRIBUTE_KEYS, V6_ATTRIBUTE_KEYS, isGoalkeepingAttr } from '../../core/types'
 import { Rng, hashString } from '../../core/rng'
 import { clamp, emptyStats } from './common'
 import { POSITION_WEIGHTS, checkPerkUnlock, heroOvr } from './progression'
@@ -47,46 +48,53 @@ const POSITION_BOOST = 9
 const ATTR_NOISE_SD = 2.5
 
 /**
- * Role templates (owner feedback: roles depend on the position). Raw shapes: the strengths and the
- * weaknesses of each role. {@link roleTemplate} scales the strengths so every role of a position starts
- * at the same weighted OVR gain ({@link ROLE_OVR_GAIN}); roles only differ in *where* the points go.
+ * Role specs (owner feedback, defined with a football-insider friend): every role is exactly four strengths
+ * ("+") and four weaknesses ("−"). The friend chose WHICH attributes; {@link roleTemplate} sets HOW MUCH, weighted
+ * by each attribute's importance at the position, so every role of a position starts at the same OVR
+ * ({@link ROLE_OVR_GAIN}) and the simulated impact stays within ±5 % of the position mean (docs/BALANCE.md,
+ * "Rol denge yaması").
  */
-export const ROLE_TEMPLATES: Readonly<Record<Role, Partial<Record<AttributeKey, number>>>> = {
+export interface RoleSpec {
+  plus: readonly AttributeKey[]
+  minus: readonly AttributeKey[]
+}
+export const ROLE_SPEC: Readonly<Record<Role, RoleSpec>> = {
   // Keepers
-  reflexKeeper: { reflexes: 26, agility: 12, handling: 14, gkPositioning: 8, jumping: 6, composure: 4, gkDistribution: 2, strength: -3 },
-  shotStopper: { handling: 20, reflexes: 18, jumping: 12, gkPositioning: 12, agility: 8, strength: 4, composure: 2, passing: -3 },
-  sweeperKeeper: { gkDistribution: 22, passing: 14, gkPositioning: 14, composure: 10, reflexes: 12, handling: 10, pace: 6, vision: 6, jumping: -4 },
+  reflexKeeper: { plus: ['handling', 'agility', 'reflexes', 'composure'], minus: ['passing', 'gkDistribution', 'jumping', 'strength'] },
+  shotStopper: { plus: ['handling', 'jumping', 'agility', 'gkDistribution'], minus: ['passing', 'strength', 'composure', 'gkPositioning'] },
+  sweeperKeeper: { plus: ['passing', 'gkDistribution', 'agility', 'strength'], minus: ['reflexes', 'handling', 'jumping', 'composure'] },
   // Full-backs
-  attackingFullBack: { crossing: 18, pace: 16, stamina: 12, dribbling: 10, agility: 8, passing: 6, workRate: 6, tackling: -4, positioning: -4 },
-  defensiveFullBack: { tackling: 18, positioning: 14, strength: 10, pace: 10, heading: 8, workRate: 8, stamina: 6, crossing: -4, dribbling: -4 },
-  balancedFullBack: { stamina: 16, tackling: 12, pace: 12, crossing: 10, workRate: 10, positioning: 8, passing: 8, dribbling: 4 },
+  balancedFullBack: { plus: ['positioning', 'strength', 'tackling', 'crossing'], minus: ['stamina', 'dribbling', 'agility', 'pace'] },
+  attackingFullBack: { plus: ['strength', 'pace', 'crossing', 'dribbling'], minus: ['stamina', 'agility', 'tackling', 'positioning'] },
+  defensiveFullBack: { plus: ['tackling', 'stamina', 'agility', 'positioning'], minus: ['strength', 'pace', 'crossing', 'dribbling'] },
   // Centre-backs
-  stopper: { tackling: 20, pace: 12, positioning: 10, strength: 10, workRate: 6, agility: 6, heading: 6, stamina: 4, passing: -4, vision: -3 },
-  aerialDefender: { heading: 20, jumping: 16, strength: 16, tackling: 12, positioning: 8, leadership: 6, pace: -6, agility: -5 },
-  ballPlayingDefender: { passing: 18, vision: 12, composure: 12, tackling: 12, positioning: 10, firstTouch: 8, heading: 6, strength: -3, workRate: -2 },
+  stopper: { plus: ['pace', 'strength', 'tackling', 'passing'], minus: ['jumping', 'vision', 'composure', 'balance'] },
+  aerialDefender: { plus: ['balance', 'jumping', 'composure', 'strength'], minus: ['pace', 'tackling', 'passing', 'vision'] },
+  ballPlayingDefender: { plus: ['vision', 'passing', 'composure', 'balance'], minus: ['jumping', 'tackling', 'strength', 'pace'] },
   // Midfield
-  anchor: { tackling: 18, positioning: 16, strength: 10, workRate: 8, passing: 8, composure: 6, stamina: 6, heading: 6, dribbling: -4, finishing: -4, shooting: -2 },
-  boxToBox: { stamina: 18, workRate: 14, passing: 10, tackling: 10, shooting: 8, strength: 6, positioning: 6, firstTouch: 6, pace: 4, setPieces: -3 },
-  playmaker: { passing: 18, vision: 18, firstTouch: 12, composure: 9, dribbling: 8, setPieces: 8, shooting: 4, agility: 4, tackling: -4, strength: -4 },
+  playmaker: { plus: ['passing', 'vision', 'setPieces', 'firstTouch'], minus: ['stamina', 'shooting', 'workRate', 'dribbling'] },
+  boxToBox: { plus: ['stamina', 'passing', 'workRate', 'vision'], minus: ['dribbling', 'shooting', 'setPieces', 'firstTouch'] },
+  anchor: { plus: ['workRate', 'passing', 'tackling', 'stamina'], minus: ['vision', 'shooting', 'dribbling', 'setPieces'] },
   // Wingers
-  touchlineWinger: { pace: 20, crossing: 18, stamina: 10, dribbling: 10, agility: 8, workRate: 6, finishing: -4, heading: -2 },
-  invertedWinger: { shooting: 16, finishing: 12, dribbling: 12, passing: 8, firstTouch: 8, agility: 8, pace: 8, composure: 6, crossing: -5 },
-  freeWinger: { vision: 14, passing: 12, dribbling: 12, firstTouch: 12, agility: 8, pace: 8, composure: 6, crossing: 6, workRate: -4, tackling: -2 },
-  dribbler: { dribbling: 22, agility: 16, firstTouch: 12, pace: 12, composure: 4, strength: -6, heading: -4 },
+  touchlineWinger: { plus: ['pace', 'shooting', 'crossing', 'dribbling'], minus: ['passing', 'vision', 'heading', 'finishing'] },
+  invertedWinger: { plus: ['passing', 'finishing', 'firstTouch', 'vision'], minus: ['shooting', 'crossing', 'pace', 'dribbling'] },
+  freeWinger: { plus: ['vision', 'passing', 'firstTouch', 'agility'], minus: ['dribbling', 'workRate', 'tackling', 'heading'] },
+  dribbler: { plus: ['firstTouch', 'dribbling', 'pace', 'passing'], minus: ['strength', 'heading', 'jumping', 'crossing'] },
   // Strikers
-  runner: { pace: 18, finishing: 19, positioning: 12, composure: 9, agility: 6, firstTouch: 6, dribbling: 5, strength: -5, heading: -4 },
-  targetForward: { firstTouch: 16, strength: 16, finishing: 12, passing: 10, composure: 10, positioning: 8, vision: 6, shooting: 4, pace: -6, agility: -3 },
-  pivot: { heading: 20, jumping: 16, strength: 14, finishing: 12, positioning: 10, composure: 4, pace: -6, agility: -5, dribbling: -3 },
+  runner: { plus: ['pace', 'firstTouch', 'finishing', 'positioning'], minus: ['strength', 'jumping', 'passing', 'heading'] },
+  targetForward: { plus: ['firstTouch', 'strength', 'jumping', 'positioning'], minus: ['pace', 'finishing', 'passing', 'heading'] },
+  pivot: { plus: ['strength', 'jumping', 'finishing', 'heading'], minus: ['passing', 'positioning', 'pace', 'firstTouch'] },
 }
 
+/** Template magnitudes (attribute points at 17): a strength's base, a weakness's base. */
+const PLUS_BASE = 12
+const MINUS_BASE = 8
 /**
- * Position-specific shapes where a role means something different: a box-to-box number 10 arrives in the
- * box to shoot, a deep-lying playmaker (regista) dictates from in front of the defence.
+ * Per-role fine tuning of the strengths' size, from the role balance harness (simulated impact per role within
+ * ±5 % of its position): >1 for roles whose strengths matter less in their moments, <1 for the reverse.
  */
-export const ROLE_TEMPLATES_AT: Readonly<Partial<Record<Position, Partial<Record<Role, Partial<Record<AttributeKey, number>>>>>>> = {
-  AM: { boxToBox: { stamina: 16, shooting: 14, workRate: 12, firstTouch: 10, passing: 10, dribbling: 8, vision: 6, composure: 4, setPieces: -3 } },
-  DM: { playmaker: { passing: 18, vision: 14, composure: 12, positioning: 8, firstTouch: 8, setPieces: 6, tackling: 4, strength: -4, pace: -3 } },
-}
+export const ROLE_IMPACT_TUNE: Readonly<Partial<Record<Role, number>>> = {}
+
 
 /**
  * Weighted OVR gain every role of a position gets from its template (the old matched archetype's gain, so
@@ -96,23 +104,44 @@ export const ROLE_OVR_GAIN: Readonly<Record<Position, number>> = {
   GK: 13.4, CB: 10.4, LB: 9, RB: 9, DM: 9, CM: 8.6, AM: 10.8, LW: 10.8, RW: 10.8, ST: 9.6,
 }
 
-/** The role's template at a position, strengths scaled to {@link ROLE_OVR_GAIN} (weaknesses kept as they are). */
+/**
+ * The role's template at a position. A weakness costs MINUS_BASE points, less in an attribute the position
+ * leans on (30 % of it at the most important one): a weakness is real but never cripples the position's core. The
+ * strengths that count toward the position's OVR are then scaled so every role starts at the same OVR
+ * ({@link ROLE_OVR_GAIN}); strengths outside the OVR formula keep their base size.
+ */
 export function roleTemplate(role: Role, pos: Position): Partial<Record<AttributeKey, number>> {
-  const raw = ROLE_TEMPLATES_AT[pos]?.[role] ?? ROLE_TEMPLATES[role]
+  const spec = ROLE_SPEC[role]
   const w = POSITION_WEIGHTS[pos]
   const total = Object.values(w).reduce((a, v) => a + (v ?? 0), 0)
-  let plus = 0
-  let minus = 0
-  for (const [k, v] of Object.entries(raw) as [AttributeKey, number][]) {
-    const c = ((w[k] ?? 0) * v) / total
-    if (v > 0) plus += c
-    else minus += c
-  }
-  const scale = plus > 0 ? Math.max(0.6, Math.min(2, (ROLE_OVR_GAIN[pos] - minus) / plus)) : 1
+  const maxW = Math.max(...Object.values(w).map((v) => v ?? 0))
   const out: Partial<Record<AttributeKey, number>> = {}
-  for (const [k, v] of Object.entries(raw) as [AttributeKey, number][]) out[k] = v > 0 ? Math.round(v * scale * 10) / 10 : v
+  let minus = 0
+  for (const k of spec.minus) {
+    const v = -Math.round(MINUS_BASE * (1 - 0.7 * (w[k] ?? 0) / maxW) * 10) / 10
+    out[k] = v
+    minus += ((w[k] ?? 0) * v) / total
+  }
+  const base = PLUS_BASE * (ROLE_IMPACT_TUNE[role] ?? 1)
+  let plus = 0
+  for (const k of spec.plus) plus += ((w[k] ?? 0) * base) / total
+  const scale = plus > 0 ? Math.max(0.5, Math.min(ROLE_SCALE_MAX, (ROLE_OVR_GAIN[pos] - minus) / plus)) : 1
+  for (const k of spec.plus) out[k] = Math.round(base * ((w[k] ?? 0) > 0 ? scale : 1) * 10) / 10
+  // A role whose strengths sit outside the position's core (a sweeper keeper's passing) would start below the
+  // others: the rest of the gain goes evenly into the position's other attributes ("solid elsewhere").
+  const rest = ROLE_OVR_GAIN[pos] - minus - plus * scale
+  const others = (Object.keys(w) as AttributeKey[]).filter((k) => !(k in out))
+  const share = others.reduce((a, k) => a + (w[k] ?? 0), 0) / total
+  if (rest > 0.05 && share > 0) {
+    const u = Math.min(ROLE_FILL_MAX, rest / share)
+    for (const k of others) out[k] = Math.round(u * 10) / 10
+  }
   return out
 }
+/** Largest strength scale (keeps a 17-year-old's best attribute in a believable range). */
+const ROLE_SCALE_MAX = 2.4
+/** Largest even top-up of the position's other attributes. */
+const ROLE_FILL_MAX = 24
 
 /** Background (GDD 2.1 "Geçmiş hikâyesi") effects. */
 export interface BackgroundDef {
@@ -141,12 +170,12 @@ export interface BackgroundDef {
  */
 export const BACKGROUNDS: Readonly<Record<Background, BackgroundDef>> = {
   street: {
-    attrs: { dribbling: 6, agility: 4, firstTouch: 3, composure: 3, workRate: 2, positioning: -3 },
+    attrs: { dribbling: 6, agility: 4, firstTouch: 3, composure: 3, workRate: 2, aggression: 2, positioning: -3 },
     potential: 1, money: 300, reputation: 1, followers: 250,
     relations: { mother: 60, father: 35, sibling: 50, bestFriend: 75 }, innatePerk: 'street_smart', trust: 35,
   },
   academy: {
-    attrs: { positioning: 5, passing: 4, workRate: 3, vision: 2, tackling: 2, composure: 1 },
+    attrs: { positioning: 5, passing: 4, workRate: 3, vision: 2, anticipation: 2, tackling: 2, composure: 1 },
     potential: 0, money: 2500, reputation: 3, followers: 600,
     relations: { mother: 60, father: 55, sibling: 40, bestFriend: 45 }, innatePerk: 'academy_discipline', trust: 45,
   },
@@ -167,11 +196,51 @@ const SHIRT_BY_POSITION: Readonly<Record<Position, number>> = {
   GK: 1, RB: 2, LB: 3, CB: 4, DM: 6, CM: 8, AM: 10, LW: 11, RW: 7, ST: 9,
 }
 
+// ───────────────────────── Starting age ─────────────────────────
+
+/** Youngest / oldest starting age the wizard offers, and the age the base sheet is tuned for. */
+export const START_AGE_MIN = 16
+export const START_AGE_MAX = 21
+export const REF_START_AGE = 17
+/** Age the growth curve flattens into the peak (ageXpMultiplier: 24–26), shown as "years to peak" in the wizard. */
+export const PEAK_AGE = 26
+/** Highest starting value of any attribute (older starters' ceiling moves up with their sheet). */
+const attrStartMax = (age: number): number => 75 + Math.max(0, startAgeEffect(age).attrs)
+
+/**
+ * Starting-age trade-off (owner feedback). Younger: a lower sheet, more ceiling (potential) and more seasons in
+ * the fast-growth years (ageXpMultiplier: ≤ 20 grows fastest). Older: a ready-made sheet (+OVR) but less ceiling,
+ * less guaranteed headroom and fewer seasons before the peak and the decline, which come at the same real age
+ * for everyone. Tuned with the BALANCE harness so 21 is not strictly better (docs/BALANCE.md, "Başlangıç yaşı").
+ */
+export interface StartAgeEffect {
+  /** Points added to every attribute (outfield goalkeeping excluded). */
+  attrs: number
+  /** Shift of the rolled potential. */
+  potential: number
+  /** Minimum gap between starting OVR and potential. */
+  headroom: number
+  /** Starting reputation on top of the background's (an older starter has been seen around). */
+  reputation: number
+}
+const START_AGE_EFFECT: Readonly<Record<number, StartAgeEffect>> = {
+  16: { attrs: -2.5, potential: 2, headroom: 13, reputation: 0 },
+  17: { attrs: 0, potential: 0, headroom: 12, reputation: 0 },
+  18: { attrs: 4, potential: -0.5, headroom: 11, reputation: 3 },
+  19: { attrs: 8, potential: -1, headroom: 10, reputation: 7 },
+  20: { attrs: 12, potential: -2, headroom: 9, reputation: 11 },
+  21: { attrs: 16, potential: -3, headroom: 8, reputation: 16 },
+}
+/** Starting age from a birth year (careers start in {@link START_YEAR}), clamped to the wizard's range. */
+export const startAge = (birthYear: number): number =>
+  Number.isFinite(birthYear) ? clamp(Math.round(START_YEAR - birthYear), START_AGE_MIN, START_AGE_MAX) : REF_START_AGE
+export const startAgeEffect = (age: number): StartAgeEffect => START_AGE_EFFECT[clamp(Math.round(age), START_AGE_MIN, START_AGE_MAX)]!
+
 /**
  * Starting value of one attribute before noise: base, keeper/outfield split, role template, position boost
  * and background. Shared by {@link createHero} and the wizard's live preview ({@link previewAttrs}).
  */
-function attrBase(key: AttributeKey, pos: Position, tpl: Partial<Record<AttributeKey, number>>, bg: BackgroundDef): number {
+function attrBase(key: AttributeKey, pos: Position, tpl: Partial<Record<AttributeKey, number>>, bg: BackgroundDef, age = REF_START_AGE): number {
   const posW = POSITION_WEIGHTS[pos]
   const maxW = Math.max(...Object.values(posW).map((v) => v ?? 0))
   const isKeeper = pos === 'GK'
@@ -182,15 +251,25 @@ function attrBase(key: AttributeKey, pos: Position, tpl: Partial<Record<Attribut
   v += tpl[key] ?? 0
   v += (POSITION_BOOST * (posW[key] ?? 0)) / maxW
   v += bg.attrs[key] ?? 0
+  // Older starters have more years of football behind them (outfielders do not pick up goalkeeping on the way).
+  if (!(gk && !isKeeper)) v += startAgeEffect(age).attrs
   return v
 }
 
 /** Expected starting sheet (no noise) for the wizard's live preview. */
-export function previewAttrs(pos: Position, role: Role, background: Background): Attributes {
-  const tpl = roleTemplate(normalizeRole(pos, role), pos)
+export function previewAttrs(pos: Position, role: Role, background: Background, age = REF_START_AGE): Attributes {
+  return sheetFrom(pos, roleTemplate(normalizeRole(pos, role), pos), background, age)
+}
+
+/** The position's starting sheet without any role (the wizard shows each role's +/− against it). */
+export function neutralAttrs(pos: Position, background: Background, age = REF_START_AGE): Attributes {
+  return sheetFrom(pos, {}, background, age)
+}
+
+function sheetFrom(pos: Position, tpl: Partial<Record<AttributeKey, number>>, background: Background, age: number): Attributes {
   const bg = BACKGROUNDS[background]
   const out = {} as Attributes
-  for (const key of ATTRIBUTE_KEYS) out[key] = clamp(Math.round(attrBase(key, pos, tpl, bg)), 5, 75)
+  for (const key of ATTRIBUTE_KEYS) out[key] = clamp(Math.round(attrBase(key, pos, tpl, bg, age)), 5, attrStartMax(age))
   return out
 }
 
@@ -209,10 +288,13 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
   // career stream, so everything rolled after the sheet (potential, perks…) is unchanged.
   const st = rng.state
   const gkRng = new Rng((st.a ^ st.d ^ hashString('gk-attrs-v4')) >>> 0)
+  // The v6 attributes (acceleration, long passing, curve, anticipation, aggression, diving) likewise.
+  const v6Rng = new Rng((st.a ^ st.c ^ hashString('attrs-v6')) >>> 0)
+  const age = startAge(input.birthYear)
   for (const key of ATTRIBUTE_KEYS) {
-    let v = attrBase(key, input.position, tpl, bg)
-    v += (key === 'gkPositioning' || key === 'gkDistribution' ? gkRng : rng).normal(0, ATTR_NOISE_SD)
-    attrs[key] = clamp(Math.round(v), 5, 75)
+    let v = attrBase(key, input.position, tpl, bg, age)
+    v += (key === 'gkPositioning' || key === 'gkDistribution' ? gkRng : V6_ATTRIBUTE_KEYS.includes(key) ? v6Rng : rng).normal(0, ATTR_NOISE_SD)
+    attrs[key] = clamp(Math.round(v), 5, attrStartMax(age))
   }
 
   const gender: Gender = input.gender === 'female' ? 'female' : 'male'
@@ -243,7 +325,7 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     suspendedMatches: 0,
     contract: null,
     managerTrust: bg.trust,
-    reputation: bg.reputation,
+    reputation: bg.reputation + startAgeEffect(age).reputation,
     shirtNumber: SHIRT_BY_POSITION[input.position],
     nationalTeam: { called: false, caps: 0, goals: 0 },
     seasonStats: emptyStats(),
@@ -254,8 +336,9 @@ export function createHero(rng: Rng, input: HeroInput): Hero {
     retired: false,
   }
   const ovr = heroOvr(hero)
-  const rolled = Math.round(rng.normal(80, 5)) + bg.potential
-  hero.potential = clamp(Math.max(rolled, ovr + 12), 60, 99)
+  const ae = startAgeEffect(age)
+  const rolled = Math.round(rng.normal(80, 5)) + bg.potential + ae.potential
+  hero.potential = clamp(Math.max(rolled, ovr + ae.headroom), 60, 99)
 
   grantInnatePerk(hero, bg.innatePerk)
   if (input.foot === 'B') grantInnatePerk(hero, 'two_footed')

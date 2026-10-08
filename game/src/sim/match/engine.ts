@@ -783,8 +783,9 @@ export class MatchSim {
     if (type === 'header') return a.heading * 0.7 + a.jumping * 0.3
     if (type === 'fk') return freekickSkill(a)
     if (type === 'pen') return penaltySkill(a)
-    if (type === 'long') return a.shooting * 0.7 + a.composure * 0.3
-    return a.finishing * 0.6 + a.composure * 0.4
+    // Long range: power and bend (curve); in the box: finishing, composure and arriving first (anticipation).
+    if (type === 'long') return a.shooting * 0.55 + a.curve * 0.15 + a.composure * 0.3
+    return a.finishing * 0.55 + a.composure * 0.35 + a.anticipation * 0.1
   }
 
   /** Resolves a shot: goal, save, block, woodwork or miss (with follow-up corners). */
@@ -972,7 +973,8 @@ export class MatchSim {
   private fouls(def: Side, att: Side): void {
     if (!this.rng.chance(FOUL_RATE * STYLES[this.team(def).style].fouls * refFoulMult(this.s.setup.referee?.strictness))) return
     this.s.teams[def].fouls++
-    const fouler = this.pickFrom(def, (p) => FOUL_WEIGHT[p.position] * (110 - p.attrs.composure), { excludeHero: true })
+    // Aggressive players commit (and get booked for) more of the fouls; composure keeps them in check.
+    const fouler = this.pickFrom(def, (p) => FOUL_WEIGHT[p.position] * (110 - p.attrs.composure) * (0.5 + p.attrs.aggression / 100), { excludeHero: true })
     if (fouler) this.maybeCard(def, fouler)
     if (!this.rng.chance(DANGEROUS_FOUL)) return
     const fouled = this.pickFrom(att, (p) => SHOOT_WEIGHT[p.position] + 0.3, {})
@@ -1326,7 +1328,8 @@ export class MatchSim {
     const rel = 0.75 + 0.25 * (1 + this.teammateRelationAvg() / 100)
     const rate = HERO_PASS_RATE[hero.position] * rel * (inPossession ? 1.4 : 0.6)
     const attempts = (this.rng.next() < rate ? 1 : 0) + (this.rng.next() < rate * 0.4 ? 1 : 0)
-    const pComplete = clamp(0.55 + hero.attrs.passing * 0.0035, 0.5, 0.93)
+    // Most of a player's passes are short; long passing carries the switches and balls over the top.
+    const pComplete = clamp(0.55 + (hero.attrs.passing * 0.75 + hero.attrs.longPassing * 0.25) * 0.0035, 0.5, 0.93)
     for (let i = 0; i < attempts; i++) {
       h.stats.passes++
       if (this.rng.chance(pComplete)) h.stats.passesCompleted++
@@ -1341,7 +1344,9 @@ export class MatchSim {
       attempts,
     )
     const g = positionGroup(hero.position)
-    if (!inPossession && (g === 1 || hero.position === 'DM') && this.rng.chance(0.04)) h.stats.tackles++
+    // Ball-winning: aggression (going into the duel) and anticipation (reading the pass) both win it back; 50/50 = 4 %.
+    const win = 0.04 * (0.55 + hero.attrs.aggression * 0.005 + hero.attrs.anticipation * 0.004)
+    if (!inPossession && (g === 1 || hero.position === 'DM') && this.rng.chance(win)) h.stats.tackles++
     if (inPossession && g === 3 && this.rng.chance(0.02)) h.stats.dribbles++
   }
 

@@ -113,7 +113,7 @@ export function supportTarget(a: Agent, w: AiWorld, ballX0: number, rng: Rng): V
       // Hold the run on the last defender's shoulder so the pass can be played into
       // the space behind; a poorly-positioned forward sometimes mistimes it and
       // drifts beyond the line (caught offside if the ball is played then).
-      const mistime = rng.chance(clampN(0.22 - a01(a.attrs.positioning) * 0.18, 0.03, 0.2))
+      const mistime = rng.chance(clampN(0.22 - a01(a.attrs.positioning * 0.5 + (a.attrs.anticipation ?? a.attrs.positioning) * 0.5) * 0.18, 0.03, 0.2))
       const runX = mistime ? line + dir * rng.range(1.2, 4) : line - dir * 0.6
       const laneY = clampN(a.pos.y + (GOAL_CENTER_Y - a.pos.y) * 0.35, 8, PITCH_WIDTH - 8)
       return inField({ x: runX, y: laneY }, 3)
@@ -272,14 +272,16 @@ export interface TackleOdds {
  * @param slide sliding tackle (higher reward, higher foul risk)
  */
 export function tackleOdds(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean, difficulty = 1): TackleOdds {
-  const t = a01(tackler.attrs.tackling) * 0.75 + a01(tackler.attrs.strength) * 0.15 + a01(tackler.attrs.positioning) * 0.1
-  const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.3 + a01(carrier.attrs.strength) * 0.1
+  const t = a01(tackler.attrs.tackling) * 0.7 + a01(tackler.attrs.strength) * 0.12 + a01(tackler.attrs.positioning) * 0.08 + a01(tackler.attrs.aggression ?? 50) * 0.1
+  // The carrier rides the challenge with dribbling, agility and balance (staying on his feet).
+  const c = a01(carrier.attrs.dribbling) * 0.55 + a01(carrier.attrs.agility) * 0.25 + a01(carrier.attrs.balance ?? carrier.attrs.strength) * 0.2
   const diffAdj = tackler.isHero ? (1 - difficulty) * 0.25 : (difficulty - 1) * 0.3
   // Timing dominates: a tackle as the ball leaves the carrier's foot is usually clean, a lunge at his feet rarely.
   let win = 0.4 + (t - c) * 0.7 + (timing - 0.55) * 1.3 + diffAdj + (slide ? 0.06 : 0)
   if (fromBehind) win -= 0.22
   win = clampN(win, 0.05, 0.94)
-  let foul = (slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2
+  // Aggression: more fouls when the challenge goes in hard (±0.1 around 50).
+  let foul = (slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2 + (a01(tackler.attrs.aggression ?? 50) - 0.5) * 0.2
   foul = clampN(foul, 0.02, 0.92)
   return { win, foul }
 }
@@ -305,9 +307,9 @@ export function standingTackleWin(win: number, gap: number): { win: number; earl
 
 /** Probability a skill move / take-on beats a defender. */
 export function skillBeatChance(carrier: Agent, defender: Agent | null, difficulty = 1): number {
-  const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.3 + a01(carrier.attrs.pace) * 0.1
+  const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.25 + a01(carrier.attrs.acceleration ?? carrier.attrs.pace) * 0.15
   if (!defender) return clampN(0.55 + c * 0.4, 0.3, 0.97)
-  const d = a01(defender.attrs.tackling) * 0.5 + a01(defender.attrs.positioning) * 0.3 + a01(defender.attrs.agility) * 0.2
+  const d = a01(defender.attrs.tackling) * 0.45 + a01(defender.attrs.positioning) * 0.2 + a01(defender.attrs.anticipation ?? 50) * 0.15 + a01(defender.attrs.agility) * 0.2
   const diffAdj = carrier.isHero ? (1 - difficulty) * 0.3 : 0
   return clampN(0.5 + (c - d) * 0.8 + diffAdj, 0.12, 0.92)
 }
@@ -479,9 +481,9 @@ export function keeperReaction(gk: Agent, difficulty: number): number {
   return gk.isHero || gk.team === 'hero' ? clampN(base, 0.08, 0.4) : clampN(base / Math.max(0.6, difficulty), 0.08, 0.4)
 }
 
-/** Lateral speed of a keeper dive (m/s). */
+/** Lateral speed of a keeper dive (m/s): Diving carries it, agility and spring add a little. */
 export function diveSpeed(gk: Agent): number {
-  return 3.6 + a01(gk.attrs.agility) * 1.6 + a01(gk.attrs.jumping) * 0.7
+  return 3.6 + a01(gk.attrs.diving ?? gk.attrs.agility) * 1.5 + a01(gk.attrs.agility) * 0.4 + a01(gk.attrs.jumping) * 0.4
 }
 
 /** Arm reach from body centre when diving/standing (m). */
@@ -573,7 +575,8 @@ export function punchChance(gk: Agent, z: number, crowd: number, speed: number):
 
 /** Probability a keeper gets a hand to a ball inside reach (fingertips at the edge). */
 export function saveChance(gk: Agent, stretch: number, ballSpeed: number, difficulty = 1): number {
-  const r = a01(gk.attrs.reflexes) * 0.6 + a01(gk.attrs.agility) * 0.25 + gkPositioning01(gk) * 0.15
+  // Fingertip stretches: reflexes (getting the hand there in time) and diving (reach at full stretch).
+  const r = a01(gk.attrs.reflexes) * 0.45 + a01(gk.attrs.diving ?? gk.attrs.reflexes) * 0.3 + a01(gk.attrs.agility) * 0.1 + gkPositioning01(gk) * 0.15
   const diffAdj = gk.isHero ? 0.06 : gk.team === 'opp' ? (difficulty - 1) * 0.3 : 0
   // Balls into the body/hands are nearly always stopped; fingertip stretches are a coin flip.
   const edge = Math.pow(clamp01(stretch), 1.6) * (0.75 - r * 0.35)

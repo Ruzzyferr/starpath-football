@@ -26,12 +26,12 @@ export interface TeamRatings {
 
 type Mix = Partial<Record<keyof Attributes, number>>
 
-const DEF_MIX: Mix = { tackling: 0.3, positioning: 0.25, strength: 0.15, heading: 0.15, pace: 0.15 }
-const MID_MIX: Mix = { passing: 0.3, vision: 0.2, firstTouch: 0.15, workRate: 0.15, stamina: 0.1, dribbling: 0.1 }
-const ATT_MIX: Mix = { finishing: 0.3, shooting: 0.15, dribbling: 0.2, pace: 0.15, composure: 0.1, firstTouch: 0.1 }
-const GK_MIX: Mix = { reflexes: 0.38, handling: 0.27, gkPositioning: 0.2, positioning: 0.05, composure: 0.1 }
+const DEF_MIX: Mix = { tackling: 0.25, positioning: 0.17, anticipation: 0.12, strength: 0.1, balance: 0.05, heading: 0.12, pace: 0.08, acceleration: 0.06, aggression: 0.05 }
+const MID_MIX: Mix = { passing: 0.24, longPassing: 0.08, vision: 0.18, firstTouch: 0.14, workRate: 0.13, stamina: 0.1, dribbling: 0.08, anticipation: 0.05 }
+const ATT_MIX: Mix = { finishing: 0.28, shooting: 0.12, curve: 0.04, dribbling: 0.18, pace: 0.09, acceleration: 0.08, composure: 0.1, firstTouch: 0.08, anticipation: 0.03 }
+const GK_MIX: Mix = { reflexes: 0.28, diving: 0.2, handling: 0.22, gkPositioning: 0.18, positioning: 0.04, composure: 0.08 }
 /** A keeper's share of the build-up is his distribution (throws, kicks out of the hands). */
-const GK_DIST_MIX: Mix = { gkDistribution: 0.6, passing: 0.25, vision: 0.15 }
+const GK_DIST_MIX: Mix = { gkDistribution: 0.55, passing: 0.15, longPassing: 0.15, vision: 0.15 }
 
 /** Contribution weight of each position to [def, mid, att]. */
 const UNIT_WEIGHTS: Record<Position, readonly [number, number, number]> = {
@@ -225,12 +225,12 @@ export function penaltySkill(a: Attributes): number {
 
 /** Direct free-kick score. */
 export function freekickSkill(a: Attributes): number {
-  return a.setPieces * 0.7 + a.shooting * 0.3
+  return a.setPieces * 0.45 + a.curve * 0.3 + a.shooting * 0.25
 }
 
 /** Corner delivery skill (designated corner taker). */
 export function cornerSkill(a: Attributes): number {
-  return a.crossing * 0.6 + a.setPieces * 0.4
+  return a.crossing * 0.45 + a.curve * 0.3 + a.setPieces * 0.25
 }
 
 /** Scales an attribute-like value (0..100) into a ~0.6..1.4 multiplier around 60. */

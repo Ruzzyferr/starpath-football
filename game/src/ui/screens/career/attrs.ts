@@ -1,5 +1,5 @@
 /** Local attribute helpers for career screens (grouping, key stats, radar axes). */
-import { ATTRIBUTE_KEYS, type Appearance, type AttributeGroup, type AttributeKey, type Attributes, type Position } from '../../../core/types'
+import { type Appearance, type AttributeGroup, type AttributeKey, type Attributes, type Position } from '../../../core/types'
 import { hashString } from '../../../core/rng'
 
 export const ATTR_GROUP: Record<AttributeKey, AttributeGroup> = {
@@ -8,12 +8,25 @@ export const ATTR_GROUP: Record<AttributeKey, AttributeGroup> = {
   crossing: 'technical', heading: 'technical', tackling: 'technical', setPieces: 'technical',
   vision: 'mental', composure: 'mental', positioning: 'mental', leadership: 'mental', workRate: 'mental',
   reflexes: 'goalkeeping', handling: 'goalkeeping', gkPositioning: 'goalkeeping', gkDistribution: 'goalkeeping',
+  acceleration: 'physical', longPassing: 'technical', curve: 'technical', anticipation: 'mental', aggression: 'mental',
+  diving: 'goalkeeping', balance: 'physical',
 }
+
+/**
+ * Display order (save order appends new keys at the end; the profile reads related attributes side by side:
+ * pace next to acceleration, passing next to long passing, reflexes next to diving).
+ */
+export const ATTR_DISPLAY_ORDER: readonly AttributeKey[] = [
+  'pace', 'acceleration', 'stamina', 'strength', 'balance', 'agility', 'jumping',
+  'passing', 'longPassing', 'crossing', 'dribbling', 'firstTouch', 'shooting', 'finishing', 'curve', 'heading', 'tackling', 'setPieces',
+  'vision', 'composure', 'positioning', 'anticipation', 'aggression', 'leadership', 'workRate',
+  'reflexes', 'diving', 'handling', 'gkPositioning', 'gkDistribution',
+]
 
 export const GROUPS: AttributeGroup[] = ['physical', 'technical', 'mental', 'goalkeeping']
 
 export function keysOf(group: AttributeGroup): AttributeKey[] {
-  return ATTRIBUTE_KEYS.filter((k) => ATTR_GROUP[k] === group)
+  return ATTR_DISPLAY_ORDER.filter((k) => ATTR_GROUP[k] === group)
 }
 
 export function groupAvg(attrs: Attributes, group: AttributeGroup): number {
@@ -24,9 +37,9 @@ export function groupAvg(attrs: Attributes, group: AttributeGroup): number {
 /** Goalkeeper specialism groups (GDD 2.1): the profile shows these instead of the plain goalkeeping block. */
 export type GkGroup = 'shotStopping' | 'commandArea' | 'distribution'
 export const GK_GROUPS: Record<GkGroup, AttributeKey[]> = {
-  shotStopping: ['reflexes', 'handling', 'agility'],
-  commandArea: ['gkPositioning', 'positioning', 'jumping', 'leadership'],
-  distribution: ['gkDistribution', 'passing', 'firstTouch', 'vision'],
+  shotStopping: ['reflexes', 'diving', 'handling', 'agility'],
+  commandArea: ['gkPositioning', 'positioning', 'anticipation', 'jumping', 'leadership'],
+  distribution: ['gkDistribution', 'passing', 'longPassing', 'firstTouch', 'vision'],
 }
 export const GK_GROUP_IDS = Object.keys(GK_GROUPS) as GkGroup[]
 
@@ -47,7 +60,7 @@ export function groupsFor(pos: Position): AttributeGroup[] {
 }
 
 const KEY_STATS: Record<Position, AttributeKey[]> = {
-  GK: ['reflexes', 'handling', 'gkPositioning', 'gkDistribution', 'jumping', 'composure'],
+  GK: ['reflexes', 'diving', 'handling', 'gkPositioning', 'gkDistribution', 'composure'],
   CB: ['pace', 'tackling', 'strength', 'heading', 'positioning', 'passing'],
   LB: ['pace', 'tackling', 'crossing', 'stamina', 'positioning', 'passing'],
   RB: ['pace', 'tackling', 'crossing', 'stamina', 'positioning', 'passing'],
@@ -65,12 +78,12 @@ export const RADAR_AXES: RadarAxis[] = ['pace', 'shooting', 'passing', 'dribblin
 const avg = (a: Attributes, ks: AttributeKey[]) => ks.reduce((s, k) => s + a[k], 0) / ks.length
 export function radarValues(a: Attributes): Record<RadarAxis, number> {
   return {
-    pace: avg(a, ['pace', 'agility']),
-    shooting: avg(a, ['shooting', 'finishing', 'composure']),
-    passing: avg(a, ['passing', 'vision', 'crossing']),
+    pace: avg(a, ['pace', 'acceleration']),
+    shooting: avg(a, ['shooting', 'finishing', 'curve', 'composure']),
+    passing: avg(a, ['passing', 'longPassing', 'vision', 'crossing']),
     dribbling: avg(a, ['dribbling', 'firstTouch', 'agility']),
-    defending: avg(a, ['tackling', 'positioning', 'heading']),
-    physical: avg(a, ['strength', 'stamina', 'jumping']),
+    defending: avg(a, ['tackling', 'positioning', 'anticipation', 'heading']),
+    physical: avg(a, ['strength', 'balance', 'stamina', 'jumping', 'aggression']),
   }
 }
 

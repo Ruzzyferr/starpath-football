@@ -2,7 +2,7 @@
 import { readFileSync } from 'node:fs'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { SAVE_VERSION } from '../core/config'
-import type { GameState } from '../core/types'
+import { ATTRIBUTE_KEYS, type GameState } from '../core/types'
 import type { InputRecording } from '../game/inputReplay'
 import { advanceDay } from '../sim/game/calendar'
 import { dataPackId, loadGame, packState, saveGame, unpackState } from '../sim/game/persist'
@@ -59,6 +59,23 @@ describe('v2 -> v3 migration', () => {
     expect(h.role).toBe('aerialDefender') // wall at centre-back
     expect(h.heightCm).toBe(192)
     expect(h.archetype).toBeUndefined()
+  })
+  it('loads a v5 envelope into v6: the seven new attributes are derived from the old sheet and tracked in the history', () => {
+    const o = openEnvelope(fixture(5))
+    expect(o?.state.version).toBe(SAVE_VERSION)
+    const a = o!.state.hero.attrs
+    // Frozen deriveAttrsV6 on pace 42 / agility 39 / passing 35 / vision 27 / crossing 27 / set pieces 32 / shooting 44 /
+    // positioning 57 / tackling 31 / strength 35 / work rate 34 / reflexes 8 / handling 5 / composure 45.
+    expect({ acceleration: a.acceleration, longPassing: a.longPassing, curve: a.curve, anticipation: a.anticipation, aggression: a.aggression, diving: a.diving, balance: a.balance })
+      .toEqual({ acceleration: 41, longPassing: 31, curve: 33, anticipation: 43, aggression: 33, diving: 12, balance: 38 })
+    const hist = o!.state.attrHistory!
+    expect(hist.keys.slice(-7)).toEqual(['acceleration', 'longPassing', 'curve', 'anticipation', 'aggression', 'diving', 'balance'])
+    for (const row of hist.rows) expect(row).toHaveLength(hist.keys.length + 2)
+    expect(hist.rows[1]!.slice(-7)).toEqual([41, 31, 33, 43, 33, 12, 38])
+  })
+  it('v3 careers reach v6 with every attribute filled', () => {
+    const o = openEnvelope(fixture(3))
+    for (const k of ATTRIBUTE_KEYS) expect(Number.isFinite(o!.state.hero.attrs[k]), k).toBe(true)
   })
   it('v3 careers reach v5 with a role that fits their position', () => {
     const o = openEnvelope(fixture(3))

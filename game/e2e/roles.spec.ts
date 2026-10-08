@@ -55,9 +55,33 @@ test('every position offers only its own roles; changing position resets the rol
     await expect(page.locator(`[data-role="${last}"]`)).toHaveAttribute('aria-checked', 'true')
     await expect(page.locator(`[data-role="${roles[0]}"]`)).toHaveAttribute('aria-checked', 'false')
     await expect(page.locator('[data-testid="role-preview"] .wiz-role-name')).not.toHaveText(before ?? '')
-    await expect(page.locator('[data-testid="role-preview"] .statbar')).toHaveCount(6)
+    // Every role is four strengths and four weaknesses, each a numbered attribute (chips and preview rows).
+    await expect(page.locator('[data-testid="role-preview"] .statbar')).toHaveCount(8)
+    await expect(page.locator(`[data-role="${last}"] .wiz-role-key`)).toHaveCount(8)
+    for (const txt of await page.locator(`[data-role="${last}"] .wiz-role-key`).allTextContents()) expect(txt, pos).toMatch(/\d+$/)
+    // No role is marked as the recommended one: each shows a neutral playstyle tag instead.
+    await expect(page.locator('[data-testid="role-cards"]')).not.toContainText('Suggested')
+    await expect(page.locator('[data-testid="role-cards"] .wiz-role-style')).toHaveCount(roles.length)
     await back.click()
   }
+})
+
+test('starting age 16-21 shows the trade-off: older starts higher with less ceiling', async ({ page }) => {
+  await page.goto('/')
+  await waitForApp(page)
+  await page.getByRole('button', { name: 'New career' }).click()
+  const trade = page.locator('[data-testid="age-trade"]')
+  const ovrAt = async (age: number) => {
+    await page.getByRole('radio', { name: String(age), exact: true }).click()
+    return Number((await trade.locator('.wiz-age-val').first().textContent())!.trim().split(/\s/)[0])
+  }
+  const young = await ovrAt(16)
+  await expect(trade).toContainText('Longest career')
+  const old = await ovrAt(21)
+  await expect(trade).toContainText('Ready now')
+  expect(old).toBeGreaterThan(young + 5)
+  await expect(trade.locator('.wiz-age-val').nth(1)).toHaveText('−3')
+  await assertCleanText(page)
 })
 
 test('a pivot striker starts the career with the role and a taller frame', async ({ page }) => {

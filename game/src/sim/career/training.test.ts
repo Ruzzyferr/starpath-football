@@ -107,7 +107,7 @@ describe('training', () => {
 
   it('crossing / heading / tackling sessions grant XP to their own attributes', () => {
     const cases = [
-      { type: 'crossing', main: 'crossing', others: ['passing', 'setPieces'] },
+      { type: 'crossing', main: 'crossing', others: ['passing', 'curve', 'longPassing'] },
       { type: 'heading', main: 'heading', others: ['jumping'] },
       { type: 'tackling', main: 'tackling', others: ['positioning'] },
     ] as const

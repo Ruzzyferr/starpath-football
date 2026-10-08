@@ -222,6 +222,60 @@ const MIGRATIONS: Record<number, Migration> = {
     }
     return s
   },
+  /**
+   * v5 → v6 (owner feedback: every stat a role shows is a real attribute): acceleration, long passing,
+   * curve, anticipation, aggression, diving and balance, derived from the old sheet (frozen {@link deriveAttrsV6}).
+   * The attribute history gains the six columns, each old row derived from its own values; XP fractions
+   * start at 0. NPC sheets are derived on demand.
+   */
+  5: (s) => {
+    const attrs = s.hero && typeof s.hero === 'object' ? s.hero.attrs : null
+    if (attrs && typeof attrs === 'object') {
+      const d = deriveAttrsV6(attrs)
+      for (const k of V6_KEYS) if (!Number.isFinite(attrs[k])) attrs[k] = d[k]
+    }
+    const hist = s.attrHistory
+    if (hist && typeof hist === 'object' && Array.isArray(hist.keys) && Array.isArray(hist.rows)) {
+      const add = V6_KEYS.filter((k) => !hist.keys.includes(k))
+      if (add.length) {
+        const keys: string[] = [...hist.keys]
+        for (const row of hist.rows) {
+          if (!Array.isArray(row)) continue
+          const at: Record<string, number> = {}
+          keys.forEach((k, i) => { at[k] = Number(row[i + 2]) || 0 })
+          const d = deriveAttrsV6(at)
+          for (const k of add) row.push(d[k])
+        }
+        hist.keys = [...keys, ...add]
+      }
+    }
+    return s
+  },
+}
+
+const V6_KEYS = ['acceleration', 'longPassing', 'curve', 'anticipation', 'aggression', 'diving', 'balance'] as const
+type V6Key = (typeof V6_KEYS)[number]
+
+/**
+ * Frozen v6 derivation (do not change: old saves must migrate the same way forever). Each new attribute
+ * comes from the old attributes that carried its job before: acceleration from pace + agility, long passing
+ * from passing / vision / crossing, curve from set pieces / crossing / shooting, anticipation from
+ * positioning / vision / tackling, aggression from tackling / strength / work rate, diving from reflexes /
+ * handling / agility (outfielders, whose keeper attributes sit near the floor, land low), balance from strength /
+ * agility / composure.
+ */
+export function deriveAttrsV6(a: Record<string, unknown>): Record<V6Key, number> {
+  const n = (k: string): number => { const v = Number(a[k]); return Number.isFinite(v) ? v : 30 }
+  const fit = (v: number): number => Math.max(1, Math.min(99, Math.round(v)))
+  return {
+    acceleration: fit(0.6 * n('pace') + 0.4 * n('agility')),
+    longPassing: fit(0.55 * n('passing') + 0.25 * n('vision') + 0.2 * n('crossing')),
+    curve: fit(0.5 * n('setPieces') + 0.3 * n('crossing') + 0.2 * n('shooting')),
+    anticipation: fit(0.5 * n('positioning') + 0.25 * n('vision') + 0.25 * n('tackling')),
+    aggression: fit(0.4 * n('tackling') + 0.3 * n('strength') + 0.3 * n('workRate')),
+    diving: fit(0.6 * n('reflexes') + 0.25 * n('handling') + 0.15 * n('agility')),
+    balance: fit(0.5 * n('strength') + 0.3 * n('agility') + 0.2 * n('composure')),
+  }
 }
 
 /**

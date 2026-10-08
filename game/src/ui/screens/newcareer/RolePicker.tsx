@@ -1,26 +1,28 @@
 /**
- * Wizard role step (owner feedback): only the chosen position's roles, each with its key strengths and
- * weaknesses; a live preview of the starting values, the suggested perk and the height slider.
+ * Wizard role step (owner feedback): only the chosen position's roles, each with a neutral playstyle tag and
+ * its key strengths and weaknesses as numbered attributes; a live preview of the starting values (every chip
+ * is a row there too), the role's perk and the height slider. No role is marked as the recommended one.
  */
 import type { Background, Gender, Position, Role } from '../../../core/types'
-import { POSITION_ROLES, ROLE_PERK, defaultRole, heightRange } from '../../../core/roles'
+import { POSITION_ROLES, ROLE_PERK, heightRange } from '../../../core/roles'
 import { PERK_BY_ID } from '../../../data/perks'
 import { lt, t } from '../../../i18n'
 import { Slider, StatBar } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
-import { ROLE_ICON, roleKeys, rolePreview, type RoleStat } from '../../roleView'
+import { previewAttrs } from '../../../sim/career/createHero'
+import { ROLE_ICON, ROLE_STYLE, roleKeys, rolePreview, type RoleStat } from '../../roleView'
 
-/** Live preview bars with the difference to the position average (inline in the picked card on phones, side panel on desktop). */
+/** The role's 4 strengths and 4 weaknesses as numbered rows with their difference to the role-free sheet (inline in the picked card on phones, side panel on desktop). */
 function RoleStats({ stats, cls }: { stats: RoleStat[]; cls: string }) {
   return (
     <span class={cls} aria-live="polite">
       {stats.map((s) => (
-        <span key={s.key} class="wiz-role-stat">
+        <span key={s.key} class={`wiz-role-stat is-${s.kind}`}>
           <StatBar label={t(`data.attr.${s.key}`)} value={s.value} max={80} scale size="sm" />
           <span
-            class={`wiz-role-delta num ${s.delta > 0 ? 'is-up' : s.delta < 0 ? 'is-down' : ''}`}
-            aria-label={`${s.delta > 0 ? t('wizard.roleStrong') : s.delta < 0 ? t('wizard.roleWeak') : ''} ${s.delta > 0 ? '+' : ''}${s.delta}`}
+            class={`wiz-role-delta num ${s.kind === 'plus' ? 'is-up' : 'is-down'}`}
+            aria-label={`${s.kind === 'plus' ? t('wizard.roleStrong') : t('wizard.roleWeak')} ${s.delta > 0 ? '+' : ''}${s.delta}`}
           >
             {s.delta > 0 ? `+${s.delta}` : s.delta < 0 ? `−${Math.abs(s.delta)}` : '±0'}
           </span>
@@ -30,17 +32,19 @@ function RoleStats({ stats, cls }: { stats: RoleStat[]; cls: string }) {
   )
 }
 
-export function RolePicker({ position, role, background, gender, heightCm, onRole, onHeight }: {
+export function RolePicker({ position, role, background, gender, heightCm, age, onRole, onHeight }: {
   position: Position
   role: Role
   background: Background
   gender: Gender
   heightCm: number | undefined
+  /** Starting age (the preview values follow it). */
+  age?: number
   onRole: (r: Role) => void
   onHeight: (cm: number) => void
 }) {
   const roles = POSITION_ROLES[position]
-  const stats = rolePreview(position, role, background)
+  const stats = rolePreview(position, role, background, age)
   const range = heightRange(role, gender)
   const height = heightCm ?? range.def
   const perk = PERK_BY_ID[ROLE_PERK[role]]
@@ -51,6 +55,7 @@ export function RolePicker({ position, role, background, gender, heightCm, onRol
         {roles.map((r) => {
           const sel = r === role
           const keys = roleKeys(r, position)
+          const sheet = previewAttrs(position, r, background, age)
           return (
             <button
               key={r}
@@ -68,20 +73,20 @@ export function RolePicker({ position, role, background, gender, heightCm, onRol
               <span class="wiz-card-text">
                 <span class="wiz-card-title">
                   {t(`data.playRole.${r}`)}
-                  {r === defaultRole(position) && <span class="chip chip-pos chip-solid">{t('wizard.suggested')}</span>}
+                  <span class="chip wiz-role-style" data-style={ROLE_STYLE[r]}>{t(`wizard.roleStyle.${ROLE_STYLE[r]}`)}</span>
                 </span>
                 <span class="wiz-card-desc">{t(`data.playRoleDesc.${r}`)}</span>
                 <span class="wiz-role-keys">
                   {keys.strong.map((k) => (
-                    <span key={k} class="wiz-role-key is-strong" title={`${t('wizard.roleStrong')}: ${t(`data.attr.${k}`)}`}>
+                    <span key={k} class="wiz-role-key is-strong" title={`${t('wizard.roleStrong')}: ${t(`data.attr.${k}`)} ${sheet[k]}`}>
                       <Icon name="chevron-up" size={12} weight={3} />
-                      {t(`data.attrShort.${k}`)}
+                      {t(`data.attrShort.${k}`)} <span class="num">{sheet[k]}</span>
                     </span>
                   ))}
                   {keys.weak.map((k) => (
-                    <span key={k} class="wiz-role-key is-weak" title={`${t('wizard.roleWeak')}: ${t(`data.attr.${k}`)}`}>
+                    <span key={k} class="wiz-role-key is-weak" title={`${t('wizard.roleWeak')}: ${t(`data.attr.${k}`)} ${sheet[k]}`}>
                       <Icon name="chevron-down" size={12} weight={3} />
-                      {t(`data.attrShort.${k}`)}
+                      {t(`data.attrShort.${k}`)} <span class="num">{sheet[k]}</span>
                     </span>
                   ))}
                 </span>

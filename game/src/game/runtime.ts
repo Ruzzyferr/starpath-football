@@ -434,6 +434,8 @@ export class HighlightRuntime {
   private lastTouch: Agent | null = null
   private lastPossTeam: Team
   private shot: ShotTrack | null = null
+  /** An opponent got a shot away during this moment (a defend moment that runs out after it is a chance conceded). */
+  private oppShotTaken = false
   private heroPassTo: { id: string; t: number } | null = null
   /** The hero's last pass was played into space (no named receiver): the runner attacks it (2.1#111). */
   private heroPassIntoSpace = false
@@ -1470,6 +1472,7 @@ export class HighlightRuntime {
       this.shotLog.push(e)
     }
     if (SHOT_KINDS.has(kind)) {
+      if (by.team === 'opp') this.oppShotTaken = true
       this.shot = { by, kind, t: this.time, woodwork: false, blocked: false, parried: false, beaten: new Set(), assistBy: !by.isHero && this.assistChain === by.id ? this.hero.id : null }
       const defTeam = other(by.team)
       const keeper = this.agents.find((a) => a.team === defTeam && a.isKeeper)
@@ -2393,10 +2396,11 @@ export class HighlightRuntime {
     const weight = (a: Agent) => {
       const d = dist(a.pos, bp)
       const lead = frontness(a) >= front - 0.15 ? 1.6 : 1
-      let w = (0.35 + a01(a.attrs.heading) * 0.35 + a01(a.attrs.jumping) * 0.3 + a01(a.attrs.strength) * 0.2) * Math.max(0.05, 1.2 - d / 1.15)
+      // Aerial contest: timing (heading), spring (jumping), holding position under the bump (strength + balance).
+      let w = (0.35 + a01(a.attrs.heading) * 0.35 + a01(a.attrs.jumping) * 0.3 + a01(a.attrs.strength) * 0.12 + a01(a.attrs.balance ?? a.attrs.strength) * 0.08) * Math.max(0.05, 1.2 - d / 1.15)
       if (a.isHero && a.state !== 'jump') {
         // Chest control: positioning under the ball and first touch / strength to hold off the marker.
-        w = (0.4 + a01(a.attrs.firstTouch) * 0.35 + a01(a.attrs.strength) * 0.3) * Math.max(0.05, 1.25 - d / 0.8)
+        w = (0.4 + a01(a.attrs.firstTouch) * 0.35 + a01(a.attrs.strength) * 0.18 + a01(a.attrs.balance ?? a.attrs.strength) * 0.12) * Math.max(0.05, 1.25 - d / 0.8)
       } else if (a.isHero) {
         const timing = a.stateT > 0.12 && a.stateT < 0.44 ? 1 : 0.5
         w *= 0.8 + timing * 0.6
@@ -2498,9 +2502,11 @@ export class HighlightRuntime {
     // Interception skill for opponents of the passer.
     if (opponentsBall && !a.isHero && speed > 6) {
       const helper = a.team === 'hero' && this.defending
+      // Reading the pass: anticipation first, positioning (being in the lane) second.
+      const read = a01((a.attrs.anticipation ?? a.attrs.positioning) * 0.6 + a.attrs.positioning * 0.4)
       const p = helper
-        ? 0.18 + a01(a.attrs.positioning) * 0.25
-        : 0.45 + a01(a.attrs.positioning) * 0.35 + (a.team === 'opp' ? (this.difficulty - 1) * 0.4 : 0)
+        ? 0.18 + read * 0.25
+        : 0.45 + read * 0.35 + (a.team === 'opp' ? (this.difficulty - 1) * 0.4 : 0)
       if (!this.rng.chance(clamp01(p))) {
         a.noTouch = 0.5
         return
@@ -2657,7 +2663,8 @@ export class HighlightRuntime {
       // In range of the carrier, or of a ball he has knocked away from his feet (2.1#37).
       const d = Math.min(dist(a.pos, o.pos), Math.hypot(a.pos.x - this.ball.x, a.pos.y - this.ball.y))
       if (d > TACKLE_RANGE) continue
-      const rate = (0.55 + a01(a.attrs.tackling) * 1.0) * (a.team === 'opp' ? this.difficulty : this.defending ? 0.3 : 0.8)
+      // Aggressive players go into more challenges (and foul more, see tackleOdds).
+      const rate = (0.45 + a01(a.attrs.tackling) * 0.8 + a01(a.attrs.aggression ?? 50) * 0.4) * (a.team === 'opp' ? this.difficulty : this.defending ? 0.3 : 0.8)
       if (!this.rng.chance(rate * DT)) continue
       a.cd = 1.1
       const behind = isBehind(o, a)
@@ -2969,7 +2976,7 @@ export class HighlightRuntime {
     if (this.time >= this.timeLimit) {
       const inFlight = !this.owner && Math.hypot(this.ball.vx, this.ball.vy, this.ball.vz) > 4
       if (inFlight && this.time < this.timeLimit + 3) return
-      if (this.defending) return this.finish(isKeeperKind(this.kind) ? 'defended' : 'timeout', 'time limit')
+      if (this.defending) return this.finish(isKeeperKind(this.kind) ? 'defended' : this.oppShotTaken ? 'shot_conceded' : 'timeout', 'time limit')
       return this.finish(this.heroInvolvedOutcome(), 'time limit')
     }
   }

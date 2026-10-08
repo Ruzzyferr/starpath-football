@@ -33,8 +33,10 @@ export type Persona = 'pro' | 'spender' | 'gambler' | 'party'
 export interface CareerConfig {
   seed: number
   nationality: string
-  /** Playing role; the career plays at {@link ROLE_POS}[role]. */
-  role: BalanceRole
+  /** Playing role; the career plays at `position`, or {@link ROLE_POS}[role] for the standard mix roles. */
+  role: Role
+  /** Position (role balance runs: any role at any of its positions). */
+  position?: Position
   background: Background
   gender: Gender
   persona: Persona
@@ -58,6 +60,11 @@ export interface SeasonSample {
   trophies: number
   apps: number
   goals: number
+  assists: number
+  /** Average match rating this season (0 without appearances). */
+  rating: number
+  /** Tackles + saves this season. */
+  defActions: number
   /** Hero position at season end. */
   position: Position
   /** Highest goal tally of any NPC in the hero's league this season (all competitions). */
@@ -96,6 +103,8 @@ export interface CareerTrace {
   /** Age when OVR first reached 80 (null = never). */
   ovr80Age: number | null
   boughtIsland: { age: number; reputation: number } | null
+  /** OVR at career start. */
+  startOvr: number
   casinoNet: number
   clubs: string[]
 }
@@ -109,7 +118,7 @@ export function careerInput(cfg: CareerConfig): NewGameInput {
   const female = cfg.gender === 'female'
   return {
     firstName: female ? 'Elif' : 'Arda', lastName: 'Yıldız', nickname: female ? 'Elif' : 'Arda', nationality: cfg.nationality,
-    birthYear: 2026 - (cfg.startAge ?? 17), position: POS[cfg.role], foot: 'R', role: cfg.role, background: cfg.background,
+    birthYear: 2026 - (cfg.startAge ?? 17), position: cfg.position ?? POS[cfg.role as BalanceRole] ?? 'ST', foot: 'R', role: cfg.role, background: cfg.background,
     appearance: { skin: 1, hairStyle: 2, hairColor: 0, beard: 0, eyeColor: 1, face: 0, accessory: 0 },
     gender: cfg.gender, difficulty: 'normal',
   }
@@ -276,7 +285,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   const s = newGame(careerInput(cfg), cfg.seed)
   const rng = new Rng(cfg.seed ^ 0x5eed)
   const trace: CareerTrace = {
-    cfg, samples: [], bankrupt: false, bankruptAt: null, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, casinoNet: 0, clubs: [],
+    cfg, samples: [], bankrupt: false, bankruptAt: null, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, startOvr: heroOvr(s.hero), casinoNet: 0, clubs: [],
   }
   const startSeason = s.calendar.season
   const spent = { assets: 0 }
@@ -374,7 +383,9 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
       trace.samples.push({
         season, age: season - s.hero.birthYear, ovr: heroOvr(s.hero), potential: s.hero.potential, reputation: Math.round(s.hero.reputation),
         tier: tierOf(s), clubRep: heroClub(s)?.reputation ?? null, wage: s.hero.contract?.wage ?? 0, money: Math.round(s.life.money),
-        netWorth: Math.round(netWorth(s.life, s.calendar)), trophies: s.hero.trophies.length, apps: last?.stats.apps ?? 0, goals: last?.stats.goals ?? 0, position: s.hero.position, leagueTopScorer: topScorer,
+        netWorth: Math.round(netWorth(s.life, s.calendar)), trophies: s.hero.trophies.length, apps: last?.stats.apps ?? 0, goals: last?.stats.goals ?? 0,
+        assists: last?.stats.assists ?? 0, rating: last && last.stats.apps > 0 ? last.stats.ratingSum / last.stats.apps : 0,
+        defActions: (last?.stats.tackles ?? 0) + (last?.stats.saves ?? 0), position: s.hero.position, leagueTopScorer: topScorer,
         income: Math.round(acc.income),
         spend: { assets: Math.round(acc.assets), upkeep: Math.round(acc.upkeep), trainer: Math.round(acc.trainer), casino: Math.round(acc.casino), other: Math.round(known - acc.otherNet) },
         injuries: acc.injuries, weeksInjured: acc.weeksInjured, events: acc.events, weeks: acc.weeks, lowEnergyMornings: acc.lowEnergyMornings, days: acc.days,

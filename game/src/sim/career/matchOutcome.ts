@@ -76,7 +76,7 @@ export const NEUTRAL_RATING = 6.5
  * 90+ by 19 and 100 by 20 for nearly every career. Now a regular starter at a
  * small club gains ~5–8 a season, a star in a top league ~8–12 until fame saturates.
  */
-export const MATCH_REP_SCALE = 0.72
+export const MATCH_REP_SCALE = 0.76
 
 /** Form = EMA of a rating-derived target: ~last 5 matches matter (α = 0.35). */
 export const FORM_ALPHA = 0.35
@@ -99,10 +99,10 @@ export const ACTION_XP: Readonly<Record<'goals' | 'assists' | 'shotsOnTarget' | 
   goals: { finishing: 1.0, composure: 0.3 },
   assists: { vision: 0.5, passing: 0.5 },
   shotsOnTarget: { shooting: 0.4 },
-  passesCompleted: { passing: 0.04 },
-  tackles: { tackling: 0.5 },
-  dribbles: { dribbling: 0.5, agility: 0.2 },
-  saves: { reflexes: 0.55, handling: 0.25, gkPositioning: 0.15 },
+  passesCompleted: { passing: 0.03, longPassing: 0.01 },
+  tackles: { tackling: 0.4, anticipation: 0.15, aggression: 0.1 },
+  dribbles: { dribbling: 0.5, agility: 0.1, acceleration: 0.1 },
+  saves: { reflexes: 0.4, diving: 0.2, handling: 0.2, gkPositioning: 0.15 },
 }
 /** Action XP may take at most this share of the match XP budget. */
 export const ACTION_XP_MAX_SHARE = 0.45

@@ -43,6 +43,7 @@ export function flatAttrs(v: number, gk = false): Attributes {
     passing: v, shooting: v, finishing: v, dribbling: v, firstTouch: v, crossing: v, heading: v, tackling: v, setPieces: v,
     vision: v, composure: v, positioning: v, leadership: v, workRate: v,
     reflexes: gk ? v + 10 : 25, handling: gk ? v + 8 : 25, gkPositioning: gk ? v + 6 : 25, gkDistribution: gk ? v : 25,
+    acceleration: v, longPassing: v, curve: v, anticipation: v, aggression: v, diving: gk ? v + 8 : 25, balance: v,
   }
   return a
 }

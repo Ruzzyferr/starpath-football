@@ -250,6 +250,10 @@ export interface KickPlan {
   overhit: boolean
 }
 
+/** Curve and long passing (the v6 attributes; a sheet without them reads the closest older one). */
+const curveOf = (at: Attributes): number => at.curve ?? at.setPieces
+const longOf = (at: Attributes): number => at.longPassing ?? at.passing
+
 /** Skill (0..1) relevant to a kick kind. */
 export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number {
   switch (kind) {
@@ -261,19 +265,24 @@ export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number
     case 'penalty':
       return a01(at.finishing * 0.45 + at.shooting * 0.2 + at.composure * 0.35)
     case 'freekick':
-      return a01(at.setPieces * 0.7 + at.shooting * 0.3)
+      return a01(at.setPieces * 0.5 + curveOf(at) * 0.3 + at.shooting * 0.2)
     case 'cross':
-      return a01(at.crossing * 0.8 + at.passing * 0.2)
+      return a01(at.crossing * 0.75 + curveOf(at) * 0.15 + at.passing * 0.1)
     case 'header':
       return a01(at.heading * 0.75 + at.jumping * 0.25)
-    case 'through':
-      return a01(at.passing * 0.55 + at.vision * 0.45)
+    case 'through': {
+      // A through ball over distance is a long pass: the weight comes from long passing, the idea from vision.
+      const long = clamp01((distance - 18) / 20)
+      return a01(at.passing * (0.55 - long * 0.3) + longOf(at) * long * 0.3 + at.vision * 0.45)
+    }
     case 'lofted':
-      return a01(at.passing * 0.7 + at.vision * 0.3)
+      return a01(longOf(at) * 0.7 + at.vision * 0.3)
     case 'clear':
-      return a01(at.strength * 0.4 + at.passing * 0.3 + at.heading * 0.3)
-    case 'pass':
-      return a01(at.passing * 0.85 + at.firstTouch * 0.15)
+      return a01(at.strength * 0.35 + longOf(at) * 0.35 + at.heading * 0.3)
+    case 'pass': {
+      const long = clamp01((distance - 20) / 20)
+      return a01(at.passing * (0.85 - long * 0.6) + longOf(at) * long * 0.6 + at.firstTouch * 0.15)
+    }
   }
 }
 
@@ -290,14 +299,15 @@ export const HEADER_RANGE = 18
 
 /** Max side-spin (rad/s) a kicker can impart for a kick kind. */
 export function maxSpin(kind: KickKind, at: Attributes): number {
-  const curve = kind === 'freekick' || kind === 'cross' ? at.setPieces * 0.6 + at.crossing * 0.4 : at.setPieces * 0.4 + at.shooting * 0.3 + at.passing * 0.3
+  // Curve is the bend a kicker can put on it; the kick's own technique adds the rest.
+  const curve = kind === 'freekick' || kind === 'cross' ? curveOf(at) * 0.6 + at.setPieces * 0.2 + at.crossing * 0.2 : curveOf(at) * 0.6 + at.shooting * 0.2 + at.passing * 0.2
   return 22 + a01(curve) * 42
 }
 
-/** Largest bend (m) a kicker can put on a ball: 3.5 m scaled by the Technique (set pieces) / Shooting average (2.1#45). */
+/** Largest bend (m) a kicker can put on a ball: 3.5 m scaled mostly by Curve, with set pieces and shooting (2.1#45). */
 export const MAX_CURL_BEND = 3.5
 export function curlCap(at: Attributes): number {
-  return MAX_CURL_BEND * (0.3 + 0.7 * a01((at.setPieces + at.shooting) / 2))
+  return MAX_CURL_BEND * (0.3 + 0.7 * a01(curveOf(at) * 0.6 + at.setPieces * 0.2 + at.shooting * 0.2))
 }
 
 /** Max sideways distance (m) of a launch's flight from the straight line to `target` (noiseless). */

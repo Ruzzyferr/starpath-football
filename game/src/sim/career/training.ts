@@ -57,47 +57,47 @@ export interface TrainingDef {
 export const TRAINING_TYPES: Readonly<Record<TrainingType, TrainingDef>> = {
   shooting: {
     id: 'shooting', icon: '🎯', name: lt('Şut Antrenmanı', 'Shooting Drill'),
-    attrs: { shooting: 4, finishing: 4, composure: 1.5, heading: 1 }, baseXp: 30, energy: 20, fatigue: 9, injuryRisk: 0.005, sharpness: 3, stress: 1,
+    attrs: { shooting: 4, finishing: 4, curve: 1, composure: 1.5, heading: 1 }, baseXp: 30, energy: 20, fatigue: 9, injuryRisk: 0.005, sharpness: 3, stress: 1,
   },
   passing: {
     id: 'passing', icon: '🔁', name: lt('Pas Çalışması', 'Passing Drill'),
-    attrs: { passing: 4, vision: 2.5, firstTouch: 2.5, crossing: 2 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+    attrs: { passing: 4, longPassing: 2.5, vision: 2.5, firstTouch: 2, crossing: 1 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
   },
   dribbling: {
     id: 'dribbling', icon: '🌀', name: lt('Top Sürme', 'Dribbling Course'),
-    attrs: { dribbling: 4, agility: 2.5, firstTouch: 2.5, pace: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.006, sharpness: 3, stress: 1,
+    attrs: { dribbling: 4, agility: 2, balance: 1, firstTouch: 2, acceleration: 1.5 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.006, sharpness: 3, stress: 1,
   },
   physical: {
     id: 'physical', icon: '🏋️', name: lt('Kondisyon & Güç', 'Fitness & Strength'),
-    attrs: { stamina: 3, strength: 3, pace: 2, jumping: 1.5, agility: 1 }, baseXp: 32, energy: 25, fatigue: 14, injuryRisk: 0.008, sharpness: 4, stress: 2, perkKey: 'xp_physical',
+    attrs: { stamina: 3, strength: 2.5, balance: 1, pace: 1.5, acceleration: 1.5, jumping: 1.5, agility: 1 }, baseXp: 32, energy: 25, fatigue: 14, injuryRisk: 0.008, sharpness: 4, stress: 2, perkKey: 'xp_physical',
   },
   tactical: {
     id: 'tactical', icon: '📋', name: lt('Taktik Çalışma', 'Tactical Session'),
-    attrs: { positioning: 3.5, vision: 2.5, workRate: 2, tackling: 2, leadership: 1 }, baseXp: 28, energy: 12, fatigue: 5, injuryRisk: 0.002, sharpness: 2, stress: 1, perkKey: 'xp_tactical',
+    attrs: { positioning: 3, anticipation: 2, vision: 2, workRate: 2, tackling: 2, leadership: 1 }, baseXp: 28, energy: 12, fatigue: 5, injuryRisk: 0.002, sharpness: 2, stress: 1, perkKey: 'xp_tactical',
   },
   setPiece: {
     id: 'setPiece', icon: '🚩', name: lt('Duran Top', 'Set Pieces'),
-    attrs: { setPieces: 4.5, crossing: 2, shooting: 1.5, heading: 1.5 }, baseXp: 28, energy: 14, fatigue: 6, injuryRisk: 0.003, sharpness: 2, stress: 0,
+    attrs: { setPieces: 4, curve: 3, crossing: 1.5, shooting: 1, heading: 1 }, baseXp: 28, energy: 14, fatigue: 6, injuryRisk: 0.003, sharpness: 2, stress: 0,
   },
   crossing: {
     id: 'crossing', icon: '📐', name: lt('Orta İstasyonu', 'Cross Station'),
-    attrs: { crossing: 4.5, passing: 2, setPieces: 1.5, vision: 1 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+    attrs: { crossing: 4.5, curve: 2, longPassing: 1.5, passing: 1, vision: 1 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
   },
   heading: {
     id: 'heading', icon: '⚽', name: lt('Kafa Topu Makinesi', 'Header Machine'),
-    attrs: { heading: 4.5, jumping: 3, strength: 1.5, positioning: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.006, sharpness: 3, stress: 1,
+    attrs: { heading: 4.5, jumping: 3, strength: 1, balance: 1, aggression: 1, positioning: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.006, sharpness: 3, stress: 1,
   },
   tackling: {
     id: 'tackling', icon: '🛡️', name: lt('Top Kapma Düellosu', 'Tackle Duel'),
-    attrs: { tackling: 4.5, positioning: 3, strength: 1.5, agility: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.007, sharpness: 3, stress: 1,
+    attrs: { tackling: 4.5, positioning: 2, anticipation: 1.5, aggression: 1.5, strength: 1, agility: 1 }, baseXp: 30, energy: 20, fatigue: 10, injuryRisk: 0.007, sharpness: 3, stress: 1,
   },
   goalkeeping: {
     id: 'goalkeeping', icon: '🧤', name: lt('Kaleci Antrenmanı', 'Goalkeeping Drill'),
-    attrs: { reflexes: 4, handling: 4, gkPositioning: 3, agility: 1.5, jumping: 1 }, baseXp: 32, energy: 20, fatigue: 10, injuryRisk: 0.005, sharpness: 3, stress: 1,
+    attrs: { reflexes: 3.5, diving: 3, handling: 3.5, gkPositioning: 3, agility: 1.5, jumping: 1 }, baseXp: 32, energy: 20, fatigue: 10, injuryRisk: 0.005, sharpness: 3, stress: 1,
   },
   distribution: {
     id: 'distribution', icon: '🧤', name: lt('Çıkış & Hâkimiyet', 'Distribution & Claiming'),
-    attrs: { gkDistribution: 4, handling: 2.5, passing: 1.5, gkPositioning: 1, vision: 0.5, jumping: 0.5 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+    attrs: { gkDistribution: 4, handling: 2.5, longPassing: 1.5, passing: 1, gkPositioning: 1, jumping: 0.5 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
   },
   recovery: {
     id: 'recovery', icon: '🧘', name: lt('Yoga & Toparlanma', 'Yoga & Recovery'),

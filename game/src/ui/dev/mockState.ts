@@ -2,7 +2,7 @@
 import { Rng, clamp } from '../../core/rng'
 import { SAVE_VERSION } from '../../core/config'
 import { heightRange } from '../../core/roles'
-import { ROLE_TEMPLATES } from '../../sim/career/createHero'
+import { ROLE_SPEC } from '../../sim/career/createHero'
 import {
   ATTRIBUTE_KEYS, isGoalkeepingAttr, type AttributeKey, type Attributes, type GameState, type Hero, type Life, type LogEntry,
   type NewsItem, type Position, type Relationship, type SeasonStats, type Role,
@@ -36,9 +36,8 @@ export function computeOvr(attrs: Attributes, pos: Position): number {
   return Math.round(sum / tot)
 }
 
-/** The role's three biggest template strengths get a bump in the mock sheet. */
-const roleBonus = (role: Role): AttributeKey[] =>
-  (Object.entries(ROLE_TEMPLATES[role]) as [AttributeKey, number][]).sort((x, y) => y[1] - x[1]).slice(0, 3).map(([k]) => k)
+/** The role's first three strengths get a bump in the mock sheet. */
+const roleBonus = (role: Role): AttributeKey[] => ROLE_SPEC[role].plus.slice(0, 3)
 
 function makeAttrs(rng: Rng, role: Role, keeper: boolean, base: number): Attributes {
   const a = {} as Attributes

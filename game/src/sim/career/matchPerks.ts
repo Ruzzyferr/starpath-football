@@ -50,28 +50,28 @@ export const PERK_POINTS_PER_UNIT = 40
 
 /** Effect key → attribute weights (share of the boost each attribute receives). */
 export const MATCH_PERK_ATTRS: Readonly<Record<string, Partial<Record<AttributeKey, number>>>> = {
-  match_finesse: { shooting: 0.6, setPieces: 1 },
+  match_finesse: { curve: 1, shooting: 0.4, setPieces: 0.3 },
   match_shot_power: { shooting: 0.6, strength: 0.8 },
   match_box_presence: { positioning: 1, finishing: 0.6 },
   match_penalty_steady: { composure: 0.5, finishing: 0.3 },
   match_header: { heading: 1, jumping: 0.6 },
   match_chip: { composure: 0.6, finishing: 0.5 },
   match_aim_time: { composure: 1 },
-  match_through_ball: { vision: 1, passing: 0.5 },
+  match_through_ball: { vision: 1, passing: 0.3, longPassing: 0.3 },
   match_cross: { crossing: 1 },
-  match_free_kick: { setPieces: 1 },
+  match_free_kick: { setPieces: 0.8, curve: 0.5 },
   match_tired_passing: { passing: 0.2, stamina: 0.25 },
   match_assist: { vision: 1 },
   match_one_on_one: { dribbling: 1, agility: 0.6 },
   match_ball_retention: { dribbling: 0.7, firstTouch: 0.8 },
-  match_sprint_ball: { pace: 0.8, stamina: 0.5 },
+  match_sprint_ball: { pace: 0.6, acceleration: 0.5, stamina: 0.4 },
   stamina_drain: { stamina: 1 },
-  match_intercept: { positioning: 0.8, tackling: 0.6 },
+  match_intercept: { anticipation: 1, positioning: 0.4, tackling: 0.4 },
   match_clean_tackle: { tackling: 0.8 },
-  match_aerial_def: { heading: 0.9, strength: 0.6 },
-  match_gk_reaction: { reflexes: 1.2, agility: 0.6 },
+  match_aerial_def: { heading: 0.9, strength: 0.4, balance: 0.4 },
+  match_gk_reaction: { reflexes: 1.2, diving: 0.6 },
   match_gk_penalty: { reflexes: 0.6, gkPositioning: 1 },
-  match_gk_sweeper: { agility: 0.8, pace: 0.8, gkDistribution: 0.6 },
+  match_gk_sweeper: { acceleration: 0.8, pace: 0.4, gkDistribution: 0.6, anticipation: 0.4 },
 }
 
 /** Flat composure in matches with importance ≥ this (big_game perk). */

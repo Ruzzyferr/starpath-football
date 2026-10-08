@@ -843,7 +843,7 @@ const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
  */
 export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind, number>>>> = {
   // Strikers: in behind → 1v1s and breaks; target → hold-up and link-up; pivot → headers, corners, high balls.
-  runner: { one_on_one: 2.0, counter: 1.6, counter_2v1: 1.3, long_ball_control: 1.6, build_up: 0.35, header: 0.45, corner: 0.5, hold_up: 0.2, defend: 1.0 },
+  runner: { one_on_one: 1.7, counter: 1.6, counter_2v1: 1.3, long_ball_control: 1.6, build_up: 0.35, header: 0.45, corner: 0.5, hold_up: 0.2, defend: 1.0 },
   targetForward: { hold_up: 4.0, build_up: 1.8, long_ball_control: 1.2, edge_of_box: 1.0, rebound: 1.3, header: 0.8, one_on_one: 0.6, counter: 0.7, defend: 0.8 },
   pivot: { header: 2.6, corner: 2.2, long_ball_control: 1.8, hold_up: 1.4, rebound: 1.3, one_on_one: 0.5, counter: 0.5, dribble: 0.5, build_up: 0.7 },
   // Wingers: byline crosses; cutting in to shoot; roaming playmaking; take-ons.
@@ -854,15 +854,15 @@ export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind,
   // Midfield: screen and win it back; both boxes; run the game.
   anchor: { interception: 2.0, block: 1.6, defend: 1.4, defend_1v1: 1.4, build_up: 0.8, long_ball_control: 0.7, edge_of_box: 1.3, counter: 0.6, one_on_one: 0.4, cross: 0.6 },
   boxToBox: { rebound: 1.6, counter: 1.4, interception: 1.2, edge_of_box: 1.1, defend: 1.1, build_up: 0.85 },
-  playmaker: { build_up: 1.7, long_ball_control: 1.3, counter_2v1: 1.3, edge_of_box: 1.1, defend: 0.55, interception: 0.6, block: 0.55, defend_1v1: 0.7 },
+  playmaker: { build_up: 1.5, long_ball_control: 1.3, counter_2v1: 1.3, edge_of_box: 1.1, defend: 0.55, interception: 0.6, block: 0.55, defend_1v1: 0.7 },
   // Full-backs: overlap and cross; lock the flank; both.
   attackingFullBack: { cross: 1.7, counter: 1.4, counter_2v1: 2.2, edge_of_box: 1.2, defend: 0.7, defend_1v1: 0.75, back_post: 0.75, build_up: 1.3 },
   defensiveFullBack: { defend_1v1: 1.5, defend: 1.3, interception: 1.4, block: 1.4, back_post: 1.4, build_up: 0.7, cross: 0.5, counter: 0.6, counter_2v1: 0.4 },
   balancedFullBack: {},
   // Centre-backs: step out and intercept; own the air; build from the back.
   stopper: { interception: 1.8, defend_1v1: 1.7, defend: 1.0, block: 1.1, build_up: 0.6, back_post: 0.8 },
-  aerialDefender: { corner: 1.5, back_post: 2.0, defend: 1.1, interception: 0.75, defend_1v1: 0.7, build_up: 0.8 },
-  ballPlayingDefender: { build_up: 2.6, interception: 1.1, defend: 0.85, defend_1v1: 0.8, block: 0.9 },
+  aerialDefender: { corner: 1.5, back_post: 2.0, defend: 1.15, interception: 0.9, defend_1v1: 0.75, build_up: 0.8 },
+  ballPlayingDefender: { build_up: 2.0, interception: 1.1, defend: 0.85, defend_1v1: 0.8, block: 0.9 },
   // Keepers: point-blank reactions; diving saves; sweeping up behind the line.
   reflexKeeper: { gk_1v1: 1.5, gk_save: 1.1, gk_sweep: 0.7 },
   shotStopper: { gk_save: 1.25, gk_1v1: 0.9, gk_sweep: 0.7 },
@@ -877,11 +877,11 @@ export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind,
  */
 export const ROLE_SHOT_SHARE: Readonly<Partial<Record<Role, number>>> = {
   // A runner's chances (1v1s, breaks) convert best, so he gets fewer of them: same goals, different goals.
-  runner: 0.83, targetForward: 1.0, pivot: 1.0,
-  invertedWinger: 1.0, freeWinger: 0.95,
-  anchor: 0.9, playmaker: 0.9, boxToBox: 1.0,
+  runner: 0.83, targetForward: 1.0, pivot: 1.05,
+  touchlineWinger: 1.06, invertedWinger: 0.93, freeWinger: 0.95, dribbler: 1.05,
+  anchor: 0.9, playmaker: 0.86, boxToBox: 1.0,
   attackingFullBack: 1.1, defensiveFullBack: 0.85,
-  stopper: 0.95, aerialDefender: 1.1, ballPlayingDefender: 0.95,
+  stopper: 0.95, aerialDefender: 1.25, ballPlayingDefender: 0.95,
 }
 
 /** Position mix reshaped by the role (see {@link ROLE_KIND_MULT}, {@link ROLE_SHOT_SHARE}). */

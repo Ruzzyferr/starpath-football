@@ -17,32 +17,32 @@ type Weights = Partial<Record<Outcome, number>>
 
 /** Attribute mix that decides how well the hero handles each kind. */
 const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = {
-  build_up: { passing: 0.35, vision: 0.25, firstTouch: 0.2, composure: 0.2 },
-  counter: { pace: 0.3, dribbling: 0.25, finishing: 0.25, vision: 0.2 },
-  one_on_one: { finishing: 0.45, composure: 0.35, dribbling: 0.2 },
-  cross: { crossing: 0.35, finishing: 0.25, heading: 0.2, composure: 0.2 },
-  edge_of_box: { shooting: 0.5, composure: 0.25, finishing: 0.25 },
-  freekick: { setPieces: 0.6, shooting: 0.25, composure: 0.15 },
+  build_up: { passing: 0.3, longPassing: 0.1, vision: 0.25, firstTouch: 0.15, composure: 0.2 },
+  counter: { pace: 0.15, acceleration: 0.15, dribbling: 0.25, finishing: 0.25, vision: 0.2 },
+  one_on_one: { finishing: 0.45, composure: 0.3, dribbling: 0.15, acceleration: 0.1 },
+  cross: { crossing: 0.3, curve: 0.1, finishing: 0.25, heading: 0.15, composure: 0.2 },
+  edge_of_box: { shooting: 0.4, curve: 0.2, composure: 0.2, finishing: 0.2 },
+  freekick: { setPieces: 0.45, curve: 0.25, shooting: 0.15, composure: 0.15 },
   penalty: { composure: 0.5, finishing: 0.3, setPieces: 0.2 },
-  corner: { heading: 0.45, jumping: 0.3, strength: 0.25 },
-  defend: { tackling: 0.4, positioning: 0.3, pace: 0.15, strength: 0.15 },
-  gk_save: { reflexes: 0.45, gkPositioning: 0.3, handling: 0.25 },
-  gk_penalty: { reflexes: 0.6, composure: 0.2, gkPositioning: 0.2 },
-  counter_2v1: { pace: 0.25, finishing: 0.3, vision: 0.25, dribbling: 0.2 },
-  long_ball_control: { firstTouch: 0.4, strength: 0.2, composure: 0.2, jumping: 0.1, agility: 0.1 },
-  rebound: { finishing: 0.35, agility: 0.25, positioning: 0.2, composure: 0.2 },
-  interception: { positioning: 0.4, vision: 0.2, pace: 0.2, tackling: 0.2 },
-  hold_up: { strength: 0.35, firstTouch: 0.25, composure: 0.2, passing: 0.2 },
-  defend_1v1: { tackling: 0.35, pace: 0.25, positioning: 0.25, agility: 0.15 },
-  block: { positioning: 0.4, strength: 0.2, tackling: 0.2, agility: 0.2 },
-  corner_kick: { crossing: 0.45, setPieces: 0.35, vision: 0.2 },
+  corner: { heading: 0.4, jumping: 0.25, strength: 0.15, balance: 0.1, aggression: 0.1 },
+  defend: { tackling: 0.3, positioning: 0.2, anticipation: 0.15, acceleration: 0.1, strength: 0.15, aggression: 0.1 },
+  gk_save: { reflexes: 0.3, diving: 0.25, gkPositioning: 0.25, handling: 0.2 },
+  gk_penalty: { diving: 0.35, reflexes: 0.25, composure: 0.2, gkPositioning: 0.2 },
+  counter_2v1: { pace: 0.15, acceleration: 0.1, finishing: 0.3, vision: 0.25, dribbling: 0.2 },
+  long_ball_control: { firstTouch: 0.4, strength: 0.15, balance: 0.1, composure: 0.2, jumping: 0.1, agility: 0.05 },
+  rebound: { finishing: 0.3, anticipation: 0.3, agility: 0.2, composure: 0.2 },
+  interception: { anticipation: 0.4, positioning: 0.25, acceleration: 0.15, tackling: 0.2 },
+  hold_up: { strength: 0.25, balance: 0.15, firstTouch: 0.25, composure: 0.15, passing: 0.2 },
+  defend_1v1: { tackling: 0.3, acceleration: 0.2, pace: 0.1, positioning: 0.2, agility: 0.1, aggression: 0.1 },
+  block: { positioning: 0.3, anticipation: 0.2, strength: 0.15, tackling: 0.15, aggression: 0.2 },
+  corner_kick: { crossing: 0.35, curve: 0.3, setPieces: 0.15, vision: 0.2 },
   // Keeper or captain organising the wall: reading the taker and the angles.
-  fk_wall: { positioning: 0.45, leadership: 0.3, composure: 0.25 },
-  dribble: { dribbling: 0.45, agility: 0.2, pace: 0.15, finishing: 0.2 },
-  header: { heading: 0.45, jumping: 0.3, positioning: 0.25 },
-  gk_1v1: { reflexes: 0.35, gkPositioning: 0.35, pace: 0.15, composure: 0.15 },
-  gk_sweep: { gkPositioning: 0.35, gkDistribution: 0.15, pace: 0.3, handling: 0.2 },
-  back_post: { positioning: 0.4, heading: 0.3, jumping: 0.15, strength: 0.15 },
+  fk_wall: { positioning: 0.35, anticipation: 0.15, leadership: 0.3, composure: 0.2 },
+  dribble: { dribbling: 0.4, agility: 0.15, balance: 0.1, acceleration: 0.15, finishing: 0.2 },
+  header: { heading: 0.45, jumping: 0.25, balance: 0.1, positioning: 0.1, aggression: 0.1 },
+  gk_1v1: { reflexes: 0.25, gkPositioning: 0.3, diving: 0.15, acceleration: 0.15, composure: 0.15 },
+  gk_sweep: { gkPositioning: 0.3, anticipation: 0.15, gkDistribution: 0.1, acceleration: 0.25, handling: 0.2 },
+  back_post: { positioning: 0.3, anticipation: 0.15, heading: 0.25, jumping: 0.15, balance: 0.15 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -100,18 +100,26 @@ export function skillTerm(kind: HighlightKind, attrs: Attributes, difficulty: nu
   return clamp((skillFor(kind, attrs) - 65) / 30 - (difficulty - 1), -1, 1)
 }
 
+/** Foul share multiplier from aggression: 0.7 at 20, 1 at 50, 1.45 at 95 (a missing value reads as 50). */
+export function aggressionFoulMult(aggression: number | undefined): number {
+  return clamp(1 + ((aggression ?? 50) - 50) * 0.01, 0.7, 1.45)
+}
+
 /**
  * Outcome probabilities for a skipped highlight (normalized to sum 1).
  * Exposed for UI previews ("62% chance to score") and tests.
  */
 export function outcomeProbabilities(kind: HighlightKind, attrs: Attributes, difficulty: number): Weights {
   const k = skillTerm(kind, attrs, difficulty)
+  // Aggression goes into every duel: more of them are won (in its skill mix) but more end in a foul.
+  const foulMult = DEFENSIVE_KINDS.has(kind) && !KEEPER_KINDS.has(kind) ? aggressionFoulMult(attrs.aggression) : 1
   const out: Weights = {}
   let total = 0
   for (const [o, base] of Object.entries(BASE[kind]) as [Outcome, number][]) {
     let w = base
     if (GOOD.has(o)) w *= 1 + 0.8 * k
     else if (BAD.has(o)) w *= 1 - 0.6 * k
+    if (o === 'foul_committed') w *= foulMult
     w = Math.max(0.001, w)
     out[o] = w
     total += w

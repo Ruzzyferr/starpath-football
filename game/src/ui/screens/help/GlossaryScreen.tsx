@@ -7,6 +7,7 @@ import { Icon } from '../../icons'
 import { gameState, screen } from '../../store'
 import { GLOSSARY, GLOSSARY_CATS, matchesQuery, type GlossaryCat, type GlossaryTerm } from '../../tutorial/glossary'
 import { compareText } from '../../a11y/collate'
+import { ATTR_DISPLAY_ORDER } from '../career/attrs'
 
 export function GlossaryScreen() {
   const focus = screen.value.params?.term as GlossaryTerm | undefined
@@ -19,8 +20,13 @@ export function GlossaryScreen() {
     focusRef.current?.scrollIntoView?.({ block: 'center' })
   }, [focus])
 
-  const items = GLOSSARY.filter((g) => cat === 'all' || g.cat === cat)
-    .map((g) => ({ ...g, name: t(`help.glossary.terms.${g.id}.name`), def: t(`help.glossary.terms.${g.id}.def`) }))
+  // Every attribute is a term too (owner feedback: each stat the game shows is explained), filed under Player.
+  const attrs = ATTR_DISPLAY_ORDER.map((k) => ({ id: `attr-${k}`, cat: 'player' as GlossaryCat, name: t(`data.attr.${k}`), def: t(`data.attrDesc.${k}`) }))
+  const items = [
+    ...GLOSSARY.map((g) => ({ ...g, id: g.id as string, name: t(`help.glossary.terms.${g.id}.name`), def: t(`help.glossary.terms.${g.id}.def`) })),
+    ...attrs,
+  ]
+    .filter((g) => cat === 'all' || g.cat === cat)
     .filter((g) => matchesQuery(q, g.name, g.def, lang))
     .sort((a, b) => compareText(a.name, b.name, lang))
 

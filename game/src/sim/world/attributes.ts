@@ -25,16 +25,16 @@ export function positionGroup(pos: Position): PositionGroup {
 }
 
 const RAW_WEIGHTS: Record<Position, WeightTable> = {
-  GK: { reflexes: 32, handling: 24, gkPositioning: 12, gkDistribution: 6, composure: 6, agility: 8, jumping: 6, passing: 2, firstTouch: 2, leadership: 2 },
-  CB: { tackling: 22, positioning: 20, heading: 14, strength: 13, jumping: 8, composure: 6, pace: 7, passing: 5, workRate: 4, leadership: 1 },
-  LB: { tackling: 17, pace: 17, positioning: 13, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 5, firstTouch: 5 },
-  RB: { tackling: 17, pace: 17, positioning: 13, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 5, firstTouch: 5 },
-  DM: { tackling: 18, positioning: 16, passing: 16, strength: 8, stamina: 8, workRate: 10, vision: 8, composure: 8, firstTouch: 8 },
-  CM: { passing: 20, vision: 14, firstTouch: 10, stamina: 10, workRate: 8, tackling: 8, dribbling: 8, composure: 8, shooting: 7, positioning: 7 },
-  AM: { passing: 16, vision: 18, dribbling: 16, firstTouch: 12, shooting: 10, finishing: 8, composure: 10, agility: 6, setPieces: 4 },
-  LW: { pace: 18, dribbling: 20, crossing: 14, agility: 10, firstTouch: 10, passing: 7, finishing: 8, shooting: 6, stamina: 7 },
-  RW: { pace: 18, dribbling: 20, crossing: 14, agility: 10, firstTouch: 10, passing: 7, finishing: 8, shooting: 6, stamina: 7 },
-  ST: { finishing: 26, shooting: 10, composure: 12, positioning: 12, heading: 10, pace: 10, firstTouch: 10, dribbling: 5, strength: 5 },
+  GK: { reflexes: 24, diving: 14, handling: 22, gkPositioning: 12, gkDistribution: 6, composure: 6, agility: 6, jumping: 5, passing: 2, firstTouch: 2, leadership: 2 },
+  CB: { tackling: 22, positioning: 15, anticipation: 8, heading: 14, strength: 9, balance: 5, jumping: 7, composure: 6, pace: 5, acceleration: 2, passing: 4, longPassing: 2, aggression: 3, workRate: 3, leadership: 1 },
+  LB: { tackling: 17, pace: 12, acceleration: 6, positioning: 10, anticipation: 4, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 4, firstTouch: 5 },
+  RB: { tackling: 17, pace: 12, acceleration: 6, positioning: 10, anticipation: 4, crossing: 12, stamina: 10, passing: 8, dribbling: 6, workRate: 7, agility: 4, firstTouch: 5 },
+  DM: { tackling: 18, positioning: 12, anticipation: 7, passing: 12, longPassing: 6, strength: 8, stamina: 8, workRate: 9, aggression: 3, vision: 8, composure: 8, firstTouch: 7 },
+  CM: { passing: 16, longPassing: 6, vision: 14, firstTouch: 10, stamina: 10, workRate: 8, tackling: 8, dribbling: 8, composure: 8, shooting: 7, positioning: 4, anticipation: 4 },
+  AM: { passing: 16, vision: 18, dribbling: 16, firstTouch: 12, shooting: 8, curve: 4, finishing: 8, composure: 10, agility: 5, acceleration: 4, setPieces: 3 },
+  LW: { pace: 12, acceleration: 8, dribbling: 20, crossing: 14, curve: 4, agility: 8, firstTouch: 10, passing: 7, finishing: 8, shooting: 5, stamina: 7 },
+  RW: { pace: 12, acceleration: 8, dribbling: 20, crossing: 14, curve: 4, agility: 8, firstTouch: 10, passing: 7, finishing: 8, shooting: 5, stamina: 7 },
+  ST: { finishing: 26, shooting: 10, composure: 12, positioning: 9, anticipation: 4, heading: 10, pace: 6, acceleration: 5, firstTouch: 10, dribbling: 5, strength: 3, balance: 3 },
 }
 
 function normalizeWeights(t: WeightTable): Readonly<WeightTable> {
@@ -82,6 +82,7 @@ const OUTFIELD_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
   tackling: -14, setPieces: -14,
   vision: -8, composure: -6, positioning: -8, leadership: -12, workRate: -4,
   reflexes: -62, handling: -62, gkPositioning: -58, gkDistribution: -54,
+  acceleration: -4, longPassing: -10, curve: -14, anticipation: -8, aggression: -8, diving: -62, balance: -4,
 }
 
 const GK_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
@@ -90,34 +91,35 @@ const GK_DEFAULTS: Readonly<Record<AttributeKey, number>> = {
   tackling: -40, setPieces: -30,
   vision: -20, composure: -2, positioning: 0, leadership: -8, workRate: -15,
   reflexes: 3, handling: 2, gkPositioning: 1, gkDistribution: -4,
+  acceleration: -20, longPassing: -10, curve: -30, anticipation: -6, aggression: -20, diving: 2, balance: -8,
 }
 
 /** Offsets from OVR that give each position its recognisable profile. */
 const TEMPLATES: Readonly<Record<Position, WeightTable>> = {
-  GK: { reflexes: 4, handling: 2, gkPositioning: 2, positioning: 1, agility: 1 },
-  CB: { tackling: 4, positioning: 4, heading: 4, strength: 5, jumping: 3, pace: -6, dribbling: -16, finishing: -28, shooting: -22, crossing: -18 },
-  LB: { pace: 4, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
-  RB: { pace: 4, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
-  DM: { tackling: 3, positioning: 3, passing: 2, workRate: 4, stamina: 2, finishing: -20, dribbling: -10 },
-  CM: { passing: 4, vision: 2, stamina: 3, firstTouch: 1, tackling: -6, finishing: -10, heading: -12 },
-  AM: { vision: 4, passing: 3, dribbling: 3, firstTouch: 2, tackling: -24, heading: -16, strength: -10, setPieces: -2 },
-  LW: { pace: 5, dribbling: 4, agility: 3, crossing: 2, tackling: -26, heading: -16, strength: -10 },
-  RW: { pace: 5, dribbling: 4, agility: 3, crossing: 2, tackling: -26, heading: -16, strength: -10 },
-  ST: { finishing: 5, composure: 2, positioning: 2, heading: -2, shooting: 0, tackling: -30, crossing: -16 },
+  GK: { reflexes: 4, diving: 2, handling: 2, gkPositioning: 2, positioning: 1, agility: 1 },
+  CB: { tackling: 4, positioning: 4, anticipation: 2, heading: 4, strength: 5, jumping: 3, aggression: 4, pace: -6, acceleration: -6, dribbling: -16, finishing: -28, shooting: -22, crossing: -18, curve: -16 },
+  LB: { pace: 4, acceleration: 3, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
+  RB: { pace: 4, acceleration: 3, tackling: 2, crossing: 3, stamina: 4, finishing: -22, heading: -10 },
+  DM: { tackling: 3, positioning: 3, anticipation: 3, passing: 2, longPassing: 2, workRate: 4, stamina: 2, aggression: 2, finishing: -20, dribbling: -10 },
+  CM: { passing: 4, longPassing: 2, vision: 2, stamina: 3, firstTouch: 1, tackling: -6, finishing: -10, heading: -12 },
+  AM: { vision: 4, passing: 3, dribbling: 3, firstTouch: 2, curve: 0, tackling: -24, heading: -16, strength: -10, aggression: -12, setPieces: -2 },
+  LW: { pace: 5, acceleration: 5, dribbling: 4, agility: 3, crossing: 2, tackling: -26, heading: -16, strength: -10, aggression: -12 },
+  RW: { pace: 5, acceleration: 5, dribbling: 4, agility: 3, crossing: 2, tackling: -26, heading: -16, strength: -10, aggression: -12 },
+  ST: { finishing: 5, composure: 2, positioning: 2, anticipation: 0, heading: -2, shooting: 0, tackling: -30, crossing: -16, longPassing: -14 },
 }
 
 /** Player "flavours" within a position; one is chosen per player from styleSeed. */
 const FLAVOURS: Readonly<Record<Position, readonly WeightTable[]>> = {
-  GK: [{}, { reflexes: 4, handling: -3, gkPositioning: -2 }, { gkDistribution: 12, passing: 10, firstTouch: 8, composure: 3 }, { jumping: 5, strength: 6, agility: -3, gkPositioning: 3 }],
-  CB: [{}, { pace: 8, agility: 4, strength: -4 }, { passing: 8, vision: 6, composure: 4 }, { heading: 6, strength: 6, pace: -6 }],
+  GK: [{}, { reflexes: 4, diving: 3, handling: -3, gkPositioning: -2 }, { gkDistribution: 12, passing: 10, longPassing: 10, firstTouch: 8, composure: 3, acceleration: 4 }, { jumping: 5, strength: 6, agility: -3, diving: -3, gkPositioning: 3 }],
+  CB: [{}, { pace: 8, acceleration: 6, agility: 4, aggression: 4, strength: -4 }, { passing: 8, longPassing: 8, vision: 6, composure: 4, aggression: -4 }, { heading: 6, strength: 6, pace: -6 }],
   LB: [{}, { crossing: 6, dribbling: 6, tackling: -4 }, { tackling: 6, positioning: 4, crossing: -5 }],
   RB: [{}, { crossing: 6, dribbling: 6, tackling: -4 }, { tackling: 6, positioning: 4, crossing: -5 }],
-  DM: [{}, { passing: 6, vision: 6, tackling: -3 }, { tackling: 6, strength: 6, passing: -4 }],
+  DM: [{}, { passing: 6, longPassing: 6, vision: 6, tackling: -3 }, { tackling: 6, strength: 6, aggression: 6, anticipation: 3, passing: -4 }],
   CM: [{}, { shooting: 8, finishing: 6, positioning: -3 }, { tackling: 8, workRate: 6, vision: -4 }, { dribbling: 6, agility: 4 }],
-  AM: [{}, { shooting: 8, finishing: 8, passing: -3 }, { setPieces: 14, vision: 3 }, { dribbling: 6, agility: 6, vision: -3 }],
-  LW: [{}, { finishing: 8, shooting: 6, crossing: -4 }, { crossing: 8, passing: 4, finishing: -4 }, { pace: 6, agility: 4, firstTouch: -3 }],
-  RW: [{}, { finishing: 8, shooting: 6, crossing: -4 }, { crossing: 8, passing: 4, finishing: -4 }, { pace: 6, agility: 4, firstTouch: -3 }],
-  ST: [{}, { heading: 10, strength: 10, jumping: 6, pace: -8 }, { pace: 8, agility: 6, heading: -8 }, { passing: 8, vision: 8, finishing: -3 }],
+  AM: [{}, { shooting: 8, finishing: 8, passing: -3 }, { setPieces: 14, curve: 12, vision: 3 }, { dribbling: 6, agility: 6, acceleration: 4, vision: -3 }],
+  LW: [{}, { finishing: 8, shooting: 6, curve: 6, crossing: -4 }, { crossing: 8, passing: 4, finishing: -4 }, { pace: 6, acceleration: 6, agility: 4, firstTouch: -3 }],
+  RW: [{}, { finishing: 8, shooting: 6, curve: 6, crossing: -4 }, { crossing: 8, passing: 4, finishing: -4 }, { pace: 6, acceleration: 6, agility: 4, firstTouch: -3 }],
+  ST: [{}, { heading: 10, strength: 10, jumping: 6, aggression: 6, pace: -8 }, { pace: 8, acceleration: 8, anticipation: 4, agility: 6, heading: -8 }, { passing: 8, vision: 8, finishing: -3 }],
 }
 
 const ATTR_NOISE_SD = 3.5

@@ -31,11 +31,19 @@ export const ATTRIBUTE_KEYS = [
   // goalkeeping (GDD: Refleks, Top Tutma, Pozisyon (kaleci), Oyun Kurma (kaleci)); new keys append at the end
   // so the per-key derivation draws of the older keys keep their order.
   'reflexes', 'handling', 'gkPositioning', 'gkDistribution',
+  // v6 (owner feedback: every stat a role talks about is a real, numbered attribute): acceleration (vs pace =
+  // top speed), long passing (vs passing = short game), curve (bend on shots / crosses / dead balls),
+  // anticipation (reading the play: interceptions, second balls), aggression (duel intensity: wins more,
+  // fouls more), diving (a keeper's reach at full stretch, vs reflexes = reaction) and balance (staying on
+  // your feet in shoulder challenges and aerial contests).
+  'acceleration', 'longPassing', 'curve', 'anticipation', 'aggression', 'diving', 'balance',
 ] as const
 export type AttributeKey = (typeof ATTRIBUTE_KEYS)[number]
 /** The goalkeeping group: outfielders carry them as near-floor values. */
-export const GK_ATTRIBUTE_KEYS: readonly AttributeKey[] = ['reflexes', 'handling', 'gkPositioning', 'gkDistribution']
-export const isGoalkeepingAttr = (k: AttributeKey): boolean => k === 'reflexes' || k === 'handling' || k === 'gkPositioning' || k === 'gkDistribution'
+export const GK_ATTRIBUTE_KEYS: readonly AttributeKey[] = ['reflexes', 'diving', 'handling', 'gkPositioning', 'gkDistribution']
+export const isGoalkeepingAttr = (k: AttributeKey): boolean => GK_ATTRIBUTE_KEYS.includes(k)
+/** Attributes added in save v6 (appended, so older per-key derivation draws keep their order). */
+export const V6_ATTRIBUTE_KEYS: readonly AttributeKey[] = ['acceleration', 'longPassing', 'curve', 'anticipation', 'aggression', 'diving', 'balance']
 export type Attributes = Record<AttributeKey, number>
 export type AttributeGroup = 'physical' | 'technical' | 'mental' | 'goalkeeping'
 

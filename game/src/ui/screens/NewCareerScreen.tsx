@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState, useEffect } from 'preact/hooks'
-import { previewAttrs } from '../../sim/career/createHero'
+import { PEAK_AGE, REF_START_AGE, START_AGE_MAX, START_AGE_MIN, previewAttrs, startAgeEffect } from '../../sim/career/createHero'
 import { ovrFor } from '../../sim/career/progression'
 import { clampHeight, defaultRole } from '../../core/roles'
 import '../../styles/screens/wizard.css'
@@ -7,6 +7,7 @@ import type { Background, Country, CustomDifficulty, Difficulty, Foot, Gender } 
 import { AI_REACTION_MAX, AI_REACTION_MIN, DEFAULT_CUSTOM } from '../../core/customDifficulty'
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
+import { foldSearch } from '../a11y/collate'
 import { Button, Chip, Flag, PlayerCard, Segmented, Slider, Switch, TextField, toast, type PlayerCardStat } from '../components'
 import { Icon, type IconName } from '../icons'
 import { roleKeys } from '../roleView'
@@ -153,13 +154,13 @@ export function NewCareerScreen() {
   }
 
   const filtered = query.trim()
-    ? countries.filter((c) => (lt(c.name) + ' ' + c.id).toLocaleLowerCase().includes(query.trim().toLocaleLowerCase()))
+    ? countries.filter((c) => foldSearch(lt(c.name) + ' ' + c.id).includes(foldSearch(query)))
     : countries
 
   const age = START_YEAR - form.birthYear
   // Expected starting card (no noise): the role's key strengths and the weighted OVR at the position.
-  const sheet = previewAttrs(form.position, form.role, form.background)
-  const cardKeys = [...roleKeys(form.role, form.position, 6).strong]
+  const sheet = previewAttrs(form.position, form.role, form.background, age)
+  const cardKeys = [...roleKeys(form.role, form.position).strong]
   const stats: PlayerCardStat[] = cardKeys.map((k) => ({ label: t(`data.attrShort.${k}`), value: sheet[k] }))
   const ovr = ovrFor(sheet, form.position)
   const gender: Gender = form.gender ?? 'male'
@@ -227,8 +228,9 @@ export function NewCareerScreen() {
                   label={t('wizard.age')}
                   value={age}
                   onChange={(a) => set('birthYear', START_YEAR - a)}
-                  options={[16, 17, 18].map((a) => ({ id: a, label: t('wizard.ageOption', { n: a }) }))}
+                  options={START_AGES.map((a) => ({ id: a, label: String(a) }))}
                 />
+                <AgeTradeOff age={age} ovr={ovr} refOvr={ovrFor(previewAttrs(form.position, form.role, form.background, REF_START_AGE), form.position)} />
                 <p class="t-xs t-lo">{t('wizard.ageHint')}</p>
               </div>
             </div>
@@ -324,6 +326,7 @@ export function NewCareerScreen() {
               background={form.background}
               gender={gender}
               heightCm={form.heightCm}
+              age={age}
               onRole={(r) => setForm((f) => ({ ...f, role: r, heightCm: undefined }))}
               onHeight={(cm) => set('heightCm', clampHeight(form.role, gender, cm))}
             />
@@ -440,6 +443,33 @@ export function NewCareerScreen() {
           </Button>
         )}
       </footer>
+    </div>
+  )
+}
+
+const START_AGES: readonly number[] = Array.from({ length: START_AGE_MAX - START_AGE_MIN + 1 }, (_, i) => START_AGE_MIN + i)
+
+/** Starting-age trade-off (owner feedback): level now vs ceiling and years before the peak. */
+function AgeTradeOff({ age, ovr, refOvr }: { age: number; ovr: number; refOvr: number }) {
+  const e = startAgeEffect(age)
+  const d = ovr - refOvr
+  const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '±0')
+  const kind = age < REF_START_AGE ? 'young' : age > REF_START_AGE ? 'old' : 'ref'
+  return (
+    <div class="wiz-age-trade" data-testid="age-trade" aria-live="polite">
+      <span class="wiz-age-cell">
+        <span class="micro t-lo">{t('wizard.ageStartOvr')}</span>
+        <span class="num wiz-age-val">{ovr} <span class={`wiz-age-delta${d > 0 ? ' is-up' : d < 0 ? ' is-down' : ''}`}>{signed(d)}</span></span>
+      </span>
+      <span class="wiz-age-cell">
+        <span class="micro t-lo">{t('wizard.ageCeiling')}</span>
+        <span class={`num wiz-age-val${e.potential > 0 ? ' is-up' : e.potential < 0 ? ' is-down' : ''}`}>{signed(e.potential)}</span>
+      </span>
+      <span class="wiz-age-cell">
+        <span class="micro t-lo">{t('wizard.agePeakYears')}</span>
+        <span class="num wiz-age-val">{t('wizard.agePeakValue', { n: Math.max(0, PEAK_AGE - age) })}</span>
+      </span>
+      <span class="wiz-age-note t-xs t-mid">{t(`wizard.ageTrade.${kind}`)}</span>
     </div>
   )
 }

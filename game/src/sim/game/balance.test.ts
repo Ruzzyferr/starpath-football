@@ -4,6 +4,7 @@
  * and prints the markdown tables used in docs/BALANCE.md. Without the env var
  * only a quick smoke run executes.
  */
+import { writeFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
 import { runCareer, standardMix, type CareerTrace } from './balanceSim'
 
@@ -146,11 +147,32 @@ describe('balance simulator', () => {
     const seasons = Number(env.BALANCE_SEASONS) || 10
     const t0 = performance.now()
     const traces = standardMix(n, seasons, Number(env.BALANCE_SEED) || 1000).map((c) => runCareer(c))
-    console.log(`\n<!-- balance: ${n} careers × ${seasons} seasons in ${((performance.now() - t0) / 1000).toFixed(0)} s -->\n${report(traces)}\n`)
+    const text = `\n<!-- balance: ${n} careers × ${seasons} seasons in ${((performance.now() - t0) / 1000).toFixed(0)} s -->\n${report(traces)}\n`
+    console.log(text)
+    // BALANCE_OUT=<file>: also write the report to a file (the runner may drop console output).
+    if (env.BALANCE_OUT) writeFileSync(env.BALANCE_OUT, text)
     expect(traces.length).toBe(n)
     // Economy guard-rail: ≤ 5% bankruptcies, and only reckless profiles may go under.
     const broke = traces.filter((c) => c.bankrupt)
     expect(broke.length / n).toBeLessThanOrEqual(0.05)
     for (const c of broke) expect(['gambler', 'spender', 'party']).toContain(c.cfg.persona)
   }, 3_600_000)
+
+  // Starting-age dimension (owner feedback: 16–21). Every start age plays to age 30 with the same mix, so a late
+  // start shows its shorter run-up: BALANCE_AGES=1 [BALANCE_N=12] [BALANCE_OUT=<file>.ages.md].
+  it.skipIf(!env.BALANCE_AGES)('start-age report', () => {
+    const n = Number(env.BALANCE_N) || 12
+    const at = (t: CareerTrace, age: number) => t.samples.find((s) => s.age === age)
+    const out = ['| Başlangıç yaşı | Başlangıç OVR | Pot. | OVR 21 | OVR 25 | Zirve OVR | İtibar 21 | İtibar 25 | İtibar 30 | 1. kademe yaşı | Gol+asist (30 yaşa kadar) | Kupa (30) |', '|---|---|---|---|---|---|---|---|---|---|---|---|']
+    for (const age of [16, 17, 18, 19, 20, 21]) {
+      const traces = standardMix(n, 31 - age, Number(env.BALANCE_SEED) || 1000).map((c) => runCareer({ ...c, startAge: age }))
+      const v = (f: (t: CareerTrace) => number | undefined) => med(traces.map(f).filter((x): x is number => x !== undefined && Number.isFinite(x)))
+      const firstTop = traces.map((t) => t.firstTopTierAge).filter((x): x is number => x !== null)
+      out.push(`| ${age} | ${v((t) => t.startOvr)} | ${v((t) => t.samples[0]?.potential)} | ${v((t) => at(t, 21)?.ovr)} | ${v((t) => at(t, 25)?.ovr)} | ${v((t) => Math.max(...t.samples.map((s) => s.ovr)))} | ${v((t) => at(t, 21)?.reputation)} | ${v((t) => at(t, 25)?.reputation)} | ${v((t) => at(t, 30)?.reputation)} | ${f1(med(firstTop))} (${pct(firstTop.length / n)}) | ${v((t) => t.samples.reduce((a, s) => a + s.goals + s.assists, 0))} | ${f1(mean(traces.map((t) => t.samples[t.samples.length - 1]?.trophies ?? 0)))} |`)
+    }
+    const text = out.join('\n')
+    console.log(text)
+    if (env.BALANCE_OUT) writeFileSync(env.BALANCE_OUT, text)
+    expect(out.length).toBe(8)
+  }, 7_200_000)
 })

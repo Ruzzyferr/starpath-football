@@ -46,7 +46,7 @@ describe('match perk hook', () => {
     const gk = flatAttrs(60, true)
     const a = heroMatchAttributes(hero(['cat_reflexes']), gk)
     expect(a.reflexes).toBeGreaterThan(gk.reflexes)
-    expect(a.agility).toBeGreaterThan(gk.agility)
+    expect(a.diving).toBeGreaterThan(gk.diving)
   })
 
   it('Set-piece wizard, cross specialist, through-ball, penalty ice all raise their kick skill', () => {

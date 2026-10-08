@@ -3,7 +3,7 @@
  * page (match-demo.html) and by the headless smoke tests.
  */
 import { Rng } from '../core/rng'
-import { ATTRIBUTE_KEYS, type Attributes, type Formation, type Lang, type Position } from '../core/types'
+import { ATTRIBUTE_KEYS, V6_ATTRIBUTE_KEYS, type Attributes, type Formation, type Lang, type Position, type Role } from '../core/types'
 import { assignSlots, buildScenario, type SlotPlayer } from '../sim/match/highlightGen'
 import { makeTeam } from '../sim/match/testFixtures'
 import type { Highlight, HighlightKind, ScenarioPlayer, Vec2 } from '../sim/match/types'
@@ -28,13 +28,21 @@ export const KIND_HERO_POS: Record<HighlightKind, Position> = {
  * with synthetic teams (hero and both sides at `ovr`). Used by the feel
  * harness and the demo page for kinds without a hand-made layout.
  */
-export function generatedHighlight(kind: HighlightKind, seed: number, opts: { ovr?: number; heroOvr?: number; lang?: Lang; heroPos?: Position } = {}): Highlight {
+export function generatedHighlight(
+  kind: HighlightKind,
+  seed: number,
+  opts: { ovr?: number; heroOvr?: number; lang?: Lang; heroPos?: Position; heroAttrs?: Attributes; heroRole?: Role } = {},
+): Highlight {
   const ovr = opts.ovr ?? 65
   const rng = new Rng(`feel:${kind}:${seed}`)
   const mf: Formation = '4-2-3-1'
   const of: Formation = '4-4-2'
   const home = makeTeam(rng, 'h', { heroPosition: opts.heroPos ?? KIND_HERO_POS[kind], formation: mf, ovr, heroOvr: opts.heroOvr ?? ovr })
   const away = makeTeam(rng, 'a', { formation: of, ovr })
+  // Role balance harness: a given hero sheet / role (the team generation above is unchanged).
+  const hero = home.lineup.find((p) => p.isHero)
+  if (hero && opts.heroAttrs) hero.attrs = { ...opts.heroAttrs }
+  if (hero && opts.heroRole) hero.role = opts.heroRole
   const toSlots = (players: typeof home.lineup, f: Formation): SlotPlayer[] => {
     const sl = assignSlots(players, f)
     return players.map((player, i) => ({ player, slot: sl[i]! }))
@@ -82,14 +90,23 @@ const mirror = (p: Vec2): Vec2 => ({ x: PITCH_LENGTH - p.x, y: p.y })
 function attrsFor(rng: Rng, ovr: number, role: Position): Attributes {
   const a = {} as Attributes
   // gkPositioning / gkDistribution are set below without a draw (keeps the demo stream unchanged).
-  for (const k of ATTRIBUTE_KEYS) if (k !== 'gkPositioning' && k !== 'gkDistribution') a[k] = Math.round(Math.max(20, Math.min(97, rng.normal(ovr, 7))))
+  for (const k of ATTRIBUTE_KEYS) if (k !== 'gkPositioning' && k !== 'gkDistribution' && !V6_ATTRIBUTE_KEYS.includes(k)) a[k] = Math.round(Math.max(20, Math.min(97, rng.normal(ovr, 7))))
+  // The v6 attributes follow from their older neighbours, also without a draw.
+  a.acceleration = Math.round(a.pace * 0.6 + a.agility * 0.4)
+  a.longPassing = Math.round(a.passing * 0.7 + a.vision * 0.3)
+  a.curve = Math.round(a.setPieces * 0.6 + a.shooting * 0.4)
+  a.anticipation = Math.round(a.positioning * 0.6 + a.vision * 0.4)
+  a.aggression = Math.round(a.tackling * 0.5 + a.strength * 0.5)
+  a.balance = Math.round(a.strength * 0.5 + a.agility * 0.5)
   if (role === 'GK') {
     a.reflexes = Math.round(Math.min(95, ovr + 8))
     a.handling = Math.round(Math.min(95, ovr + 5))
     a.positioning = Math.round(Math.min(95, ovr + 3))
     a.gkPositioning = Math.round(Math.min(95, ovr + 4))
     a.gkDistribution = Math.round(Math.min(95, ovr))
+    a.diving = Math.round(Math.min(95, ovr + 5))
   } else {
+    a.diving = 25
     a.reflexes = 25
     a.handling = 25
     a.gkPositioning = 25

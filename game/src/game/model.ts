@@ -126,7 +126,7 @@ export function topSpeed(a: Agent): number {
   return a.sprint && a.stamina > 0.05 ? base + 1.4 + pace * 1.2 : base
 }
 
-/** Acceleration (m/s²) from agility/pace. */
+/** Acceleration (m/s²): the acceleration attribute (first yards), a little agility (balance on the turn). */
 export function accel(a: Agent): number {
-  return 9 + a01(a.attrs.agility) * 6 + a01(a.attrs.pace) * 3
+  return 9 + a01(a.attrs.acceleration ?? a.attrs.pace) * 7 + a01(a.attrs.agility) * 2
 }

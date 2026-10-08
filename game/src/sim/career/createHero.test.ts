@@ -2,7 +2,7 @@ import type { Background, Position, Role } from '../../core/types'
 import { ATTRIBUTE_KEYS } from '../../core/types'
 import { Rng } from '../../core/rng'
 import { POSITION_ROLES, ROLES } from '../../core/roles'
-import { BACKGROUNDS, ROLE_TEMPLATES, createHero, createLife, previewAttrs } from './createHero'
+import { BACKGROUNDS, ROLE_SPEC, createHero, createLife, previewAttrs, roleTemplate } from './createHero'
 import { earnedPerkPoints, heroOvr, ovrFor } from './progression'
 import { TEST_APPEARANCE } from './testFixtures'
 
@@ -55,7 +55,7 @@ describe('createHero', () => {
     const st = createHero(new Rng(1), input('runner', 'ST', 'academy'))
     const gk = createHero(new Rng(1), input('shotStopper', 'GK', 'academy'))
     expect(st.attrs.reflexes).toBeLessThan(25)
-    expect(gk.attrs.reflexes).toBeGreaterThan(50)
+    expect(gk.attrs.handling).toBeGreaterThan(50) // the shot-stopper holds what he stops
     expect(gk.attrs.finishing).toBeLessThan(st.attrs.finishing)
   })
 
@@ -90,16 +90,24 @@ describe('createLife', () => {
 })
 
 describe('position roles (owner feedback)', () => {
-  it('every role is offered at some position and every template has strengths and a fair budget', () => {
+  it('every role is offered somewhere and is exactly four strengths and four weaknesses with a fair budget', () => {
     const offered = new Set(Object.values(POSITION_ROLES).flat())
     for (const r of ROLES) {
       expect(offered.has(r)).toBe(true)
-      const pts = Object.values(ROLE_TEMPLATES[r]) as number[]
-      const plus = pts.filter((v) => v > 0).reduce((a, v) => a + v, 0)
-      const minus = pts.filter((v) => v < 0).reduce((a, v) => a + v, 0)
-      expect(plus).toBeGreaterThanOrEqual(60)
-      expect(plus).toBeLessThanOrEqual(110)
-      expect(minus).toBeGreaterThanOrEqual(-15)
+      expect(ROLE_SPEC[r].plus).toHaveLength(4)
+      expect(ROLE_SPEC[r].minus).toHaveLength(4)
+      expect(new Set([...ROLE_SPEC[r].plus, ...ROLE_SPEC[r].minus]).size).toBe(8)
+    }
+    for (const [pos, roles] of Object.entries(POSITION_ROLES) as [Position, readonly Role[]][]) {
+      for (const r of roles) {
+        const t = roleTemplate(r, pos)
+        for (const k of ROLE_SPEC[r].plus) expect(t[k], `${pos}/${r} +${k}`).toBeGreaterThan(0)
+        for (const k of ROLE_SPEC[r].minus) {
+          expect(t[k], `${pos}/${r} -${k}`).toBeLessThan(0)
+          expect(t[k]!, `${pos}/${r} -${k}`).toBeGreaterThanOrEqual(-8)
+        }
+        for (const k of ROLE_SPEC[r].plus) expect(t[k]!, `${pos}/${r} +${k}`).toBeLessThanOrEqual(40)
+      }
     }
   })
   it('roles of the same position start at the same OVR (±1) and differ where the points go', () => {

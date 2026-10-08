@@ -85,9 +85,10 @@ describe('save migrations', () => {
     const striker = migrate({ version: 3, hero: { attrs: { reflexes: 12, handling: 10, positioning: 65, passing: 55, vision: 50 } } }, 3) as unknown as { hero: { attrs: Record<string, number> } }
     expect(striker.hero.attrs.gkPositioning).toBeLessThan(35)
     expect(striker.hero.attrs.gkDistribution).toBeLessThan(35)
-    expect(s.attrHistory.keys.slice(-2)).toEqual(['gkPositioning', 'gkDistribution'])
+    // v3 → v4 appends the goalkeeping pair; the later v5 → v6 step appends six more after it.
+    expect(s.attrHistory.keys.slice(5, 7)).toEqual(['gkPositioning', 'gkDistribution'])
     expect(s.attrHistory.rows.every((r) => r.length === 2 + s.attrHistory.keys.length)).toBe(true)
-    expect(s.attrHistory.rows[1]?.slice(-2)).toEqual([s.hero.attrs.gkPositioning, s.hero.attrs.gkDistribution])
+    expect(s.attrHistory.rows[1]?.slice(7, 9)).toEqual([s.hero.attrs.gkPositioning, s.hero.attrs.gkDistribution])
   })
 
   it('keeps a female hero through save → load', async () => {
