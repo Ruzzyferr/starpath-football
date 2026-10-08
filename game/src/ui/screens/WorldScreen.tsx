@@ -3,9 +3,11 @@ import { tieBreakHint, tieRuleFor } from '../../sim/world/table'
 import type { Club } from '../../core/types'
 import { lt, t } from '../../i18n'
 import {
-  Avatar, Button, Card, CardHeader, Chip, Crest, EmptyState, Flag, Kit, LeagueTable, Modal, Page, SectionTitle, StatBar, Tabs, TabPanel,
+  Avatar, Button, Card, CardHeader, Chip, Crest, EmptyState, Flag, Kit, LeagueTable, Modal, Page, SectionTitle, StatBar, Tabs, TabPanel, WhyList,
 } from '../components'
-import { attrColor, formatNumber } from '../format'
+import { attrColor, formatMoney, formatNumber } from '../format'
+import { clubPreview, interestTier } from '../../sim/game/clubPreview'
+import { whyInterest } from '../../sim/game/whyMore'
 import { Icon } from '../icons'
 import { actions, data, gameState, heroClub, navigate, screen } from '../store'
 import { zonesForLeague } from './career/league'
@@ -118,13 +120,16 @@ function LegendsCard() {
   )
 }
 
+/** Scouting tiers (2.7#89): watching / interested / bid ready, same cut-offs as the scouting model. */
 function interestLevel(n: number): 'low' | 'mid' | 'high' {
-  return n >= 70 ? 'high' : n >= 40 ? 'mid' : 'low'
+  const tier = interestTier(n)
+  return tier === 'bid' ? 'high' : tier === 'interested' ? 'mid' : 'low'
 }
 
 export function WorldScreen() {
   const s = gameState.value
   const own = heroClub.value
+  const [compare, setCompare] = useState(false)
   const [tab, setTab] = useState<TabId>(pickTab(screen.value.params?.tab, TAB_IDS, 'leagues'))
   const firstLeague = s ? (own ? s.world.leagues[own.leagueId] : Object.values(s.world.leagues)[0]) : undefined
   const [countryId, setCountryId] = useState(firstLeague?.countryId ?? '')
@@ -241,14 +246,50 @@ export function WorldScreen() {
     )
   } else {
     const list = data.interest()
+    const sorted = [...list].sort((a, b) => b.level - a.level)
     body = list.length === 0 ? (
       <EmptyState icon="eye" title={t('world.interest.empty')} text={t('world.interest.emptyHint')} />
     ) : (
       <div class="stack">
-        <SectionTitle>{t('world.interest.title')}</SectionTitle>
+        <SectionTitle action={list.length > 1 ? <Button size="sm" variant="ghost" icon="scales" onClick={() => setCompare((c) => !c)} aria-pressed={compare} data-testid="interest-compare-btn">{compare ? t('world.interest.compareHide') : t('world.interest.compare')}</Button> : undefined}>{t('world.interest.title')}</SectionTitle>
+        {compare && s && (
+          <Card pad="none" class="world-int-compare" data-testid="interest-compare">
+            <div class="world-int-scroll" role="region" tabIndex={0} aria-label={t('world.interest.compareTitle')}>
+            <table class="ctr-table">
+              <caption class="sr-only">{t('world.interest.compareTitle')}</caption>
+              <thead>
+                <tr>
+                  <th scope="col">{t('world.interest.colClub')}</th>
+                  <th scope="col">{t('world.interest.colTier')}</th>
+                  <th scope="col">{t('world.interest.colLeague')}</th>
+                  <th scope="col">{t('world.interest.colCity')}</th>
+                  <th scope="col">{t('world.interest.colRole')}</th>
+                  <th scope="col">{t('world.interest.colWage')}</th>
+                </tr>
+              </thead>
+              <tbody>
+                {sorted.map((it) => {
+                  const pv = clubPreview(s, it.club.id)
+                  return (
+                    <tr key={it.club.id}>
+                      <th scope="row">{it.club.name}</th>
+                      <td>{t(`world.interest.levels.${interestLevel(it.level)}`)}</td>
+                      <td>{it.leagueName}</td>
+                      <td>{pv?.city ?? '—'}</td>
+                      <td>{pv ? t(`data.role.${pv.role}`) : '—'}</td>
+                      <td class="num">{pv ? `${formatMoney(pv.wage[0], { compact: true })} – ${formatMoney(pv.wage[1], { compact: true })}` : '—'}</td>
+                    </tr>
+                  )
+                })}
+              </tbody>
+            </table>
+            </div>
+          </Card>
+        )}
         <div class="world-interest stagger">
-          {[...list].sort((a, b) => b.level - a.level).map((it) => {
+          {sorted.map((it) => {
             const lv = interestLevel(it.level)
+            const pv = s ? clubPreview(s, it.club.id) : null
             return (
               <Card key={it.club.id} pad="md" class={`world-int is-${lv}`}>
                 <div class="row world-int-head">
@@ -260,7 +301,15 @@ export function WorldScreen() {
                   <Chip tone={lv === 'high' ? 'gold' : lv === 'mid' ? 'info' : 'neutral'} icon="eye">{t(`world.interest.levels.${lv}`)}</Chip>
                 </div>
                 <StatBar label={t('world.interest.stars', { n: interestStars(it.level) })} value={it.level} color={lv === 'high' ? 'var(--accent-gold)' : 'var(--accent-blue)'} size="sm" />
+                {pv && (
+                  <div class="world-int-facts" data-testid="interest-facts">
+                    <Chip tone="neutral" icon="building">{pv.city}</Chip>
+                    <Chip tone="info" icon="whistle">{t('world.interest.role')}: {t(`data.role.${pv.role}`)}</Chip>
+                    <Chip tone="gold" icon="coins">{formatMoney(pv.wage[0], { compact: true })} – {formatMoney(pv.wage[1], { compact: true })}</Chip>
+                  </div>
+                )}
                 <p class="t-sm t-mid world-int-note">{lt(it.note)}</p>
+                {s && <WhyList why={whyInterest(s, it.club.id)} id={`why-int-${it.club.id}`} testId="why-interest" />}
                 <Button
                   variant="secondary"
                   size="sm"

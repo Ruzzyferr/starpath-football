@@ -67,7 +67,7 @@ function SessionCard({ s, onPlay }: { s: TrainingSessionView; onPlay: (s: Traini
             <Button variant="secondary" size="sm" disabled={locked} title={reason} onClick={runAuto}>
               {t('training.session.auto')}
             </Button>
-            <Button variant="primary" size="sm" icon="play" disabled={locked} title={reason} onClick={() => onPlay(s)}>
+            <Button variant="secondary" size="sm" icon="play" disabled={locked} title={reason} onClick={() => onPlay(s)}>
               {t('training.session.play')}
             </Button>
           </>

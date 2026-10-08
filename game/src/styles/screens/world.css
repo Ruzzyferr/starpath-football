@@ -142,3 +142,7 @@
 .world-int-head { gap: var(--sp-3); }
 .world-int-note { flex: 1; }
 .world-int .btn { align-self: flex-start; }
+
+/* WP-U 2.7#89: club interest facts + comparison */
+.world-int-facts { display: flex; flex-wrap: wrap; gap: var(--sp-1); }
+.world-int-scroll { overflow-x: auto; }

@@ -27,6 +27,8 @@ export const tr = {
     empty: 'Şu an seni izleyen kulüp yok',
     emptyHint: 'İyi maçlar çıkar, scoutlar mutlaka fark edecek.',
     levels: { low: 'Takipte', mid: 'Ciddi ilgi', high: 'Teklif hazırlığı' },
+    role: 'Beklenen rol', wage: 'Haftalık maaş', compare: 'Karşılaştır', compareHide: 'Karşılaştırmayı kapat', compareTitle: 'Kulüp karşılaştırması',
+    colClub: 'Kulüp', colTier: 'İlgi', colLeague: 'Lig', colCity: 'Şehir', colRole: 'Rol', colWage: 'Maaş aralığı',
   },
 }
 
@@ -57,5 +59,7 @@ export const en: Shape<typeof tr> = {
     empty: 'No clubs are watching you right now',
     emptyHint: 'Keep performing — the scouts will notice.',
     levels: { low: 'Monitoring', mid: 'Serious interest', high: 'Preparing a bid' },
+    role: 'Expected role', wage: 'Weekly wage', compare: 'Compare', compareHide: 'Hide comparison', compareTitle: 'Club comparison',
+    colClub: 'Club', colTier: 'Interest', colLeague: 'League', colCity: 'City', colRole: 'Role', colWage: 'Wage range',
   },
 }

@@ -2,7 +2,8 @@ import '../../styles/screens/inbox.css'
 import { useState } from 'preact/hooks'
 import type { NewsItem } from '../../core/types'
 import { lt, t } from '../../i18n'
-import { Avatar, Button, Card, Crest, EmptyState, Page, Tabs } from '../components'
+import { Avatar, Button, Card, Crest, EmptyState, Modal, Page, Tabs } from '../components'
+import { newsCause } from '../../sim/game/newsCause'
 import { seasonLabel } from '../format'
 import { Icon } from '../icons'
 import { gameState, heroClub, navigate } from '../store'
@@ -10,6 +11,30 @@ import { gameState, heroClub, navigate } from '../store'
 type Filter = 'all' | 'pos' | 'neu' | 'neg'
 const sentKey = (n: NewsItem): Exclude<Filter, 'all'> => (n.sentiment > 0 ? 'pos' : n.sentiment < 0 ? 'neg' : 'neu')
 const SENT_ICON = { pos: 'trend-up', neu: 'newspaper', neg: 'trend-down' } as const
+
+/** 2.7#90: opens the event / log lines that produced a headline. */
+function StoryCause({ item }: { item: NewsItem }) {
+  const [open, setOpen] = useState(false)
+  const s = gameState.value
+  if (!s) return null
+  const cause = newsCause(s.life, item)
+  return (
+    <>
+      <Button size="sm" variant="ghost" icon="search" onClick={() => setOpen(true)} data-testid="news-cause-btn">{t('inbox.cause.button')}</Button>
+      <Modal open={open} onClose={() => setOpen(false)} title={t('inbox.cause.title')} size="sm">
+        <p class="t-mid"><b>{lt(item.headline)}</b></p>
+        {cause ? (
+          <>
+            <h3 class="micro t-mid">{t(cause.kind === 'event' ? 'inbox.cause.event' : 'inbox.cause.week')}</h3>
+            <ul class="inbox-cause" data-testid="news-cause">
+              {cause.entries.map((e, i) => <li key={i}>{lt(e.text)}</li>)}
+            </ul>
+          </>
+        ) : <p class="t-lo">{t('inbox.cause.none')}</p>}
+      </Modal>
+    </>
+  )
+}
 
 export function InboxScreen() {
   const s = gameState.value
@@ -68,6 +93,7 @@ export function InboxScreen() {
               <span class={`inbox-sent sent-${sentKey(front)}`}>
                 <Icon name={SENT_ICON[sentKey(front)]} size={14} /> {t(`inbox.sentiment.${sentKey(front)}`)}
               </span>
+              <StoryCause item={front} />
             </div>
           </article>
 
@@ -86,6 +112,7 @@ export function InboxScreen() {
                       </div>
                       <h3 class="inbox-item-head">{lt(n.headline)}</h3>
                       {n.body && <p class="inbox-item-body">{lt(n.body)}</p>}
+                      <StoryCause item={n} />
                     </div>
                   </li>
                 )

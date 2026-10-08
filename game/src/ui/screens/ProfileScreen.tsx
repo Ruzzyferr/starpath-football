@@ -12,6 +12,7 @@ import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGro
 import { Radar } from './career/Radar'
 import { FinanceCharts } from './profile/FinanceCharts'
 import { OvrExplainer } from './profile/OvrExplainer'
+import { statsByClub, type ClubStatsRow } from '../../sim/game/clubStats'
 import { ProfileCareerExtras } from './legacy/CareerCards'
 import '../../styles/screens/profile.css'
 import { InfoTip } from '../tutorial/InfoTip'
@@ -49,6 +50,40 @@ function StatsTable({ season, career }: { season: SeasonStats; career: SeasonSta
               <th scope="row">{r.label}</th>
               <td class="num">{r.v(season)}</td>
               <td class="num">{r.v(career)}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+/** 2.7#94: career totals split by club. */
+function ClubStatsTable({ rows }: { rows: ClubStatsRow[] }) {
+  if (rows.length === 0) return null
+  return (
+    <div class="prof-table-wrap" data-testid="club-stats">
+      <table class="prof-table">
+        <caption class="micro t-mid">{t('profile.stats.byClub')}</caption>
+        <thead>
+          <tr>
+            <th scope="col"><span class="sr-only">{t('profile.stats.byClub')}</span></th>
+            <th scope="col">{t('profile.stats.seasonsShort')}</th>
+            <th scope="col">{t('profile.stats.apps')}</th>
+            <th scope="col">{t('profile.stats.goals')}</th>
+            <th scope="col">{t('profile.stats.assists')}</th>
+            <th scope="col">{t('profile.stats.ratingShort')}</th>
+          </tr>
+        </thead>
+        <tbody>
+          {rows.map((r) => (
+            <tr key={r.clubId}>
+              <th scope="row">{r.clubName}</th>
+              <td class="num">{r.seasons}</td>
+              <td class="num">{r.stats.apps}</td>
+              <td class="num">{r.stats.goals}</td>
+              <td class="num">{r.stats.assists}</td>
+              <td class="num">{r.stats.apps ? formatRating(r.stats.ratingSum / r.stats.apps) : '—'}</td>
             </tr>
           ))}
         </tbody>
@@ -222,6 +257,7 @@ export function ProfileScreen() {
 
       <SectionTitle>{t('profile.stats.title')}</SectionTitle>
       <StatsTable season={h.seasonStats} career={h.careerStats} />
+      <ClubStatsTable rows={statsByClub(h, club ? { clubId: club.id, clubName: club.name } : null)} />
 
       <SectionTitle action={<Button size="sm" variant="ghost" iconRight="chevron-right" onClick={() => navigate('trophies')}>{t('profile.honours.cabinet')}</Button>}>
         {t('profile.honours.title')}

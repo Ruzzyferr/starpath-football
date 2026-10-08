@@ -1,7 +1,8 @@
 import '../../../styles/screens/intl.css'
 import { useState } from 'preact/hooks'
 import { lt, t } from '../../../i18n'
-import { Button, Card, Chip, EmptyState, Page, SectionTitle } from '../../components'
+import { Button, Card, Chip, EmptyState, Page, SectionTitle, WhyList } from '../../components'
+import { whyAward } from '../../../sim/game/whyMore'
 import { seasonLabel } from '../../format'
 import { gameState, navigate } from '../../store'
 import { awardsView, markCeremonySeen } from '../../backend/worldViews'
@@ -67,6 +68,7 @@ export function AwardsScreen() {
         ) : (
           <>
             <p class="t-sm t-mid">{v.heroRank ? t('intl.awards.yourRank', { n: v.heroRank }) : t('intl.awards.notListed')}</p>
+            <WhyList why={whyAward(v.star)} id="why-award" testId="why-award" />
             {r[0] && <p class="t-xs t-lo">{t('intl.awards.parts', { l: r[0].parts.league, c: r[0].parts.continental, i: r[0].parts.international, t: r[0].parts.trophies })}</p>}
             {v.pending && <Button variant="primary" icon="check" onClick={() => { markCeremonySeen(); navigate('home', undefined, { tab: true }) }}>{t('intl.awards.done')}</Button>}
           </>

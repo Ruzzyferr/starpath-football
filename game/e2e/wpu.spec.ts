@@ -126,3 +126,93 @@ test('contract: patience preview follows the sliders', async ({ page, shot }) =>
   await page.waitForTimeout(800)
   await shot('wpu-patience')
 })
+
+// 2.7#22 / #38 / #39: one filled (chunky) button per screen, and destructive actions are danger-styled.
+const CTA_SCREENS = ['home', 'planner', 'training', 'profile', 'club', 'world', 'contract', 'life', 'inbox', 'menu', 'settings', 'trophies', 'objectives', 'saves', 'board']
+const DESTRUCTIVE = /^(sell|retire|delete|leave|walk away|quit|erase|remove)\b|^reset (all|progress|career|save)/i
+
+test('single CTA per screen and danger styling for destructive actions', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=88')
+  await waitForApp(page)
+  await sp(page, 'sp.clearEvents()')
+  const bad: string[] = []
+  const tabs: Record<string, string[]> = { life: ['relations', 'assets', 'bank', 'business', 'social', 'sponsors'], world: ['leagues', 'scorers', 'transfers', 'clubs', 'interest', 'cups'] }
+  for (const id of CTA_SCREENS) {
+    for (const tab of tabs[id] ?? [undefined as unknown as string]) {
+      await sp(page, tab ? `sp.navigate('${id}', { tab: '${tab}' })` : `sp.navigate('${id}')`)
+      await page.waitForTimeout(350)
+      const info = await page.evaluate((re) => {
+        const vis = (el: Element) => {
+          const r = (el as HTMLElement).getBoundingClientRect()
+          const cs = getComputedStyle(el)
+          return r.width > 0 && r.height > 0 && cs.visibility !== 'hidden' && cs.display !== 'none' && !el.closest('.modal-root, [aria-hidden="true"]')
+        }
+        // The shell's persistent "Advance" button is the global CTA; screens must not add a second filled one beside it.
+        const filled = [...document.querySelectorAll('#main button.btn-primary, #main button.btn-gold')].filter(vis).map((b) => (b.textContent ?? '').trim())
+        const rx = new RegExp(re, 'i')
+        const destructive = [...document.querySelectorAll('button')].filter(vis).filter((b) => rx.test((b.textContent ?? '').trim()) && !b.classList.contains('btn-danger')).map((b) => (b.textContent ?? '').trim())
+        return { filled, destructive }
+      }, DESTRUCTIVE.source)
+      const label = tab ? `${id}/${tab}` : id
+      if (info.filled.length > 1) bad.push(`${label}: filled ${JSON.stringify(info.filled)}`)
+      if (info.destructive.length) bad.push(`${label}: not danger ${JSON.stringify(info.destructive)}`)
+    }
+  }
+  expect(bad).toEqual([])
+})
+
+const noOverflow = async (page: import('@playwright/test').Page, label: string) => {
+  const o = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
+  expect(o, `${label}: horizontal overflow`).toBeLessThanOrEqual(1)
+}
+
+test('news cause, club stats, sponsor why, interest facts: no overflow and axe clean', async ({ page, shot }) => {
+  await page.goto('/?autostart=1&seed=88')
+  await waitForApp(page)
+  await sp(page, 'sp.clearEvents()')
+  await sp(page, `sp.toMatchday()`)
+  await sp(page, `(() => { const s = sp.state(); s.hero.reputation = 40; s.life.followers = 200000 })()`)
+
+  // News: every story can open the lines behind it.
+  await sp(page, `sp.navigate('inbox')`)
+  await page.waitForTimeout(500)
+  const btn = page.getByTestId('news-cause-btn').first()
+  await expect(btn).toBeVisible()
+  await btn.click()
+  await expect(page.getByTestId('news-cause')).toBeVisible()
+  await page.waitForTimeout(500)
+  await shot('wpu-news-cause')
+  await page.keyboard.press('Escape')
+  await noOverflow(page, 'inbox')
+
+  // Profile: stats by club.
+  await sp(page, `sp.navigate('profile')`)
+  await page.waitForTimeout(500)
+  await noOverflow(page, 'profile')
+
+  // Sponsors: the why list.
+  await sp(page, `sp.navigate('life', { tab: 'sponsors' })`)
+  await page.waitForTimeout(500)
+  const why = page.getByTestId('why-sponsors-toggle')
+  if (await why.isVisible().catch(() => false)) {
+    await why.click()
+    const items = page.getByTestId('why-sponsors').locator('li')
+    expect(await items.count()).toBeLessThanOrEqual(3)
+    expect(await items.count()).toBeGreaterThan(0)
+    await shot('wpu-why-sponsors')
+  }
+  await noOverflow(page, 'sponsors')
+
+  // World: club interest facts, comparison and why.
+  await sp(page, `sp.navigate('world', { tab: 'interest' })`)
+  await page.waitForTimeout(500)
+  if (await page.getByTestId('interest-facts').first().isVisible().catch(() => false)) {
+    await page.getByTestId('why-interest-toggle').first().click()
+    await page.getByTestId('interest-compare-btn').click().catch(() => undefined)
+    await page.waitForTimeout(600)
+    await shot('wpu-interest')
+  }
+  await noOverflow(page, 'world interest')
+  const res = await new AxeBuilder({ page }).withTags(['wcag2a', 'wcag2aa']).analyze()
+  expect(serious(res)).toEqual([])
+})

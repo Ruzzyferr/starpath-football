@@ -40,7 +40,7 @@ function AssetCard({ a, owned, locked, onBuy }: { a: AssetDef; owned: boolean; l
       {eff && <Chip tone="violet" icon="sparkle">{eff}</Chip>}
       <div class="life-asset-foot">
         <span class="life-asset-price money num">{formatMoney(a.price, { compact: true })}</span>
-        <Button size="sm" variant={owned ? 'ghost' : 'primary'} disabled={owned || locked} onClick={onBuy} icon={owned ? 'check' : locked ? 'lock' : 'shopping-bag'}>
+        <Button size="sm" variant={owned ? 'ghost' : 'secondary'} disabled={owned || locked} onClick={onBuy} icon={owned ? 'check' : locked ? 'lock' : 'shopping-bag'}>
           {owned ? t('common.owned') : t('common.buy')}
         </Button>
       </div>

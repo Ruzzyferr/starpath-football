@@ -111,7 +111,7 @@ function ShopCard({ kind, owned, reputation, money }: { kind: BusinessKind; owne
         <TextField label={t('life.biz.namePh')} value={name} maxLength={28} placeholder={lt(def.name)} onInput={setName} />
       )}
       <Button
-        variant="primary"
+        variant={locked ? 'secondary' : 'primary'}
         block
         icon="storefront"
         disabled={owned || locked || money < def.price}

@@ -20,18 +20,18 @@
 | Bölüm | TAMAM | KISMİ | EKSİK | ERTELENDİ (BLOCKED-EXT) | ERTELENDİ (iç) | N/A-süreç | Toplam |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 2.1 Maç motoru | 60 | 2 | 0 | 0 | 0 | 0 | 62 |
-| 2.2 Animasyon, kamera | 28 | 1 | 0 | 0 | 1 | 0 | 30 |
+| 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
 | 2.3 Kariyer | 34 | 6 | 0 | 0 | 3 | 0 | 43 |
 | 2.4 Sosyal, olaylar | 21 | 0 | 0 | 0 | 18 | 0 | 39 |
 | 2.5 Ekonomi | 28 | 0 | 0 | 4 | 17 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 35 | 0 | 0 | 1 | 29 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 1 | 1 | 0 | 19 |
-| 2.9 Platform | 53 | 2 | 0 | 16 | 8 | 0 | 79 |
-| 2.10 Meta, online | 17 | 1 | 0 | 5 | 1 | 1 | 25 |
+| 2.9 Platform | 56 | 2 | 0 | 16 | 5 | 0 | 79 |
+| 2.10 Meta, online | 18 | 1 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
-| **Toplam** | **400 (%70)** | 12 | 0 | 32 | 85 | 40 | **569** |
+| **Toplam** | **405 (%71)** | 12 | 0 | 32 | 80 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -246,7 +246,7 @@ Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-
 | 2.9#27 | TAMAM | eslint.config.js (`Date.now`/`Math.random` error), `npm run lint` 0 hata | Kural error, ihlal kalmadı |
 | 2.9#29 | TAMAM | e2e/determinism.spec.ts | 120 maç + yeni oyun özeti: Chromium ile Node birebir aynı; Firefox/WebKit projesi eklenince aynı test koşar (tarayıcılar kurulu değil) |
 | 2.9#30 | ERTELENDİ | - | v2: sim ana iş parçacığında bütçe içinde; yalnızca doku işçisi var |
-| 2.9#31 | ERTELENDİ | src/sim/golden.test.ts, .github/workflows/nightly.yml | Golden 1 sezon + 1000 maç; 10 sezon hash'i yerine gecelik 10.000 sezon istatistiksel koruma (hash anlık görüntüsü çok yavaş ve her denge değişiminde kırılır) |
+| 2.9#31 | TAMAM | sim/game/statsGuard.ts, statsGuard.test.ts, statsBaseline.json, .github/workflows/nightly.yml | Gecelik istatistik koruması: 200 kariyer x 10 sezon, sapma eşiği aşarsa CI kırmızı [WP-V] |
 | 2.9#36, #40 | ERTELENDİ | docs/ADR.md ADR-004 | Sürümlü veri paketi sim sahiplerine bağlı; FNV bütünlük içindir, güvenlik sınırı değil; SHA-256 asenkron API ister |
 | 2.9#42 | TAMAM | state/save.ts (`recordMilestone`, `restoreMilestone`), state/saveFuzz.test.ts | Sezon başına ilk kayıt, slot başına en çok 3; canlı + yedekler yok olunca en yeni kilometre taşı yükleniyor |
 | 2.9#45 | TAMAM | electron/main.cjs (`close` el sıkışması), electron/preload.cjs, platform/index.ts | Pencere kapanmadan renderer otomatik kaydı boşaltıyor (2 sn zaman aşımı) |
@@ -402,7 +402,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.2#37 | TAMAM | game/presentation.ts:98,168 | Kutlama yönü, ilişkiye göre yanına gelenler |
 | 2.2#38 | TAMAM | game/presentation.ts (CELEBRATIONS) | WP-16: 12 kutlama (robot, heart_hands, ice_cold, cartwheel eklendi); pakette 5 kozmetik |
 | 2.2#47 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
-| 2.2#48 | ERTELENDİ-INT | game/runtime.ts:368 | S21: Tekrar kare kaydından; kalıcı değil |
+| 2.2#48 | TAMAM | game/src/sim/game/saveHistory.ts, state/saveV3.test.ts | Son 12 gol tekrarı kayıtta: seed+girdi, koşu uzunluğu kodlu (konum yok); MatchScene kuyruğa atar, saveGame state'e yazar [WP-V] |
 | 2.2#49 | TAMAM | ui/screens/match/Moments.tsx:92, game/presentation.ts:222 | Anlar listesi, en iyi 3 an, çok açılı tekrar |
 | 2.2#63 | TAMAM | game/quality.ts (ParticleBudget), MatchScene.fxN | WP-16: profil başına sabit canlı parçacık bütçesi (120/260/480) |
 | 2.2#66 | TAMAM | game/art.ts:430 | S21: koda karşı yeniden denetlendi, kapandı. (eski: File dalgası var; verlet ızgara yok) |
@@ -426,7 +426,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.3#3 | KISMİ | sim/career/createHero.ts:48 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Arketip bonusu 80–90 puan (plan 40); uyumsuzluk kuralı yok |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
 | 2.3#10 | KISMİ | ui/screens/NewCareerScreen.tsx:173 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Cinsiyet seçimi var; ayrı lig yapısı ve metin testi eksik |
-| 2.3#11 | ERTELENDİ-INT | sim/career/progression.ts:33 | S21: 21 özellik (GK 2); OVR açıklama ekranı yok |
+| 2.3#11 | TAMAM | ui/screens/profile/OvrExplainer.tsx, sim/game/ovrBreakdown.ts, ovrBreakdown.test.ts | "OVR nasıl hesaplanır?" ekranı: mevkiye göre ağırlık payı, değer, puan; toplam OVR |
 | 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
 | 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | S21: Yaş çarpanları plandan farklı |
 | 2.3#14 | TAMAM | sim/career/decay.ts:32 | Özellik erimesi + uyarı |
@@ -471,7 +471,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 |---|---|---|---|
 | 2.4#1 | TAMAM | sim/life/relationships.ts:125 | Her takım arkadaşı ayrı −100..100 |
 | 2.4#2 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
-| 2.4#3 | ERTELENDİ-INT | sim/life/relationships.ts:176 | Ertelendi: bant etkisi şimdilik yalnızca pas faktörü ve etiket; bant açıklama metni UI işi |
+| 2.4#3 | TAMAM | ui/screens/life/Relations.tsx (rel-band, rel-effect, rel-trend), sim/game/relationView.ts, relationView.test.ts, e2e/wpu.spec.ts | 5 bant x 40 puan, her bantın yazılı oynanış etkisi (takım arkadaşı için pas sıklığı %), 4 haftalık eğilim oku |
 | 2.4#4 | ERTELENDİ-INT | sim/life/relationships.ts:77 | Ertelendi: sönüm sabit/hafta ayarlı; %2 oranına geçiş denge ve golden değişikliği gerektirir, BALANCE turu ile v1.1 |
 | 2.4#5 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
@@ -480,7 +480,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#14 | ERTELENDİ-INT | sim/career/createHero.ts:208 | Ertelendi: başlangıç ailesi çeşitliliği createHero + hikâye şablonları + UI metni; v2 |
 | 2.4#15 | TAMAM | sim/life/relationships.ts:189 | Yakın çevre etkisi tavanlı |
 | 2.4#23 | TAMAM | sim/life/wellbeing.ts:67 | Partner yokluğu ceza vermiyor |
-| 2.4#24 | ERTELENDİ-INT | sim/life/events/dsl.ts:142 | Ertelendi: partner tercihi Ayarlar ekranı gerektirir (UI ajanı sahibi) |
+| 2.4#24 | TAMAM | ui/screens/SettingsScreen.tsx (partnerPref), sim/game/partnerPref.ts, partnerPref.test.ts, ui/backend/prefsSync.ts | Ayarlarda Fark etmez/Kadınlar/Erkekler; kariyere yansır, flört olayı adı havuzdan seçer. Mevcut partner değişmez; "Fark etmez" eski seçimi byte-aynı korur |
 | 2.4#25 | TAMAM | sim/life/events/content/romance.ts:415 | TD etkisi −4 (tavan −5) |
 | 2.4#36 | ERTELENDİ-INT | game/ai.ts:338 | Ertelendi: maç içi ikon sim/match ve match UI (başka ajanın alanı) |
 | 2.4#37 | ERTELENDİ-INT | - | Ertelendi: Sosyal ekranı yakın arkadaş listesi; v2 |
@@ -505,7 +505,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.4#110 | ERTELENDİ-INT | sim/life/events/types.ts:150 | Ertelendi: Zod yeni bağımlılık; TS şeması + content.test.ts doğrulaması yeterli, v2 |
 | 2.4#111 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
 | 2.4#112 | TAMAM | events/content/abroad.ts, events/types.ts:34, events/engine.ts:383 | Zincir, yeni kategoriler (252 olay), kariyer başı sınır |
-| 2.4#113 | ERTELENDİ-INT | ui/screens/EventModal.tsx:78 | Ertelendi: şeffaflık ayarı Ayarlar ekranı (UI ajanı) |
+| 2.4#113 | TAMAM | ui/screens/EventModal.tsx, ui/components/Chip.tsx (DeltaChip direction), SettingsScreen eventTransparency | Ayarlarda Tam şeffaflık / Yön çipleri. Varsayılan Tam şeffaflık (mevcut davranış korunur); zorluk ekranına taşıma gerekmedi |
 | 2.4#114 | ERTELENDİ-INT | sim/life/events/types.ts:118 | Ertelendi: geçmiş hatırlatma tüm gecikmeli olay metinlerinin yeniden yazımı; v2 |
 | 2.4#118 | ERTELENDİ-INT | sim/life/events/engine.ts:180 | Ertelendi: ICU select i18n altyapı değişikliği; mevcut {g:} kalıbı çalışıyor, v2 |
 
@@ -513,9 +513,9 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.5#1 | ERTELENDİ-INT | sim/career/contract.ts:5 | Ertelendi: kurgusal para birimi simge/biçim Ayarlar (UI ajanı) |
-| 2.5#2 | ERTELENDİ-INT | sim/life/events/engine.ts:83 | Ertelendi: simgesiz fiyat lint kuralı UI lint altyapısı (UI ajanı) |
-| 2.5#3 | ERTELENDİ-INT | sim/career/matchOutcome.ts:196 | Ertelendi: kazanç dökümü ekranı Kariyer/Finans UI (UI ajanı); veri hazır: EconomyBreakdown |
+| 2.5#1 | TAMAM | ui/format.ts (moneyStyle), SettingsScreen, e2e/wpu.spec.ts | Para gösterimi: simge (€), kod (EUR), Yıldız (✦). Yalnızca arayüz tutarları; olay metinleri € kalır (sim metni) |
+| 2.5#2 | TAMAM | ui/moneyLint.node.test.ts | Fiyat benzeri değerin ham sayı biçimleyiciyle yazılmasını CI testi engeller |
+| 2.5#3 | TAMAM | ui/screens/profile/FinanceCharts.tsx (finance-statement), sim/game/weeklyStatement.ts, weeklyStatement.test.ts; maç sonu: PostMatchScreen EarningsStep | Haftalık kalem kalem kazanç dökümü, bir hafta çubuğuna dokununca o haftanın dökümü |
 | 2.5#4 | TAMAM | sim/career/matchPay.ts:matchBonuses cleanSheet | Kaleci temiz kasa primi |
 | 2.5#5 | TAMAM | sim/game/season.ts:paySeasonEndBonuses | Kupa başına 4 haftalık takım primi |
 | 2.5#8 | TAMAM | sim/life/economy.ts COUNTRY_TAX/incomeTaxRate; sweep2.test.ts | Kulüp ülkesine göre %27–40 vergi |
@@ -628,9 +628,9 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#13 | TAMAM | styles/tokens.css data-theme=light, styles/theme-light.css, SettingsScreen tema anahtarı, e2e/wp27.spec.ts | AA kontrastlı açık tema (axe color-contrast 14 ekranda 0), Sistem seçeneği; maç gecesi ekranları koyu kalır |
 | 2.7#14 | TAMAM | styles/fonts.css, e2e/fonts.spec.ts | Fontlar @fontsource ile self-host |
 | 2.7#15 | TAMAM | ui/styleAudit.node.test.ts | .num tabular-nums test edilir; piksel görsel regresyon altyapısı ayrı iş (ertelendi) |
-| 2.7#16 | ERTELENDİ-INT | styles/tokens.css | Ölçek ~1.125 oranlı; 1.25 oranı her ekranı yeniden akıtır, görsel regresyon altyapısı olmadan riskli |
+| 2.7#16 | ERTELENDİ | styles/tokens.css | Ölçek 1.125; 1.25 her ekranı yeniden akıtır, görsel regresyon altyapısı yok (aynı gerekçe) |
 | 2.7#21 | ERTELENDİ-INT | ui/layout/Shell.tsx | Sekmeler Ana Sayfa/Kariyer/Yaşam/Dünya/Menü: bilinçli IA kararı (Takım içeriği Kariyer ve Dünya altında) |
-| 2.7#22 | ERTELENDİ-INT | ui/layout/Shell.tsx | Hub CTA ve ileri butonu aynı döngüyü sürer; tek dolu buton kuralı v1.1 cila listesinde |
+| 2.7#22 | TAMAM | e2e/wpu.spec.ts (single CTA) | #main içinde en fazla bir dolu buton, 15 ekran + yaşam/dünya sekmeleri taranır; liste içi Buy/Play drill ikincil yapıldı |
 | 2.7#23 | TAMAM | e2e/wp27.spec.ts | Hub kutucukları 1 dokunuş, Menü kutucukları 2 dokunuşla açılır; e2e ile sabitlendi |
 | 2.7#24 | TAMAM | ui/screens/PlannerScreen.tsx, e2e/wp27.spec.ts | 7 günlük şerit (e2e sayar) |
 | 2.7#25 | TAMAM | platform/back.ts:14 | Android geri tuşu doğru |
@@ -638,15 +638,15 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#31 | TAMAM | ui/App.tsx, ui/layout/ShortcutsModal.tsx, e2e/wp27.spec.ts | Space, 1-5, M, T, I, Esc ve ? ile kısayol listesi |
 | 2.7#32 | TAMAM | input/gamepadNav.ts, gamepadNav.test.ts, ui/App.tsx startGamepadNav, tokens.css focus ring | D-pad uzamsal gezinme, A onay, B geri, LB/RB sekme; odak halkası 3 px mavi + 2 px boşluk |
 | 2.7#34 | TAMAM | styles/tokens.css --fs-micro 12px, ui/styleAudit.node.test.ts | 12 px altı yazı kalmadı (SVG rulet numarası hariç); test sayar |
-| 2.7#38 | ERTELENDİ-INT | styles/components.css | Chunky CTA kuralları kodda; tek-CTA denetimi #22 ile birlikte ertelendi |
-| 2.7#39 | ERTELENDİ-INT | ui/components/Button.tsx | Danger varyantı var; emekli ol gibi bazı yıkıcı aksiyonlar ghost, çağrı noktası denetimi ertelendi |
+| 2.7#38 | TAMAM | e2e/wpu.spec.ts (single CTA) | #22 ile aynı denetim |
+| 2.7#39 | TAMAM | e2e/wpu.spec.ts, ui/screens/life/Assets.tsx | Yıkıcı etiketler (sat, emekli ol, sil, ayrıl...) danger varyantı: denetim testi; satış butonu danger |
 | 2.7#40 | ERTELENDİ-INT | ui/components/PlayerCard.tsx | Kart çalışıyor; 5:7 oran ve çerçeve cilası sanat incelemesine bağlı |
-| 2.7#42 | ERTELENDİ-INT | ui/components/Chip.tsx | Chip ikonu zorunlu kılmak ~80 çağrı noktasını etkiler; ertelendi |
+| 2.7#42 | TAMAM | ui/components/Chip.tsx (TONE_ICONS) | Anlamlı tonlu çip ikonsuz verilirse varsayılan ikon alır; nötr çip metin-only. 80 çağrı noktası değişmedi |
 | 2.7#43 | TAMAM | ui/components/MeterRing.tsx lowAt, styles/components.css .meter-ring-low | %20 altında uyarı rozeti, nabız (reduced motion saygılı) ve ekran okuyucu metni |
 | 2.7#44 | TAMAM | ui/components/StatBar.tsx | Önizleme ve 3 sn'lik değişim "+3 ▲ / −1 ▼" |
-| 2.7#48 | ERTELENDİ-INT | ui/components/Toast.tsx toastUndo, PlannerScreen.tsx, e2e/wp27.spec.ts | 6 sn Geri al toast'u var, plan silmede kullanılıyor. Satış/eşya atma geri alma ertelendi: sim tarafında geri alma API'si yok (life/** başka ajanda) |
+| 2.7#48 | TAMAM | sim/game/undoSale.ts, assetUndo.test.ts, ui/screens/life/Assets.tsx, e2e/wpu.spec.ts | Satış onaysız, 6 sn Geri al toast; eşya aynı sıraya döner, gelir geri alınır |
 | 2.7#50 | TAMAM | ui/components/Controls.tsx Slider slider-step | Slider ± adım düğmeleri, 44 px, klavye gerekmez |
-| 2.7#55 | ERTELENDİ-INT | ui/screens/career/Radar.tsx | Önceki sezon özellik geçmişi kayıtlı değil (save formatı değişikliği gerekir) |
+| 2.7#55 | ERTELENDİ-INT | sim/game/saveHistory.ts sampleAttrHistory, state/save.ts MIGRATIONS[2] | Haftalık örnekleme + sezon sıkıştırma kayıtta (v3); Radar.tsx'in `attrSeries` ile bağlanması UI ajanında [WP-V] |
 | 2.7#56 | TAMAM | ui/components/Charts.tsx Sparkline, e2e/wp27.spec.ts | Dokun, sürükle veya ok tuşlarıyla noktanın değerini okur |
 | 2.7#59 | TAMAM | ui/components/Donut.tsx, ui/screens/profile/FinanceCharts.tsx, sim/game/financeHistory.ts | Gelir/gider halka grafikleri (dokunulabilir) ve haftalık net çubukları; son 12 hafta. Bank ekranı başka ajanın alanı, Profil kartında |
 | 2.7#60 | TAMAM | ui/components/LeagueTable.tsx:14 | Bölge şeritleri ve vurgu var |
@@ -661,20 +661,20 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.7#78 | ERTELENDİ-INT | ui/screens/HomeScreen.tsx | Hub sırası bilinçli farklı; sanat incelemesi 8+ aldı |
 | 2.7#79 | ERTELENDİ-INT | ui/screens/NewCareerScreen.tsx | 7 adım (kimlik, ulus, mevki, arketip, geçmiş, görünüm, özet) kasıtlı; her adım e2e ile doğrulanıyor |
 | 2.7#80 | TAMAM | ui/screens/TrainingScreen.tsx decay-warning | Hareketsizlik/erime uyarısı antrenman ekranında |
-| 2.7#81 | ERTELENDİ-INT | ui/screens/life/Relations.tsx | screens/life ikinci tarama ajanının alanı |
-| 2.7#82 | ERTELENDİ-INT | ui/screens/match/PostMatchScreen.tsx RelationsStep | Maç sonunda nedenli ilişki değişimi var; İlişkiler ekranı (screens/life) başka ajanın alanı, ertelendi |
-| 2.7#83 | ERTELENDİ-INT | sim/game/whyPlaying.ts, legacy/CareerCards.tsx WhyPlayingCard, whyPlaying.test.ts | Yedek kalma için "Neden?" paneli (en etkili 3 etken, sabit/etkilenebilir). Transfer reddi, sponsor ve ödül kaybı için ertelendi |
-| 2.7#84 | ERTELENDİ-INT | ui/screens/life/Assets.tsx | screens/life ikinci tarama ajanının alanı |
+| 2.7#81 | TAMAM | ui/screens/life/Relations.tsx, sim/game/interactCost.ts | Avatar, değer, eğilim oku, son 5 anı, etkileşim butonlarında enerji ve € maliyeti |
+| 2.7#82 | TAMAM | ui/screens/life/Relations.tsx WhyPanel (kaynaklı ledger), PostMatchScreen RelationsStep | Her değişim nedeniyle: son 10 kayıt + neden toplamları |
+| 2.7#83 | TAMAM | sim/game/whyMore.ts, whyMore.test.ts, ui/components/WhyList.tsx, whyPlaying.ts | İlk 11 şansı + kulüp ilgisi/transfer (WorldScreen), sponsor (Sponsors), ödül kaybı (AwardsScreen): en etkili 3 etken, yüzde pay |
+| 2.7#84 | TAMAM | ui/screens/life/Assets.tsx | Fiyat (€), haftalık bakım, mutluluk ve şöhret çip olarak; kategori sekmeleri |
 | 2.7#85 | TAMAM | ui/screens/store/StoreScreen.tsx | Mağaza/Destek ekranı mevcut |
-| 2.7#86 | ERTELENDİ-INT | ui/screens/life/Assets.tsx | screens/life ikinci tarama ajanının alanı |
-| 2.7#87 | ERTELENDİ-INT | ui/screens/casino/shared.tsx | Kayıp limiti sim/life/casino tarafında zorlama ister (başka ajan) |
-| 2.7#88 | ERTELENDİ-INT | ui/screens/ContractScreen.tsx | Sabır tahmini sim sözleşme modelinde yok |
-| 2.7#89 | ERTELENDİ-INT | ui/screens/WorldScreen.tsx | Kulüp ilgi karşılaştırması için transfer ilgi verisi sim tarafında gerekir |
-| 2.7#90 | ERTELENDİ-INT | ui/screens/InboxScreen.tsx | Haber-olay bağlantısı için olay kimliği haber öğesinde tutulmuyor |
+| 2.7#86 | TAMAM | ui/screens/life/Assets.tsx (shelf-stats), sim/game/assetView.ts, assetUndo.test.ts | Raf: kondisyon % ve ikinci el değeri (resaleValue; modal eski resale formülünü kullanıyordu, kalktı) |
+| 2.7#87 | TAMAM | ui/screens/casino/shared.tsx (LimitBand, bet slider), sim/game/casinoLimits.ts, casinoLimits.test.ts | Kayıp limiti sim/life/casino canBet ile zaten zorlanıyordu; şimdi her kumarhane ekranında sabit bant (bakiye, kullanılan/limit, oturum süresi) ve sim ile aynı üst sınırlı slider. Kendi maçına bahis arayüzde yok |
+| 2.7#88 | TAMAM | sim/game/patienceEstimate.ts, patienceEstimate.test.ts, ContractScreen patience-preview | Teklif göndermeden önce sabır maliyeti (counterOffer ile aynı hesap, 5 puanlık bant, "masadan kalkar" uyarısı) |
+| 2.7#89 | TAMAM | ui/screens/WorldScreen.tsx, sim/game/clubPreview.ts, clubPreview.test.ts | Takip / ciddi ilgi / teklif hazır kademeleri (sim eşikleriyle), şehir, beklenen rol, maaş aralığı, tek dokunuşla karşılaştırma tablosu |
+| 2.7#90 | TAMAM | ui/screens/InboxScreen.tsx (news-cause), sim/game/newsCause.ts, newsCause.test.ts | Habere dokununca olayı/haftanın kayıtlarını gösterir. Olay haberi n. olay kaydıyla eşlenir; haber öğesine olay kimliği eklenmedi (sim değişmedi) |
 | 2.7#91 | ERTELENDİ-INT | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım; v1.1 |
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
-| 2.7#94 | ERTELENDİ-INT | ui/screens/WorldScreen.tsx | Kariyer/kulüp kırılımı için kulüp bazlı istatistik kaydı gerekir |
-| 2.7#98 | ERTELENDİ-INT | ui/screens/SavesScreen.tsx | Slot ekran görüntüsü: kayıt formatına küçük resim alanı gerekir |
+| 2.7#94 | TAMAM | ui/screens/ProfileScreen.tsx (club-stats), sim/game/clubStats.ts, clubStats.test.ts | Sezon/Kariyer tablosuna kulüp bazlı kırılım; gol krallığı NPC sıralaması WorldScreen scorers sekmesinde mevcut |
+| 2.7#98 | ERTELENDİ-INT | sim/game/saveHistory.ts slotThumb/thumbSvg, summary.thumb | Prosedürel küçük resim özeti kayıtta (v3); SavesScreen.tsx'te `thumbSvg` çizimi UI ajanında [WP-V] |
 | 2.7#99 | TAMAM | ui/screens/SettingsScreen.tsx | WP-16: Gizlilik ve Bulut ("Yakında", bağlantısız) grupları |
 | 2.7#103 | TAMAM | styles/tokens.css:136 | Hareket token'ları var |
 | 2.7#105 | TAMAM | ui/hooks/motion.ts:20 | Count-up var |
@@ -735,13 +735,13 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.9#28 | TAMAM | game/src/core/types.ts:462 | RNG durumu kayıtta |
 | 2.9#29 | TAMAM | e2e/determinism.spec.ts | 120 maç + yeni oyun özeti: Chromium ile Node birebir aynı; Firefox/WebKit projesi eklenince aynı test koşar (tarayıcılar kurulu değil) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#30 | ERTELENDİ-INT | - | v2: sim ana iş parçacığında bütçe içinde; yalnızca doku işçisi var [S29; kanıt yolları game/ köküne göre] |
-| 2.9#31 | ERTELENDİ-INT | src/sim/golden.test.ts, .github/workflows/nightly.yml | Golden 1 sezon + 1000 maç; 10 sezon hash'i yerine gecelik 10.000 sezon istatistiksel koruma (hash anlık görüntüsü çok yavaş ve her denge değişiminde kırılır) [S29; kanıt yolları game/ köküne göre] |
+| 2.9#31 | TAMAM | sim/game/statsGuard.ts, statsGuard.test.ts, statsBaseline.json, .github/workflows/nightly.yml | Gecelik istatistik koruması: 200 kariyer x 10 sezon, sapma eşiği aşarsa CI kırmızı [WP-V] |
 | 2.9#33 | TAMAM | game/src/sim/world/fixtures.ts:66 | Oyun takvimi kullanılıyor |
-| 2.9#36 | ERTELENDİ-INT | docs/ADR.md ADR-004 | Sürümlü veri paketi sim sahiplerine bağlı; FNV bütünlük içindir, güvenlik sınırı değil; SHA-256 asenkron API ister [S29; kanıt yolları game/ köküne göre] |
+| 2.9#36 | TAMAM | state/save.ts envelope.dataPack, sim/game/persist.ts dataPackId | Her kayıt veri paketi kimliği (`sp-data-N`) taşır; eski kayıt migrasyonla doldurulur [WP-V] |
 | 2.9#37 | TAMAM | game/src/ui/backend/liveMatch.ts:98 | Kapat-aç sonucu değiştirmiyor |
 | 2.9#38 | TAMAM | game/src/state/save.ts:19 | Depolama adaptörleri |
 | 2.9#39 | TAMAM | game/src/platform/capacitorStorage.ts:15 | Directory.Data |
-| 2.9#40 | ERTELENDİ-INT | docs/ADR.md ADR-004 | Sürümlü veri paketi sim sahiplerine bağlı; FNV bütünlük içindir, güvenlik sınırı değil; SHA-256 asenkron API ister [S29; kanıt yolları game/ köküne göre] |
+| 2.9#40 | TAMAM | state/save.ts sealEnvelope/openEnvelopeVerified, state/saveV3.test.ts | SHA-256 (WebCrypto) zarf alanı; crypto.subtle yoksa FNV'ye düşer, eski FNV zarfları yüklenir [WP-V] |
 | 2.9#41 | TAMAM | game/electron/main.cjs:48 | Atomik yazma |
 | 2.9#42 | TAMAM | state/save.ts (`recordMilestone`, `restoreMilestone`), state/saveFuzz.test.ts | Sezon başına ilk kayıt, slot başına en çok 3; canlı + yedekler yok olunca en yeni kilometre taşı yükleniyor [S29; kanıt yolları game/ köküne göre] |
 | 2.9#43 | TAMAM | game/src/ui/backend/realActions.ts:343 | Yedeğe düşüş var |
@@ -807,7 +807,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 | 2.10#17 | TAMAM | sim/game/localMeta.ts challengeFor, localMeta.test.ts | Tohumlu haftalık görev rotasyonu, seri; yerel |
 | 2.10#18 | TAMAM | ui/screens/board/BoardScreen.tsx | Yerel meydan okuma profili: seri, en iyi seri, geçmiş. Çevrimiçi paylaşım BLOCKED-EXTERNAL |
 | 2.10#19 | TAMAM | sim/game/localMeta.ts AttemptRecord, liveOps.test.ts | Sınırsız deneme; ilk ve en iyi deneme ayrı tutulur (yerel tablo) |
-| 2.10#34 | ERTELENDİ-INT | game/src/game/MatchScene.ts:35 | Seed+girdi kaydı src/game sahibinin işi; fotoğraf ve klip modu buna bağlı |
+| 2.10#34 | TAMAM | game/src/sim/game/saveHistory.ts packRecording, MatchScene.ts afterPlay | Seed+girdi kaydı kayıpsız paketlenir ve kayıtla taşınır (v3); video klip WP-V kalanı [WP-V] |
 | 2.10#40 | KISMİ | ui/share/cards.ts, ShareButtons.tsx, e2e/board.spec.ts | Maç sonu ve kariyer PNG kartı (paylaşım sayfası/indirme) TAMAM; video klip ve fotoğraf modu ertelendi (maç tekrarı seed+girdi yok) |
 | 2.10#60 | TAMAM | sim/game/mods.ts, sim/game/modWorld.ts, newGame.ts, modWorld.test.ts | Yalnızca veri JSON modları: şema, boyut sınırı, bilinmeyen alan reddi. `world` bölümü (lig/kulüp adı, kısa kod, şehir, stadyum adı, forma renkleri) ve isim listeleri YENİ kariyerin dünyasına deterministik yeniden adlandırma geçişiyle uygulanır; moddan bağımsız dünya bayt bayt aynı. Yeni ülke eklemek (statik kayıt defteri) ve sezon içi doğan gençlerin mod isimleri ertelendi |
 | 2.10#62 | TAMAM | ui/backend/meta.ts c:mods, mods.ts checkModSignature | Kariyer kaydı mod kimlik@sürüm imzasını saklar; eksik veya farklı modda yüklemede uyarı |

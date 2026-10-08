@@ -1,7 +1,8 @@
 import type { SponsorDeal } from '../../../core/types'
 import { hashString } from '../../../core/rng'
 import { t } from '../../../i18n'
-import { Button, Chip, EmptyState, SectionTitle, toast } from '../../components'
+import { Button, Chip, EmptyState, SectionTitle, WhyList, toast } from '../../components'
+import { whySponsors } from '../../../sim/game/whyMore'
 import { formatMoney, initials, seasonLabel } from '../../format'
 import { actions, data, gameState } from '../../store'
 
@@ -75,6 +76,7 @@ export function Sponsors() {
       </section>
       <section class="stack">
         <SectionTitle>{t('life.sponsors.offers')}</SectionTitle>
+        <WhyList why={whySponsors(s)} id="why-sponsors" testId="why-sponsors" />
         {offers.length === 0 ? <EmptyState icon="handshake" text={t('life.sponsors.noOffers')} /> : (
           <div class="life-deals">{offers.map((d) => <Deal key={d.id} d={d} offer rep={s.hero.reputation} />)}</div>
         )}

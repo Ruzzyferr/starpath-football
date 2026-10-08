@@ -896,3 +896,12 @@
 .sparkline { touch-action: pan-y; cursor: crosshair; }
 .sparkline:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; border-radius: 4px; }
 .sparkline-read { position: absolute; top: -26px; transform: translateX(-50%); padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); pointer-events: none; white-space: nowrap; z-index: 2; }
+
+/* WP-U 2.7#83: generic "Why?" list */
+.why-more { display: flex; flex-direction: column; gap: var(--sp-2); }
+.why-more-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+.why-more-list li { display: grid; grid-template-columns: 1fr auto; gap: var(--sp-1) var(--sp-3); align-items: baseline; }
+.why-more-bar { grid-column: 1 / -1; height: 4px; border-radius: 2px; background: var(--bg-1); overflow: hidden; }
+.why-more-bar > span { display: block; height: 100%; background: var(--accent-blue); }
+.why-more-list li.is-pos .why-more-bar > span { background: var(--brand-pitch); }
+.why-more-list li.is-neg .why-more-bar > span { background: var(--state-danger); }
