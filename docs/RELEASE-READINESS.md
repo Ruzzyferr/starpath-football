@@ -68,6 +68,7 @@ Hepsi tek başına yapılabilir; sim dosyalarına dokunanlar golden master'ı bi
 ### WP-E · Olay ve içerik v1.1 (5-8 gün, sırayla bölünebilir)
 - Satırlar: 2.4#7 (olay DSL linter), #11, #14, #36, #37, #47, #52, #53, #79, #99, #100, #110, #114, #118; 2.5#29, #63, #64, #71, #84; 2.12#13 (arma kara listesi), #52 (kendi maçına bahis); 2.6#16 (itibar görünüm ölçeği); 2.11#47 (olay metinleri veri dosyasına).
 - Dosyalar: `sim/life/events/**`, `data/assets.ts`, `ui/screens/life/Relations.tsx`, `sim/world/generate.ts`.
+- Durum (Tur 2 içerik): 2.12#13, #52, 2.5#29, #63, #64, #84 TAMAM; 76 yeni kart (359 toplam), geç oyun para yutucuları, işletme kararları, kumarhane bedeli. Kalan satırlar (2.4#7, #11, #14, #36, #37, #47, #52, #53, #79, #99, #100, #110, #114, #118; 2.5#71; 2.6#16; 2.11#47) GAP-AUDIT'te gerekçeleriyle ertelendi (maç motoru, UI akışı, yeni bağımlılık veya çevirmen geçişi gerektiriyor).
 - Kabul: `content.test.ts` yeni şemayı doğrular; TR ve EN metin cinsiyet testi geçer; içerik başına en az bir olay tetikleme testi.
 
 ### WP-P · Performans ve sunum (3-4 gün)

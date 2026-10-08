@@ -10,12 +10,12 @@ describe('casino VIP tiers and career cost', () => {
     expect(maxStakeFor(life)).toBe(15_000)
     life.flags[CASINO_FLAGS.turnover] = VIP_TURNOVER[2]!
     expect(casinoVipTier(life)).toBe(2)
-    expect(stakeShareFor(life)).toBeCloseTo(0.025)
-    expect(maxStakeFor(life)).toBe(25_000)
+    expect(stakeShareFor(life)).toBeCloseTo(0.019)
+    expect(maxStakeFor(life)).toBe(19_000)
     life.flags[CASINO_FLAGS.vipRoom] = true
-    expect(maxStakeFor(life)).toBe(30_000)
-    expect(canBet(life, 29_000).ok).toBe(true)
-    expect(canBet(life, 31_000).ok).toBe(false)
+    expect(maxStakeFor(life)).toBe(21_000)
+    expect(canBet(life, 20_500).ok).toBe(true)
+    expect(canBet(life, 21_500).ok).toBe(false)
   })
 
   it('settleBet tracks turnover, hot streaks and a VIP promotion line', () => {

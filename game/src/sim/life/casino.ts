@@ -810,9 +810,9 @@ export function setLossLimit(life: Life, amount: number): Lines {
 /** Table stake limit scales with the bankroll: 1.5% of cash (floor 500), so one bet never moves a career. */
 /** Career turnover (sum of stakes) needed for VIP tier 1..3. */
 export const VIP_TURNOVER: readonly number[] = [0, 150_000, 1_500_000, 12_000_000]
-/** Table limit as a share of the bankroll: 1.5 % + 0.5 % per VIP tier (+0.5 % in the VIP room). */
+/** Table limit as a share of the bankroll: 1.5 % + 0.2 % per VIP tier (+0.2 % in the VIP room). */
 export const BASE_STAKE_SHARE = 0.015
-export const VIP_STAKE_STEP = 0.005
+export const VIP_STAKE_STEP = 0.002
 
 /** VIP tier 0..3 from the career turnover: loyal guests get higher limits (and a steeper career cost). */
 export function casinoVipTier(life: Life): number {
@@ -825,7 +825,7 @@ export function casinoVipTier(life: Life): number {
 export const stakeShareFor = (life: Life): number =>
   BASE_STAKE_SHARE + VIP_STAKE_STEP * casinoVipTier(life) + (life.flags[CASINO_FLAGS.vipRoom] === true && casinoVipTier(life) > 0 ? VIP_STAKE_STEP : 0)
 
-export const maxStakeFor = (life: Life): number => Math.max(500, Math.floor(Math.max(0, life.money) * stakeShareFor(life)))
+export const maxStakeFor = (life: Life): number => Math.max(500, Math.floor(Math.max(0, life.money) * stakeShareFor(life) + 1e-6))
 
 /** Can the hero place this stake now? Respects cash and the daily loss limit. */
 export function canBet(life: Life, stake: number): { ok: boolean; reason: LText | null } {

@@ -530,3 +530,19 @@ Aynı koşuda diğer hedefler: gol kralı (NPC) 1. kademe 27, ST 71–76 25, 77�
 | Sezonda sakatlık / sakat hafta | 1,3 / 2,9 | 1,6 / 4,1 ve 1,4 / 3,4 | 1–2 / 3–6 |
 
 **Forvet 66–70 OVR gol.** Önceki 24 gol n=4 örneklemdi. İki tohumla yeniden ölçüldü: ST 66–70 medyan 16 (n=4) ve 15 (n=6), hedef 12–22 içinde; **gol ağırlıklarına dokunulmadı.** NPC gol kralı 1. kademe 27–28, 3. kademe 20–21 (hedef 18–30 / 18–25).
+
+## Geç oyun parası, işletme kararları ve kumarhane bedeli (WP-E içerik v1.1)
+
+**Para yutucuları** (`sim/life/projects.ts`, hepsi `weeklyEconomy` içinden): akademi 3 aşama (1,5 / 3 / 6 M; bakım 2 / 5,5 / 12 K hafta), hayır stadyumu 2 aşama (1,2 / 3,5 M; bakım 1,8 / 6 K), kulüp hissesi %25'e kadar (%1 = 400 K, yıllık %7 temettü, satışta %90), miras fonu (yıllık %3,5; Legacy çocuğuna payın %25'i, **en çok 350 K**, yani çocuk yine milyoner başlamaz). Koleksiyon eşyaları (8 adet, `collector`) değer kazanır, Hall of Fame puanına 3 × (tavan 12) ekler. Hepsi net servete girer (fon + hisse).
+
+**İşletme:** 16 karar kartı (genişleme, müdür, pazarlama, kriz × 3 tür + 4 genel). Seçim haftalık K/Z'ye `boost` (gelir çarpanı, N hafta), müdür ve seviye üzerinden girer.
+
+**Kumarhane bedeli** (`casinoCareerCost`, bağımlılık ≥ 30): haftalık mutluluk −1,5, form −1…−3, 40+ disiplin ve yakınlarla ilişki, 55+ stres ve basın; VIP kademe 2+ ×1,25; günlükte tek satırla gösterilir. VIP kademeleri (toplam bahis 150 K / 1,5 M / 12 M) masa limitini %1,5'ten kademe başına +%0,2 yükseltir (VIP salonu +%0,2). `balanceSim` gambler bahsini artık masa limitine göre boyutlandırıyor (önce bahisler reddediliyordu, bu yüzden pay %5–6 görünüyordu).
+
+| Ölçüt (kumarbaz personası, 8 sezon, 10 / 10 / 6 kumarbaz) | Önce (Tur 2) | Sonra | Hedef |
+|---|---|---|---|
+| Kumarhane payı (harcamanın %'si), tohum 1000 / 2024 / 3000 | %5–6 | %24 / %33 / %10 (ort. ~%22) | %15–35 |
+| Genel pay (kumarbaz harcaması toplamın ~%17'si) | ~%1 | ~%1,4–5 | ≤ %5 |
+
+Tohum gürültüsü büyük (bir büyük kazanç payı 10 puan oynatıyor); ölçüm `BALANCE=1 npx vitest run src/sim/game/balance.test.ts` ile de tekrarlanmalı. **Golden master bilinçli yenilenmedi** (dünya arması kara listesi dünya karmasını değiştirdi, bahis boyutu ve yeni kartlar kariyer akışını); lider yeniler.
+

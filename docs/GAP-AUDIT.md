@@ -23,15 +23,15 @@
 | 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
 | 2.3 Kariyer | 40 | 1 | 0 | 0 | 2 | 0 | 43 |
 | 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
-| 2.5 Ekonomi | 31 | 0 | 0 | 4 | 14 | 0 | 49 |
+| 2.5 Ekonomi | 35 | 0 | 0 | 4 | 10 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
 | 2.7 UI/UX | 52 | 0 | 0 | 1 | 12 | 0 | 65 |
 | 2.8 Ses | 17 | 0 | 0 | 1 | 1 | 0 | 19 |
 | 2.9 Platform | 56 | 2 | 0 | 16 | 5 | 0 | 79 |
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
-| 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
-| **Toplam** | **436 (%77)** | 5 | 0 | 32 | 56 | 40 | **569** |
+| 2.12 Risk, mağaza, QA | 32 | 0 | 0 | 2 | 3 | 39 | 76 |
+| **Toplam** | **442 (%78)** | 5 | 0 | 32 | 50 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -272,7 +272,7 @@ Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-
 | 2.9#127 | ERTELENDİ | store-iap/flavor.ts | BLOCKED-EXTERNAL: deneme kilidi mağaza ürünleriyle sınanmalı |
 | 2.9#128 | TAMAM | docs/ADR.md | 7 karar kaydı |
 | 2.12#11, #58 | ERTELENDİ | - | BLOCKED-EXTERNAL: ödül adlarının hukuk doğrulaması; yerel yorum API'si mağaza eklentisi ve cihaz ister |
-| 2.12#13, #52 | ERTELENDİ | - | Dünya/yaşam süpürmelerinin dosyaları (arma kara listesi 2.6#11 ile, kendi maçına bahis life sweep) |
+| 2.12#13, #52 | TAMAM | sim/world/generate.ts, events/content/casinoCareer.ts | Arma kara listesi ve kendi maçına bahis kartı (WP-E) |
 | 2.12#27, #28, #29 | KAPANDI | assets/LICENSES.csv, ci.yml (`licenses:check`), `npm run legal` | Kredi/lisans sayfaları üretilen dosyadan; CI eşitliği denetliyor |
 | 2.12#42 | TAMAM | core/contentFlags.ts (`CASINO_BUILD`), core/contentFlags.test.ts, ui/store.ts, SettingsScreen.tsx | `VITE_FEATURE_CASINO=0` kumarhaneyi derlemede kalıcı gizler ve ayar anahtarını kaldırır |
 | 2.12#70 | TAMAM | store-iap/demo.ts, main.tsx | Kiosk demo flavor mevcut (sabit tohum, boşta sıfırlama) |
@@ -323,7 +323,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.1#2 | TAMAM | sim/match/engine.ts:1219 | S21: koda karşı yeniden denetlendi, kapandı. (eski: An sonucu skora yazılıyor; momentum ve kaçan fırsat raporu yok) |
 | 2.1#3 | TAMAM | sim/match/engine.ts:590 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Sonuç önceden hesaplanmıyor; %70 telemetri testi yok) |
 | 2.1#4 | TAMAM | ui/backend/liveMatch.ts:248, game/runtime.ts:296 | Bekleyen an kayda yazılıyor, an RNG'si seed'li, restore testi var |
-| 2.1#6 | KISMİ | sim/match/engine.ts:645 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Güç farkı şansı etkiliyor; %18/%6 kalibrasyonu ve %12 testi yok |
+| 2.1#6 | TAMAM | sim/match/engine.ts:684, sim/match/sim21.test.ts:95 | WP-B: alt lig takımı (58) üst lig takımını (76) 1000 maçta ≤ %12 yener (testli). +10 OVR tepkisi bilinçli olarak plandan dik (şut +%51–59, isabet +%4; plan %18/%6): calibration.test galibiyet bantları ve BALANCE dünya tabloları buna bağlı; BALANCE.md "WP-B" |
 | 2.1#7 | TAMAM | sim/match/fairness.ts:23, engine.ts:1193 | 15 dk erken skor freni, 300 maçlık test |
 | 2.1#8 | TAMAM | sim/match/fairness.ts:15, engine.ts:1221 | %8 altı an yeniden üretiliyor |
 | 2.1#9 | TAMAM | sim/match/highlightGen.ts:509 | S21: koda karşı yeniden denetlendi, kapandı. (eski: 4–9 an var; odak modu, Pozisyon Alma ve "beklenen an" gösterimi yok) |
@@ -423,12 +423,12 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 |---|---|---|---|
 | 2.3#1 | TAMAM | core/types.ts:18, sim/match/highlightGen.ts:85 | 10 mevki, mevkiye göre an havuzu |
 | 2.3#2 | TAMAM | game/training/drills/distribution.ts, sim/career/training.ts (distribution), sim/match/rating.ts keeperSaveScore, sim/world/awards.ts goalkeeperAwardScore | Kaleci reyting terimi ve Altın Eldiven formülü (WP-C) + ikinci kaleci drili "Çıkış & Hâkimiyet": ortayı havada kap (Kaleci/Handling), 6 sn içinde koşan arkadaşa at (≤24 m) ya da vur; puan 0..1, not, bot ve testli, TR/EN, cihaz başına ipucu (`distribute`) |
-| 2.3#3 | KISMİ | sim/career/createHero.ts:48 | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Arketip bonusu 80–90 puan (plan 40); uyumsuzluk kuralı yok |
+| 2.3#3 | ERTELENDİ-INT | sim/career/createHero.ts:48 | WP-B: uyumsuzluk kuralı yapıldı (`ARCHETYPE_MISMATCH_SHARE` 0,5). 40 puan bütçesi ertelendi (sapma önerisi): başlangıç OVR 48–54 ve 18/21/25 itibar eğrisi 80–90 puanlık arketiple kalibre; 40 puanda arketip başına özellik farkı ~+5 kalır, kimlik kaybolur ve tüm denge yeniden ayarlanır |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
 | 2.3#10 | ERTELENDİ-INT | core/gender.ts, sim/game/gender.test.ts, sim/career/genderText.test.ts | WP-C: kadın dünyası (isimler, yüzler, serbest oyuncular) ve TR/EN cinsiyet metin testi tamam. Ayrı kadın lig piramidi kulüp adı/arma ve hukuk taramasına bağlı; v2 |
 | 2.3#11 | TAMAM | ui/screens/profile/OvrExplainer.tsx, sim/game/ovrBreakdown.ts, ovrBreakdown.test.ts | "OVR nasıl hesaplanır?" ekranı: mevkiye göre ağırlık payı, değer, puan; toplam OVR |
 | 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
-| 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | S21: Yaş çarpanları plandan farklı |
+| 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | WP-B: ertelendi (sapma önerisi). Plan çarpanları (×1,3/1,0/0,7/0,5) başka bir XP maliyet eğrisi varsayıyor; bizde ≤20 ×1,35, 21–23 ×1,15, 24–26 ×0,8, 27–29 ×0,6, 30–32 ×0,4 + azalan getiri, 17–21 yaş +5–7 OVR/sezon ve 22–24 yaşta 80+ hedefini tutuyor. Fiziksel düşüş 30+ ve zihinsel gelişim 33’e kadar zaten var (`physicalDeclinePerSeason`, mental ×1,6) |
 | 2.3#14 | TAMAM | sim/career/decay.ts:32 | Özellik erimesi + uyarı |
 | 2.3#15 | TAMAM | sim/career/matchOutcome.ts:202 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Maç XP'si var; aksiyon başına XP yok) |
 | 2.3#21 | TAMAM | sim/career/training.ts:102 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Puanlama ve formül farklı) |
@@ -472,7 +472,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.4#1 | TAMAM | sim/life/relationships.ts:125 | Her takım arkadaşı ayrı −100..100 |
 | 2.4#2 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
 | 2.4#3 | TAMAM | ui/screens/life/Relations.tsx (rel-band, rel-effect, rel-trend), sim/game/relationView.ts, relationView.test.ts, e2e/wpu.spec.ts | 5 bant x 40 puan, her bantın yazılı oynanış etkisi (takım arkadaşı için pas sıklığı %), 4 haftalık eğilim oku |
-| 2.4#4 | ERTELENDİ-INT | sim/life/relationships.ts:77 | Ertelendi: sönüm sabit/hafta ayarlı; %2 oranına geçiş denge ve golden değişikliği gerektirir, BALANCE turu ile v1.1 |
+| 2.4#4 | ERTELENDİ-INT | sim/life/relationships.ts:77 | Ertelendi: sönüm sabit/hafta ayarlı; %2 oranına geçiş denge ve golden değişikliği gerektirir, BALANCE turu ile v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
 | 2.4#5 | TAMAM | sim/life/relationships.ts:20,47 | İlişki defteri, "neden" paneli |
 | 2.4#6 | TAMAM | sim/career/matchOutcome.ts:176 | İyi maçta net negatif ilişki yok |
 | 2.4#7 | ERTELENDİ-INT | - | Ertelendi: etkiler fonksiyon olduğundan statik linter için olay DSL yeniden yazımı gerekir (v2) |
@@ -521,26 +521,26 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.5#8 | TAMAM | sim/life/economy.ts COUNTRY_TAX/incomeTaxRate; sweep2.test.ts | Kulüp ülkesine göre %27–40 vergi |
 | 2.5#10 | TAMAM | sim/life/economy.ts agentFee (maaş+sponsor); matchPay.ts | Komisyon sponsor gelirinden de kesilir |
 | 2.5#11 | TAMAM | sim/life/economy.ts tickTrainerContract; sweep2.test.ts | Antrenör sözleşmesi 44 hafta, 4 hafta kala uyarı, bitince ayrılır (UI çubuğu: TrainingScreen, UI ajanı) |
-| 2.5#15 | ERTELENDİ-INT | sim/game/balanceSim.ts:76 | Ertelendi: temel yaşam gideri denge değişikliği, BALANCE turu gerektirir; v1.1 |
+| 2.5#15 | ERTELENDİ-INT | sim/game/balanceSim.ts:76 | Ertelendi: temel yaşam gideri denge değişikliği, BALANCE turu gerektirir; v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
 | 2.5#16 | TAMAM | data/activities.ts energy_drink; activities.test.ts | Enerji içeceği aktivitesi (hızlı enerji, yorgunluk bedeli) |
 | 2.5#17 | TAMAM | data/activities.ts:2 | Günde 3 dilim |
-| 2.5#18 | ERTELENDİ-INT | sim/life/activities.ts:337 | Ertelendi: uyku %70–100 ev kalitesi tüm erken kariyerlere ceza olur; denge turu gerektirir (sleep varlık bonusu mevcut) |
+| 2.5#18 | ERTELENDİ-INT | sim/life/activities.ts:337 | Ertelendi: uyku %70–100 ev kalitesi tüm erken kariyerlere ceza olur; denge turu gerektirir (sleep varlık bonusu mevcut); WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
 | 2.5#19 | TAMAM | data/activities.ts, data/assets.ts | Fiyatlar sabit tasarım gereği; enflasyon yok |
 | 2.5#22 | TAMAM | data/assets.ts:143 | Para ile hızlandırma satılmıyor |
 | 2.5#23 | TAMAM | sim/life/economy.ts:124 | Gider varlık bakımından |
-| 2.5#24 | ERTELENDİ-INT | sim/career/wp15.test.ts | Ertelendi: tam harcama eğrisi telemetri ile; v1.1 denge turu |
-| 2.5#29 | ERTELENDİ-INT | data/assets.ts | Ertelendi: geç oyun para yutucuları yeni içerik; v2 |
+| 2.5#24 | ERTELENDİ-INT | sim/career/wp15.test.ts | Ertelendi: tam harcama eğrisi telemetri ile; v1.1 denge turu; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
+| 2.5#29 | TAMAM | sim/life/projects.ts, events/content/projects.ts, projects.test.ts | Geç oyun para yutucuları: akademi (3 aşama), hayır stadyumu (2 aşama), kulüp hissesi (%25'e kadar, temettü), miras fonu (Legacy çocuğuna, tavanlı); gerçek etki: bakım, mezun, taraftar, itibar, Hall of Fame puanı |
 | 2.5#42 | TAMAM | sim/game/internal.ts:93 | Piyasa kayıtlı RNG ile |
 | 2.5#53 | TAMAM | sim/life/business.ts (businessRevenueCap) | WP-15: haftalık gelir 3x tavan |
 | 2.5#54 | TAMAM | sim/life/sponsors.ts (10 kategori, 6 anlaşma tavanı); sponsors.test.ts | 4 yeni kategori |
 | 2.5#55 | ERTELENDİ-INT | core/types.ts:365 | Ertelendi: performans bonusu şablonu sözleşme UI; v2 |
-| 2.5#60 | ERTELENDİ-INT | sim/life/sponsors.ts:68 | Ertelendi: sponsor formülü (rep+takipçi) denge testli; plan formülüne geçiş v1.1 |
+| 2.5#60 | ERTELENDİ-INT | sim/life/sponsors.ts:68 | Ertelendi: sponsor formülü (rep+takipçi) denge testli; plan formülüne geçiş v1.1; WP-B (Ekim 2026): yine ertelendi, dosya `sim/life/**` içerik/ekonomi paketinin elinde (eşzamanlı düzenleme), sonraki denge turuna |
 | 2.5#62 | TAMAM | sim/life/sponsors.ts:16 | Bahis sponsoru yok |
-| 2.5#63 | ERTELENDİ-INT | data/assets.ts:30 | Ertelendi: katalog özel etkileri içerik işi; v2 |
-| 2.5#64 | ERTELENDİ-INT | data/assets.ts | Ertelendi: kategori dağılımı içerik işi; v2 |
+| 2.5#63 | TAMAM | data/assets.ts (`collector`), sim/life/assetEffects.ts, projects.test.ts | Koleksiyon eşyaları: değer kazanır, Hall of Fame'e `collector` puanı verir (tavan 12) |
+| 2.5#64 | TAMAM | data/assets.ts | Sanat kategorisi 7'den 15'e: 8 koleksiyon eşyası (15 bin-15 milyon); en pahalı basamaklar da dolu |
 | 2.5#71 | ERTELENDİ-INT | - | Ertelendi: ayrı yıpranma modeli denge riski; v2 |
 | 2.5#80 | TAMAM | ui/screens/life/Assets.tsx | WP-15: satın alma onayında "net maaşın ~N haftası" |
-| 2.5#84 | ERTELENDİ-INT | - | Ertelendi: at sahipliği yeni içerik; v2 |
+| 2.5#84 | TAMAM | events/content/casinoCareer.ts (`casino.horse_offer` → `horse_race_day` → `horse_retirement`) | Yarış atı sahipliği: 3 adımlı zincir, ödül havuzu, emeklilik kararı |
 | 2.5#89 | TAMAM | - | Fiş/IAP satışı yok |
 | 2.5#90 | TAMAM | ui/screens/SettingsScreen.tsx:120 | Kumarhaneyi gizle |
 | 2.5#91 | TAMAM | ui/backend/casinoView.ts:47 | 18 yaş kilidi |
@@ -560,7 +560,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.5#119 | ERTELENDİ-EXT | ui/screens/store/PurchasesPanel.tsx:20, StoreScreen.tsx:8 | BLOCKED-EXTERNAL: Satın alma geçmişi ve mağaza varlıkları mağaza hesabı ister (Satın alma geçmişi ve mağaza varlıkları eksik) |
 | 2.5#120 | ERTELENDİ-EXT | ui/screens/store/PurchasesPanel.tsx:20, StoreScreen.tsx:8 | BLOCKED-EXTERNAL: Satın alma geçmişi ve mağaza varlıkları mağaza hesabı ister (Satın alma geçmişi ve mağaza varlıkları eksik) |
 | 2.5#122 | TAMAM | - | Karanlık örüntü yok |
-| 2.5#125 | ERTELENDİ-INT | sim/game/balanceSim.ts:29 | Ertelendi: CI raporu CI altyapısı (dış hizmet) |
+| 2.5#125 | TAMAM | .github/workflows/nightly.yml, sim/world/worldReport.test.ts | WP-B: gecelik iş 1000×10 denge tablosu, 2 tohum × 100 sezon dünya yetenek raporu (ort./p95/p99/max) ve drift korumasını artefakt olarak yükler, özeti çalıştırma sayfasına yazar; 100 sezon kararlılık adımı (LONGRUN=1) eklendi |
 | 2.5#126 | TAMAM | sim/career/wp15.test.ts | WP-15: 20 tohum x 5 sezon ekonomi değişmezleri |
 
 ### 2.6 Dünya, Ligler, Kupalar, NPC'ler, Milli Takımlar, Veri
@@ -876,7 +876,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.12#10 | TAMAM | game/public/manifest.webmanifest, game/src/data/world/countries.ts:21 | Marka ifadeleri temiz, "Anadolu Ligi" |
 | 2.12#11 | ERTELENDİ-EXT | game/src/data/world/countries.ts:22 | BLOCKED-EXTERNAL: ödül adlarının hukuk doğrulaması; yerel yorum API'si mağaza eklentisi ve cihaz ister [S29; kanıt yolları game/ köküne göre] |
 | 2.12#12 | N/A | - | İçerik kuralı |
-| 2.12#13 | ERTELENDİ-INT | - | Dünya/yaşam süpürmelerinin dosyaları (arma kara listesi 2.6#11 ile, kendi maçına bahis life sweep) [S29; kanıt yolları game/ köküne göre] |
+| 2.12#13 | TAMAM | sim/world/generate.ts (`CREST_BLACKLIST`, `crestBlacklisted`), worldQuality.test.ts | Gerçek kulüp armasına benzeyen şekil+sembol+renk ailesi üretilen kulüplere verilmez |
 | 2.12#15 | TAMAM | game/src/sim/world/generate.ts | İsimler prosedürel |
 | 2.12#16 | TAMAM | game/src/ui/screens/newcareer/AppearanceEditor.tsx:12 | Ünlü şablonu yok |
 | 2.12#27 | TAMAM | assets/LICENSES.csv, ci.yml (`licenses:check`), `npm run legal` | Kredi/lisans sayfaları üretilen dosyadan; CI eşitliği denetliyor [S29; kanıt yolları game/ köküne göre] |
@@ -895,7 +895,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.12#45 | TAMAM | SettingsScreen.tsx:120, casino/CasinoScreen.tsx:104, state/save.ts:193 | Kumarhane gizle, sorumlu oyun paneli, migrasyon öncesi kopya |
 | 2.12#46 | TAMAM | game/src/sim/life/casino.test.ts:196 | RTP testli |
 | 2.12#48 | TAMAM | - | Ücretli rastgele ödül yok |
-| 2.12#52 | ERTELENDİ-INT | game/src/sim/life/events/content/casino.ts:630 | Dünya/yaşam süpürmelerinin dosyaları (arma kara listesi 2.6#11 ile, kendi maçına bahis life sweep) [S29; kanıt yolları game/ köküne göre] |
+| 2.12#52 | TAMAM | game/src/sim/life/events/content/casinoCareer.ts (`casino.own_match_bet`), veteranContent.test.ts | Kendi maçına bahis: reddet / bildir / küçük kupon (yakalanma riski, ceza ve manşet) |
 | 2.12#53 | N/A | - | Hedef kitle |
 | 2.12#54 | TAMAM | - | Veri toplama yok |
 | 2.12#57 | TAMAM | - | Yorum karşılığı ödül yok |
