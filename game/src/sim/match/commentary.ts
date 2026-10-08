@@ -654,7 +654,7 @@ const LINES = {
       '{hero} şut yolunu kesti, top seyirciye.',
     ],
     en: [
-      '{hero} throws himself in front of it! Blocked!',
+      '{hero} throws {g:himself|herself} in front of it! Blocked!',
       'Body on the line: {hero} blocks the shot.',
       '{hero} gets in the way of the strike.',
     ],
@@ -973,8 +973,8 @@ export const HIGHLIGHT_PROMPTS = {
   rebound: { tr: 'Kaleci çeldi! Dönen topa herkesten önce yetiş!', en: 'The keeper parries! Be first to the rebound!' },
   interception: { tr: 'Pası oku! Pas yoluna gir ve topu kes!', en: 'Read the pass! Step into the lane and cut it out!' },
   hold_up: { tr: 'Sırtın kaleye dönük! Topu sakla, destek gelince pası ver!', en: 'Back to goal! Shield it, then lay it off when support arrives!' },
-  defend_1v1: { tr: 'Bire bir! Kaleyle arasında kal, kanada yönlendir, top açılınca gir!', en: 'One against one! Stay goal-side, show him wide, tackle on the heavy touch!' },
-  block: { tr: 'Şut geliyor! Şut yoluna gir ve blokla!', en: 'He is winding up! Get in the line and block it!' },
+  defend_1v1: { tr: 'Bire bir! Kaleyle arasında kal, kanada yönlendir, top açılınca gir!', en: 'One against one! Stay goal-side, show them wide, tackle on the heavy touch!' },
+  block: { tr: 'Şut geliyor! Şut yoluna gir ve blokla!', en: 'Shot coming! Get in the line and block it!' },
   corner_kick: { tr: 'Korner sende! Bölgeyi, yüksekliği ve kavisi seç, arkadaşların koşuya çıksın!', en: 'Your corner! Pick the zone, height and curl, your team-mates will attack it!' },
   fk_wall: { tr: 'Tehlikeli serbest vuruş! Barajı kur: kaç oyuncu, nereye. Sonra vuruşu karşıla!', en: 'Dangerous free kick! Set the wall: how many and where. Then deal with the kick!' },
 } as const satisfies Record<string, Record<Lang, string>>
