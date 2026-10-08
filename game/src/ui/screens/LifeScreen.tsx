@@ -1,9 +1,12 @@
 import { useCallback, useEffect, useRef, useState } from 'preact/hooks'
+import type { RelationKind, Relationship } from '../../core/types'
+import { START_YEAR } from '../../core/config'
 import { t } from '../../i18n'
+import { financeSummary } from '../../sim/game/financeHistory'
 import '../../styles/screens/life.css'
 import '../../styles/screens/phone.css'
 import { EmptyState, MeterRing, Page } from '../components'
-import { formatCompact } from '../format'
+import { formatCompact, formatMoney } from '../format'
 import { Icon, type IconName } from '../icons'
 import { gameState, navigate, screen, settings } from '../store'
 import { Assets } from './life/Assets'
@@ -34,6 +37,71 @@ const APPS: { id: AppId; icon: IconName }[] = [
   { id: 'inbox', icon: 'newspaper' },
 ]
 const COLS = 4
+
+/** Relationships ranked by how long they have waited, ignoring crowd kinds (fans, press, teammates). */
+function needAttention(rels: Record<string, Relationship>, week: number, n: number): { rel: Relationship; ago: number }[] {
+  const KINDS: RelationKind[] = ['mother', 'father', 'sibling', 'partner', 'bestFriend', 'manager', 'agent', 'chairman']
+  const score = (x: { rel: Relationship; ago: number }) => x.ago + (x.rel.value < 0 ? 6 : 0)
+  return Object.values(rels)
+    .filter((r) => KINDS.includes(r.kind) || r.closeFriend === true)
+    .map((rel) => ({ rel, ago: Math.max(0, week - rel.lastContactWeek) }))
+    .filter((x) => x.ago >= 3 || x.rel.value < 0)
+    .sort((a, b) => score(b) - score(a) || a.rel.value - b.rel.value)
+    .slice(0, n)
+}
+
+/** Desktop side panel: who needs you, where the money stands, what is waiting in which app. */
+function PhoneContext({ badge, apps }: { badge: (id: AppId) => number | 'new' | 0; apps: { id: AppId }[] }) {
+  const s = gameState.value
+  if (!s) return null
+  const week = (s.calendar.season - START_YEAR) * 52 + s.calendar.week
+  const people = needAttention(s.life.relationships, week, 3)
+  const net = financeSummary(s)?.net.at(-1)
+  const pending = apps.map((a) => ({ id: a.id, b: badge(a.id) })).filter((x) => x.b !== 0)
+  return (
+    <div class="ph-ctx" data-testid="phone-context">
+      <section aria-labelledby="ph-ctx-rel">
+        <h3 id="ph-ctx-rel" class="ph-ctx-h micro">{t('life.phone.asideAttention')}</h3>
+        {people.length === 0 ? (
+          <p class="t-sm t-lo">{t('life.phone.asideAttentionNone')}</p>
+        ) : (
+          <ul class="ph-ctx-list">
+            {people.map(({ rel, ago }) => (
+              <li key={rel.id}>
+                <span class="ph-ctx-name">{rel.name}</span>
+                <span class="t-sm t-lo">{t('life.rel.lastContact', { n: ago })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+      <section aria-labelledby="ph-ctx-money">
+        <h3 id="ph-ctx-money" class="ph-ctx-h micro">{t('life.phone.asideMoney')}</h3>
+        <dl class="ph-ctx-money">
+          <div><dt class="t-sm t-lo">{t('life.phone.asideCash')}</dt><dd class="score-font">{formatMoney(s.life.money)}</dd></div>
+          {net !== undefined && (
+            <div><dt class="t-sm t-lo">{t('life.phone.asideNet')}</dt><dd class={`score-font ${net < 0 ? 'is-neg' : 'is-pos'}`}>{formatMoney(net, { sign: true })}</dd></div>
+          )}
+        </dl>
+      </section>
+      <section aria-labelledby="ph-ctx-badges">
+        <h3 id="ph-ctx-badges" class="ph-ctx-h micro">{t('life.phone.asideBadges')}</h3>
+        {pending.length === 0 ? (
+          <p class="t-sm t-lo">{t('life.phone.asideBadgesNone')}</p>
+        ) : (
+          <ul class="ph-ctx-list">
+            {pending.map(({ id, b }) => (
+              <li key={id}>
+                <span class="ph-ctx-name">{id === 'inbox' ? t('inbox.title') : id === 'casino' ? t('life.casinoCta') : t(`life.tabs.${id}`)}</span>
+                <span class="ph-ctx-badge">{b === 'new' ? t('life.phone.new') : t('life.phone.unread', { n: b })}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
+    </div>
+  )
+}
 
 export function LifeScreen() {
   const p = screen.value.params?.tab
@@ -154,11 +222,12 @@ export function LifeScreen() {
         <aside class="ph-aside" aria-label={t('life.phone.asideTitle')}>
           <h2 class="ph-aside-title">{app ? t(`life.tabs.${app}`) : t('life.phone.asideTitle')}</h2>
           <p class="ph-aside-blurb t-mid">{t(`life.phone.blurb.${app ?? 'home'}`)}</p>
-          <ul class="ph-keys t-lo">
-            <li><kbd>Arrows</kbd> {t('life.phone.keyMove')}</li>
-            <li><kbd>Enter</kbd> {t('life.phone.keyOpen')}</li>
-            <li><kbd>Esc</kbd> {t('life.phone.keyBack')}</li>
-          </ul>
+          <PhoneContext badge={badge} apps={apps} />
+          <p class="ph-keys-line t-lo">
+            <span><kbd>Arrows</kbd> {t('life.phone.keyMove')}</span>
+            <span><kbd>Enter</kbd> {t('life.phone.keyOpen')}</span>
+            <span><kbd>Esc</kbd> {t('life.phone.keyBack')}</span>
+          </p>
         </aside>
       </div>
     </Page>

@@ -181,6 +181,19 @@
   .ph-aside { display: flex; flex-direction: column; gap: var(--sp-3); position: sticky; top: var(--sp-4); padding: var(--sp-4); border-radius: var(--r-card); background: var(--surface-1); border: 1px solid var(--border); }
   .ph-aside-title { margin: 0; font-size: 1.25rem; font-weight: 800; }
   .ph-aside-blurb { margin: 0; line-height: 1.5; }
+  .ph-ctx { display: flex; flex-direction: column; gap: var(--sp-4); }
+  .ph-ctx-h { margin: 0 0 var(--sp-2); text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-mid); }
+  .ph-ctx-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); }
+  .ph-ctx-list li { display: flex; flex-direction: column; gap: 1px; }
+  .ph-ctx-name { font-weight: 700; color: var(--text-hi); }
+  .ph-ctx-badge { align-self: flex-start; font-size: 0.75rem; font-weight: 700; padding: 1px 8px; border-radius: var(--r-xs); background: var(--surface-2); color: var(--text-hi); border: 1px solid var(--border-strong); }
+  .ph-ctx-money { margin: 0; display: grid; grid-template-columns: 1fr 1fr; gap: var(--sp-3); }
+  .ph-ctx-money > div { display: flex; flex-direction: column; gap: 2px; }
+  .ph-ctx-money dd { margin: 0; font-size: 1.125rem; }
+  .ph-ctx-money .is-pos { color: var(--brand-pitch); }
+  .ph-ctx-money .is-neg { color: var(--state-danger); }
+  .ph-keys-line { margin: 0; padding-top: var(--sp-3); border-top: 1px solid var(--border); font-size: 0.8125rem; display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-4); }
+  .ph-keys-line kbd { display: inline-block; min-width: 24px; padding: 1px 6px; margin-right: 4px; white-space: nowrap; border-radius: var(--r-xs); border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-hi); font: inherit; font-size: 0.75rem; text-align: center; }
   .ph-keys { list-style: none; margin: var(--sp-2) 0 0; padding: 0; display: flex; flex-direction: column; gap: var(--sp-2); font-size: 0.875rem; }
   .ph-keys kbd { display: inline-block; min-width: 28px; padding: 1px 8px; margin-right: 6px; border-radius: var(--r-xs); border: 1px solid var(--border-strong); background: var(--surface-2); color: var(--text-hi); font: inherit; font-size: 0.8125rem; text-align: center; }
 }

@@ -12,6 +12,7 @@ test.beforeEach(async ({ page }) => {
 
 test('phone home lists every life app and a status bar', async ({ page, shot }) => {
   await expect(page.getByTestId('phone-status')).toBeVisible()
+  if ((page.viewportSize()?.width ?? 0) >= 1000) await expect(page.getByTestId('phone-context')).toBeVisible()
   for (const id of ['relations', 'bank', 'assets', 'business', 'projects', 'social', 'sponsors', 'casino', 'inbox']) {
     await expect(page.getByTestId(`phone-app-${id}`)).toBeVisible()
   }
