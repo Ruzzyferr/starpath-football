@@ -2,11 +2,15 @@ import type { SponsorDeal } from '../../../core/types'
 import { hashString } from '../../../core/rng'
 import { t } from '../../../i18n'
 import { Button, Chip, EmptyState, SectionTitle, WhyList, toast } from '../../components'
+import { dealStrictness } from '../../../sim/life/sponsors'
 import { whySponsors } from '../../../sim/game/whyMore'
 import { formatMoney, initials, seasonLabel } from '../../format'
 import { actions, data, gameState } from '../../store'
 
 const HUES = ['var(--accent-blue)', 'var(--accent-violet)', 'var(--accent-gold)', 'var(--brand-pitch)', 'var(--state-danger)']
+
+/** Conduct clause strength from the brand's strictness: 1 relaxed, 2 standard, 3 strict. */
+const strictLevel = (d: SponsorDeal): 1 | 2 | 3 => { const s = dealStrictness(d); return s < 0.4 ? 1 : s < 0.7 ? 2 : 3 }
 
 function Deal({ d, offer, rep }: { d: SponsorDeal; offer?: boolean; rep: number }) {
   const locked = offer && d.minReputation > rep
@@ -24,6 +28,14 @@ function Deal({ d, offer, rep }: { d: SponsorDeal; offer?: boolean; rep: number 
           <span class="t-xs t-lo">{t('life.sponsors.weekly')}</span>
         </div>
       </div>
+      <dl class="life-terms" data-testid="sponsor-terms">
+        <div><dt>{t('life.sponsors.terms.duration')}</dt><dd>{t('life.sponsors.until', { season: seasonLabel(d.untilSeason) })}</dd></div>
+        <div><dt>{t('life.sponsors.terms.fee')}</dt><dd class="num">{formatMoney(d.weekly, { compact: true })}{t('common.perWeek')}</dd></div>
+        <div><dt>{t('life.sponsors.terms.bonus')}</dt><dd class="num">{d.perfBonus ? formatMoney(d.perfBonus, { compact: true }) : t('life.sponsors.terms.none')}</dd></div>
+        <div><dt>{t('life.sponsors.terms.fame')}</dt><dd class="num">{d.minReputation}</dd></div>
+        <div><dt>{t('life.sponsors.terms.conduct')}</dt><dd>{t(`life.sponsors.terms.conduct${strictLevel(d)}`)}</dd></div>
+        <div><dt>{t('life.sponsors.terms.exclusive')}</dt><dd>{t('life.sponsors.terms.exclusiveYes', { cat: t(`data.sponsorCat.${d.category}`) })}</dd></div>
+      </dl>
       <div class="row wrap">
         <Chip tone="info" icon="calendar">{t('life.sponsors.until', { season: seasonLabel(d.untilSeason) })}</Chip>
         {offer && <Chip tone={locked ? 'neg' : 'neutral'} icon="star">{t('life.sponsors.minRep', { n: d.minReputation })}</Chip>}

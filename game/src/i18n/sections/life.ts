@@ -194,6 +194,11 @@ export const tr = {
     accepted: '{brand} ile anlaşma imzalandı',
     declined: '{brand} teklifi reddedildi',
     total: 'Toplam sponsor geliri',
+    terms: {
+      duration: 'Süre', fee: 'Haftalık ücret', bonus: 'Performans primi (gol/asist başına)', fame: 'Şöhret eşiği',
+      conduct: 'Davranış maddesi', conduct1: 'Esnek: küçük skandal tolere edilir', conduct2: 'Standart: skandalda fesih riski', conduct3: 'Sert: ilk skandalda fesih',
+      exclusive: 'Münhasırlık', exclusiveYes: 'Bu kategoride ({cat}) ikinci sponsor yok', none: 'Yok',
+    },
   },
   why: {
     button: 'Neden değişti?',
@@ -527,6 +532,11 @@ export const en: Shape<typeof tr> = {
     accepted: 'Deal signed with {brand}',
     declined: '{brand} offer declined',
     total: 'Total sponsor income',
+    terms: {
+      duration: 'Term', fee: 'Weekly fee', bonus: 'Performance bonus (per goal/assist)', fame: 'Fame threshold',
+      conduct: 'Conduct clause', conduct1: 'Relaxed: minor scandals tolerated', conduct2: 'Standard: termination risk after a scandal', conduct3: 'Strict: terminates on the first scandal',
+      exclusive: 'Exclusivity', exclusiveYes: 'No second sponsor in this category ({cat})', none: 'None',
+    },
   },
   why: {
     button: 'Why did it change?',

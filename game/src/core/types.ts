@@ -477,6 +477,8 @@ export interface SponsorDeal {
   weekly: number
   untilSeason: number
   minReputation: number
+  /** Performance bonus per goal/assist contribution in a week (2.5#55); missing on old deals. */
+  perfBonus?: number
 }
 
 export interface Agent {

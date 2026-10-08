@@ -337,3 +337,7 @@
 .life-person-tools { display: flex; align-items: center; gap: var(--sp-1); flex-wrap: wrap; justify-content: flex-end; }
 .life-friend-badge { color: var(--accent-gold); }
 .life-friend-list { gap: var(--sp-2); flex-wrap: wrap; }
+.life-terms { display: grid; gap: var(--sp-1); margin: 0; font-size: var(--fs-sm, 0.875rem); }
+.life-terms > div { display: flex; justify-content: space-between; gap: var(--sp-3); border-bottom: 1px solid var(--border-subtle, rgba(255, 255, 255, 0.08)); padding-block: var(--sp-1); }
+.life-terms dt { color: var(--text-mid, inherit); }
+.life-terms dd { margin: 0; text-align: end; }

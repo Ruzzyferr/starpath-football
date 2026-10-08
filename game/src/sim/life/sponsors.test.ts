@@ -127,3 +127,52 @@ describe('sponsor slot cap (2.5#54)', () => {
     for (let i = 0; i < 50; i++) expect(sponsorOffers(rng, hero, life, { season: 2026 })).toEqual([])
   })
 })
+
+describe('sponsor image formula (2.5#60)', () => {
+  it('is 70% performance/fame + 30% image; luxury is at most 20% of the image', async () => {
+    const { sponsorImage, sponsorImageMult, IMAGE_SHARE, LUXURY_CAP_OF_IMAGE } = await import('./sponsors')
+    expect(IMAGE_SHARE).toBe(0.3)
+    expect(LUXURY_CAP_OF_IMAGE).toBe(0.2)
+    const { life } = setup(1, 40)
+    life.assets = []
+    life.followers = 1_000_000
+    life.discipline = 100
+    const noLux = sponsorImage(life)
+    expect(noLux).toBeCloseTo(0.8, 5) // everything but luxury
+    const lux = ['rolex', 'ferrari', 'yacht', 'jet', 'art1', 'art2']
+    life.assets = lux.map((id) => ({ defId: id, boughtSeason: 2026, boughtWeek: 1, pricePaid: 1 })) as never
+    // unknown ids are ignored: no luxury credit
+    expect(sponsorImage(life)).toBeCloseTo(noLux, 5)
+    expect(sponsorImage(life)).toBeLessThanOrEqual(1)
+    // even a zero-image hero keeps at least 70% x 1.1 of the performance value
+    life.assets = []
+    life.followers = 0
+    life.discipline = 0
+    expect(sponsorImageMult(life)).toBeCloseTo(1.1 * 0.7, 5)
+  })
+
+  it('a luxury-free star still gets sponsor value', () => {
+    const { hero, life } = setup(1, 70)
+    life.assets = []
+    expect(sponsorWeeklyValue(hero, life, 2)).toBeGreaterThan(3000)
+  })
+})
+
+describe('sponsor performance bonus (2.5#55)', () => {
+  it('offers carry a per-contribution bonus that the weekly tick pays net of tax', () => {
+    const rng = new Rng(9)
+    const { hero, life } = setup(1, 60)
+    let offer
+    for (let i = 0; i < 300 && !offer; i++) offer = sponsorOffers(rng, hero, life, { season: 2026 })[0]
+    expect(offer).toBeTruthy()
+    expect(offer!.deal.perfBonus).toBeGreaterThan(0)
+    acceptSponsor(life, offer!)
+    const money0 = life.money
+    weeklySponsorTick(hero, life, cal, 0)
+    expect(life.money).toBe(money0)
+    const lines = weeklySponsorTick(hero, life, cal, 3)
+    expect(life.money).toBeGreaterThan(money0)
+    expect(life.money - money0).toBeCloseTo(offer!.deal.perfBonus! * 3 * 0.65, -1)
+    expect(lines.length).toBeGreaterThan(0)
+  })
+})

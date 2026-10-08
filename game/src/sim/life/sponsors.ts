@@ -10,6 +10,7 @@ import type { Rng } from '../../core/rng'
 import { NEWS_SOURCES, clamp, fill, fmtMoney, lt, pushNews, type Lines } from '../career/common'
 import { perkValue } from '../career/perks'
 import { addStress } from './wellbeing'
+import { ownedAssetDefs } from './assetEffects'
 
 export type SponsorCategory = SponsorDeal['category']
 
@@ -69,6 +70,30 @@ export const BRAND_BY_NAME: Readonly<Record<string, BrandDef>> = Object.fromEntr
 const TIER_MULT = { 1: 0.7, 2: 1, 3: 1.5 } as const
 
 /**
+ * Plan 2.5#60: sponsor interest is 70 % performance + fame (reputation, the
+ * `base` curve below) and 30 % image. Image (0..1) = 80 % social reach and
+ * conduct (60/40 followers/discipline) + at most 20 % luxury (owned status
+ * items, saturating at {@link LUXURY_FULL} pieces): a luxury-free hero is never
+ * locked out of sponsors.
+ */
+/** Performance bonus per goal/assist contribution as a share of the weekly fee (2.5#55). */
+export const PERF_BONUS_SHARE = 0.15
+export const IMAGE_SHARE = 0.3
+export const LUXURY_CAP_OF_IMAGE = 0.2
+export const LUXURY_FULL = 6
+const LUXURY_CATS: ReadonlySet<string> = new Set(['watch', 'fashion', 'car', 'boat', 'jet', 'art', 'island'])
+/** Image score 0..1 from followers, conduct (discipline) and luxury. */
+export function sponsorImage(life: Pick<Life, 'followers'> & Partial<Pick<Life, 'discipline' | 'assets'>>): number {
+  const reach = clamp(Math.log10(Math.max(1, life.followers) / 1000) / 3, 0, 1)
+  const conduct = clamp((life.discipline ?? 60) / 100, 0, 1)
+  const lux = life.assets ? clamp(ownedAssetDefs(life as Life).filter((d) => LUXURY_CATS.has(d.category)).length / LUXURY_FULL, 0, 1) : 0
+  return (1 - LUXURY_CAP_OF_IMAGE) * (0.6 * reach + 0.4 * conduct) + LUXURY_CAP_OF_IMAGE * lux
+}
+/** Value multiplier from image: 70 % fixed share + 30 % scaled by image (balance-neutral factor 1.1). */
+export const sponsorImageMult = (life: Pick<Life, 'followers'> & Partial<Pick<Life, 'discipline' | 'assets'>>): number =>
+  1.1 * ((1 - IMAGE_SHARE) + IMAGE_SHARE * 2 * sponsorImage(life))
+
+/**
  * Weekly sponsor value. 150 × e^(0.055·rep): rep 10 → ~260, rep 50 → ~2.3K,
  * rep 80 → ~12K, rep 100 → ~37K per week before multipliers — a global
  * superstar's portfolio (6 categories × tier 3 × followers) lands near
@@ -76,10 +101,9 @@ const TIER_MULT = { 1: 0.7, 2: 1, 3: 1.5 } as const
  * i.e. 2M+/week at rep 100 — sponsors out-earned football ten to one.) Followers add up to +75% (log scale above
  * 10K), perks `sponsor_value` stack on top.
  */
-export function sponsorWeeklyValue(hero: Pick<Hero, 'reputation' | 'perks'>, life: Pick<Life, 'followers'>, tier: 1 | 2 | 3): number {
+export function sponsorWeeklyValue(hero: Pick<Hero, 'reputation' | 'perks'>, life: Pick<Life, 'followers'> & Partial<Pick<Life, 'discipline' | 'assets'>>, tier: 1 | 2 | 3): number {
   const base = 150 * Math.exp(0.055 * clamp(hero.reputation, 0, 100))
-  const fol = 1 + clamp(Math.log10(Math.max(1, life.followers) / 10000), 0, 3) * 0.25
-  const v = base * TIER_MULT[tier] * fol * (1 + perkValue(hero, 'sponsor_value'))
+  const v = base * TIER_MULT[tier] * sponsorImageMult(life) * (1 + perkValue(hero, 'sponsor_value'))
   return Math.round(v / 10) * 10
 }
 
@@ -121,7 +145,7 @@ export function sponsorOffers(rng: Rng, hero: Hero, life: Life, ctx: { season: n
     // ±15% haggling noise so two offers from the same tier differ.
     const weekly = Math.round((sponsorWeeklyValue(hero, life, b.tier) * rng.range(0.85, 1.15)) / 10) * 10
     out.push({
-      deal: { id: rng.id('sp'), brand: b.brand, category: b.category, weekly, untilSeason: ctx.season + seasons - 1, minReputation: b.minReputation },
+      deal: { id: rng.id('sp'), brand: b.brand, category: b.category, weekly, untilSeason: ctx.season + seasons - 1, minReputation: b.minReputation, perfBonus: Math.round((weekly * PERF_BONUS_SHARE) / 10) * 10 },
       signingBonus: weekly * 4,
       seasons,
       strictness: b.strictness,
@@ -188,8 +212,18 @@ export function checkMoralityClause(rng: Rng, life: Life, hero: Hero, severity: 
  * warns once per deal when reputation sinks 15+ below the brand's threshold
  * (the brand will not renew; events may terminate early).
  */
-export function weeklySponsorTick(hero: Hero, life: Life, calendar: Calendar): Lines {
+export function weeklySponsorTick(hero: Hero, life: Life, calendar: Calendar, contributions = 0): Lines {
   const lines: Lines = []
+  // Performance bonuses (2.5#55): paid per goal/assist of the week, after the standard 35 % income tax.
+  if (contributions > 0 && !hero.retired) {
+    let bonus = 0
+    for (const d of life.sponsors) bonus += (d.perfBonus ?? 0) * contributions
+    bonus = Math.round(bonus * 0.65)
+    if (bonus > 0) {
+      life.money += bonus
+      lines.push(fill(lt('Sponsor performans primleri: +{m}', 'Sponsor performance bonuses: +{m}'), { m: fmtMoney(bonus) }))
+    }
+  }
   life.sponsors = life.sponsors.filter((d) => {
     if (d.untilSeason < calendar.season) {
       lines.push(fill(lt('{b} sponsorluk sözleşmen sona erdi.', 'Your {b} sponsorship has expired.'), { b: d.brand }))

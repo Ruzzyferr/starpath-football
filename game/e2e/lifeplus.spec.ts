@@ -103,3 +103,13 @@ test('close friends: mark a person, list shows the star, cap of three is enforce
   await page.waitForTimeout(800)
   await shot('close-friends')
 })
+
+test('sponsor deals list every contract term in one table (2.5#55)', async ({ page, shot }) => {
+  await sp(page, `(() => { const s = sp.state(); s.life.sponsors.push({ id: 'sx', brand: 'Strada Kicks', category: 'boots', weekly: 4200, untilSeason: s.calendar.season + 1, minReputation: 5, perfBonus: 630 }) })()`)
+  await sp(page, `sp.navigate('life', { tab: 'sponsors' })`)
+  const terms = page.getByTestId('sponsor-terms').first()
+  await expect(terms).toBeVisible()
+  for (const k of ['Term', 'Weekly fee', 'Performance bonus', 'Fame threshold', 'Conduct clause', 'Exclusivity']) await expect(terms).toContainText(k)
+  await page.waitForTimeout(800)
+  await shot('sponsor-terms')
+})

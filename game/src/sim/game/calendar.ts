@@ -137,7 +137,7 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
     const income = b.wage + b.sponsors + b.rent + b.business + b.investmentYield + b.tax + b.agentFee
     const earned = readJson<{ season: number; total: number }>(life, GFLAG.earned, { season: cal.season, total: 0 })
     writeJson(life, GFLAG.earned, { season: cal.season, total: Math.round((earned.season === cal.season ? earned.total : 0) + Math.max(0, income)) })
-    logAll(state, out, weeklySponsorTick(hero, life, cal), 'money')
+    logAll(state, out, weeklySponsorTick(hero, life, cal, wk.contributions), 'money')
     logAll(state, out, weeklySocialTick(rng, hero, life, {
       calendar: cal, avgRating: wk.rated > 0 ? wk.ratingSum / wk.rated : undefined, goalContributions: wk.contributions,
     }), 'event', '📱')
