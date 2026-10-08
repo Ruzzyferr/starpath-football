@@ -89,6 +89,14 @@ export function DocumentaryScreen() {
         </Card>
       )}
 
+      {sum.owner && (
+        <Card class="doc-owner" data-testid="doc-owner">
+          <CardHeader title={t('meta.doc.owner')} icon="crown" />
+          <p class="t-sm doc-owner-head" data-testid="doc-owner-headline"><b>{lt(sum.owner.headline)}</b></p>
+          <p class="t-sm t-mid doc-owner-epilogue" data-testid="doc-owner-epilogue">{lt(sum.owner.epilogue)}</p>
+        </Card>
+      )}
+
       <Card>
         <CardHeader title={t('meta.doc.breakdown')} icon="chart-bar" />
         <ul class="rec-list">

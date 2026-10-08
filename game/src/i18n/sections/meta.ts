@@ -23,6 +23,7 @@ export const tr = {
     toast: 'Başarım açıldı: {n}',
   },
   hof: {
+    ownerBadge: 'Kulüp sahibi',
     title: 'Onur Listesi',
     sub: 'Kayıtlar silinse bile burada kalır',
     empty: 'Henüz emekli olan bir kariyer yok. Efsaneler burada yaşar.',
@@ -83,6 +84,7 @@ export const tr = {
     breakdown: 'Puan dökümü',
     testimonial: 'Jübile maçı: {h}-{a} ({o}), {g} gol',
     hof: 'Onur Listesi',
+    owner: 'Başkan–sahip',
     newLegacy: 'Çocuğu olarak başla',
     mainMenu: 'Ana menü',
     seasonRow: '{c} · {a} maç · {g} gol · {as} asist',
@@ -178,6 +180,7 @@ export const en: Shape<typeof tr> = {
     toast: 'Achievement unlocked: {n}',
   },
   hof: {
+    ownerBadge: 'Club owner',
     title: 'Hall of Fame',
     sub: 'Stays here even when saves are deleted',
     empty: 'No career has ended yet. Legends live here.',
@@ -238,6 +241,7 @@ export const en: Shape<typeof tr> = {
     breakdown: 'Score breakdown',
     testimonial: 'Testimonial: {h}-{a} ({o}), {g} goal(s)',
     hof: 'Hall of Fame',
+    owner: 'Chairman–owner',
     newLegacy: 'Start as their child',
     mainMenu: 'Main menu',
     seasonRow: '{c} · {a} apps · {g} goals · {as} assists',

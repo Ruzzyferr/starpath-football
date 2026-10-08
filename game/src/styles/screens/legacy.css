@@ -290,3 +290,16 @@
 
 /* Inline trophy glyph inside running text (replaces the emoji). */
 .doc-inline-ico { display: inline-block; vertical-align: -1px; }
+
+/* Chairman-owner epilogue + Hall of Fame owner badge */
+.doc-owner p { margin: 0; overflow-wrap: anywhere; }
+.doc-owner-epilogue { margin-top: 6px !important; line-height: 1.5; }
+.hof-owner { margin-top: 4px; min-width: 0; }
+.hof-owner .chip { max-width: 100%; }
+
+@media (max-width: 520px) {
+  .hof-row { flex-wrap: wrap; align-items: flex-start; }
+  .hof-row > .grow { flex: 1 1 0; min-width: 0; }
+  .hof-row > .stack:last-child { flex: 1 1 100%; flex-direction: row; align-items: baseline !important; justify-content: space-between; gap: 8px; border-top: 1px solid var(--border); padding-top: 8px; }
+  .hof-owner .chip { white-space: normal; text-align: left; }
+}

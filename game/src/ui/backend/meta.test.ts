@@ -93,4 +93,20 @@ describe('meta bridge', () => {
     expect(m?.samples.length).toBe(5)
     expect(M.clubRecordRows(S().hero.contract?.clubId ?? '').length).toBeGreaterThan(0)
   })
+  it('a majority-owner hero retires with a bilingual owner epilogue in the summary view and Hall of Fame', () => {
+    A.newGame({ ...DEFAULT_CAREER, seed: 5150 })
+    A.planSlot(0, null)
+    const clubId = S().hero.contract?.clubId ?? Object.keys(S().world.clubs)[0]!
+    S().life.flags['proj:stake'] = 60
+    S().life.flags['proj:stakeClub'] = clubId
+    S().hero.birthYear = S().calendar.season - 36
+    const sum = M.retireNow()
+    expect(sum?.owner?.pct).toBe(60)
+    const view = M.summaryView(sum?.careerId)
+    expect(view?.owner?.clubName).toBe(S().world.clubs[clubId]?.name)
+    expect(view?.owner?.epilogue.en).toContain('60%')
+    expect(view?.owner?.epilogue.tr).toContain('%60')
+    expect(view?.owner?.headline.en).toContain('Majority owner')
+    expect(M.hallOfFame().find((e) => e.careerId === sum?.careerId)?.owner).toBeDefined()
+  })
 })

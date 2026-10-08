@@ -98,6 +98,24 @@ test('retire → documentary → Hall of Fame → legacy career as the child', a
   expect(child.perks).toContain('famous_name')
 })
 
+test('a majority club owner retires: chairman-owner section in the documentary and a Hall of Fame badge', async ({ page, shot }) => {
+  await page.goto('/?autostart=1&seed=2719')
+  await waitForApp(page)
+  await sp(page, `(() => { const s = sp.state(); s.hero.birthYear = s.calendar.season - 35; s.life.flags['proj:stake'] = 60; s.life.flags['proj:stakeClub'] = s.hero.contract.clubId; sp.actions.planSlot(0, null); sp.navigate('profile', undefined, { tab: true }) })()`)
+  await page.getByTestId('profile-retire').click()
+  await page.getByTestId('retire-go').click()
+  await page.getByTestId('retire-confirm').click()
+  await expect(page.getByTestId('documentary')).toBeVisible({ timeout: 20_000 })
+  await expect(page.getByTestId('doc-owner')).toBeVisible()
+  await expect(page.getByTestId('doc-owner-headline')).toContainText('Majority owner')
+  await expect(page.getByTestId('doc-owner-epilogue')).toContainText('60%')
+  await assertCleanText(page)
+  await shot('l4b-documentary-owner')
+  await page.getByRole('button', { name: 'Hall of Fame' }).click()
+  await expect(page.getByTestId('hof-owner')).toContainText('Club owner')
+  await shot('l5b-hall-of-fame-owner')
+})
+
 test('trials at career start: pick an invitation, sign, play on', async ({ page, shot }) => {
   await page.goto('/')
   await waitForApp(page)
