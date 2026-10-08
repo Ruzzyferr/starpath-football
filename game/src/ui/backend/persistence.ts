@@ -8,6 +8,7 @@
  * Autosave is debounced and non-blocking: it waits for an idle moment, and a
  * save requested while one is running is coalesced into a single follow-up.
  */
+import { recordError } from '../../telemetry/errorLog'
 import { signal } from '@preact/signals'
 import type { GameState } from '../../core/types'
 import { loadGame, saveGame, unpackState } from '../../sim/game'
@@ -29,6 +30,7 @@ export function useStorage(s: SaveStorage): void {
 
 /** Player-facing messages for SaveManager notices (backup skipped, migrated, integrity problems). */
 function onSaveNotice(n: SaveNotice): void {
+  recordError(`save notice: ${n.kind}${'problem' in n ? ' ' + n.problem : ''}`, 'save') // opt-in local log (2.12#120)
   if (n.kind === 'backups-skipped') {
     notify({ tr: 'Depolama alanı dolu: yedekler atlandı. Eski kayıtlarını dışa aktarıp yer aç.', en: 'Storage is full: backups were skipped. Export old saves and free some space.' }, 'warning')
   } else if (n.kind === 'integrity') {
@@ -197,7 +199,10 @@ export function scheduleAutosave(delay = 1200): void {
       if (!s) return
       saveState(s).then(
         () => { autosaveError.value = null },
-        (e: unknown) => { autosaveError.value = String((e as Error)?.message ?? e) },
+        (e: unknown) => {
+          autosaveError.value = String((e as Error)?.message ?? e)
+          recordError(e, 'save') // opt-in local log (2.12#120)
+        },
       )
     }
     const ric = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback

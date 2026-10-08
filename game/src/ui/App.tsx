@@ -9,6 +9,7 @@ import { useEffect, useRef } from 'preact/hooks'
 import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
+import { pauseLiveMatchOnBack } from '../platform/back'
 import { QuickMute } from '../audio/ui/QuickMute'
 import { EventModalHost } from './screens/EventModal'
 import { TitleScreen } from './screens/TitleScreen'
@@ -120,6 +121,7 @@ function useKeyboardShortcuts() {
       const id = screen.value.id
       const inShell = !IMMERSIVE.has(id) && !!gameState.value
       if (e.key === 'Escape') {
+        if (pauseLiveMatchOnBack()) { e.preventDefault(); return }
         if (id !== 'title' && id !== 'home') {
           e.preventDefault()
           back(gameState.value ? 'home' : 'title')

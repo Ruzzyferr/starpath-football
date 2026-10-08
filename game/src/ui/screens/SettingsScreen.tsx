@@ -11,6 +11,7 @@ import { HelpSettings } from '../tutorial/HelpSettings'
 import { KeyBindingsPanel } from './settings/KeyBindingsPanel'
 import { PurchasesPanel } from './store/PurchasesPanel'
 import { LegalLinks } from './store/LegalLinks'
+import { CASINO_BUILD } from '../../core/contentFlags'
 import { buildDataExport, wipeLocalData } from '../../state/privacy'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
@@ -163,7 +164,7 @@ export function SettingsScreen() {
               ]}
             />
           </Field>
-          <Switch label={t('settings.hideCasino')} desc={t('settings.hideCasinoDesc')} checked={s.hideCasino} onChange={(hideCasino) => updateSettings({ hideCasino })} />
+          {CASINO_BUILD && <Switch label={t('settings.hideCasino')} desc={t('settings.hideCasinoDesc')} checked={s.hideCasino} onChange={(hideCasino) => updateSettings({ hideCasino })} />}
           <Switch label={t('settings.highContrast')} desc={t('settings.highContrastDesc')} checked={s.highContrast} onChange={(highContrast) => updateSettings({ highContrast })} />
           <Switch label={t('settings.reducedMotion')} desc={t('settings.reducedMotionDesc')} checked={s.reducedMotion} onChange={(reducedMotion) => updateSettings({ reducedMotion })} />
           <Switch label={t('settings.soundCaptions')} desc={t('settings.soundCaptionsDesc')} checked={s.soundCaptions} onChange={(soundCaptions) => updateSettings({ soundCaptions })} />

@@ -174,6 +174,79 @@ Kanıt yolları `game/src/` köküne göredir; 2.9, 2.10, 2.12 satırlarında `g
 | 2.12#43, #45, #121 | TAMAM | SettingsScreen.tsx:120, casino/CasinoScreen.tsx:104, state/save.ts:193 | Kumarhane gizle, sorumlu oyun paneli, migrasyon öncesi kopya |
 | 2.12#70 | KISMİ | store-iap/flavor.ts:1 | Mobilde ilk sezon deneme, ayrı demo yok |
 
+### 2.0b Platform, ses ve QA süpürmesi (S29): 2.8, 2.9, 2.12 kalan KISMİ/EKSİK satırlar
+
+Durum etiketleri: **KAPANDI** (kod + test), **ERTELENDİ** (gerekçeli; BLOCKED-EXTERNAL = hesap, mağaza, backend, gerçek cihaz, hukuk; v2 = kapsam dışı). Yollar `game/` köküne göre.
+
+| Madde | Durum | Kanıt | Not |
+|---|---|---|---|
+| 2.8#2, #3, #52, #56 | KAPANDI | platform/lifecycle.ts (`applyAudioSession`), assets/LICENSES.csv, audio/licenses.node.test.ts | WP-18'de yapılmıştı; satırlar bayattı |
+| 2.8#4 | KAPANDI | audio/mixer.ts (`fadeMaster`), platform/lifecycle.ts (`SUSPEND_FADE_MS`), platform/lifecycle.test.ts, audio/mixer.test.ts | Arka plana geçerken ana kazanç 140 ms'de sönüyor, sonra AudioContext askıya alınıyor; hızlı dönüş askıyı iptal ediyor |
+| 2.8#5 | KAPANDI | audio/ui/QuickMute.tsx, ui/App.tsx | Ses kapalıyken (sessize alınmış ya da ana ses 0) sol altta tek dokunuşla "sesi aç" düğmesi |
+| 2.8#24 | KAPANDI | game/audio.ts `net()` | Düşük "şişme" gümbürtüsü + iki aşamalı file hışırtısı, şut hızıyla ölçekli |
+| 2.8#36 | KAPANDI | audio/settings.ts (`matchMusic`), audio/director.ts, audio/ui/AudioMixerPanel.tsx | Ayarlarda "Maç müziği" anahtarı; kapalıyken maçta yalnızca taraftar |
+| 2.8#51 | ERTELENDİ | - | BLOCKED-EXTERNAL: gerçek iOS/Android cihaz (haptics eşlemesi kodda) |
+| 2.8#57 | ERTELENDİ | - | Kayıtlı ses gerekir; ADR-002: tüm sesler WebAudio sentezi, lisans kapısı (`LICENSES.csv` + test) hazır, `audioFileBytes` bütçesi 2 MB |
+| 2.9#1 | ERTELENDİ | - | v2: tek paket yeterli, monorepo faydası yok |
+| 2.9#2 | ERTELENDİ | docs/ADR.md ADR-007 | `noUncheckedIndexedAccess` 1.714 hata veriyor (çoğu sim/ui, başka süpürmelerin dosyaları); dizin dizin açılacak |
+| 2.9#3 | KAPANDI | docs/ADR.md ADR-005 | Hedef kararı yazıldı (es2022 derleme, Electron 44 / güncel WebView) |
+| 2.9#4 | KAPANDI | package.json, package-lock.json | Phaser `4.2.1` sabitlendi |
+| 2.9#6 | ERTELENDİ | - | IAP var (2.9#65), paylaşım kartı var; bulut BLOCKED-EXTERNAL (backend) |
+| 2.9#12, #13, #16 | ERTELENDİ | - | `src/game/**` maç süpürmesinin dosyaları (FIT tasarım alanı, mobil DPR profili, nesne havuzu); yığın ölçümü: 10 maç montajı +1 MB (e2e/hardening.spec.ts), sorun yok |
+| 2.9#15 | ERTELENDİ | - | Atlas paketleyecek doku dosyası yok: tüm maç görselleri prosedürel (v2, sanat varlığı gelince) |
+| 2.9#17 | KAPANDI | platform/glRecovery.ts, platform/glRecovery.test.ts | `webglcontextlost` yakalama aşamasında `preventDefault`, opt-in günlük, `sp:gl-lost/restored` olayları |
+| 2.9#22 | KAPANDI | e2e/hardening.spec.ts (memory) | 3 ısınma + 10 maç montajı, GC sonrası JS yığını: +1,0 MB (eşik 30 MB), mutlak 400 MB |
+| 2.9#23 | ERTELENDİ | e2e/perf.spec.ts | BLOCKED-EXTERNAL: cihaz bazlı FPS hedefi gerçek cihaz ister (CPU 4x kısıtlı mobil profil e2e'de var) |
+| 2.9#26 | ERTELENDİ | core/rng.ts | `fork` davranışı değişirse tüm golden çıktıları değişir; sim süpürmesiyle eşgüdümlü golden yenilemesi gerekir |
+| 2.9#27 | KAPANDI | eslint.config.js (`Date.now`/`Math.random` error), `npm run lint` 0 hata | Kural error, ihlal kalmadı |
+| 2.9#29 | KAPANDI | e2e/determinism.spec.ts | 120 maç + yeni oyun özeti: Chromium ile Node birebir aynı; Firefox/WebKit projesi eklenince aynı test koşar (tarayıcılar kurulu değil) |
+| 2.9#30 | ERTELENDİ | - | v2: sim ana iş parçacığında bütçe içinde; yalnızca doku işçisi var |
+| 2.9#31 | ERTELENDİ | src/sim/golden.test.ts, .github/workflows/nightly.yml | Golden 1 sezon + 1000 maç; 10 sezon hash'i yerine gecelik 10.000 sezon istatistiksel koruma (hash anlık görüntüsü çok yavaş ve her denge değişiminde kırılır) |
+| 2.9#36, #40 | ERTELENDİ | docs/ADR.md ADR-004 | Sürümlü veri paketi sim sahiplerine bağlı; FNV bütünlük içindir, güvenlik sınırı değil; SHA-256 asenkron API ister |
+| 2.9#42 | KAPANDI | state/save.ts (`recordMilestone`, `restoreMilestone`), state/saveFuzz.test.ts | Sezon başına ilk kayıt, slot başına en çok 3; canlı + yedekler yok olunca en yeni kilometre taşı yükleniyor |
+| 2.9#45 | KAPANDI | electron/main.cjs (`close` el sıkışması), electron/preload.cjs, platform/index.ts | Pencere kapanmadan renderer otomatik kaydı boşaltıyor (2 sn zaman aşımı) |
+| 2.9#47, #130 | KAPANDI | state/fixtures/save-v1.json, state/saveFuzz.test.ts | Her eski sürüm için gerçek zarf zorunlu (politika testte), hepsi güncel şemaya taşınıyor |
+| 2.9#50 | ERTELENDİ | - | BLOCKED-EXTERNAL: Capacitor Share/dosya diyaloğu gerçek cihazda doğrulanmalı (web indirme çalışıyor) |
+| 2.9#57, #60, #87 (Steam tarafı), #88, #94 | ERTELENDİ | docs/PLATFORM.md | BLOCKED-EXTERNAL: Steam app id, Auto-Cloud, overlay testi, Steam Deck donanımı, bulut çakışma için backend; `steamworks.js` isteğe bağlı bağımlılık olarak paketlendi |
+| 2.9#63, #116, #99 | ERTELENDİ | .github/workflows/release.yml | BLOCKED-EXTERNAL: Apple Developer hesabı/provisioning (iOS CI, TestFlight, notarize); mac imza doğrulaması iş akışında hazır |
+| 2.9#67 | KAPANDI | platform/android.node.test.ts | Manifest: dönüşte activity yeniden yaratılmıyor, iki yön serbest, tek exported activity; iOS yönleri doğrulanıyor (cihaz denemesi hâlâ BLOCKED-EXTERNAL) |
+| 2.9#69 | KAPANDI | electron/main.cjs (`render-process-gone`), platform/index.ts (`noteRecovery`) | Çöken renderer dakikada en çok 3 kez yeniden yükleniyor, kurtarma opt-in günlüğe yazılıyor; mobil WebView kurtarması BLOCKED-EXTERNAL (cihaz) |
+| 2.9#72, #73 | KAPANDI | scripts/check-budgets.mjs, scripts/budgets.json, platform/budgets.node.test.ts, ci.yml | Gzip bütçeleri CI'da bloklayıcı (JS toplam 1260 KB, en büyük parça 600 KB, ilk açılış 790 KB, CSS 55 KB, ses dosyası 2 MB). Android `minifyEnabled` açılışı proguard + cihaz denemesi ister: ERTELENDİ (BLOCKED-EXTERNAL) |
+| 2.9#76 | KAPANDI | platform/back.ts (`pauseLiveMatchOnBack`), platform/back.test.ts, ui/App.tsx | Geri/Esc canlı maçta maçı duraklatıyor, asla terk ettirmiyor |
+| 2.9#86 | KAPANDI | electron-builder.yml (`electronFuses`), electron/csp.cjs, electron/main.cjs, platform/electron.node.test.ts | Fuses, CSP, izinlerin reddi, webview yasağı; paketli sürüm bu ortamda çalıştırılmadı |
+| 2.9#92 | KAPANDI | electron/main.cjs | Konum/boyut/büyütülmüş/tam ekran hatırlanıyor, F11 ve Alt+Enter; ayrı "kenarlıksız" modu v2 |
+| 2.9#93 | KAPANDI | e2e/viewports.spec.ts | 8 ekran şekli (21:9 … 280 px katlanabilir): yatay taşma yok, canvas kapsayıcıya sığıyor |
+| 2.9#98 | KAPANDI | .github/workflows/release.yml | İmza sırları varsa Windows Authenticode ve macOS codesign/spctl doğrulaması |
+| 2.9#111 | ERTELENDİ | docs/legal/PRIVACY.*.md, public/legal/privacy-*.html | Taslak yayında; BLOCKED-EXTERNAL: hukuk incelemesi |
+| 2.9#107 | ERTELENDİ | telemetry/errorLog.ts | BLOCKED-EXTERNAL: toplama uç noktası; yerel opt-in günlük + FPS özeti + kurtarma/kayıt olayları hazır |
+| 2.9#112, #113 | KAPANDI | ci.yml (`test:coverage`, `lint`, bloklayan e2e), e2e/hardening.spec.ts | Çevrimdışı: üretim derlemesi SW kurulunca ağ kapalıyken yeniden yükleniyor |
+| 2.9#115, #118 | ERTELENDİ | - | BLOCKED-EXTERNAL: imzalı release AAB için keystore, steamcmd yüklemesi için Steam hesabı |
+| 2.9#117 | KAPANDI | scripts/steam-depot.mjs, platform/steamDepot.node.test.ts, release.yml (`steam-depot`) | `content/<os>`, `app_build.vdf`, `depot_*.vdf` üretimi |
+| 2.9#121 | KAPANDI | release.yml (`environment: release`) | Depo ayarında zorunlu onaylayıcı tanımlanmalı (Settings > Environments) |
+| 2.9#126 | KAPANDI | eslint.config.js, store-iap/isolation.node.test.ts | sim/core `store-iap`, `telemetry`, `audio`, `platform`, `ui` içe aktaramaz (lint + bağımsız test); katalog stat artışı satmıyor |
+| 2.9#127 | ERTELENDİ | store-iap/flavor.ts | BLOCKED-EXTERNAL: deneme kilidi mağaza ürünleriyle sınanmalı |
+| 2.9#128 | KAPANDI | docs/ADR.md | 7 karar kaydı |
+| 2.12#11, #58 | ERTELENDİ | - | BLOCKED-EXTERNAL: ödül adlarının hukuk doğrulaması; yerel yorum API'si mağaza eklentisi ve cihaz ister |
+| 2.12#13, #52 | ERTELENDİ | - | Dünya/yaşam süpürmelerinin dosyaları (arma kara listesi 2.6#11 ile, kendi maçına bahis life sweep) |
+| 2.12#27, #28, #29 | KAPANDI | assets/LICENSES.csv, ci.yml (`licenses:check`), `npm run legal` | Kredi/lisans sayfaları üretilen dosyadan; CI eşitliği denetliyor |
+| 2.12#42 | KAPANDI | core/contentFlags.ts (`CASINO_BUILD`), core/contentFlags.test.ts, ui/store.ts, SettingsScreen.tsx | `VITE_FEATURE_CASINO=0` kumarhaneyi derlemede kalıcı gizler ve ayar anahtarını kaldırır |
+| 2.12#70 | KAPANDI | store-iap/demo.ts, main.tsx | Kiosk demo flavor mevcut (sabit tohum, boşta sıfırlama) |
+| 2.12#73 | ERTELENDİ | - | v2: klip kaydı (canvas MediaRecorder) kapsam dışı |
+| 2.12#86 | KAPANDI | .github/workflows/nightly.yml | Gece 02:17: 1000 kariyer x 10 sezon = 10.000 sezon, iflas eşiği korumalı, ardından birim testler + bütçe |
+| 2.12#87 | KAPANDI | sim/game/balanceSim.ts, nightly.yml | Persona'lı otomatik kariyer botu gecelik koşuyor (`humanBot` maç içi botu ayrı) |
+| 2.12#88 | KAPANDI | state/saveFuzz.test.ts | 2000 rastgele bozma, her karakter değişimi, k. yazımda çökme enjeksiyonu: hep yüklenebilir kayıt |
+| 2.12#91 | KAPANDI | e2e/ (31+ dosya, 95+ test) | Plan hedefi 40 aşıldı; CI'da bloklayıcı |
+| 2.12#117 | KAPANDI | telemetry/frameStats.ts, frameStats.test.ts | Opt-in günlükte p5 FPS ve en kötü kare; yalnızca canvas görünürken örnekleniyor |
+| 2.12#118 | ERTELENDİ | - | Gereksiz: menüler DOM, render döngüsü yok (tarayıcı kendisi sınırlar) |
+| 2.12#119, #120 | KAPANDI | telemetry/errorLog.ts (`recovered`, `webgl-lost`, `save`), ui/backend/persistence.ts | Kurtarma ve kayıt hataları/uyarıları opt-in yerel günlükte |
+| 2.12#125 | KAPANDI | ui/share/cards.ts (`upper` ile `tr-TR`) | Kullanıcıya görünen büyük harfler yerele duyarlı; kalan çağrılar yalnızca ASCII kimlik/renk |
+| 2.12#127 | ERTELENDİ | core/gender.ts | ICU select yaşam/i18n süpürmesine bağlı; mevcut `trSuffix` yaklaşımı testli |
+| Veri hakları (2.12 gizlilik) | KAPANDI | state/privacy.ts, privacy.test.ts, SettingsScreen.tsx (`export-all`, sıfırlama) | "Tüm verilerimi indir" (kayıtlar + ayarlar + başarımlar + günlük) ve gerçek "her şeyi sil" (anahtarlar, çevrimdışı önbellek, SW) |
+| Yerel rekor koruması | KAPANDI | state/metaStore.ts (`sealOf`, `sanitizeRecords`), metaStore.test.ts | Onur Listesi/kişisel rekorlar mühürlü; elle değiştirilmiş blob karantinaya alınıp rekorlar sıfırlanır, mantıksız değerler atılır (caydırıcı, güvenlik sınırı değil) |
+| CSP / çevrimdışı / sızıntı e2e | KAPANDI | e2e/hardening.spec.ts | Electron CSP altında Phaser sıfır ihlalle çalışıyor |
+
+**Sayım (S29):** 2.8: 19 satır, 18 KAPANDI/TAMAM, 1 ERTELENDİ (+ #51 cihaz notu). 2.9: bu süpürmede 34 KAPANDI, 21 ERTELENDİ. 2.12: 16 KAPANDI, 6 ERTELENDİ.
+
 Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci formülü yok), 2.3#60 (form maddesi var, garanti/sigorta/imaj hakkı yok), 2.5#117 (makbuz doğrulama `TODO(server)`), 2.6#34 ve #71, 2.7#1, #71, #73, #99, 2.9#111 ve #112 (lint + bloklayan e2e eklendi, coverage yok), 2.11#10 (axe e2e var), 2.12#91 (19 spec, hedef 40).
 
 **GDD (2.13), TAMAM'a dönenler:** gizli potansiyel yıldızı (`legacy/CareerCards.tsx:69`), emeklilik kararı ve Onur Listesi (`ui/backend/meta.ts:205`, `HallOfFameScreen.tsx:28`), ısı ve şut haritası (`PostMatchScreen.tsx:223`), kalabalık/tezahürat/ıslık/yuhalama (`audio/crowd.ts`), hukuk olayları (`events/content/legal.ts`), milli turnuva + Ayın Oyuncusu + Yılın Golü (`sim/game/national.ts`, `awards.ts`), deneme + Tam Kariyer kilidi + kozmetikler (`store-iap/catalog.ts`), menü sesleri ve dinamik müzik (`audio/uiSfx.ts`, `music.ts`).

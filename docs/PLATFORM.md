@@ -133,6 +133,9 @@ iOS 15+; ikon (1024, alfasız) ve splash `npm run icons:native` ile üretilir.
 ## 6. CI (`.github/workflows/`)
 
 - `ci.yml` (push main / PR): typecheck + Vitest + web build (artefakt `web-build`); **e2e** işi (bundled Chromium, `npx playwright install --with-deps chromium`; engellemez); **Android debug APK** işi (Temurin 21, artefakt `starpath-android-debug-apk`).
+- `ci.yml` ayrıca bundle bütçelerini (`game/scripts/budgets.json`, `npm run budgets`), lisans dosyası eşitliğini (`licenses:check`) ve üretim derlemesi üzerinde CSP/çevrimdışı e2e'yi (`e2e/hardening.spec.ts`) denetler. `nightly.yml` her gece 10.000 sezonluk denge testini çalıştırır.
+- `release.yml`: `release` ortamı (Settings > Environments: zorunlu onaylayıcı + imzalama sırları) arkasında çalışır; imzalama sırları varsa Windows Authenticode ve macOS codesign/spctl doğrulaması yapılır; `steam-depot` işi `game/scripts/steam-depot.mjs` ile `content/<os>` ve `app_build.vdf` üretir (steamcmd yüklemesi Steam hesabı gerektirir).
+- Electron sertleştirme: CSP `game/electron/csp.cjs`, izin istekleri reddedilir, `electron-builder.yml` içinde Fuses (runAsNode, NODE_OPTIONS, inspect kapalı, yalnız asar), çöken renderer dakikada en çok 3 kez yeniden yüklenir, pencere kapanmadan önce otomatik kayıt boşaltılır, pencere boyutu/konumu/tam ekran hatırlanır. Mağaza sürümleri için `VITE_FEATURE_CASINO=0` kumarhaneyi derleme zamanında kapatır.
 - `release.yml` (`v*` etiketi veya elle): Windows/macOS/Linux Electron matrisi + Android APK; etiket build'leri taslak GitHub Release'e eklenir. İmzalama sırları tanımlıysa kullanılır.
 - Playwright kanal seçimi: yerelde Chrome kuruluysa `channel: 'chrome'`, CI'da veya Chrome yoksa bundled Chromium; `PW_CHANNEL=chrome|msedge|chromium` ile zorlanır.
 

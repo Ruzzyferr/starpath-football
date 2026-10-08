@@ -40,6 +40,7 @@ export default tseslint.config(
       'no-restricted-imports': ['error', { patterns: [
         { group: ['phaser', 'phaser/*'], message: 'sim/core must not depend on Phaser.' },
         { group: ['**/ui/**', '**/game/*Scene*', '**/platform/**'], message: 'sim/core must not depend on UI or platform layers.' },
+        { group: ['**/store-iap/**', '**/telemetry/**', '**/audio/**'], message: 'Purchases, telemetry and audio must never influence the simulation (cosmetic isolation).' },
       ] }],
       'no-restricted-properties': ['error',
         { object: 'Date', property: 'now', message: 'Pass time in explicitly (determinism).' },

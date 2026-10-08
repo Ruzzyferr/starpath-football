@@ -29,6 +29,8 @@ jobs:
       - run: npm run typecheck
       - run: npm run lint
       - run: npm run lint:i18n
+      # THIRD_PARTY_LICENSES.md must match package-lock (2.12#28); audio files must be listed in assets/LICENSES.csv (unit test).
+      - run: npm run licenses:check
       # Unit tests with v8 coverage; thresholds for src/sim/** live in vite.config.ts (blocking).
       - run: npm run test:coverage
       - uses: actions/upload-artifact@v4

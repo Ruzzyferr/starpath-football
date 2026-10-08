@@ -1,3 +1,7 @@
+import { currentLang } from '../../i18n'
+
+/** Locale-aware uppercase: Turkish `i` -> `İ` (a plain toUpperCase() would print "ISTANBUL" for "istanbul"). */
+const upper = (s: string): string => s.toLocaleUpperCase(currentLang.value === 'tr' ? 'tr-TR' : 'en-US')
 /**
  * Shareable PNG cards (GAP 2.10#40, local-first): a career card and a match
  * card drawn on a 2D canvas, then handed to the OS share sheet
@@ -97,13 +101,13 @@ export function drawCard(canvas: HTMLCanvasElement, spec: CardSpec): void {
   ctx.textAlign = 'left'
   ctx.fillStyle = pitch
   ctx.font = `700 34px ${body}`
-  ctx.fillText(spec.kicker.toUpperCase(), M, 120)
+  ctx.fillText(upper(spec.kicker), M, 120)
   ctx.fillStyle = pitch
   ctx.fillRect(M, 140, 96, 6)
 
   ctx.fillStyle = hi
   fit(ctx, spec.title, display, '800', 150, CARD_W - M * 2, 64)
-  ctx.fillText(spec.title.toUpperCase(), M, 320)
+  ctx.fillText(upper(spec.title), M, 320)
   ctx.fillStyle = mid
   fit(ctx, spec.subtitle, body, '500', 38, CARD_W - M * 2, 24)
   ctx.fillText(spec.subtitle, M, 384)
@@ -111,7 +115,7 @@ export function drawCard(canvas: HTMLCanvasElement, spec: CardSpec): void {
   // Hero value
   ctx.fillStyle = mid
   ctx.font = `700 32px ${body}`
-  ctx.fillText(spec.hero.label.toUpperCase(), M, 520)
+  ctx.fillText(upper(spec.hero.label), M, 520)
   const hg = ctx.createLinearGradient(0, 540, 0, 760)
   hg.addColorStop(0, tok('--accent-gold-hi', '#ffe38a'))
   hg.addColorStop(1, gold)
@@ -133,7 +137,7 @@ export function drawCard(canvas: HTMLCanvasElement, spec: CardSpec): void {
     ctx.stroke()
     ctx.fillStyle = mid
     ctx.font = `600 28px ${body}`
-    ctx.fillText(k.label.toUpperCase(), x + 32, y + 58)
+    ctx.fillText(upper(k.label), x + 32, y + 58)
     ctx.fillStyle = hi
     fit(ctx, k.value, score, '700', 96, tw - 64, 44)
     ctx.fillText(k.value, x + 32, y + 138)

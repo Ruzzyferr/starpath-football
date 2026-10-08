@@ -5,6 +5,7 @@
  * of the last MAX_ENTRIES in localStorage, together with app version / platform /
  * current screen. Nothing is ever sent anywhere: the player copies the report by hand.
  */
+import { frameSummaryLine, installFrameMonitor } from './frameStats'
 import { detectPlatform } from '../platform/detect'
 import { APP_VERSION, BUILD_COMMIT, BUILD_TIME } from './buildInfo'
 
@@ -81,6 +82,7 @@ export function installErrorLog(getScreen: () => string): void {
   installed = true
   window.addEventListener('error', (ev) => recordError(ev.error ?? ev.message, 'error'))
   window.addEventListener('unhandledrejection', (ev) => recordError(ev.reason, 'unhandledrejection'))
+  installFrameMonitor(isErrorLogEnabled)
 }
 
 /** Extra sections for the bug report (e.g. the last match moment's kick inputs, plan 2.1#34). */
@@ -98,6 +100,7 @@ export function buildErrorReport(): string {
     `screen: ${screenOf()}`,
     `ua: ${typeof navigator !== 'undefined' ? navigator.userAgent : 'n/a'}`,
     `logging: ${isErrorLogEnabled() ? 'on' : 'off'}`,
+    frameSummaryLine(),
     '',
   ]
   const log = readErrorLog()
