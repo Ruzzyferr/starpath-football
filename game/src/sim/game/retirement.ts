@@ -27,8 +27,15 @@ import { buildTeam, HERO_ID } from './match'
 
 export const RETIRE_MIN_AGE = 33
 export const FORCED_RETIRE_AGE = 40
-export const CAREER_ENDING_WEEKS = 24
-export const CAREER_ENDING_MIN_AGE = 31
+/**
+ * Career-ending injury: forced only for veterans with a very long lay-off.
+ * Playtest round 2: at 31/24 weeks a 32-year-old top scorer (OVR 79, starter)
+ * was retired by the game the day his cruciate ligament went, no card, no
+ * choice, no comeback story. Younger players with a severe injury may still
+ * retire voluntarily (see `canRetire`).
+ */
+export const CAREER_ENDING_WEEKS = 30
+export const CAREER_ENDING_MIN_AGE = 34
 
 const ASKED_FLAG = 'c:retireAsked'
 const SUMMARY_FLAG = 'c:summary'

@@ -4,8 +4,13 @@
  * and a reputation head start that scale with the parent's legacy score, the
  * free "Famous Surname" perk, and a parent who follows the new career.
  *
- *   inheritance = clamp(5% of the parent's final net worth, 5 000, 2 000 000)
- *   reputation  = clamp(legacy score / 120, 3, 15)
+ *   inheritance = clamp(2% of the parent's final net worth, 5 000, 150 000)
+ *   reputation  = clamp(legacy score / 150, 3, 10)
+ *
+ * Playtest round 2: at 5% / 2M / 15 the child of a 31M legend started at 16
+ * with ~1.5M cash, bought 15 luxuries in the first season, had money idling
+ * from season 4 and 82 reputation at 22: the rags-to-riches arc, the best part
+ * of the genre, was skipped. The legacy is now a head start, not the finish.
  */
 import type { GameState, Gender } from '../../core/types'
 import { clamp } from '../../core/rng'
@@ -31,8 +36,8 @@ export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name'
     parentName: entry.name,
     parentGender: entry.gender,
     legacyScore: entry.legacyScore,
-    inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.05, 5_000, 2_000_000)),
-    reputationBonus: Math.round(clamp(entry.legacyScore / 120, 3, 15)),
+    inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.02, 5_000, 150_000)),
+    reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)),
   }
 }
 

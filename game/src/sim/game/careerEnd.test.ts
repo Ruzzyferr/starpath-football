@@ -72,6 +72,10 @@ describe('retirement', () => {
     const s = makeGame(11)
     s.hero.birthYear = s.calendar.season - 32
     s.hero.injury = { name: { tr: 'x', en: 'x' }, severity: 3, weeksLeft: 30 }
+    // 32: a comeback is still the player's call (may retire, not forced).
+    expect(retirementStatus(s).forced).toBe(null)
+    expect(retirementStatus(s).canRetire).toBe(true)
+    s.hero.birthYear = s.calendar.season - 34
     expect(retirementStatus(s).forced).toBe('injury')
   })
 
@@ -105,11 +109,11 @@ describe('legacy new game+', () => {
   it('child starts with inheritance, reputation and the famous-name perk', () => {
     const parent = { careerId: 'p1', name: 'Arda Yıldız', gender: 'male' as const, legacyScore: 1800, netWorth: 20_000_000 }
     const l = legacyStartFrom(parent)
-    expect(l.inheritance).toBe(1_000_000)
-    expect(l.reputationBonus).toBe(15)
+    expect(l.inheritance).toBe(150_000)
+    expect(l.reputationBonus).toBe(10)
     const plain = makeGame(9)
     const child = makeGame(9, { legacy: l, lastName: 'Yıldız' })
-    expect(child.life.money).toBeGreaterThanOrEqual(plain.life.money + 1_000_000 - 1)
+    expect(child.life.money).toBeGreaterThanOrEqual(plain.life.money + 150_000 - 1)
     expect(child.hero.reputation).toBeGreaterThan(plain.hero.reputation)
     expect(child.hero.perks).toContain('famous_name')
     expect(child.life.flags['c:legacyParentId']).toBe('p1')

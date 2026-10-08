@@ -186,17 +186,49 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
   }
 }
 
-/** Up to 8 headline moments: awards, trophies, records, big log entries. */
+/** Weight of an award key in the documentary (season awards above monthly ones). */
+const MOMENT_WEIGHT: Readonly<Record<string, number>> = {
+  golden_star: 90, top_scorer: 70, player_of_season: 70, golden_glove: 65, young_player: 60, golden_star_podium: 55,
+  league_top_scorer: 50, goal_of_season: 40, team_of_season: 35, player_of_month: 10,
+}
+
+const seasonsText = (ss: number[]): string => (ss.length > 3 ? `${ss[0]}–${ss[ss.length - 1]}` : ss.join(', '))
+
+/**
+ * Up to 8 headline moments, the biggest first (playtest round 2: a 60-award,
+ * 7-trophy, 47-cap legend's documentary listed eight early "Player of the
+ * Month" awards and no trophy). Repeated awards and trophies are grouped
+ * ("4× League Top Scorer (2028–2033)"); national caps and the best scoring
+ * season always compete for a slot.
+ */
 export function bestMoments(state: GameState): LText[] {
-  const out: LText[] = []
   const h = state.hero
-  for (const a of h.awards) out.push({ tr: `${a.season}: ${a.name.tr}`, en: `${a.season}: ${a.name.en}` })
-  for (const t of h.trophies) out.push({ tr: `${t.season}: 🏆 ${t.name.tr}`, en: `${t.season}: 🏆 ${t.name.en}` })
-  for (const l of state.life.log) {
-    if (out.length >= 12) break
-    if (l.kind === 'award' || l.icon === '🏅' || l.icon === '📈') out.push({ tr: `${l.season}: ${l.text.tr}`, en: `${l.season}: ${l.text.en}` })
+  const cands: { w: number; t: LText }[] = []
+  const groups = new Map<string, { name: LText; seasons: number[]; w: number; trophy: boolean }>()
+  for (const a of h.awards) {
+    const g = groups.get(`a:${a.key}`) ?? { name: a.name, seasons: [], w: MOMENT_WEIGHT[a.key] ?? 30, trophy: false }
+    g.seasons.push(a.season)
+    groups.set(`a:${a.key}`, g)
   }
+  for (const t of h.trophies) {
+    const g = groups.get(`t:${t.name.en}`) ?? { name: t.name, seasons: [], w: 80, trophy: true }
+    g.seasons.push(t.season)
+    groups.set(`t:${t.name.en}`, g)
+  }
+  for (const g of groups.values()) {
+    const ss = [...g.seasons].sort((x, y) => x - y)
+    const icon = g.trophy ? '🏆 ' : ''
+    const tr = ss.length > 1 ? `${ss.length}× ${icon}${g.name.tr} (${seasonsText(ss)})` : `${ss[0]}: ${icon}${g.name.tr}`
+    const en = ss.length > 1 ? `${ss.length}× ${icon}${g.name.en} (${seasonsText(ss)})` : `${ss[0]}: ${icon}${g.name.en}`
+    cands.push({ w: g.w + ss.length * 2, t: { tr, en } })
+  }
+  const nt = h.nationalTeam
+  if (nt.caps > 0) cands.push({ w: 60 + Math.min(30, nt.caps / 2), t: { tr: `🎽 ${nt.caps} milli maç, ${nt.goals} gol`, en: `🎽 ${nt.caps} caps, ${nt.goals} international goals` } })
   const best = [...h.history].sort((a, b) => b.stats.goals - a.stats.goals)[0]
-  if (best && best.stats.goals > 0) out.push({ tr: `${best.season}: ${best.clubName} formasıyla ${best.stats.goals} gol`, en: `${best.season}: ${best.stats.goals} goals for ${best.clubName}` })
-  return out.slice(0, 8)
+  if (best && best.stats.goals > 0) cands.push({ w: 45, t: { tr: `${best.season}: ${best.clubName} formasıyla ${best.stats.goals} gol`, en: `${best.season}: ${best.stats.goals} goals for ${best.clubName}` } })
+  for (const l of state.life.log) {
+    if (l.kind === 'award' || l.icon === '🏅' || l.icon === '📈') cands.push({ w: 5, t: { tr: `${l.season}: ${l.text.tr}`, en: `${l.season}: ${l.text.en}` } })
+  }
+  // Stable: equal weights keep insertion (chronological) order.
+  return cands.map((c, i) => ({ ...c, i })).sort((a, b) => b.w - a.w || a.i - b.i).slice(0, 8).map((c) => c.t)
 }
