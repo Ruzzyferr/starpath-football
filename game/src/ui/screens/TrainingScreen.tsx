@@ -237,6 +237,7 @@ function PerkTree() {
                 {t(`training.perks.${state(current)}`)}
               </Chip>
               {!current.owned && <Chip tone="violet" icon="rocket">{t('training.perks.cost', { n: current.cost })}</Chip>}
+              {current.branch && <Chip tone="info" data-testid="perk-branch">{t('career4.perkBranch', { b: t(`career4.branch.${current.branch}`), n: current.tier ?? 1 })}</Chip>}
             </div>
             {current.requires.length > 0 && !current.owned && (
               <p class="t-sm t-lo">

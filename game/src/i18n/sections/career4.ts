@@ -9,6 +9,8 @@ export const tr = {
     total: 'Toplam: {v}',
   },
   mismatch: 'Uyumsuz mevki: bonusun yarısı',
+  perkBranch: '{b} · {n}. kademe',
+  branch: { technical: 'Teknik', physical: 'Fiziksel', mental: 'Zihinsel' },
   trade: 'Maaştan %{p} vazgeçiyorsun: kulüp diğer maddelerde esneyecek (her %1 maaş ≈ %3 başka talep).',
 }
 
@@ -20,5 +22,7 @@ export const en: Shape<typeof tr> = {
     total: 'Total: {v}',
   },
   mismatch: 'Off-position: half the bonus',
+  perkBranch: '{b} · tier {n}',
+  branch: { technical: 'Technical', physical: 'Physical', mental: 'Mental' },
   trade: 'You give up {p}% of the wage: the club will bend on other terms (each 1% of wage ≈ 3% of another ask).',
 }

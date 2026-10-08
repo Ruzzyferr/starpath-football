@@ -21,7 +21,7 @@ import type {
 } from '../core/types'
 import { currentLang } from '../i18n'
 import { setControlPrefs } from '../input/prefs'
-import { contentFlags } from '../core/contentFlags'
+import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
@@ -177,6 +177,9 @@ export interface PerkView {
   cost: number
   owned: boolean
   available: boolean
+  /** Tree branch and tier 1..3 (2.3#39); absent for innate perks. */
+  branch?: 'technical' | 'physical' | 'mental'
+  tier?: number
 }
 export interface TrainerOffer {
   id: string
@@ -463,7 +466,7 @@ export interface LiveMatchView {
   pendingMoment: MomentView | null
   /** True while the Phaser scene owns the screen for a moment. */
   momentActive: boolean
-  speed: 1 | 2 | 4
+  speed: 0.5 | 1 | 2 | 4
   paused: boolean
   finished: boolean
 }
@@ -651,7 +654,9 @@ export interface GameActions {
 
   // match
   playMatch(): void
-  matchSetSpeed(speed: 1 | 2 | 4): void
+  matchSetSpeed(speed: 0.5 | 1 | 2 | 4): void
+  /** Run straight to the hero's next moment (or full time). */
+  matchSkipToMoment(): void
   /** Pre-match focus (attack / balance / defend) for the coming matches (GAP 2.1#9). */
   setMatchFocus(focus: 'attack' | 'balance' | 'defend'): void
   matchPause(paused: boolean): void
@@ -923,7 +928,7 @@ export function bindSettingsToDocument(): () => void {
       noFlash: s.reduceFlashes || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
       timingAssist: s.timingAssist,
     })
-    contentFlags.hideCasino = s.hideCasino
+    contentFlags.hideCasino = s.hideCasino || !CASINO_BUILD
     const light = s.theme === 'light' || (s.theme === 'system' && globalThis.matchMedia?.('(prefers-color-scheme: light)')?.matches === true)
     root.dataset.theme = light && !DARK_SCREENS.has(screen.value.id) ? 'light' : 'dark'
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'

@@ -11,7 +11,7 @@ import { SLOTS_PER_DAY } from '../../core/config'
 import { lt as render } from '../../i18n'
 import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef } from '../../data/activities'
 import { ASSETS } from '../../data/assets'
-import { PERKS, type PerkGroup } from '../../data/perks'
+import { PERKS, PERK_BRANCH, perkTier, type PerkGroup } from '../../data/perks'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { absWeek, heroAge } from '../../sim/career/common'
 import { perkBlock } from '../../sim/career/perks'
@@ -342,6 +342,7 @@ function perksView(s: GameState): PerkView[] {
         out.push({
           id: p.id, name: p.name, desc: p.desc, icon: PERK_GROUP_ICON[g], row, col, requires: [...(p.requirement.perks ?? [])],
           cost: p.cost, owned, available: !owned && perkBlock(h, p.id) === null,
+          ...(PERK_BRANCH[p.group] ? { branch: PERK_BRANCH[p.group]!, tier: perkTier(p) } : {}),
         })
       })
     })

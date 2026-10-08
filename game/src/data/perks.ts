@@ -255,3 +255,30 @@ export const PERKS: readonly PerkDef[] = [
 ]
 
 export const PERK_BY_ID: Readonly<Record<string, PerkDef>> = Object.fromEntries(PERKS.map((p) => [p.id, p]))
+
+// ───────────────────────── Branches and tiers (2.3#39) ─────────────────────────
+
+/** The three branches of the tree (plan: Teknik, Fiziksel, Zihinsel). */
+export type PerkBranch = 'technical' | 'physical' | 'mental'
+
+/** Which branch a perk group belongs to (innate perks sit outside the tree). */
+export const PERK_BRANCH: Readonly<Record<PerkGroup, PerkBranch | null>> = {
+  finishing: 'technical', playmaking: 'technical', dribbling: 'technical',
+  physical: 'physical', defending: 'physical', goalkeeping: 'physical',
+  mental: 'mental', lifestyle: 'mental', innate: null,
+}
+
+/**
+ * Tier 1..3 of a perk, from how demanding it is: capstones (cost 2), OVR 70+
+ * or attribute 75+ gates, or a prerequisite perk on a tier-2 gate → 3; OVR 55+,
+ * attribute 65+ or a prerequisite → 2; the rest → 1.
+ */
+export function perkTier(p: PerkDef): 1 | 2 | 3 {
+  const r = p.requirement
+  const attr = Math.max(0, ...Object.values(r.attrs ?? {}).map((v) => v ?? 0))
+  const ovr = r.minOvr ?? 0
+  const pre = (r.perks?.length ?? 0) > 0
+  if (p.cost >= 2 || ovr >= 70 || attr >= 75) return 3
+  if (ovr >= 55 || attr >= 65 || pre || (r.minReputation ?? 0) >= 25) return pre && (ovr >= 55 || attr >= 65) ? 3 : 2
+  return 1
+}
