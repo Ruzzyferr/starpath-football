@@ -27,6 +27,7 @@ jobs:
           cache-dependency-path: game/package-lock.json
       - run: npm ci
       - run: npm run typecheck
+      - run: npm run typecheck:strict-index
       - run: npm run lint
       - run: npm run lint:i18n
       # docs/GAP-AUDIT.md summary counts are generated from the per-row tables (WP-S): regeneration may not change the file.

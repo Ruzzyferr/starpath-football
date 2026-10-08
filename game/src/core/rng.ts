@@ -66,7 +66,7 @@ export class Rng {
 
   pick<T>(arr: readonly T[]): T {
     if (arr.length === 0) throw new Error('Rng.pick on empty array')
-    return arr[Math.floor(this.next() * arr.length)]
+    return arr[Math.floor(this.next() * arr.length)] as T
   }
 
   /** Pick using non-negative weights. */
@@ -79,13 +79,13 @@ export class Rng {
       r -= Math.max(0, weight(it))
       if (r < 0) return it
     }
-    return items[items.length - 1]
+    return items[items.length - 1] as T
   }
 
   shuffle<T>(arr: T[]): T[] {
     for (let i = arr.length - 1; i > 0; i--) {
       const j = Math.floor(this.next() * (i + 1))
-      ;[arr[i], arr[j]] = [arr[j], arr[i]]
+      ;[arr[i], arr[j]] = [arr[j] as T, arr[i] as T]
     }
     return arr
   }

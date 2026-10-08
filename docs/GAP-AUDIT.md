@@ -20,18 +20,18 @@
 | Bölüm | TAMAM | KISMİ | EKSİK | ERTELENDİ (BLOCKED-EXT) | ERTELENDİ (iç) | N/A-süreç | Toplam |
 |---|---:|---:|---:|---:|---:|---:|---:|
 | 2.1 Maç motoru | 62 | 0 | 0 | 0 | 0 | 0 | 62 |
-| 2.2 Animasyon, kamera | 29 | 1 | 0 | 0 | 0 | 0 | 30 |
+| 2.2 Animasyon, kamera | 29 | 0 | 0 | 1 | 0 | 0 | 30 |
 | 2.3 Kariyer | 40 | 0 | 0 | 0 | 3 | 0 | 43 |
 | 2.4 Sosyal, olaylar | 24 | 0 | 0 | 0 | 15 | 0 | 39 |
 | 2.5 Ekonomi | 36 | 0 | 0 | 4 | 9 | 0 | 49 |
 | 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
-| 2.7 UI/UX | 52 | 0 | 0 | 1 | 12 | 0 | 65 |
-| 2.8 Ses | 17 | 0 | 0 | 1 | 1 | 0 | 19 |
-| 2.9 Platform | 56 | 2 | 0 | 16 | 5 | 0 | 79 |
+| 2.7 UI/UX | 57 | 0 | 0 | 1 | 7 | 0 | 65 |
+| 2.8 Ses | 17 | 0 | 0 | 2 | 0 | 0 | 19 |
+| 2.9 Platform | 58 | 1 | 0 | 16 | 4 | 0 | 79 |
 | 2.10 Meta, online | 19 | 0 | 0 | 5 | 0 | 1 | 25 |
 | 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
 | 2.12 Risk, mağaza, QA | 32 | 0 | 0 | 2 | 3 | 39 | 76 |
-| **Toplam** | **444 (%78)** | 3 | 0 | 32 | 50 | 40 | **569** |
+| **Toplam** | **451 (%79)** | 1 | 0 | 34 | 43 | 40 | **569** |
 
 ### GDD [v1]: 128 madde
 
@@ -414,7 +414,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.2#103 | TAMAM | PostMatchScreen.tsx:370,158, postFlow.ts:7 | Adım adım maç sonu, count-up reyting |
 | 2.2#106 | TAMAM | ui/screens/match/LiveMatchScreen.tsx:212 | S21: koda karşı yeniden denetlendi, kapandı. (eski: 1/2/4x var; "sonraki anıma geç" yok) |
 | 2.2#118 | TAMAM | game/quality.ts, ui/store.ts (quality/qualityAuto) | WP-16: Düşük/Orta/Yüksek/Otomatik (cihaz testi); seyirci yoğunluğu, tifo, hava, parlama |
-| 2.2#119 | KISMİ | - | S21: kısmen; gerekçe 2.0b S21 erteleme listesinde. Düşük cihaz kabul testi yok |
+| 2.2#119 | ERTELENDİ-EXT | e2e/perf.spec.ts | Mali-G52 sınıfı 2 GB cihazda 30 fps/%2 ve 15 dk termal kabul ölçümü gerçek cihaz ister; emülasyonda 4x CPU kısma ile fps yazdırılır (perf.spec.ts), kapı değil |
 | 2.2#121 | TAMAM | game/MatchScene.ts:303 | Hareketi azalt sahnede ~26 yerde uygulanıyor |
 
 ### 2.3 Kariyer ve Oyun Mantığı
@@ -423,12 +423,12 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 |---|---|---|---|
 | 2.3#1 | TAMAM | core/types.ts:18, sim/match/highlightGen.ts:85 | 10 mevki, mevkiye göre an havuzu |
 | 2.3#2 | TAMAM | game/training/drills/distribution.ts, sim/career/training.ts (distribution), sim/match/rating.ts keeperSaveScore, sim/world/awards.ts goalkeeperAwardScore | Kaleci reyting terimi ve Altın Eldiven formülü (WP-C) + ikinci kaleci drili "Çıkış & Hâkimiyet": ortayı havada kap (Kaleci/Handling), 6 sn içinde koşan arkadaşa at (≤24 m) ya da vur; puan 0..1, not, bot ve testli, TR/EN, cihaz başına ipucu (`distribute`) |
-| 2.3#3 | ERTELENDİ-INT | sim/career/createHero.ts:48 | WP-B: uyumsuzluk kuralı yapıldı (`ARCHETYPE_MISMATCH_SHARE` 0,5). 40 puan bütçesi ertelendi (sapma önerisi): başlangıç OVR 48–54 ve 18/21/25 itibar eğrisi 80–90 puanlık arketiple kalibre; 40 puanda arketip başına özellik farkı ~+5 kalır, kimlik kaybolur ve tüm denge yeniden ayarlanır |
+| 2.3#3 | ERTELENDİ-INT | sim/career/createHero.ts:48 | WP-B: uyumsuzluk kuralı yapıldı (`ARCHETYPE_MISMATCH_SHARE` 0,5). 40 puan bütçesi ertelendi (sapma önerisi): başlangıç OVR 48–54 ve 18/21/25 itibar eğrisi 80–90 puanlık arketiple kalibre; 40 puanda arketip başına özellik farkı ~+5 kalır, kimlik kaybolur ve tüm denge yeniden ayarlanır D29: kod değişikliği küçük ama golden.json + balance.test tüm kariyer eğrilerini kaydırır; eşzamanlı life/ekonomi ajanıyla golden çakışması ve ayrı BALANCE turu gerekir, v1.1. |
 | 2.3#7 | TAMAM | sim/game/trials.ts:2 | Seçmeler ve akademi daveti, varsayılan açık |
-| 2.3#10 | ERTELENDİ-INT | core/gender.ts, sim/game/gender.test.ts, sim/career/genderText.test.ts | WP-C: kadın dünyası (isimler, yüzler, serbest oyuncular) ve TR/EN cinsiyet metin testi tamam. Ayrı kadın lig piramidi kulüp adı/arma ve hukuk taramasına bağlı; v2 |
+| 2.3#10 | ERTELENDİ-INT | core/gender.ts, sim/game/gender.test.ts, sim/career/genderText.test.ts | WP-C: kadın dünyası (isimler, yüzler, serbest oyuncular) ve TR/EN cinsiyet metin testi tamam. Ayrı kadın lig piramidi kulüp adı/arma ve hukuk taramasına bağlı; v2 D29: kalan iş kod değil: kadın lig kulüp adı/arma tasarımı ve hukuk taraması insan işi (sanat+hukuk); v2. |
 | 2.3#11 | TAMAM | ui/screens/profile/OvrExplainer.tsx, sim/game/ovrBreakdown.ts, ovrBreakdown.test.ts | "OVR nasıl hesaplanır?" ekranı: mevkiye göre ağırlık payı, değer, puan; toplam OVR |
 | 2.3#12 | TAMAM | sim/career/scouting.ts:32 | PA yıldızı ve izci bandı |
-| 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | WP-B: ertelendi (sapma önerisi). Plan çarpanları (×1,3/1,0/0,7/0,5) başka bir XP maliyet eğrisi varsayıyor; bizde ≤20 ×1,35, 21–23 ×1,15, 24–26 ×0,8, 27–29 ×0,6, 30–32 ×0,4 + azalan getiri, 17–21 yaş +5–7 OVR/sezon ve 22–24 yaşta 80+ hedefini tutuyor. Fiziksel düşüş 30+ ve zihinsel gelişim 33’e kadar zaten var (`physicalDeclinePerSeason`, mental ×1,6) |
+| 2.3#13 | ERTELENDİ-INT | sim/career/progression.ts:104 | WP-B: ertelendi (sapma önerisi). Plan çarpanları (×1,3/1,0/0,7/0,5) başka bir XP maliyet eğrisi varsayıyor; bizde ≤20 ×1,35, 21–23 ×1,15, 24–26 ×0,8, 27–29 ×0,6, 30–32 ×0,4 + azalan getiri, 17–21 yaş +5–7 OVR/sezon ve 22–24 yaşta 80+ hedefini tutuyor. Fiziksel düşüş 30+ ve zihinsel gelişim 33’e kadar zaten var (`physicalDeclinePerSeason`, mental ×1,6) D29: mevcut eğri hedef OVR bantlarını (balance.test) tutuyor; plan çarpanlarına geçiş golden + denge turu ister, v1.1. |
 | 2.3#14 | TAMAM | sim/career/decay.ts:32 | Özellik erimesi + uyarı |
 | 2.3#15 | TAMAM | sim/career/matchOutcome.ts:202 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Maç XP'si var; aksiyon başına XP yok) |
 | 2.3#21 | TAMAM | sim/career/training.ts:102 | S21: koda karşı yeniden denetlendi, kapandı. (eski: Puanlama ve formül farklı) |
@@ -574,7 +574,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.6#9 | TAMAM | sim/world/generate.ts foundedYear, sim/world/profiles.ts shortClubName, ClubScreen Info | Kuruluş yılı (kimlikten türetilir, RNG yok), tam ad + 3 harfli kod + en çok 12 karakterlik kısa ad |
 | 2.6#10 | TAMAM | data/world/names.ts isRealPersonName, sim/world/players.ts randomName, worldRules.test.ts | Kara liste kulüp, lig ve gerçek kişi adlarını kapsar; oyuncu ve TD adları gerçek bir futbolcuyla çakışırsa yeniden çekilir |
 | 2.6#11 | TAMAM | sim/world/generate.ts crestFor, worldQuality.test.ts | Aynı ülkede iki kulübün arması (şekil + sembol + ana renk) aynı olamaz |
-| 2.6#16 | ERTELENDİ-INT | sim/world/generate.ts:220 | İtibar 1-100 ölçeğinde kaldı; 0-10.000 gösterimi 100+ çağrı noktasını etkiler, oyuncuya fark yaratmaz (görünüm ölçeği v1.1) |
+| 2.6#16 | ERTELENDİ-INT | sim/world/generate.ts:220 | İtibar 1-100 ölçeğinde kaldı; 0-10.000 gösterimi 100+ çağrı noktasını etkiler, oyuncuya fark yaratmaz (görünüm ölçeği v1.1) D29: yalnız görünüm ölçeği: sim 1-100 ile çalışıyor, 0-10.000 gösterimi 100+ çağrı noktası ve golden gerektirir, v1.1. |
 | 2.6#17 | TAMAM | sim/world/quickSim.test.ts | 1.000 maçlık eşikli test |
 | 2.6#18 | TAMAM | sim/world/worldQuality.test.ts | Kupa sürpriz oranı testi |
 | 2.6#19 | TAMAM | sim/world/profiles.ts clubFinanceSheet, ClubScreen FinanceCard | Gelir (bilet, yayın, sponsor, ödül, transfer) ve gider (maaş, tesis, transfer) kalemleri; maaş her kulüpte gelirin %55-70'i (testli) |
@@ -622,14 +622,14 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
 | 2.7#1 | TAMAM | ui/styleAudit.node.test.ts | Koyu ve açık temada token çiftleri için WCAG kontrast testi (CI) |
-| 2.7#2 | ERTELENDİ-INT | ui/styleAudit.node.test.ts | Sabit hex borcu 138 ile dondurulmuş (artış testle engelli). Temizlik büyük SVG/art refaktörü, v1 sonrası |
-| 2.7#7 | ERTELENDİ-INT | - | Boşluk ölçeği için stylelint/test eklenmedi; token ölçeği var. Denetim aracı seçimi bekliyor |
-| 2.7#8 | ERTELENDİ-INT | ui/styleAudit.node.test.ts | Ölçek dışı yarıçap sayısı 40 ile dondurulmuş; tek tek temizlik görsel yeniden doğrulama ister |
+| 2.7#2 | ERTELENDİ-INT | ui/styleAudit.node.test.ts | Sabit hex borcu 138 ile dondurulmuş (artış testle engelli). Kalanlar çizim paletleri (StoryArt, TrophyArt, DrillDiagram, Logo, casino/shared SVG); tema belirteci olamaz, sanatçı paleti ister; v2 sanat geçişi |
+| 2.7#7 | TAMAM | ui/styleAudit.node.test.ts | Stylelint yerine bağımlılıksız düğüm denetimi: gap/padding/margin px değerleri 4/8 ızgarası dışında ≤44 (dondurulmuş, yalnız azalır), `--sp-*` belirteçleri 4 katı |
+| 2.7#8 | TAMAM | styles/components.css, casino.css, objectives.css, training.css; ui/styleAudit.node.test.ts | Ölçek dışı yarıçap 40 → 0 (11→10, 28/22→20, 99→999); test artık `toBe(0)` |
 | 2.7#13 | TAMAM | styles/tokens.css data-theme=light, styles/theme-light.css, SettingsScreen tema anahtarı, e2e/wp27.spec.ts | AA kontrastlı açık tema (axe color-contrast 14 ekranda 0), Sistem seçeneği; maç gecesi ekranları koyu kalır |
 | 2.7#14 | TAMAM | styles/fonts.css, e2e/fonts.spec.ts | Fontlar @fontsource ile self-host |
 | 2.7#15 | TAMAM | ui/styleAudit.node.test.ts | .num tabular-nums test edilir; piksel görsel regresyon altyapısı ayrı iş (ertelendi) |
-| 2.7#16 | ERTELENDİ-INT | styles/tokens.css | Ölçek 1.125; 1.25 her ekranı yeniden akıtır, görsel regresyon altyapısı yok (aynı gerekçe) |
-| 2.7#21 | ERTELENDİ-INT | ui/layout/Shell.tsx | Sekmeler Ana Sayfa/Kariyer/Yaşam/Dünya/Menü: bilinçli IA kararı (Takım içeriği Kariyer ve Dünya altında) |
+| 2.7#16 | TAMAM | styles/tokens.css, e2e/visual.spec.ts | Plan bantları uygulandı: display 40–56, H1 28–32, H2 20–22 px (clamp), gövde 15, mikro 12 (a11y alt sınırı planın 11 px değerinin üstünde tutuldu). Görsel regresyon: e2e/visual.spec.ts 8 ekran × 390/1440 (taşma, kesik başlık, VISUAL_PIXELS=1 ile %4 piksel farkı); önce/sonra 16/16 geçti, ekran görüntüleri incelendi |
+| 2.7#21 | ERTELENDİ-INT | ui/layout/Shell.tsx | Sekmeler Ana Sayfa/Kariyer/Yaşam/Dünya/Menü: bilinçli IA kararı. Plan Takım+Profil sekmesi ister; bizde Takım içeriği Kariyer/Dünya altında, Profil Kariyer altında, Menü ayar/kayıt barındırıyor. Değiştirmek rota ağacını ve tüm e2e gezinmeyi yeniden yazar; ürün sahibi kararı |
 | 2.7#22 | TAMAM | e2e/wpu.spec.ts (single CTA) | #main içinde en fazla bir dolu buton, 15 ekran + yaşam/dünya sekmeleri taranır; liste içi Buy/Play drill ikincil yapıldı |
 | 2.7#23 | TAMAM | e2e/wp27.spec.ts | Hub kutucukları 1 dokunuş, Menü kutucukları 2 dokunuşla açılır; e2e ile sabitlendi |
 | 2.7#24 | TAMAM | ui/screens/PlannerScreen.tsx, e2e/wp27.spec.ts | 7 günlük şerit (e2e sayar) |
@@ -640,7 +640,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.7#34 | TAMAM | styles/tokens.css --fs-micro 12px, ui/styleAudit.node.test.ts | 12 px altı yazı kalmadı (SVG rulet numarası hariç); test sayar |
 | 2.7#38 | TAMAM | e2e/wpu.spec.ts (single CTA) | #22 ile aynı denetim |
 | 2.7#39 | TAMAM | e2e/wpu.spec.ts, ui/screens/life/Assets.tsx | Yıkıcı etiketler (sat, emekli ol, sil, ayrıl...) danger varyantı: denetim testi; satış butonu danger |
-| 2.7#40 | ERTELENDİ-INT | ui/components/PlayerCard.tsx | Kart çalışıyor; 5:7 oran ve çerçeve cilası sanat incelemesine bağlı |
+| 2.7#40 | TAMAM | styles/components.css:760, ui/components/PlayerCard.tsx | 5:7 `aspect-ratio`, bronz/gümüş/altın/elit/efsane çerçeve, tek satır 6 stat, arma. Avatar facesjs değil özel sistem (bkz. 2.7#114) |
 | 2.7#42 | TAMAM | ui/components/Chip.tsx (TONE_ICONS) | Anlamlı tonlu çip ikonsuz verilirse varsayılan ikon alır; nötr çip metin-only. 80 çağrı noktası değişmedi |
 | 2.7#43 | TAMAM | ui/components/MeterRing.tsx lowAt, styles/components.css .meter-ring-low | %20 altında uyarı rozeti, nabız (reduced motion saygılı) ve ekran okuyucu metni |
 | 2.7#44 | TAMAM | ui/components/StatBar.tsx | Önizleme ve 3 sn'lik değişim "+3 ▲ / −1 ▼" |
@@ -658,8 +658,8 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.7#72 | TAMAM | ui/screens/match/PostMatchScreen.tsx RatingStep | Reyting dökümü adımı mevcut |
 | 2.7#73 | TAMAM | sim/career/matchPay.ts, PostMatchScreen (EarningsStep) | WP-16: maaş payı, gol/asist/maça çıkma/kaleci primi, sponsor, imaj hakları, vergi, menajer |
 | 2.7#74 | TAMAM | ui/screens/match/LiveMatchScreen.tsx:165 | Radar, anlatım, hız ve atla var |
-| 2.7#78 | ERTELENDİ-INT | ui/screens/HomeScreen.tsx | Hub sırası bilinçli farklı; sanat incelemesi 8+ aldı |
-| 2.7#79 | ERTELENDİ-INT | ui/screens/NewCareerScreen.tsx | 7 adım (kimlik, ulus, mevki, arketip, geçmiş, görünüm, özet) kasıtlı; her adım e2e ile doğrulanıyor |
+| 2.7#78 | ERTELENDİ-INT | ui/screens/HomeScreen.tsx | Hub masaüstünde iki sütunlu (ana + yan); tek sütun sabit sıra düzeni bozar, mobilde sıra plana yakın. Sanat incelemesi 8+ verdi; ürün sahibi kararı |
+| 2.7#79 | ERTELENDİ-INT | ui/screens/NewCareerScreen.tsx | 7 adım kasıtlı (ulus, mevki, arketip ayrı adım; tek adımda 4 kavram mobilde sıkışır); her adım e2e ile doğrulanıyor, "Rastgele" var |
 | 2.7#80 | TAMAM | ui/screens/TrainingScreen.tsx decay-warning | Hareketsizlik/erime uyarısı antrenman ekranında |
 | 2.7#81 | TAMAM | ui/screens/life/Relations.tsx, sim/game/interactCost.ts | Avatar, değer, eğilim oku, son 5 anı, etkileşim butonlarında enerji ve € maliyeti |
 | 2.7#82 | TAMAM | ui/screens/life/Relations.tsx WhyPanel (kaynaklı ledger), PostMatchScreen RelationsStep | Her değişim nedeniyle: son 10 kayıt + neden toplamları |
@@ -671,18 +671,18 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.7#88 | TAMAM | sim/game/patienceEstimate.ts, patienceEstimate.test.ts, ContractScreen patience-preview | Teklif göndermeden önce sabır maliyeti (counterOffer ile aynı hesap, 5 puanlık bant, "masadan kalkar" uyarısı) |
 | 2.7#89 | TAMAM | ui/screens/WorldScreen.tsx, sim/game/clubPreview.ts, clubPreview.test.ts | Takip / ciddi ilgi / teklif hazır kademeleri (sim eşikleriyle), şehir, beklenen rol, maaş aralığı, tek dokunuşla karşılaştırma tablosu |
 | 2.7#90 | TAMAM | ui/screens/InboxScreen.tsx (news-cause), sim/game/newsCause.ts, newsCause.test.ts | Habere dokununca olayı/haftanın kayıtlarını gösterir. Olay haberi n. olay kaydıyla eşlenir; haber öğesine olay kimliği eklenmedi (sim değişmedi) |
-| 2.7#91 | ERTELENDİ-INT | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım; v1.1 |
+| 2.7#91 | ERTELENDİ-INT | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım: çerçeve/ikon varlıkları ve tüm yaşam alt ekranlarının yeniden akıtılması gerekir; `ui/screens/life/**` başka paketin elinde; v1.1 |
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
 | 2.7#94 | TAMAM | ui/screens/ProfileScreen.tsx (club-stats), sim/game/clubStats.ts, clubStats.test.ts | Sezon/Kariyer tablosuna kulüp bazlı kırılım; gol krallığı NPC sıralaması WorldScreen scorers sekmesinde mevcut |
 | 2.7#98 | TAMAM | ui/screens/SavesScreen.tsx, ui/backend/persistence.ts, e2e/goalreel.spec.ts | Kayıt yuvası kartında `thumbSvg` portresi (summary.thumb SaveSlotInfo'ya taşındı); e2e [WP-V] |
 | 2.7#99 | TAMAM | ui/screens/SettingsScreen.tsx | WP-16: Gizlilik ve Bulut ("Yakında", bağlantısız) grupları |
 | 2.7#103 | TAMAM | styles/tokens.css:136 | Hareket token'ları var |
 | 2.7#105 | TAMAM | ui/hooks/motion.ts:20 | Count-up var |
-| 2.7#114 | ERTELENDİ-INT | ui/screens/newcareer/AppearanceEditor.tsx | Özel avatar editörü çalışıyor; facesjs yerine özel sistem kullanılıyor (bilinçli sapma) |
+| 2.7#114 | ERTELENDİ-INT | ui/screens/newcareer/AppearanceEditor.tsx | Özel avatar editörü çalışıyor; facesjs yerine özel SVG sistemi (bilinçli sapma: bağımlılık, cinsiyet/yaş/forma entegrasyonu). Ten rengi seçimi var |
 | 2.7#122 | TAMAM | ui/tutorial/CoachTour.tsx, e2e/onboarding.spec.ts | Koç turu: ilk maç anı, antrenman ve olay kartı |
 | 2.7#123 | TAMAM | ui/tutorial/unlocks.ts, UnlockGate.tsx, e2e/onboarding.spec.ts | Kumarhane/yatırım/işletme kademeli açılır, tek kartlık tanıtım |
-| 2.7#127 | ERTELENDİ-INT | ui/screens/SettingsScreen.tsx | Veri toplayan SDK yok; yerel hata günlüğü ayarlarda eşit vurgulu anahtar. Analitik eklenince onay penceresi |
-| 2.7#128 | ERTELENDİ-INT | ui/format.ts formatMoney | Tüm tutarlar formatMoney ile sembollü; TS Price tipi zorlaması ertelendi |
+| 2.7#127 | ERTELENDİ-INT | ui/screens/SettingsScreen.tsx | Onay/gizlilik penceresi yok çünkü veri toplayan SDK yok (testlenecek Kabul/Reddet çifti bulunmuyor). Analitik eklenince pencere ve eş boyutlu buton testi aynı PR'da gelir |
+| 2.7#128 | TAMAM | ui/format.ts formatMoney, ui/moneyLint.node.test.ts | Tüm tutarlar formatMoney ile sembollü; ham biçimlendiriciyle fiyat basımı moneyLint testiyle derlemede reddedilir (ayrı Price tipi gerekmiyor) |
 | 2.7#129 | ERTELENDİ-EXT | - | Mağaza puanı istemi StoreKit/Play API gerektirir (BLOCKED-EXTERNAL) |
 | 2.7#130 | TAMAM | ui/components/Button.tsx IconButton 44px, Toast .toast-close 44px | Kapat düğmeleri 44x44, gecikme yok |
 | 2.7#131 | TAMAM | ui/screens/store/PaywallScreen.tsx, e2e/iap.spec.ts | Satın alma ekranı kalıcılık ve kapsamı gösterir, geri yükleme var |
@@ -709,14 +709,14 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.8#51 | ERTELENDİ-EXT | platform/capacitor.ts:20 | BLOCKED-EXTERNAL: gerçek iOS/Android cihaz (haptics eşlemesi kodda) [S29; kanıt yolları game/ köküne göre] |
 | 2.8#52 | TAMAM | platform/lifecycle.ts (`applyAudioSession`), assets/LICENSES.csv, audio/licenses.node.test.ts | WP-18'de yapılmıştı; satırlar bayattı [S29; kanıt yolları game/ köküne göre] |
 | 2.8#56 | TAMAM | platform/lifecycle.ts (`applyAudioSession`), assets/LICENSES.csv, audio/licenses.node.test.ts | WP-18'de yapılmıştı; satırlar bayattı [S29; kanıt yolları game/ köküne göre] |
-| 2.8#57 | ERTELENDİ-INT | - | Kayıtlı ses gerekir; ADR-002: tüm sesler WebAudio sentezi, lisans kapısı (`LICENSES.csv` + test) hazır, `audioFileBytes` bütçesi 2 MB [S29; kanıt yolları game/ köküne göre] |
+| 2.8#57 | ERTELENDİ-EXT | - | D29: kayıtlı ses insan yapımı ses varlığı ister (ses sanatçısı/lisanslı kütüphane); ADR-002: tüm sesler WebAudio sentezi, lisans kapısı (`LICENSES.csv` + test) ve 2 MB `audioFileBytes` bütçesi hazır, varlık gelince eklenir |
 
 ### 2.9 Platform ve Teknik (yollar depo köküne göre)
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.9#1 | ERTELENDİ-INT | game/package.json:1 | v2: tek paket yeterli, monorepo faydası yok [S29; kanıt yolları game/ köküne göre] |
-| 2.9#2 | ERTELENDİ-INT | docs/ADR.md ADR-007 | `noUncheckedIndexedAccess` 1.714 hata veriyor (çoğu sim/ui, başka süpürmelerin dosyaları); dizin dizin açılacak [S29; kanıt yolları game/ köküne göre] |
+| 2.9#1 | ERTELENDİ-INT | game/package.json:1 | v2: tek paket yeterli, monorepo faydası yok [S29; kanıt yolları game/ köküne göre] D29: pnpm monorepo bölmesi tek geliştirici için faydasız ve tüm import yollarını/CI'yi taşır; çalışan sınır `src/{core,sim,platform}` + ESLint sınır kuralları, v2. |
+| 2.9#2 | KISMİ | game/tsconfig.strict-index.json, scripts/typecheck-strict-index.mjs, .github/workflows/ci.yml | D29: `noUncheckedIndexedAccess` artık src/core + src/state + src/platform için CI kapısı (`npm run typecheck:strict-index`, 0 hata; colorVision/rng/saveV3.test düzeltildi, rng akışı değişmedi). Kalan: sim/ui dizinlerinde ~600 hata, bu dizinler başka paketlerin elinde; dizin dizin genişletilecek (ADR-007) |
 | 2.9#3 | TAMAM | docs/ADR.md ADR-005 | Hedef kararı yazıldı (es2022 derleme, Electron 44 / güncel WebView) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#4 | TAMAM | package.json, package-lock.json | Phaser `4.2.1` sabitlendi [S29; kanıt yolları game/ köküne göre] |
 | 2.9#5 | TAMAM | game/eslint.config.js:30 | sim/core kısıtları |
@@ -724,17 +724,17 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.9#12 | TAMAM | game/view.ts:fitZoom | FIT tasarım alanı, birim testli |
 | 2.9#13 | TAMAM | game/quality.ts:renderScale, profileOfSettings, MatchScene.createMatchGame(parent, profile) | Mobil DPR profili piksel bütçesiyle, birim testli; Düşük profil 1.25x sınırı artık oluşturma anında uygulanıyor (e2e: 2x ekranda canvas oranı) |
 | 2.9#14 | TAMAM | game/src/game/MatchScene.ts:1290 | Phaser yalnızca maçta yaşıyor |
-| 2.9#15 | ERTELENDİ-INT | - | Atlas paketleyecek doku dosyası yok: tüm maç görselleri prosedürel (v2, sanat varlığı gelince) [S29; kanıt yolları game/ köküne göre] |
+| 2.9#15 | ERTELENDİ-INT | - | D29: atlas paketleyicinin girdisi yok: tüm maç görselleri prosedürel (çalışma anında tek RenderTexture); paketlenecek PNG varlığı sanatçıdan gelince script yazılır (v2) |
 | 2.9#16 | TAMAM | game/pool.ts | ObjectPool; uçan yazılar geri dönüştürülüyor (parçacıklar Phaser yayıcılarında zaten havuzlu) |
 | 2.9#17 | TAMAM | platform/glRecovery.ts, platform/glRecovery.test.ts | `webglcontextlost` yakalama aşamasında `preventDefault`, opt-in günlük, `sp:gl-lost/restored` olayları [S29; kanıt yolları game/ köküne göre] |
 | 2.9#18 | TAMAM | game/src/game/runtime.ts:425 | Sabit adım ve interpolasyon |
 | 2.9#22 | TAMAM | e2e/hardening.spec.ts (memory) | 3 ısınma + 10 maç montajı, GC sonrası JS yığını: +1,0 MB (eşik 30 MB), mutlak 400 MB [S29; kanıt yolları game/ köküne göre] |
 | 2.9#23 | ERTELENDİ-EXT | e2e/perf.spec.ts | BLOCKED-EXTERNAL: cihaz bazlı FPS hedefi gerçek cihaz ister (CPU 4x kısıtlı mobil profil e2e'de var) [S29; kanıt yolları game/ köküne göre] |
-| 2.9#26 | ERTELENDİ-INT | core/rng.ts | `fork` davranışı değişirse tüm golden çıktıları değişir; sim süpürmesiyle eşgüdümlü golden yenilemesi gerekir [S29; kanıt yolları game/ köküne göre] |
+| 2.9#26 | ERTELENDİ-INT | core/rng.ts:31 | D29: `fork` üst akıştan 1 değer tüketir (plan: tüketmesin). Tüketmeyen sürüm tüm fork çağıranlarının dizisini ve golden.json'u değiştirir; sim/life ajanıyla eşzamanlı golden yenilemesi gerektiğinden ayrı bir denge/golden turuna bırakıldı |
 | 2.9#27 | TAMAM | eslint.config.js (`Date.now`/`Math.random` error), `npm run lint` 0 hata | Kural error, ihlal kalmadı [S29; kanıt yolları game/ köküne göre] |
 | 2.9#28 | TAMAM | game/src/core/types.ts:462 | RNG durumu kayıtta |
 | 2.9#29 | TAMAM | e2e/determinism.spec.ts | 120 maç + yeni oyun özeti: Chromium ile Node birebir aynı; Firefox/WebKit projesi eklenince aynı test koşar (tarayıcılar kurulu değil) [S29; kanıt yolları game/ köküne göre] |
-| 2.9#30 | ERTELENDİ-INT | - | v2: sim ana iş parçacığında bütçe içinde; yalnızca doku işçisi var [S29; kanıt yolları game/ köküne göre] |
+| 2.9#30 | ERTELENDİ-INT | game/src/sim/game/game.test.ts:144 | D29: ölçüldü: tam sezon (308 gün, kahraman otopilot) masaüstünde 1,3 sn, "sonraki maça" ≤30 gün ≈ 130 ms; hedef <2 sn/sezon tutuyor. Worker yalnızca düşük uçlu Android ölçümü (cihaz) gösterirse gerekir: ui/backend durumu eşzamanlı yerinde değiştiriyor, 1,4 MB durumu worker'a kopyalayıp geri almak ui/store sahipliğini (UI paketi) değiştirir |
 | 2.9#31 | TAMAM | sim/game/statsGuard.ts, statsGuard.test.ts, statsBaseline.json, .github/workflows/nightly.yml | Gecelik istatistik koruması: 200 kariyer x 10 sezon, sapma eşiği aşarsa CI kırmızı [WP-V] |
 | 2.9#33 | TAMAM | game/src/sim/world/fixtures.ts:66 | Oyun takvimi kullanılıyor |
 | 2.9#36 | TAMAM | state/save.ts envelope.dataPack, sim/game/persist.ts dataPackId | Her kayıt veri paketi kimliği (`sp-data-N`) taşır; eski kayıt migrasyonla doldurulur [WP-V] |
@@ -761,7 +761,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.9#66 | TAMAM | game/src/platform/capacitor.ts:46 | Edge-to-edge |
 | 2.9#67 | TAMAM | platform/android.node.test.ts | Manifest: dönüşte activity yeniden yaratılmıyor, iki yön serbest, tek exported activity; iOS yönleri doğrulanıyor (cihaz denemesi hâlâ BLOCKED-EXTERNAL) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#69 | TAMAM | electron/main.cjs (`render-process-gone`), platform/index.ts (`noteRecovery`) | Çöken renderer dakikada en çok 3 kez yeniden yükleniyor, kurtarma opt-in günlüğe yazılıyor; mobil WebView kurtarması BLOCKED-EXTERNAL (cihaz) [S29; kanıt yolları game/ köküne göre] |
-| 2.9#70 | KISMİ | game/src/platform/lifecycle.ts:48 | iOS audio session yok |
+| 2.9#70 | TAMAM | game/src/platform/lifecycle.ts:20, audio/audio.test.ts:286 | D29: iOS `navigator.audioSession.type = 'ambient'` her AudioContext oluşturulunca uygulanıyor (sessiz anahtara saygılı, başka uygulamanın müziğini kesmez); API yoksa no-op, testli |
 | 2.9#71 | TAMAM | game/src/styles/fonts.css:1 | Font self-host |
 | 2.9#72 | TAMAM | scripts/check-budgets.mjs, scripts/budgets.json, platform/budgets.node.test.ts, ci.yml | Gzip bütçeleri CI'da bloklayıcı (JS toplam 1260 KB, en büyük parça 600 KB, ilk açılış 790 KB, CSS 55 KB, ses dosyası 2 MB). Android `minifyEnabled` açılışı proguard + cihaz denemesi ister: ERTELENDİ (BLOCKED-EXTERNAL) [S29; kanıt yolları game/ köküne göre] |
 | 2.9#73 | TAMAM | scripts/check-budgets.mjs, scripts/budgets.json, platform/budgets.node.test.ts, ci.yml | Gzip bütçeleri CI'da bloklayıcı (JS toplam 1260 KB, en büyük parça 600 KB, ilk açılış 790 KB, CSS 55 KB, ses dosyası 2 MB). Android `minifyEnabled` açılışı proguard + cihaz denemesi ister: ERTELENDİ (BLOCKED-EXTERNAL) [S29; kanıt yolları game/ köküne göre] |
@@ -778,7 +778,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.9#93 | TAMAM | e2e/viewports.spec.ts | 8 ekran şekli (21:9 … 280 px katlanabilir): yatay taşma yok, canvas kapsayıcıya sığıyor [S29; kanıt yolları game/ köküne göre] |
 | 2.9#94 | ERTELENDİ-EXT | docs/PLATFORM.md | BLOCKED-EXTERNAL: Steam app id, Auto-Cloud, overlay testi, Steam Deck donanımı, bulut çakışma için backend; `steamworks.js` isteğe bağlı bağımlılık olarak paketlendi [S29; kanıt yolları game/ köküne göre] |
 | 2.9#95 | TAMAM | ui/backend/meta.ts:62, ui/App.tsx:176 | 79 başarım → platform sink, gamepad menü |
-| 2.9#97 | KISMİ | game/src/styles/base.css:169 | Odak halkası var |
+| 2.9#97 | TAMAM | game/src/styles/base.css:169-195, core/focusRing.test.ts | D29: `:focus-visible` halkası (--focus-ring) + Windows Yüksek Karşıtlık (`forced-colors`) için gerçek `outline` yedeği; testli |
 | 2.9#98 | TAMAM | .github/workflows/release.yml | İmza sırları varsa Windows Authenticode ve macOS codesign/spctl doğrulaması [S29; kanıt yolları game/ köküne göre] |
 | 2.9#99 | ERTELENDİ-EXT | .github/workflows/release.yml | BLOCKED-EXTERNAL: Apple Developer hesabı/provisioning (iOS CI, TestFlight, notarize); mac imza doğrulaması iş akışında hazır [S29; kanıt yolları game/ köküne göre] |
 | 2.9#107 | ERTELENDİ-EXT | telemetry/errorLog.ts | BLOCKED-EXTERNAL: toplama uç noktası; yerel opt-in günlük + FPS özeti + kurtarma/kayıt olayları hazır [S29; kanıt yolları game/ köküne göre] |
@@ -908,7 +908,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.12#68 | N/A | - | Steam etiketleri |
 | 2.12#69 | N/A | - | Wishlist |
 | 2.12#70 | TAMAM | store-iap/demo.ts, main.tsx | Kiosk demo flavor mevcut (sabit tohum, boşta sıfırlama) [S29; kanıt yolları game/ köküne göre] |
-| 2.12#73 | ERTELENDİ-INT | - | v2: klip kaydı (canvas MediaRecorder) kapsam dışı [S29; kanıt yolları game/ köküne göre] |
+| 2.12#73 | ERTELENDİ-INT | - | v2: klip kaydı (canvas MediaRecorder) kapsam dışı [S29; kanıt yolları game/ köküne göre] D29: plan bu maddeyi v2 olarak işaretliyor (ANALIZ-VE-PLAN.md:588); MediaRecorder klibi ayrıca tekrar-UI (UI paketi) ister. |
 | 2.12#74 | N/A | - | Pazarlama |
 | 2.12#75 | N/A | - | İletişim |
 | 2.12#76 | N/A | - | Discord |
@@ -953,7 +953,7 @@ Kısmen ilerleyip durumu değişmeyenler: 2.5#117 (makbuz doğrulama `TODO(serve
 | 2.1 Prosedürel avatar | TAMAM | ui/screens/newcareer/AppearanceEditor.tsx:15 | Ten, saç, sakal, göz, yüz, aksesuar |
 | 2.1 Başlangıç arketipi | TAMAM | sim/career/createHero.ts:23 | Bonus dağılımı var |
 | 2.1 Geçmiş hikâyesi | TAMAM | sim/career/createHero.ts:83 | 4 geçmiş |
-| 2.2 Özellik grupları | KISMİ | core/types.ts:26 | Kalecide özellik grupları yalnızca 2 (= 2.3#11, iç ertelenmiş; OVR açıklama ekranı ile birlikte) |
+| 2.2 Özellik grupları | KISMİ | core/types.ts:26 | Kalecide 2 özellik (reflexes, handling), plan 4 ister. 3./4. anahtar `Attributes` tipini, kayıt migrasyonunu, dünya üretimini, OVR ağırlıklarını ve golden.json'u değiştirir (sim/** ve golden başka paketlerin alanı); OVR açıklama ekranı (2.3#11) hazır, anahtar eklenince listeler |
 | 2.2 Pozisyon ağırlıklı OVR | TAMAM | sim/career/progression.ts:146 | heroOvr |
 | 2.2 Gizli potansiyel + yıldız | TAMAM | ui/screens/legacy/CareerCards.tsx:69 | Gizli potansiyel yıldızı UI'da |
 | 2.2 Yaş eğrisi | TAMAM | sim/career/progression.ts:100 | Var |

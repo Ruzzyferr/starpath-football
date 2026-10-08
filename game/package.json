@@ -12,6 +12,7 @@
     "lint": "eslint .",
     "lint:i18n": "node scripts/check-literal-strings.mjs",
     "typecheck": "tsc --noEmit -p tsconfig.app.json",
+    "typecheck:strict-index": "node scripts/typecheck-strict-index.mjs",
     "e2e": "playwright test",
     "icons": "node scripts/gen-icons.mjs",
     "desktop:dev": "node scripts/desktop-dev.mjs",

@@ -1,0 +1,10 @@
+{
+  "extends": "./tsconfig.app.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.strict-index.tsbuildinfo",
+    "types": ["vite/client", "vitest/globals", "node"],
+    "noUncheckedIndexedAccess": true
+  },
+  "include": ["src/core", "src/state", "src/platform", "src/vite-env.d.ts"],
+  "exclude": ["src/**/*.node.test.ts"]
+}

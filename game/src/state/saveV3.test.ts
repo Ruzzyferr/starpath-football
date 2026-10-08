@@ -109,7 +109,7 @@ describe('goal replays', () => {
     const s = makeGame(13)
     for (let i = 0; i < MAX_GOAL_REPLAYS + 5; i++) addGoalReplay(s, { season: 2026, week: i, minute: i, rec: packRecording(rec) })
     expect(s.replays!.length).toBe(MAX_GOAL_REPLAYS)
-    expect(s.replays![0].week).toBe(5)
+    expect(s.replays![0]!.week).toBe(5)
   })
   it('queued replays land in the state on save', async () => {
     const s = makeGame(14)
