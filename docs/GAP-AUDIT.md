@@ -488,71 +488,71 @@ Kısmen ilerleyip durumu değişmeyenler: 2.3#2 (Altın Eldiven var, kaleci form
 
 | Madde | Durum | Kanıt | Not |
 |---|---|---|---|
-| 2.7#1 | KISMİ | styles/tokens.css:9 | Kontrast CI testi yok |
-| 2.7#2 | KISMİ | styles/tokens.css:1 | tsx içinde ~35 sabit hex; lint yok |
-| 2.7#7 | KISMİ | styles/tokens.css:97 | Boşluk ölçeği denetlenmiyor |
-| 2.7#8 | KISMİ | styles/tokens.css:110 | Ek köşe yarıçapları kullanılıyor |
-| 2.7#13 | EKSİK | styles/tokens.css:166 | Açık tema yok |
-| 2.7#14 | KISMİ | ../index.html:20 | Fontlar CDN'den; self-host değil |
-| 2.7#15 | KISMİ | styles/base.css:126 | tabular-nums var; görsel regresyon yok |
-| 2.7#16 | KISMİ | styles/tokens.css:85 | Tip ölçeği farklı |
-| 2.7#21 | KISMİ | ui/layout/Shell.tsx:18 | 5 sekme var; düzen plandan farklı |
-| 2.7#22 | KISMİ | ui/layout/Shell.tsx:105 | İkinci birincil buton var |
-| 2.7#23 | KISMİ | ui/layout/Shell.tsx:38 | Navigasyon testi yok |
-| 2.7#24 | KISMİ | ui/screens/PlannerScreen.tsx:56 | 7 günlük şerit doğrulanmadı |
+| 2.7#1 | TAMAM | ui/styleAudit.node.test.ts | Koyu ve açık temada token çiftleri için WCAG kontrast testi (CI) |
+| 2.7#2 | ERTELENDİ | ui/styleAudit.node.test.ts | Sabit hex borcu 138 ile dondurulmuş (artış testle engelli). Temizlik büyük SVG/art refaktörü, v1 sonrası |
+| 2.7#7 | ERTELENDİ | - | Boşluk ölçeği için stylelint/test eklenmedi; token ölçeği var. Denetim aracı seçimi bekliyor |
+| 2.7#8 | ERTELENDİ | ui/styleAudit.node.test.ts | Ölçek dışı yarıçap sayısı 40 ile dondurulmuş; tek tek temizlik görsel yeniden doğrulama ister |
+| 2.7#13 | TAMAM | styles/tokens.css data-theme=light, styles/theme-light.css, SettingsScreen tema anahtarı, e2e/wp27.spec.ts | AA kontrastlı açık tema (axe color-contrast 14 ekranda 0), Sistem seçeneği; maç gecesi ekranları koyu kalır |
+| 2.7#14 | TAMAM | styles/fonts.css, e2e/fonts.spec.ts | Fontlar @fontsource ile self-host |
+| 2.7#15 | TAMAM | ui/styleAudit.node.test.ts | .num tabular-nums test edilir; piksel görsel regresyon altyapısı ayrı iş (ertelendi) |
+| 2.7#16 | ERTELENDİ | styles/tokens.css | Ölçek ~1.125 oranlı; 1.25 oranı her ekranı yeniden akıtır, görsel regresyon altyapısı olmadan riskli |
+| 2.7#21 | ERTELENDİ | ui/layout/Shell.tsx | Sekmeler Ana Sayfa/Kariyer/Yaşam/Dünya/Menü: bilinçli IA kararı (Takım içeriği Kariyer ve Dünya altında) |
+| 2.7#22 | ERTELENDİ | ui/layout/Shell.tsx | Hub CTA ve ileri butonu aynı döngüyü sürer; tek dolu buton kuralı v1.1 cila listesinde |
+| 2.7#23 | TAMAM | e2e/wp27.spec.ts | Hub kutucukları 1 dokunuş, Menü kutucukları 2 dokunuşla açılır; e2e ile sabitlendi |
+| 2.7#24 | TAMAM | ui/screens/PlannerScreen.tsx, e2e/wp27.spec.ts | 7 günlük şerit (e2e sayar) |
 | 2.7#25 | TAMAM | platform/back.ts:14 | Android geri tuşu doğru |
 | 2.7#30 | TAMAM | ui/layout/Shell.tsx:1 | Masaüstünde kenar menü ve bağlam paneli |
-| 2.7#31 | KISMİ | ui/App.tsx:86 | Kısayollar kısmen var |
-| 2.7#32 | EKSİK | - | Menüde gamepad ve spatial navigation yok |
-| 2.7#34 | KISMİ | styles/tokens.css:85 | Mikro metin 11 px |
-| 2.7#38 | KISMİ | styles/components.css:42 | Buton kuralları kısmen var |
-| 2.7#39 | KISMİ | ui/components/Button.tsx:25 | Danger varyantı var |
-| 2.7#40 | KISMİ | ui/components/PlayerCard.tsx:31 | Oyuncu kartı var |
-| 2.7#42 | KISMİ | ui/components/Chip.tsx:10 | İkon zorunlu değil |
+| 2.7#31 | TAMAM | ui/App.tsx, ui/layout/ShortcutsModal.tsx, e2e/wp27.spec.ts | Space, 1-5, M, T, I, Esc ve ? ile kısayol listesi |
+| 2.7#32 | TAMAM | input/gamepadNav.ts, gamepadNav.test.ts, ui/App.tsx startGamepadNav, tokens.css focus ring | D-pad uzamsal gezinme, A onay, B geri, LB/RB sekme; odak halkası 3 px mavi + 2 px boşluk |
+| 2.7#34 | TAMAM | styles/tokens.css --fs-micro 12px, ui/styleAudit.node.test.ts | 12 px altı yazı kalmadı (SVG rulet numarası hariç); test sayar |
+| 2.7#38 | ERTELENDİ | styles/components.css | Chunky CTA kuralları kodda; tek-CTA denetimi #22 ile birlikte ertelendi |
+| 2.7#39 | ERTELENDİ | ui/components/Button.tsx | Danger varyantı var; emekli ol gibi bazı yıkıcı aksiyonlar ghost, çağrı noktası denetimi ertelendi |
+| 2.7#40 | ERTELENDİ | ui/components/PlayerCard.tsx | Kart çalışıyor; 5:7 oran ve çerçeve cilası sanat incelemesine bağlı |
+| 2.7#42 | ERTELENDİ | ui/components/Chip.tsx | Chip ikonu zorunlu kılmak ~80 çağrı noktasını etkiler; ertelendi |
 | 2.7#43 | TAMAM | ui/components/MeterRing.tsx lowAt, styles/components.css .meter-ring-low | %20 altında uyarı rozeti, nabız (reduced motion saygılı) ve ekran okuyucu metni |
 | 2.7#44 | TAMAM | ui/components/StatBar.tsx | Önizleme ve 3 sn'lik değişim "+3 ▲ / −1 ▼" |
-| 2.7#48 | KISMİ | ui/components/Toast.tsx toastUndo, PlannerScreen.tsx, e2e/wp27.spec.ts | 6 sn Geri al toast'u var, plan silmede kullanılıyor. Satış/eşya atma geri alma ertelendi: sim tarafında geri alma API'si yok (life/** başka ajanda) |
-| 2.7#50 | KISMİ | ui/components/Controls.tsx:7 | ± butonları yok |
-| 2.7#55 | KISMİ | ui/screens/career/Radar.tsx:2 | Önceki sezon çizgisi yok |
-| 2.7#56 | KISMİ | ui/components/Charts.tsx:68 | Sparkline dokunulamıyor |
-| 2.7#59 | KISMİ | ui/screens/life/Bank.tsx:86 | Gelir/gider halka grafiği yok |
+| 2.7#48 | ERTELENDİ | ui/components/Toast.tsx toastUndo, PlannerScreen.tsx, e2e/wp27.spec.ts | 6 sn Geri al toast'u var, plan silmede kullanılıyor. Satış/eşya atma geri alma ertelendi: sim tarafında geri alma API'si yok (life/** başka ajanda) |
+| 2.7#50 | TAMAM | ui/components/Controls.tsx Slider slider-step | Slider ± adım düğmeleri, 44 px, klavye gerekmez |
+| 2.7#55 | ERTELENDİ | ui/screens/career/Radar.tsx | Önceki sezon özellik geçmişi kayıtlı değil (save formatı değişikliği gerekir) |
+| 2.7#56 | TAMAM | ui/components/Charts.tsx Sparkline, e2e/wp27.spec.ts | Dokun, sürükle veya ok tuşlarıyla noktanın değerini okur |
+| 2.7#59 | TAMAM | ui/components/Donut.tsx, ui/screens/profile/FinanceCharts.tsx, sim/game/financeHistory.ts | Gelir/gider halka grafikleri (dokunulabilir) ve haftalık net çubukları; son 12 hafta. Bank ekranı başka ajanın alanı, Profil kartında |
 | 2.7#60 | TAMAM | ui/components/LeagueTable.tsx:14 | Bölge şeritleri ve vurgu var |
 | 2.7#63 | TAMAM | ui/components/StatBar.tsx statbar-tier | Renk körü modunda kademe numarası (1-6) |
-| 2.7#66 | KISMİ | game/MatchScene.ts:486 | HUD alanı ölçülmemiş |
-| 2.7#67 | KISMİ | game/MatchScene.ts:394 | Renk körü çift çizgisi yok |
-| 2.7#68 | KISMİ | game/MatchScene.ts:819 | Güç eşiği farklı |
-| 2.7#71 | KISMİ | ui/screens/match/PreMatchScreen.tsx:69 | Kapasite, rol ve TD beklentisi yok |
+| 2.7#66 | ERTELENDİ | game/MatchScene.ts | Phaser sahnesi maç ajanının alanı |
+| 2.7#67 | ERTELENDİ | game/MatchScene.ts | Phaser sahnesi maç ajanının alanı |
+| 2.7#68 | ERTELENDİ | game/MatchScene.ts | Phaser sahnesi maç ajanının alanı |
+| 2.7#71 | TAMAM | ui/screens/match/PreMatchScreen.tsx ExpectationCard | Stadyum kapasitesi, rol, beklenen dakika ve ilk 11 şansı |
 | 2.7#72 | TAMAM | ui/screens/match/PostMatchScreen.tsx RatingStep | Reyting dökümü adımı mevcut |
 | 2.7#73 | TAMAM | sim/career/matchPay.ts, PostMatchScreen (EarningsStep) | WP-16: maaş payı, gol/asist/maça çıkma/kaleci primi, sponsor, imaj hakları, vergi, menajer |
 | 2.7#74 | TAMAM | ui/screens/match/LiveMatchScreen.tsx:165 | Radar, anlatım, hız ve atla var |
-| 2.7#78 | KISMİ | ui/screens/HomeScreen.tsx:120 | Ana sayfa sırası plandan farklı |
-| 2.7#79 | KISMİ | ui/screens/NewCareerScreen.tsx:14 | 7 adım (plan 4) |
-| 2.7#80 | KISMİ | ui/screens/TrainingScreen.tsx:54 | Erime uyarısı yok |
-| 2.7#81 | KISMİ | ui/screens/life/Relations.tsx:45 | Eğilim oku yok |
-| 2.7#82 | KISMİ | ui/screens/match/PostMatchScreen.tsx RelationsStep | Maç sonunda nedenli ilişki değişimi var; İlişkiler ekranı (screens/life) başka ajanın alanı, ertelendi |
-| 2.7#83 | KISMİ | sim/game/whyPlaying.ts, legacy/CareerCards.tsx WhyPlayingCard, whyPlaying.test.ts | Yedek kalma için "Neden?" paneli (en etkili 3 etken, sabit/etkilenebilir). Transfer reddi, sponsor ve ödül kaybı için ertelendi |
-| 2.7#84 | KISMİ | ui/screens/life/Assets.tsx:49 | Filtre var |
-| 2.7#85 | EKSİK | - | Mağaza ekranı yok |
-| 2.7#86 | KISMİ | ui/screens/life/Assets.tsx:25 | Raf görünümü yok |
-| 2.7#87 | KISMİ | ui/screens/casino/shared.tsx:47 | Kayıp limiti UI'da yok |
-| 2.7#88 | KISMİ | ui/screens/ContractScreen.tsx:111 | Sabır tahmini yok |
-| 2.7#89 | KISMİ | ui/screens/WorldScreen.tsx:92 | İlgi karşılaştırması yok |
-| 2.7#90 | KISMİ | ui/screens/InboxScreen.tsx:63 | Olay bağlantısı yok |
-| 2.7#91 | EKSİK | ui/screens/LifeScreen.tsx:14 | Telefon metaforu yok |
+| 2.7#78 | ERTELENDİ | ui/screens/HomeScreen.tsx | Hub sırası bilinçli farklı; sanat incelemesi 8+ aldı |
+| 2.7#79 | ERTELENDİ | ui/screens/NewCareerScreen.tsx | 7 adım (kimlik, ulus, mevki, arketip, geçmiş, görünüm, özet) kasıtlı; her adım e2e ile doğrulanıyor |
+| 2.7#80 | TAMAM | ui/screens/TrainingScreen.tsx decay-warning | Hareketsizlik/erime uyarısı antrenman ekranında |
+| 2.7#81 | ERTELENDİ | ui/screens/life/Relations.tsx | screens/life ikinci tarama ajanının alanı |
+| 2.7#82 | ERTELENDİ | ui/screens/match/PostMatchScreen.tsx RelationsStep | Maç sonunda nedenli ilişki değişimi var; İlişkiler ekranı (screens/life) başka ajanın alanı, ertelendi |
+| 2.7#83 | ERTELENDİ | sim/game/whyPlaying.ts, legacy/CareerCards.tsx WhyPlayingCard, whyPlaying.test.ts | Yedek kalma için "Neden?" paneli (en etkili 3 etken, sabit/etkilenebilir). Transfer reddi, sponsor ve ödül kaybı için ertelendi |
+| 2.7#84 | ERTELENDİ | ui/screens/life/Assets.tsx | screens/life ikinci tarama ajanının alanı |
+| 2.7#85 | TAMAM | ui/screens/store/StoreScreen.tsx | Mağaza/Destek ekranı mevcut |
+| 2.7#86 | ERTELENDİ | ui/screens/life/Assets.tsx | screens/life ikinci tarama ajanının alanı |
+| 2.7#87 | ERTELENDİ | ui/screens/casino/shared.tsx | Kayıp limiti sim/life/casino tarafında zorlama ister (başka ajan) |
+| 2.7#88 | ERTELENDİ | ui/screens/ContractScreen.tsx | Sabır tahmini sim sözleşme modelinde yok |
+| 2.7#89 | ERTELENDİ | ui/screens/WorldScreen.tsx | Kulüp ilgi karşılaştırması için transfer ilgi verisi sim tarafında gerekir |
+| 2.7#90 | ERTELENDİ | ui/screens/InboxScreen.tsx | Haber-olay bağlantısı için olay kimliği haber öğesinde tutulmuyor |
+| 2.7#91 | ERTELENDİ | ui/screens/LifeScreen.tsx | Telefon metaforu tam yeniden tasarım; v1.1 |
 | 2.7#93 | TAMAM | ui/screens/EventModal.tsx:69 | Risk rozeti ve etki çipleri var |
-| 2.7#94 | KISMİ | ui/screens/WorldScreen.tsx:135 | Kariyer/kulüp kırılımı yok |
-| 2.7#98 | KISMİ | ui/screens/SavesScreen.tsx:65 | Slot ekran görüntüsü yok |
+| 2.7#94 | ERTELENDİ | ui/screens/WorldScreen.tsx | Kariyer/kulüp kırılımı için kulüp bazlı istatistik kaydı gerekir |
+| 2.7#98 | ERTELENDİ | ui/screens/SavesScreen.tsx | Slot ekran görüntüsü: kayıt formatına küçük resim alanı gerekir |
 | 2.7#99 | TAMAM | ui/screens/SettingsScreen.tsx | WP-16: Gizlilik ve Bulut ("Yakında", bağlantısız) grupları |
 | 2.7#103 | TAMAM | styles/tokens.css:136 | Hareket token'ları var |
 | 2.7#105 | TAMAM | ui/hooks/motion.ts:20 | Count-up var |
-| 2.7#114 | KISMİ | ui/screens/newcareer/AppearanceEditor.tsx:49 | Özel avatar editörü var |
-| 2.7#122 | EKSİK | - | **Tutorial/onboarding hiç yok** |
-| 2.7#123 | EKSİK | - | Kademeli açılış yok |
-| 2.7#127 | EKSİK | - | Onay/gizlilik penceresi yok |
-| 2.7#128 | KISMİ | ui/format.ts:15 | `Price` tipi yok |
-| 2.7#129 | EKSİK | - | Puan istemi yok |
+| 2.7#114 | ERTELENDİ | ui/screens/newcareer/AppearanceEditor.tsx | Özel avatar editörü çalışıyor; facesjs yerine özel sistem kullanılıyor (bilinçli sapma) |
+| 2.7#122 | TAMAM | ui/tutorial/CoachTour.tsx, e2e/onboarding.spec.ts | Koç turu: ilk maç anı, antrenman ve olay kartı |
+| 2.7#123 | TAMAM | ui/tutorial/unlocks.ts, UnlockGate.tsx, e2e/onboarding.spec.ts | Kumarhane/yatırım/işletme kademeli açılır, tek kartlık tanıtım |
+| 2.7#127 | ERTELENDİ | ui/screens/SettingsScreen.tsx | Veri toplayan SDK yok; yerel hata günlüğü ayarlarda eşit vurgulu anahtar. Analitik eklenince onay penceresi |
+| 2.7#128 | ERTELENDİ | ui/format.ts formatMoney | Tüm tutarlar formatMoney ile sembollü; TS Price tipi zorlaması ertelendi |
+| 2.7#129 | ERTELENDİ | - | Mağaza puanı istemi StoreKit/Play API gerektirir (BLOCKED-EXTERNAL) |
 | 2.7#130 | TAMAM | ui/components/Button.tsx IconButton 44px, Toast .toast-close 44px | Kapat düğmeleri 44x44, gecikme yok |
-| 2.7#131 | EKSİK | - | Satın alma ekranı yok |
+| 2.7#131 | TAMAM | ui/screens/store/PaywallScreen.tsx, e2e/iap.spec.ts | Satın alma ekranı kalıcılık ve kapsamı gösterir, geri yükleme var |
 
 ### 2.8 Ses ve Müzik
 

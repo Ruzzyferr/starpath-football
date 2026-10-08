@@ -49,6 +49,8 @@ export const tr = {
   },
   why: { button: 'Neden?', title: 'İlk 11 şansın: %{p}', open: 'Nedenini göster', close: 'Gizle', actionable: 'Etkileyebilirsin', fixed: 'Sabit etken', pts: '{n} puan', fixedLabel: 'Bilgi' },
   finance: { title: 'Finans', sub: 'İzlenen hafta: {n}', income: 'Gelir', expense: 'Gider', net: 'Haftalık net' },
+  shortcuts: { title: 'Klavye kısayolları', tabs: 'Sekmeler', advance: 'Sıradaki dilim', match: 'Maça git', training: 'Antrenman', inbox: 'Gelen kutusu', back: 'Geri', help: 'Bu liste' },
+  pre: { title: 'Beklentiler', capacity: 'Stadyum kapasitesi', role: 'Rolün', minutes: 'Beklenen dakika', start: 'İlk 11 şansı' },
   undo: { action: 'Geri al', cleared: 'Plan silindi.', restored: 'Plan geri yüklendi.' },
   whatsNew: {
     title: 'Yenilikler',
@@ -109,6 +111,8 @@ export const en: Shape<typeof tr> = {
   },
   why: { button: 'Why?', title: 'Your chance to start: {p}%', open: 'Show the reasons', close: 'Hide', actionable: 'You can change this', fixed: 'Fixed factor', pts: '{n} pts', fixedLabel: 'Info' },
   finance: { title: 'Finances', sub: 'Weeks tracked: {n}', income: 'Income', expense: 'Expenses', net: 'Weekly net' },
+  shortcuts: { title: 'Keyboard shortcuts', tabs: 'Tabs', advance: 'Next slot', match: 'Go to match', training: 'Training', inbox: 'Inbox', back: 'Back', help: 'This list' },
+  pre: { title: 'Expectations', capacity: 'Stadium capacity', role: 'Your role', minutes: 'Expected minutes', start: 'Chance to start' },
   undo: { action: 'Undo', cleared: 'Plan cleared.', restored: 'Plan restored.' },
   whatsNew: {
     title: "What's New",

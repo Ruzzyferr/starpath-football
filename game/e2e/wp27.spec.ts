@@ -71,3 +71,50 @@ test('light theme: AA contrast on the main screens', async ({ page, shot }) => {
   }
   expect(bad).toEqual([])
 })
+
+test('hub reaches core screens within two taps (2.7#23)', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=88')
+  await waitForApp(page)
+  // One tap from the hub: home tiles.
+  for (const id of ['planner', 'training', 'life', 'contract', 'club', 'inbox', 'world']) {
+    await sp(page, `sp.navigate('home')`)
+    await page.locator(`[data-tour="tile-${id}"]`).click()
+    expect(await sp<string>(page, `sp.screen().id`), id).toBe(id)
+  }
+  // Two taps: Menu tab, then a tile (order: saves, settings, trophies, ...).
+  const tiles: [number, string][] = [[0, 'saves'], [1, 'settings'], [2, 'trophies']]
+  for (const [i, id] of tiles) {
+    await sp(page, `sp.navigate('menu')`)
+    await page.locator('.menu-tile:not(.menu-tile-wide)').nth(i).click()
+    expect(await sp<string>(page, `sp.screen().id`), id).toBe(id)
+  }
+})
+
+test('planner shows the 7-day strip and keyboard shortcuts work (2.7#24, #31)', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=88')
+  await waitForApp(page)
+  await sp(page, `sp.navigate('planner')`)
+  await expect(page.locator('.plan-day')).toHaveCount(7)
+  await page.locator('body').click({ position: { x: 5, y: 5 } })
+  await page.keyboard.press('?')
+  await expect(page.getByTestId('shortcuts-list')).toBeVisible()
+  await page.keyboard.press('Escape')
+  await expect(page.getByTestId('shortcuts-list')).toHaveCount(0)
+  await page.keyboard.press('t')
+  expect(await sp<string>(page, `sp.screen().id`)).toBe('training')
+  await page.keyboard.press('i')
+  expect(await sp<string>(page, `sp.screen().id`)).toBe('inbox')
+})
+
+test('sparkline reads a value on tap (2.7#56)', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=88')
+  await waitForApp(page)
+  await sp(page, `sp.toMatchday()`)
+  await sp(page, `sp.navigate('home')`)
+  const spark = page.locator('.sparkline').first()
+  if (await spark.count()) {
+    await spark.focus()
+    await page.keyboard.press('ArrowLeft')
+    await expect(page.locator('.sparkline-read').first()).toBeVisible()
+  }
+})

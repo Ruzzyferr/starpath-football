@@ -1,4 +1,5 @@
 /** Tiny SVG charts: Sparkline, LineChart, FormDots, Hearts. No libraries. */
+import { useState } from 'preact/hooks'
 import { t } from '../../i18n'
 import { Icon } from '../icons'
 
@@ -15,28 +16,56 @@ function path(values: number[], w: number, h: number, pad: number, min?: number,
   return { d, pts }
 }
 
-export function Sparkline({ values, width = 120, height = 36, color = 'var(--brand-pitch)', min, max, fill = true, label }: { values: number[]; width?: number; height?: number; color?: string; min?: number; max?: number; fill?: boolean; label?: string }) {
+export function Sparkline({ values, width = 120, height = 36, color = 'var(--brand-pitch)', min, max, fill = true, label, format }: { values: number[]; width?: number; height?: number; color?: string; min?: number; max?: number; fill?: boolean; label?: string; format?: (v: number) => string }) {
   const { d, pts } = path(values, width, height, 3, min, max)
+  const [sel, setSel] = useState<number | null>(null)
   if (!pts.length) return <span class="t-lo t-sm">{t('ui.noForm')}</span>
   const last = pts[pts.length - 1]
   const area = `${d}L${last[0].toFixed(1)} ${height}L${pts[0][0].toFixed(1)} ${height}Z`
   const gid = `sg${Math.round(width)}${values.length}${Math.round(values[0] * 10)}`
+  const fmt = format ?? ((v: number) => (Number.isInteger(v) ? String(v) : v.toFixed(1)))
+  // Tap / hover / arrow keys pick the nearest point and read its value (GAP 2.7#56).
+  const pick = (clientX: number, el: SVGSVGElement) => {
+    const r = el.getBoundingClientRect()
+    const x = ((clientX - r.left) / (r.width || 1)) * width
+    let best = 0
+    pts.forEach(([px], i) => { if (Math.abs(px - x) < Math.abs(pts[best][0] - x)) best = i })
+    setSel(best)
+  }
+  const shown = sel ?? values.length - 1
   return (
-    <svg class="sparkline" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" aria-label={label ?? t('ui.sparkline', { n: values.length })}>
-      {fill && (
-        <>
-          <defs>
-            <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0" stop-color={color} stop-opacity=".35" />
-              <stop offset="1" stop-color={color} stop-opacity="0" />
-            </linearGradient>
-          </defs>
-          <path d={area} fill={`url(#${gid})`} />
-        </>
+    <span class="sparkline-wrap" style={{ width }}>
+      <svg
+        class="sparkline" width={width} height={height} viewBox={`0 0 ${width} ${height}`} role="img" tabIndex={0}
+        aria-label={`${label ?? t('ui.sparkline', { n: values.length })}: ${fmt(values[shown])}`}
+        onPointerDown={(e) => pick(e.clientX, e.currentTarget as SVGSVGElement)}
+        onPointerMove={(e) => { if (e.pointerType === 'mouse' || e.buttons) pick(e.clientX, e.currentTarget as SVGSVGElement) }}
+        onPointerLeave={() => setSel(null)}
+        onBlur={() => setSel(null)}
+        onKeyDown={(e) => {
+          if (e.key === 'ArrowLeft') { e.preventDefault(); setSel(Math.max(0, shown - 1)) }
+          else if (e.key === 'ArrowRight') { e.preventDefault(); setSel(Math.min(values.length - 1, shown + 1)) }
+          else if (e.key === 'Escape') setSel(null)
+        }}
+      >
+        {fill && (
+          <>
+            <defs>
+              <linearGradient id={gid} x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color={color} stop-opacity=".35" />
+                <stop offset="1" stop-color={color} stop-opacity="0" />
+              </linearGradient>
+            </defs>
+            <path d={area} fill={`url(#${gid})`} />
+          </>
+        )}
+        <path d={d} fill="none" stroke={color} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
+        <circle cx={pts[shown][0]} cy={pts[shown][1]} r={sel === null ? 3 : 4.5} fill={color} stroke={sel === null ? 'none' : 'var(--surface-1)'} stroke-width="2" />
+      </svg>
+      {sel !== null && (
+        <output class="sparkline-read num" style={{ left: `${Math.min(Math.max(pts[sel][0], 18), width - 18)}px` }}>{fmt(values[sel])}</output>
       )}
-      <path d={d} fill="none" stroke={color} stroke-width="2" stroke-linejoin="round" stroke-linecap="round" />
-      <circle cx={last[0]} cy={last[1]} r="3" fill={color} />
-    </svg>
+    </span>
   )
 }
 

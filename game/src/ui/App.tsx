@@ -6,7 +6,7 @@
 import { startGamepadNav } from '../input/gamepadNav'
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
-import { activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
+import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
 import { EventModalHost } from './screens/EventModal'
@@ -55,6 +55,7 @@ import { CoachTour } from './tutorial/CoachTour'
 import { MatchdayConfirmHost, requestAdvance } from './tutorial/MatchdayConfirm'
 import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 import { tour } from './tutorial/tour'
+import { ShortcutsModal, shortcutsOpen } from './layout/ShortcutsModal'
 
 export const SCREENS: Record<ScreenId, FunctionComponent> = {
   title: TitleScreen,
@@ -131,6 +132,15 @@ function useKeyboardShortcuts() {
         navigate(tab.screen, undefined, { tab: true })
         return
       }
+      if (e.key === '?') {
+        e.preventDefault()
+        shortcutsOpen.value = true
+        return
+      }
+      const k = e.key.toLowerCase()
+      if (k === 't') { e.preventDefault(); navigate('training'); return }
+      if (k === 'i') { e.preventDefault(); navigate('inbox'); return }
+      if (k === 'm' && (id === 'home' || id === 'planner')) { e.preventDefault(); actions.advanceToMatch(); return }
       if (e.key === ' ' && (document.activeElement === document.body || document.activeElement?.id === 'main') && (id === 'home' || id === 'planner')) {
         e.preventDefault()
         requestAdvance()
@@ -207,6 +217,7 @@ export function App() {
       {gameState.value && <CoachTour />}
       {gameState.value && <UnlockNotifier />}
       <MatchdayConfirmHost />
+      <ShortcutsModal />
       <ToastHost />
     </>
   )

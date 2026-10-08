@@ -91,7 +91,7 @@
 }
 .ach-summary { gap: var(--sp-4); }
 .ach-pct { font-size: 1.75rem; line-height: 1; color: var(--accent-gold); }
-.ach-pct small { font-size: 0.55em; margin-left: 1px; }
+.ach-pct small { font-size: 0.75em; margin-left: 1px; }
 .ach-count-line { display: flex; align-items: baseline; gap: 6px; }
 .ach-body {
   min-width: 0;

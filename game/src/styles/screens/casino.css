@@ -346,7 +346,7 @@
   display: grid;
   place-items: center;
   border-radius: var(--r-pill);
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   background: var(--accent-gold);
   color: var(--text-on-gold);
   box-shadow: 0 2px 0 rgba(0, 0, 0, 0.4);
@@ -418,7 +418,7 @@
 .slot-linemini span { width: 7px; height: 7px; border-radius: 2px; background: rgba(255, 255, 255, 0.12); }
 .slot-linemini span.on { background: var(--state-danger); }
 .slot-linemini.is-lit span.on { background: var(--accent-gold); }
-.slot-linemini b { position: absolute; right: -7px; top: -7px; min-width: 14px; height: 14px; border-radius: 7px; background: var(--bg-2, #22293a); font-size: 0.625rem; line-height: 14px; text-align: center; color: var(--text-hi); }
+.slot-linemini b { position: absolute; right: -7px; top: -7px; min-width: 14px; height: 14px; border-radius: 7px; background: var(--bg-2, #22293a); font-size: 0.75rem; line-height: 14px; text-align: center; color: var(--text-hi); }
 .slot-winlines { display: flex; flex-direction: column; gap: var(--sp-1); width: 100%; max-width: 320px; }
 .slot-winlines li { gap: var(--sp-2); justify-content: space-between; }
 .cas-locked { display: flex; flex-direction: column; align-items: center; text-align: center; gap: var(--sp-3); max-width: 460px; margin: var(--sp-6, 32px) auto; }
@@ -452,7 +452,7 @@
   left: 16px;
   font-family: var(--font-display);
   font-weight: 800;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   letter-spacing: 0.08em;
   text-transform: uppercase;
   color: #fff;

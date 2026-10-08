@@ -4,7 +4,8 @@ import { Button, Crest, EmptyState, FormDots, IconButton } from '../../component
 import { Icon } from '../../icons'
 import { formatNumber } from '../../format'
 import { onColor } from '../../art/svg'
-import { back, data, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
+import { ROLE_EXPECTED_MINUTES, ROLE_NAMES, startProbability } from '../../../sim/career/squadRole'
+import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 
 function Disc({ p, team, side, depth }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; depth: number }) {
@@ -71,6 +72,27 @@ function RefereeCard({ r }: { r: NonNullable<PreMatchView['referee']> }) {
         </span>
       </div>
       <p class="t-sm t-mid">{t(`match.pre.refStyle.${REF_STYLE[s - 1]}`)} · {t(`match.pre.refFlow.${flow}`)}</p>
+    </div>
+  )
+}
+
+/** Stadium capacity, the hero's role and what the manager expects (GAP 2.7#71). */
+function ExpectationCard({ homeId }: { homeId: string }) {
+  const s = gameState.value
+  if (!s?.hero.contract) return null
+  const cap = s.world.clubs[homeId]?.stadium.capacity
+  const role = s.hero.contract.role
+  const [a, b] = ROLE_EXPECTED_MINUTES[role]
+  const chance = Math.round(startProbability(s.hero, s.life) * 100)
+  return (
+    <div class="pm-card" data-testid="pm-expectation">
+      <h3 class="micro t-mid">{t('board.pre.title')}</h3>
+      <ul class="rec-list">
+        {cap !== undefined && <li><span>{t('board.pre.capacity')}</span><b class="num">{formatNumber(cap)}</b></li>}
+        <li><span>{t('board.pre.role')}</span><b>{ROLE_NAMES[role] ? lt(ROLE_NAMES[role]) : role}</b></li>
+        <li><span>{t('board.pre.minutes')}</span><b class="num">{a}–{b}</b></li>
+        <li><span>{t('board.pre.start')}</span><b class="num">%{chance}</b></li>
+      </ul>
     </div>
   )
 }
@@ -207,6 +229,7 @@ export function PreMatchScreen() {
           )}
 
           {pm.referee && <RefereeCard r={pm.referee} />}
+          <ExpectationCard homeId={fx.home.id} />
 
           <div class="pm-card pm-hint">
             <span class="pm-hint-icon"><Icon name="whistle" size={22} /></span>

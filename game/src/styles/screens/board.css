@@ -176,3 +176,10 @@
 .weekbars { display: block; width: 100%; }
 .weekbars-bar { cursor: pointer; outline: none; }
 .weekbars-bar:focus-visible rect:last-child { stroke: var(--accent-blue); stroke-width: 2; }
+
+/* Shortcuts list */
+.kbd-list { margin: 0; display: flex; flex-direction: column; gap: 8px; }
+.kbd-row { display: flex; align-items: center; gap: 12px; }
+.kbd-row dt { min-width: 5.5rem; }
+.kbd-row dd { margin: 0; color: var(--text-mid); }
+.kbd-row kbd { display: inline-block; min-width: 2.2rem; padding: 4px 10px; text-align: center; font: 700 0.875rem var(--font-body); color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); border-bottom-width: 3px; border-radius: 8px; }

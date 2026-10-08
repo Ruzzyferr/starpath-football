@@ -7,6 +7,8 @@ import {
 import { formatMoney } from '../format'
 import { Icon, type IconName } from '../icons'
 import { actions, data, gameState, screen, type PerkView, type TrainingOutcomeView, type TrainingSessionView } from '../store'
+import { decayWarning } from '../backend/meta'
+import '../../styles/screens/legacy.css'
 import { DrillOverlay } from './training/DrillOverlay'
 import { GROUPS, groupAvg, keysOf } from './career/attrs'
 import { deltaText, pickTab } from './career/util'
@@ -330,8 +332,12 @@ export function TrainingScreen() {
   const s = gameState.value
   const [tab, setTab] = useState<TabId>(pickTab(screen.value.params?.tab, TAB_IDS, 'sessions'))
   if (!s) return <Page title={t('training.title')}><EmptyState /></Page>
+  const decay = decayWarning()
   return (
     <Page title={t('training.title')} sub={t('training.sub')} wide>
+      {decay !== null && !s.hero.retired && (
+        <p class="lg-warn t-sm" role="status" data-testid="decay-warning">{decay > 0 ? t('meta.decay.warn', { n: decay }) : t('meta.decay.now')}</p>
+      )}
       <Tabs
         idPrefix="trn"
         label={t('training.title')}

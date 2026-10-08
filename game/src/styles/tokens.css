@@ -18,7 +18,7 @@
   /* ── Text ── */
   --text-hi: #f2f5fa;
   --text-mid: #b4c0d6;
-  --text-lo: #8494b3; /* lifted from #7A8BAA to keep 4.5:1 on --surface-1 */
+  --text-lo: #93a3c0; /* lifted from #7A8BAA to keep 4.5:1 on --surface-1 */
   --text-on-pitch: #04140b;
   --text-on-gold: #2a1a00;
 
@@ -31,7 +31,7 @@
   --accent-gold-deep: #d99a0b;
   --accent-blue: #3da5ff;
   --accent-blue-deep: #1f6fc0;
-  --accent-violet: #8e5cff;
+  --accent-violet: #a07bff;
   --accent-violet-deep: #5a2fd0;
 
   /* ── States (football semantics) ── */
@@ -83,7 +83,7 @@
   --font-body: 'Inter', system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
   --font-score: 'Teko', 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif;
   --text-scale: 1;
-  --fs-micro: 0.6875rem;
+  --fs-micro: 0.75rem;
   --fs-xs: 0.75rem;
   --fs-sm: 0.8438rem;
   --fs-md: 0.9375rem;
@@ -127,7 +127,7 @@
   --bevel-neutral: 0 4px 0 #0c1424;
 
   /* ── Focus ── */
-  --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 4px var(--accent-blue);
+  --focus-ring: 0 0 0 2px var(--bg-0), 0 0 0 5px var(--accent-blue);
 
   /* ── Z layers ── */
   --z-base: 0;
@@ -285,7 +285,7 @@
   --text-on-pitch: #03120a;
   --text-on-gold: #231500;
 
-  --brand-pitch: #0a8a4a;
+  --brand-pitch: #098446;
   --brand-pitch-hi: #12a45a;
   --brand-pitch-deep: #06683a;
   --accent-gold: #8f5c00;
@@ -323,7 +323,7 @@
   --sh-raised: 0 12px 32px rgba(30, 50, 90, 0.18), inset 0 1px 0 rgba(255, 255, 255, 0.9);
   --sh-pop: 0 20px 48px rgba(30, 50, 90, 0.28);
   --bevel-neutral: 0 4px 0 #b6c3da;
-  --focus-ring: 0 0 0 2px var(--bg-1), 0 0 0 4px var(--accent-blue);
+  --focus-ring: 0 0 0 2px var(--bg-1), 0 0 0 5px var(--accent-blue);
 
   color-scheme: light;
 }

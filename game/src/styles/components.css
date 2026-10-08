@@ -117,7 +117,7 @@
   border-radius: var(--r-pill);
   background: var(--state-danger);
   color: #fff;
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 700;
   line-height: 18px;
   text-align: center;
@@ -254,7 +254,7 @@
 .statbar-sm .statbar-track { height: 5px; }
 .statbar-lg .statbar-track { height: 12px; }
 .statbar-flash { font-weight: 700; }
-.statbar-tier { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 3px; border-radius: 4px; font-size: 10px; font-weight: 800; line-height: 1; color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); }
+.statbar-tier { display: inline-grid; place-items: center; min-width: 16px; height: 16px; margin-left: 6px; padding: 0 3px; border-radius: 4px; font-size: 12px; font-weight: 800; line-height: 1; color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); }
 .statbar-fill,
 .statbar-preview,
 .statbar-xp {
@@ -336,7 +336,7 @@
   background: var(--state-danger);
   color: #fff;
   font-family: var(--font-body);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   line-height: 18px;
   text-align: center;
   padding: 0 4px;
@@ -668,7 +668,7 @@
   width: 18px;
   height: 18px;
   border-radius: 5px;
-  font-size: 0.625rem;
+  font-size: 0.75rem;
   font-weight: 800;
   color: var(--bg-0);
 }
@@ -872,11 +872,11 @@
   .pcard-pos { font-size: 1.0625rem; }
   .pcard-name { font-size: 1.375rem; }
   .pcard-stat-v { font-size: 1.1875rem; }
-  .pcard-stat-l { font-size: 0.6875rem; }
+  .pcard-stat-l { font-size: 0.75rem; }
   .pcard-sm .pcard-ovr { font-size: 1.875rem; }
   .pcard-sm .pcard-name { font-size: 0.9375rem; }
   .pcard-sm .pcard-stat-v { font-size: 0.8125rem; }
-  .pcard-sm .pcard-stat-l { font-size: 0.5rem; }
+  .pcard-sm .pcard-stat-l { font-size: 0.75rem; }
 }
 
 /* Pattern mask (2.11#3): with any colour-blind palette on, colour is never the only cue.
@@ -890,3 +890,9 @@
 /* Sound captions (2.11#29) */
 .sound-caption { position: fixed; left: 50%; bottom: calc(96px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); z-index: 60; pointer-events: none; max-width: min(92vw, 520px); }
 .sound-caption-text { display: inline-block; padding: 6px 14px; border-radius: 8px; background: rgba(0, 0, 0, 0.82); color: #fff; font-size: var(--fs-md); font-weight: 600; text-align: center; }
+
+/* Sparkline tap readout */
+.sparkline-wrap { position: relative; display: inline-block; vertical-align: middle; }
+.sparkline { touch-action: pan-y; cursor: crosshair; }
+.sparkline:focus-visible { outline: 2px solid var(--accent-blue); outline-offset: 2px; border-radius: 4px; }
+.sparkline-read { position: absolute; top: -26px; transform: translateX(-50%); padding: 2px 8px; border-radius: 8px; font-size: 0.75rem; font-weight: 700; color: var(--text-hi); background: var(--surface-3); border: 1px solid var(--border-strong); pointer-events: none; white-space: nowrap; z-index: 2; }

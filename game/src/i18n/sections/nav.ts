@@ -26,7 +26,7 @@ export const tr = {
   mainNav: 'Ana gezinme',
   statusBar: 'Durum',
   context: 'Bağlam paneli',
-  shortcuts: 'Kısayollar: 1–5 sekmeler, Boşluk ilerle, Esc geri',
+  shortcuts: 'Kısayollar: 1–5 sekmeler, Boşluk ilerle, Esc geri, ? tümü',
   menuSubtitle: 'Kayıt, ayarlar ve kariyer arşivi',
 }
 
@@ -56,6 +56,6 @@ export const en: Shape<typeof tr> = {
   mainNav: 'Main navigation',
   statusBar: 'Status',
   context: 'Context panel',
-  shortcuts: 'Shortcuts: 1–5 tabs, Space advance, Esc back',
+  shortcuts: 'Shortcuts: 1–5 tabs, Space advance, Esc back, ? all',
   menuSubtitle: 'Saves, settings and career archive',
 }

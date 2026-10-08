@@ -86,7 +86,7 @@
 .tstat-bar { width: 34px; height: 6px; border-radius: 6px; background: var(--surface-3); overflow: hidden; }
 .tstat-bar > span { display: block; height: 100%; background: var(--accent-gold); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
 .topbar-date { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; text-align: right; min-width: 0; }
-.topbar-season { color: var(--text-lo); font-size: 0.625rem; }
+.topbar-season { color: var(--text-lo); font-size: 0.75rem; }
 .topbar-day { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); color: var(--text-hi); white-space: nowrap; }
 .topbar-bell { flex: none; }
 .bell-ring { animation: bell 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
@@ -122,7 +122,7 @@
   gap: 3px;
   min-height: var(--tabbar-h);
   color: var(--text-lo);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   font-weight: 600;
   letter-spacing: 0.02em;
 }
@@ -239,7 +239,7 @@
 .sidebar-kbd {
   margin-left: auto;
   font-family: var(--font-body);
-  font-size: 0.6875rem;
+  font-size: 0.75rem;
   color: var(--text-lo);
   border: 1px solid var(--border);
   border-radius: 5px;
@@ -353,7 +353,7 @@
 .logo-word { font-family: var(--font-display); font-weight: 900; font-style: italic; font-size: 1.5rem; letter-spacing: -0.01em; }
 .logo-star { color: var(--text-hi); }
 .logo-path { color: var(--brand-pitch); }
-.logo-sub { font-family: var(--font-display); font-weight: 700; font-size: 0.625rem; letter-spacing: 0.42em; color: var(--text-mid); margin-top: 3px; }
+.logo-sub { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.42em; color: var(--text-mid); margin-top: 3px; }
 .logo-xl { flex-direction: column; gap: 6px; }
 .logo-xl .logo-mark { width: 84px; height: 84px; }
 .logo-xl .logo-type { align-items: center; }
