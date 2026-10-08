@@ -15,6 +15,7 @@ import { heroAge } from '../career/common'
 import { heroOvr } from '../career/progression'
 import { activityBlock, autoPlanDay } from '../life/activities'
 import { assetUpkeep, netWorth, purchaseBlock } from '../life/economy'
+import { squadPlayers } from '../world/queries'
 import { advanceDay, isHeroMatchday } from './calendar'
 import {
   acceptOffer, acceptSponsor, blackjackAct, blackjackDeal, buyAsset, declineOffer, doActivity, hireAgent, hireTrainer,
@@ -55,6 +56,10 @@ export interface SeasonSample {
   trophies: number
   apps: number
   goals: number
+  /** Hero position at season end. */
+  position: Position
+  /** Highest goal tally of any NPC in the hero's league this season (all competitions). */
+  leagueTopScorer: number
   /** After-tax income this season (wage, sponsors, passive). */
   income: number
   /** Spending this season by sink. */
@@ -269,6 +274,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   const startSeason = s.calendar.season
   const spent = { assets: 0 }
   let acc = freshAcc()
+  let topScorer = 0
   let lastCasino = 0
   let lastMoney = s.life.money
   let lastEarned = 0
@@ -290,6 +296,10 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
     // Morning bookkeeping.
     if (s.calendar.slot === 0) {
       acc.days++
+      {
+        const c = heroClub(s)
+        for (const pl of c ? squadPlayersOfLeague(s, c.leagueId) : []) if (pl.stats.goals > topScorer) topScorer = pl.stats.goals
+      }
       const ctx = activityContext(s)
       if (!s.hero.injury && !ctx.matchToday && NORMAL_TRAINING) {
         const why = activityBlock(s.hero, s.life, NORMAL_TRAINING, ctx, { intensity: 'normal' })
@@ -357,7 +367,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
       trace.samples.push({
         season, age: season - s.hero.birthYear, ovr: heroOvr(s.hero), potential: s.hero.potential, reputation: Math.round(s.hero.reputation),
         tier: tierOf(s), clubRep: heroClub(s)?.reputation ?? null, wage: s.hero.contract?.wage ?? 0, money: Math.round(s.life.money),
-        netWorth: Math.round(netWorth(s.life, s.calendar)), trophies: s.hero.trophies.length, apps: last?.stats.apps ?? 0, goals: last?.stats.goals ?? 0,
+        netWorth: Math.round(netWorth(s.life, s.calendar)), trophies: s.hero.trophies.length, apps: last?.stats.apps ?? 0, goals: last?.stats.goals ?? 0, position: s.hero.position, leagueTopScorer: topScorer,
         income: Math.round(acc.income),
         spend: { assets: Math.round(acc.assets), upkeep: Math.round(acc.upkeep), trainer: Math.round(acc.trainer), casino: Math.round(acc.casino), other: Math.round(known - acc.otherNet) },
         injuries: acc.injuries, weeksInjured: acc.weeksInjured, events: acc.events, weeks: acc.weeks, lowEnergyMornings: acc.lowEnergyMornings, days: acc.days,
@@ -366,10 +376,16 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
         moves: acc.moves, negativeWeeks: acc.negativeWeeks,
       })
       acc = freshAcc()
+      topScorer = 0
     }
   }
   trace.casinoNet = Math.round(s.life.casino.lost - s.life.casino.won)
   return trace
+}
+
+function squadPlayersOfLeague(s: GameState, leagueId: string) {
+  const l = s.world.leagues[leagueId]
+  return l ? l.clubIds.flatMap((id) => squadPlayers(s.world, id)) : []
 }
 
 function freshAcc() {

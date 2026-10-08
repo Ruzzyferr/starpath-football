@@ -37,7 +37,7 @@ const STYLE_DEFENSE: Readonly<Record<TacticStyle, number>> = {
 }
 
 const SCORER_WEIGHT: Readonly<Record<Position, number>> = {
-  GK: 0.01, CB: 0.6, LB: 0.5, RB: 0.5, DM: 0.7, CM: 1.6, AM: 3, LW: 3, RW: 3, ST: 5,
+  GK: 0.01, CB: 0.6, LB: 0.5, RB: 0.5, DM: 0.7, CM: 1.6, AM: 2.8, LW: 2.8, RW: 2.8, ST: 3.4,
 }
 const ASSIST_WEIGHT: Readonly<Record<Position, number>> = {
   GK: 0.1, CB: 0.5, LB: 1.5, RB: 1.5, DM: 1.2, CM: 2.5, AM: 3, LW: 3, RW: 3, ST: 1.5,
@@ -106,7 +106,7 @@ function penaltyTaker(lineup: Lineup): string | null {
   let best = -1
   let id: string | null = null
   lineup.slots.forEach((slot, i) => {
-    const v = lineup.ratings[i] * (SCORER_WEIGHT[slot] >= 3 ? 1.1 : slot === 'CM' ? 1 : 0.7)
+    const v = lineup.ratings[i] * (SCORER_WEIGHT[slot] >= 2.5 ? 1.1 : slot === 'CM' ? 1 : 0.7)
     if (v > best) {
       best = v
       id = lineup.playerIds[i]

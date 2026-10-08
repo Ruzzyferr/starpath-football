@@ -718,10 +718,10 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
 
 /** How often each highlight kind occurs for a hero playing a given position. */
 const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
-  ST: { build_up: 0.8, counter: 1.6, one_on_one: 2.3, cross: 2, edge_of_box: 1.8, corner: 1, defend: 0.3, counter_2v1: 1, long_ball_control: 1, rebound: 1.2, hold_up: 1.1 },
-  LW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4, hold_up: 0.3 },
-  RW: { build_up: 1.3, counter: 1.6, one_on_one: 1.4, cross: 2.5, edge_of_box: 1.4, corner: 0.4, defend: 0.8, counter_2v1: 1.2, long_ball_control: 0.8, rebound: 0.4, hold_up: 0.3 },
-  AM: { build_up: 2.3, counter: 1.3, one_on_one: 1.1, cross: 0.6, edge_of_box: 2.3, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6 },
+  ST: { build_up: 1.6, counter: 1.2, one_on_one: 1.7, cross: 1.5, edge_of_box: 1.4, corner: 0.8, defend: 0.3, counter_2v1: 0.7, long_ball_control: 1.4, rebound: 0.9, hold_up: 1.6 },
+  LW: { build_up: 1.8, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.6 },
+  RW: { build_up: 1.8, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.6 },
+  AM: { build_up: 2.8, counter: 1, one_on_one: 0.8, cross: 0.6, edge_of_box: 1.8, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6 },
   CM: { build_up: 2.8, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3 },
   DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5, block: 0.9, defend_1v1: 0.6 },
   LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.8, counter_2v1: 0.3, long_ball_control: 0.5, interception: 1.1, defend_1v1: 1.4, block: 0.5 },
@@ -732,17 +732,33 @@ const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
 
 /** Base number of open-play highlights per 90 minutes by position. */
 const BASE_COUNT: Record<Position, number> = {
-  ST: 7, LW: 6.5, RW: 6.5, AM: 6.5, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5,
+  ST: 6, LW: 5.8, RW: 5.8, AM: 6, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5,
 }
 
 /** Minimum / maximum highlights per 90 minutes. */
 export const HIGHLIGHTS_MIN_90 = 4
 export const HIGHLIGHTS_MAX_90 = 9
 
+/** Kinds that end in a shot at goal for the hero. */
+const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'one_on_one', 'cross', 'edge_of_box', 'corner', 'counter_2v1', 'rebound'])
+
 /** Kind weights for a position (copy, safe to mutate). */
-export function kindWeights(pos: Position): Partial<Record<HighlightKind, number>> {
-  return { ...KIND_WEIGHTS[pos] }
+export function kindWeights(pos: Position, ovr?: number): Partial<Record<HighlightKind, number>> {
+  const w = { ...KIND_WEIGHTS[pos] }
+  const p = tightening(ovr)
+  if (p > 0) for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * (1 - SHOOT_TIGHTENING * p)
+  return w
 }
+
+/**
+ * Better players meet tighter defences (higher tiers, double marking), so clean
+ * shooting chances do not grow with OVR the way conversion does. 0 at OVR 68
+ * and below, 1 at 84+. Keeps 66-70 strikers near 15-20 goals and elite ones near 30
+ * a season (BALANCE.md, gol dengesi) without touching per-kind odds.
+ */
+const tightening = (ovr?: number): number => (ovr === undefined ? 0 : clamp((ovr - 68) / 16, 0, 1))
+const SHOOT_TIGHTENING = 0.6
+const COUNT_TIGHTENING = 0.2
 
 /** Kinds where the hero's team is defending. */
 export function isDefensiveKind(kind: HighlightKind): boolean {
@@ -791,6 +807,8 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
   const kinds = (Object.keys(w) as HighlightKind[])
     .map((kind) => ({ kind, share: Math.round(((w[kind] ?? 0) / total) * 1000) / 1000 }))
     .sort((a, b) => b.share - a.share || (a.kind < b.kind ? -1 : 1))
+  // Rounded shares must still sum to exactly 1: the largest share absorbs the rounding error.
+  if (kinds.length) kinds[0].share = Math.round((1 - kinds.slice(1).reduce((s, k) => s + k.share, 0)) * 1000) / 1000
   return { min, max, kinds }
 }
 
@@ -799,8 +817,13 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
  * Picks the kind of an open-play highlight. A trailing team late on pushes
  * forward (fewer defensive moments); a leading team sits deeper.
  */
-export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number): HighlightKind {
-  const w = kindWeights(pos)
+export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, minute: number, heroGoals = 0, ovr?: number): HighlightKind {
+  const w = kindWeights(pos, ovr)
+  // A hero already on a hat-trick sees fewer shooting chances (realistic goal concentration).
+  if (heroGoals > 0) {
+    const brake = heroGoals >= 2 ? 0.5 : 0.78
+    for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * brake
+  }
   const late = minute >= 70
   if (late && goalDiff < 0 && w.defend) w.defend *= 0.5
   if (late && goalDiff > 0 && w.defend) w.defend *= 1.6
@@ -820,6 +843,8 @@ export interface HighlightPlanInput {
   form: number
   /** Minutes the hero is expected to be on the pitch in this plan window. */
   minutes: number
+  /** Hero OVR (optional; tighter defences cut the count of chances above 68). */
+  ovr?: number
 }
 
 /**
@@ -831,6 +856,7 @@ export function plannedHighlightCount(input: HighlightPlanInput, rng: Rng): numb
   n += clamp(input.relationAvg, -100, 100) * 0.015
   n += (input.morale - 1) * 5
   n += ((input.form - 50) / 50) * 1
+  n *= 1 - COUNT_TIGHTENING * tightening(input.ovr)
   n += rng.normal(0, 0.8)
   const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, HIGHLIGHTS_MAX_90)
   if (input.minutes >= 89) return full

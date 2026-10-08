@@ -466,3 +466,26 @@ görüyordu: 1 savurgan, 4 "pro". `balanceSim` artık ilk iflasın ayrıntısın
 Regresyon: `balance.test.ts` (`BALANCE=1`) iflas oranı ≤ %5 ve yalnızca
 kumarbaz/savurgan/parti personası; hızlı birim testler `economy.test.ts`
 ("bankruptcy flag hygiene") ve `events/engine.test.ts` ("event money safety net").
+
+## Gol dengesi (hero ve NPC golcü tutarı)
+
+Sorun: 66–70 OVR forvet sezonda 30–39 gol atıyordu (77–82 OVR: 55+); itibarı koşturan asıl kaynak buydu.
+Ölçüm: 30 kariyer × 10 sezon, sezon başına gol (medyan, tüm turnuvalar, ≥15 maç).
+
+| Grup / OVR | Önce | Sonra | Hedef |
+|---|---|---|---|
+| ST 66–70 | 30 | 17 | 12–22 |
+| ST 71–76 | 37 | ~26 | 18–28 |
+| ST 77–82 | 55 | ~30 | 25–35 |
+| Kanat/AM 77–82 | 27 | 13 | 10–18 |
+| Orta saha 77–82 | 12 | 8 | 6–12 |
+| NPC gol kralı, 1. kademe | 31 | 27 | 18–30 |
+| NPC gol kralı, 3. kademe | 22 | 20 | 18–25 |
+| Medyan itibar, 25 yaş | 83 | 73 | 75–85 |
+
+Değişiklikler (oyun içi atış oranlarına dokunulmadı; sayı ve karışım ayarlandı):
+- `highlightGen.ts`: hücum pozisyonlarında an sayısı (ST 7→6, kanat 6,5→5,8, AM 6,5→6) ve karışım (daha çok pas/ön libero/top tutma, daha az vuruş anı); OVR 68 üstünde "sıkılaşan savunma" (`kindWeights(pos, ovr)`, an sayısı ×(1−0,2·t), vuruş anları ×(1−0,6·t)); aynı maçta 1+ golden sonra vuruş anları ×0,78, 2+ golden sonra ×0,5.
+- `quickSim.ts`: NPC golcü ağırlığı ST 5→3,4, kanat/AM 3→2,8 (gol kralı gerçekçi aralığa indi).
+- `matchOutcome.ts` (itibar telafisi): gol 0,3→0,45, asist 0,2→0,25, `MATCH_REP_SCALE` 0,62→0,72; itibar eğrisi 18 yaş 15, 21 yaş ~48 kaldı, 25 yaş 71–73 (hedef alt sınırına yakın).
+- Rapor: `balance.test.ts` artık pozisyon × OVR bandı gol tablosunu ve kademeye göre NPC gol kralını basıyor.
+- Not: kumarhane payı (kumarbaz) bu ölçümlerde tohum gürültüsüyle 28–56% arasında oynuyor (5 kumarbaz); golden.json bilinçli olarak yenilendi.

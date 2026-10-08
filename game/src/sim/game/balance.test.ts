@@ -91,6 +91,25 @@ export function report(traces: CareerTrace[]): string {
   const islands = traces.filter((t) => t.boughtIsland)
   out.push(`| Ada alan kariyer (yaş / itibar) | ${islands.length ? islands.map((t) => `${t.boughtIsland!.age} / ${t.boughtIsland!.reputation.toFixed(0)}`).join(', ') : 'yok'} |`)
 
+  // Goals per season by position group and OVR band, and NPC top scorers by tier.
+  const grp = (p: string) => (p === 'ST' ? 'ST' : p === 'LW' || p === 'RW' || p === 'AM' ? 'LW/RW/AM' : p === 'CM' || p === 'DM' ? 'CM/DM' : p === 'GK' ? 'GK' : 'DEF')
+  const bands: [string, number, number][] = [['<60', 0, 59], ['60-65', 60, 65], ['66-70', 66, 70], ['71-76', 71, 76], ['77-82', 77, 82], ['83+', 83, 200]]
+  out.push('', '### Sezon başına gol: pozisyon × OVR bandı (medyan / p90 / max, n)', '')
+  out.push(`| Grup | ${bands.map((b) => b[0]).join(' | ')} |`, `|---|${bands.map(() => '---').join('|')}|`)
+  for (const g of ['ST', 'LW/RW/AM', 'CM/DM', 'DEF']) {
+    const cells = bands.map(([, lo, hi]) => {
+      const rows = all.filter((r) => grp(r.position) === g && r.apps >= 15 && r.ovr >= lo && r.ovr <= hi)
+      return rows.length ? `${med(rows.map((r) => r.goals)).toFixed(0)} / ${q(rows.map((r) => r.goals), 0.9).toFixed(0)} / ${Math.max(...rows.map((r) => r.goals))} (${rows.length})` : '–'
+    })
+    out.push(`| ${g} | ${cells.join(' | ')} |`)
+  }
+  out.push('', '### Lig gol kralı (NPC) kademeye göre (medyan / p90 / max, n)', '')
+  out.push('| Kademe | Gol kralı |', '|---|---|')
+  for (const tier of [1, 2, 3, 4]) {
+    const rows = all.filter((r) => r.tier === tier && r.leagueTopScorer > 0)
+    if (rows.length) out.push(`| ${tier} | ${med(rows.map((r) => r.leagueTopScorer)).toFixed(0)} / ${q(rows.map((r) => r.leagueTopScorer), 0.9).toFixed(0)} / ${Math.max(...rows.map((r) => r.leagueTopScorer))} (${rows.length}) |`)
+  }
+
   out.push('', '### Kariyerler', '')
   out.push('| # | Persona | Arketip | Köken | Ülke | Cinsiyet | Pot. | Son OVR | İtibar | Kademe yolu | Son maaş | Net servet | Kupa | Kulüpler |')
   out.push('|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
