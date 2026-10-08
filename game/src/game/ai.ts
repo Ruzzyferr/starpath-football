@@ -281,6 +281,25 @@ export function tackleOdds(tackler: Agent, carrier: Agent, timing: number, fromB
   return { win, foul }
 }
 
+/** Tackle trigger range (m) for AI challenges on the carrier (plan 2.1#37). */
+export const TACKLE_RANGE = 1.2
+/** Ball-to-feet gap (m) above which the ball counts as loose from the carrier (plan 2.1#37, #74). */
+export const LOOSE_BALL_GAP = 0.8
+
+/** AI tackle win chance with the loose-ball bonus: ×1.25 when the ball is away from his feet (2.1#37). */
+export function looseBallWin(win: number, gap: number): number {
+  return gap > LOOSE_BALL_GAP ? Math.min(0.94, win * 1.25) : win
+}
+
+/**
+ * Hero standing tackle (plan 2.1#74): timed when the carrier has knocked the
+ * ball more than 0.8 m ahead, it wins at least 70 %; a lunge at the ball on
+ * his feet keeps the normal odds and, if it fails, he is beaten.
+ */
+export function standingTackleWin(win: number, gap: number): { win: number; early: boolean } {
+  return gap > LOOSE_BALL_GAP ? { win: Math.max(0.7, win), early: false } : { win, early: true }
+}
+
 /** Probability a skill move / take-on beats a defender. */
 export function skillBeatChance(carrier: Agent, defender: Agent | null, difficulty = 1): number {
   const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.3 + a01(carrier.attrs.pace) * 0.1

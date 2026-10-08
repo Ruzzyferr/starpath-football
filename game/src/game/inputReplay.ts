@@ -77,6 +77,49 @@ export class InputRecorder {
   toRecording(highlightId: string, opts: RuntimeOptions): InputRecording {
     return { version: 1, highlightId, opts: { ...opts }, frames: this.frames.slice() }
   }
+
+  /** The kicks of this recording as compact `{t, dx, dy, curve, lift}` events (plan 2.1#34). */
+  kicks(): KickEvent[] {
+    return kickEvents(this.frames)
+  }
+}
+
+/**
+ * One hero kick input (plan 2.1#34). `t` is seconds from the moment start;
+ * `dx/dy` the drag vector (swipe) or the aim target (button/mouse shots and
+ * passes) in pitch metres; `curve` −1..1; `lift` 1 = chip/lofted, 0 = driven;
+ * `power` 0..1.15 when the input carried one.
+ */
+export interface KickEvent {
+  t: number
+  kind: 'swipe' | 'shoot' | 'pass'
+  dx: number
+  dy: number
+  curve: number
+  lift: number
+  power?: number
+}
+
+const r3 = (v: number) => Math.round(v * 1000) / 1000
+
+/** Extracts the kick events from applied frames (pure; used for bug reports and tests). */
+export function kickEvents(frames: readonly InputFrame[]): KickEvent[] {
+  const out: KickEvent[] = []
+  let t = 0
+  for (const f of frames) {
+    for (const a of f.actions ?? []) {
+      if (a.kind === 'swipe' && !a.swipe.isTap) {
+        const sw = a.swipe
+        out.push({ t: r3(t), kind: 'swipe', dx: r3(sw.dir.x * sw.length), dy: r3(sw.dir.y * sw.length), curve: r3(sw.curl), lift: sw.chip ? 1 : 0, power: r3(sw.power) })
+      } else if (a.kind === 'shoot') {
+        out.push({ t: r3(t), kind: 'shoot', dx: r3(a.target.x), dy: r3(a.target.y), curve: r3(a.curl), lift: a.chip ? 1 : 0, power: r3(a.power) })
+      } else if (a.kind === 'pass' && a.target) {
+        out.push({ t: r3(t), kind: 'pass', dx: r3(a.target.x), dy: r3(a.target.y), curve: 0, lift: a.lofted ? 1 : 0 })
+      }
+    }
+    t += f.dt
+  }
+  return out
 }
 
 function structuredCloneSafe<T>(v: T): T {

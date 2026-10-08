@@ -9,6 +9,7 @@
  * {@link HighlightRuntime.alpha} gives the interpolation factor between the
  * previous and current step for smooth rendering in slow motion.
  */
+import { stepTimeScale, type ScaleRamp } from './bulletTime'
 import { Rng } from '../core/rng'
 import type { Difficulty } from '../core/types'
 import type { Highlight, HighlightKind, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
@@ -42,6 +43,9 @@ import {
   skillBeatChance,
   supportTarget,
   tackleOdds,
+  looseBallWin,
+  standingTackleWin,
+  TACKLE_RANGE,
   type AiWorld,
   type DefendAssignment,
 } from './ai'
@@ -287,6 +291,42 @@ const zoneY = (z: GoalZone): number => (z === 1 ? GOAL_CENTER_Y : GOAL_CENTER_Y 
  * rt.queueAction({ kind: 'shoot', target: { x: 105, y: 32 }, power: 0.8, curl: 0, chip: false })
  * while (!rt.finished) rt.update(1 / 60)
  */
+/** Ball distance at the carrier's feet (m) between knock-ons. */
+export const DRIBBLE_FOOT = 0.42
+
+/** Furthest knock-on (m) from Dribbling (plan 2.1#36): 40 → 1.6 m, 80 → 0.9 m; sprinting +40 %. */
+export function dribbleReach(dribbling: number, sprinting: boolean): number {
+  const r = clampN(1.6 - (dribbling - 40) * 0.0175, 0.7, 2)
+  return sprinting ? r * 1.4 : r
+}
+
+/** Pass magnet radius (m) on full assist (plan 2.1#28/#29); half and manual have none. */
+export const PASS_MAGNET = 1.5
+
+/** The mate a free-space pass snaps to under full assist, if any is within {@link PASS_MAGNET}. */
+export function magnetMate<T extends { pos: Vec2 }>(point: Vec2, mates: readonly T[], assist: AimAssist): T | null {
+  if (assist !== 'full') return null
+  let best: T | null = null
+  let bd = PASS_MAGNET
+  for (const m of mates) {
+    const d = dist(m.pos, point)
+    if (d < bd) {
+      best = m
+      bd = d
+    }
+  }
+  return best
+}
+
+/**
+ * Bullet-time aim window in real seconds (plan 2.1#26): 1.2 s + Composure × 0.02 s
+ * (2.8 s at 80), halved when a defender is within 2 m of the receiver.
+ */
+export function bulletWindowFor(composure: number, nearestDefender: number): number {
+  const w = 1.2 + clampN(composure, 0, 100) * 0.02
+  return nearestDefender < 2 ? w * 0.5 : w
+}
+
 export class HighlightRuntime {
   readonly highlight: Highlight
   readonly kind: HighlightKind
@@ -463,6 +503,8 @@ export class HighlightRuntime {
 
   /** Remaining fraction of the current bullet-time window (0..1). */
   bulletFrac = 0
+  /** Timed bullet-time ramp (150 ms in, 120 ms out; 2.2#14, #15). */
+  private scaleRamp: ScaleRamp = { from: 1, to: 1, t: 0 }
 
   /** True when the hero is on the ball (or is the set-piece taker). */
   get heroOnBall(): boolean {
@@ -604,7 +646,7 @@ export class HighlightRuntime {
       }
     }
     const target = this.bulletLeft > 0 ? this.bulletScale : 1
-    this.timeScale += (target - this.timeScale) * (1 - Math.exp(-rdt * (target < this.timeScale ? 14 : 6)))
+    this.timeScale = stepTimeScale(this.scaleRamp, this.timeScale, target, rdt)
     this.bulletFrac = this.bulletLeft > 0 ? this.bulletLeft / this.bulletWindow : 0
     this.acc += rdt * this.timeScale
     let n = 0
@@ -776,7 +818,9 @@ export class HighlightRuntime {
   // ───────────────────────── Bullet time ─────────────────────────
 
   private possessionWindow(): number {
-    return 0.85 + a01(this.hero.attrs.composure) * 1.35
+    let near = Infinity
+    for (const o of this.agents) if (o.team !== this.hero.team && !o.isKeeper) near = Math.min(near, dist(o.pos, this.hero.pos))
+    return bulletWindowFor(this.hero.attrs.composure, near)
   }
 
   private startBullet(scale: number, seconds: number): void {
@@ -859,6 +903,10 @@ export class HighlightRuntime {
       return { plan, kind, power, passTo: to.id }
     }
     const through = (point: Vec2, lofted: boolean, power: number) => {
+      // Full assist (2.1#28/#29): a ball played within PASS_MAGNET of a mate becomes a pass to him;
+      // whether he controls it is then down to his First Touch and the ball's speed.
+      const near = magnetMate(point, mates, this.assist)
+      if (near) return pass(near, lofted, power)
       const kind: KickKind = lofted ? 'lofted' : 'through'
       const plan = planKick({ ...base, kind, target: inField(point, 1), power, curl: 0, noiseScale: this.noiseScale() }, rng)
       return { plan, kind, power, passTo: null }
@@ -1145,13 +1193,16 @@ export class HighlightRuntime {
     const timing = this.exposure(carrier)
     const behind = isBehind(carrier, hero)
     const odds = tackleOdds(hero, carrier, timing, behind, false, this.difficulty)
-    if (this.rng.chance(odds.win)) {
+    const st = standingTackleWin(odds.win, this.ballGap(carrier))
+    if (this.rng.chance(st.win)) {
       this.winBall(hero, carrier, false)
     } else if (this.rng.chance(odds.foul * refHighlightFoulMult(this.refStrictness))) {
       this.heroFoul(carrier, false, behind)
     } else {
       hero.state = 'down'
-      hero.stateT = -0.15 // brief stumble
+      // Diving in at his feet (early) gets you beaten: longer stumble, he accelerates past.
+      hero.stateT = st.early ? -0.4 : -0.15
+      if (st.early) carrier.vel = scale(carrier.vel, 1.15)
       hero.noTouch = 0.6
       this.events.push({ type: 'tackle', by: hero.id, won: false, slide: false, x: hero.pos.x, y: hero.pos.y })
     }
@@ -1338,6 +1389,11 @@ export class HighlightRuntime {
 
     // Bullet time each time the hero gains possession.
     if (a.isHero && prevOwner !== a && !a.isKeeper && !this.setPiece && this.phase === 'live') this.startBullet(0.25, this.possessionWindow())
+  }
+
+  /** Distance (m) between the carrier and the ball at his feet. */
+  private ballGap(o: Agent): number {
+    return this.owner === o ? Math.hypot(this.ball.x - o.pos.x, this.ball.y - o.pos.y) : 0
   }
 
   /** 0..1 how exposed the carrier's ball is (1 = just after a touch, far from feet). */
@@ -1950,7 +2006,9 @@ export class HighlightRuntime {
           if (o.isHero) this.events.push({ type: 'dribble', by: o.id })
         }
       }
-      const ahead = 0.42 + (moving ? (1 - o.touch) * 0.55 * clampN(sp / 6, 0, 1.2) : 0)
+      // Knock-on distance (plan 2.1#36): Dribbling 40 → 1.6 m, 80 → 0.9 m, +40 % sprinting.
+      const reach = dribbleReach(o.attrs.dribbling, o.sprint && o.stamina > 0.05)
+      const ahead = DRIBBLE_FOOT + (moving ? (1 - o.touch) * (reach - DRIBBLE_FOOT) * clampN(sp / 7.5, 0, 1) : 0)
       const f = fromAngle(o.facing)
       if (o.isKeeper) {
         // Held in hands.
@@ -2381,14 +2439,15 @@ export class HighlightRuntime {
     // AI tackles on the carrier.
     for (const a of this.agents) {
       if (a.team === o.team || a.isHero || a.isKeeper || a.cd > 0 || a.noTouch > 0 || a.state !== 'run') continue
-      const d = dist(a.pos, o.pos)
-      if (d > 1.25) continue
+      // In range of the carrier, or of a ball he has knocked away from his feet (2.1#37).
+      const d = Math.min(dist(a.pos, o.pos), Math.hypot(a.pos.x - this.ball.x, a.pos.y - this.ball.y))
+      if (d > TACKLE_RANGE) continue
       const rate = (0.55 + a01(a.attrs.tackling) * 1.0) * (a.team === 'opp' ? this.difficulty : this.defending ? 0.3 : 0.8)
       if (!this.rng.chance(rate * DT)) continue
       a.cd = 1.1
       const behind = isBehind(o, a)
       const odds = tackleOdds(a, o, this.exposure(o), behind, false, this.difficulty)
-      if (this.rng.chance(odds.win)) {
+      if (this.rng.chance(looseBallWin(odds.win, this.ballGap(o)))) {
         this.winBall(a, o, false)
         if (o.isHero) o.noTouch = 0.7
       } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3 * refHighlightFoulMult(this.refStrictness))) {

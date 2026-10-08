@@ -14,7 +14,7 @@ const OPT_KEY = 'sp.errorlog.enabled'
 
 export interface ErrorEntry {
   at: number
-  kind: 'error' | 'unhandledrejection' | 'manual'
+  kind: 'error' | 'unhandledrejection' | 'manual' | 'recovered' | 'webgl-lost' | 'save'
   message: string
   stack?: string
   screen: string
@@ -83,6 +83,13 @@ export function installErrorLog(getScreen: () => string): void {
   window.addEventListener('unhandledrejection', (ev) => recordError(ev.reason, 'unhandledrejection'))
 }
 
+/** Extra sections for the bug report (e.g. the last match moment's kick inputs, plan 2.1#34). */
+const attachments = new Map<string, () => string | null>()
+export function setReportAttachment(key: string, fn: (() => string | null) | null): void {
+  if (fn) attachments.set(key, fn)
+  else attachments.delete(key)
+}
+
 /** Plain-text report to paste into a bug report. */
 export function buildErrorReport(): string {
   const lines = [
@@ -98,6 +105,15 @@ export function buildErrorReport(): string {
   for (const e of log) {
     lines.push(`[${new Date(e.at).toISOString()}] ${e.kind} @${e.screen}: ${e.message}`)
     if (e.stack) lines.push(e.stack)
+  }
+  for (const [key, fn] of attachments) {
+    let body: string | null
+    try {
+      body = fn()
+    } catch {
+      body = null
+    }
+    if (body) lines.push('', `${key}:`, body)
   }
   return lines.join('\n')
 }
