@@ -8,6 +8,46 @@
 
 ---
 
+## 0.00 NİHAİ DURUM (S30 son sayım, 2026-10-08)
+
+> Bu blok aşağıdaki 0.1/0.2 tablolarının ve bölüm 1'in **yerine geçer** (onlar tarihsel kayıttır). Sayım yöntemi: bölüm 2.1-2.12 tablolarındaki ham satır durumları, sonraki süpürmelerin (bölüm 2.0 WP-1..12, 2.0b S29 platform/ses/QA, S21 özeti, 2.6/2.7/2.10/2.11 yerinde güncellemeler) üzerine bindirilerek hesaplandı; en yeni kayıt kazanır. Not: 2.1-2.5, 2.8, 2.9 ve 2.12 ham tablo satırlarının çoğu bayat kaldı (durum yalnızca 2.0 bölümlerinde güncel). Bu yüzden ham tablodan sayılırsa yanlış çıkar. Tabloların satır satır temizliği iç backlog paketi WP-S'dir.
+
+### Analiz-ve-Plan §2 [v1][P0]: 569 madde
+
+| Bölüm | TAMAM | KISMİ | EKSİK | ERTELENDİ (BLOCKED-EXT) | ERTELENDİ (iç) | N/A-süreç | Toplam |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| 2.1 Maç motoru | 60 | 2 | 0 | 0 | 0 | 0 | 62 |
+| 2.2 Animasyon, kamera | 26 | 3 | 0 | 0 | 1 | 0 | 30 |
+| 2.3 Kariyer | 34 | 6 | 0 | 0 | 3 | 0 | 43 |
+| 2.4 Sosyal, olaylar | 21 | 14 | 4 | 0 | 0 | 0 | 39 |
+| 2.5 Ekonomi | 25 | 18 | 6 | 0 | 0 | 0 | 49 |
+| 2.6 Dünya | 48 | 0 | 0 | 0 | 1 | 0 | 49 |
+| 2.7 UI/UX | 32 | 0 | 0 | 1 | 32 | 0 | 65 |
+| 2.8 Ses | 17 | 0 | 0 | 2 | 0 | 0 | 19 |
+| 2.9 Platform | 50 | 2 | 0 | 16 | 11 | 0 | 79 |
+| 2.10 Meta, online | 17 | 2 | 0 | 4 | 1 | 1 | 25 |
+| 2.11 Erişilebilirlik | 29 | 0 | 0 | 3 | 1 | 0 | 33 |
+| 2.12 Risk, mağaza, QA | 30 | 0 | 0 | 2 | 5 | 39 | 76 |
+| **Toplam** | **389 (%68)** | **47** | **10** | **28** | **55** | **40** | **569** |
+
+- KISMİ/EKSİK içinden dış bağımlı olanlar: 2.5#105, #112, #113, #114, #117, #119, #120 (IAP/mağaza beyanı) ve 2.10#76 (uzaktan mod anahtarı) = 8 satır. Bunlar BLOCKED-EXTERNAL sayılır; yani toplam BLOCKED-EXTERNAL = 28 + 8 = 36, iç kalan açık satır = 47 + 10 - 8 + 55 = 104 (bunların bir kısmı bilinçli tasarım sapmasıdır, WP-X'e bakın).
+- Bu turda yukarı düzeltilenler: 2.1#128 ve 2.3#117 (özel zorluk: `core/customDifficulty.ts`, `NewCareerScreen.tsx`, `liveMatch.ts` bağlı) TAMAM; S21 özetinde sayılmayan 2.3 satırları (#15, #21-#29, #55, #61, #71-#74, #118) kodda doğrulandı (drills/*.ts, s21career.test.ts, goalBand.test.ts) ve TAMAM sayıldı.
+- Doğrulama: rastgele 44 TAMAM satırı kodla karşılaştırıldı (kanıt yolu var mı, ilgili sembol grep ile bulunuyor mu). **Düşürülen satır yok**; 0/44 hata. Bayat olan yalnızca ham tablo metinleri (örn. 2.1#7, 2.9#27 hâlâ "EKSİK/KISMİ" yazıyor ama kod kapalı: `fairness.ts`, `eslint.config.js:46` Date.now/Math.random `error`).
+
+### GDD [v1]: 128 madde
+
+| TAMAM | KISMİ | EKSİK | BLOCKED-EXT (kısmi) |
+|---:|---:|---:|---:|
+| **126** | **1** | **0** | **1** |
+
+- KISMİ: kaleci özellik grupları yalnızca 2 (= 2.3#11, iç ertelenmiş; OVR açıklama ekranı ile birlikte).
+- BLOCKED-EXT: "Masaüstü/Steam" satırı. `steamworks.js` isteğe bağlı bağımlılık olarak paketlendi (`game/package.json:76`), gerçek doğrulama Steam app id ister.
+- 0.2'deki "10 KISMİ + 2 EKSİK" listesinden sonradan kapananlar kodda doğrulandı: doğum şehri (`NewCareerScreen.tsx:292`), emeklilik sonrası yollar (`sim/game/retirement.ts`), vadeli mevduat (`sim/life/economy.ts:200`), sigorta/garanti maddeleri (`contract.ts:52`), yedekte şikayet UI (`CareerCards.tsx:52`), pas isteme/el kaldırma (`game/callForBall.test.ts`), hakem sertliği/avantaj (`sim/match/referee.ts`), yardım seviyesi ödül çarpanı (`runtime.ts:717` ASSIST_REWARD).
+
+Ayrıntılı iç backlog ve go/no-go: `docs/RELEASE-READINESS.md`.
+
+---
+
 ## 0. Durum özeti
 
 > **Yeniden denetim: 2026-10-07, WP-1..WP-12 sonrası.** İlk denetimde KISMİ ya da EKSİK olan her satır koda karşı yeniden kontrol edildi (graphify + hedefli grep). Testler ve e2e bu turda koşturulmadı (e2e başka süreçte koşuyor). Bölüm 1 ve bölüm 2'deki ilk tablolar **tarihsel taban** olarak olduğu gibi bırakıldı. Bir satırın güncel durumu için önce bölüm 2.0'a bakılır. Orada yoksa ilk tablodaki durum geçerlidir.
