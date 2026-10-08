@@ -83,3 +83,78 @@
 6. **Çizgiler:** Ceza sahası çizgisi ekran kenarından taşıyor, kalınlıklar tutarsız.
 7. **Konfeti** HUD ve skor tabelasının üstünde çiziliyor. Penaltı kadrajında kahraman toptan uzak kalıyor.
 8. **Canlı hub'daki mini radar** (UI) iyi, ama Phaser anına geçişte renk dili değişiyor: hub'daki saha koyu yeşil, sahne açık yeşil. Ortak bir saha paleti token'ı önerilir (`--pitch-a/b`).
+
+## Tur 2
+
+**Tarih:** 2026-10-08 · **Kapsam:** Tur 1'den sonra eklenen veya yenilenen her ekran: hedefler, topluluk ve rekorlar, projeler, telefon tarzı Yaşam hub'ı, kumarhane VIP paneli, milli takım, kupalar ve ödüller, maç sonu pas ve kazanç adımları, canlı maçta karar kartı, gol klibi, gelişim radarı, kayıt küçük resimleri, açık tema, ayar grupları, paywall ve mağaza, onur listesi ve belgesel, kaleci dağıtımı dahil drill'ler. Ayrıca bu ekranların eski ekranlarla tutarlılığı.
+
+**Çıta:** Her ekran ≥ 8.5.
+
+**Yöntem:** Playwright betiğiyle 390×844 (mobil, dokunmatik) ve 1440×900 boyutlarında, koyu ve açık temada çekim yaptım. Her geçişten sonra en az 5 sn bekledim. Boş durumlar yanıltmasın diye durumları doldurdum: €4,5 milyon nakit, sezon sonuna sarılmış kariyer, oynanmış maç, açık karar penceresi. Toplam 83 sahne × 4 kombinasyon = 332 kare. Maç sahnesini `/match-demo.html` ile ayrıca çektim. Kareleri dört kombinasyonu yan yana gösteren sayfalarda inceledim.
+
+### Genel bulgular
+
+1. **Açık temada lacivert lekeler.** Satır içi boş durumlar, sözleşme kahraman kutusu, cam kartlar ve devre dışı butonlar koyu temaya göre yazılmış `rgba(19,28,46)` ve `#223152` dolgularını kullanıyordu. Beyaz zeminde gri-mavi tuğla gibi duruyorlardı. Kilitli başarım madalyaları da lacivert altıgen kalıyordu. **Düzeltme:** `theme-light.css` içinde token tabanlı yüzeyler, soluk ve gömülü bir "henüz değil" plakası, çelik madalyalar. Devre dışı hayalet buton artık plakaya dönmüyor, hayalet kalıyor.
+2. **Açık temada altın sanat çamurlaşıyordu.** Mağaza rozeti ve açılmış madalyalar `--accent-gold` kullanıyordu. Bu token açık temada kontrast için koyu bronza (#8f5c00) dönüyor. **Düzeltme:** Metal sanat iki temada da sabit bir metal paletle çiziliyor (#ffe9a8 → #ffc83d → #b8860b). Metindeki altın token'da kalıyor.
+3. **Canlı maç kontrolleri mobilde kırılıyordu.** "Sonraki ana atla" ve "Sona kadar simüle et" etiketleri buton içinde kelime ortasından bölünüyordu. Masaüstünde kontrol şeridi, sayfa kaydırıldıkça not kartının üstüne biniyordu. **Düzeltme:** Telefonda kontroller iki satırda: duraklat ve hız ilk satırda, iki atlama butonu ikinci satırda eşit yarılar halinde. Masaüstünde yüzen bir dok kullanılıyor (yüzey, gölge, bulanıklık). Maç sonu "Devam" bloğu ve maç sonu adım navigasyonu da aynı doku kullanıyor.
+4. **Karar kartında seçenek ipuçları** buton tipografisini miras alıyordu: büyük harf ve yoğun. **Düzeltme:** Seçenek numarası tuş rozetine dönüştü. İpucu gövde yazı tipinde, normal boyutta ve girintili.
+5. **Emoji ikonlar geri dönmüştü.** Projeler (🏗️🏟️📈🏛️🏺), vakıf (🤝), ödüller (🧤🌱🎯), belgesel ve onur listesi (🏆🏅🎉) emoji kullanıyordu. **Düzeltme:** Stroke ikon setinden altın ikonlar ve 44 px'lik ikon karosu (`biz-icon`).
+6. **Mobilde ezilen sayfa başlığı.** Onur Listesi'nde "Rekorlar ve meydan okuma" butonu başlığı satır başına iki kelimeye sıkıştırıyordu. **Düzeltme:** 600 px altında başlıktaki eylem butonu alt satıra iniyor.
+7. **Maç sahnesiyle hub arasında renk dili farkı.** Phaser skor tabelasında dakika bloğu altın, hub skor tabelasında yeşildi. **Düzeltme:** Sahnede de saha yeşili kullanılıyor. Bu yalnızca bir çizim rengi; oynanış, golden ve replay testleri değişmedi. HUD yazı tipleri zaten UI token'larıyla aynıydı (Teko, Barlow Condensed).
+
+### Ekran puanları (önce → sonra)
+
+K = koyu tema, A = açık tema. Maç akışı, kumarhane, tören ve sihirbaz ekranları tasarım gereği her iki ayarda da koyu çiziliyor, bu yüzden tek puan aldılar ("—").
+
+| Ekran | K önce | K sonra | A önce | A sonra | Bulgu → Yapılan |
+|---|---|---|---|---|---|
+| Başlık | 8.5 | 8.5 | — | — | Değişiklik yok |
+| Sihirbaz | 8 | 8.5 | — | — | Programatik odakta başlık mavi kutu içine giriyordu → klavye için alt çizgi ipucu |
+| Ana sayfa (hedefler kartı dahil) | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Günlük plan | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Antrenman / drill'ler | 8 | 8.5 | 7 | 8.5 | Açık temada devre dışı "Otomatik" ve "Oyna" lacivert tuğlaydı → gömülü plaka |
+| Profil / gelişim radarı | 8 | 8.5 | 8 | 8.5 | Kart mobilde ilk ekranı dolduruyordu → kart küçüldü, isim ve kulüp ilk ekranda |
+| Kulüp / tablo | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Dünya / kupalar | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Sözleşme | 8.5 | 8.5 | 7 | 8.5 | Açık temada lacivert maaş kutusu → açık yüzey degradesi |
+| Milli takım | 8 | 8.5 | 8 | 8.5 | Milli takım ekranında yine milli takım ekranını açan bir buton vardı → kaldırıldı |
+| Hedefler | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Rekorlar (haftalık meydan okuma) | 7 | 8.5 | 7 | 8.5 | Mobilde rozet ayrı bir satır kaplıyordu, KPI kutularında etiket sayıdan baskındı → rozet ve metin yan yana ızgarada, sayı önde ve 40 px |
+| Topluluk | 7.5 | 8.5 | 7.5 | 8.5 | Aynı kahraman ızgarası, haber başlıkları dengelendi |
+| Yaşam: telefon ana ekranı | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Yaşam: Banka | 7.5 | 8.5 | 7.5 | 8.5 | Kredi puanı halkası tek başına bir satıra düşüyordu → nakit ve birikim solda, halka sağda sabit |
+| Yaşam: Projeler | 6.5 | 8.5 | 6 | 8.5 | Emoji ikonlar, sıfır değerlerin kırmızı/yeşil renkte göze batması, düz özet → altın ikon karoları, sönük sıfırlar, sayı karoları |
+| Yaşam: İşletme / vakıf | 7.5 | 8.5 | 7.5 | 8.5 | 🤝 → ikon karosu |
+| Yaşam: Sponsorlar / Varlıklar | 8 | 8.5 | 6.5 | 8.5 | Açık temada gri satır içi boş durum → token yüzeyi |
+| Kumarhane lobisi ve VIP | 8.5 | 8.5 | — | — | — |
+| Maç öncesi | 8.5 | 8.5 | — | — | Masaüstündeki alt çubuk da yüzen dok oldu |
+| Canlı maç hub'ı | 6.5 | 8.5 | — | — | Mobilde bölünen etiketler, masaüstünde not kartına binen şerit → iki satır ve yüzen dok |
+| Canlı maç: karar kartı | 7.5 | 8.5 | — | — | Büyük harfli ipuçları → tuş rozeti ve gövde metni |
+| Canlı maç: tam süre | 7.5 | 8.5 | — | — | Masaüstünde "Tam süre" ve "Devam" maç akışının üstüne biniyordu → yüzey kartı |
+| Maç sonu: sonuç / not / harita / güven | 8 | 8.5 | — | — | Masaüstünde "Geri" etiketi "B…" diye kesiliyordu → buton kendi genişliğinde |
+| Maç sonu: pas ağı | 7.5 | 8.5 | — | — | Düz liste → pas payını gösteren satır dolgusu (en çok kimin beslediği ilk bakışta okunuyor) |
+| Maç sonu: kazanç | 8.5 | 8.5 | — | — | — |
+| Sezon sonu / ödüller | 8 | 8.5 | — | — | Kürsüdeki gizli adlar bulanık lekeydi → okunur "???". Diğer ödüllerde emoji → ikon |
+| Kura | 8.5 | 8.5 | — | — | — |
+| Başarımlar | 8.5 | 8.5 | 7 | 8.5 | Açık temada kilitli madalyalar lacivert, açılmışlar çamur bronzdu → çelik ve metal altın |
+| Onur listesi | 7 | 8.5 | 6 | 8.5 | Mobilde ezilen başlık, açık temada gri boş durum, 🏆 → düzeltildi |
+| Belgesel | 8 | 8.5 | 8 | 8.5 | Emoji → ikon |
+| Mağaza | 8 | 8.5 | 7.5 | 8.5 | Açık temada rozet bronza dönüyordu, masaüstünde "Satın al" butonları farklı hizadaydı → metal altın, hizalı butonlar |
+| Paywall | 7.5 | 8.5 | — | — | Masaüstünde başlık sola yaslı, butonlar dardı → ortalanmış sütun, tam genişlikte eylem butonları |
+| Ayarlar (gruplar) | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Kayıtlar (küçük resimler) | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Menü | 8.5 | 8.5 | 8.5 | 8.5 | — |
+| Maç sahnesi HUD'u (Phaser) | 8 | 8.5 | — | — | Altın dakika bloğu hub'daki yeşille çelişiyordu → saha yeşili |
+
+**En düşükler:** Önce Yaşam: Projeler (A 6, K 6.5), Onur listesi (A 6) ve Canlı maç hub'ı (6.5). Sonra **8.5'in altında ekran kalmadı.** Ortalama önce ≈ 7.8, sonra 8.5.
+
+### Doğrulama
+
+- `npx vitest run`: 1522 test geçti, 1 test başarısız (`golden.test.ts`). Bu başarısızlık, aynı anda çalışan playtest ajanının commit'lenmemiş `src/sim/**` değişikliklerinden geliyor (`engine.ts`, `match.ts`, `decisions.ts`). Bu turdaki değişiklikler sim'e dokunmuyor.
+- `npm run lint` 0 hata verdi, `npm run lint:i18n` temiz, `npm run build` geçti.
+- e2e: a11y, a11y-wp19, visual, phone, onboarding ve postmatch 106/106 geçti. Ek olarak decision, national, projects ve board 24/24 geçti.
+
+### Sonraki tur için
+
+- Phaser sahnesinde oyuncular mobilde hâlâ küçük (yaklaşık 14 px), forma numaraları okunmuyor. Bu bir kamera ve zoom kararı. Oynanış hissini etkilediği için bu turda dokunmadım.
+- Topluluk sekme şeridi mobilde "Geri bildirim" sekmesini kesiyor. Şerit kaydırılabiliyor, ama sağ kenara bir solma (fade) ipucu eklenebilir.
