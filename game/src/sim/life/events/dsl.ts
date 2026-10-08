@@ -63,6 +63,8 @@ export const rel = (target: RelationKind, amount: number, name?: string): Delta 
 /** Relationship change with one specific NPC (teammate or rival player); created if missing. */
 export const relNpc = (npcId: string | number | undefined, name: string | number | undefined, amount: number): Delta =>
   npcId ? { kind: 'relation', target: 'teammate', amount, npcId: String(npcId), name: String(name ?? '') } : { kind: 'relation', target: 'teammate', amount: Math.round(amount / 3) }
+/** Relationship change for one exact relationship id (used by person scenes). */
+export const relId = (id: string, amount: number): Delta => ({ kind: 'relation', target: 'teammate', amount, relId: id })
 export const fans = (n: number): Delta => rel('fans', n)
 export const press = (n: number): Delta => rel('press', n)
 export const boss = (n: number): Delta => rel('manager', n)

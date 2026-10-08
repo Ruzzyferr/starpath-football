@@ -123,6 +123,8 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
   const pct = passPercent(rel.value)
   const trend = relTrend(rel, week)
   const memory = rel.memory[0]
+  const canScene = rel.kind !== 'fans' && rel.kind !== 'press' && rel.kind !== 'chairman'
+  const scene = (k: 'talk' | 'together') => { actions.startScene(rel.id, k) }
   const canFriend = canBeCloseFriend(rel)
   const toggleFriend = () => {
     const r = actions.toggleCloseFriend(rel.id)
@@ -173,6 +175,12 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
         </div>
       </div>
       {why && <WhyPanel rel={rel} onClose={() => setWhy(false)} />}
+      {canScene && (
+        <div class="life-person-actions life-scene-actions" role="group" aria-label={t('life.rel.scene.label', { name: rel.name })}>
+          <Button size="sm" variant="secondary" icon="users" data-testid="scene-talk" onClick={() => scene('talk')}>{t('life.rel.scene.talk')}</Button>
+          <Button size="sm" variant="secondary" icon="party" data-testid="scene-together" onClick={() => scene('together')}>{t('life.rel.scene.together')}</Button>
+        </div>
+      )}
       <div class="life-person-actions" role="group" aria-label={t('life.rel.interactLabel', { name: rel.name })}>
         {INTERACTIONS[rel.kind].map((k) => (
           <Button key={k} size="sm" variant="ghost" icon={INTERACT_ICON[k]} onClick={() => interact(k)} title={costText(k)} aria-label={`${t(`data.interaction.${k}`)}, ${costText(k)}`}>

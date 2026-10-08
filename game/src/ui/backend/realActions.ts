@@ -22,6 +22,7 @@ import { netWorth } from '../../sim/life/economy'
 import type { TrainingReport } from '../../sim/life/activities'
 import { changeRelation } from '../../sim/life/relationships'
 import { toggleCloseFriend } from '../../sim/life/closeFriends'
+import { startScene } from '../../sim/life/scenes'
 import type { PostType } from '../../sim/life/social'
 import * as G from '../../sim/game'
 import { GFLAG, absDayOf, clubContextOf, log, readJson, withRng, writeJson } from '../../sim/game/internal'
@@ -470,6 +471,27 @@ export const realActions: GameActions = {
     const r = G.fireTrainer(s)
     if (!r.ok) notify(r.error)
     commit(s)
+  },
+
+  startScene(relationshipId, kind) {
+    const s = get()
+    const rel = s.life.relationships[relationshipId]
+    if (!rel) return false
+    const day = absDayOf(s)
+    const today = readJson<{ d: number; ids: string[] }>(s.life, INTERACT_FLAG, { d: -1, ids: [] })
+    const ids = today.d === day ? today.ids : []
+    if (ids.includes(relationshipId)) {
+      notify(L(`Bugün ${rel.name} ile zaten vakit geçirdin.`, `You already spent time with ${rel.name} today.`), 'info')
+      return false
+    }
+    const r = startScene(s, relationshipId, kind)
+    if (!r.ok) {
+      notify(L('Şu an sahne başlatılamıyor (enerji ya da açık bir sahne).', 'Cannot start a scene right now (energy or an open scene).'))
+      return false
+    }
+    writeJson(s.life, INTERACT_FLAG, { d: day, ids: [...ids, relationshipId] })
+    commit(s)
+    return true
   },
 
   toggleCloseFriend(relationshipId) {

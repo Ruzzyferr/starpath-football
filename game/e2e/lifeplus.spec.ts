@@ -124,3 +124,18 @@ test('supporter groups: three groups with different expectations are listed (2.4
   await page.waitForTimeout(800)
   await shot('fan-groups')
 })
+
+test('person scenes: a talk opens a 3-answer card and warms the relationship (2.4#11)', async ({ page, shot }) => {
+  await sp(page, `sp.navigate('life', { tab: 'relations' })`)
+  const before = await sp(page, `sp.state().life.relationships.mother.value`)
+  await page.getByTestId('scene-talk').first().click()
+  const dialog = page.getByRole('dialog')
+  await expect(dialog).toBeVisible()
+  await expect(dialog.getByRole('button', { name: /Listen carefully/ })).toBeVisible({ timeout: 5000 })
+  await expect(dialog.getByRole('button', { name: /Lighten it with a joke/ })).toBeVisible()
+  await expect(dialog.getByRole('button', { name: /honest advice/ })).toBeVisible()
+  await page.waitForTimeout(800)
+  await shot('person-scene')
+  await dialog.getByRole('button', { name: /Listen carefully/ }).click()
+  await expect.poll(async () => sp(page, `sp.state().life.relationships.mother.value`)).toBeGreaterThan(before as number)
+})

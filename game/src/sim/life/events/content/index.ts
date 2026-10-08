@@ -20,6 +20,7 @@ import { nationalEvents } from './national'
 import { awardsEvents } from './awards'
 import { rivalsEvents } from './rivals'
 import { communityEvents } from './community'
+import { sceneEvents } from './scenes'
 import { transferEvents } from './transfer'
 import { milestoneEvents } from './milestone'
 import { weirdEvents } from './weird'
@@ -55,6 +56,7 @@ export const ALL_EVENTS: readonly EventDef[] = [
   ...awardsEvents,
   ...rivalsEvents,
   ...communityEvents,
+  ...sceneEvents,
   ...transferEvents,
   ...milestoneEvents,
   ...weirdEvents,

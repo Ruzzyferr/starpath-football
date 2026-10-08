@@ -112,6 +112,8 @@ export type Delta =
       npcId?: string
       /** Display name; also used to create a missing relationship (e.g. a new partner). */
       name?: string
+      /** Exact relationship id (`life.relationships[id]`); nothing happens if it does not exist. */
+      relId?: string
     }
   | { kind: 'stat'; key: StatKey; amount: number }
   | { kind: 'attr'; key: AttributeKey; amount: number }

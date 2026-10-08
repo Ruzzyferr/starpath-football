@@ -638,6 +638,8 @@ export interface GameActions {
   // life
   interact(relationshipId: string, kind: InteractionKind): Delta[]
   /** Mark/unmark a close friend (max 3; 2.4#37). */
+  /** Open a short conversation / shared-activity scene with a person (2.4#11). False when it cannot start. */
+  startScene(relationshipId: string, kind: 'talk' | 'together'): boolean
   toggleCloseFriend(relationshipId: string): 'added' | 'removed' | 'full' | 'invalid'
   buy(assetId: string): boolean
   sell(assetIndex: number): number

@@ -11,6 +11,7 @@ export const tr = {
     groups: { family: 'Aile', love: 'Aşk ve dostluk', team: 'Takım', pro: 'Profesyonel çevre' },
     lastContact: 'Son görüşme {n} hafta önce',
     fanGroups: { title: 'Taraftar grupları', group: 'Taraftar grubu' },
+    scene: { label: '{name} ile sahne', talk: 'Sohbet et', together: 'Birlikte vakit' },
     household: {
       both: 'Anne ve babanla büyüdün.', single_mother: 'Seni annen tek başına büyüttü.', single_father: 'Seni baban tek başına büyüttü.', foster: 'Ebeveynsiz büyüdün: koruyucu aile ve arkadaşların senin ailen.',
     },
@@ -354,6 +355,7 @@ export const en: Shape<typeof tr> = {
     groups: { family: 'Family', love: 'Love & friends', team: 'Team', pro: 'Professional circle' },
     lastContact: 'Last contact {n} {n|week|weeks} ago',
     fanGroups: { title: 'Supporter groups', group: 'Supporter group' },
+    scene: { label: 'Scene with {name}', talk: 'Have a talk', together: 'Spend time' },
     household: {
       both: 'You grew up with both parents.', single_mother: 'Your mother raised you on her own.', single_father: 'Your father raised you on his own.', foster: 'You grew up without parents: foster care and friends are your family.',
     },

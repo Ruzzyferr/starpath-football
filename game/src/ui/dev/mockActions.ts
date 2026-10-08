@@ -533,6 +533,10 @@ export const mockActions: GameActions = {
     commit(s)
   },
 
+  startScene() {
+    return false
+  },
+
   toggleCloseFriend(relationshipId) {
     const s = get()
     const r = toggleCloseFriend(s.life, relationshipId)

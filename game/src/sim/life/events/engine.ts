@@ -791,6 +791,12 @@ function applyDelta(state: GameState, d: Delta, memory: LText, abs: number, vars
     }
     case 'relation': {
       const amount = num(d.amount)
+      if (d.relId) {
+        const rr = l.relationships[d.relId]
+        if (!rr) return null
+        const change = bump(rr, amount, memory, abs)
+        return change === 0 ? null : { kind: 'relation', target: rr.kind, amount: change, label: rr.name, ...(rr.npcId ? { npcId: rr.npcId } : {}) }
+      }
       if (d.target === 'teammate' && !d.npcId) {
         const mates = Object.values(l.relationships).filter((r) => r.kind === 'teammate')
         if (mates.length === 0 || amount === 0) return null
