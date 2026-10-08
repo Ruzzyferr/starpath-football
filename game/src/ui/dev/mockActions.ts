@@ -823,6 +823,12 @@ export const mockActions: GameActions = {
     s.activeMatchId = pre.fixture.fixtureId
     commit(s)
   },
+  setMatchFocus(focus) {
+    const s = get()
+    if (focus === 'balance') delete s.hero.matchFocus
+    else s.hero.matchFocus = focus
+    commit(s)
+  },
   matchSetSpeed(speed) {
     engine.setSpeed(speed)
   },

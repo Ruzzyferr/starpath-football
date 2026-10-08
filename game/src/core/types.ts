@@ -335,6 +335,8 @@ export interface Hero {
    * match). Keepers study it (WP-14). Optional for old saves.
    */
   keeperBook?: ShotBook
+  /** Pre-match focus for the next matches (GAP 2.1#9). Missing = balance. */
+  matchFocus?: 'attack' | 'balance' | 'defend'
   contract: Contract | null
   managerTrust: number // 0..100
   reputation: number // 0..100 global fame

@@ -1166,7 +1166,10 @@ export class MatchSim {
     if (!hero || !h.side) return
     const minutes = toMinute - fromMinute + 1
     const n = plannedHighlightCount(
-      { position: hero.position, relationAvg: this.teammateRelationAvg(), morale: this.team(h.side).morale, form: h.form, minutes, ovr: hero.ovr },
+      {
+        position: hero.position, relationAvg: this.teammateRelationAvg(), morale: this.team(h.side).morale, form: h.form, minutes, ovr: hero.ovr,
+        positioning: hero.attrs.positioning, ...(this.s.opts.heroFocus ? { focus: this.s.opts.heroFocus } : {}),
+      },
       this.rng,
     )
     h.plan = planHighlightMinutes(Math.max(2, fromMinute + 1), Math.min(88, toMinute - 2), n, this.rng, [45, 46])

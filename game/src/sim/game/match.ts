@@ -257,7 +257,9 @@ export function startHeroMatch(state: GameState, lang: Lang = 'en'): MatchSim | 
   if (resumed) return resumed
   const prep = prepareHeroMatch(state)
   if (!prep) return null
-  const sim = new MatchSim(prep.setup, lang, prep.opts)
+  // The focus is read at kick-off: the player may change it on the pre-match screen (GAP 2.1#9).
+  const focus = state.hero.matchFocus
+  const sim = new MatchSim(prep.setup, lang, focus && focus !== 'balance' ? { ...prep.opts, heroFocus: focus } : prep.opts)
   saveMatchProgress(state, sim)
   return sim
 }

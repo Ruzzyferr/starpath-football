@@ -7,6 +7,7 @@ import { onColor } from '../../art/svg'
 import { ROLE_EXPECTED_MINUTES, ROLE_NAMES, startProbability } from '../../../sim/career/squadRole'
 import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
+import { FocusPicker } from './FocusPicker'
 
 function Disc({ p, team, side, depth }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; depth: number }) {
   // Home occupies the bottom half (own goal at the bottom), away the top half.
@@ -188,6 +189,7 @@ export function PreMatchScreen() {
           </div>
 
           {pm.expectedMoments && pm.expectedMoments.max > 0 && <ExpectedMomentsCard em={pm.expectedMoments} starting={pm.heroStarting} />}
+          <FocusPicker />
 
           <div class="pm-card">
             <h3 class="micro t-mid">{t('match.pre.opponentForm')}</h3>

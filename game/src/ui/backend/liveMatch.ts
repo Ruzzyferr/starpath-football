@@ -206,7 +206,10 @@ function expectedFor(s: GameState, blob: MatchBlob): PreMatchView['expectedMomen
   const mates = team.lineup.filter((p) => !p.isHero)
   const relationAvg = mates.length ? mates.reduce((a, p) => a + p.relationToHero, 0) / mates.length : 0
   try {
-    const e = expectedMomentsFor({ position, relationAvg, morale: team.morale, form: s.hero.form, minutes: blob.starts ? 90 : 25 })
+    const e = expectedMomentsFor({
+      position, relationAvg, morale: team.morale, form: s.hero.form, minutes: blob.starts ? 90 : 25,
+      positioning: hero?.attrs.positioning, ovr: hero?.ovr, ...(s.hero.matchFocus ? { focus: s.hero.matchFocus } : {}),
+    })
     return { min: e.min, max: e.max, kinds: e.kinds.map((k) => ({ kind: k.kind, share: k.share })) }
   } catch {
     return null

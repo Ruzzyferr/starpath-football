@@ -650,6 +650,8 @@ export interface GameActions {
   // match
   playMatch(): void
   matchSetSpeed(speed: 1 | 2 | 4): void
+  /** Pre-match focus (attack / balance / defend) for the coming matches (GAP 2.1#9). */
+  setMatchFocus(focus: 'attack' | 'balance' | 'defend'): void
   matchPause(paused: boolean): void
   /** Let the sim resolve the pending moment. */
   simMoment(): void

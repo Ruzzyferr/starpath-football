@@ -795,6 +795,7 @@ export function expectedMoments(input: HighlightPlanInput): ExpectedMoments {
   n += clamp(input.relationAvg, -100, 100) * 0.015
   n += (input.morale - 1) * 5
   n += ((input.form - 50) / 50) * 1
+  n += focusPositioningMoments(input)
   const share = input.minutes >= 89 ? 1 : input.minutes < 10 ? 0 : input.minutes / 90
   let min = clamp(Math.round(n - 1.2), HIGHLIGHTS_MIN_90, HIGHLIGHTS_MAX_90)
   let max = clamp(Math.round(n + 1.2), HIGHLIGHTS_MIN_90, HIGHLIGHTS_MAX_90) + 1
@@ -845,6 +846,25 @@ export interface HighlightPlanInput {
   minutes: number
   /** Hero OVR (optional; tighter defences cut the count of chances above 68). */
   ovr?: number
+  /** Pre-match focus (GAP 2.1#9): attack +0.6 moments, defend −0.6 (and more defensive kinds downstream). */
+  focus?: MatchFocus
+  /** Hero Positioning 0..100: off-ball movement relative to his level finds more chances. */
+  positioning?: number
+}
+
+/** Pre-match focus mode. */
+export type MatchFocus = 'attack' | 'balance' | 'defend'
+/** Moments added (attack) / removed (defend) by the focus. */
+export const FOCUS_MOMENTS = 0.6
+/** Max moments from Positioning (relative to OVR; ±30 points = full effect). */
+export const POSITIONING_MOMENTS = 0.6
+
+/** Focus + Positioning share of the count, shared by the plan and the preview. */
+export function focusPositioningMoments(input: Pick<HighlightPlanInput, 'focus' | 'positioning' | 'ovr'>): number {
+  const f = input.focus === 'attack' ? FOCUS_MOMENTS : input.focus === 'defend' ? -FOCUS_MOMENTS : 0
+  if (input.positioning === undefined) return f
+  const rel = clamp((input.positioning - (input.ovr ?? 60)) / 30, -1, 1)
+  return f + rel * POSITIONING_MOMENTS
 }
 
 /**
@@ -856,6 +876,7 @@ export function plannedHighlightCount(input: HighlightPlanInput, rng: Rng): numb
   n += clamp(input.relationAvg, -100, 100) * 0.015
   n += (input.morale - 1) * 5
   n += ((input.form - 50) / 50) * 1
+  n += focusPositioningMoments(input)
   n *= 1 - COUNT_TIGHTENING * tightening(input.ovr)
   n += rng.normal(0, 0.8)
   const full = clamp(Math.round(n), HIGHLIGHTS_MIN_90, HIGHLIGHTS_MAX_90)

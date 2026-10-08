@@ -18,6 +18,8 @@ export interface MatchSimOptions {
   managerTrust?: number
   /** Max substitutions per team (default 5). */
   maxSubs?: number
+  /** Hero's pre-match focus (GAP 2.1#9). Missing = balance. */
+  heroFocus?: 'attack' | 'balance' | 'defend'
 }
 
 /** Per-player match counters. */

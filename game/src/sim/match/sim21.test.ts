@@ -7,6 +7,8 @@ import type { Formation, Position } from '../../core/types'
 import { MatchSim } from './engine'
 import { isLateTired, lateFatigueAttrs, momentumFactor, MOMENTUM_BOOST, unitSkills } from './teamModel'
 import { makeSetup } from './testFixtures'
+import { expectedMoments, FOCUS_MOMENTS, focusPositioningMoments, plannedHighlightCount } from './highlightGen'
+import { Rng } from '../../core/rng'
 import { chanceReport } from '../../ui/backend/postMatch'
 
 function heroMatch(seed: number, pos: Position, ovr?: number) {
@@ -121,5 +123,41 @@ describe('strength reaches the match (2.1#6)', () => {
     const r = sample(58, 76, 1000, 71_000)
     expect(r.win).toBeLessThanOrEqual(0.12)
     expect(r.win).toBeGreaterThan(0)
+  })
+})
+
+describe('focus mode and Positioning in the moment budget (2.1#9)', () => {
+  const base = { position: 'ST' as const, relationAvg: 0, morale: 1, form: 50, minutes: 90, ovr: 70 }
+
+  it('attack adds, defend removes; Positioning above the hero\'s level adds', () => {
+    expect(focusPositioningMoments({ focus: 'attack' })).toBeCloseTo(FOCUS_MOMENTS, 6)
+    expect(focusPositioningMoments({ focus: 'defend' })).toBeCloseTo(-FOCUS_MOMENTS, 6)
+    expect(focusPositioningMoments({ focus: 'balance', positioning: 70, ovr: 70 })).toBe(0)
+    expect(focusPositioningMoments({ positioning: 100, ovr: 70 })).toBeGreaterThan(0)
+    expect(focusPositioningMoments({ positioning: 40, ovr: 70 })).toBeLessThan(0)
+  })
+
+  it('the pre-match preview and the planned count move with the focus', () => {
+    const att = expectedMoments({ ...base, focus: 'attack', positioning: 90 })
+    const def = expectedMoments({ ...base, focus: 'defend', positioning: 50 })
+    expect(att.max).toBeGreaterThan(def.max)
+    let a = 0, d = 0
+    for (let i = 0; i < 300; i++) {
+      a += plannedHighlightCount({ ...base, focus: 'attack' }, new Rng(`f${i}`))
+      d += plannedHighlightCount({ ...base, focus: 'defend' }, new Rng(`f${i}`))
+    }
+    expect(a / 300 - d / 300).toBeGreaterThan(0.6)
+  })
+
+  it('focus reaches the engine through MatchSimOptions', () => {
+    const plans = (focus?: 'attack' | 'defend') => {
+      let n = 0
+      for (let seed = 0; seed < 60; seed++) {
+        const s = new MatchSim(heroMatch(5_000 + seed, 'ST'), 'en', focus ? { heroFocus: focus } : {}).simulateToEnd()
+        n += s.heroStats.highlightsPlayed
+      }
+      return n
+    }
+    expect(plans('attack')).toBeGreaterThan(plans('defend'))
   })
 })

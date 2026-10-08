@@ -752,6 +752,12 @@ export const realActions: GameActions = {
         : L('Bugün oynayacağın bir maç yok.', 'You have no match to play today.'), 'info')
   },
   matchSetSpeed: (speed) => live.setSpeed(speed),
+  setMatchFocus(focus) {
+    const s = get()
+    if (focus === 'balance') delete s.hero.matchFocus
+    else s.hero.matchFocus = focus
+    commit(s)
+  },
   matchPause: (paused) => live.setPaused(paused),
   simMoment: () => live.simMoment(),
   playMoment: () => live.playMoment(),

@@ -108,6 +108,11 @@ export const tr = {
     one: '{min} an',
     benchNote: 'Oyuna girersen',
     types: 'Muhtemel an tipleri',
+    focus: 'Maç odağı',
+    focusAttack: 'Hücum',
+    focusBalance: 'Denge',
+    focusDefend: 'Savunma',
+    focusHint: 'Hücum odağı daha çok an getirir, savunma odağı daha az. Pozisyon Alma da an sayını etkiler.',
   },
 }
 
@@ -218,5 +223,10 @@ export const en: Shape<typeof tr> = {
     one: '{min} moments',
     benchNote: 'If you come on',
     types: 'Likely moment types',
+    focus: 'Match focus',
+    focusAttack: 'Attack',
+    focusBalance: 'Balance',
+    focusDefend: 'Defend',
+    focusHint: 'Attacking focus brings more moments, defending fewer. Positioning also shifts your moment count.',
   },
 }

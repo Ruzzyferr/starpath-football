@@ -33,6 +33,8 @@ export {
   type FormationSlot,
   type GeneratedScenario,
   type HighlightPlanInput,
+  type MatchFocus,
+  focusPositioningMoments,
   type ScenarioInput,
   type SlotPlayer,
 } from './highlightGen'
