@@ -169,7 +169,7 @@ export const en: Shape<typeof tr> = {
       passing: 'Find the lit team-mate: GROUND passes through the gate, LOFTED balls over the mannequins.',
       dribbling: 'Take the gates in order without clipping cones; skill past mannequins at 1.5–2.5 m.',
       fitness: 'Finish every shuttle before the beep. Leave on the beep; sprinting burns stamina.',
-      goalkeeping: '12 shots, each from a new angle. The striker's last strides are the tell (better reflexes read it earlier). Held 10 points, parried 6.',
+      goalkeeping: '12 shots, each from a new angle. The striker’s last strides are the tell (better reflexes read it earlier). Held 10 points, parried 6.',
       crossing: 'Whip crosses from the wing into the lit zone, landing just as your team-mate’s run gets there.',
       heading: 'The machine fires the ball at the mark. Get on it, jump as it arrives and head it past the keeper.',
       tackling: 'A dribbler runs at you. Stay goal-side and nick the ball when it is pushed loose; don’t foul, don’t get beaten.',
