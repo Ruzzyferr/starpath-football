@@ -8,28 +8,34 @@ import { ROLE_EXPECTED_MINUTES, ROLE_NAMES, startProbability } from '../../../si
 import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 import { FocusPicker } from './FocusPicker'
+import { layoutTeam, type LayoutOut } from './pitchLayout'
 
-function Disc({ p, team, side, depth }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; depth: number }) {
-  // Home occupies the bottom half (own goal at the bottom), away the top half.
-  // x is normalised by the deepest-pushed player so the two front lines never
-  // meet on the halfway line (discs + names need ~8% of clear grass).
-  const xn = Math.min(1, p.x / depth)
-  const top = side === 'home' ? 94 - xn * 39 : 6 + xn * 39
-  const left = side === 'home' ? 8 + p.y * 84 : 92 - p.y * 84
+function Disc({ p, team, side, box, you }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; box: LayoutOut; you: string }) {
+  // Home occupies the bottom half (own goal at the bottom), away the top half;
+  // positions come from the collision-aware layout (pitchLayout.ts).
   const bg = team.kit.primary
+  const surname = p.name.split(' ').slice(-1)[0] ?? p.name
+  const full = `${p.number} ${p.name} · ${tx(`data.pos.${p.position}`)} · ${p.ovr}`
   return (
     <div
       class={`pm-disc pm-disc-${side}${p.isHero ? ' is-hero' : ''}`}
-      style={{ top: `${top}%`, left: `${left}%`, ['--kit' as string]: bg, ['--kit-ink' as string]: onColor(bg), ['--kit-2' as string]: team.kit.secondary }}
-      title={`${p.number} ${p.name} · ${tx(`data.pos.${p.position}`)} · ${p.ovr}`}
+      style={{ top: `${box.topPct}%`, left: `${box.leftPct}%`, ['--lbl' as string]: `${box.labelPx}px`, ['--kit' as string]: bg, ['--kit-ink' as string]: onColor(bg), ['--kit-2' as string]: team.kit.secondary }}
+      title={full}
+      role="img"
+      aria-label={p.isHero ? `${you}: ${full}` : full}
     >
-      <span class="pm-disc-num num">{p.number}</span>
-      <span class="pm-disc-name truncate">{p.isHero ? t('match.pre.you') : p.name.split(' ').slice(-1)[0]}</span>
+      <span class="pm-disc-num num" aria-hidden="true">{p.number}</span>
+      <span class="pm-disc-name" aria-hidden="true">{p.isHero ? you : surname}</span>
     </div>
   )
 }
 
-const lineDepth = (l: LineupPlayer[]): number => Math.max(1, ...l.map((p) => p.x))
+function Side({ lineup, team, side }: { lineup: LineupPlayer[]; team: TeamView; side: 'home' | 'away' }) {
+  const you = t('match.pre.you')
+  const boxes = layoutTeam(lineup.map((p) => ({ id: p.id, label: p.isHero ? you : (p.name.split(' ').slice(-1)[0] ?? p.name), x: p.x, y: p.y, isHero: p.isHero })), side)
+  const byId = new Map(boxes.map((b) => [b.id, b]))
+  return <>{lineup.map((p) => <Disc key={p.id} p={p} team={team} side={side} box={byId.get(p.id)!} you={you} />)}</>
+}
 
 /** "Expected moments" preview: how many interactive moments and which kinds to expect. */
 function ExpectedMomentsCard({ em, starting }: { em: NonNullable<PreMatchView['expectedMoments']>; starting: boolean }) {
@@ -173,8 +179,8 @@ export function PreMatchScreen() {
           <div class="pm-pitch">
             <div class="pm-stripes" aria-hidden="true" />
             <PitchLinesVertical />
-            {pm.awayLineup.map((p) => <Disc key={p.id} p={p} team={fx.away} side="away" depth={lineDepth(pm.awayLineup)} />)}
-            {pm.homeLineup.map((p) => <Disc key={p.id} p={p} team={fx.home} side="home" depth={lineDepth(pm.homeLineup)} />)}
+            <Side lineup={pm.awayLineup} team={fx.away} side="away" />
+            <Side lineup={pm.homeLineup} team={fx.home} side="home" />
           </div>
           <div class="pm-formation pm-formation-home"><Crest crest={fx.home.crest} size={20} compact /> <span class="num">{pm.homeFormation}</span></div>
         </section>

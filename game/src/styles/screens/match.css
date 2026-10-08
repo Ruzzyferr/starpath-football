@@ -330,7 +330,7 @@
   flex-direction: column;
   align-items: center;
   gap: 2px;
-  width: 64px;
+  width: max(30px, var(--lbl, 64px));
   animation: pop-in var(--dur-slow) var(--ease-spring) both;
 }
 .pm-disc-away {
@@ -353,7 +353,12 @@
   box-shadow: 0 3px 0 var(--pitch-shadow), 0 4px 10px rgba(0, 0, 0, 0.35);
 }
 .pm-disc-name {
-  max-width: 64px;
+  box-sizing: border-box;
+  max-width: var(--lbl, 64px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  line-height: 14px;
   font-size: 0.75rem;
   font-weight: 600;
   color: var(--text-hi);

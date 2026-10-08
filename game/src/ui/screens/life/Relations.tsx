@@ -189,7 +189,7 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
       <div class="life-person-actions" role="group" aria-label={t('life.rel.interactLabel', { name: rel.name })}>
         {INTERACTIONS[rel.kind].map((k) => (
           <Button key={k} size="sm" variant="ghost" icon={INTERACT_ICON[k]} onClick={() => interact(k)} title={costText(k)} aria-label={`${t(`data.interaction.${k}`)}, ${costText(k)}`}>
-            {t(`data.interaction.${k}`)}
+            <span class="life-act-label">{t(`data.interaction.${k}`)}</span>
             <span class="life-act-cost num" aria-hidden="true">{costText(k)}</span>
           </Button>
         ))}

@@ -64,14 +64,32 @@
   min-height: 2.8em;
 }
 .life-person-actions {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: var(--sp-1);
   margin-top: auto;
   padding-top: var(--sp-2);
   border-top: 1px solid var(--hairline);
 }
-.life-person-actions .btn { min-height: 44px; }
+.life-person-actions .btn {
+  min-height: 44px;
+  min-width: 0;
+  width: 100%;
+  justify-content: flex-start;
+  padding-block: 6px;
+  padding-inline: var(--sp-2);
+}
+.life-person-actions .btn:has(.life-act-label) {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  grid-template-rows: auto auto;
+  column-gap: var(--sp-2);
+  align-items: center;
+  text-align: start;
+}
+.life-person-actions .btn:has(.life-act-label) > svg { grid-row: 1 / span 2; }
+.life-act-label { grid-column: 2; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; }
+.life-person-actions .btn:last-child:nth-child(odd) { grid-column: 1 / -1; }
 
 /* ── Assets ── */
 .life-assets-grid {
@@ -316,7 +334,7 @@
 .life-person-trend.is-down { color: var(--state-danger); }
 .life-person-trend.is-flat { color: var(--text-mid); }
 .life-person-effect { margin: 0; }
-.life-act-cost { display: block; font-size: var(--fs-micro, 11px); opacity: 0.8; font-weight: 500; }
+.life-act-cost { grid-column: 2; display: block; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; line-height: 1.15; font-size: var(--fs-micro, 11px); opacity: 0.8; font-weight: 500; }
 
 /* Tur 2 UI: foundation card */
 .biz-foundation { display: flex; flex-direction: column; gap: var(--sp-2); }

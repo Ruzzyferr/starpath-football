@@ -158,3 +158,12 @@ K = koyu tema, A = açık tema. Maç akışı, kumarhane, tören ve sihirbaz ekr
 
 - Phaser sahnesinde oyuncular mobilde hâlâ küçük (yaklaşık 14 px), forma numaraları okunmuyor. Bu bir kamera ve zoom kararı. Oynanış hissini etkilediği için bu turda dokunmadım.
 - Topluluk sekme şeridi mobilde "Geri bildirim" sekmesini kesiyor. Şerit kaydırılabiliyor, ama sağ kenara bir solma (fade) ipucu eklenebilir.
+
+## Tur: maç öncesi saha etiketleri ve İlişkiler eylem satırı
+
+| Ekran | Önce | Sonra | Not |
+|---|---|---|---|
+| Maç öncesi kadro sahası | 7 | 8.5 | Etiketler üst üste biniyordu ("Seyim" / "Ünal") → çarpışma duyarlı yerleşim (`pitchLayout.ts`): satırlar eşit aralıklı, etiketler komşuya göre kısalıp üç nokta alıyor, tam ad title/aria'da |
+| Yaşam: İlişkiler eylem satırı | 7 | 8.5 | Butonlar kötü sarıyordu → 2 sütunlu ızgara, etiket üstte maliyet altta |
+
+Her 7x7 formasyon çifti için etiket kutularının çakışmadığı birim testle doğrulandı (`pitchLayout.test.ts`). 390 ve 1440 genişlikte, koyu ve açık temada ekran görüntüleri incelendi.
