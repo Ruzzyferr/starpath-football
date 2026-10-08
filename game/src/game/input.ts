@@ -135,12 +135,14 @@ interface ButtonTouch {
 const TAP_MAX_TIME = 0.28
 /** A touch on a button that travels this far (gesture units) is a swipe, not a button press. */
 export const BUTTON_DRAG_TO_SWIPE = 0.07
+/** …and one released after travelling at least this far toward goal is a flick-shot. */
+export const BUTTON_FLICK_MIN = 0.05
 /**
  * Joystick-side flick on the ball (owner feedback: swipes starting left of the
  * swipe zone were swallowed by the joystick): a short-lived, long, fast flick
  * toward goal from the joystick thumb is a shot, not a dribble.
  */
-export const JOY_FLICK = { maxLife: 0.6, minLength: 0.14, minSpeed: 1.2 } as const
+export const JOY_FLICK = { maxLife: 0.6, minLength: 0.14, minSpeed: 0.6, maxDwell: 0.1 } as const
 /** A finger that has moved less than this (gesture units) is resting, not swiping. */
 const IDLE_FINGER = 0.025
 /** A gesture with no sample for this long is a lost pointer (missed pointerup), not a live swipe. */
@@ -470,8 +472,17 @@ export class InputController {
     const b = this.button
     if (b && b.id === e.pointerId) {
       this.button = null
-      if (b.kind === 'skill' && !cancel) this.queued.push({ kind: 'skill' })
-      probeGesture({ outcome: 'button', ...ignored })
+      // A short sharp flick off the button toward goal (with the ball) is a shot, not a button press.
+      if (!cancel) this.sample(b.pts, e, p, t)
+      const ctx = this.lastCtx
+      const sw = !cancel && ctx?.heroOnBall && !ctx.heroIsKeeper ? analyzeSwipe(b.pts, 1) : null
+      if (sw && !sw.isTap && sw.length >= BUTTON_FLICK_MIN && t - b.t <= 0.25 && facesGoal(ctx!.ballPos, sw.dir)) {
+        this.queueSwipe(sw)
+        probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
+      } else {
+        if (b.kind === 'skill' && !cancel) this.queued.push({ kind: 'skill' })
+        probeGesture({ outcome: 'button', ...ignored })
+      }
     }
     if (this.sprintTouch === e.pointerId) this.sprintTouch = null
     if (this.skillTouch === e.pointerId) this.skillTouch = null
@@ -480,7 +491,7 @@ export class InputController {
       this.joy = null
       if (!this.oneTap && !cancel) {
         this.sample(joy.pts, e, p, t)
-        const sw = this.joyFlick(joy.pts, t - joy.t0)
+        const sw = this.joyFlick(joy.pts, t - joy.t0, t)
         if (sw) {
           this.queueSwipe(sw)
           probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
@@ -555,11 +566,15 @@ export class InputController {
    * A joystick-side touch that was really a shot: short-lived, long and fast,
    * toward goal, with the hero on the ball (see {@link JOY_FLICK}).
    */
-  private joyFlick(pts: GesturePoint[], life: number): SwipeFeatures | null {
+  private joyFlick(pts: GesturePoint[], life: number, released: number): SwipeFeatures | null {
     const ctx = this.lastCtx
     if (!ctx || !ctx.heroOnBall || ctx.heroIsKeeper || life > JOY_FLICK.maxLife || pts.length < 2) return null
     const sw = analyzeSwipe(pts, 1)
     if (sw.isTap || sw.length < JOY_FLICK.minLength || sw.speed < JOY_FLICK.minSpeed) return null
+    // A swipe lifts off as it ends; a joystick push holds its position before letting go.
+    const end = pts[pts.length - 1]!
+    const still = pts.find((q) => Math.hypot(q.sx - end.sx, q.sy - end.sy) < 0.012) ?? end
+    if (Math.max(end.t, released) - still.t > JOY_FLICK.maxDwell) return null
     return facesGoal(ctx.ballPos, sw.dir) ? sw : null
   }
 

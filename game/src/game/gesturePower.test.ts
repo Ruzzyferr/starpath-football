@@ -228,10 +228,31 @@ describe('InputController touch swipes', () => {
     expect(acts).toEqual([])
   })
 
+  it('a joystick push toward goal that holds before letting go stays a joystick', () => {
+    input.poll(ctx)
+    canvas.dispatchEvent(ptr('pointerdown', 8, W * 0.2, H * 0.8, clock))
+    for (let k = 1; k <= 12; k++) {
+      clock += 0.025
+      canvas.dispatchEvent(ptr('pointermove', 8, W * 0.2, H * 0.8 - k * 10, clock))
+    }
+    clock += 0.2
+    canvas.dispatchEvent(ptr('pointerup', 8, W * 0.2, H * 0.8 - 120, clock))
+    expect(input.poll(ctx).actions).toEqual([])
+  })
+
+  it('a slower deliberate swipe from the joystick side still shoots', () => {
+    expect(doSwipe(W * 0.3, H * 0.8, 0.22 * W, 0.33).map((a) => a.kind)).toEqual(['swipe'])
+  })
+
   it('a swipe that starts on the SKILL / SPRINT button is a swipe, not a skill move', () => {
     const ui = input.touchUi()
     expect(doSwipe(ui.skill.x, ui.skill.y, 220, 0.16).map((a) => a.kind)).toEqual(['swipe'])
     expect(doSwipe(ui.sprint.x, ui.sprint.y, 220, 0.16).map((a) => a.kind)).toEqual(['swipe'])
+  })
+
+  it('a tiny sharp flick off a button toward goal shoots', () => {
+    const ui = input.touchUi()
+    expect(doSwipe(ui.skill.x, ui.skill.y, 0.065 * W, 0.06).map((a) => a.kind)).toEqual(['swipe'])
   })
 
   it('a tap on SKILL still fires the skill', () => {
