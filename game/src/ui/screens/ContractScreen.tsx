@@ -165,6 +165,11 @@ function Negotiation({ n }: { n: NegotiationView }) {
               {agent && n.agentEstimate !== null && (
                 <p class="t-sm ctr-estimate"><Icon name="info" size={14} /> {t('contract.agent.estimate', { amount: formatMoney(n.agentEstimate) })}</p>
               )}
+              {n.leverage && n.leverage.length > 0 && (
+                <ul class="ptrust-list" data-testid="ctr-leverage" aria-label={t('contract.leverage')}>
+                  {n.leverage.map((c, i) => <li key={i} class={`t-sm ${c.tone === 'pos' ? 't-pos' : 't-neg'}`}><span>{lt(c.label)}</span></li>)}
+                </ul>
+              )}
             </div>
           </Card>
 

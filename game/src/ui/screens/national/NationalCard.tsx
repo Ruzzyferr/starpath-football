@@ -76,6 +76,7 @@ export function NationalCard({ detailed }: { detailed?: boolean }) {
               <StatBar key={k} label={t(`intl.national.parts.${k}`)} value={c.parts[k]} size="sm" scale />
             ))}
           </div>
+          {c.conduct !== undefined && <p class="t-xs t-neg" data-testid="nt-conduct">{t('intl.national.conduct', { n: c.conduct })}</p>}
           <p class="nt-criteria">{t('intl.national.criteria')}</p>
         </>
       )}

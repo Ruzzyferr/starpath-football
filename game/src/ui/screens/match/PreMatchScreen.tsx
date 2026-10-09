@@ -4,7 +4,8 @@ import { Button, Chip, Crest, EmptyState, FormDots, IconButton } from '../../com
 import { Icon } from '../../icons'
 import { formatNumber } from '../../format'
 import { onColor } from '../../art/svg'
-import { ROLE_EXPECTED_MINUTES, ROLE_NAMES, startProbability } from '../../../sim/career/squadRole'
+import { ROLE_EXPECTED_MINUTES, ROLE_NAMES } from '../../../sim/career/squadRole'
+import { startChance } from '../../../sim/game/whyPlaying'
 import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 import { FocusPicker } from './FocusPicker'
@@ -90,7 +91,7 @@ function ExpectationCard({ homeId }: { homeId: string }) {
   const cap = s.world.clubs[homeId]?.stadium.capacity
   const role = s.hero.contract.role
   const [a, b] = ROLE_EXPECTED_MINUTES[role]
-  const chance = Math.round(startProbability(s.hero, s.life) * 100)
+  const chance = Math.round(startChance(s) * 100)
   return (
     <div class="pm-card" data-testid="pm-expectation">
       <h3 class="micro t-mid">{t('board.pre.title')}</h3>

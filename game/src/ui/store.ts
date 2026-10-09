@@ -262,6 +262,8 @@ export interface NegotiationView {
   agentLine: LText
   /** Agent's private estimate of the club's walk-away wage. */
   agentEstimate: number | null
+  /** Butterfly: who else sat at the table (agent / chairman goodwill, awards, conduct). */
+  leverage?: { label: LText; tone: 'pos' | 'neg' }[]
   status: 'open' | 'accepted' | 'rejected' | 'walkedAway'
   lastResponse: LText | null
 }
@@ -545,6 +547,8 @@ export interface PostMatchView {
   relations?: RelationChangeView[]
   /** Pass telemetry per team-mate with their relationship band (2.4#36). */
   passNet?: PassNetView
+  /** Butterfly: what the hero brought into the match (a night out, tired legs, rust, family trouble, the dressing room). */
+  condition?: { label: LText; tone: 'pos' | 'neg' }[]
   /** WP-16: what this match earned (bonuses paid now + this match's share of the weekly wage/sponsors). */
   earnings?: MatchEarnings
 }

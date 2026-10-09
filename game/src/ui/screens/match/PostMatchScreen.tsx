@@ -208,6 +208,14 @@ function RatingStep({ pm }: { pm: PostMatchView }) {
           {worst && <span class="prb-chip is-neg"><Icon name="trend-down" size={14} /> {lineLabel(worst)} <b class="num">{signedDelta(worst.delta)}</b></span>}
         </div>
       )}
+      {pm.condition && pm.condition.length > 0 && (
+        <div class="prb-group" data-testid="post-condition">
+          <div class="prb-group-h micro t-mid"><span>{t('postmatch.rating.condition')}</span></div>
+          <ul class="ptrust-list">
+            {pm.condition.map((c, i) => <li key={i} class={c.tone === 'pos' ? 't-pos' : 't-neg'}><span>{lt(c.label)}</span></li>)}
+          </ul>
+        </div>
+      )}
       {log.length === 0 && <p class="t-sm t-mid">{t('postmatch.rating.noLog')}</p>}
       {groups.map((g) => (
         <div class="prb-group" key={g.source}>

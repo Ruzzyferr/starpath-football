@@ -34,7 +34,7 @@ import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
 import { DECISION_FLAG, applyPendingDecisions, pendingDecisions, recordDecision } from '../../sim/game/matchDecisions'
-import { markedMan } from '../../sim/game/match'
+import { markedMan, preMatchCauses } from '../../sim/game/match'
 import { heroOvr } from '../../sim/career/progression'
 
 /** Live text-feed speeds (2.2#106: 0.5x–4x). */
@@ -646,6 +646,7 @@ function finalize(): void {
     scorers: res.scorers.map((g) => ({ minute: g.minute, name: nameOf(g.playerId) + (g.ownGoal ? ' (o.g.)' : ''), side: g.team })),
     deltas: diffSnapshots(before, after).filter((d) => d.key !== 'energy'),
     ...postDetails(s, snap, report, trustBefore, relBefore),
+    ...conditionFor(s, l.fixtureId),
     ...passNetFor(l, snap, report.minutes),
     ...(report.bonuses && s.hero.contract ? { earnings: earningsFor(s, report.bonuses) } : {}),
   }
@@ -671,6 +672,12 @@ function passNetFor(l: Live, snap: MatchSnapshot, minutes: number): { passNet?: 
   } catch {
     return {}
   }
+}
+
+/** Pre-match causes (life/butterfly) for the rating step: what the week before did to this match. */
+function conditionFor(s: GameState, fixtureId: string): Pick<PostMatchView, 'condition'> {
+  const c = preMatchCauses(s, fixtureId)
+  return c.length ? { condition: c.map((x) => ({ label: x.label, tone: x.tone })) } : {}
 }
 
 /** Rating breakdown, maps, trust reasons and relationship rows for the post-match flow. */

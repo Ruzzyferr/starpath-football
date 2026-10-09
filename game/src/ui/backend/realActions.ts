@@ -356,6 +356,7 @@ function negoView(s: GameState, st: NegotiationState, lines: LText[]): Negotiati
     maxRounds: st.maxRounds,
     agentLine,
     agentEstimate: q >= 3 ? st.hidden.maxWage : null,
+    ...(st.leverage?.length ? { leverage: st.leverage.map((c) => ({ label: c.label, tone: c.tone })) } : {}),
     status,
     lastResponse: (lines.length ? lines[lines.length - 1] : null)!,
   }
