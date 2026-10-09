@@ -24,6 +24,8 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
   heading: 30,
   tackling: 30,
   distribution: 40,
+  sprint: 35,
+  interception: 40,
 }
 
 /** Points that count as a top session (performance ≈ 1). Calibrated with scripted bots (drills.test.ts). */
@@ -37,6 +39,8 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   heading: 1700,
   tackling: 1150,
   distribution: 650,
+  sprint: 1400,
+  interception: 1400,
 }
 
 /** Which drill a training session plays (null = no mini-game, auto only). */
@@ -52,11 +56,19 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
   heading: { kind: 'heading', variant: 'standard' },
   tackling: { kind: 'tackling', variant: 'standard' },
   distribution: { kind: 'distribution', variant: 'standard' },
+  sprint: { kind: 'sprint', variant: 'standard' },
+  core: { kind: 'sprint', variant: 'contact' },
+  longPass: { kind: 'crossing', variant: 'switch' },
+  reading: { kind: 'interception', variant: 'standard' },
+  pressing: { kind: 'interception', variant: 'press' },
+  keeperDiving: { kind: 'goalkeeping', variant: 'diving' },
+  // Leadership is not a ball drill: it is talked, not kicked (team talk + mentoring, auto only).
+  leadership: null,
   recovery: null,
 }
 
 /** Variants with their own scoring scale (curl gate: 5 × 20 points). */
-export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 80, rondo: 26 }
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 80, rondo: 26, switch: 1700, diving: 70, contact: 1200, press: 900 }
 /** Variants with their own length (rondo: 60 s, 2.3#24). */
 export const VARIANT_DURATION: Readonly<Partial<Record<DrillVariant, number>>> = { rondo: 60 }
 
@@ -353,6 +365,75 @@ export function claimChance(handling: number, contested: boolean, stretched: boo
   const p = 0.4 + clamp01(handling / 100) * 0.55 - (contested ? 0.18 : 0) - (stretched ? 0.08 : 0) - (difficulty - 1) * 0.15
   return Math.max(0.1, Math.min(0.97, p))
 }
+
+// ───────────────────────── Sprint starts (Acceleration) & contact (Balance) ─────────────────────────
+
+/** Length of one sprint rep (m): the first yards, where acceleration (not top speed) wins. */
+export const SPRINT_DISTANCE = 15
+/** The "dip" at the line: a tap within this many metres before the line. */
+export const SPRINT_DIP_M = 1.2
+
+export type ReactionGrade = 'perfect' | 'good' | 'slow'
+/** Reaction to the start light (s): ≤ 0.18 perfect, ≤ 0.32 good. */
+export function reactionGrade(reaction: number): ReactionGrade {
+  if (reaction <= 0.18) return 'perfect'
+  if (reaction <= 0.32) return 'good'
+  return 'slow'
+}
+
+/** Sprint speed model: acceleration sets the drive (m/s²), pace the top speed (m/s). */
+export const sprintAccel = (acceleration: number): number => 4 + clamp01(acceleration / 100) * 5
+export const sprintTopSpeed = (pace: number): number => 6.5 + clamp01(pace / 100) * 2.5
+
+export interface SprintScoreInput {
+  reaction: ReactionGrade
+  /** Rep time from the light to the line (s), reaction included. */
+  time: number
+  dip: boolean
+  /** Contact variant: braced the shoulder charge (true), stumbled (false), no contact (undefined). */
+  braced?: boolean
+  combo: number
+}
+
+/** Points for a sprint rep: reaction + time under 3.4 s + dip (+ brace in the contact variant). */
+export function sprintPoints(i: SprintScoreInput): number {
+  const react = i.reaction === 'perfect' ? 60 : i.reaction === 'good' ? 35 : 10
+  const time = Math.round(Math.max(0, Math.min(70, (3.4 - i.time) * 70)))
+  const brace = i.braced === true ? 40 : 0
+  const base = 30 + react + time + (i.dip ? 15 : 0) + brace
+  return Math.round(base * (i.reaction !== 'slow' && i.braced !== false ? comboMultiplier(i.combo) : 1))
+}
+export const FALSE_START_PENALTY = -20
+
+/** Brace window (s) before the shoulder charge lands: balance and strength widen it. */
+export const braceWindow = (balance: number, strength: number): number =>
+  0.26 + clamp01(balance / 100) * 0.22 + clamp01(strength / 100) * 0.08
+/** Speed kept after a charge you did not brace for (balance keeps you up). */
+export const stumbleKeep = (balance: number): number => 0.3 + clamp01(balance / 100) * 0.3
+
+// ───────────────────────── Reading the game (Anticipation) & pressing (Work Rate) ─────────────────────────
+
+/** How early the passer's intention shows (s before the release): anticipation reads it sooner. */
+export const readTell = (anticipation: number): number => 0.3 + clamp01(anticipation / 100) * 0.65
+/** Interception reach (m) around the defender. */
+export const interceptReach = (anticipation: number): number => 0.85 + clamp01(anticipation / 100) * 0.45
+
+export interface InterceptScoreInput {
+  /** Stood in the lane before the ball left the passer's foot. */
+  read: boolean
+  combo: number
+}
+/** Points for an interception: 100, +50 when you had read it before the release. */
+export const interceptPoints = (i: InterceptScoreInput): number => Math.round((100 + (i.read ? 50 : 0)) * comboMultiplier(i.combo))
+
+/** Radius (m) the presser must close to before the receiver releases. */
+export const PRESS_RADIUS = 2.2
+/** Points for a successful press: 80 + 30 per second still left on the receiver's clock. */
+export const pressPoints = (spare: number, combo: number): number =>
+  Math.round((80 + Math.max(0, Math.min(1.5, spare)) * 30) * comboMultiplier(combo))
+/** Stamina drain per second of sprinting while pressing: work rate makes the running cheaper. */
+export const pressDrain = (workRate: number, stamina: number): number =>
+  0.2 * (1.35 - clamp01(workRate / 100) * 0.45 - clamp01(stamina / 100) * 0.2)
 
 // ───────────────────────── XP preview ─────────────────────────
 

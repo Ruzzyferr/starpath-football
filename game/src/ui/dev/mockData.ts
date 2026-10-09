@@ -271,6 +271,7 @@ export const mockData: GameData = {
     })
   },
   trainerOffers: () => TRAINERS,
+  devAreas: () => ['stamina', 'heading'],
   assetCatalog: () => ASSETS,
   squad() {
     const s = getState()

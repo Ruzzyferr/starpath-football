@@ -25,6 +25,8 @@ import { injuryProneness, wellbeingXpMultiplier } from '../life/wellbeing'
 export type TrainingType =
   | 'shooting' | 'passing' | 'dribbling' | 'physical' | 'tactical' | 'setPiece' | 'goalkeeping' | 'recovery'
   | 'crossing' | 'heading' | 'tackling' | 'distribution'
+  // Owner requirement "every stat is trainable": a dedicated session for each v6 attribute.
+  | 'sprint' | 'core' | 'longPass' | 'reading' | 'pressing' | 'leadership' | 'keeperDiving'
 
 export type TrainingIntensity = 'light' | 'normal' | 'hard'
 
@@ -98,6 +100,34 @@ export const TRAINING_TYPES: Readonly<Record<TrainingType, TrainingDef>> = {
   distribution: {
     id: 'distribution', icon: '🧤', name: lt('Çıkış & Hâkimiyet', 'Distribution & Claiming'),
     attrs: { gkDistribution: 4, handling: 2.5, longPassing: 1.5, passing: 1, gkPositioning: 1, jumping: 0.5 }, baseXp: 30, energy: 18, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1,
+  },
+  sprint: {
+    id: 'sprint', icon: '⚡', name: lt('Patlayıcı Çıkışlar', 'Explosive Starts'),
+    attrs: { acceleration: 4.5, pace: 2.5, agility: 1.5, balance: 0.5 }, baseXp: 30, energy: 20, fatigue: 11, injuryRisk: 0.007, sharpness: 3, stress: 1, perkKey: 'xp_physical',
+  },
+  core: {
+    id: 'core', icon: '🧱', name: lt('Denge & Temas', 'Core & Contact'),
+    attrs: { balance: 4.5, strength: 3, agility: 1, aggression: 0.5 }, baseXp: 30, energy: 18, fatigue: 10, injuryRisk: 0.005, sharpness: 2, stress: 1, perkKey: 'xp_physical',
+  },
+  longPass: {
+    id: 'longPass', icon: '🛰️', name: lt('Oyun Değiştirme', 'Switch of Play'),
+    attrs: { longPassing: 4.5, vision: 2, curve: 1, passing: 1 }, baseXp: 30, energy: 16, fatigue: 7, injuryRisk: 0.003, sharpness: 3, stress: 1,
+  },
+  reading: {
+    id: 'reading', icon: '🧠', name: lt('Oyun Okuma', 'Reading the Game'),
+    attrs: { anticipation: 4.5, positioning: 2, tackling: 1, composure: 1 }, baseXp: 30, energy: 16, fatigue: 8, injuryRisk: 0.004, sharpness: 3, stress: 1, perkKey: 'xp_tactical',
+  },
+  pressing: {
+    id: 'pressing', icon: '🔥', name: lt('Pres Çalışması', 'Pressing Drill'),
+    attrs: { workRate: 4.5, stamina: 2.5, aggression: 1, anticipation: 1 }, baseXp: 30, energy: 22, fatigue: 12, injuryRisk: 0.006, sharpness: 4, stress: 1,
+  },
+  leadership: {
+    id: 'leadership', icon: '©️', name: lt('Kaptanlık & Takım Konuşması', 'Captaincy & Team Talk'),
+    attrs: { leadership: 5, composure: 2, workRate: 0.5, vision: 0.5 }, baseXp: 24, energy: 10, fatigue: 2, injuryRisk: 0, sharpness: 0, stress: 1, perkKey: 'xp_tactical',
+  },
+  keeperDiving: {
+    id: 'keeperDiving', icon: '🧤', name: lt('Plonjon İstasyonu', 'Diving Station'),
+    attrs: { diving: 4.5, reflexes: 2, agility: 1.5, jumping: 1 }, baseXp: 30, energy: 20, fatigue: 11, injuryRisk: 0.006, sharpness: 3, stress: 1,
   },
   recovery: {
     id: 'recovery', icon: '🧘', name: lt('Yoga & Toparlanma', 'Yoga & Recovery'),

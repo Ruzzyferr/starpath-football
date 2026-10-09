@@ -108,6 +108,59 @@ function Body({ kind, setPiece }: { kind: string; setPiece: boolean }) {
           <Cone x={70} y={60} /><Cone x={150} y={60} />
         </>
       )
+    case 'sprint':
+    case 'contact':
+      return (
+        <>
+          <path d="M40 58V96M180 58V96" stroke={RUN} stroke-width="3" />
+          {[40, 75, 110, 145, 180].map((x) => <Cone key={x} x={x} y={52} />)}
+          {[40, 75, 110, 145, 180].map((x) => <Cone key={x + 1} x={x} y={104} />)}
+          <circle cx="30" cy="78" r="5" fill={YOU} />
+          <path d="M44 78H174" stroke={RUN} {...dash} />
+          <Player x={44} y={78} />
+          {kind === 'contact' && <><Player x={100} y={104} c={MATE} /><path d="M100 98L104 84" stroke={OPP} {...dash} /></>}
+        </>
+      )
+    case 'switch':
+      return (
+        <>
+          <Player x={110} y={110} /><Ball x={116} y={104} />
+          <path d="M116 104C150 60 180 40 196 34" stroke={PASS} {...dash} />
+          <circle cx="196" cy="34" r="10" fill="none" stroke={RUN} stroke-opacity=".6" />
+          <path d="M196 96V44" stroke={RUN} {...dash} />
+          <Player x={196} y={98} c={MATE} />
+        </>
+      )
+    case 'interception':
+      return (
+        <>
+          <Player x={170} y={64} c={OPP} /><Player x={70} y={28} c={OPP} /><Player x={70} y={100} c={OPP} />
+          <Ball x={164} y={62} />
+          <path d="M164 62L76 32" stroke={PASS} {...dash} />
+          <Player x={112} y={66} />
+          <path d="M112 66L118 48" stroke={RUN} {...dash} />
+        </>
+      )
+    case 'press':
+      return (
+        <>
+          <path d="M70 30H150V100H70Z" fill="none" stroke={LINE} stroke-width="1" stroke-dasharray="3 3" />
+          <Player x={70} y={30} c={OPP} /><Player x={150} y={30} c={OPP} /><Player x={150} y={100} c={OPP} /><Player x={70} y={100} c={OPP} />
+          <Ball x={144} y={34} />
+          <circle cx="150" cy="30" r="13" fill="none" stroke={RUN} stroke-opacity=".6" />
+          <Player x={112} y={64} />
+          <path d="M116 60L142 36" stroke={RUN} {...dash} />
+        </>
+      )
+    case 'diving':
+      return (
+        <>
+          <Player x={110} y={24} c={RUN} />
+          <path d="M110 24h-34M110 24h34" stroke={RUN} stroke-width="2" stroke-linecap="round" opacity=".6" />
+          <Ball x={92} y={96} /><Ball x={130} y={98} />
+          <path d="M92 96L64 16M130 98L156 16" stroke={OPP} {...dash} />
+        </>
+      )
     case 'fitness':
       return (
         <>

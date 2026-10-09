@@ -17,11 +17,16 @@ import type { AimAssist } from '../kick'
 import type { AgentState, Vec2 } from '../model'
 import type { AimState, HeroAction } from '../runtime'
 
-export type DrillKind = 'finishing' | 'passing' | 'dribbling' | 'fitness' | 'goalkeeping' | 'crossing' | 'heading' | 'tackling' | 'distribution'
-export const DRILL_KINDS: readonly DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution']
+export type DrillKind = 'finishing' | 'passing' | 'dribbling' | 'fitness' | 'goalkeeping' | 'crossing' | 'heading' | 'tackling' | 'distribution' | 'sprint' | 'interception'
+export const DRILL_KINDS: readonly DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution', 'sprint', 'interception']
 
-/** Optional variation of a drill (set-piece finishing = free kicks over a wall). */
-export type DrillVariant = 'standard' | 'setPiece' | 'rondo'
+/**
+ * Optional variation of a drill: set-piece finishing = free kicks over a wall; rondo = 4v2 passing;
+ * switch = long diagonal switches of play (crossing drill, Long Passing); diving = corner-only
+ * shots at full stretch (goalkeeping drill, Diving); contact = sprint reps with a shoulder charge
+ * to brace for (sprint drill, Balance); press = close down the receiver (interception drill, Work Rate).
+ */
+export type DrillVariant = 'standard' | 'setPiece' | 'rondo' | 'switch' | 'diving' | 'contact' | 'press'
 
 export type Grade = 'S' | 'A' | 'B' | 'C' | 'D'
 
@@ -56,6 +61,7 @@ export type DrillLabel =
   | 'shuttle' | 'perfectStart' | 'goodStart' | 'lateArrival' | 'gassed' | 'out'
   | 'save' | 'held' | 'conceded' | 'wide'
   | 'delivery' | 'won' | 'foul' | 'beaten' | 'whiff'
+  | 'falseStart' | 'dip' | 'braced' | 'stumble' | 'intercept' | 'read' | 'pressed' | 'escaped'
 
 /** Things that happened this step (sound, haptics, floaters). */
 export type DrillEvent =
@@ -140,6 +146,7 @@ export interface MeterView {
 export type DrillPrompt =
   | 'finishing' | 'setPiece' | 'passGround' | 'passLoft' | 'dribble' | 'skillNow' | 'fitnessRun' | 'fitnessWait' | 'fitnessGo'
   | 'keeper' | 'crossing' | 'crossNow' | 'heading' | 'headNow' | 'tackling' | 'tackleNow' | 'claim' | 'distribute' | 'ready' | 'done'
+  | 'switch' | 'diving' | 'sprintSet' | 'sprintGo' | 'sprintRun' | 'braceNow' | 'reading' | 'interceptNow' | 'pressing' | 'pressNow'
 
 export interface DrillHud {
   points: number

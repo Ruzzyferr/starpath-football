@@ -74,7 +74,10 @@ export class GoalkeepingDrill extends DrillBase {
   private strike(): void {
     // Strikers pick the side away from the keeper most of the time.
     const away = this.hero.pos.y >= GOAL_CENTER_Y ? -1 : 1
-    const corner = this.rng.chance(0.1) ? 0 : (this.rng.chance(0.72) ? away : -away) * this.rng.range(1.4, 3.35)
+    // Diving station (Diving): every shot is placed towards a corner, so each save is at full stretch.
+    const corner = this.variant === 'diving'
+      ? (this.rng.chance(0.75) ? away : -away) * this.rng.range(2.4, 3.4)
+      : this.rng.chance(0.1) ? 0 : (this.rng.chance(0.72) ? away : -away) * this.rng.range(1.4, 3.35)
     const high = this.rng.chance(0.4)
     const target = { x: -0.2, y: GOAL_CENTER_Y + corner }
     const power = this.rng.range(0.55, 0.8) * (0.95 + (this.difficulty - 1) * 0.3)
@@ -211,7 +214,10 @@ export class GoalkeepingDrill extends DrillBase {
     if (saved) {
       this.stat('saves')
       if (extra.held) this.stat('held')
-      this.award(savePoints({ saved: true, held: !!extra.held, stretch: extra.stretch ?? 0, speed: extra.speed ?? 0, combo: this.combo }), true, { label, ...at })
+      // Diving station: a save at full stretch earns a +4 bonus.
+      const stretchBonus = this.variant === 'diving' && (extra.stretch ?? 0) >= 0.55 ? 4 : 0
+      if (stretchBonus) this.stat('stretchSaves')
+      this.award(savePoints({ saved: true, held: !!extra.held, stretch: extra.stretch ?? 0, speed: extra.speed ?? 0, combo: this.combo }) + stretchBonus, true, { label, ...at })
     } else {
       this.stat('conceded')
       this.award(0, false, { label: 'conceded', ...at })
@@ -277,7 +283,7 @@ export class GoalkeepingDrill extends DrillBase {
         combo: this.combo,
         timeLeft: this.timeLeft,
         duration: this.duration,
-        prompt: this.phase === 'countdown' ? 'ready' : this.phase === 'post' || this.finished ? 'done' : 'keeper',
+        prompt: this.phase === 'countdown' ? 'ready' : this.phase === 'post' || this.finished ? 'done' : this.variant === 'diving' ? 'diving' : 'keeper',
         meters: [],
         level: this.shotNo,
         countdown: this.countdown,

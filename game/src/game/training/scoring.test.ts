@@ -31,13 +31,13 @@ describe('drill scoring', () => {
     expect(gradeFor(-1)).toBe('D')
   })
 
-  it('drills last 20–40 s and every trainable session maps to a drill except recovery', () => {
+  it('drills last 20–40 s and every trainable session maps to a drill except recovery and the leadership talk', () => {
     for (const k of DRILL_KINDS) {
       expect(DRILL_DURATION[k]).toBeGreaterThanOrEqual(20)
       expect(DRILL_DURATION[k]).toBeLessThanOrEqual(40)
     }
     for (const t of Object.keys(TRAINING_TYPES) as (keyof typeof TRAINING_TYPES)[]) {
-      if (t === 'recovery') expect(DRILL_FOR_TRAINING[t]).toBeNull()
+      if (t === 'recovery' || t === 'leadership') expect(DRILL_FOR_TRAINING[t]).toBeNull()
       else expect(DRILL_FOR_TRAINING[t]).not.toBeNull()
     }
     expect(DRILL_FOR_TRAINING.goalkeeping?.kind).toBe('goalkeeping')

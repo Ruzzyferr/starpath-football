@@ -30,7 +30,9 @@ const isTouch = (): boolean =>
   typeof window !== 'undefined' && (('ontouchstart' in window) || window.matchMedia?.('(pointer: coarse)').matches === true)
 
 /** Key into the drill i18n tables (set pieces have their own title/goal). */
-const drillKey = (s: TrainingSessionView): string => (s.drill?.variant === 'setPiece' ? 'setPiece' : s.drill?.variant === 'rondo' ? 'rondo' : s.drill?.kind ?? 'finishing')
+const VARIANT_KEYS = new Set(['setPiece', 'rondo', 'switch', 'diving', 'contact', 'press'])
+const drillKey = (s: TrainingSessionView): string =>
+  s.drill?.variant && VARIANT_KEYS.has(s.drill.variant) ? s.drill.variant : s.drill?.kind ?? 'finishing'
 
 export function DrillOverlay({ session, onClose }: { session: TrainingSessionView; onClose: (outcome: TrainingOutcomeView | null) => void }) {
   const [phase, setPhase] = useState<Phase>('intro')
@@ -142,7 +144,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
       )}
       {phase === 'intro' && (
         <div class="trn-drill-card stack">
-          <DrillDiagram kind={drill?.variant === 'rondo' ? 'rondo' : drill?.kind ?? 'finishing'} setPiece={drill?.variant === 'setPiece'} />
+          <DrillDiagram kind={drill?.variant && drill.variant !== 'standard' && drill.variant !== 'setPiece' ? drill.variant : drill?.kind ?? 'finishing'} setPiece={drill?.variant === 'setPiece'} />
           <div class="micro t-lo">{lt(session.name)}</div>
           <h2 class="h2">{title}</h2>
           <p class="t-mid">{tx(`training.drill.goal.${key}`)}</p>

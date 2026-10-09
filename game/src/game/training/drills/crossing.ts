@@ -13,6 +13,11 @@
  *  - waiting too long loses the runner ("late").
  * Deliveries use the match kick model ('cross': crossing ×0.8 + passing ×0.2
  * sets the scatter), so better crossers land closer to the spot.
+ *
+ * Switch variant ("Oyun Değiştirme", Long Passing): the hero is in the
+ * centre circle and the zone lights up on the far flank 30–42 m away, where a
+ * winger is sprinting down the line. Same rules, but the ball is a 'lofted'
+ * long pass (Long Passing ×0.7 + Vision ×0.3 sets the scatter).
  */
 import { PITCH_LENGTH, PITCH_WIDTH } from '../../../sim/match/types'
 import { planKick } from '../../kick'
@@ -28,6 +33,8 @@ type RoundState = 'ready' | 'flight' | 'resolved'
 
 /** The ball counts as "delivered" when it comes down through this height. */
 export const DELIVERY_Z = 1.8
+/** Switch of play: the long ball is judged where the winger controls it (knee height). */
+export const SWITCH_DELIVERY_Z = 0.5
 /** Seconds after the runner arrives before he gives up on the cross. */
 const RUNNER_PATIENCE = 1.5
 
@@ -82,12 +89,38 @@ export class CrossingDrill extends DrillBase {
     ]
   }
 
+  get switchPlay(): boolean {
+    return this.variant === 'switch'
+  }
+
+  /** Height the ball is judged at: a cross is attacked in the air, a switch is taken down at the winger's feet. */
+  private get deliveryZ(): number {
+    return this.switchPlay ? SWITCH_DELIVERY_Z : DELIVERY_Z
+  }
+
+  /** Kick model of a delivery: a whipped cross, or a lofted long switch. */
+  private get kickKind(): 'cross' | 'lofted' {
+    return this.switchPlay ? 'lofted' : 'cross'
+  }
+
+  /** Switch variant: landing zones on the flank of side `s` (+1 = high-y touchline), ahead of the passer. */
+  private switchZones(s: number, from: Vec2): Vec2[] {
+    return [
+      { x: from.x + 6, y: GOAL_CENTER_Y + s * 25 },
+      { x: from.x + 12, y: GOAL_CENTER_Y + s * 26 },
+      { x: from.x + 18, y: GOAL_CENTER_Y + s * 24 },
+      { x: from.x + 22, y: GOAL_CENTER_Y + s * 27 },
+    ]
+  }
+
   private newRound(): void {
     this.round++
     this.side = this.round <= 2 ? 1 : this.rng.chance(0.5) ? 1 : -1
     const s = this.side
-    this.spot = { x: PITCH_LENGTH - this.rng.range(11, 19), y: GOAL_CENTER_Y + s * this.rng.range(23, 28) }
-    const zs = this.zones(s)
+    this.spot = this.switchPlay
+      ? { x: this.rng.range(46, 54), y: GOAL_CENTER_Y - s * this.rng.range(4, 10) }
+      : { x: PITCH_LENGTH - this.rng.range(11, 19), y: GOAL_CENTER_Y + s * this.rng.range(23, 28) }
+    const zs = this.switchPlay ? this.switchZones(s, this.spot) : this.zones(s)
     let zi = this.rng.int(0, zs.length - 1)
     if (zi === this.zoneIdx) zi = (zi + 1 + this.rng.int(0, zs.length - 2)) % zs.length
     this.zoneIdx = zi
@@ -101,9 +134,11 @@ export class CrossingDrill extends DrillBase {
     // Runner timing: the cross needs `flightEst`; leave 0.7–1.4 s to pick the moment.
     this.flightEst = this.estimateFlight()
     this.runTime = this.flightEst + this.rng.range(0.7, 1.4) + Math.max(0, 0.4 - this.round * 0.05)
-    const runDir = norm({ x: 1, y: s * this.rng.range(-0.25, 0.45) })
+    const runDir = this.switchPlay ? norm({ x: 1, y: s * this.rng.range(-0.05, 0.12) }) : norm({ x: 1, y: s * this.rng.range(-0.25, 0.45) })
     const runLen = clampN(6.4 * this.runTime, 8, 16)
-    this.runFrom = { x: clampN(this.zone.x - runDir.x * runLen, PITCH_LENGTH - 26, PITCH_LENGTH - 3), y: clampN(this.zone.y - runDir.y * runLen, 12, PITCH_WIDTH - 12) }
+    this.runFrom = this.switchPlay
+      ? { x: this.zone.x - runDir.x * runLen, y: clampN(this.zone.y - runDir.y * runLen, 4, PITCH_WIDTH - 4) }
+      : { x: clampN(this.zone.x - runDir.x * runLen, PITCH_LENGTH - 26, PITCH_LENGTH - 3), y: clampN(this.zone.y - runDir.y * runLen, 12, PITCH_WIDTH - 12) }
     place(this.runner, this.runFrom, Math.atan2(this.zone.y - this.runFrom.y, this.zone.x - this.runFrom.x))
     this.delivered = null
     this.state = 'ready'
@@ -113,7 +148,7 @@ export class CrossingDrill extends DrillBase {
 
   /** Noiseless time for a cross from the ball to the zone to come down to delivery height. */
   private estimateFlight(): number {
-    const plan = planKick({ kind: 'cross', from: { x: this.ball.x, y: this.ball.y }, fromZ: 0, target: this.zone, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env })
+    const plan = planKick({ kind: this.kickKind, from: { x: this.ball.x, y: this.ball.y }, fromZ: 0, target: this.zone, power: 0.75, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env })
     const b = cloneBall(this.ball)
     b.vx = plan.vx
     b.vy = plan.vy
@@ -121,12 +156,29 @@ export class CrossingDrill extends DrillBase {
     b.spin = { ...plan.spin }
     const tr = createTracker()
     const ev: PhysicsEvent[] = []
+    const sw = { landed: false, best: Infinity }
     for (let i = 1; i < 360; i++) {
       stepBall(b, this.env, tr, ev)
-      if (b.vz < 0 && b.z <= DELIVERY_Z) return i * DT
+      if (this.switchPlay ? this.switchArrived(b, sw) : b.vz < 0 && b.z <= this.deliveryZ) return i * DT
     }
     return 1.5
   }
+
+  /**
+   * Switch of play: a lofted long ball pitches and runs on to the winger, so it is judged at the
+   * winger's feet: once it has come down, at its closest approach to the zone (or inside the zone).
+   */
+  private switchArrived(b: BallState, sw: { landed: boolean; best: number }): boolean {
+    if (!sw.landed) {
+      if (b.vz < 0 && b.z <= this.deliveryZ) sw.landed = true
+      else return false
+    }
+    const d = Math.hypot(b.x - this.zone.x, b.y - this.zone.y)
+    if (d <= CROSS_ZONE_R * 0.5 || d > sw.best + 0.02 || Math.hypot(b.vx, b.vy) < 1.2) return true
+    sw.best = Math.min(sw.best, d)
+    return false
+  }
+  private sw = { landed: false, best: Infinity }
 
   /** Where an action sends the cross (pitch point) and how hard. */
   private interpret(act: HeroAction): { target: Vec2; power: number } | null {
@@ -140,7 +192,7 @@ export class CrossingDrill extends DrillBase {
       // Weight from the gesture: soft drops short, hard runs long.
       const weight = clampN(1 + (power - 0.75) * 0.35, 0.85, 1.12)
       if (a < cone) return add(from, scale(norm(toZone), zoneD * weight))
-      return add(from, scale(norm(dir), 12 + power * 22))
+      return add(from, scale(norm(dir), (this.switchPlay ? 22 : 12) + power * 22))
     }
     const snap = (p: Vec2): Vec2 => {
       const d = dist(p, zone)
@@ -178,7 +230,7 @@ export class CrossingDrill extends DrillBase {
       if (!p) continue
       const from = { x: this.ball.x, y: this.ball.y }
       const plan = planKick(
-        { kind: 'cross', from, fromZ: 0, target: p.target, power: p.power, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: 1.15 },
+        { kind: this.kickKind, from, fromZ: 0, target: p.target, power: p.power, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: 1.15 },
         this.rng,
       )
       this.ball.vx = plan.vx
@@ -190,6 +242,7 @@ export class CrossingDrill extends DrillBase {
       this.hero.stateT = 0
       this.state = 'flight'
       this.stateT = 0
+      this.sw = { landed: false, best: Infinity }
       this.stat('crosses')
       this.events.push({ type: 'kick', power: p.power, hero: true, x: from.x, y: from.y })
       return
@@ -204,7 +257,7 @@ export class CrossingDrill extends DrillBase {
     const miss = dist(d.at, this.zone)
     const inZone = miss <= CROSS_ZONE_R
     const timing = crossTiming(d.t - (this.readyAt + this.runTime))
-    const at = { x: d.at.x, y: d.at.y, z: DELIVERY_Z }
+    const at = { x: d.at.x, y: d.at.y, z: this.deliveryZ }
     if (!inZone) {
       this.stat('misses')
       this.flash = { at: this.time, tone: 'red' }
@@ -216,9 +269,9 @@ export class CrossingDrill extends DrillBase {
     if (timing === 'perfect') this.stat('perfectTiming')
     this.flash = { at: this.time, tone: timed ? 'green' : 'red' }
     this.award(crossPoints({ inZone, miss, timing, combo: this.combo }), timed, { label: timed ? (timing === 'perfect' ? 'perfect' : 'delivery') : timing, ...at })
-    // The runner attacks it: a header toward goal (cosmetic).
+    // The runner attacks it: a header toward goal (cosmetic; the switch winger just takes it down).
     const r = this.runner
-    if (dist(r.pos, d.at) < 3) {
+    if (!this.switchPlay && dist(r.pos, d.at) < 3) {
       r.state = 'jump'
       r.stateT = 0
       const aim = { x: PITCH_LENGTH + 0.5, y: GOAL_CENTER_Y + this.rng.range(-2.6, 2.6) }
@@ -299,7 +352,7 @@ export class CrossingDrill extends DrillBase {
     const prev = { x: b.x, y: b.y }
     this.phys.length = 0
     stepBall(b, this.env, this.tracker, this.phys)
-    if (b.vz < 0 && b.z <= DELIVERY_Z) return this.resolveDelivery({ at: { x: b.x, y: b.y }, t: this.clock })
+    if (this.switchPlay ? this.switchArrived(b, this.sw) : b.vz < 0 && b.z <= this.deliveryZ) return this.resolveDelivery({ at: { x: b.x, y: b.y }, t: this.clock })
     for (const e of this.phys) {
       if (e.type === 'out' || e.type === 'goal' || e.type === 'post' || e.type === 'bar') return this.fail('out', prev)
     }
@@ -335,7 +388,7 @@ export class CrossingDrill extends DrillBase {
     return {
       focus: { x: (this.spot.x + this.zone.x) / 2 - 1, y: (this.spot.y + this.zone.y) / 2 },
       span,
-      goals: ['east'],
+      goals: this.switchPlay ? [] : ['east'],
       hero: actorView(this.hero, 'hero'),
       actors: [actorView(this.runner, 'mate', this.state === 'ready')],
       ball: this.ballView(this.ball),
@@ -350,7 +403,7 @@ export class CrossingDrill extends DrillBase {
         combo: this.combo,
         timeLeft: this.timeLeft,
         duration: this.duration,
-        prompt: this.phase === 'countdown' ? 'ready' : this.phase === 'post' || this.finished ? 'done' : window ? 'crossNow' : 'crossing',
+        prompt: this.phase === 'countdown' ? 'ready' : this.phase === 'post' || this.finished ? 'done' : window ? 'crossNow' : this.switchPlay ? 'switch' : 'crossing',
         meters: this.state === 'ready' && this.live ? [{ kind: 'timing', value: lead, tone: window ? 'green' : rel < -0.3 ? 'red' : 'gold' }] : [],
         level: this.round,
         countdown: this.countdown,

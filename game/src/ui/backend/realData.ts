@@ -15,9 +15,11 @@ import { ASSETS } from '../../data/assets'
 import { PERKS, PERK_BRANCH, perkTier, type PerkGroup } from '../../data/perks'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { absWeek, heroAge } from '../../sim/career/common'
-import { perkBlock } from '../../sim/career/perks'
+import { perkBlock, perkValue } from '../../sim/career/perks'
 import { heroOvr } from '../../sim/career/progression'
-import { TRAINER_QUALITY_BONUS, TRAINING_TYPES, trainingEnergyCost, trainingXpTotal, type TrainingType } from '../../sim/career/training'
+import { TRAINER_QUALITY_BONUS, TRAINING_TYPES, trainingEnergyCost, trainingXp, trainingXpTotal, type TrainingType } from '../../sim/career/training'
+import { developmentAreas } from '../../sim/career/attributeLife'
+import { ATTRIBUTE_GROUP, ageXpMultiplier } from '../../sim/career/progression'
 import { DRILL_FOR_TRAINING } from '../../game/training/scoring'
 import { scoutInterest } from '../../sim/career/transfers'
 import { activityBlock, activityEnergy, activityMoney, TRAINER_FEES, trainerName, type ActivityContext } from '../../sim/life/activities'
@@ -59,6 +61,7 @@ const ACT_ICON: Record<string, string> = {
   rest: 'bed', sleep_in: 'bed', energy_drink: 'energy', train_shooting: 'target', train_passing: 'link', train_dribbling: 'run', train_physical: 'barbell',
   train_tactical: 'tactics', train_setPiece: 'flag', train_goalkeeping: 'shield-check', train_recovery: 'heartbeat', gym: 'barbell',
   train_crossing: 'crosshair', train_heading: 'goal', train_tackling: 'shield',
+  train_sprint: 'energy', train_core: 'barbell', train_longPass: 'link', train_reading: 'brain', train_pressing: 'run', train_leadership: 'star', train_keeperDiving: 'shield-check',
   video: 'eye', physio: 'first-aid', family_visit: 'house', friend_hangout: 'users', team_dinner: 'fork-knife', date_night: 'heart',
   party: 'party', casino: 'cards', charity: 'hand-heart', sponsor_shoot: 'camera', interview: 'megaphone', social_post: 'instagram',
   business_meeting: 'handshake', shopping: 'shopping-bag', hobby_gaming: 'laptop', hobby_golf: 'flag', hobby_music: 'music', travel: 'airplane',
@@ -275,6 +278,8 @@ const TRAINING_GROUP: Record<TrainingType, TrainingSessionView['group']> = {
   shooting: 'technical', passing: 'technical', dribbling: 'technical', physical: 'physical', tactical: 'tactical',
   setPiece: 'technical', goalkeeping: 'goalkeeping', recovery: 'recovery',
   crossing: 'technical', heading: 'technical', tackling: 'technical', distribution: 'goalkeeping',
+  sprint: 'physical', core: 'physical', longPass: 'technical', reading: 'tactical', pressing: 'physical', leadership: 'mental',
+  keeperDiving: 'goalkeeping',
 }
 const TRAINING_DESC: Record<TrainingType, LText> = {
   shooting: L('Bitiricilik ve şut tekniği. Kaleye yüzlerce vuruş.', 'Finishing and shooting technique. Hundreds of strikes on goal.'),
@@ -289,19 +294,33 @@ const TRAINING_DESC: Record<TrainingType, LText> = {
   heading: L('Makine topu yollar: doğru anda zıpla, kafayla kaleciyi geç.', 'The machine fires balls in: time your jump and head past the keeper.'),
   tackling: L('Bire bir gelen driplingcilerden faul yapmadan topu kap.', 'One-on-one dribblers come at you: win the ball without fouling.'),
   distribution: L('Ortaları havada kap, sonra koşan takım arkadaşlarına elle ya da ayakla çıkış yap.', 'Claim crosses out of the air, then throw or kick it out to team-mates on the run.'),
+  sprint: L('Işıkta 15 metre: reaksiyon ve ilk adımlar. Hızlanma burada kazanılır.', '15 metres off the light: reaction and the first strides. Acceleration is won here.'),
+  core: L('Depar sırasında omuz darbesi: doğru anda gövdeni sabitle. Denge ve güç.', 'A shoulder charge mid-sprint: brace at the right moment. Balance and strength.'),
+  longPass: L('Orta sahadan karşı kanada uzun top: koşan kanatçıyı bul. Uzun pas ve vizyon.', 'Long diagonal from midfield to the far flank, timed for the winger. Long passing and vision.'),
+  reading: L('Üç pasörün arasında: bakışlarını oku, pas yoluna gir, topu kes. Önsezi.', 'Piggy in the middle: read the passer’s eyes, step into the lane, cut it out. Anticipation.'),
+  pressing: L('Topu alan oyuncuya bas, nefesini idare et. Çalışkanlık ve dayanıklılık.', 'Close down every receiver and manage your tank. Work rate and stamina.'),
+  leadership: L('Takım konuşması, gençlerle birebir ve kaptanlık provası. Liderlik ve soğukkanlılık.', 'Team talks, one-to-ones with the youngsters and captaincy drills. Leadership and composure.'),
+  keeperDiving: L('Sadece köşelere şut: tam uzanış plonjonlar. Plonjon ve refleks.', 'Corner shots only: full-stretch dives. Diving and reflexes.'),
 }
 
 function trainingSessions(s: GameState): TrainingSessionView[] {
   return cached(s, 'trainingSessions', () => {
     const ctx = activityContext(s)
+    const weak = new Set(developmentAreas(s.hero))
     return (Object.keys(TRAINING_TYPES) as TrainingType[])
-      .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping' && t !== 'distribution'))
+      .filter((t) => (s.hero.position === 'GK' ? true : t !== 'goalkeeping' && t !== 'distribution' && t !== 'keeperDiving'))
       .map((t): TrainingSessionView => {
         const d = TRAINING_TYPES[t]
         const focus = Object.entries(d.attrs).sort((a, b) => (b[1] ?? 0) - (a[1] ?? 0)).map(([k]) => k as AttributeKey).slice(0, 4)
         const def = ACTIVITY_BY_ID[`train_${t}`]
         const block = def ? activityBlock(s.hero, s.life, def, ctx) : L('Bilinmeyen seans.', 'Unknown session.')
+        const raw = trainingXp(s.hero, s.life, t)
+        const age = heroAge(s.hero, s.calendar.season)
+        const gains = (Object.keys(raw) as AttributeKey[])
+          .map((key) => ({ key, xp: Math.round((raw[key] ?? 0) * ageXpMultiplier(age, ATTRIBUTE_GROUP[key], perkValue(s.hero, 'late_growth')) * 10) / 10, weak: weak.has(key) }))
+          .sort((a, b) => b.xp - a.xp)
         return {
+          gains,
           id: t, name: d.name, desc: TRAINING_DESC[t], group: TRAINING_GROUP[t], icon: ACT_ICON[`train_${t}`] ?? 'barbell',
           energy: trainingEnergyCost(t), focus,
           xp: Math.round(trainingXpTotal(s.hero, s.life, t)),
@@ -667,6 +686,10 @@ export const realData: GameData = {
     return s ? perksView(s) : []
   },
   trainerOffers: () => trainerOffers(S()),
+  devAreas: () => {
+    const s = S()
+    return s ? developmentAreas(s.hero) : []
+  },
   assetCatalog: () => [...ASSETS],
   squad() {
     const s = S()

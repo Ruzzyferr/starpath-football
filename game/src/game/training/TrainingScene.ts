@@ -79,6 +79,16 @@ const T: Record<Lang, Strings> = {
       tackleNow: 'ŞİMDİ! Topu kap (KAP / Boşluk / dokun)',
       claim: 'Halkanın altına geç: orta gelince eller topu alır',
       distribute: 'Topu elinde: koşan arkadaşına dokun / kaydır. 6 sn içinde at!',
+      switch: 'Oyunu değiştir: kanattaki koşucuya uzun top — bölgeye dokun / kaydır',
+      diving: 'Köşelere plonjon: kaydır / tıkla, tam uzanış kurtarışı +4',
+      sprintSet: 'Yerine geç… ışığı bekle (erken çıkma!)',
+      sprintGo: 'YEŞİL! Çık: dokun / Boşluk!',
+      sprintRun: 'DEPAR basılı: patla! Çizgide dokun: göğüs at',
+      braceNow: 'OMUZ GELİYOR! Şimdi dokun: gövdeni sabitle',
+      reading: 'Pasörün bakışını oku: pas yoluna gir (joystick / dokun)',
+      interceptNow: 'Yolda kal: top menziline girince keser',
+      pressing: 'Topu alan oyuncuya bas! DEPAR hızlı ama yorar',
+      pressNow: 'BAS! Pas vermeden 2 m içine gir',
       ready: 'Hazır ol…',
       done: 'Antrenman bitti',
     },
@@ -89,6 +99,7 @@ const T: Record<Lang, Strings> = {
       shuttle: 'TAMAM', perfectStart: 'TAM ZAMANINDA!', goodStart: 'İYİ ÇIKIŞ', lateArrival: 'GEÇ KALDIN', gassed: 'NEFESSİZ!', out: 'AUT',
       save: 'KURTARIŞ!', held: 'YAKALADI!', conceded: 'GOL YEDİN', wide: 'DIŞARI',
       delivery: 'İYİ ORTA', won: 'KAPTIN!', foul: 'FAUL', beaten: 'GEÇİLDİN', whiff: 'BOŞA',
+      falseStart: 'ERKEN ÇIKIŞ', dip: 'GÖĞÜS ATTI!', braced: 'SAĞLAM!', stumble: 'SENDELEDİN', intercept: 'KESTİN!', read: 'OKUDUN!', pressed: 'BASTIN!', escaped: 'KAÇIRDIN',
     },
     hud: { combo: 'SERİ', level: 'SEVİYE', stamina: 'DAYANIKLILIK', beat: 'BİP', power: 'GÜÇ', timing: 'ZAMANLAMA', go: 'BAŞLA!', grade: 'NOT', points: 'PUAN', wind: 'RÜZGÂR {n} KM/SA' },
     buttons: { sprint: 'DEPAR', skill: 'ÇALIM', loft: 'HAVA', go: 'ÇIK', dive: 'UZAN', throw: 'AT', cross: 'ORTA', head: 'KAFA', tackle: 'KAP' },
@@ -113,6 +124,16 @@ const T: Record<Lang, Strings> = {
       tackleNow: 'NOW! Win the ball (TACKLE / Space / tap)',
       claim: 'Get under the ring: the hands take the cross',
       distribute: 'Ball in hand: tap / swipe at a runner. Release within 6 s!',
+      switch: 'Switch play: long ball to the winger on the far flank — tap / swipe at the zone',
+      diving: 'Corner shots: swipe / click to dive, full-stretch saves +4',
+      sprintSet: 'On your mark… wait for the light (no false starts!)',
+      sprintGo: 'GREEN! Go: tap / Space!',
+      sprintRun: 'Hold SPRINT: explode! Tap at the line to dip',
+      braceNow: 'SHOULDER COMING! Tap now to brace',
+      reading: 'Read the passer’s eyes: step into the lane (stick / tap)',
+      interceptNow: 'Hold the lane: the ball is yours once it is in reach',
+      pressing: 'Close down whoever gets the ball! SPRINT is faster but tiring',
+      pressNow: 'PRESS! Get within 2 m before he passes',
       ready: 'Get ready…',
       done: 'Session over',
     },
@@ -123,6 +144,7 @@ const T: Record<Lang, Strings> = {
       shuttle: 'MADE IT', perfectStart: 'ON THE BEEP!', goodStart: 'GOOD START', lateArrival: 'TOO LATE', gassed: 'GASSED!', out: 'OUT',
       save: 'SAVE!', held: 'HELD!', conceded: 'CONCEDED', wide: 'WIDE',
       delivery: 'GOOD BALL', won: 'WON IT!', foul: 'FOUL', beaten: 'BEATEN', whiff: 'MISSED',
+      falseStart: 'FALSE START', dip: 'DIP!', braced: 'BRACED!', stumble: 'STUMBLED', intercept: 'CUT OUT!', read: 'READ IT!', pressed: 'PRESSED!', escaped: 'GOT AWAY',
     },
     hud: { combo: 'STREAK', level: 'LEVEL', stamina: 'STAMINA', beat: 'BEEP', power: 'POWER', timing: 'TIMING', go: 'GO!', grade: 'GRADE', points: 'PTS', wind: 'WIND {n} KM/H' },
     buttons: { sprint: 'SPRINT', skill: 'SKILL', loft: 'LOFT', go: 'GO', dive: 'DIVE', throw: 'THROW', cross: 'CROSS', head: 'HEAD', tackle: 'TACKLE' },
@@ -140,6 +162,8 @@ const CONTROLS: Record<DrillKind, { button: keyof Strings['buttons'] | null; spr
   heading: { button: 'head', sprint: false, stick: true, level: false },
   tackling: { button: 'tackle', sprint: true, stick: true, level: false },
   distribution: { button: 'throw', sprint: false, stick: true, level: false },
+  sprint: { button: 'go', sprint: true, stick: false, level: true },
+  interception: { button: null, sprint: true, stick: true, level: false },
 }
 
 const TONE: Record<Tone, number> = {
@@ -836,7 +860,7 @@ export class TrainingScene extends Phaser.Scene {
   private onScore(e: Extract<DrillEvent, { type: 'score' }>): void {
     const label = this.s.label[e.label]
     const txt = e.points > 0 ? `+${e.points} ${label}` : e.points < 0 ? `${e.points} ${label}` : label
-    const col = e.points > 0 ? (e.label === 'target' || e.label === 'perfect' || e.label === 'perfectStart' || e.label === 'held' || e.label === 'won' ? '#ffd23f' : '#5dff8a') : e.good ? '#ffffff' : '#ff8a8a'
+    const col = e.points > 0 ? (e.label === 'target' || e.label === 'perfect' || e.label === 'perfectStart' || e.label === 'held' || e.label === 'won' || e.label === 'read' || e.label === 'dip' ? '#ffd23f' : '#5dff8a') : e.good ? '#ffffff' : '#ff8a8a'
     this.floatText(txt, e.x, e.y, col, 1.1, (e.z ?? 0) + 2.2)
     if (e.points > 0) {
       this.pointsText.setScale(1.25)

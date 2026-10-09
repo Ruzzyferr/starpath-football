@@ -44,12 +44,17 @@ function SessionCard({ s, onPlay }: { s: TrainingSessionView; onPlay: (s: Traini
         <span class="trn-session-icon" aria-hidden="true"><Icon name={GROUP_ICON[s.group]} size={22} /></span>
         <div class="grow">
           <h3 class="h3">{lt(s.name)}</h3>
-          <div class="t-xs t-lo">{tx(`data.group.${s.group}`)}</div>
+          <div class="t-xs t-lo">{tx(`data.group.${s.group}`)} · {s.drill ? t('training.session.drillChip') : t('training.session.autoChip')}</div>
         </div>
         <RiskBadge risk={s.injuryRisk} />
       </div>
+      {s.gains?.some((g) => g.weak) && (
+        <div class="trn-dev-badge" title={t('training.session.devAreaHint')}><Chip tone="gold" icon="target">{t('training.session.devArea')}</Chip></div>
+      )}
       <p class="t-sm t-mid trn-session-desc">{lt(s.desc)}</p>
-      {s.focus.length > 0 && (
+      {s.gains && s.gains.length > 0 ? (
+        <GainList gains={s.gains} />
+      ) : s.focus.length > 0 && (
         <div class="trn-focus" aria-label={t('training.session.focus')}>
           {s.focus.map((k) => <Chip key={k}>{t(`data.attr.${k}`)}</Chip>)}
         </div>
@@ -82,6 +87,38 @@ function SessionCard({ s, onPlay }: { s: TrainingSessionView; onPlay: (s: Traini
   )
 }
 
+/** Per-attribute XP an auto session gives (numbered), development areas highlighted. */
+function GainList({ gains }: { gains: NonNullable<TrainingSessionView['gains']> }) {
+  const top = Math.max(0.1, ...gains.map((g) => g.xp))
+  return (
+    <ul class="trn-gains" aria-label={t('training.session.gains')}>
+      {gains.slice(0, 5).map((g) => (
+        <li key={g.key} class={`trn-gain${g.weak ? ' is-weak' : ''}`} data-attr={g.key}>
+          <span class="trn-gain-name">{t(`data.attr.${g.key}`)}{g.weak && <span class="trn-gain-tag">{t('training.session.devArea')}</span>}</span>
+          <span class="trn-gain-bar" aria-hidden="true"><i style={{ width: `${Math.round((g.xp / top) * 100)}%` }} /></span>
+          <span class="trn-gain-xp num">+{g.xp.toFixed(1)} XP</span>
+        </li>
+      ))}
+    </ul>
+  )
+}
+
+/** The hero's development areas (his role's weak stats) with their current values. */
+function DevFocus() {
+  const h = gameState.value!.hero
+  const areas = data.devAreas()
+  if (!areas.length) return null
+  return (
+    <Card class="trn-devfocus" pad="sm" data-testid="dev-focus">
+      <div class="micro t-mid">{t('training.session.devArea')}</div>
+      <div class="trn-focus">
+        {areas.map((k) => <Chip key={k} tone="gold" icon="target">{t(`data.attr.${k}`)} {h.attrs[k]}</Chip>)}
+      </div>
+      <p class="t-xs t-lo">{t('training.session.devFocusHint')}</p>
+    </Card>
+  )
+}
+
 function Sessions() {
   const s = gameState.value!
   const sessions = data.trainingSessions()
@@ -92,6 +129,7 @@ function Sessions() {
       <div class="trn-energy">
         <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" info={<InfoTip term="energy" />} />
       </div>
+      <DevFocus />
       <div class="trn-sessions stagger">
         {sessions.map((x) => <SessionCard key={x.id} s={x} onPlay={setPlaying} />)}
       </div>
@@ -278,6 +316,7 @@ function Trainer() {
           <div class="grow">
             <h3 class="h3">{cur.name}</h3>
             <div class="t-sm t-mid">{t('training.trainer.focus')}: {t(`data.group.${cur.group}`)}</div>
+            <div class="t-xs t-lo trn-trainer-attrs">{keysOf(cur.group).map((k) => t(`data.attr.${k}`)).join(' · ')}</div>
             <div class="t-sm t-lo num">{t('training.trainer.fee')}: {formatMoney(cur.weeklyFee)}{t('common.perWeek')}</div>
           </div>
           <Button variant="ghost" size="sm" icon="sign-out" onClick={() => { actions.fireTrainer(); toast(t('training.trainer.fired'), 'info') }}>
@@ -309,6 +348,7 @@ function Trainer() {
                 </div>
                 <Stars n={o.quality} />
               </div>
+              <div class="t-xs t-lo trn-trainer-attrs" title={t('training.trainer.attrsHint')}>{keysOf(o.group).map((k) => t(`data.attr.${k}`)).join(' · ')}</div>
               <div class="trn-offer-stats">
                 <div><span class="micro t-lo">{t('training.trainer.fee')}</span><span class="num">{formatMoney(o.weeklyFee)}{t('common.perWeek')}</span></div>
                 <div><span class="micro t-lo">XP</span><span class="num t-pos">{t('training.trainer.bonus', { n: Math.round(o.bonus * 100) })}</span></div>

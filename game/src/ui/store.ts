@@ -154,6 +154,11 @@ export interface TrainingSessionView {
   lockedReason?: LText
   /** Mini-game for this session (null = auto only, e.g. recovery). */
   drill: { kind: DrillKind; variant: DrillVariant } | null
+  /**
+   * XP each attribute gets from an auto (0.6) session after the age multiplier, biggest first;
+   * `weak` marks the hero's development areas (his role's weak stats).
+   */
+  gains?: { key: AttributeKey; xp: number; weak: boolean }[]
 }
 /** What a finished training session gave. */
 export interface TrainingOutcomeView {
@@ -748,6 +753,8 @@ export interface GameData {
   trainingSessions(): TrainingSessionView[]
   perks(): PerkView[]
   trainerOffers(): TrainerOffer[]
+  /** The hero's development areas: his role's weak stats, weakest first. */
+  devAreas(): AttributeKey[]
   assetCatalog(): AssetDef[]
   squad(): SquadMemberView[]
   interest(): InterestView[]

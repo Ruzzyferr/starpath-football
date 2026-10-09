@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { flatAttrs } from '../setup'
 import { cloneBall, predictPlaneCrossing } from '../physics'
 import { dist, norm, sub, type Vec2 } from '../model'
-import { DIVE_PEAK } from '../ai'
+import { DIVE_PEAK, diveSpeed } from '../ai'
 import type { HeroAction } from '../runtime'
 import { createDrill, type CrossingDrill, type DistributionDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
 import { JUMP_PEAK } from './drills/heading'
@@ -10,6 +10,7 @@ import type { RondoDrill } from './drills/rondo'
 import type { Attributes } from '../../core/types'
 import type { Drill, DrillInput, DrillKind, DrillResult } from './types'
 import type { DrillBase } from './base'
+import { readingBot, sprintBot } from './attrDrillBots'
 
 type Mem = { t: number; mem: Record<string, number> }
 type Bot = (d: Drill & DrillBase, s: Mem) => DrillInput
@@ -221,17 +222,21 @@ const BOTS: Record<DrillKind, { good: Bot; meh: Bot }> = {
   heading: { good: headingBot(true), meh: headingBot(false) },
   tackling: { good: tacklingBot(true), meh: tacklingBot(false) },
   distribution: { good: distributionBot(true), meh: distributionBot(false) },
+  sprint: { good: sprintBot(true), meh: sprintBot(false) },
+  interception: { good: readingBot(true), meh: readingBot(false) },
 }
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
-const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution']
-const NEW_KINDS: DrillKind[] = ['crossing', 'heading', 'tackling', 'distribution']
+const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution', 'sprint', 'interception']
+const NEW_KINDS: DrillKind[] = ['crossing', 'heading', 'tackling', 'distribution', 'sprint', 'interception']
 /** The attributes each new drill is about. */
 const KEY_ATTRS: Record<string, (keyof Attributes)[]> = {
   crossing: ['crossing', 'passing'],
   heading: ['heading', 'jumping'],
   tackling: ['tackling', 'positioning', 'strength'],
   distribution: ['handling', 'passing'],
+  sprint: ['acceleration', 'pace'],
+  interception: ['anticipation'],
 }
 
 describe('training drills (headless)', () => {
@@ -294,6 +299,36 @@ describe('training drills (headless)', () => {
     const r = play(make('goalkeeping', 4), BOTS.goalkeeping.good)
     expect(r.stats.shots).toBe(12)
     expect(r.played).toBeLessThanOrEqual(40)
+  })
+
+  /** Diving station bot: waits until the dive (at this keeper's dive speed) meets the ball at full stretch. */
+  const divingBot: Bot = (d, s) => {
+    const g = d as GoalkeepingDrill
+    if (!g.inFlight) {
+      s.mem.dived = 0
+      return idle
+    }
+    if (s.mem.dived) return idle
+    const k = g.hero
+    const c = predictPlaneCrossing(cloneBall(g.ball), g.env, k.pos.x, 2)
+    if (!c) return idle
+    const lateral = Math.abs(c.y - k.pos.y)
+    if (c.t > Math.min(DIVE_PEAK, Math.max(0.05, (lateral - 0.9) / diveSpeed(k))) + 0.04) return idle
+    s.mem.dived = 1
+    return act({ kind: 'dive', dir: norm(sub({ x: k.pos.x, y: c.y }, k.pos)) })
+  }
+
+  it('diving station (Diving): corner shots only, full-stretch saves earn a bonus, Diving widens the reach', () => {
+    const mk = (seed: number, diving = 65) => createDrill('goalkeeping', { attrs: { ...GK_DRILL_ATTRS, diving }, seed, aimAssist: 'half', variant: 'diving' })
+    const good = [1, 2, 3].map((s) => play(mk(s), BOTS.goalkeeping.good))
+    const none = [1, 2, 3].map((s) => play(mk(s), () => idle))
+    expect(good[0]!.stats.shots).toBe(12)
+    expect(avg(good.map((r) => r.performance))).toBeGreaterThan(avg(none.map((r) => r.performance)) + 0.3)
+    expect(good.some((r) => (r.stats.stretchSaves ?? 0) > 0)).toBe(true)
+    expect(mk(1).view().hud.prompt).toBe('ready')
+    const run = (v: number) => avg([1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map((seed) => play(mk(seed, v), divingBot).stats.saves ?? 0))
+    if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log('diving saves', run(25), run(60), run(95))
+    expect(run(95)).toBeGreaterThan(run(25))
   })
 
   it('distribution & claiming: catches crosses, then throws or kicks to a runner (2.3#2)', () => {
