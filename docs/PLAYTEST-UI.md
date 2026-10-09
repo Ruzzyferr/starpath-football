@@ -21,7 +21,7 @@
 | Önem | Bulunan | Düzeltilen | Açık |
 |---|---|---|---|
 | P0 (bozuk) | 0 | – | – |
-| P1 (yanlış / mantıksız) | 19 | 18 | 1 (C9: tasarım gereği) |
+| P1 (yanlış / mantıksız) | 20 | 19 | 1 (C9: tasarım gereği) |
 | P2 (cila) | ~60 | ~45 | ~15 (bkz. "Açık kalanlar") |
 
 Oyunu kıran bir hata çıkmadı: kayıt bozulmadı, ekran kilitlenmedi, ölü uç yok. Hissi bozanlar başka şeylerdi:
@@ -58,6 +58,7 @@ Her satırda tekrar adımları ve ekran görüntüsü var. E2E sütunu, düzeltm
 | L3 | Reddedilen ilişki etkileşimi iki toast birden atıyordu: "Bugün X ile zaten vakit geçirdin" ve "X ile vakit geçirdin". | Bir kişiyi ara, sonra "Yemeğe çık" | `notes-l3.txt` | Düzeltildi: boş sonuçta başarı toast'ı yok. PT-L3 |
 | L4 | Vadeli mevduat seçeneği "%4.5 yıllık" diyordu, açılan satır "%5". | Banka → Vadeli mevduat aç | `l2-*-bank-term.png` | Düzeltildi: oranlar ondalıklı ve TR biçiminde (%4,5) |
 | L5 | Tasarruf hesabının TR adı "Vadeli hesap"tı. Bu, vadeli mevduatın "tasarruf hesabından yüksek faiz" metniyle çelişiyordu. | Banka | – | Düzeltildi: "Birikim hesabı" |
+| L6 | At yarışında kesirli oran (2,05 × 50 €) cüzdana 102,5 € yazıyordu, sonuç ekranı ise +103 € gösteriyordu. | Kumarhane → At yarışı → oranı kesirli ata oyna, kazan | `e2e casino.spec` (tam koşuda yakalandı) | Düzeltildi: ödeme tam euroya yuvarlanıyor (golden değişmiyor). `casino.spec.ts` |
 
 ### Kariyer yayı ve meta ekranlar
 
