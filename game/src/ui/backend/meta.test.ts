@@ -8,6 +8,7 @@ import { MemoryKV } from '../../state/metaStore'
 import { gameState, installBackend } from '../store'
 import { DEFAULT_CAREER } from './index'
 import { useStorage } from './persistence'
+import { quickResolveAll } from './benchPath'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
 import * as M from './meta'
@@ -19,6 +20,7 @@ const S = () => {
 }
 
 function clearEvents(): void {
+  quickResolveAll() // daily agenda: mandatory tasks block Advance (backend/benchPath)
   for (let i = 0; i < 20 && S().pendingEvents.length > 0; i++) {
     const v = D.eventView(0)
     A.resolveEvent(0, Math.max(0, v?.choices.findIndex((c) => !c.requirement || c.requirement.met) ?? 0))

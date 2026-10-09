@@ -6,6 +6,8 @@
  * `pendingNav`. Time-moving actions schedule a debounced, non-blocking
  * autosave and record the weekly history snapshot.
  */
+import { agendaBlock, pendingMandatory } from '../../sim/game/agenda'
+import { agendaSkipPrompt } from './benchPath'
 import type { AttributeGroup, AttributeKey, GameState, LText, RelationKind } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
 import { ADULT_AGE, absWeek, isAdult } from '../../sim/career/common'
@@ -105,6 +107,12 @@ function advance(): void {
     notify(L('Önce maçını tamamla.', 'Finish your match first.'), 'info')
     return
   }
+  // Daily agenda (sim/game/agenda): mandatory tasks block the day.
+  const block = agendaBlock(s)
+  if (block) {
+    notify(block, 'info')
+    return
+  }
   const reports: (AdvanceReport | undefined)[] = []
   if (matchDueNow(s) || (s.activeMatchId && G.isHeroMatchday(s))) {
     // Skipping the match: the sim plays it with auto-resolved highlights.
@@ -143,6 +151,11 @@ function advanceToMatch(): void {
   // Every early exit says why (a silent no-op read as a dead button on iPhone).
   if (live.liveActive()) {
     notify(L('Önce maçını tamamla.', 'Finish your match first.'), 'info')
+    return
+  }
+  // Daily agenda: open mandatory tasks are confirmed (quick-resolve all) on Home first (backend/benchPath).
+  if (pendingMandatory(s).length) {
+    agendaSkipPrompt.value = pendingMandatory(s)
     return
   }
   if (G.isHeroMatchday(s)) {

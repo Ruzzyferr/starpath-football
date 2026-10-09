@@ -15,6 +15,7 @@ import { blackjack, gameState, installBackend, match, negotiation, pendingNav } 
 import { DEFAULT_CAREER } from './index'
 import { MS_PER_MINUTE } from './liveMatch'
 import { flushAutosave, useStorage } from './persistence'
+import { quickResolveAll } from './benchPath'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
 
@@ -25,6 +26,7 @@ const S = () => {
 }
 
 function clearEvents(): number {
+  quickResolveAll() // daily agenda: mandatory tasks block Advance (backend/benchPath)
   let n = 0
   while (S().pendingEvents.length > 0 && n < 20) {
     const v = D.eventView(0)

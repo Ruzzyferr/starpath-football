@@ -9,6 +9,7 @@ import { gameState, installBackend, match } from '../store'
 import { DEFAULT_CAREER } from './index'
 import { MS_PER_MINUTE } from './liveMatch'
 import { useStorage } from './persistence'
+import { quickResolveAll } from './benchPath'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
 import { awardsView, callupCard, cupsView, drawView, nationalView } from './worldViews'
@@ -20,6 +21,7 @@ const S = () => {
 }
 
 function clearEvents(): void {
+  quickResolveAll() // daily agenda: mandatory tasks block Advance (backend/benchPath)
   for (let n = 0; S().pendingEvents.length > 0 && n < 20; n++) {
     const v = D.eventView(0)!
     A.resolveEvent(0, Math.max(0, v.choices.findIndex((c) => !c.requirement || c.requirement.met)))

@@ -1,3 +1,5 @@
+import { AgendaCard } from './bench/AgendaCard'
+import { agendaBlockReason } from '../backend/benchPath'
 import '../../styles/screens/planner.css'
 import { useState } from 'preact/hooks'
 import { lt, t, tx } from '../../i18n'
@@ -137,6 +139,7 @@ export function PlannerScreen() {
   const byId = new Map(acts.map((a) => [a.id, a]))
   const cal = s.calendar
   const low = plan.projectedEnergy < 10
+  const blocked = agendaBlockReason()
   const openSlot = open === null ? null : (plan.slots.find((x) => x.slot === open) ?? null)
 
   const doNow = (a: ActivityView) => {
@@ -151,12 +154,14 @@ export function PlannerScreen() {
       title={t('planner.title')}
       sub={t('planner.sub', { day: tx(`data.day.${cal.day}`), week: t('common.week', { n: cal.week + 1 }) })}
       footer={
-        <Button variant="primary" size="lg" block icon="fast-forward" haptic="select" onClick={() => requestAdvance()} data-tour="advance">
-          {t('planner.advance')}
+        <Button variant="primary" size="lg" block icon="fast-forward" haptic="select" onClick={() => requestAdvance()} data-tour="advance" disabled={!!blocked} title={blocked ? lt(blocked) : undefined}>
+          {blocked ? t('bench.agenda.blocked') : t('planner.advance')}
         </Button>
       }
     >
       <WeekStrip />
+      {/* Daily agenda: mandatory tasks and preparation take today's slots too (sim/game/agenda). */}
+      <AgendaCard />
 
       <Card class="plan-energy">
         <div class="row-between">

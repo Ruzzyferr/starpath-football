@@ -8,6 +8,7 @@ import { gameState, installBackend, match } from '../store'
 import { DEFAULT_CAREER } from './index'
 import { MS_PER_MINUTE } from './liveMatch'
 import { useStorage } from './persistence'
+import { quickResolveAll } from './benchPath'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
 
@@ -27,6 +28,7 @@ describe('live match feed controls', () => {
 
   it('skip to next moment runs straight to the hero moment, then to full time', () => {
     const clear = () => {
+      quickResolveAll() // daily agenda: mandatory tasks block Advance (backend/benchPath)
       for (let n = 0; n < 20 && (gameState.value?.pendingEvents.length ?? 0) > 0; n++) {
         const v = D.eventView(0)
         const pick = v ? Math.max(0, v.choices.findIndex((c) => !c.requirement || c.requirement.met)) : 0

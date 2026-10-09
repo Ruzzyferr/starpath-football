@@ -9,6 +9,8 @@ import { Icon, type IconName } from '../icons'
 import { ROLE_PERK } from '../../core/roles'
 import { actions, data, gameState, screen, type PerkView, type TrainingOutcomeView, type TrainingSessionView } from '../store'
 import { decayWarning } from '../backend/meta'
+import { benchOutlook, impressAvailable } from '../backend/benchPath'
+import '../../styles/screens/bench.css'
 import '../../styles/screens/legacy.css'
 import { DrillOverlay } from './training/DrillOverlay'
 import { GROUPS, groupAvg, keysOf } from './career/attrs'
@@ -119,25 +121,55 @@ function DevFocus() {
   )
 }
 
+/** The drill the coach's challenge uses: a playable session on a development area, else any playable one. */
+const challengeSession = (sessions: TrainingSessionView[]): TrainingSessionView | null =>
+  sessions.find((x) => x.drill && x.available && x.gains?.some((g) => g.weak)) ?? sessions.find((x) => x.drill && x.available) ?? null
+
+/** "Impress the coach": one drill with a target grade (A) that moves the selection chance. */
+function ChallengeCard({ onStart }: { onStart: () => void }) {
+  const reward = benchOutlook()?.levers.find((l) => l.key === 'impress')?.points ?? 0
+  return (
+    <section class="chal-card" data-testid="coach-challenge" aria-labelledby="chal-title">
+      <div class="chal-top">
+        <span class="chal-grade" aria-hidden="true">A</span>
+        <div class="grow">
+          <h2 class="h3" id="chal-title">{t('bench.challenge.banner')}</h2>
+          <p class="t-sm t-mid">{t('bench.challenge.target', { g: 'A' })}</p>
+        </div>
+      </div>
+      {reward > 0 && <p class="t-sm"><Icon name="trend-up" size={14} class="t-pos" /> {t('bench.challenge.reward', { n: reward })}</p>}
+      <p class="t-xs t-lo">{t('bench.challenge.noAuto')}</p>
+      <Button variant="gold" icon="target" onClick={onStart} data-testid="challenge-start">{t('bench.challenge.cta')}</Button>
+    </section>
+  )
+}
+
 function Sessions() {
   const s = gameState.value!
   const sessions = data.trainingSessions()
-  const [playing, setPlaying] = useState<TrainingSessionView | null>(null)
+  const canChallenge = !impressAvailable()
+  const pick = canChallenge ? challengeSession(sessions) : null
+  // Deep link from Home (?challenge=1) opens the challenge drill straight away.
+  const [playing, setPlaying] = useState<TrainingSessionView | null>(screen.value.params?.challenge === '1' ? pick : null)
+  const [isChallenge, setIsChallenge] = useState<boolean>(screen.value.params?.challenge === '1' && !!pick)
   if (!sessions.length) return <EmptyState icon="barbell" title={t('training.session.empty')} />
   return (
     <div class="stack">
       <div class="trn-energy">
         <StatBar label={t('training.session.energyNow')} value={s.life.energy} color="var(--accent-gold)" info={<InfoTip term="energy" />} />
       </div>
+      {pick && <ChallengeCard onStart={() => { setIsChallenge(true); setPlaying(pick) }} />}
       <DevFocus />
       <div class="trn-sessions stagger">
-        {sessions.map((x) => <SessionCard key={x.id} s={x} onPlay={setPlaying} />)}
+        {sessions.map((x) => <SessionCard key={x.id} s={x} onPlay={(v) => { setIsChallenge(false); setPlaying(v) }} />)}
       </div>
       {playing && (
         <DrillOverlay
           session={playing}
+          {...(isChallenge ? { challenge: { reward: benchOutlook()?.levers.find((l) => l.key === 'impress')?.points ?? 0 } } : {})}
           onClose={(o) => {
             setPlaying(null)
+            setIsChallenge(false)
             if (o) announce(o)
           }}
         />

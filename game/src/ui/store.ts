@@ -458,6 +458,8 @@ export interface PreMatchView {
   referee?: { name: string; strictness: number; advantage: number } | null
   /** Marking intensity on the hero 0..1 (>0 = defences double up on him). */
   markedMan?: number
+  /** Bench hero with a planned entry: the minute the manager means to bring him on (cameo / reserve match). */
+  plannedEntry?: number
 }
 export interface MatchEventView {
   minute: number

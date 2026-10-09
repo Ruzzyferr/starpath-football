@@ -29,6 +29,7 @@ import { tr as iap } from './sections/iap'
 import { tr as postmatch } from './sections/postmatch'
 import { tr as intl } from './sections/intl'
 import { tr as career4 } from './sections/career4'
+import { tr as bench } from './sections/bench'
 
 export const tr = {
   common,
@@ -61,4 +62,5 @@ export const tr = {
   postmatch,
   intl,
   career4,
+  bench,
 }

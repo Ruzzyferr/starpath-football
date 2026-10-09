@@ -31,6 +31,7 @@ import { en as iap } from './sections/iap'
 import { en as postmatch } from './sections/postmatch'
 import { en as intl } from './sections/intl'
 import { en as career4 } from './sections/career4'
+import { en as bench } from './sections/bench'
 
 export const en: Shape<typeof tr> = {
   common,
@@ -63,4 +64,5 @@ export const en: Shape<typeof tr> = {
   postmatch,
   intl,
   career4,
+  bench,
 }

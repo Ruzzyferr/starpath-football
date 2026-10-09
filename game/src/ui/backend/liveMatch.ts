@@ -6,7 +6,7 @@
  * deltas, interview) that `data.postMatch()` shows.
  */
 import { Rng, clamp, hashString } from '../../core/rng'
-import type { GameState, LText, NpcPlayer } from '../../core/types'
+import type { Competition, Fixture, GameState, LText, NpcPlayer } from '../../core/types'
 import { worldGender } from '../../core/gender'
 import { customMomentOverrides } from '../../core/customDifficulty'
 import { currentLang } from '../../i18n'
@@ -35,7 +35,7 @@ import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
 import { DECISION_FLAG, applyPendingDecisions, pendingDecisions, recordDecision } from '../../sim/game/matchDecisions'
-import { markedMan, preMatchCauses } from '../../sim/game/match'
+import { markedMan, preMatchCauses, type ReserveMatchMeta } from '../../sim/game/match'
 import { heroOvr } from '../../sim/career/progression'
 
 /** Live text-feed speeds (2.2#106: 0.5x–4x). */
@@ -51,6 +51,8 @@ interface MatchBlob {
   setup: MatchSetup
   starts: boolean
   sim?: string
+  /** Reserve / training match (sim/game/match prepareReserveMatch): no fixture behind it. */
+  reserve?: ReserveMatchMeta
 }
 
 export const POST_FLAG = 'g:post'
@@ -83,6 +85,22 @@ interface Live {
 let live: Live | null = null
 
 // ───────────────────────── Views ─────────────────────────
+
+/** View of a reserve / training match (not a fixture of any competition). */
+function reserveFixture(s: GameState, fixtureId: string, meta: ReserveMatchMeta): FixtureView {
+  const comp: Competition = {
+    id: 'reserve', type: 'league', name: meta.name, season: s.calendar.season, countryId: null, leagueId: null, participantIds: [], fixtures: [],
+    table: null, alive: null, winnerId: null,
+  }
+  const f: Fixture = { id: fixtureId, compId: 'reserve', round: 0, week: s.calendar.week, day: s.calendar.day, homeId: meta.homeId, awayId: meta.awayId, result: null }
+  const v = fixtureView(s, comp, f, s.hero.contract?.clubId ?? null)
+  return { ...v, compType: 'friendly', isHome: true, venue: currentLang.value === 'tr' ? 'Antrenman tesisleri' : 'Training ground' }
+}
+
+/** Fixture view of the active match: a real fixture, or the reserve / training match stored in the blob. */
+function activeFixture(s: GameState, fixtureId: string, blob: MatchBlob | null): FixtureView | null {
+  return findFixture(s, fixtureId) ?? (blob?.reserve && blob.fixtureId === fixtureId ? reserveFixture(s, fixtureId, blob.reserve) : null)
+}
 
 function findFixture(s: GameState, fixtureId: string): FixtureView | null {
   const clubId = s.hero.contract?.clubId ?? null
@@ -214,7 +232,7 @@ const HINTS: Record<string, LText> = {
 export function preMatchView(s: GameState): PreMatchView | null {
   const blob = readJson<MatchBlob | null>(s.life, GFLAG.match, null)
   if (!blob || blob.fixtureId !== s.activeMatchId) return null
-  const fx = findFixture(s, blob.fixtureId)
+  const fx = activeFixture(s, blob.fixtureId, blob)
   if (!fx) return null
   const { home, away } = blob.setup
   const heroSide = blob.setup.heroSide ?? 'home'
@@ -252,6 +270,7 @@ export function preMatchView(s: GameState): PreMatchView | null {
     expectedMoments: expectedFor(s, blob),
     referee: blob.setup.referee ? { ...blob.setup.referee } : null,
     markedMan: markedMan(s.hero),
+    ...(blob.setup.heroEntryMinute !== undefined ? { plannedEntry: blob.setup.heroEntryMinute } : {}),
   }
 }
 
@@ -415,7 +434,7 @@ function newLive(s: GameState, sim: MatchSim, paused: boolean): Live | null {
   const fixtureId = s.activeMatchId
   const blob = readJson<MatchBlob | null>(s.life, GFLAG.match, null)
   if (!fixtureId || !blob) return null
-  const fixture = findFixture(s, fixtureId)
+  const fixture = activeFixture(s, fixtureId, blob)
   if (!fixture) return null
   return {
     sim, fixtureId, fixture, setup: blob.setup, heroSide: blob.setup.heroSide ?? 'home',
@@ -544,7 +563,7 @@ function rawFixture(s: GameState, id: string): { homeId: string; day: number } |
 function matchStadium(s: GameState, l: Live): { capacity: number; night: boolean } {
   const fx = rawFixture(s, l.fixtureId)
   const home = fx ? s.world.clubs[fx.homeId] : undefined
-  const capacity = l.setup.neutralVenue ? 60_000 : home?.stadium.capacity ?? 42_000
+  const capacity = l.setup.neutralVenue ? 60_000 : home?.stadium.capacity ?? (l.fixtureId.startsWith('reserve:') ? 1_500 : 42_000)
   return { capacity, night: isEveningFixture(l.fixtureId, fx?.day ?? 5, l.setup.importance) }
 }
 
@@ -679,7 +698,8 @@ function finalize(): void {
     ...(report.bonuses && s.hero.contract ? { earnings: earningsFor(s, report.bonuses) } : {}),
   }
   const opp = side === 'home' ? l.setup.away : l.setup.home
-  const interview = report.minutes > 0 || blob.starts
+  if (blob.reserve) delete view.expectations
+  const interview = !blob.reserve && (report.minutes > 0 || blob.starts)
     ? interviewFor(s, new Rng(hashString(`iv:${l.fixtureId}`)), {
       won: report.won, drew: report.drew, goals: st.goals, assists: st.assists, rating: report.rating, motm: motmId === HERO_ID,
       started: blob.starts, minutes: report.minutes, opponent: opp.name,

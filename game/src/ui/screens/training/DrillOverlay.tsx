@@ -19,6 +19,8 @@ import { DrillDiagram } from './DrillDiagram'
 import { formatNumber } from '../../format'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
 import { drillFinished } from '../../backend/meta'
+import { impressResult } from '../../backend/benchPath'
+import '../../../styles/screens/bench.css'
 import { DrillHints } from '../../tutorial/ControlHint'
 import { emitHintEvent } from '../../tutorial/hints'
 
@@ -35,7 +37,8 @@ const VARIANT_KEYS = new Set(['setPiece', 'rondo', 'switch', 'diving', 'contact'
 const drillKey = (s: TrainingSessionView): string =>
   s.drill?.variant && VARIANT_KEYS.has(s.drill.variant) ? s.drill.variant : s.drill?.kind ?? 'finishing'
 
-export function DrillOverlay({ session, onClose }: { session: TrainingSessionView; onClose: (outcome: TrainingOutcomeView | null) => void }) {
+export function DrillOverlay({ session, onClose, challenge, onDrillResult }: { session: TrainingSessionView; onClose: (outcome: TrainingOutcomeView | null) => void; challenge?: { reward: number }; onDrillResult?: (performance: number, grade: string) => void }) {
+  const [chal, setChal] = useState<{ passed: boolean } | null>(null)
   const [phase, setPhase] = useState<Phase>('intro')
   const [result, setResult] = useState<DrillResult | null>(null)
   const [outcome, setOutcome] = useState<TrainingOutcomeView | null>(null)
@@ -99,7 +102,13 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
           handle.current = null
           setResult(r)
           drillFinished(r.kind, r.grade, r.performance)
+          // The coach's challenge is judged before the session moves the clock (backend/benchPath).
+          if (challenge) {
+            const c = impressResult(r.performance, r.grade)
+            if (c) setChal({ passed: c.passed })
+          }
           const o = actions.trainSession(session.id, r.performance)
+          if (o.ok) onDrillResult?.(r.performance, r.grade)
           setOutcome(o)
           setPhase('result')
           if (o.ok) haptic(r.grade === 'S' || r.grade === 'A' ? 'success' : 'select')
@@ -149,6 +158,15 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
           <div class="micro t-lo">{lt(session.name)}</div>
           <h2 class="h2">{title}</h2>
           <p class="t-mid">{tx(`training.drill.goal.${key}`)}</p>
+          {challenge && (
+            <div class="chal-banner" data-testid="drill-challenge">
+              <Icon name="target" size={18} class="t-gold" />
+              <div>
+                <b class="t-sm">{t('bench.challenge.banner')} · {t('bench.challenge.target', { g: 'A' })}</b>
+                {challenge.reward > 0 && <div class="t-xs t-mid">{t('bench.challenge.reward', { n: challenge.reward })}</div>}
+              </div>
+            </div>
+          )}
           <div class="trn-drill-controls">
             <div class={touch ? 'is-primary' : ''}>
               <div class="micro t-lo"><Icon name="phone" size={14} /> {t('training.drill.touch')}</div>
@@ -181,6 +199,12 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
       {phase === 'result' && result && (
         <div class="trn-drill-card trn-drill-result stack" aria-live="polite">
           <div class="micro t-lo">{t('training.result.title')} · {title}</div>
+          {chal && (
+            <div class={`chal-banner ${chal.passed ? 'is-pass' : 'is-fail'}`} data-testid="drill-challenge-result">
+              <Icon name={chal.passed ? 'check' : 'warning'} size={18} />
+              <b class="t-sm">{chal.passed ? t('bench.challenge.pass') : t('bench.challenge.fail')}</b>
+            </div>
+          )}
           <div class="trn-result-top">
             <div class={`trn-grade trn-grade-${result.grade}`} aria-label={`${t('training.result.grade')} ${result.grade}`}>{result.grade}</div>
             <div class="stack trn-result-nums">

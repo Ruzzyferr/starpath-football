@@ -9,6 +9,7 @@ import { startChance } from '../../../sim/game/whyPlaying'
 import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 import { FocusPicker } from './FocusPicker'
+import { SelectionMeter } from '../bench/SelectionMeter'
 import { layoutTeam, type LayoutOut } from './pitchLayout'
 
 function Disc({ p, team, side, box, you }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; box: LayoutOut; you: string }) {
@@ -125,6 +126,7 @@ export function PreMatchScreen() {
   const pips = Math.max(1, Math.round(pm.importance * 5))
   const odds = (n: number) => formatNumber(n, currentLang.value, 2)
   const opp = fx.isHome ? fx.away : fx.home
+  const friendly = fx.compType === 'friendly'
 
   return (
     <div class="pm-root" style={{ ['--home' as string]: fx.home.kit.primary, ['--away' as string]: fx.away.kit.primary }}>
@@ -194,6 +196,15 @@ export function PreMatchScreen() {
               <div class="t-sm t-mid">{pm.heroStarting ? t('match.pre.startingDesc') : t('match.pre.benchDesc')}</div>
             </div>
           </div>
+          {pm.plannedEntry !== undefined && !pm.heroStarting && (
+            <div class="pm-planned" data-testid="pm-planned">
+              <Icon name="shirt" size={20} class="t-pos" />
+              <div>
+                <b class="t-sm">{t('bench.pre.planned', { m: pm.plannedEntry })}</b>
+                <div class="t-xs t-mid">{friendly ? t('bench.pre.reserve') : t('bench.pre.plannedDesc')}</div>
+              </div>
+            </div>
+          )}
 
           {(pm.markedMan ?? 0) > 0 && (
             <div class="pm-marked" data-testid="pm-marked" title={t('match.pre.markedTip')}>
@@ -204,13 +215,13 @@ export function PreMatchScreen() {
           {pm.expectedMoments && pm.expectedMoments.max > 0 && <ExpectedMomentsCard em={pm.expectedMoments} starting={pm.heroStarting} />}
           <FocusPicker />
 
-          <div class="pm-card">
+          {!friendly && <div class="pm-card">
             <h3 class="micro t-mid">{t('match.pre.opponentForm')}</h3>
             <div class="row-between">
               <span class="row"><Crest crest={opp.crest} size={24} compact /><span class="truncate">{opp.name}</span></span>
               <FormDots form={pm.opponentForm} />
             </div>
-          </div>
+          </div>}
 
           {pm.opponentKeyPlayer && (
             <div class="pm-card">
@@ -244,7 +255,8 @@ export function PreMatchScreen() {
           )}
 
           {pm.referee && <RefereeCard r={pm.referee} />}
-          <ExpectationCard homeId={fx.home.id} />
+          {!friendly && <ExpectationCard homeId={fx.home.id} />}
+          {!friendly && !pm.heroStarting && <SelectionMeter compact context="preMatch" />}
 
           <div class="pm-card pm-hint">
             <span class="pm-hint-icon"><Icon name="whistle" size={22} /></span>

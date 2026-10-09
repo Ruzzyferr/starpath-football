@@ -4,6 +4,10 @@ import { NationalCard } from './national/NationalCard'
 import { AddictionMeter } from './casino/AddictionMeter'
 import { ComebackCard } from './legacy/ComebackCard'
 import { CeremonyBanner } from './awards/CeremonyBanner'
+import { SelectionMeter } from './bench/SelectionMeter'
+import { SkipSummary } from './bench/WeekIdeasCard'
+import { AgendaCard, AgendaSkipConfirm } from './bench/AgendaCard'
+import { agendaBlockReason } from '../backend/benchPath'
 import type { Attributes, Hero, Position } from '../../core/types'
 import { lt, t, tx } from '../../i18n'
 import {
@@ -62,6 +66,7 @@ export function HomeScreen() {
   // Newest first (the sim appends; reverse before the stable sort by date).
   const news = [...life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week).slice(0, 3)
   const matchToday = fx?.daysUntil === 0
+  const agendaBlocked = agendaBlockReason()
   const yearsLeft = h.contract ? Math.max(0, h.contract.untilSeason - cal.season + 1) : 0 // incl. the current season, as on the Contract screen
 
   const tileSub = (id: (typeof TILES)[number]['id']): string => {
@@ -85,8 +90,8 @@ export function HomeScreen() {
           <Button variant="ghost" icon="skip" onClick={() => requestSkipToMatch()} class="home-cta-auto">
             {t('home.autoToMatch')}
           </Button>
-          <Button variant="primary" size="lg" icon="fast-forward" class="home-cta-main" haptic="select" onClick={() => requestAdvance()} title={t('home.advanceHint')} data-tour="advance">
-            {t('home.advance')}
+          <Button variant="primary" size="lg" icon={agendaBlocked ? 'lock' : 'fast-forward'} class="home-cta-main" haptic="select" onClick={() => requestAdvance()} title={agendaBlocked ? lt(agendaBlocked) : t('home.advanceHint')} aria-label={agendaBlocked ? lt(agendaBlocked) : undefined} data-tour="advance" disabled={!!agendaBlocked}>
+            {agendaBlocked ? <span data-testid="advance-blocked">{t('bench.agenda.blockedShort')}</span> : t('home.advance')}
           </Button>
         </div>
       }
@@ -175,6 +180,11 @@ export function HomeScreen() {
               </div>
             )}
           </article>
+
+          <SkipSummary />
+          <AgendaCard />
+          <AgendaSkipConfirm />
+          <SelectionMeter />
 
           {pending > 0 && (
             <button type="button" class="home-decisions" onClick={() => { haptic('select'); activeEvent.value = 0 }}>

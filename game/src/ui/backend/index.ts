@@ -10,6 +10,8 @@
  *   &seed=<n>               deterministic career seed
  *   &storage=memory         in-memory saves (headless testing)
  */
+import { quickResolveAll } from './benchPath'
+import { commit } from './session'
 import { installPrefsSync } from './prefsSync'
 import type { NewGameInput, ScreenId } from '../store'
 import { effect } from '@preact/signals'
@@ -31,7 +33,9 @@ export const DEFAULT_CAREER: NewGameInput = {
 }
 
 /** Resolve pending decision cards with their first choice (dev shortcuts only). */
+/** Dev/test autopilot: answer pending cards and quick-resolve today's mandatory agenda tasks (they block Advance). */
 function clearEvents(): void {
+  quickResolveAll()
   for (let i = 0; i < 10 && (gameState.value?.pendingEvents.length ?? 0) > 0; i++) {
     const v = realData.eventView(0)
     const pick = Math.max(0, v?.choices.findIndex((c) => !c.requirement || c.requirement.met) ?? 0)
@@ -94,6 +98,8 @@ function devJump(id: ScreenId): void {
 function installDebugApi(): void {
   ;(globalThis as { __sp?: unknown }).__sp = {
     state: () => gameState.value,
+    /** Re-render after a test mutated the state in place. */
+    touch: () => commit(gameState.value!, { silent: true }),
     match: () => match.value,
     screen: () => screen.value,
     actions: realActions,
