@@ -2794,7 +2794,9 @@ export class MatchScene extends Phaser.Scene {
     const tu = this.input0.touchUi()
     const showTouch = tu.enabled && this.mode === 'play'
     this.sprintText.setAlpha(showTouch ? 0.9 : 0).setPosition(tu.sprint.x, tu.sprint.y)
-    this.skillText.setAlpha(showTouch ? 0.9 : 0).setPosition(tu.skill.x, tu.skill.y)
+    // A keeper has no dribble skill: no SKILL button in his moments (input ignores it too).
+    const showSkill = showTouch && !rt.heroIsKeeper
+    this.skillText.setAlpha(showSkill ? 0.9 : 0).setPosition(tu.skill.x, tu.skill.y)
     if (showTouch) {
       g.fillStyle(0x000000, tu.sprint.down ? 0.55 : 0.3)
       g.fillCircle(tu.sprint.x, tu.sprint.y, tu.sprint.r)
@@ -2805,10 +2807,12 @@ export class MatchScene extends Phaser.Scene {
       g.beginPath()
       g.arc(tu.sprint.x, tu.sprint.y, tu.sprint.r + 4 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hero.stamina)
       g.strokePath()
-      g.fillStyle(0x000000, tu.skill.down ? 0.55 : 0.3)
-      g.fillCircle(tu.skill.x, tu.skill.y, tu.skill.r)
-      g.lineStyle(2 * u, 0xffd23f, tu.skill.down ? 0.95 : 0.5)
-      g.strokeCircle(tu.skill.x, tu.skill.y, tu.skill.r)
+      if (showSkill) {
+        g.fillStyle(0x000000, tu.skill.down ? 0.55 : 0.3)
+        g.fillCircle(tu.skill.x, tu.skill.y, tu.skill.r)
+        g.lineStyle(2 * u, 0xffd23f, tu.skill.down ? 0.95 : 0.5)
+        g.strokeCircle(tu.skill.x, tu.skill.y, tu.skill.r)
+      }
       if (tu.joystick) {
         const j = tu.joystick
         g.fillStyle(0xffffff, 0.08)

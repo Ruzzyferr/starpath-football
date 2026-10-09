@@ -9,7 +9,7 @@ import { lt, t, tx } from '../../i18n'
 import {
   Badge, Button, Card, Chip, Crest, EmptyState, MeterRing, Page, PlayerCard, SectionTitle, Sparkline, StatBar,
 } from '../components'
-import { ageOf, ratingColor, seasonLabel } from '../format'
+import { ageOf, formatRating, ratingColor, seasonLabel } from '../format'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, activeEvent, data, gameState, heroClub, navigate, type ScreenId } from '../store'
@@ -248,7 +248,7 @@ export function HomeScreen() {
                 <span class="micro t-mid">{t('home.formTrend')}</span>
                 {form.length > 0 && (
                   <span class="score-font home-form-last" style={{ color: ratingColor(form[form.length - 1]!) }}>
-                    {form[form.length - 1]!.toFixed(1)}
+                    {formatRating(form[form.length - 1]!)}
                   </span>
                 )}
               </div>

@@ -50,7 +50,7 @@ function ExpectedMomentsCard({ em, starting }: { em: NonNullable<PreMatchView['e
       {kinds.length > 0 && (
         <ul class="pm-moment-kinds" aria-label={t('postmatch.pre.types')}>
           {kinds.map((k) => (
-            <li class="pm-moment-kind" key={k.kind}>
+            <li class="pm-moment-kind" key={k.kind} data-kind={k.kind}>
               <Icon name={MOMENT_ICON[k.kind] ?? 'star'} size={16} class="t-lo" />
               <span class="truncate">{tx(`match.kind.${k.kind}`, undefined, k.kind)}</span>
               <span class="pm-mk-bar" aria-hidden="true"><span style={{ ['--w' as string]: `${Math.round(k.share * 100)}%` }} /></span>

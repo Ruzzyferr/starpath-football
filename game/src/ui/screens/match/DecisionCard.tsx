@@ -60,7 +60,7 @@ export function DecisionCard({ d }: { d: DecisionView }) {
           {d.options.map((o, i) => (
             <Button
               key={o.id}
-              variant={o.id === d.fallback ? 'primary' : 'secondary'}
+              variant="secondary"
               size="lg"
               block
               autoFocus={i === 0}
@@ -69,7 +69,7 @@ export function DecisionCard({ d }: { d: DecisionView }) {
             >
               <span class="lm-dec-opt">
                 <b><span class="lm-dec-key" aria-hidden="true">{i + 1}</span>{lt(o.label)}</b>
-                <small>{lt(o.hint)}{o.risky ? ` · ${t('match.live.decision.risky')}` : ''}</small>
+                <small>{lt(o.hint)}{o.risky ? ` · ${t('match.live.decision.risky')}` : ''}{o.id === d.fallback ? ` · ${t('match.live.decision.isDefault')}` : ''}</small>
               </span>
             </Button>
           ))}

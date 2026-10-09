@@ -430,7 +430,8 @@ export function matchWhy(m: MatchRelationInput): LText {
   const parts: LText[] = []
   if (m.goals > 0) parts.push(fill(lt('{n} gol', '{n} goal(s)'), { n: m.goals }))
   if (m.assists > 0) parts.push(fill(lt('{n} asist', '{n} assist(s)'), { n: m.assists }))
-  parts.push(fill(lt('puan {x}', 'rating {x}'), { x: m.rating.toFixed(1) }))
+  const x = m.rating.toFixed(1)
+  parts.push({ tr: `puan ${x.replace('.', ',')}`, en: `rating ${x}` })
   if (m.red) parts.push(lt('kırmızı kart', 'red card'))
   parts.push(res)
   return { tr: `Maç: ${parts.map((p) => p.tr).join(' · ')}`, en: `Match: ${parts.map((p) => p.en).join(' · ')}` }

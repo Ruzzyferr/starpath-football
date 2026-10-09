@@ -29,7 +29,7 @@ import { playHighlight, type HighlightSession } from './highlightBridge'
 import { celebrationForMatch } from './celebration'
 import { isEveningFixture } from '../../game/presentation'
 import { matchExpectations } from '../../sim/game/objectives'
-import { buildPassNetView, buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues } from './postMatch'
+import { buildPassNetView, buildRelationChanges, buildTrustReasons, expectedMomentsFor, heroMapView, ratingLogView, relationValues, withBuildUpFallback } from './postMatch'
 import { commit, current, get, notify } from './session'
 import { scheduleAutosave } from './persistence'
 import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type DecisionDef, type DecisionKind } from '../../sim/match/decisions'
@@ -245,11 +245,12 @@ function expectedFor(s: GameState, blob: MatchBlob): PreMatchView['expectedMomen
   const mates = team.lineup.filter((p) => !p.isHero)
   const relationAvg = mates.length ? mates.reduce((a, p) => a + p.relationToHero, 0) / mates.length : 0
   try {
-    const e = expectedMomentsFor({
+    const e0 = expectedMomentsFor({
       position, relationAvg, morale: team.morale, form: s.hero.form, minutes: blob.starts ? 90 : 25,
       positioning: hero?.attrs.positioning, ovr: hero?.ovr, ...(s.hero.matchFocus ? { focus: s.hero.matchFocus } : {}),
       ...(hero?.role ? { role: hero.role } : {}),
     })
+    const e = withBuildUpFallback(e0, hero?.attrs, blob.setup.difficulty)
     return { min: e.min, max: e.max, kinds: e.kinds.map((k) => ({ kind: k.kind, share: k.share })) }
   } catch {
     return null

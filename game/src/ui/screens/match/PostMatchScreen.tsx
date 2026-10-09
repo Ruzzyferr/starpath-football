@@ -4,13 +4,19 @@ import { t, lt, tx, currentLang } from '../../../i18n'
 import { ShareMatchButton } from '../../share/ShareButtons'
 import { Avatar, Button, Crest, DeltaList, EmptyState, HeatMap, Hearts, MeterRing, Money, ShotMap, ShotMarker } from '../../components'
 import { Icon, type IconName } from '../../icons'
-import { formatRating, ratingColor } from '../../format'
+import { formatMoney, formatRating, ratingColor } from '../../format'
 import { useCountUp } from '../../hooks/motion'
-import { actions, data, navigate, type Delta, type InterviewOption, type PassRowView, type PostMatchView, type RatingLineView } from '../../store'
+import { actions, data, gameState, navigate, type Delta, type InterviewOption, type PassRowView, type PostMatchView, type RatingLineView } from '../../store'
 import { CompareBar, MOMENT_ICON } from './shared'
 import { MomentsPanel } from './Moments'
 import { chanceReport } from '../../backend/postMatch'
-import { postSteps, ratingExtremes, ratingGroups, signedDelta, type PostStep } from './postFlow'
+import { postSteps, ratingExtremes, ratingGroups, signedDelta as rawSignedDelta, type PostStep } from './postFlow'
+
+/** "+1.09" with the UI language's decimal separator (TR: "+1,09"). */
+const signedDelta = (v: number, digits?: number): string => {
+  const s = rawSignedDelta(v, digits)
+  return currentLang.value === 'tr' ? s.replace('.', ',') : s
+}
 
 const TONE_ICON: Record<InterviewOption['tone'], IconName> = {
   humble: 'hand-heart',
@@ -195,7 +201,7 @@ function RatingStep({ pm }: { pm: PostMatchView }) {
     <section class="post-card post-step-card prb" aria-labelledby="post-step-h">
       <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}>{t('postmatch.rating.title')}</h2>
       <div class="prb-top">
-        <div class="prb-from"><span class="micro t-lo">{t('postmatch.rating.base')}</span><b class="score-font num">{base.toFixed(1)}</b></div>
+        <div class="prb-from"><span class="micro t-lo">{t('postmatch.rating.base')}</span><b class="score-font num">{formatRating(base)}</b></div>
         <Icon name="arrow-right" size={22} class="t-lo" />
         <div class="prb-to" data-testid="post-rating-final">
           <span class="micro t-lo">{t('postmatch.rating.final')}</span>
@@ -244,6 +250,8 @@ function MapStep({ pm }: { pm: PostMatchView }) {
   const goals = map.shots.filter((s) => s.outcome === 'goal').length
   const estimated = map.shots.some((s) => s.source === 'auto')
   const outcomes = ['goal', 'saved', 'missed', 'blocked', 'woodwork'] as const
+  // A keeper's own shot map is empty by design: say what he did instead of "you had no shots".
+  const keeperNoShots = gameState.value?.hero.position === 'GK' && map.shots.length === 0
   return (
     <section class="post-card post-step-card pmaps" aria-labelledby="post-step-h">
       <h2 class="post-h micro t-mid" id="post-step-h" tabIndex={-1}>{t('postmatch.map.title')}</h2>
@@ -256,11 +264,13 @@ function MapStep({ pm }: { pm: PostMatchView }) {
         <figure class="pmaps-fig" data-testid="post-shotmap">
           <ShotMap shots={map.shots} label={t('postmatch.map.shots')} />
           <figcaption class="micro t-mid">
-            {t('postmatch.map.shots')} · {map.shots.length ? t('postmatch.map.count', { n: map.shots.length, g: goals }) : t('postmatch.map.noShots')}
+            {keeperNoShots
+              ? t('postmatch.map.keeper', { n: pm.stats.saves })
+              : <>{t('postmatch.map.shots')} · {map.shots.length ? t('postmatch.map.count', { n: map.shots.length, g: goals }) : t('postmatch.map.noShots')}</>}
           </figcaption>
         </figure>
       </div>
-      <ul class="pmaps-legend t-xs">
+      {!keeperNoShots && <ul class="pmaps-legend t-xs">
         {outcomes.map((o) => (
           <li key={o} class={`shot shot-${o}`}>
             <svg viewBox="-3 -3 6 6" width="14" height="14" aria-hidden="true"><ShotMarker outcome={o} x={0} y={0} r={2.2} /></svg>
@@ -268,7 +278,7 @@ function MapStep({ pm }: { pm: PostMatchView }) {
           </li>
         ))}
         <li class="shot"><svg viewBox="-4 -4 8 8" width="14" height="14" aria-hidden="true"><circle class="shot-header" cx="0" cy="0" r="3" /></svg>{t('postmatch.map.header')}</li>
-      </ul>
+      </ul>}
       {estimated && <p class="t-xs t-lo">{t('postmatch.map.estimated')}</p>}
     </section>
   )
@@ -427,6 +437,8 @@ type Interview = NonNullable<PostMatchView['interview']>
 type Answer = { id: string; deltas: Delta[] } | null
 
 function SummaryStep({ pm, iv, answer, setAnswer }: { pm: PostMatchView; iv: Interview | null; answer: Answer; setAnswer: (a: Answer) => void }) {
+  // The money chip is what landed now; the wage/sponsor share comes at the week's end (earnings step).
+  const weekPay = (pm.earnings?.lines ?? []).filter((l) => l.when === 'week').reduce((a, l) => a + l.amount, 0)
   return (
     <div class="post-grid post-summary">
       <section class="post-card post-summary-head">
@@ -441,6 +453,7 @@ function SummaryStep({ pm, iv, answer, setAnswer }: { pm: PostMatchView; iv: Int
         <section class="post-card post-impact">
           <h2 class="post-h micro t-mid">{t('match.post.impact')}</h2>
           <DeltaList deltas={pm.deltas} />
+          {weekPay !== 0 && <p class="t-xs t-lo" data-testid="post-weekpay">{t('postmatch.summary.weekPay', { m: formatMoney(weekPay, { sign: true }) })}</p>}
         </section>
       )}
       {iv && (
@@ -459,7 +472,7 @@ function SummaryStep({ pm, iv, answer, setAnswer }: { pm: PostMatchView; iv: Int
                 <button key={o.id} type="button" class={`post-iv-opt tone-${o.tone}`} onClick={() => setAnswer({ id: o.id, deltas: actions.answerInterview(o.id) })}>
                   <span class="post-iv-tone micro"><Icon name={TONE_ICON[o.tone]} size={14} /> {t(`match.post.tone.${o.tone}`)}</span>
                   <span class="post-iv-label">{lt(o.label)}</span>
-                  {o.preview.length > 0 && <DeltaList deltas={o.preview} compact />}
+                  {o.preview.length > 0 && <DeltaList deltas={o.preview} />}
                 </button>
               ))}
             </div>

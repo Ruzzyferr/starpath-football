@@ -66,7 +66,8 @@ export const tr = {
     shots: 'Şut haritası',
     attack: 'Hücum yönü',
     noShots: 'Şut çekmedin.',
-    header: 'kafa',
+    keeper: 'Kaledeydin: {n} kurtarış',
+    header: 'Kafa',
     estimated: 'Otomatik anlardaki şutların yeri tahminidir.',
     count: '{n} şut · {g} gol',
   },
@@ -123,6 +124,7 @@ export const tr = {
   },
   summary: {
     title: 'Maç özeti',
+    weekPay: 'Para yalnızca hemen ödenenleri gösterir; bu maçın hafta sonu ödenecek payı: {m}.',
   },
   pre: {
     expected: 'Beklenen anlar',
@@ -203,7 +205,8 @@ export const en: Shape<typeof tr> = {
     shots: 'Shot map',
     attack: 'Attacking direction',
     noShots: 'You had no shots.',
-    header: 'header',
+    keeper: 'In goal: {n} save(s)',
+    header: 'Header',
     estimated: 'Shot spots from auto-simmed moments are estimated.',
     count: '{n} shots · {g} goals',
   },
@@ -260,6 +263,7 @@ export const en: Shape<typeof tr> = {
   },
   summary: {
     title: 'Match summary',
+    weekPay: "Money shows only what was paid now; this match's share paid at the week's end: {m}.",
   },
   pre: {
     expected: 'Expected moments',

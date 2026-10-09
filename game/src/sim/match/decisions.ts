@@ -208,7 +208,7 @@ export function decisionDef(kind: DecisionKind, heroOvr = 60, leadership = 60): 
     default:
       return {
         kind: 'shout',
-        title: lt('Taktik çıkış', 'Tactical shout'),
+        title: lt('Takıma seslen', 'Tactical shout'),
         prompt: lt('Maç kritik bir noktada. Saha içinden takıma ne seslenirsin?', 'The match is at a tipping point. What do you call out to the team?'),
         options: [
           { id: 'rally', label: lt('Hadi, bastırıyoruz!', 'Come on, push up!'), hint: lt('Moral verir', 'Lifts morale'), effects: { teammates: 2, morale: 1, rating: 0.05 } },

@@ -337,7 +337,7 @@ export class InputController {
         this.button = { id: e.pointerId, kind: 'sprint', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
         return
       }
-      if (!noMove && !this.button && this.hit(ui.skill, p)) {
+      if (!noMove && !this.lastCtx?.heroIsKeeper && !this.button && this.hit(ui.skill, p)) {
         // The skill fires on release (a drag off the button is a swipe instead).
         this.skillTouch = e.pointerId
         this.button = { id: e.pointerId, kind: 'skill', x: p.x, y: p.y, t, pts: [this.point(p, t)] }

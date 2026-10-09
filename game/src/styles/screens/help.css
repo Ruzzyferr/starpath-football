@@ -217,6 +217,8 @@
 /* Phones: keep the scene's HUD band (score, timer, prompt) visible; sit above SKILL/SPRINT. */
 @media (max-width: 700px) {
   .control-hint { top: auto; bottom: calc(var(--safe-bottom) + 168px); }
+  /* Keeper moments: the keeper and his goal are at the bottom; the hint must not cover them. */
+  .control-hint.is-top { top: calc(var(--safe-top) + 120px); bottom: auto; }
 }
 
 /* ───────────── Info tips ───────────── */

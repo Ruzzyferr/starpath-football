@@ -73,6 +73,9 @@ function Hand() {
 }
 
 /** One hint card. `onDone` fires after success or dismissal. */
+/** Keeper moments: our goal and keeper sit at the bottom of the phone screen, so the hint goes up top. */
+const OWN_GOAL_GROUPS: ReadonlySet<HintGroup> = new Set<HintGroup>(['keeper', 'claim', 'wallSet'])
+
 export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: HintGroup; onDone: () => void }) {
   const [success, setSuccess] = useState(false)
   // Appear once the scene is actually running (first gameplay event), not over the loading screen.
@@ -105,7 +108,7 @@ export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: H
   const text = tx(`help.hints.${platform}.${group}`)
   const gesture = gestureFor(group, inputPlatform.value)
   return (
-    <div class={`control-hint${success ? ' is-success' : ''}`} role="status" aria-live="polite" data-hint={hintId(ctx, group)}>
+    <div class={`control-hint${success ? ' is-success' : ''}${OWN_GOAL_GROUPS.has(group) ? ' is-top' : ''}`} role="status" aria-live="polite" data-hint={hintId(ctx, group)}>
       <div class="control-hint-card">
         <div class="control-hint-art" aria-hidden={success}>
           {success ? <span class="control-hint-check"><Icon name="check" size={30} /></span> : <Gesture kind={gesture} group={group} />}

@@ -11,11 +11,14 @@
  * rest of the performance), the minutes scaling, and the remainder.
  */
 import { clamp } from '../../core/rng'
-import type { LText, RelationKind, Relationship } from '../../core/types'
+import type { Attributes, LText, RelationKind, Relationship } from '../../core/types'
 import { trustBlameShield } from '../../sim/career/squadRole'
 import { expectedMoments } from '../../sim/match'
 import type { ExpectedMoments, HeroMatchMap, HighlightPlanInput, RatingLogEntry } from '../../sim/match'
 import { relationBand, splitPassNet, type PassNet, type PassRow } from '../../sim/match/passNet'
+import { outcomeProbabilities } from '../../sim/match/autoResolve'
+import { MIN_MOMENT_CHANCE } from '../../sim/match/fairness'
+import { KEEPER_KINDS, type HighlightKind } from '../../sim/match/types'
 import type { PassNetView, HeroMapView, RatingLineView, RelationChangeView, TrustChangeView } from '../store'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
@@ -68,7 +71,8 @@ export function buildTrustReasons(m: TrustReasonInput): TrustChangeView {
   const push = (key: TrustChangeView['reasons'][number]['key'], v: number, label: LText) => {
     if (Math.abs(v) >= 0.05) reasons.push({ key, value: r1(v), label })
   }
-  push('rating', perf, L(`Maç notun ${m.rating.toFixed(1)} (beklenen ${TRUST_NEUTRAL_RATING.toFixed(1)})`, `Your rating ${m.rating.toFixed(1)} (expected ${TRUST_NEUTRAL_RATING.toFixed(1)})`))
+  const trDec = (v: number) => v.toFixed(1).replace('.', ',')
+  push('rating', perf, L(`Maç notun ${trDec(m.rating)} (beklenen ${trDec(TRUST_NEUTRAL_RATING)})`, `Your rating ${m.rating.toFixed(1)} (expected ${TRUST_NEUTRAL_RATING.toFixed(1)})`))
   if (m.goals + m.assists > 0) push('goals', goals, L(`${m.goals} gol, ${m.assists} asist`, `${m.goals} goals, ${m.assists} assists`))
   push('result', result, m.won ? L('Galibiyet', 'Win') : m.drew ? L('Beraberlik', 'Draw') : L('Mağlubiyet', 'Defeat'))
   if (m.yellow + m.red > 0) push('card', card, m.red ? L('Kırmızı kart', 'Red card') : L('Sarı kart', 'Yellow card'))
@@ -147,6 +151,34 @@ export function expectedMomentsFor(input: HighlightPlanInput): ExpectedMoments {
   return expectedMoments(input)
 }
 
+/**
+ * The engine turns an open-play moment the hero has almost no chance in into a
+ * keep-the-ball (build_up) moment (sim/match/fairness). The preview applies the
+ * same rule from the hero's attributes (best-case geometry), so a young striker
+ * is told he will mostly be asked to keep the ball, not promised shots.
+ */
+export function withBuildUpFallback(e: ExpectedMoments, attrs: Attributes | undefined, difficulty: number): ExpectedMoments {
+  if (!attrs) return e
+  let moved = 0
+  const kinds = e.kinds.map((k) => {
+    if (k.kind === 'build_up' || KEEPER_KINDS.has(k.kind as HighlightKind)) return { ...k }
+    const p = outcomeProbabilities(k.kind as HighlightKind, attrs, difficulty)
+    const best = (p.goal ?? 0) + (p.assist ?? 0) + (p.defended ?? 0) + (p.foul_won ?? 0) + 0.5 * (p.pass_complete ?? 0)
+    // Below the bar: always replaced. Just above it: the scenario geometry often pushes it under.
+    const lost = best < MIN_MOMENT_CHANCE ? 1 : best < MIN_MOMENT_CHANCE / 0.6 ? 0.5 : 0
+    moved += k.share * lost
+    return { ...k, share: k.share * (1 - lost) }
+  })
+  if (moved <= 0) return e
+  const bu = kinds.find((k) => k.kind === 'build_up')
+  if (bu) bu.share += moved
+  else kinds.push({ kind: 'build_up', share: moved })
+  const out = kinds.map((k) => ({ ...k, share: Math.round(k.share * 1000) / 1000 })).filter((k) => k.share > 0)
+    .sort((a, b) => b.share - a.share || (a.kind < b.kind ? -1 : 1))
+  if (out.length) out[0]!.share = Math.round((1 - out.slice(1).reduce((s, k) => s + k.share, 0)) * 1000) / 1000
+  return { ...e, kinds: out }
+}
+
 /** Kinds worth a label (≥ 8% share, at most 4). */
 export function topKinds(e: ExpectedMoments, minShare = 0.08, max = 4): ExpectedMoments['kinds'] {
   return e.kinds.filter((k) => k.share >= minShare).slice(0, max)
@@ -198,7 +230,7 @@ export function buildPassNetView(
   if (!net) return undefined
   const rows: PassRow[] = mates
     .filter((m) => !m.isHero)
-    .map((m) => ({ id: m.id, name: m.name, from: net[m.id]?.from ?? 0, to: net[m.id]?.to ?? 0, relation: Math.round(m.relationToHero), band: relationBand(m.relationToHero) }))
+    .map((m) => ({ id: m.id, name: m.name, from: net[m.id]?.from ?? 0, to: net[m.id]?.to ?? 0, relation: Math.round(m.relationToHero), band: relationBand(Math.round(m.relationToHero)) })) // band of the number shown
   if (rows.every((r) => r.from === 0 && r.to === 0)) return undefined
   return splitPassNet(rows)
 }
