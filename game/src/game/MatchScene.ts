@@ -1988,8 +1988,14 @@ export class MatchScene extends Phaser.Scene {
       if (!cc) this.crossCam = null
       let lead = { x: 0, y: 0 }
       if (!cc && !replay) {
-        if (rt.heroOnBall) px += 5
-        if (rt.heroIsKeeper) px += 7
+        if (rt.heroIsKeeper && (rt.kind === 'gk_claim' || rt.kind === 'gk_distribution')) {
+          // Keeper with the ball in hands, or a cross dropping into his box: keep him on screen above the
+          // touch buttons, framing the ball (and the runners upfield) with him.
+          px = rt.kind === 'gk_distribution' ? rt.hero.pos.x + 11 : Math.min(Math.max(bx, rt.hero.pos.x), rt.hero.pos.x + 14) * 0.5 + rt.hero.pos.x * 0.5 + 6
+        } else {
+          if (rt.heroOnBall) px += 5
+          if (rt.heroIsKeeper) px += 7
+        }
         // Look-ahead (2.2#3): 18 % of the screen along the carrier's run (the ball's flight when loose).
         const carrier = rt.owner
         lead = lookAheadOffset(carrier ? carrier.vel : { x: rt.ball.vx, y: rt.ball.vy }, { w, h }, this.cam.zoom)
@@ -2017,7 +2023,9 @@ export class MatchScene extends Phaser.Scene {
       this.cam.punch *= Math.exp(-dt * 5)
       if (this.rm) this.cam.punch = 0
       const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
-      const crossZoom = this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1
+      // Keeper distribution / claiming: pull back so the options upfield (or the runners in the box) are in view.
+      const keeperZoom = !target && !replay && rt.heroIsKeeper ? (rt.kind === 'gk_distribution' ? 0.7 : rt.kind === 'gk_claim' ? 0.85 : 1) : 1
+      const crossZoom = (this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1) * keeperZoom
       const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
       this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
     }

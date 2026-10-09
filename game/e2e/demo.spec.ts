@@ -1,6 +1,8 @@
 import { test, expect } from './fixtures'
 
-const KINDS = ['build_up', 'counter', 'one_on_one', 'cross', 'edge_of_box', 'freekick', 'penalty', 'corner', 'defend', 'gk_save', 'gk_penalty', 'hold_up', 'defend_1v1', 'block', 'corner_kick', 'fk_wall', 'dribble', 'header', 'gk_1v1', 'gk_sweep', 'back_post']
+const KINDS = ['build_up', 'counter', 'one_on_one', 'cross', 'edge_of_box', 'freekick', 'penalty', 'corner', 'defend', 'gk_save', 'gk_penalty', 'hold_up', 'defend_1v1', 'block', 'corner_kick', 'fk_wall', 'dribble', 'header', 'gk_1v1', 'gk_sweep', 'back_post',
+  // Attribute moments.
+  'long_shot', 'switch_play', 'recovery_run', 'shoulder_duel', 'timed_run', 'press_trap', 'gk_claim', 'gk_distribution']
 
 for (const kind of KINDS) {
   test(`match-demo autopilot reaches an outcome: ${kind}`, async ({ page, shot }) => {
