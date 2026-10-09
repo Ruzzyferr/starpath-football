@@ -666,6 +666,20 @@
 .lm-ball {
   transition: transform 600ms var(--ease-out);
 }
+.lm-dot {
+  transition: transform 900ms var(--ease-out);
+}
+.lm-dot-ring {
+  fill: none;
+  stroke: var(--accent-gold);
+  stroke-width: 0.9;
+}
+@media (prefers-reduced-motion: reduce) {
+  .lm-dot,
+  .lm-ball {
+    transition: none;
+  }
+}
 .lm-bars {
   display: grid;
   gap: var(--sp-2);

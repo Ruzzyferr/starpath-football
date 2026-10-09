@@ -19,6 +19,7 @@ import { incomeTaxRate } from '../../sim/life/economy'
 import { matchEarnings, type MatchBonuses, type MatchEarnings } from '../../sim/career/matchPay'
 import { HIGHLIGHT_PROMPTS, MatchSim, RATING_BASE, assignSlots, type EngineState, type MatchEvent, type MatchPlayer, type MatchSetup, type MatchSnapshot, type MatchTeam, type Side } from '../../sim/match'
 import { formationSlots } from '../../sim/match/formations'
+import { radarShape, type RadarSlot } from './radarShape'
 import { pickKeyPlayer, playerDisplayName, seasonCompetitions } from '../../sim/world/queries'
 import { match, settings } from '../store'
 import type {
@@ -120,6 +121,24 @@ function snubOf(l: Live, snap: MatchSnapshot): { snub?: NonNullable<LiveMatchVie
   return worst ? { snub: { id: worst.id, name: worst.name, relation: Math.round(worst.relationToHero) } } : {}
 }
 
+/** Radar slots per team (formation slot of each starter), cached per match setup. */
+const radarSlotCache = new WeakMap<MatchSetup, { home: RadarSlot[]; away: RadarSlot[] }>()
+function radarSlots(setup: MatchSetup): { home: RadarSlot[]; away: RadarSlot[] } {
+  const hit = radarSlotCache.get(setup)
+  if (hit) return hit
+  const of = (team: MatchTeam): RadarSlot[] => {
+    const slots = formationSlots(team.formation)
+    const idx = assignSlots(team.lineup, team.formation)
+    return team.lineup.slice(0, 11).map((p, i) => {
+      const sl = slots[idx[i]!] ?? slots[i] ?? { x: 30, y: 34 }
+      return { id: p.id, number: p.number, x: sl.x, y: sl.y, isHero: p.isHero || undefined, isKeeper: p.position === 'GK' }
+    })
+  }
+  const v = { home: of(setup.home), away: of(setup.away) }
+  radarSlotCache.set(setup, v)
+  return v
+}
+
 function liveView(l: Live): LiveMatchView {
   const snap = l.sim.snapshot()
   const hl = snap.pendingHighlight
@@ -136,6 +155,14 @@ function liveView(l: Live): LiveMatchView {
     ballX: clamp(Number.isFinite(snap.ballX) ? snap.ballX : 0.5, 0.02, 0.98),
     // The engine tracks the ball along the pitch only; sway it across for the radar.
     ballY: clamp(0.5 + 0.32 * Math.sin(snap.minute * 0.83 + snap.events.length * 0.61 + seed), 0.08, 0.92),
+    radar: (() => {
+      const ballX = clamp(Number.isFinite(snap.ballX) ? snap.ballX : 0.5, 0.02, 0.98)
+      const ballY = clamp(0.5 + 0.32 * Math.sin(snap.minute * 0.83 + snap.events.length * 0.61 + seed), 0.08, 0.92)
+      const r = radarShape({ ...radarSlots(l.setup), ballX, ballY, minute: snap.minute })
+      // A benched hero is not on the pitch: no gold dot.
+      if (!snap.heroOnPitch) for (const p of [...r.home, ...r.away]) delete p.isHero
+      return r
+    })(),
     phase: snap.phase,
     heroOnPitch: snap.heroOnPitch,
     heroSide: l.heroSide,

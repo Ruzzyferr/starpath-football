@@ -75,6 +75,19 @@ function Radar({ m }: { m: LiveMatchView }) {
           fill="none"
           stroke-linecap="round"
         />
+        {m.radar && (
+          <g class="lm-players" data-testid="radar-players">
+            {(['home', 'away'] as const).map((side) => {
+              const kit = m.fixture[side].kit
+              return m.radar![side].map((p) => (
+                <g key={`${side}-${p.id}`} class={`lm-dot lm-dot-${side}${p.isHero ? ' is-hero' : ''}`} style={{ transform: `translate(${1 + p.x * 103}px, ${1 + p.y * 66}px)` }}>
+                  {p.isHero && <circle class="lm-dot-ring" r="3.6" />}
+                  <circle r={p.isHero ? 2.4 : 2} fill={kit.primary} stroke={kit.secondary === kit.primary ? 'var(--bg-0, black)' : kit.secondary} stroke-width=".6" />
+                </g>
+              ))
+            })}
+          </g>
+        )}
         <g class="lm-ball" style={{ transform: `translate(${bx}px, ${by}px)` }}>
           <circle r="7" fill="url(#lm-ballglow)" />
           <circle r="1.8" fill="#fff" stroke="#0b1220" stroke-width=".5" />

@@ -503,6 +503,13 @@ export interface DecisionView {
   fallback: string
   seconds: number
 }
+export interface RadarDotView {
+  id: string
+  number: number
+  x: number
+  y: number
+  isHero?: boolean
+}
 export interface LiveMatchView {
   fixture: FixtureView
   minute: number
@@ -513,6 +520,8 @@ export interface LiveMatchView {
   events: MatchEventView[]
   ballX: number // 0..1 along pitch (home attacks +x)
   ballY: number // 0..1 across
+  /** Both teams' shapes for the radar (same coords as the ball). */
+  radar?: { home: RadarDotView[]; away: RadarDotView[] }
   phase: 'first' | 'second' | 'extra' | 'shootout' | 'done'
   heroOnPitch: boolean
   heroSide: 'home' | 'away'
