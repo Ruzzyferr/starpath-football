@@ -16,6 +16,7 @@ import { Button, Chip, DeltaList, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { DrillDiagram } from './DrillDiagram'
+import { formatNumber } from '../../format'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
 import { drillFinished } from '../../backend/meta'
 import { DrillHints } from '../../tutorial/ControlHint'
@@ -204,7 +205,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
                 {outcome.attrXp.map((a) => (
                   <span key={a.key} class="trn-attr-xp-item">
                     <span class="t-sm">{t(`data.attr.${a.key}` as never)}</span>
-                    <span class="num t-pos">+{a.xp}</span>
+                    <span class="num t-pos">+{formatNumber(a.xp, undefined, 1)}</span>
                   </span>
                 ))}
               </div>

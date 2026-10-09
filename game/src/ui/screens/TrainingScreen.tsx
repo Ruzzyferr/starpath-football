@@ -4,7 +4,7 @@ import { lt, t, tx } from '../../i18n'
 import {
   Button, Card, Chip, EmptyState, Modal, Page, RiskBadge, SectionTitle, StatBar, Tabs, TabPanel, toast, MeterRing,
 } from '../components'
-import { formatMoney } from '../format'
+import { formatMoney, formatNumber } from '../format'
 import { Icon, type IconName } from '../icons'
 import { ROLE_PERK } from '../../core/roles'
 import { actions, data, gameState, screen, type PerkView, type TrainingOutcomeView, type TrainingSessionView } from '../store'
@@ -96,7 +96,7 @@ function GainList({ gains }: { gains: NonNullable<TrainingSessionView['gains']> 
         <li key={g.key} class={`trn-gain${g.weak ? ' is-weak' : ''}`} data-attr={g.key}>
           <span class="trn-gain-name">{t(`data.attr.${g.key}`)}{g.weak && <span class="trn-gain-tag">{t('training.session.devArea')}</span>}</span>
           <span class="trn-gain-bar" aria-hidden="true"><i style={{ width: `${Math.round((g.xp / top) * 100)}%` }} /></span>
-          <span class="trn-gain-xp num">+{g.xp.toFixed(1)} XP</span>
+          <span class="trn-gain-xp num">+{formatNumber(g.xp, undefined, 1)} XP</span>
         </li>
       ))}
     </ul>
