@@ -12,7 +12,7 @@ import Phaser from 'phaser'
 import type { KitColors, Lang } from '../../core/types'
 import { PITCH_LENGTH, PITCH_WIDTH } from '../../sim/match/types'
 import { ballTexture, drawGoal, drawPitch, grassGrainTexture, keeperKit, utilTextures, type NetRipple } from '../art'
-import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from '../figures'
+import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSelfCheck, figureSkinSheet, groundDir, skinTone, type FigPose } from '../figures'
 import { Sfx } from '../audio'
 import { InputController, type FrameIntent } from '../input'
 import { probeKick } from '../touchProbe'
@@ -508,6 +508,7 @@ export class TrainingScene extends Phaser.Scene {
       S,
       headTint: dummy ? 0xf5c400 : undefined,
     })
+    figureSelfCheck(this, [rig])
     const c = this.add.container(0, 0)
     const shadow = this.addW(this.add.image(0, 0, 'fx_shadow').setDepth(-37.5))
     const cast = this.addW(this.add.image(0, 0, 'fx_cast').setOrigin(0.08, 0.5).setDepth(-37.6))

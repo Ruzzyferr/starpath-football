@@ -15,7 +15,7 @@ const OPT_KEY = 'sp.errorlog.enabled'
 
 export interface ErrorEntry {
   at: number
-  kind: 'error' | 'unhandledrejection' | 'manual' | 'recovered' | 'webgl-lost' | 'save'
+  kind: 'error' | 'unhandledrejection' | 'manual' | 'recovered' | 'webgl-lost' | 'save' | 'render'
   message: string
   stack?: string
   screen: string

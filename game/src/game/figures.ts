@@ -19,6 +19,7 @@ import type { KitColors } from '../core/types'
 import { colorNum, luminance, mixHex } from './art'
 import { PPM, TILT, ZS } from './view'
 import { ANIM_POSES, RUN_FRAMES, WALK_FRAMES, type KickStyle } from './figureAnim'
+import { recordError } from '../telemetry/errorLog'
 
 // ───────────────────────── Skeleton & poses ─────────────────────────
 
@@ -580,21 +581,33 @@ export interface FigFrameMeta {
 interface Layout {
   S: number
   w: number
-  h: number
-  frames: { name: string; geo: FrameGeo; x: number; y: number; w: number; h: number; ox: number; oy: number }[]
+  /** Height of each page (canvas) of the sheet. */
+  pages: number[]
+  frames: { name: string; geo: FrameGeo; page: number; x: number; y: number; w: number; h: number; ox: number; oy: number }[]
   meta: Map<string, FigFrameMeta>
 }
 
-const layouts = new Map<number, Layout>()
+const layouts = new Map<string, Layout>()
 
 export const frameName = (pose: FigPose, dir: number) => `${pose}:${dir}`
 
-function layout(S: number): Layout {
-  const hit = layouts.get(S)
+/** Sheet width (px). */
+export const SHEET_W = 1024
+
+/**
+ * Packs every frame into rows of a {@link SHEET_W}-wide sheet, starting a new
+ * page (a separate canvas / texture source) when a page would grow past
+ * `pageH`, so no canvas ever exceeds the device's texture size.
+ */
+function layout(S: number, pageH = 4096): Layout {
+  const lkey = `${S}:${pageH}`
+  const hit = layouts.get(lkey)
   if (hit) return hit
-  const SHEET_W = 1024
+  const W = Math.min(SHEET_W, pageH)
   const frames: Layout['frames'] = []
   const meta = new Map<string, FigFrameMeta>()
+  const pages: number[] = []
+  let page = 0
   let x = 0
   let y = 0
   let rowH = 0
@@ -603,24 +616,49 @@ function layout(S: number): Layout {
     for (let dir = 0; dir < FIG_DIRS; dir++) {
       const geo = buildFrame(pose, dir, S)
       const [bx0, by0, bx1, by1] = geo.box
-      const fw = Math.ceil(bx1 - bx0) + pad * 2
-      const fh = Math.ceil(by1 - by0) + pad * 2
-      if (x + fw > SHEET_W) {
+      const fw = Math.min(W, Math.ceil(bx1 - bx0) + pad * 2)
+      const fh = Math.min(pageH, Math.ceil(by1 - by0) + pad * 2)
+      if (x + fw > W) {
         x = 0
         y += rowH
         rowH = 0
       }
+      if (y + fh > pageH) {
+        pages[page] = y
+        page++
+        x = 0
+        y = 0
+        rowH = 0
+      }
       const name = frameName(pose, dir)
       // Pivot = ground point under the pelvis (0,0 in figure space).
-      frames.push({ name, geo, x, y, w: fw, h: fh, ox: -bx0 + pad, oy: -by0 + pad })
+      frames.push({ name, geo, page, x, y, w: fw, h: fh, ox: -bx0 + pad, oy: -by0 + pad })
       meta.set(name, { head: geo.head, num: geo.num, hip: geo.hip })
       x += fw
       rowH = Math.max(rowH, fh)
     }
   }
-  const L: Layout = { S, w: SHEET_W, h: y + rowH, frames, meta }
-  layouts.set(S, L)
+  pages[page] = y + rowH
+  const L: Layout = { S, w: W, pages: pages.map((h) => Math.max(1, Math.ceil(h))), frames, meta }
+  layouts.set(lkey, L)
   return L
+}
+
+/** Largest texture side the scene's renderer accepts, capped at 4096 (iOS-safe); 2048 when unknown. */
+export function maxTextureSide(scene: Phaser.Scene): number {
+  try {
+    const r = scene.game?.renderer as { getMaxTextureSize?: () => number } | undefined
+    const m = r?.getMaxTextureSize?.()
+    return Math.max(256, Math.min(4096, m && Number.isFinite(m) ? m : 2048))
+  } catch {
+    return 2048
+  }
+}
+
+/** Test hook: the page split for a sheet resolution and page height. */
+export function sheetPages(S: number, pageH: number): { w: number; pages: number[]; frames: number } {
+  const L = layout(S, pageH)
+  return { w: L.w, pages: [...L.pages], frames: L.frames.length }
 }
 
 /** Sheet resolution (px per metre of figure) per quality profile. */
@@ -629,17 +667,64 @@ export const FIG_RES = { low: 30, medium: 36, high: 42 } as const
 /** Figures are drawn a touch larger than life for readability on phones. */
 export const FIG_SCALE = 1.3
 
-function makeSheet(scene: Phaser.Scene, key: string, S: number, draw: (c: CanvasRenderingContext2D, f: Layout['frames'][number]) => void): string {
+/** Figure-texture problems seen this session (dev self-check / tests). */
+export const figureTextureIssues: string[] = []
+
+export function reportFigureIssue(msg: string, err?: unknown): void {
+  figureTextureIssues.push(msg)
+  if (import.meta.env?.DEV) console.warn(`[figures] ${msg}`, err ?? '')
+  recordError(err instanceof Error ? new Error(`${msg}: ${err.message}`) : new Error(msg), 'render')
+}
+
+/** True when the frame has at least one painted pixel along its pivot column (blank-canvas detection). */
+function framePainted(c: CanvasRenderingContext2D, f: Layout['frames'][number]): boolean {
+  try {
+    const x = Math.round(f.x + Math.min(f.w - 1, Math.max(0, f.ox)))
+    const d = c.getImageData(x, f.y, 1, f.h).data
+    for (let i = 3; i < d.length; i += 4) if (d[i]! > 0) return true
+    return false
+  } catch {
+    // Unreadable canvas: nothing to compare against, assume painted.
+    return true
+  }
+}
+
+const fallbackPaints = new Map<string, FallbackPaint>()
+
+/** Colours for the simple fallback figure (null = skin sheet: left empty, the kit carries the body). */
+interface FallbackPaint {
+  shirt: string
+  shorts: string
+  socks: string
+  ink: string
+}
+
+/**
+ * Draws a figure sheet (all poses x directions) into one canvas per page and
+ * registers it as a multi-source texture with per-frame pivots. Every page fits
+ * the renderer's max texture size. If a canvas cannot be created or comes out
+ * blank (iOS canvas-memory limits, a context that silently drops draws), the
+ * failure goes to the local error log and a simple figure is used instead, so
+ * players are never invisible.
+ */
+function makeSheet(scene: Phaser.Scene, key: string, S: number, draw: (c: CanvasRenderingContext2D, f: Layout['frames'][number]) => void, fallback: FallbackPaint | null): string {
   if (scene.textures.exists(key)) return key
-  const L = layout(S)
-  const cv = document.createElement('canvas')
-  cv.width = L.w
-  cv.height = Math.max(1, Math.ceil(L.h))
-  const c = cv.getContext('2d')
-  if (c) {
-    c.lineCap = 'round'
-    c.lineJoin = 'round'
+  const L = layout(S, maxTextureSide(scene))
+  try {
+    const canvases = L.pages.map((h) => {
+      const cv = document.createElement('canvas')
+      cv.width = L.w
+      cv.height = h
+      return cv
+    })
+    const ctxs = canvases.map((cv) => cv.getContext('2d'))
+    if (ctxs.some((c) => !c)) throw new Error(`no 2d context (${L.w}x${L.pages.join('+')})`)
+    for (const c of ctxs) {
+      c!.lineCap = 'round'
+      c!.lineJoin = 'round'
+    }
     for (const f of L.frames) {
+      const c = ctxs[f.page]!
       c.save()
       c.beginPath()
       c.rect(f.x, f.y, f.w, f.h)
@@ -648,15 +733,64 @@ function makeSheet(scene: Phaser.Scene, key: string, S: number, draw: (c: Canvas
       draw(c, f)
       c.restore()
     }
-  }
-  const tex = scene.textures.addCanvas(key, cv)
-  if (tex) {
+    const probe = L.frames.find((f) => f.name === frameName('idle', 2)) ?? L.frames[0]
+    if (fallback && probe && !framePainted(ctxs[probe.page]!, probe)) throw new Error('sheet came out blank')
+    const tex = canvases.length === 1 ? scene.textures.addCanvas(key, canvases[0]!) : scene.textures.create(key, canvases as unknown as HTMLImageElement[], L.w, L.pages[0]!)
+    if (!tex) throw new Error('texture not created')
     for (const f of L.frames) {
-      const fr = tex.add(f.name, 0, f.x, f.y, f.w, f.h)
+      const fr = tex.add(f.name, f.page, f.x, f.y, f.w, f.h)
       if (fr) {
         fr.customPivot = true
         fr.pivotX = f.ox / f.w
         fr.pivotY = f.oy / f.h
+      }
+    }
+    return key
+  } catch (err) {
+    reportFigureIssue(`figure sheet ${key} failed, using simple figures`, err)
+    if (scene.textures.exists(key)) scene.textures.remove(key)
+    return simpleSheet(scene, key, S, fallback)
+  }
+}
+
+/**
+ * Fallback sheet: one small plain body (legs, shorts, shirt) that every frame
+ * name points at, pivot at the feet. Tiny canvas, plain fills only.
+ */
+export function simpleSheet(scene: Phaser.Scene, key: string, S: number, p: FallbackPaint | null): string {
+  if (scene.textures.exists(key)) scene.textures.remove(key)
+  const w = Math.max(8, Math.ceil(S * 0.8))
+  const h = Math.max(16, Math.ceil(S * 1.75))
+  const cv = document.createElement('canvas')
+  cv.width = w
+  cv.height = h
+  try {
+    const c = cv.getContext('2d')
+    if (c && p) {
+      const m = S // px per metre
+      const ground = h - 2
+      const cx = w / 2
+      c.fillStyle = p.ink
+      c.fillRect(cx - m * 0.2, ground - m * 1.5, m * 0.4, m * 1.5)
+      c.fillStyle = p.socks
+      c.fillRect(cx - m * 0.17, ground - m * 0.8, m * 0.14, m * 0.78)
+      c.fillRect(cx + m * 0.03, ground - m * 0.8, m * 0.14, m * 0.78)
+      c.fillStyle = p.shorts
+      c.fillRect(cx - m * 0.18, ground - m * 1.0, m * 0.36, m * 0.24)
+      c.fillStyle = p.shirt
+      c.fillRect(cx - m * 0.18, ground - m * 1.47, m * 0.36, m * 0.5)
+    }
+  } catch (err) {
+    reportFigureIssue(`simple figure ${key} could not be drawn`, err)
+  }
+  const tex = scene.textures.addCanvas(key, cv)
+  if (tex) {
+    for (const f of layout(S).frames) {
+      const fr = tex.add(f.name, 0, 0, 0, w, h)
+      if (fr) {
+        fr.customPivot = true
+        fr.pivotX = 0.5
+        fr.pivotY = (h - 2) / h
       }
     }
   }
@@ -687,6 +821,8 @@ export function figureKitSheet(scene: Phaser.Scene, kit: KitColors, S: number, o
   }
   const ink = outline !== null ? '#' + outline.toString(16).padStart(6, '0') : 'rgba(8,12,18,0.9)'
   const ow = Math.max(1.6, S * 0.045) * (outline !== null ? 1.8 : 1)
+  const fb: FallbackPaint = { shirt: paint.shirt, shorts: paint.shorts, socks: paint.socks, ink }
+  fallbackPaints.set(key, fb)
   return makeSheet(scene, key, S, (c, f) => {
     // 1) Silhouette ring: everything grown by the outline, then punched out.
     c.strokeStyle = ink
@@ -705,7 +841,7 @@ export function figureKitSheet(scene: Phaser.Scene, kit: KitColors, S: number, o
     c.globalCompositeOperation = 'source-over'
     // 2) Kit parts in painter's order.
     for (const p of f.geo.prims) if (p.layer === 'kit') p.paint(c, paint)
-  })
+  }, fb)
 }
 
 /** Shared skin sheet (light grey, tinted per player). */
@@ -713,7 +849,7 @@ export function figureSkinSheet(scene: Phaser.Scene, S: number): string {
   const dummy: KitPaint = { shirt: '#fff', trim: '#fff', shorts: '#fff', socks: '#fff', boots: '#000', gloves: null, pattern: 'plain', keeper: false }
   return makeSheet(scene, `figskin_${S}`, S, (c, f) => {
     for (const p of f.geo.prims) if (p.layer === 'skin') p.paint(c, dummy)
-  })
+  }, null)
 }
 
 export function figureMeta(S: number, name: string): FigFrameMeta {
@@ -769,7 +905,13 @@ export function figureHeadTexture(scene: Phaser.Scene, idx: number, female = fal
   const cv = document.createElement('canvas')
   cv.width = size * 3
   cv.height = size
-  const c = cv.getContext('2d')!
+  const c = cv.getContext('2d')
+  if (!c) {
+    reportFigureIssue(`head ${key}: no 2d context`)
+    const tex = scene.textures.addCanvas(key, cv)
+    ;(['b', 's', 'f'] as const).forEach((view, i) => tex?.add(view, 0, i * size, 0, size, size))
+    return key
+  }
   const r = size * 0.34
   const ink = 'rgba(8,12,18,0.9)'
   const views = ['b', 's', 'f'] as const
@@ -922,6 +1064,10 @@ export class FigureRig {
   readonly skinHex: string
   private S: number
   private k: number
+  /** Sheet resolution (px per metre). */
+  get res(): number {
+    return this.S
+  }
   private sector = Number.NaN
   frame: FigPose = 'idle'
   dir = 2
@@ -1003,4 +1149,37 @@ export class FigureRig {
       }
     }
   }
+}
+
+// ───────────────────────── Runtime self-check ─────────────────────────
+
+/** False when an image would draw nothing: missing texture / frame, or (WebGL) a source never uploaded. */
+function imageDrawable(img: Phaser.GameObjects.Image): boolean {
+  const t = img.texture
+  if (!t || t.key === '__MISSING' || !img.frame || img.frame.cutWidth < 1 || img.frame.cutHeight < 1) return false
+  const r = img.scene?.game?.renderer
+  if (r && r.type === Phaser.WEBGL) return t.source.every((src) => !!src.glTexture)
+  return true
+}
+
+/**
+ * After a scene builds its players: every figure part must have a drawable
+ * texture. A broken kit is swapped for the simple figure (so the player stays
+ * visible) and the problem goes to the dev console and the local error log.
+ * Returns the number of rigs that needed a fallback.
+ */
+export function figureSelfCheck(scene: Phaser.Scene, rigs: readonly FigureRig[]): number {
+  let fixed = 0
+  for (const rig of rigs) {
+    const bad = rig.parts().filter((p) => !imageDrawable(p))
+    if (bad.length === 0) continue
+    fixed++
+    reportFigureIssue(`figure parts not drawable: ${bad.map((p) => p.texture?.key ?? '?').join(', ')}`)
+    if (!imageDrawable(rig.kit)) {
+      const key = rig.kit.texture?.key ?? 'figkit_unknown'
+      const simple = simpleSheet(scene, `${key}_simple`, rig.res, fallbackPaints.get(key) ?? { shirt: '#d8dde6', shorts: '#2a3140', socks: '#d8dde6', ink: 'rgba(8,12,18,0.9)' })
+      rig.kit.setTexture(simple, rig.kit.frame?.name ?? frameName('idle', 2))
+    }
+  }
+  return fixed
 }

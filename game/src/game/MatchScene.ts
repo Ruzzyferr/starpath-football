@@ -56,7 +56,7 @@ import type { HeroAction } from './runtime'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { ParticleBudget, QUALITY, profileOfSettings, renderScale, type QualityProfile, type QualitySpec } from './quality'
 import { IDLE_FRAMES, WALK_FRAMES, kickStyleFor, type KickStyle } from './figureAnim'
-import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSkinSheet, groundDir, skinTone, type FigPose } from './figures'
+import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSelfCheck, figureSkinSheet, figureTextureIssues, groundDir, skinTone, type FigPose } from './figures'
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
 import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from './netCloth'
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
@@ -481,6 +481,8 @@ export class MatchScene extends Phaser.Scene {
     utilTextures(this)
     this.buildStadium()
     this.buildPlayers()
+    // Self-check (iOS playtest: invisible players): every figure must have a drawable texture.
+    this.figureFixes = figureSelfCheck(this, this.views.map((v) => v.rig))
     this.buildBall()
     this.buildFx()
     this.buildHud()
@@ -536,6 +538,9 @@ export class MatchScene extends Phaser.Scene {
 
   private debugCam: { x: number; y: number; zoom: number } | null = null
 
+  /** Rigs that failed the figure self-check and fell back to simple figures. */
+  private figureFixes = 0
+
   debugInfo() {
     const canvas = this.game.canvas
     const r = canvas.getBoundingClientRect()
@@ -550,6 +555,7 @@ export class MatchScene extends Phaser.Scene {
       phase: rt.phase,
       finished: rt.finished,
       mode: this.mode,
+      figures: { players: this.views.length, fixes: this.figureFixes, issues: figureTextureIssues.length },
       kind: this.data0.highlight.kind,
       heroOnBall: rt.heroOnBall,
       heroIsKeeper: rt.heroIsKeeper,
