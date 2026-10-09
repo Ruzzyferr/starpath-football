@@ -1,4 +1,5 @@
 import '../../../styles/screens/legacy.css'
+import { detectPlatform } from '../../../platform/detect'
 import { useState } from 'preact/hooks'
 import { currentLang, lt, t } from '../../../i18n'
 import { MeterRing, Page, Tabs } from '../../components'
@@ -26,7 +27,7 @@ export function AchievementsScreen() {
         </MeterRing>
         <div class="grow stack" style={{ gap: 'var(--sp-1)' }}>
           <div class="ach-count-line"><span class="lg-big num" data-testid="ach-count">{v.unlocked}</span><span class="t-mid num">/ {v.total}</span></div>
-          <div class="t-xs t-lo">{t('meta.ach.steam')}</div>
+          {detectPlatform() === 'electron' && <div class="t-xs t-lo">{t('meta.ach.steam')}</div>}
         </div>
       </div>
       <Tabs items={tabs} value={cat} onChange={setCat} variant="pill" label={t('meta.ach.title')} idPrefix="ach" />

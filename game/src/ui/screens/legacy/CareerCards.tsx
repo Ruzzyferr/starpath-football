@@ -10,7 +10,7 @@ import { lt, t } from '../../../i18n'
 import { whyPlaying } from '../../../sim/game/whyPlaying'
 import type { SquadRole } from '../../../core/types'
 import { Button, Card, CardHeader, Switch, toast } from '../../components'
-import { formatMoney, formatRating, seasonLabel } from '../../format'
+import { formatMoney, formatNumber, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate } from '../../store'
 import {
   benchComplaintAvailable, complainBench, clubRecordRows, decayWarning, expectedMinutes, formClause, market, personalRecordRows, potential, retirementView, type RecordRow,
@@ -171,7 +171,7 @@ export function MarketPanel({ wage }: { wage: number }) {
           <ul class="mk-rows">
             <li class="t-xs"><span>{t('career4.value.base')}</span><b class="num">{formatMoney(m.value.base)}</b></li>
             {m.value.parts.map((p) => (
-              <li key={p.key} class="t-xs"><span>{t(`career4.value.parts.${p.key}`)}</span><b class="num">×{p.mult.toFixed(2)}</b></li>
+              <li key={p.key} class="t-xs"><span>{t(`career4.value.parts.${p.key}`)}</span><b class="num">×{formatNumber(p.mult, undefined, 2)}</b></li>
             ))}
           </ul>
           <p class="t-sm"><b>{t('career4.value.total', { v: formatMoney(m.value.total) })}</b></p>

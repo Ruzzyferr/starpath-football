@@ -7,6 +7,7 @@ import { gameState, navigate, screen } from '../../store'
 import { legacyFor, summaryView } from '../../backend/meta'
 import { ExportCsvButton, ShareCareerButton } from '../../share/ShareButtons'
 import { legacyTier, POST_CAREER } from '../../../sim/game/hallOfFame'
+import { NATION_BY_ID } from '../../../data/world/nations'
 
 /** Career summary "documentary": timeline, stats, trophies, best moments, net worth, legacy score. */
 export function DocumentaryScreen() {
@@ -32,10 +33,10 @@ export function DocumentaryScreen() {
       <div class="lg-summary doc-hero" data-testid="documentary">
         <div class="grow stack" style={{ gap: '4px', minWidth: 0 }}>
           <div class="h2">{sum.name}{sum.nickname && sum.nickname !== sum.lastName ? ` “${sum.nickname}”` : ''}</div>
-          <div class="t-sm t-mid">{sum.position} · {sum.nationality} · {sum.clubs.join(' → ') || '—'}</div>
+          <div class="t-sm t-mid">{t(`data.pos.${sum.position}` as never)} · {NATION_BY_ID[sum.nationality] ? lt(NATION_BY_ID[sum.nationality]!.name) : sum.nationality} · {sum.clubs.join(' → ') || '—'}</div>
           {sum.postCareer && <div class="t-sm" data-testid="doc-post-career">{lt(POST_CAREER[sum.postCareer].text)}</div>}
           {sum.forced && <div class="t-xs t-lo">{t(`meta.doc.forced.${sum.forced}`)}</div>}
-          {sum.testimonial && <div class="t-sm row"><Icon name="party" size={16} class="t-gold" /><span>{t('meta.doc.testimonial', { h: sum.testimonial.score[0], a: sum.testimonial.score[1], o: sum.testimonial.opponent, g: sum.testimonial.goals })}</span></div>}
+          {sum.testimonial && <div class="t-sm row"><Icon name="party" size={16} class="t-gold" /><span>{t('meta.doc.testimonial', { h: sum.testimonial.score[0], a: sum.testimonial.score[1], o: sum.testimonial.opponent === 'Legends XI' ? t('meta.doc.legends') : sum.testimonial.opponent, g: sum.testimonial.goals })}</span></div>}
         </div>
         <div class="stack" style={{ alignItems: 'flex-end', gap: '2px' }}>
           <span class="micro t-lo">{t('meta.doc.legacy')}</span>
@@ -109,7 +110,7 @@ export function DocumentaryScreen() {
         <ShareCareerButton sum={sum} size="md" />
         <ExportCsvButton sum={sum} size="md" />
         {leg && <Button variant="gold" icon="users" onClick={() => navigate('newCareer', { legacy: sum.careerId })} data-testid="doc-legacy">{t('meta.doc.newLegacy')}</Button>}
-        <Button variant="ghost" icon="sign-out" onClick={() => navigate(gameState.value ? 'home' : 'title', undefined, { tab: true })}>{t('meta.doc.mainMenu')}</Button>
+        <Button variant="ghost" icon="sign-out" onClick={() => navigate(gameState.value && !gameState.value.hero.retired ? 'home' : 'title', undefined, { tab: true })}>{t('meta.doc.mainMenu')}</Button>
       </div>
     </Page>
   )

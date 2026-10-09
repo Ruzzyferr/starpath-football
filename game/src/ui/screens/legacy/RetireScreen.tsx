@@ -54,7 +54,7 @@ export function RetireScreen() {
             <div class="t-sm t-mid">{t('meta.retire.stats', { a: h.careerStats.apps, g: h.careerStats.goals, as: h.careerStats.assists })}</div>
           </div>
         </div>
-        <p class="t-mid">{decision ? lead : t('meta.retire.anytimeHint')}</p>
+        {(decision || st.canRetire || st.forced) && <p class="t-mid">{decision ? lead : t('meta.retire.anytimeHint')}</p>}
         {!st.canRetire && !st.forced && <p class="lg-warn t-sm">{t('meta.retire.tooYoung')}</p>}
 
         {(st.canRetire || st.forced) && (

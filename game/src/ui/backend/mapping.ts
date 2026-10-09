@@ -8,6 +8,8 @@ import type { AppliedDelta } from '../../sim/life/events/types'
 import { SEASON_WEEKS } from '../../sim/world/fixtures'
 import type { Delta, FixtureView, StatKey, TeamView } from '../store'
 import { nationTeamView } from './nationView'
+import { parseTeamId, teamName } from '../../sim/world/national'
+import { currentLang } from '../../i18n'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 
@@ -132,6 +134,11 @@ const dayIndex = (season: number, week: number, day: number): number => (season 
 export function fixtureView(s: GameState, comp: Competition, f: Fixture, heroClubId: string | null): FixtureView {
   const cal = s.calendar
   const home = s.world.clubs[f.homeId]
+  // Internationals: the hero's side is his nation (not his club), the ground is the home nation's.
+  const homeNation = comp.type === 'international' ? parseTeamId(f.homeId)?.nationId : undefined
+  const isHome = homeNation ? homeNation === s.hero.nationality : f.homeId === heroClubId
+  const venue = home?.stadium.name
+    ?? (homeNation ? (currentLang.value === 'tr' ? `${teamName(homeNation).tr} Ulusal Stadyumu` : `${teamName(homeNation).en} National Stadium`) : '—')
   return {
     fixtureId: f.id,
     compName: comp.name,
@@ -140,8 +147,8 @@ export function fixtureView(s: GameState, comp: Competition, f: Fixture, heroClu
     away: teamViewOr(s, f.awayId),
     week: f.week,
     day: f.day,
-    isHome: f.homeId === heroClubId,
-    venue: home?.stadium.name ?? '—',
+    isHome,
+    venue,
     daysUntil: dayIndex(comp.season, f.week, f.day) - dayIndex(cal.season, cal.week, cal.day),
     result: f.result,
   }

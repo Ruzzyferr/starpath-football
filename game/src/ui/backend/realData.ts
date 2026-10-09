@@ -457,7 +457,7 @@ function interestView(s: GameState): InterestView[] {
           : kind === 'freeAgent'
             ? L(`Serbest oyuncu teklifi: haftalık ${o.contract.terms.wage.toLocaleString('tr-TR')} €.`, `Free-agent offer: €${o.contract.terms.wage.toLocaleString('en-GB')} a week.`)
             : L(`Resmî teklif: ${Math.round(o.fee).toLocaleString('tr-TR')} € bonservis.`, `Official bid: €${Math.round(o.fee).toLocaleString('en-GB')} fee.`)
-      out.push({ club: teamViewOr(s, c.id), level: kind === 'renewal' ? 70 : 85 + (hashString(o.id) % 11), note, leagueName: leagueName(c) })
+      out.push({ club: teamViewOr(s, c.id), level: kind === 'renewal' ? 70 : 85 + (hashString(o.id) % 11), note, leagueName: leagueName(c), hasOffer: true })
     }
     const key = `${s.meta.id}:${absWeek(s.calendar)}:${own?.id ?? '-'}:${Math.round(heroOvr(s.hero))}`
     let scouts = scoutCache.get(key)
@@ -617,7 +617,7 @@ const AWARD_KEYS: { key: string; name: LText }[] = [
   { key: 'golden_star', name: L('Altın Yıldız', 'Golden Star') },
   { key: 'player_of_season', name: L('Ligin En İyi Oyuncusu', 'League Player of the Season') },
   { key: 'league_top_scorer', name: L('Lig Gol Kralı', 'League Top Scorer') },
-  { key: 'top_scorer', name: L('Gol Kralı', 'Golden Boot') },
+  { key: 'top_scorer', name: L('Altın Ayakkabı', 'Golden Boot') },
   { key: 'young_player', name: L('Yılın Genç Oyuncusu', 'Young Player of the Year') },
 ]
 
@@ -634,7 +634,7 @@ function seasonSummary(s: GameState): SeasonSummaryView | null {
   if (d.movement === 'relegated') highlights.push(L(`${d.clubName} küme düştü.`, `${d.clubName} were relegated.`))
   if (st.goals >= 10) highlights.push(L(`${st.goals} golle sezonu tamamladın`, `Finished the season with ${st.goals} goals`))
   if (st.motm > 0) highlights.push(L(`${st.motm} kez maçın oyuncusu`, `${st.motm} man-of-the-match awards`))
-  if (d.awardWinners.topScorer) highlights.push(L(`Gol kralı: ${d.awardWinners.topScorer}`, `Golden Boot: ${d.awardWinners.topScorer}`))
+  if (d.awardWinners.topScorer) highlights.push(L(`Altın Ayakkabı: ${d.awardWinners.topScorer}`, `Golden Boot: ${d.awardWinners.topScorer}`))
   if (s.hero.nationalTeam.caps > 0) highlights.push(L(`Milli takımda ${s.hero.nationalTeam.caps} maç`, `${s.hero.nationalTeam.caps} international caps`))
   return {
     season: d.season,

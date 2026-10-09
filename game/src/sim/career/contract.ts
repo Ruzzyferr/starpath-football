@@ -678,10 +678,10 @@ export function applyContract(hero: Hero, life: Life, offer: ContractOffer, cale
   const net = Math.max(0, bonus - commission)
   life.money += net
   const lines: Lines = []
-  const until = hero.contract.untilSeason
+  const until = `${hero.contract.untilSeason}/${String((hero.contract.untilSeason + 1) % 100).padStart(2, '0')}` // season label, e.g. 2028/29
   const head = offer.loan
     ? fill(lt('{c} ile {s} sezonu sonuna kadar kiralık sözleşme imzaladın.', 'You joined {c} on loan until the end of the {s} season.'), { c: offer.clubName, s: until })
-    : fill(lt('{c} ile {s} yılına kadar sözleşme imzaladın (haftalık {w}).', 'You signed with {c} until {s} ({w} per week).'), { c: offer.clubName, s: until, w: fmtMoney(offer.terms.wage) })
+    : fill(lt('{c} ile {s} sezonu sonuna kadar sözleşme imzaladın (haftalık {w}).', 'You signed with {c} until the end of {s} ({w} per week).'), { c: offer.clubName, s: until, w: fmtMoney(offer.terms.wage) })
   lines.push(pushLog(life, calendar, head, 'career', '✍️'))
   if (net > 0) {
     lines.push(pushLog(life, calendar, fill(lt('İmza parası hesabına yattı: {m}.', 'Signing bonus paid: {m}.'), { m: fmtMoney(net) }), 'money', '💰'))

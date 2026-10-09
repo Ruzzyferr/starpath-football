@@ -9,7 +9,7 @@ import { attrColor, formatMoney, formatNumber } from '../format'
 import { clubPreview, interestTier } from '../../sim/game/clubPreview'
 import { whyInterest } from '../../sim/game/whyMore'
 import { Icon } from '../icons'
-import { actions, data, gameState, heroClub, navigate, screen } from '../store'
+import { actions, data, gameState, heroClub, navigate, negotiation, screen } from '../store'
 import { zonesForLeague } from './career/league'
 import { pickTab } from './career/util'
 import '../../styles/screens/world.css'
@@ -305,18 +305,22 @@ export function WorldScreen() {
                   <div class="world-int-facts" data-testid="interest-facts">
                     <Chip tone="neutral" icon="building">{pv.city}</Chip>
                     <Chip tone="info" icon="whistle">{t('world.interest.role')}: {t(`data.role.${pv.role}`)}</Chip>
-                    <Chip tone="gold" icon="coins">{formatMoney(pv.wage[0], { compact: true })} – {formatMoney(pv.wage[1], { compact: true })}</Chip>
+                    <Chip tone="gold" icon="coins">{formatMoney(pv.wage[0], { compact: true })} – {formatMoney(pv.wage[1], { compact: true })}{t('common.perWeek')}</Chip>
                   </div>
                 )}
                 <p class="t-sm t-mid world-int-note">{lt(it.note)}</p>
                 {s && <WhyList why={whyInterest(s, it.club.id)} id={`why-int-${it.club.id}`} testId="why-interest" />}
+                {/* Scouting only: no formal bid yet, so there is nothing to negotiate (was a dead end). */}
+                {!it.hasOffer && <p class="t-xs t-lo" data-testid="interest-no-offer">{t('world.interest.noOffer')}</p>}
                 <Button
                   variant="secondary"
                   size="sm"
                   icon="handshake"
+                  disabled={!it.hasOffer}
+                  data-testid="interest-talk"
                   onClick={() => {
                     actions.openNegotiation(it.club.id)
-                    navigate('contract')
+                    if (negotiation.value) navigate('contract')
                   }}
                 >
                   {t('world.interest.talk')}

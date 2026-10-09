@@ -828,7 +828,7 @@ function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
       fill(lt('{c} yönetimi sezon başında çıtayı koydu. Başarırsan prim ve başkanın güveni seninle.', 'The {c} board set the bar. Hit it for a bonus and the chairman\'s backing.'), { c: club.name }),
       target, 60, { money: Math.round(wage * 1.2), reputation: 1, rel: { chairman: 8, fans: 4 } })
     st.active.push(o)
-    log(state, out, fill(lt('Sezon hedefi ({s}): {t}', 'Season objective ({s}): {t}'), { s: SOURCE_NAME.board, t: title }), 'career', '🎯')
+    log(state, out, title, 'career', '🎯') // the title already says "Board target: …"
   }
   const last = h.history[h.history.length - 1]
   const age = heroAge(h, state.calendar.season)
@@ -855,5 +855,5 @@ function addSeasonObjectives(state: GameState, st: Store, out: LText[]): void {
       lt('Geçen sezonu geride bırak.', 'Beat last season.'), target, 60, { morale: 6, reputation: 2, money: Math.round(wage * 0.8) })
   }
   st.active.push(o)
-  log(state, out, fill(lt('Sezon hedefi ({s}): {t}', 'Season objective ({s}): {t}'), { s: SOURCE_NAME.self, t: o.title }), 'career', '🎯')
+  log(state, out, o.title, 'career', '🎯') // the title already says "Personal goal: …"
 }

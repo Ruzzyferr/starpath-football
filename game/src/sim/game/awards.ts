@@ -24,7 +24,7 @@ export const AWARD_NAMES: Record<string, LText> = {
   golden_star: lt('Altın Yıldız', 'Golden Star'),
   golden_star_podium: lt('Altın Yıldız Podyumu', 'Golden Star Podium'),
   player_of_season: lt('Ligin En İyi Oyuncusu', 'League Player of the Season'),
-  top_scorer: lt('Gol Kralı', 'Golden Boot'),
+  top_scorer: lt('Altın Ayakkabı', 'Golden Boot'),
   league_top_scorer: lt('Lig Gol Kralı', 'League Top Scorer'),
   young_player: lt('Yılın Genç Oyuncusu', 'Young Player of the Year'),
   golden_glove: lt('Altın Eldiven', 'Golden Glove'),

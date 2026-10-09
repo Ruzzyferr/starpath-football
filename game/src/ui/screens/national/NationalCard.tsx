@@ -1,5 +1,6 @@
 import '../../../styles/screens/intl.css'
 import { lt, t } from '../../../i18n'
+import { formatNumber } from '../../format'
 import { Button, Card, Chip, Flag, StatBar, type ChipTone } from '../../components'
 import { Icon } from '../../icons'
 import { gameState, navigate, screen } from '../../store'
@@ -32,7 +33,8 @@ export function SeasonFormBar() {
   if (!s) return null
   const f = seasonFormView(s)
   const label = t('intl.national.seasonForm')
-  const txt = `${f.bonus > 0 ? '+' : ''}${f.bonus.toFixed(1)}`
+  const pts = f.bonus // form points (not money)
+  const txt = `${pts > 0 ? '+' : ''}${formatNumber(pts, undefined, 1)}`
   return (
     <div class="stack" style={{ gap: 'var(--sp-1)' }} data-testid="nt-seasonform">
       <div class="nt-meter-row">

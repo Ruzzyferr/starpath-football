@@ -22,7 +22,13 @@ export function TrophiesScreen() {
   const aList = pick(awards)
 
   // Fill the last shelf with "next goal" placeholders (at least one) when viewing everything.
-  const goals = [t('season.cabinet.slotLeague'), t('season.cabinet.slotCup'), t('season.cabinet.slotAward'), t('season.cabinet.slotGolden')]
+  // An award already won is no longer a "next goal".
+  const won = (k: string) => awards.some((a) => a.key === k)
+  const goals = [
+    t('season.cabinet.slotLeague'), t('season.cabinet.slotCup'),
+    ...(won('league_top_scorer') ? [] : [t('season.cabinet.slotAward')]),
+    ...(won('golden_star') ? [] : [t('season.cabinet.slotGolden')]),
+  ]
   const rem = tList.length % PER_SHELF
   const emptySlots = filter !== 'all' ? 0 : tList.length === 0 ? PER_SHELF : rem === 0 ? 2 : PER_SHELF - rem
 

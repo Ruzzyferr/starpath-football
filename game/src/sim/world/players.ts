@@ -7,6 +7,7 @@ import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { COUNTRY_BY_ID, COUNTRY_DEFS } from '../../data/world/countries'
 import { NAME_POOLS, isRealPersonName } from '../../data/world/names'
+import { NATION_BY_ID } from '../../data/world/nations'
 import type { NameStyle } from '../../data/world/names'
 
 // ───────────────────────── Economy ─────────────────────────
@@ -112,7 +113,8 @@ function pickFoot(rng: Rng, pos: Position): Foot {
 
 /** Name style for a nationality (falls back to English for unknown ids). */
 export function nameStyleOf(countryId: string): NameStyle {
-  return COUNTRY_BY_ID[countryId]?.nameStyle ?? 'english'
+  // National-only nations (no simulated league, e.g. Belgium) carry their own name style.
+  return COUNTRY_BY_ID[countryId]?.nameStyle ?? NATION_BY_ID[countryId]?.nameStyle ?? 'english'
 }
 
 /** Random "First Last" pair for a name style. */

@@ -67,7 +67,7 @@ export function AudioMixerPanel() {
       {row('sound', t('settings.sound'), 'set-sound')}
       {row('crowdVolume', tx('crowd'), 'set-crowd')}
       {row('uiVolume', tx('ui'), 'set-ui')}
-      {row('voiceVolume', tx('voice'), 'set-voice', tx('voiceHint'))}
+      {/* No commentary bus yet: the slider stays hidden until something plays on it. */}
       <Switch label={tx('mute')} desc={tx('muteDesc')} checked={s.muted} onChange={(muted) => updateSettings({ muted })} />
       <Switch label={tx('matchMusic')} desc={tx('matchMusicDesc')} checked={s.matchMusic !== false} onChange={(matchMusic) => updateSettings({ matchMusic })} />
       <Switch label={tx('reduced')} desc={tx('reducedDesc')} checked={s.reducedSound} onChange={(reducedSound) => updateSettings({ reducedSound })} />

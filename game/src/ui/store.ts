@@ -227,6 +227,8 @@ export interface InterestView {
   level: number // 0..100
   note: LText
   leagueName: string
+  /** A formal offer is on the table (only then can talks open). */
+  hasOffer?: boolean
 }
 export interface ScorerRow {
   playerId: string

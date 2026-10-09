@@ -82,11 +82,25 @@ function MateSheet({ m, onClose }: { m: SquadMemberView | null; onClose: () => v
   )
 }
 
+/** Unique squad numbers (1..99): each player keeps a stable preferred number, clashes move up. */
+function squadNumbers(players: readonly { id: string; styleSeed: number }[], taken: readonly number[]): Map<string, number> {
+  const used = new Set(taken)
+  const out = new Map<string, number>()
+  for (const p of [...players].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+    let n = (p.styleSeed % 40) + 2
+    while (used.has(n) && used.size < 99) n = (n % 99) + 1
+    used.add(n)
+    out.set(p.id, n)
+  }
+  return out
+}
+
 function Squad() {
   const s = gameState.value!
   const h = s.hero
   const club = heroClub.value!
   const squad = data.squad()
+  const numbers = squadNumbers(squad.map((m) => m.player), [h.shirtNumber])
   const [sel, setSel] = useState<SquadMemberView | null>(null)
   const [confirm, setConfirm] = useState(false)
   const c = h.contract
@@ -118,7 +132,7 @@ function Squad() {
               <div class="club-rows">
                 {heroHere && (
                   <div class="club-row is-hero">
-                    <span class="club-num num">{h.shirtNumber}</span>
+                    <span class="club-num num" data-testid="squad-num">{h.shirtNumber}</span>
                     <Avatar appearance={h.appearance} size={40} shirt={club.colors.primary} shirtTrim={club.colors.secondary} />
                     <span class="club-row-main">
                       <span class="club-row-name truncate">{h.firstName} {h.lastName}</span>
@@ -132,7 +146,7 @@ function Squad() {
                   const p = m.player
                   return (
                     <button key={p.id} type="button" class="club-row" onClick={() => setSel(m)}>
-                      <span class="club-num num">{(p.styleSeed % 40) + 2}</span>
+                      <span class="club-num num" data-testid="squad-num">{numbers.get(p.id)}</span>
                       <Avatar appearance={p.appearance} size={40} shirt={club.colors.primary} shirtTrim={club.colors.secondary} />
                       <span class="club-row-main">
                         <span class="club-row-name truncate">{p.firstName} {p.lastName}</span>

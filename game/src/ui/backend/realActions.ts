@@ -787,7 +787,7 @@ export const realActions: GameActions = {
       return
     }
     const r = G.rejectNegotiation(s)
-    negotiation.value = negoView(s, { ...cur.state, status: 'walkedAway' }, r.lines)
+    negotiation.value = { ...negoView(s, { ...cur.state, status: 'walkedAway' }, r.lines), status: 'walkedAway' }
     if (nego?.kind === 'renewal') s.hero.managerTrust = clamp(s.hero.managerTrust - 3, 0, 100)
     nego = null
     commit(s)

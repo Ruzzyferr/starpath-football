@@ -37,9 +37,9 @@ export function HallOfFameScreen() {
               <div class="grow stack" style={{ minWidth: 0, gap: '2px' }}>
                 <div class="h3 truncate">{e.name}</div>
                 <div class="t-xs t-mid">
-                  {e.position} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })} · {e.clubs.slice(0, 3).join(', ')}
+                  {t(`data.pos.${e.position}` as never)} · {t('meta.hof.seasons', { a: e.startSeason, b: e.endSeason })} · {e.clubs.slice(0, 3).join(', ')}
                 </div>
-                <div class="t-xs t-lo">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })} · <Icon name="trophy" size={12} class="t-gold doc-inline-ico" /> {e.trophies.length}{e.postCareer ? ` · ${lt(POST_CAREER[e.postCareer].label)}` : ''}</div>
+                <div class="t-xs t-lo">{t('meta.retire.stats', { a: e.totals.apps, g: e.totals.goals, as: e.totals.assists })}{e.trophies.length > 0 && <> · <Icon name="trophy" size={12} class="t-gold doc-inline-ico" /> {e.trophies.length}</>}{e.postCareer ? ` · ${lt(POST_CAREER[e.postCareer].label)}` : ''}</div>
                 {e.owner && <div class="hof-owner" data-testid="hof-owner"><Chip tone="gold" icon="crown" title={lt(e.owner.headline)}>{t('meta.hof.ownerBadge')} · {e.owner.clubName}</Chip></div>}
                 <div class="hof-actions">
                   <Button size="sm" variant="secondary" icon="play" onClick={() => navigate('documentary', { id: e.careerId })}>{t('meta.hof.view')}</Button>

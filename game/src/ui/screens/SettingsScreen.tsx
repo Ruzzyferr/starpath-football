@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import type { ComponentChildren } from 'preact'
 import '../../styles/screens/settings.css'
 import { t } from '../../i18n'
+import { formatNumber } from '../format'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
 import { AudioMixerPanel } from '../../audio/ui/AudioMixerPanel'
@@ -156,9 +157,9 @@ export function SettingsScreen() {
               value={s.aimAssist}
               onChange={(aimAssist) => updateSettings({ aimAssist })}
               options={[
-                { id: 'full', label: `${t('settings.aimFull')} ×${ASSIST_REWARD.full}` },
-                { id: 'half', label: `${t('settings.aimHalf')} ×${ASSIST_REWARD.half}` },
-                { id: 'manual', label: `${t('settings.aimManual')} ×${ASSIST_REWARD.manual}` },
+                { id: 'full', label: `${t('settings.aimFull')} ×${formatNumber(ASSIST_REWARD.full, undefined, 2)}` },
+                { id: 'half', label: `${t('settings.aimHalf')} ×${formatNumber(ASSIST_REWARD.half, undefined, 2)}` },
+                { id: 'manual', label: `${t('settings.aimManual')} ×${formatNumber(ASSIST_REWARD.manual, undefined, 2)}` },
               ]}
             />
           </Field>

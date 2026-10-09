@@ -3,7 +3,7 @@ import { useState } from 'preact/hooks'
 import { lt, t } from '../../../i18n'
 import { Button, Card, Chip, EmptyState, Page, SectionTitle, WhyList } from '../../components'
 import { whyAward } from '../../../sim/game/whyMore'
-import { seasonLabel } from '../../format'
+import { formatNumber, formatRating, seasonLabel } from '../../format'
 import { gameState, navigate } from '../../store'
 import { Icon } from '../../icons'
 import { awardsView, markCeremonySeen } from '../../backend/worldViews'
@@ -18,7 +18,7 @@ function Pitch({ xi }: { xi: SeasonAwardRecord['teamOfSeason'] }) {
         const [x, y] = TOTS_XY[i] ?? [50, 50]
         return (
           <div key={p.playerId} class={`tots-p${p.isHero ? ' is-hero' : ''}`} style={{ left: `${x}%`, top: `${y}%` }}>
-            <span class="tots-dot">{p.rating.toFixed(1)}</span>
+            <span class="tots-dot">{formatRating(p.rating)}</span>
             <span class="tots-n">{p.isHero ? t('intl.awards.you') : p.name.split(' ').slice(-1)[0]}</span>
           </div>
         )
@@ -70,7 +70,7 @@ export function AwardsScreen() {
           <>
             <p class="t-sm t-mid">{v.heroRank ? t('intl.awards.yourRank', { n: v.heroRank }) : t('intl.awards.notListed')}</p>
             <WhyList why={whyAward(v.star)} id="why-award" testId="why-award" />
-            {r[0] && <p class="t-xs t-lo">{t('intl.awards.parts', { l: r[0].parts.league, c: r[0].parts.continental, i: r[0].parts.international, t: r[0].parts.trophies })}</p>}
+            {r[0] && <p class="t-xs t-lo">{t('intl.awards.parts', { l: formatNumber(r[0].parts.league, undefined, 1), c: formatNumber(r[0].parts.continental, undefined, 1), i: formatNumber(r[0].parts.international, undefined, 1), t: formatNumber(r[0].parts.trophies, undefined, 1) })}</p>}
             {v.pending && <Button variant="primary" icon="check" onClick={() => { markCeremonySeen(); navigate('home', undefined, { tab: true }) }}>{t('intl.awards.done')}</Button>}
           </>
         )}
@@ -85,7 +85,7 @@ export function AwardsScreen() {
                 <li key={c.playerId} class={`nt-row${c.isHero ? ' is-hero' : ''}`}>
                   <span class="nt-pos num">{i + 1}</span>
                   <span class="grow truncate">{c.name}<span class="t-xs t-lo"> · {club(c.clubId)}</span></span>
-                  <span class="t-xs t-lo num">{c.score.toFixed(1)}</span>
+                  <span class="t-xs t-lo num">{formatNumber(c.score, undefined, 1)}</span>
                   <span class="nt-ovr num">{c.points}</span>
                 </li>
               ))}

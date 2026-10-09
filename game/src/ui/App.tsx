@@ -108,6 +108,9 @@ const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatc
 /** Screens usable without a loaded career. */
 const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary', 'board', 'whatsNew', 'community'])
 
+/** A retired hero's save only opens the career's ending (documentary, Hall of Fame, legacy) and menus. */
+const RETIRED_OK = new Set<ScreenId>([...NO_STATE, 'retire'])
+
 function isTyping(el: Element | null): boolean {
   if (!el) return false
   const tag = el.tagName
@@ -206,6 +209,9 @@ export function App() {
   useClubTint()
   let route = screen.value
   if (!gameState.value && !NO_STATE.has(route.id)) route = { id: 'title' }
+  // A finished career is not playable: Home / Continue / the tabs land on the documentary.
+  const retired = !!gameState.value?.hero.retired
+  if (retired && !RETIRED_OK.has(route.id)) route = { id: 'documentary' }
   const Comp = SCREENS[route.id]
   const key = route.id + (route.params ? JSON.stringify(route.params) : '')
   const dir = navDirection.value
@@ -214,12 +220,12 @@ export function App() {
       <Comp />
     </div>
   )
-  const immersive = IMMERSIVE.has(route.id) || !gameState.value
+  const immersive = IMMERSIVE.has(route.id) || !gameState.value || retired
   return (
     <>
       {immersive ? <main id="main" class="immersive">{view}</main> : <Shell>{view}</Shell>}
-      {gameState.value && <EventModalHost />}
-      {gameState.value && <CoachTour />}
+      {gameState.value && !retired && <EventModalHost />}
+      {gameState.value && !retired && <CoachTour />}
       {gameState.value && <UnlockNotifier />}
       <MatchdayConfirmHost />
       <ShortcutsModal />

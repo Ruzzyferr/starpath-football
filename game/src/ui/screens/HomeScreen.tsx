@@ -62,7 +62,7 @@ export function HomeScreen() {
   // Newest first (the sim appends; reverse before the stable sort by date).
   const news = [...life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week).slice(0, 3)
   const matchToday = fx?.daysUntil === 0
-  const yearsLeft = h.contract ? Math.max(0, h.contract.untilSeason - cal.season) : 0
+  const yearsLeft = h.contract ? Math.max(0, h.contract.untilSeason - cal.season + 1) : 0 // incl. the current season, as on the Contract screen
 
   const tileSub = (id: (typeof TILES)[number]['id']): string => {
     switch (id) {

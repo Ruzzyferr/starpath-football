@@ -15,7 +15,7 @@ export function ObjectivesScreen() {
         <Card class="obj-tally">
           <div class="obj-tally-cell"><span class="score-font obj-tally-n">{o.seasonDone}</span><span class="micro t-mid">{t('objectives.doneCount')} · {t('objectives.thisSeason')}</span></div>
           <div class="obj-tally-cell"><span class="score-font obj-tally-n">{o.seasonFailed}</span><span class="micro t-mid">{t('objectives.missedCount')} · {t('objectives.thisSeason')}</span></div>
-          <div class="obj-tally-cell"><span class="score-font obj-tally-n">{o.done}/{o.done + o.failed}</span><span class="micro t-mid">{t('objectives.career')}</span></div>
+          <div class="obj-tally-cell"><span class="score-font obj-tally-n">{o.done + o.failed > 0 ? `${o.done}/${o.done + o.failed}` : '—'}</span><span class="micro t-mid">{t('objectives.career')}</span></div>
         </Card>
 
         <section aria-labelledby="obj-active">
