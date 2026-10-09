@@ -1,5 +1,5 @@
 import { Rng } from '../../core/rng'
-import { applyMatchToHero, formTarget, type HeroMatchInput } from './matchOutcome'
+import { BACK_LINE_CLEAN_SHEET_FAME, BACK_LINE_TACKLE_FAME, applyMatchToHero, backLineFame, formTarget, type HeroMatchInput } from './matchOutcome'
 import { findNonFinite, makeState } from './testFixtures'
 import { ensureRelation, ensureTeammates, teammateId } from '../life/relationships'
 
@@ -142,5 +142,14 @@ describe('in-match action XP (2.3#15)', () => {
     const b = matchActionXp({ goals: 4, assists: 3, shotsOnTarget: 8, passesCompleted: 60, tackles: 6, dribbles: 8 }, 20)
     expect(b.total).toBeCloseTo(20 * ACTION_XP_MAX_SHARE, 5)
     expect(matchActionXp({ goals: 0, assists: 0 }, 20).total).toBe(0)
+  })
+})
+
+describe('backLineFame', () => {
+  it('credits tackles and a 60-minute clean sheet to centre-backs and full-backs only', () => {
+    expect(backLineFame('LB', 4, true, 90)).toBeCloseTo(4 * BACK_LINE_TACKLE_FAME + BACK_LINE_CLEAN_SHEET_FAME)
+    expect(backLineFame('CB', 2, true, 30)).toBeCloseTo(2 * BACK_LINE_TACKLE_FAME)
+    expect(backLineFame('DM', 4, true, 90)).toBe(0)
+    expect(backLineFame('GK', 0, true, 90)).toBe(0)
   })
 })

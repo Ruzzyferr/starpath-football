@@ -86,6 +86,19 @@ export const MATCH_REP_SCALE = 0.8
 export const YOUTH_SPOTLIGHT = 0.8
 export const youthSpotlight = (age: number): number => 1 + clamp((22 - age) / 4, 0, 1) * YOUTH_SPOTLIGHT
 
+/**
+ * Back-line fame (role balance, docs/BALANCE.md): a defender's headlines are the clean sheet
+ * and the tackles, not goals and assists. Without this, match fame (goals × 0.45, assists × 0.25)
+ * put attacking full-backs / ball-playing centre-backs 5–9 % above the defensive roles of their
+ * position at career end. Centre-backs and full-backs only; a clean sheet counts after 60 minutes.
+ */
+export const BACK_LINE_TACKLE_FAME = 0.05
+export const BACK_LINE_CLEAN_SHEET_FAME = 0.3
+export const backLineFame = (position: Hero['position'], tackles: number, cleanSheet: boolean, minutes: number): number =>
+  position === 'CB' || position === 'LB' || position === 'RB'
+    ? Math.max(0, tackles) * BACK_LINE_TACKLE_FAME + (cleanSheet && minutes >= 60 ? BACK_LINE_CLEAN_SHEET_FAME : 0)
+    : 0
+
 /** Form = EMA of a rating-derived target: ~last 5 matches matter (α = 0.35). */
 export const FORM_ALPHA = 0.35
 /** Rating → form target: 4.0 → 0, 6.5 → 50, 9.0 → 100. */
@@ -202,7 +215,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
 
   // ── Reputation (diminishing at the top, bigger on big stages) ──
   const stage = 0.5 + imp + clamp(((m.opponentReputation ?? 50) - 50) / 100, -0.3, 0.4)
-  let repD = ((rating - NEUTRAL_RATING) * 0.4 + goals * 0.45 + assists * 0.25 + (m.motm ? 0.5 : 0)) * stage * MATCH_REP_SCALE
+  let repD = ((rating - NEUTRAL_RATING) * 0.4 + goals * 0.45 + assists * 0.25 + (m.motm ? 0.5 : 0) + backLineFame(hero.position, m.tackles ?? 0, !!m.cleanSheet, minutes)) * stage * MATCH_REP_SCALE
   // Fame gets harder to add the more you have: ×0.75 at 20, ×0.4 at 50, ×0.1 at 85.
   repD = repD > 0 ? repD * Math.pow(Math.max(0, 1 - hero.reputation / 100), 1.3) * youthSpotlight(heroAge(hero, cal.season)) : repD * 0.5
   const repBefore = hero.reputation

@@ -1307,3 +1307,31 @@ BALANCE (30 × 10), son kod, tohum 1000 · 2000 · 3000:
 
 **Golden master bilinçli olarak yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): kariyer akışı değişti (seçim
 terimleri, planlı kamera, günlük programın otomatik çözümü).
+
+### Kariyer sonu itibarı (Tur 6): savunma hattı ünü
+
+Sorun: 46cb0b7 sonrası tam rapor (30 kariyer × 8 sezon) Oyun Kurucu Stoper +%6,5, Hücumcu Bek +%7,9, Defansif Bek
+−%7,3 verdi. Teşhis (CB+LB, 30 kariyer): yeni sistemler sürücü değil. Planlı kamera kapalı (Hücumcu/Defansif Bek
+64,9 / 57,0) ve seçim terimleri kapalı (65,1 / 59,8) aynı farkı veriyor; eski kod (1055188) farklı tohumla (9000)
+de Oyun Kurucu Stoper +%8,2, Hava Hakimi −%7,9 çıkarıyor. Tur 5'in ±%5'i tohum şansıydı. Yapısal sebep: maç itibarı
+gol × 0,45 + asist × 0,25 + reyting; savunmanın karşılığı yoktu (Hücumcu Bek 36 gol + 32 asist, Defansif Bek 18 + 19,
+reyting eşit 6,33 / 6,30).
+
+Değişiklik (`career/matchOutcome.ts`, `backLineFame`): stoper ve bekler maç itibarına top kapma başına +0,05 ve
+60 dakika+ gol yemeden bitirilen maç için +0,3 alır (aynı sahne, ölçek ve azalan getiri). Defansif orta saha ve
+kaleci hariç (kalecinin itibarı zaten en yüksek). Savunmacıların itibar düzeyi ~+8 (CB 63 → 72, LB 61 → 68).
+
+| Rol | Son itibar önce | Δ | Sonra | Δ |
+|---|---|---|---|---|
+| CB stopper / aerialDefender / ballPlayingDefender | 62 / 60 / 67 | −1,7 / −4,8 / +6,5% | 72 / 70 / 75 | −0,3 / −3,2 / +3,5% |
+| LB balanced / attacking / defensive | 61 / 66 / 57 | −0,6 / +7,9 / −7,3% | 67 / 70 / 67 | −1,2 / +2,3 / −1,1% |
+
+Tohum 9000 kontrolü (30 kariyer): CB +2,9 / −2,0%, LB +4,4 / −3,6% (önce +3,8 / −6,4%). Diğer mevkiler değişmedi;
+24 rolün beş ölçütü ±%5 içinde (en uç: Ters Kanat itibarı +%5,0 ve Çizgi Kanadı oynanan reyting +%4,4, ikisi de
+bu değişiklikten bağımsız ve önceki raporla aynı).
+
+BALANCE (30 × 10), tohum 1000 · 2000 · 3000: itibar 18/21/25 15/56/78 · 15/53/82 · 17/51/82 (hedef ~15/~50/75–85);
+OVR 21/25 76/81 · 76/82 · 76/82; ilk 1. kademe / elit yaşı 21,0/23,0 · 20,0/23,0 · 21,0/22,5; 3. sezon servet
+139K · 131K · 162K; iflas %3 (kumarbaz) · %0 · %0; kumarbaz payı %12 · %23 · %21 (1000'de 6 kumarbazlık örneklem gürültüsü).
+PLAYTIME (24 kariyer): S1 süre %70 / %72 / %76, S2 ikinci yarı ilk 11 %56 / %60 / %66, en uzun süresiz seri medyan 2,
+maks 5 / 6 / 4; HEAD ile aynı (itibar seçimi etkilemiyor). Golden master değişmedi.
