@@ -32,7 +32,7 @@ export type RelationTarget = 'family' | 'partner' | 'bestFriend' | 'teammates' |
  *  - shoot: pays via sponsors.sponsorShootPay
  *  - physio: counts toward the weekly injury tick
  */
-export type ActivitySpecial = 'train' | 'gym' | 'video' | 'post' | 'trainer' | 'fireTrainer' | 'shoot' | 'physio' | 'sleepIn' | 'casino'
+export type ActivitySpecial = 'train' | 'gym' | 'video' | 'post' | 'trainer' | 'fireTrainer' | 'shoot' | 'physio' | 'sleepIn' | 'casino' | 'diet' | 'mentor'
 
 /** Money formula keys (amount computed at run time). */
 export type MoneyFormula = 'shopping' | 'travel' | 'charity' | 'interview' | 'party' | 'date' | 'golf' | 'dinner' | 'physio'
@@ -229,6 +229,13 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     special: 'video', relations: [{ target: 'manager', delta: 1 }],
     name: T('Video Analiz', 'Study Tactics'), desc: T('Rakip ve kendi maç görüntülerini incele.', 'Study match footage of rivals and yourself.'),
     conditions: { injuredOk: true }, triggerTags: ['training'], eventChance: 0.02, done: T('Saatlerce maç görüntüsü izledin.', 'You studied hours of footage.') },
+  { id: 'mentor_youth', icon: '🤝', category: 'training', slots: 1, allowedSlots: DAY, energy: 8, stress: -1,
+    special: 'mentor', relations: [{ target: 'teammates', delta: 1 }],
+    name: T('Gençlere Mentorluk', 'Mentor the Youngsters'), desc: T('Akademinin gençleriyle birebir çalış: liderlik ve soğukkanlılık gelişir, soyunma odası ısınır.', 'One-to-ones with the academy kids: builds leadership and composure, and warms the dressing room.'),
+    conditions: { minAge: 18, notMatchDay: true, injuredOk: true }, triggerTags: ['training', 'teammates'], eventChance: 0.04, done: T('Gençlere tecrübeni aktardın; biri bugün ilk kez senin gibi pas açtı.', 'You passed on what you know; one of the kids opened up a pass just like yours today.') },
+  { id: 'meal_prep', icon: '🥗', category: 'health', slots: 1, allowedSlots: ALL, energy: 6, stress: -1, health: 1, money: -40,
+    special: 'diet', name: T('Beslenme Planı', 'Meal Prep'), desc: T('Bir haftalık sporcu beslenmesi: 7 gün daha hızlı toparlanma; yaş ilerledikçe fiziksel düşüşü yavaşlatır.', 'A week of proper athlete nutrition: faster recovery for 7 days, and it slows the physical decline with age.'),
+    conditions: { injuredOk: true, cooldownDays: 5 }, triggerTags: ['health'], eventChance: 0.02, done: T('Haftanın yemekleri kaplarda hazır. Vücudun teşekkür edecek.', 'The week’s meals are boxed up. Your body will thank you.') },
   { id: 'physio', icon: '🩺', category: 'health', slots: 1, allowedSlots: DAY, energy: 5, fatigue: -12, health: 2, moneyFormula: 'physio',
     special: 'physio', name: T('Fizyoterapi', 'Physio'), desc: T('Özel fizyoterapist: sakatlık iyileşmesini hızlandırır.', 'Private physio: speeds up injury recovery.'),
     conditions: { injuredOk: true }, triggerTags: ['health'], eventChance: 0.02, done: T('Fizyoterapiden çıktın, vücudun rahatladı.', 'Physio done, your body feels looser.') },

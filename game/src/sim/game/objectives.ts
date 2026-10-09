@@ -18,7 +18,10 @@
  *
  * State lives in `life.flags['g:objectives']` (JSON). UI selector: {@link objectivesView}.
  */
-import type { GameState, LText, Position } from '../../core/types'
+import type { AttributeKey, GameState, LText, Position } from '../../core/types'
+import { bestSessionFor, weakestDevArea } from '../career/attributeLife'
+import { ATTRIBUTE_NAMES } from '../career/progression'
+import { TRAINING_TYPES } from '../career/training'
 import { Rng, hashString } from '../../core/rng'
 import { absWeek, clamp, fameGain, fill, fmtMoney, fmtNum, heroAge, lt, meter } from '../career/common'
 import { changeRelation } from '../life/relationships'
@@ -38,6 +41,8 @@ export type ObjectiveKind =
   | 'leaguePos' | 'seasonGoals' | 'seasonCleanSheets' | 'seasonApps' | 'press' | 'teamPlay'
   // Career-phase pools (youth / rising / peak / veteran / defender / keeper).
   | 'streak' | 'headGoals' | 'captainApps' | 'mentor' | 'bigGame' | 'bigCleanSheet' | 'contGoals' | 'motm' | 'saves'
+  // Personal development plan: raise one attribute (`ref` = AttributeKey, `base` = its value at the start).
+  | 'attrGrowth'
 
 export interface ObjectiveReward {
   money?: number
@@ -361,6 +366,11 @@ function refreshState(state: GameState, o: Objective): void {
       if (r) o.progress = Math.max(0, r.value - (o.base ?? r.value))
       break
     }
+    case 'attrGrowth': {
+      const v = o.ref ? h.attrs[o.ref as AttributeKey] : undefined
+      if (typeof v === 'number') o.progress = Math.max(0, v - (o.base ?? v))
+      break
+    }
     default: break
   }
 }
@@ -423,7 +433,7 @@ function applyReward(state: GameState, r: ObjectiveReward, o: Objective): void {
 
 // ───────────────────────── Event-started objectives ─────────────────────────
 
-export type ObjectivePreset = 'prove_yourself'
+export type ObjectivePreset = 'prove_yourself' | 'dev_focus'
 
 const PROVE_TITLE: LText = lt('Kendini kanıtla: bir maçta 7.5+ puan', 'Prove yourself: rate 7.5+ in a match')
 
@@ -433,6 +443,16 @@ const PROVE_TITLE: LText = lt('Kendini kanıtla: bir maçta 7.5+ puan', 'Prove y
  * preset is already running.
  */
 export function startPresetObjective(state: GameState, preset: ObjectivePreset): boolean {
+  if (preset === 'dev_focus') {
+    const st = load(state)
+    if (st.active.some((o) => o.kind === 'attrGrowth')) return false
+    const o = devObjective(state, st, true)
+    if (!o) return false
+    st.active.push(o)
+    st.lastBy.manager = absWeek(state.calendar)
+    save(state, st)
+    return true
+  }
   if (preset !== 'prove_yourself') return false
   const st = load(state)
   if (st.active.some((o) => o.title.en === PROVE_TITLE.en)) return false
@@ -442,6 +462,31 @@ export function startPresetObjective(state: GameState, preset: ObjectivePreset):
   st.active.push(o)
   save(state, st)
   return true
+}
+
+/**
+ * The manager's personal development plan: raise the weakest stat of your role (the "gelişim
+ * alanı" of the Training screen) by 2 points (1 from 27) before the deadline. Reward: trust,
+ * morale and the manager's respect; a miss costs trust (more when it came from a talk in his
+ * office, `strict`).
+ */
+function devObjective(state: GameState, st: Store, strict: boolean): Objective | null {
+  const h = state.hero
+  const key = weakestDevArea(h)
+  if (!key || h.attrs[key] >= 90) return null
+  const age = heroAge(h, state.calendar.season)
+  const target = age >= 27 ? 1 : 2
+  const weeks = age >= 27 ? 7 : 6
+  const name = ATTRIBUTE_NAMES[key]
+  const session = bestSessionFor(key)
+  const where = session ? TRAINING_TYPES[session].name : lt('antrenman', 'training')
+  return mk(state, st, 'manager', 'attrGrowth',
+    fill(lt('Gelişim planı: {a} +{n} ({w} hafta)', 'Development plan: {a} +{n} ({w} weeks)'), { a: name, n: target, w: weeks }),
+    fill(lt('Hoca: "{a} {v}, rolün için az. {s} seanslarında üstüne git."', 'The manager: "{a} {v} is not enough for your role. Get after it in {s} sessions."'), { a: name, v: h.attrs[key], s: where }),
+    target, weeks,
+    { trust: 5, morale: 4, rel: { manager: 4 } },
+    strict ? { trust: -4, morale: -3, rel: { manager: -3 } } : { trust: -2 },
+    { ref: key, base: h.attrs[key] })
 }
 
 // ───────────────────────── Generation ─────────────────────────
@@ -517,6 +562,10 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
         fill(lt('Sıradaki 3 maçta ortalama {r}+ reyting', 'Average {r}+ rating over your next 3 matches'), { r: goal.toFixed(1) }),
         lt('Hoca istikrar istiyor: üç maç üst üste iyi oyna.', 'The manager wants consistency: three good games in a row.'),
         3, 5, { trust: 5, morale: 4, rel: { manager: 4 } }, { trust: -2 }, { base: Math.round(goal * 10), sum: 0 }) })
+    }
+    // The development plan on the role's weakest stat (owner requirement: stats matter in the career).
+    if (!st.active.some((o) => o.kind === 'attrGrowth') && weakestDevArea(h)) {
+      cands.push({ w: 2, make: () => devObjective(state, st, false)! })
     }
     if (life.discipline < 60 || (h.seasonStats?.yellow ?? 0) >= 3) {
       cands.push({ w: 2, make: () => mk(state, st, 'manager', 'noCards',

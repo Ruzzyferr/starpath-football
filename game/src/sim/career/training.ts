@@ -18,7 +18,7 @@ import type { Rng } from '../../core/rng'
 import { clamp, fill, lt, meter, type Lines } from './common'
 import { ATTRIBUTE_GROUP, applyXpBundle } from './progression'
 import { perkValue } from './perks'
-import { addFatigue, applyInjury, recoverFatigue, rollInjury } from './condition'
+import { addFatigue, applyInjury, bodyInjuryFactor, recoverFatigue, rollInjury } from './condition'
 import { assetEffectTotal } from '../life/assetEffects'
 import { injuryProneness, wellbeingXpMultiplier } from '../life/wellbeing'
 
@@ -198,7 +198,7 @@ export const trainingEnergyCost = (type: TrainingType, intensity: TrainingIntens
 
 /** Injury probability for a session (UI can show it as a risk hint). */
 export function trainingInjuryChance(hero: Hero, life: Life, type: TrainingType, intensity: TrainingIntensity = 'normal'): number {
-  return TRAINING_TYPES[type].injuryRisk * INTENSITY[intensity].injury * injuryProneness(life, hero)
+  return TRAINING_TYPES[type].injuryRisk * INTENSITY[intensity].injury * injuryProneness(life, hero) * bodyInjuryFactor(hero)
 }
 
 /**
@@ -267,7 +267,7 @@ export function runTraining(rng: Rng, hero: Hero, life: Life, input: TrainingInp
 
   // Injury roll uses the *post-session* fatigue (exhaustion at the end of a drill).
   let injured = false
-  const p = def.injuryRisk * im.injury * injuryProneness(life, hero)
+  const p = def.injuryRisk * im.injury * injuryProneness(life, hero) * bodyInjuryFactor(hero)
   if (p > 0 && rng.chance(p)) {
     injured = true
     lines.push(...applyInjury(hero, life, rollInjury(rng, hero, life, [0.75, 0.22, 0.03])))

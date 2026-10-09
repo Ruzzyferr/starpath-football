@@ -66,6 +66,7 @@ export function candidateClubs(state: GameState, rng: Rng): CandidateClub[] {
   return pool.map((c) => ({
     clubId: c.id, name: c.name, reputation: c.reputation, leagueTier: state.world.leagues[c.leagueId]?.tier,
     countryId: c.countryId, squadAvgOvr: clubStrength(state.world, c.id).overall, wageBudget: c.wageBudget, transferBudget: c.budget,
+    style: c.style,
   }))
 }
 

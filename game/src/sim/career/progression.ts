@@ -270,18 +270,39 @@ export function naturalGrowthXp(age: number): number {
   return 0
 }
 
-/** Per-attribute decline speed relative to its group (acceleration and diving reach go first). */
-const DECLINE_MULT: Readonly<Partial<Record<AttributeKey, number>>> = { acceleration: 1.3, diving: 1.15 }
+/**
+ * Per-attribute decline speed relative to its group, like a real footballer's body: the first
+ * yard (acceleration), top speed and agility go first, strength and balance hold; technique fades
+ * in the legs (dribbling, tackling) before the passing range; the football brain (vision,
+ * positioning, anticipation, leadership) does not decline at all and keeps growing with
+ * experience ({@link EXPERIENCE_XP}). Group means stay ≈ 1 so the OVR curve keeps its shape.
+ */
+export const DECLINE_MULT: Readonly<Partial<Record<AttributeKey, number>>> = {
+  // physical (mean 1.0)
+  acceleration: 1.35, pace: 1.15, agility: 1.15, jumping: 1, stamina: 0.95, balance: 0.85, strength: 0.55,
+  // technical (mean ≈ 0.93)
+  dribbling: 1.25, tackling: 1.2, shooting: 1.05, crossing: 1.05, heading: 1, finishing: 0.95, firstTouch: 0.95,
+  passing: 0.8, longPassing: 0.7, curve: 0.7, setPieces: 0.6,
+  // mental: experience protects the reading of the game
+  vision: 0, leadership: 0, anticipation: 0.3, positioning: 0.3, composure: 0.5, aggression: 1.2, workRate: 1.6,
+  // goalkeeping: reach goes before handling and angles
+  diving: 1.15, reflexes: 1.1, handling: 0.8, gkPositioning: 0.4, gkDistribution: 0.6,
+}
+
+/** Weekly "experience" XP from 28 on (veterans with 60+ games): the football brain keeps growing. */
+export const EXPERIENCE_XP: Readonly<Partial<Record<AttributeKey, number>>> = { vision: 2.2, positioning: 2, anticipation: 2.2, leadership: 2.5, composure: 1.5 }
+export const EXPERIENCE_AGE = 28
 
 /**
  * Weekly ageing tick: physical/technical/mental decline after 30 (drains the
  * progress fraction; a point is lost when it goes negative) and natural teenage growth.
  * `weeksPerSeason` converts the per-season curve into weekly drain.
  */
-export function weeklyAging(hero: Hero, season: number, weeksPerSeason = NOMINAL_SEASON_WEEKS): Lines {
+export function weeklyAging(hero: Hero, season: number, weeksPerSeason = NOMINAL_SEASON_WEEKS, care = 0): Lines {
   const age = heroAge(hero, season)
   const lines: Lines = []
-  const slow = clamp(ownPerkValue(hero, 'aging_slow'), 0, 0.9)
+  // Perks and body care (diet, sleep: condition.bodyCare) hold back the physical decline.
+  const slow = clamp(ownPerkValue(hero, 'aging_slow') + clamp(care, 0, 0.25), 0, 0.9)
   const phys = (physicalDeclinePerSeason(age) * (1 - slow)) / weeksPerSeason
   const tech = technicalDeclinePerSeason(age) / weeksPerSeason
   const mental = mentalDeclinePerSeason(age) / weeksPerSeason
@@ -307,6 +328,9 @@ export function weeklyAging(hero: Hero, season: number, weeksPerSeason = NOMINAL
   const grow = naturalGrowthXp(age)
   if (grow > 0) {
     for (const key of ATTRIBUTE_KEYS) if (ATTRIBUTE_GROUP[key] === 'physical') addAttributeXp(hero, key, grow, season)
+  }
+  if (age >= EXPERIENCE_AGE && (hero.careerStats?.apps ?? 0) >= 60) {
+    for (const [k, xp] of Object.entries(EXPERIENCE_XP) as [AttributeKey, number][]) addAttributeXp(hero, k, xp, season)
   }
   const ovrAfter = heroOvr(hero)
   if (ovrAfter < ovrBefore) {

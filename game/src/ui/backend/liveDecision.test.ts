@@ -23,7 +23,11 @@ describe('in-match decision window', () => {
   it('pauses the match, applies the choice at full time and shows it in the rating log', () => {
     A.newGame({ ...DEFAULT_CAREER, birthYear: 2000, seed: 4242 })
     for (let i = 0; i < 20; i++) {
-      for (let n = 0; n < 20 && (gameState.value?.pendingEvents.length ?? 0) > 0; n++) A.resolveEvent(0, 0)
+      // Resolve pending cards with the first choice that is open (a gated choice 0 would leave the card pending).
+      for (let n = 0; n < 20 && (gameState.value?.pendingEvents.length ?? 0) > 0; n++) {
+        const before = gameState.value!.pendingEvents.length
+        for (let c = 0; c < 4 && gameState.value!.pendingEvents.length === before; c++) A.resolveEvent(0, c)
+      }
       const fx = D.nextFixture()
       if (fx?.daysUntil === 0 && (gameState.value?.calendar.slot ?? 0) >= 1) break
       A.advanceToMatch()

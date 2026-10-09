@@ -10,7 +10,7 @@ import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Positio
 import { hashString, type Rng } from '../../core/rng'
 import { ACTIVITIES, ACTIVITY_BY_ID, DONE_VARIANTS, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
 import { absWeek, clamp, fill, heroAge, fmtMoney, fmtNum, lt, meter, signed, type Lines } from '../career/common'
-import { addFatigue, recoverFatigue } from '../career/condition'
+import { DIET_FLAG, addFatigue, dietActive, recoverFatigue } from '../career/condition'
 import { perkValue } from '../career/perks'
 import { applyXpBundle } from '../career/progression'
 import { fatigueEfficiency, runTraining, trainingEnergyCost, type TrainingIntensity, type TrainingType } from '../career/training'
@@ -248,13 +248,23 @@ export function performActivity(
     case 'gym': {
       // Own weights session: 12 raw XP split strength/stamina/jumping.
       const m = (1 + perkValue(hero, 'xp_physical') + perkValue(hero, 'xp_all') + assetEffectTotal(life, 'xp_bonus')) * wellbeingXpMultiplier(life) * fatigueEfficiency(hero.fatigue)
-      lines.push(...applyXpBundle(hero, { strength: 6 * m, stamina: 4 * m, jumping: 2 * m }, ctx.calendar.season).lines)
+      lines.push(...applyXpBundle(hero, { strength: 5 * m, stamina: 4 * m, jumping: 1.5 * m, balance: 1.5 * m }, ctx.calendar.season).lines)
       break
     }
     case 'video': {
-      // Film study: 10 raw XP into reading the game. Works while injured.
+      // Film study: 11 raw XP into reading the game (anticipation: seeing the pass before it is played). Works while injured.
       const m = (1 + perkValue(hero, 'xp_tactical') + perkValue(hero, 'xp_all')) * wellbeingXpMultiplier(life)
-      lines.push(...applyXpBundle(hero, { positioning: 5 * m, vision: 4 * m, composure: 1 * m }, ctx.calendar.season).lines)
+      lines.push(...applyXpBundle(hero, { positioning: 4 * m, vision: 3.5 * m, anticipation: 2.5 * m, composure: 1 * m }, ctx.calendar.season).lines)
+      break
+    }
+    case 'mentor': {
+      // Mentoring the academy kids: 8 raw XP of leadership and composure. Works while injured.
+      const m = (1 + perkValue(hero, 'xp_tactical') + perkValue(hero, 'xp_all')) * wellbeingXpMultiplier(life)
+      lines.push(...applyXpBundle(hero, { leadership: 6.5 * m, composure: 1.5 * m }, ctx.calendar.season).lines)
+      break
+    }
+    case 'diet': {
+      life.flags[DIET_FLAG] = 7
       break
     }
     case 'physio': {
@@ -377,6 +387,7 @@ export function startDay(hero: Hero, life: Life, ctx: { calendar: Calendar }): L
   const q = sleepQuality(life)
   life.energy = meter(Math.max(life.energy, life.energy + (target - life.energy) * q))
   recoverFatigue(hero, life, rec)
+  if (dietActive(life)) life.flags[DIET_FLAG] = (life.flags[DIET_FLAG] as number) - 1
   return lines
 }
 

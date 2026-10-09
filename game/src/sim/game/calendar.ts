@@ -15,10 +15,10 @@ import type { GameState, LText } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { DAYS_PER_WEEK, SLOTS_PER_DAY } from '../../core/config'
 import { absWeek } from '../career/common'
-import { weeklyInjuryTick, weeklySharpnessDecay } from '../career/condition'
+import { bodyCare, weeklyInjuryTick, weeklySharpnessDecay } from '../career/condition'
 import { weeklyAging } from '../career/progression'
 import { evaluateRoleChange, weeklyTrustTick } from '../career/squadRole'
-import { autoPlanDay, performActivity, physioSessionsThisWeek, startDay } from '../life/activities'
+import { autoPlanDay, performActivity, physioSessionsThisWeek, sleepQuality, startDay } from '../life/activities'
 import { resetCasinoDay, weeklyCasinoTick } from '../life/casino'
 import { assetHappiness, incomeTaxRate, weeklyEconomy } from '../life/economy'
 import { weeklyRelationDecay } from '../life/relationships'
@@ -145,7 +145,7 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
     logAll(state, out, weeklyCloseFriendSupport(life, hero, absWeek(cal)), 'relation')
     weeklyTrustTick(hero, life)
     logAll(state, out, weeklyInjuryTick(hero, physioSessionsThisWeek(life, cal)), 'injury', '🩺')
-    logAll(state, out, weeklyAging(hero, cal.season), 'career')
+    logAll(state, out, weeklyAging(hero, cal.season, undefined, bodyCare(life, sleepQuality(life))), 'career')
     logAll(state, out, weeklyCasinoTick(life, hero, { rng, calendar: cal, hero }), 'event', '🎰')
     logAll(state, out, weeklyWellbeing(life, hero, {
       assetHappiness: assetHappiness(life), weeklyNet: eco.net, matchesPlayed: wk.matches, offSeason: isOffSeason(cal.week),

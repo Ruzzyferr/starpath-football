@@ -18,12 +18,43 @@ export function addFatigue(hero: Hero, delta: number): number {
   return hero.fatigue - before
 }
 
+/** Days of proper nutrition left (Meal Prep activity): faster recovery and a slower physical decline. */
+export const DIET_FLAG = 'diet_left'
+export const dietActive = (life: Pick<Life, 'flags'>): boolean => {
+  const v = life.flags[DIET_FLAG]
+  return typeof v === 'number' && v > 0
+}
+
+/** A big engine recovers faster: Stamina 50 = ±0, 90 = +8 %, 10 = −8 %. */
+export const staminaRecoveryBonus = (hero: Pick<Hero, 'attrs'>): number => clamp(((hero.attrs?.stamina ?? 50) - 50) / 500, -0.08, 0.08)
+
 /**
  * Combined recovery multiplier from perks (`recovery`) and facilities
- * (cryo chamber, home gym…). 1.0 = baseline, capped at 1.6.
+ * (cryo chamber, home gym…), capped at +0.6, plus the body itself: Stamina
+ * (±0.08) and a week of proper nutrition (+0.1).
  */
 export function recoveryMultiplier(hero: Hero, life: Life): number {
-  return 1 + Math.min(0.6, perkValue(hero, 'recovery') + assetEffectTotal(life, 'recovery'))
+  return 1 + Math.min(0.6, perkValue(hero, 'recovery') + assetEffectTotal(life, 'recovery')) + staminaRecoveryBonus(hero) + (dietActive(life) ? 0.1 : 0)
+}
+
+/**
+ * Body resilience on the training ground (career side; match injuries are the match engine's):
+ * a small engine (Stamina < 55) tires into knocks, Balance and Strength keep you on your feet.
+ * 1 = average; 0.75..1.35.
+ */
+export function bodyInjuryFactor(hero: Pick<Hero, 'attrs'>): number {
+  const a = hero.attrs
+  if (!a) return 1
+  const f = 1 + (Math.max(0, 55 - a.stamina) / 100) * 0.8 - (Math.max(0, a.balance - 50) / 100) * 0.25 - (Math.max(0, a.strength - 50) / 100) * 0.15
+  return clamp(f, 0.75, 1.35)
+}
+
+/**
+ * How much of this week's physical decline diet and sleep hold back (0..0.25): a week of proper
+ * nutrition 0.15, plus up to 0.1 from sleep quality (0.75 plain bed … 1 premium bed / smart home).
+ */
+export function bodyCare(life: Pick<Life, 'flags'>, sleepQuality = 0.75): number {
+  return clamp((dietActive(life) ? 0.15 : 0) + ((sleepQuality - 0.75) / 0.25) * 0.1, 0, 0.25)
 }
 
 /** Recover fatigue by a base amount scaled by {@link recoveryMultiplier}. */

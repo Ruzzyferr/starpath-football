@@ -6,10 +6,11 @@
  * ({@link CandidateClub}); nothing here reads `World` directly. All offers are
  * returned as serializable data for the UI to present.
  */
-import type { Agent, Calendar, Hero, LText, Life, SquadRole } from '../../core/types'
+import type { Agent, Calendar, Hero, LText, Life, SquadRole, TacticStyle } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fameGain, fill, fmtMoney, heroAge, lt, meter, pushLog, pushNews, NEWS_SOURCES, type Lines } from './common'
-import { heroOvr, potentialStars } from './progression'
+import { ATTRIBUTE_NAMES, heroOvr, potentialStars } from './progression'
+import { styleFit, styleKeyStat } from './attributeLife'
 import {
   applyContract, generateContractOffer, heroMarketValue, roundNice, type ClubContext, type ContractOffer,
 } from './contract'
@@ -30,6 +31,8 @@ export interface CandidateClub {
   wageBudget?: number
   /** Transfer budget; clubs never bid more than this. */
   transferBudget?: number
+  /** Playing style: scouts weigh how the hero's attributes suit it (attributeLife.styleFit). */
+  style?: TacticStyle
 }
 
 export type InterestStage = 'watching' | 'interested' | 'bidding'
@@ -147,16 +150,35 @@ export function scoutInterest(
     const stars = age <= 21 ? potentialStars(hero.potential, rng.normal(0, 4)) : 0
     const youth = age <= 21 ? (stars - 2.5) * 8 : 0
     const form = (hero.form - 50) * 0.3
-    let level = 60 + fit + fame + youth + form
+    // Style fit (owner requirement: transfer interest weighted by attributes fitting the club's style): ±6.
+    const style = c.style ? styleFit(hero.attrs, c.style, hero.position === 'GK') * STYLE_FIT_POINTS : 0
+    let level = 60 + fit + fame + youth + form + style
     if (requested) level += 10
     level += rng.normal(0, 6)
     level = Math.round(clamp(level, 0, 100))
     if (level < WATCH_AT) continue
     const stage: InterestStage = level >= BID_AT ? 'bidding' : level >= INTEREST_AT ? 'interested' : 'watching'
-    const reason = interestReason(hero, { fit, fame, youth, form, requested }, { ovr, avg: c.squadAvgOvr, stars })
+    const reason = style >= 3 && c.style && style >= Math.max(fit, fame, youth, form) - 4
+      ? styleReason(hero, c.style)
+      : interestReason(hero, { fit, fame, youth, form, requested }, { ovr, avg: c.squadAvgOvr, stars })
     out.push({ clubId: c.clubId, name: c.name, level, stage, label: STAGE_LABEL[stage], stars: interestStars(level), reason })
   }
   return out.sort((a, b) => b.level - a.level)
+}
+
+/** Interest points for a perfect style fit (attributeLife.styleFit = 1). */
+export const STYLE_FIT_POINTS = 6
+
+const STYLE_NAME: Readonly<Record<TacticStyle, LText>> = {
+  possession: lt('topa sahip olma', 'possession'), counter: lt('kontra atak', 'counter-attacking'), direct: lt('direkt', 'direct'),
+  pressing: lt('ön alan presi', 'high-pressing'), defensive: lt('savunma', 'defensive'), balanced: lt('dengeli', 'balanced'),
+}
+
+/** "Their high-pressing game needs your Work Rate 84." */
+function styleReason(hero: Hero, style: TacticStyle): LText {
+  const key = styleKeyStat(hero.attrs, style)
+  if (!key) return lt('Oyun tarzlarına uyuyorsun.', 'You suit the way they play.')
+  return fill(lt('{s} oyunları senin {a} {v} değerini istiyor.', 'Their {s} game wants your {a} {v}.'), { s: STYLE_NAME[style], a: ATTRIBUTE_NAMES[key], v: hero.attrs[key] })
 }
 
 /** The dominant reason behind a club's interest, in the player's words (2.3#71). */

@@ -61,7 +61,7 @@ const ACT_ICON: Record<string, string> = {
   rest: 'bed', sleep_in: 'bed', energy_drink: 'energy', train_shooting: 'target', train_passing: 'link', train_dribbling: 'run', train_physical: 'barbell',
   train_tactical: 'tactics', train_setPiece: 'flag', train_goalkeeping: 'shield-check', train_recovery: 'heartbeat', gym: 'barbell',
   train_crossing: 'crosshair', train_heading: 'goal', train_tackling: 'shield',
-  train_sprint: 'energy', train_core: 'barbell', train_longPass: 'link', train_reading: 'brain', train_pressing: 'run', train_leadership: 'star', train_keeperDiving: 'shield-check',
+  mentor_youth: 'handshake', meal_prep: 'heartbeat', train_sprint: 'energy', train_core: 'barbell', train_longPass: 'link', train_reading: 'brain', train_pressing: 'run', train_leadership: 'star', train_keeperDiving: 'shield-check',
   video: 'eye', physio: 'first-aid', family_visit: 'house', friend_hangout: 'users', team_dinner: 'fork-knife', date_night: 'heart',
   party: 'party', casino: 'cards', charity: 'hand-heart', sponsor_shoot: 'camera', interview: 'megaphone', social_post: 'instagram',
   business_meeting: 'handshake', shopping: 'shopping-bag', hobby_gaming: 'laptop', hobby_golf: 'flag', hobby_music: 'music', travel: 'airplane',

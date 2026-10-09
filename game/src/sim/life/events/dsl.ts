@@ -54,7 +54,7 @@ export const folPct = (ctx: EventCtx, pct: number): Delta => {
 export const injury = (weeks: number, name: LText): Delta => ({ kind: 'injury', weeks, name })
 /** Scandal that triggers sponsors' morality clauses (level 4 = every deal is terminated). */
 export const sponsorLoss = (level: 1 | 2 | 3 | 4): Delta => ({ kind: 'sponsorLoss', level })
-export const objective = (preset: 'prove_yourself'): Delta => ({ kind: 'objective', preset })
+export const objective = (preset: 'prove_yourself' | 'dev_focus'): Delta => ({ kind: 'objective', preset })
 export const ban = (matches: number): Delta => ({ kind: 'suspension', matches })
 
 /** Relationship change by kind (`'teammate'` alone = every teammate a bit). */
