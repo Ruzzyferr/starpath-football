@@ -263,7 +263,7 @@ export function playHorses(state: GameState, horse: number, stake: number): Acti
   if (!card || !Number.isInteger(horse) || horse < 0 || horse >= card.horses.length) return fail(lt('Geçersiz at.', 'Invalid horse.'))
   return withRng(state, (rng) => {
     const result = runRace(rng, card)
-    const payout = settleHorseBet(card, result, horse, stake)
+    const payout = Math.round(settleHorseBet(card, result, horse, stake)) // whole euros: fractional odds must not leave cents the UI cannot show
     writeJson(state.life, GFLAG.race, null)
     return okr(settle(state, stake, payout), { card, result, payout })
   })
