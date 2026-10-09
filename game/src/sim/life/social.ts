@@ -20,6 +20,7 @@ import { perkValue } from '../career/perks'
 import { assetEffectTotal } from './assetEffects'
 import { changeRelation } from './relationships'
 import { addHappiness, addStress } from './wellbeing'
+import { checkMoralityClause } from './sponsors'
 
 export type PostType = 'training' | 'luxury' | 'family' | 'charity' | 'provocation' | 'sponsored' | 'thanks' | 'rival'
 
@@ -198,6 +199,8 @@ export function makePost(rng: Rng, hero: Hero, life: Life, type: PostType, ctx: 
     hero.reputation = meter(hero.reputation - 1)
     lines.push(lt('⚠️ Paylaşımın tepki çekti, basın üstüne geliyor.', '⚠️ Your post backfired; the press is all over it.'))
     pushNews(life, rng, ctx.calendar, fill(lt('{n} paylaşımıyla ortalığı karıştırdı', '{n} sparks outrage with social media post'), { n: hero.nickname }), -1, rng.pick(NEWS_SOURCES))
+    // Butterfly: a provocation that blows up reaches the sponsors' morality clauses (a gaffe, severity 1).
+    if (type === 'provocation' && life.sponsors.length > 0) lines.push(...checkMoralityClause(rng, life, hero, 1, ctx.calendar).lines)
   }
   lines.unshift(fill(lt('{i} {p}: +{n} takipçi', '{i} {p}: +{n} followers'), { i: def.icon, p: def.name, n: fmtNum(gain) }))
   return { lines, followersGained: gain, viral, controversy, triggerTags: tags }

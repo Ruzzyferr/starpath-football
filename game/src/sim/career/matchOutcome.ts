@@ -91,6 +91,9 @@ export const formTarget = (rating: number): number => clamp(50 + (rating - NEUTR
  */
 export const MATCH_XP_PER_90 = 16
 
+/** Extra leadership XP per 90 minutes played as captain (butterfly link: armband → leadership). */
+export const CAPTAIN_LEADERSHIP_XP = 0.8
+
 /**
  * XP per successful in-match action (2.3#15, plan range 0.2–1.0). Example from
  * the plan: 3 key passes (assists) → Vision +1.5.
@@ -259,6 +262,11 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   const bundle: Partial<Record<AttributeKey, number>> = {}
   for (const k in w) bundle[k as AttributeKey] = (lump * (w[k as AttributeKey] ?? 0)) / wsum
   for (const k in action.bundle) bundle[k as AttributeKey] = (bundle[k as AttributeKey] ?? 0) + (action.bundle[k as AttributeKey] ?? 0)
+  // Butterfly: the armband is a school of its own: a captain's match grows leadership (and some composure).
+  if (hero.contract?.role === 'captain') {
+    bundle.leadership = (bundle.leadership ?? 0) + CAPTAIN_LEADERSHIP_XP * (minutes / 90)
+    bundle.composure = (bundle.composure ?? 0) + CAPTAIN_LEADERSHIP_XP * 0.25 * (minutes / 90)
+  }
   lines.push(...applyXpBundle(hero, bundle, cal.season).lines.filter((l) => l.en.startsWith('Overall') || l.en.startsWith('🌟')))
 
   // ── Injury ──

@@ -75,6 +75,8 @@ export function whySponsors(state: GameState): Why {
     { key: 'rep', label: lt(`İtibar ${Math.round(h.reputation)}: ${unlocked}/${BRANDS.length} marka kilidi açık`, `Reputation ${Math.round(h.reputation)}: ${unlocked}/${BRANDS.length} brands unlocked`), value: 0.055 * clamp(h.reputation, 0, 100), actionable: false },
     { key: 'followers', label: lt(`Takipçi ${Math.round(l.followers).toLocaleString('tr-TR')}`, `Followers ${Math.round(l.followers).toLocaleString('en-GB')}`), value: Math.log(1 + clamp(Math.log10(Math.max(1, l.followers) / 10000), 0, 3) * 0.25), actionable: true },
     { key: 'perks', label: lt('Sponsor yeteneği', 'Sponsor perk'), value: Math.log(1 + perkValue(h, 'sponsor_value')), actionable: true },
+    { key: 'awards', label: lt('Son ödüllerin markaların ilgisini çekiyor', 'Your recent awards draw the brands'), value: Math.min(0.06, 0.03 * h.awards.filter((a) => a.season >= state.calendar.season - 1).length) * 4, actionable: false },
+    { key: 'conduct', label: lt('Disiplin sicilin markaları ürkütüyor', 'Your conduct record scares the brands off'), value: l.discipline < 40 ? -((40 - l.discipline) / 40) * 0.05 * 4 : 0, actionable: true },
     { key: 'slots', label: slotsFull ? lt('Tüm sponsor yuvaları dolu', 'All sponsor slots are full') : lt('Boş yuva var', 'Open sponsor slots'), value: slotsFull ? -0.5 : 0, actionable: true },
   ]
   return { title: lt('Sponsor teklifleri neden böyle?', 'Why are sponsor offers like this?'), rows: topShares(raw) }

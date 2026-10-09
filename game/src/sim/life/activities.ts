@@ -342,7 +342,10 @@ export function performActivity(
       changeRelation(life, id, r.delta, { memory: close ? def.memory : undefined, week, contact: close || r.target === 'teammates', hero, cause: 'activity', why: def.name })
     }
   }
-  if (def.triggerTags.includes('nightlife')) life.flags.nightlife_day = today
+  if (def.triggerTags.includes('nightlife')) {
+    life.flags.nightlife_day = today
+    life.flags.nightlife_act = def.id // butterfly: the night before a match names its cause
+  }
   if (def.conditions.cooldownDays) life.flags[`act_${def.id}`] = today
   if (ctx.matchTomorrow && def.triggerTags.includes('nightlife')) tags.push('pre_match_night')
 

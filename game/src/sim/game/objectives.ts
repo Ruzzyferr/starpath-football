@@ -612,7 +612,8 @@ function pickObjective(state: GameState, st: Store, rng: Rng): Objective | null 
         st.famUsed = [...(st.famUsed ?? []).slice(-8), `${state.calendar.season}:${r.key}`]
         return mk(state, st, 'family', 'familyVisit', r.title,
           lt('Takvimine not düş: bir akşamını aileye ayır.', 'Put it in your diary: give your family an evening.'),
-          1, 2, { happiness: 6, rel: { [r.rel]: 8 } }, { rel: { [r.rel]: -5 } })
+          // Butterfly: a forgotten birthday stings more than a missed dinner, and it stays with the hero for a while.
+          1, 2, { happiness: 6, rel: { [r.rel]: 8 } }, r.key.endsWith('bday') ? { happiness: -3, rel: { [r.rel]: -8 } } : { rel: { [r.rel]: -5 } })
       } })
     }
   }

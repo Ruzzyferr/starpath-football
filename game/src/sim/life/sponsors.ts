@@ -119,15 +119,27 @@ export interface SponsorOffer {
 export const heldCategories = (life: Life): Set<SponsorCategory> => new Set(life.sponsors.map((s) => s.category))
 
 /**
+ * Weekly chance that brands call (butterfly links): 8% + rep/250, plus reach
+ * (+0.03 per decade of followers above 10K, max +0.09; the old flat +5% at 100K
+ * sits inside that curve), +0.03 per award of this or last season (max +0.06),
+ * and brands keep away from a poor conduct record (discipline < 40: up to −0.05).
+ */
+export function sponsorOfferChance(hero: Pick<Hero, 'reputation' | 'awards'>, life: Pick<Life, 'followers' | 'discipline'>, season: number): number {
+  let p = 0.08 + hero.reputation / 250
+  p += clamp(Math.log10(Math.max(1, life.followers) / 10_000) * 0.03, 0, 0.09)
+  p += Math.min(0.06, 0.03 * (hero.awards ?? []).filter((a) => a.season >= season - 1).length)
+  if (life.discipline < 40) p -= ((40 - life.discipline) / 40) * 0.05
+  return clamp(p, 0.02, 0.9)
+}
+
+/**
  * Generate 0–3 sponsor offers (call weekly or after big matches).
- * Chance of any offer: 8% + rep/250 (+5% if followers ≥ 100K) → ~10% for a
+ * Chance of any offer: {@link sponsorOfferChance} → ~10% for a
  * nobody, ~35% for a star. Only brands whose `minReputation` the hero meets and
  * whose category is free; the best affordable tier is favoured.
  */
 export function sponsorOffers(rng: Rng, hero: Hero, life: Life, ctx: { season: number }): SponsorOffer[] {
-  let p = 0.08 + hero.reputation / 250
-  if (life.followers >= 100000) p += 0.05
-  if (!rng.chance(p)) return []
+  if (!rng.chance(sponsorOfferChance(hero, life, ctx.season))) return []
   if (life.sponsors.length >= MAX_ACTIVE_SPONSORS) return []
   const held = heldCategories(life)
   const eligible = BRANDS.filter((b) => !held.has(b.category) && b.minReputation <= hero.reputation)

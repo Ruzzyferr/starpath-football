@@ -39,8 +39,9 @@ import { copyBook, fadeBook } from '../match/referee'
 import type { GoalCandidate } from '../world/worldTypes'
 import { rollEvents } from './eventsAdapter'
 import {
-  GFLAG, heroAvailableFor, heroClub, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
+  GFLAG, absDayOf, heroAvailableFor, heroClub, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
+import { applyRust, preMatchCondition, type Cause, type PreMatchCondition } from '../life/butterfly'
 import {
   applyNationalMatchToHero, callupFor, nationalKits, nationalTeamSource, teamReputation, type MatchTeamSource,
 } from './national'
@@ -118,6 +119,19 @@ function teamMorale(avgMorale: number): number {
   return clamp(0.85 + (avgMorale / 100) * 0.3, 0.8, 1.2)
 }
 
+/** life.flags key: JSON {@link PreMatchRecord} of the hero's last prepared match (post-match "why"). */
+export const PREMATCH_FLAG = 'g:prematch'
+export interface PreMatchRecord {
+  fixtureId: string
+  causes: Cause[]
+}
+
+/** Pre-match causes of a fixture (empty when another match was prepared since). */
+export const preMatchCauses = (state: GameState, fixtureId: string): Cause[] => {
+  const r = readJson<PreMatchRecord | null>(state.life, PREMATCH_FLAG, null)
+  return r && r.fixtureId === fixtureId ? r.causes : []
+}
+
 /** A club as a match side. */
 function clubSource(state: GameState, club: Club): MatchTeamSource {
   return {
@@ -132,7 +146,7 @@ export function buildTeam(state: GameState, club: Club, heroSide: boolean, start
 }
 
 /** Build a MatchTeam from any side (club or national team, see national.ts). */
-function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolean, starts: boolean, importance = 0): MatchTeam {
+function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolean, starts: boolean, importance = 0, cond?: PreMatchCondition): MatchTeam {
   const w = state.world
   const lineup = selectLineupFromPlayers(club.players, club.formation)
   const ids = [...lineup.playerIds]
@@ -162,7 +176,7 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   const marked = markedMan(hero)
   // Height (save v5): taller heroes win more in the air (heading / jumping), see core/roles withHeight.
   const heroAttrs = withHeight(
-    heroMatchAttributes(hero, { ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }, { importance }),
+    heroMatchAttributes(hero, applyRust({ ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }, cond?.rustMult ?? 1), { importance }),
     heroHeight(hero), heroGender(hero),
   )
   // The role shapes the hero's moments (highlightGen ROLE_KIND_MULT) while he plays in a slot it belongs to.
@@ -185,7 +199,8 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   if (heroSide && !starts) benchPlayers = [heroPlayer(hero.position), ...benchPlayers.slice(0, 6)]
   return {
     id: club.id, name: club.name, shortName: club.shortName, colors: club.colors, formation: club.formation, style: club.style,
-    lineup: xi, bench: benchPlayers, morale: teamMorale(rateLineup(w, lineup).morale),
+    // Butterfly: the hero's bond with the dressing room colours his side's morale (club matches).
+    lineup: xi, bench: benchPlayers, morale: teamMorale(rateLineup(w, lineup).morale) * (heroSide ? cond?.chemistry ?? 1 : 1),
   }
 }
 
@@ -229,7 +244,7 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       starts = m >= 72 || rng.chance(0.5 + (m - 55) / 50)
       log(state, [], starts ? lt('Milli takımda ilk 11\'desin.', 'You start for your country.') : lt('Milli maçta yedek kulübesindesin.', 'You are on the bench for your country.'), 'career', '🎽')
     } else {
-      const roll = rollSelection(rng, state.hero, state.life)
+      const roll = rollSelection(rng, state.hero, state.life, absDayOf(state))
       for (const l of roll.lines) log(state, [], l, 'career', '🪑')
       starts = roll.starts
     }
@@ -238,11 +253,15 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
     const away = national ? nationalTeamSource(state, fixture.awayId) : clubSource(state, state.world.clubs[fixture.awayId]!)
     if (national) away.colors = nationalKits(home, away).away
     const mental = mentalMatchModifier(state.life)
+    // Butterfly: the week the hero lived reaches the pitch (life/butterfly), and the post-match screen says why.
+    const cond = preMatchCondition(state.hero, state.life, absDayOf(state), !national)
+    writeJson(state.life, PREMATCH_FLAG, { fixtureId: fixture.id, causes: cond.causes } satisfies PreMatchRecord)
+    for (const c of cond.causes.filter((x) => x.tone === 'neg').slice(0, 2)) log(state, [], c.label, 'match', '🩹')
     const base = state.meta.custom ? normalizeCustom(state.meta.custom).aiReaction : DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
     const importance = importanceOf(competition, fixture, home, away)
     const setup: MatchSetup = {
-      home: buildTeamFrom(state, home, isHome, sel.starts, importance),
-      away: buildTeamFrom(state, away, !isHome, sel.starts, importance),
+      home: buildTeamFrom(state, home, isHome, sel.starts, importance, isHome ? cond : undefined),
+      away: buildTeamFrom(state, away, !isHome, sel.starts, importance, isHome ? undefined : cond),
       // Per-match stream: depends only on the career seed and the fixture, never on unrelated RNG consumption.
       seed: matchSeed(state.meta.seed, fixture.id),
       competitionName: competition.name.en,
@@ -260,8 +279,14 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       ...(state.hero.keeperBook ? { keeperBook: copyBook(state.hero.keeperBook) } : {}),
       // The armband: the hero organises the wall at free kicks against (club matches).
       ...(!national && state.hero.contract?.role === 'captain' ? { heroCaptain: true } : {}),
+      // Butterfly: who the dressing room agreed takes the penalties (teammates.penalty_taker card).
+      ...(!national && typeof state.life.flags.penalty_taker === 'boolean' ? { heroPenaltyTaker: state.life.flags.penalty_taker } : {}),
     }
-    const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
+    const opts: MatchSimOptions = {
+      heroForm: state.hero.form, managerTrust: state.hero.managerTrust,
+      ...(cond.startFatigue > 0 ? { heroStartFatigue: cond.startFatigue } : {}),
+      ...(cond.proneness !== 1 ? { heroProneness: cond.proneness } : {}),
+    }
     writeJson(state.life, GFLAG.match, { fixtureId: fixture.id, compId: competition.id, setup, opts, starts: sel.starts, ...(national ? { national } : {}) } satisfies ActiveMatchBlob)
     state.activeMatchId = fixture.id
     return { setup, opts, fixture, competition, starts: sel.starts, isHome }

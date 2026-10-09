@@ -75,6 +75,11 @@ export interface MatchSetup {
   keeperBook?: ShotBook
   /** The hero wears the armband: he organises the wall at opposition free kicks. */
   heroCaptain?: boolean
+  /**
+   * Dressing-room penalty order (event flag `penalty_taker`, life/butterfly): true = the hero is the
+   * designated taker (takes it unless clearly outclassed), false = he handed the spot kicks to a teammate.
+   */
+  heroPenaltyTaker?: boolean
 }
 
 export type MatchEventType =

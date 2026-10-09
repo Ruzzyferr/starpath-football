@@ -52,6 +52,8 @@ export interface CallupView {
   /** OVR-equivalent selection score of the last player picked in the hero's position group. */
   cutoff: number
   heroScore: number
+  /** Meter points lost to a poor conduct record (butterfly link; absent when none). */
+  conduct?: number
 }
 
 /** Levels the hero may play for this season (senior first). */
@@ -177,6 +179,9 @@ export function eliteLift(share: number): number {
 }
 
 /** Call-up meter for one level. */
+/** Call-up meter points lost to a poor conduct record (discipline < 40, max −10). */
+export const nationalConductPenalty = (discipline: number): number => (discipline < 40 ? Math.min(10, (40 - discipline) / 4) : 0)
+
 export function callupFor(state: GameState, level: NationalLevel): CallupView {
   const h = state.hero
   const cutoff = squadCutoff(state, level, h.position)
@@ -191,9 +196,15 @@ export function callupFor(state: GameState, level: NationalLevel): CallupView {
   }
   let m = parts.ovr * 0.5 + parts.form * 0.12 + parts.reputation * 0.1 + parts.minutes * 0.16 + parts.coach * 0.12
   if (h.injury && h.injury.weeksLeft > 2) m -= 20
+  // Butterfly: the national coach reads the papers too: a poor conduct record costs up to 10 points.
+  m -= nationalConductPenalty(state.life.discipline)
   if (h.retired) m = 0
   const meterV = Math.round(clamp(m, 0, 100))
-  return { level, teamId: nationalTeamId(h.nationality, level), meter: meterV, status: statusOf(meterV), parts, cutoff: Math.round(cutoff * 10) / 10, heroScore: Math.round(heroScore * 10) / 10 }
+  const conduct = Math.round(nationalConductPenalty(state.life.discipline))
+  return {
+    level, teamId: nationalTeamId(h.nationality, level), meter: meterV, status: statusOf(meterV), parts, cutoff: Math.round(cutoff * 10) / 10, heroScore: Math.round(heroScore * 10) / 10,
+    ...(conduct > 0 ? { conduct } : {}),
+  }
 }
 
 /** Best level the hero is in contention for (the senior team when likely, else the youngest eligible level). */

@@ -354,6 +354,8 @@ export interface NegotiationState {
   offer: ContractOffer
   hidden: HiddenLimits
   history: NegotiationRound[]
+  /** Who else sat at the table (agent, chairman, awards, conduct; life/butterfly). Missing on old saves. */
+  leverage?: { key: string; label: LText; tone: 'pos' | 'neg' }[]
 }
 
 /** Max rounds before the club declares its last offer final (club patience 3–5 rounds, 2.3#61). */

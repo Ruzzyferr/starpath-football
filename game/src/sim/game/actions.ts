@@ -9,7 +9,7 @@ import type { Rng } from '../../core/rng'
 import { SLOTS_PER_DAY } from '../../core/config'
 import { ADULT_AGE, absWeek, fill, fmtMoney, isAdult, lt } from '../career/common'
 import type { ContractTerms, NegotiationState } from '../career/contract'
-import { acceptOffer as acceptNegotiated, applyContract, counterOffer, rejectOffer, startNegotiation as startNego } from '../career/contract'
+import { acceptOffer as acceptNegotiated, applyContract, counterOffer, rejectOffer, roundNice, startNegotiation as startNego } from '../career/contract'
 import { unlockPerk as unlockPerkFn } from '../career/perks'
 import { benchComplaint, type ComplaintApproach } from '../career/squadRole'
 import type { TrainingIntensity, TrainingType } from '../career/training'
@@ -23,6 +23,8 @@ import {
 } from '../life/casino'
 import type { BlackjackAction, BlackjackRound, RaceCard, RaceResult, RouletteBetType, SevensBet, SlotSpin } from '../life/casino'
 import * as eco from '../life/economy'
+import { luxuryReaction, negotiationLeverage } from '../life/butterfly'
+import { ASSET_BY_ID } from '../../data/assets'
 import { ensureRelation } from '../life/relationships'
 import type { PostType } from '../life/social'
 import { acceptSponsor as acceptSponsorFn } from '../life/sponsors'
@@ -30,7 +32,7 @@ import { clubStrength } from '../world/queries'
 import { managerProfile } from '../world/profiles'
 import { advanceDay, type AdvanceReport } from './calendar'
 import { describeEvent, resolveEvent, rollEvents, type ResolvedEffect } from './eventsAdapter'
-import { GFLAG, absDayOf, activityContext, clubContextOf, heroClub, log, logAll, readJson, withRng, writeJson } from './internal'
+import { GFLAG, absDayOf, activityContext, clubContextOf, heroClub, isInSeason, log, logAll, readJson, withRng, writeJson } from './internal'
 import { getOffers, getSponsorOffers, setOffers, setSponsorOffers, syncClubRelations, syncEventFlags } from './season'
 
 export interface ActionResult<T = undefined> {
@@ -128,8 +130,15 @@ function moneyAction(state: GameState, fn: (rng: Rng) => LText[]): ActionResult 
   return okr(lines)
 }
 
+/** Buy an asset; the people around the hero react to it (life/butterfly luxuryReaction). */
 export const buyAsset = (state: GameState, defId: string): ActionResult =>
-  moneyAction(state, () => eco.buyAsset(state.life, state.hero, defId, state.calendar))
+  moneyAction(state, (rng) => {
+    const owned = state.life.assets.length
+    const lines = eco.buyAsset(state.life, state.hero, defId, state.calendar)
+    const def = ASSET_BY_ID[defId]
+    if (def && state.life.assets.length > owned) lines.push(...luxuryReaction(rng, state.hero, state.life, def, state.calendar, isInSeason(state.calendar.week)))
+    return lines
+  })
 
 export const sellAsset = (state: GameState, which: number | string): ActionResult =>
   moneyAction(state, () => eco.sellAsset(state.life, which, state.calendar).lines)
@@ -386,14 +395,19 @@ export function declineOffer(state: GameState, offerId: string): ActionResult {
   return okr([fill(lt('{c} teklifini reddettin.', 'You declined the offer from {c}.'), { c: offer.clubName })])
 }
 
-/** Open contract talks on an offer. */
+/** Open contract talks on an offer. The agent's and chairman's goodwill, awards and conduct move the club's limits (life/butterfly). */
 export function startNegotiation(state: GameState, offerId: string): ActionResult<NegotiationState> {
   const offer = getOffers(state).find((o) => o.id === offerId)
   if (!offer) return fail(lt('Teklif bulunamadı.', 'Offer not found.'))
   return withRng(state, (rng) => {
     const nego = startNego(rng, offer.contract, state.hero, { agent: state.life.agent, season: state.calendar.season })
+    const sameClub = offer.contract.clubId === state.hero.contract?.clubId
+    const lev = negotiationLeverage(state.hero, state.life, state.calendar.season, sameClub)
+    if (lev.headroom !== 0) nego.hidden.maxWage = Math.max(nego.offer.terms.wage, roundNice(nego.hidden.maxWage * (1 + lev.headroom)))
+    if (lev.patience !== 0) nego.patience = clamp(nego.patience + lev.patience, 20, 100)
+    if (lev.causes.length) nego.leverage = lev.causes
     writeJson(state.life, GFLAG.negotiation, { offerId, state: nego } satisfies StoredNegotiation)
-    return okr([fill(lt('{c} ile görüşmeler başladı.', 'Talks with {c} have started.'), { c: offer.clubName })], nego)
+    return okr([fill(lt('{c} ile görüşmeler başladı.', 'Talks with {c} have started.'), { c: offer.clubName }), ...lev.causes.map((c) => c.label)], nego)
   })
 }
 

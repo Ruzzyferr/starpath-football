@@ -408,6 +408,10 @@ export class MatchSim {
       s.teams[side].aiSubsPlanned = Math.min(s.teams[side].subsLeft, this.rng.int(3, 5))
       s.teams[side].tilt = this.rng.normal(0, 0.035)
     }
+    // Butterfly: the hero carries the week into the match (tired legs start the clock early).
+    const start = s.opts.heroStartFatigue ?? 0
+    const hr = s.hero.id ? s.players[s.hero.id] : undefined
+    if (hr && start > 0) hr.fatigue = clamp(start, 0, 0.3)
     if (this.heroOnPitch()) this.planHero(1, 90)
   }
 
@@ -429,7 +433,7 @@ export class MatchSim {
     return p
   }
 
-  /** Hero injury-risk multiplier (2.3#55): late fatigue, wet/frozen pitch, the opponents' tackling. */
+  /** Hero injury-risk multiplier (2.3#55): late fatigue, life proneness (health/stress), wet/frozen pitch, the opponents' tackling. */
   private heroInjuryRisk(): number {
     const id = this.s.hero.id
     const side = this.s.setup.heroSide
@@ -438,7 +442,7 @@ export class MatchSim {
     const opp = [...ot.lineup, ...ot.bench].filter((p) => this.s.players[p.id]?.onPitch)
     const oppTackling = opp.length ? opp.reduce((t, p) => t + p.attrs.tackling, 0) / opp.length : 50
     const w = this.s.setup.weather
-    return injuryRiskMultiplier({ fatigue: (this.s.players[id]?.fatigue ?? 0) * 100, surface: w === 'rain' ? 'wet' : w === 'snow' ? 'frozen' : 'dry', oppTackling })
+    return injuryRiskMultiplier({ fatigue: (this.s.players[id]?.fatigue ?? 0) * 100, proneness: this.s.opts.heroProneness ?? 1, surface: w === 'rain' ? 'wet' : w === 'snow' ? 'frozen' : 'dry', oppTackling })
   }
 
   private heroPlayer(): MatchPlayer | null {
@@ -923,11 +927,11 @@ export class MatchSim {
   }
 
   /** The hero takes a set piece if within 5% of the best taker on the pitch. */
-  private heroTakes(side: Side, f: (p: MatchPlayer) => number): boolean {
+  private heroTakes(side: Side, f: (p: MatchPlayer) => number, share = 0.95): boolean {
     const hero = this.heroPlayer()
     if (!hero || this.s.hero.side !== side || !this.heroOnPitch() || hero.position === 'GK') return false
     const best = this.bestBy(side, f)
-    return !!best && f(hero) >= f(best) * 0.95
+    return !!best && f(hero) >= f(best) * share
   }
 
   private heroIsKeeperFor(side: Side): boolean {
@@ -952,7 +956,9 @@ export class MatchSim {
     this.s.periodEvents++
     this.emit('penalty', att, this.say('penaltyAwarded', { ...this.teamVars(att), player: fouled?.name ?? '' }), { playerId: fouled?.id })
     if (this.canSetPieceHighlight()) {
-      if (this.heroTakes(att, (p) => penaltySkill(p.attrs))) return this.createHighlight('penalty', 'setpiece')
+      // The dressing room's penalty order (event flag `penalty_taker`): the designated taker steps up unless clearly outclassed.
+      const order = this.s.setup.heroPenaltyTaker
+      if (this.heroTakes(att, (p) => penaltySkill(p.attrs), order === true ? 0.85 : order === false ? 1.05 : 0.95)) return this.createHighlight('penalty', 'setpiece')
       if (this.heroIsKeeperFor(other(att))) return this.createHighlight('gk_penalty', 'setpiece')
     }
     this.simPenalty(att)

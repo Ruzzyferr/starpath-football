@@ -20,6 +20,10 @@ export interface MatchSimOptions {
   maxSubs?: number
   /** Hero's pre-match focus (GAP 2.1#9). Missing = balance. */
   heroFocus?: 'attack' | 'balance' | 'defend'
+  /** Hero's in-match fatigue at kick-off (0..0.3): tired legs, low energy, a night out (life/butterfly). */
+  heroStartFatigue?: number
+  /** Hero's injury proneness from health / stress / burnout (1 = average, life/butterfly). */
+  heroProneness?: number
 }
 
 /** Per-player match counters. */

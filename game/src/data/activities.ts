@@ -264,7 +264,7 @@ export const ACTIVITIES: readonly ActivityDef[] = [
     disciplineInSeason: -3, disciplineBeforeMatch: -6,
     name: T('Gece Kulübü', 'Nightclub'), desc: T('Şampanya, müzik ve paparazziler. Maç öncesi riskli!', 'Champagne, music and paparazzi. Risky before a match!'),
     conditions: { minMoney: 200, minAge: 18 }, triggerTags: ['nightlife', 'party'], eventChance: 0.25, done: T('Sabaha kadar dans ettin.', 'You danced until sunrise.') },
-  { id: 'casino', icon: '🎰', category: 'gambling', slots: 1, allowedSlots: [2], energy: 15, stress: 2, special: 'casino',
+  { id: 'casino', icon: '🎰', category: 'gambling', slots: 1, allowedSlots: [2], energy: 15, stress: 2, fatigue: 5, disciplineBeforeMatch: -2, special: 'casino',
     name: T('Kumarhane', 'Casino'), desc: T('Blackjack, rulet, slot, at yarışı. Sorumlu oyna.', 'Blackjack, roulette, slots, horse racing. Play responsibly.'),
     conditions: { minMoney: 100, minAge: 18 }, triggerTags: ['casino', 'gambling', 'nightlife'], eventChance: 0.15, done: T('Kumarhaneye gittin.', 'You went to the casino.') },
 

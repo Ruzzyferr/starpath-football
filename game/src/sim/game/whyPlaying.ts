@@ -8,7 +8,8 @@ import { lt } from '../career/common'
 import { heroOvr } from '../career/progression'
 import { FORM_GUARANTEE_START, MINUTES_GUARANTEE_START, ROLE_START_BASE, formGuaranteeActive, formTerm, ratingTerm, roleScore, startProbability, trustTerm } from '../career/squadRole'
 import { squadPlayers } from '../world/queries'
-import { heroClub } from './internal'
+import { absDayOf, heroClub } from './internal'
+import { CASINO_SEEN_DAY_FLAG, NIGHTLIFE_ACT_FLAG, disciplineSelectionPenalty, nightName, preMatchNightPenalty } from '../life/butterfly'
 
 export interface WhyFactor {
   key: string
@@ -36,10 +37,14 @@ export function squadAvgOvr(state: GameState): number | null {
   return best.length ? best.reduce((a, b) => a + b, 0) / best.length : null
 }
 
+/** The hero's start chance today (same inputs as the selection roll, including last night). */
+export const startChance = (state: GameState): number => startProbability(state.hero, state.life, absDayOf(state))
+
 export function whyPlaying(state: GameState): WhyPlaying | null {
   const h = state.hero
   if (!h.contract) return null
-  const chance = startProbability(h, state.life)
+  const today = absDayOf(state)
+  const chance = startProbability(h, state.life, today)
   const f: WhyFactor[] = []
   const avg = squadAvgOvr(state)
   const gap = avg === null ? null : Math.round((heroOvr(h) - avg) * 10) / 10
@@ -63,6 +68,20 @@ export function whyPlaying(state: GameState): WhyPlaying | null {
     if (Math.abs(trust) >= 0.01) f.push({ key: 'trust', points: pp(trust), actionable: true, label: trust > 0 ? lt('Teknik direktör sana güveniyor.', 'The manager trusts you.') : lt('Teknik direktörün güveni düşük.', 'The manager trusts you little.') })
     if (h.fatigue > 60) f.push({ key: 'fatigue', points: -pp(((h.fatigue - 60) / 40) * 0.3), actionable: true, label: lt('Yorgunsun, rotasyona kalabilirsin.', 'You are tired and may be rotated out.') })
     if (h.sharpness < 40) f.push({ key: 'sharp', points: -10, actionable: true, label: lt('Maç temposu düşük.', 'Match sharpness is low.') })
+    const night = preMatchNightPenalty(state.life, today)
+    if (night > 0) {
+      const act = state.life.flags[NIGHTLIFE_ACT_FLAG]
+      const seen = act === 'casino' && state.life.flags[CASINO_SEEN_DAY_FLAG] === today - 1
+      const n = nightName(act)
+      f.push({
+        key: 'night', points: -pp(night), actionable: true,
+        label: seen
+          ? { tr: `Dün geceki ${n.tr} teknik direktörün kulağına gitti.`, en: `The manager heard about last night's ${n.en}.` }
+          : { tr: `Dün geceki ${n.tr} ısınmada belli oldu.`, en: `Last night's ${n.en} showed in the warm-up.` },
+      })
+    }
+    const conduct = disciplineSelectionPenalty(state.life)
+    if (conduct >= 0.01) f.push({ key: 'conduct', points: -pp(conduct), actionable: true, label: lt('Disiplin sicilin kötü, teknik direktör sana güvenmiyor.', 'Your discipline record is poor; the manager is wary of you.') })
     if (state.life.flags.promised_start === true) f.push({ key: 'promise', points: 15, actionable: false, label: lt('Teknik direktör ilk 11 sözü verdi.', 'The manager promised you a start.') })
     if (formGuaranteeActive(h, state.life)) f.push({ key: 'formClause', points: 0, actionable: false, label: lt(`Form maddesi: şans en az %${pp(FORM_GUARANTEE_START)}.`, `Form clause: chance is at least ${pp(FORM_GUARANTEE_START)}%.`) })
     if (h.contract.minutesGuarantee) f.push({ key: 'minutes', points: 0, actionable: false, label: lt(`Süre garantin var: şans en az %${pp(MINUTES_GUARANTEE_START)}.`, `You hold a minutes guarantee: chance is at least ${pp(MINUTES_GUARANTEE_START)}%.`) })

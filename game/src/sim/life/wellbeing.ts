@@ -140,13 +140,15 @@ export function weeklyWellbeing(life: Life, hero: Hero, ctx: WellbeingContext = 
  * Composure multiplier for the match engine / highlight scenes, 0.75..1.12.
  * Happy and calm → steadier aim (+), stressed or burned out → shaky aim (−).
  * Range is intentionally narrow: life should *colour* matches, never decide them.
- *   happiness 100 → +0.10 · stress 100 → −0.20 · burnout −0.08
+ *   happiness 100 → +0.10 · stress 100 → −0.20 · burnout −0.08 · therapy +0.02
  */
 export function mentalMatchModifier(life: Life): number {
   let m = 1
   m += (life.happiness - 60) / 400
   m -= Math.max(0, life.stress - 50) / 250
   if (isBurnedOut(life)) m -= 0.08
+  // Butterfly: weekly sessions with a therapist (health event `in_therapy`) steady the mind.
+  if (life.flags.in_therapy === true) m += 0.02
   return clamp(m, 0.75, 1.12)
 }
 

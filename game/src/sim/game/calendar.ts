@@ -26,6 +26,7 @@ import { weeklyCloseFriendSupport } from '../life/closeFriends'
 import { weeklySocialTick } from '../life/social'
 import { weeklySponsorTick } from '../life/sponsors'
 import { weeklyWellbeing } from '../life/wellbeing'
+import { weeklyClimate } from '../life/butterfly'
 import {
   END_OF_SEASON_WEEK, INTERNATIONAL_BREAK_WEEKS, SEASON_WEEKS, SQUAD_ANNOUNCE_WEEKS, WINTER_WINDOW_WEEK,
 } from '../world/fixtures'
@@ -147,6 +148,8 @@ function weeklyHeroTick(state: GameState, rng: Rng, out: LText[]): void {
     logAll(state, out, weeklyInjuryTick(hero, physioSessionsThisWeek(life, cal)), 'injury', '🩺')
     logAll(state, out, weeklyAging(hero, cal.season, undefined, bodyCare(life, sleepQuality(life))), 'career')
     logAll(state, out, weeklyCasinoTick(life, hero, { rng, calendar: cal, hero }), 'event', '🎰')
+    // Butterfly: the press, a partner crisis and the dressing room weigh on the week (life/butterfly).
+    logAll(state, out, weeklyClimate(hero, life, cal), 'relation', '🌡️')
     logAll(state, out, weeklyWellbeing(life, hero, {
       assetHappiness: assetHappiness(life), weeklyNet: eco.net, matchesPlayed: wk.matches, offSeason: isOffSeason(cal.week),
     }), 'event')

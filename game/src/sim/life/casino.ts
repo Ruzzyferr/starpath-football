@@ -26,6 +26,7 @@ import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, fmtMoney, lt, meter, pushNews, type Lines } from '../career/common'
 import type { LText } from '../../core/types'
 import { perkValue } from '../career/perks'
+import { CASINO_SEEN_DAY_FLAG } from './butterfly'
 import { addHappiness, addStress } from './wellbeing'
 import { changeRelation } from './relationships'
 
@@ -981,6 +982,7 @@ export function visitCasino(rng: Rng, life: Life, hero: Hero, ctx: CasinoContext
       life.discipline = meter(life.discipline - hit)
       headline = casinoHeadlineWorthy(life, ctx)
       life.flags[CASINO_SEEN_FLAG] = absWeek(ctx.calendar)
+      life.flags[CASINO_SEEN_DAY_FLAG] = absWeek(ctx.calendar) * 7 + ctx.calendar.day // butterfly: the coach hears of it
       if (!headline) {
         lines.push(fill(lt('👀 Kumarhanede biri seni tanıdı. Şimdilik dedikodu, ama alışkanlık olursa manşet olur. Disiplin -{d}.', '👀 Someone recognised you at the casino. Just gossip for now, but make it a habit and it becomes a headline. Discipline -{d}.'), { d: hit }))
       } else {

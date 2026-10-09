@@ -17,6 +17,7 @@ import { youthTrustBonus } from '../world/profiles'
 import { perkValue } from './perks'
 import { changeRelation } from '../life/relationships'
 import { ROLE_NAMES } from './contract'
+import { disciplineSelectionPenalty, preMatchNightPenalty } from '../life/butterfly'
 
 /** Role ladder, lowest first. */
 export const ROLE_ORDER: readonly SquadRole[] = ['youth', 'reserve', 'rotation', 'starter', 'star', 'captain']
@@ -209,14 +210,17 @@ export function ratingTerm(life: Life): number {
 /**
  * Probability the hero starts the next match.
  * Adjustments: form ±0.12, recent ratings ±0.12, trust ±0.08, fatigue > 60 up to −0.3 (rotation for
- * freshness), sharpness < 40 −0.1, promised start +0.15. Injured/suspended → 0.
+ * freshness), sharpness < 40 −0.1, promised start +0.15, a night out before the match −0.06..−0.15 and
+ * discipline < 40 up to −0.1 (`today` = absolute day, life/butterfly). Injured/suspended → 0.
  */
-export function startProbability(hero: Hero, life: Life): number {
+export function startProbability(hero: Hero, life: Life, today?: number): number {
   if (hero.injury || hero.suspendedMatches > 0 || !hero.contract) return 0
   let p = ROLE_START_BASE[hero.contract.role]
   p += formTerm(hero) + ratingTerm(life) + trustTerm(hero)
   if (hero.fatigue > 60) p -= ((hero.fatigue - 60) / 40) * 0.3
   if (hero.sharpness < 40) p -= 0.1
+  // Butterfly (life/butterfly): a night out before the match and a poor conduct record cost the shirt.
+  p -= preMatchNightPenalty(life, today) + disciplineSelectionPenalty(life)
   if (life.flags.promised_start === true) p += 0.15
   if (formGuaranteeActive(hero, life)) p = Math.max(p, FORM_GUARANTEE_START)
   if (hero.contract.minutesGuarantee) p = Math.max(p, MINUTES_GUARANTEE_START)
@@ -266,8 +270,8 @@ export const ROLE_EXPECTED_MINUTES: Readonly<Record<SquadRole, [number, number]>
 }
 
 /** Roll selection for the next match and update bench-streak bookkeeping. */
-export function rollSelection(rng: Rng, hero: Hero, life: Life): { starts: boolean; lines: Lines } {
-  const starts = rng.chance(startProbability(hero, life))
+export function rollSelection(rng: Rng, hero: Hero, life: Life, today?: number): { starts: boolean; lines: Lines } {
+  const starts = rng.chance(startProbability(hero, life, today))
   return { starts, lines: trackSelection(hero, life, starts) }
 }
 

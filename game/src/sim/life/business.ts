@@ -241,6 +241,12 @@ export function weeklyBusinessTick(rng: Rng, life: Life, hero: Hero, cal: Calend
     net += p.profit
     if (p.note) lines.push(fill(lt('{i} {n}: {t}', '{i} {n}: {t}'), { i: BUSINESS_DEFS[b.kind].icon, n: b.name, t: p.note }))
     if (!b.manager) addStress(life, hero, 1.5)
+    // Butterfly: a week in the red keeps the owner awake (half as much with a manager in charge).
+    if (p.profit < 0) {
+      const scale = Math.max(1000, hero.contract?.wage ?? 1000)
+      const d = addStress(life, hero, clamp((-p.profit / scale) * 2, 0.5, 4) * (b.manager ? 0.5 : 1))
+      if (d >= 1) lines.push(fill(lt('📉 {n} zararda: uykuların kaçıyor (stres +{d}).', '📉 {n} is losing money: you are losing sleep (stress +{d}).'), { n: b.name, d: d.toFixed(1) }))
+    }
   }
   if (list.length > 0) {
     lines.push(fill(lt('İşletmelerin bu hafta: {m}', 'Your businesses this week: {m}'), { m: fmtMoney(net) }))
