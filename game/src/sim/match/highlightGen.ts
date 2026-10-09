@@ -1096,7 +1096,9 @@ const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
  */
 export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind, number>>>> = {
   // Strikers: in behind → 1v1s and breaks; target → hold-up and link-up; pivot → headers, corners, high balls.
-  runner: { one_on_one: 1.7, counter: 1.6, counter_2v1: 1.3, long_ball_control: 1.6, build_up: 0.35, header: 0.45, corner: 0.5, hold_up: 0.2, defend: 1.0 },
+  // Runner (Tur 4): his long balls are balls over the top (timed_run), not back-to-goal aerial ones he is built to
+  // lose (long_ball_control 1.6 → 0.7, shoulder_duel 0.4); his pace presses their centre-backs (press_trap 2.2).
+  runner: { one_on_one: 1.7, counter: 1.6, counter_2v1: 1.3, timed_run: 2.0, press_trap: 2.2, long_ball_control: 0.7, shoulder_duel: 0.4, dribble: 0.7, build_up: 0.35, header: 0.35, corner: 0.5, hold_up: 0.2, defend: 0.6 },
   targetForward: { hold_up: 4.0, build_up: 1.8, long_ball_control: 1.2, edge_of_box: 1.0, rebound: 1.3, header: 0.8, one_on_one: 0.6, counter: 0.7, defend: 0.8 },
   pivot: { header: 2.6, corner: 2.2, long_ball_control: 1.8, hold_up: 1.4, rebound: 1.3, one_on_one: 0.5, counter: 0.5, dribble: 0.5, build_up: 0.7 },
   // Wingers: byline crosses; cutting in to shoot; roaming playmaking; take-ons.

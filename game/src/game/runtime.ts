@@ -152,6 +152,11 @@ export const OPP_KEEPER_REACH = 0.75
 const keeperReach = (k: Pick<Agent, 'team' | 'attrs'>): number => (k.team === 'opp' ? OPP_KEEPER_REACH : KEEPER_REACH * (0.6 + 0.62 * a01(k.attrs.diving ?? 65)))
 /** Balls within 0.55 m of the keeper below this height are taken standing (was 1.7: keepers flung themselves past head-high shots). */
 export const KEEPER_STAND_MAX_Z = 2.2
+/**
+ * timed_run: how long (s) a back line caught stepping up needs to turn and chase, from the runner's speed edge over
+ * the defender (−1..1 on the 0..1 attribute scale): 0.55 s level, up to 0.85 s for a runner 0.2 quicker, never below 0.45 s.
+ */
+export const inBehindTurn = (edge: number): number => clampN(0.55 + edge * 1.5, 0.45, 0.85)
 /** One-two: after a hero pass, a second tap within this many seconds asks the receiver to return it. */
 export const ONE_TWO_WINDOW = 1.5
 /** Return-pass gate (plan 2.1#59): Passing ≥ 55 returns first time. */
@@ -1377,11 +1382,14 @@ export class HighlightRuntime {
     const plan = planKick({ kind: 'lofted', from, target, targetZ: 1.1, power: 0.5, curl: 0, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual', env: this.env, noiseScale: this.mateNoise() }, this.rng)
     this.kickBall(a, plan, 'lofted', 0.5, null)
     // Their back line was stepping up: caught going the wrong way, they have to stop and turn before they chase.
+    // A quicker runner than his marker (Pace + Acceleration) is gone before the turn is done (role balance Tur 4).
+    const quick = (a: Agent): number => a01(a.attrs.pace) * 0.5 + a01(a.attrs.acceleration ?? a.attrs.pace) * 0.5
     for (const o of this.agents) {
       if (o.team !== 'opp' || o.isKeeper || o.pos.x < this.hero.pos.x - 8) continue
-      o.think = Math.max(o.think, 0.55)
+      const turn = inBehindTurn(quick(this.hero) - quick(o))
+      o.think = Math.max(o.think, turn)
       o.vel = { x: -1.5, y: o.vel.y * 0.3 }
-      o.intent = { kind: 'run', to: { x: o.pos.x - 0.5, y: o.pos.y }, until: this.time + 0.55 }
+      o.intent = { kind: 'run', to: { x: o.pos.x - 0.5, y: o.pos.y }, until: this.time + turn }
     }
   }
 

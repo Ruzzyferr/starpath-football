@@ -254,13 +254,18 @@ export interface KickPlan {
 const curveOf = (at: Attributes): number => at.curve ?? at.setPieces
 const longOf = (at: Attributes): number => at.longPassing ?? at.passing
 
+/** Finishing's share of a shot's skill at point-blank range (Shot Power has the rest; 0 beyond 25 m). */
+export const CLOSE_FINISHING = 0.7
+
 /** Skill (0..1) relevant to a kick kind. */
 export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number {
   switch (kind) {
     case 'shot':
     case 'chip': {
+      // Inside the box placement beats power: Finishing carries up to 70 % of a point-blank strike (was 50 %, role
+      // balance Tur 4: a Derinlik Forveti's 1v1s converted no better than a Hedef Forvet's on Shot Power alone).
       const close = clamp01((25 - distance) / 15)
-      return a01(at.shooting * (1 - close * 0.5) + at.finishing * close * 0.5 + (kind === 'chip' ? at.composure * 0.15 - at.shooting * 0.15 : 0))
+      return a01(at.shooting * (1 - close * CLOSE_FINISHING) + at.finishing * close * CLOSE_FINISHING + (kind === 'chip' ? at.composure * 0.15 - at.shooting * 0.15 : 0))
     }
     case 'penalty':
       return a01(at.finishing * 0.45 + at.shooting * 0.2 + at.composure * 0.35)

@@ -1049,8 +1049,68 @@ Rol dengesi (`ROLE_BALANCE=1`, 300 simülasyon maçı + 300 oynanan an, OVR 68):
 mevki ortalamasının ±%2,8'i içinde (forvet rolleri −0,8 / −0,3 / +1,1). Bu turun değişiklikleri OVR 68'de
 oynanan anları etkilemiyor (sıkılaşma 68 üstünde başlıyor, an sayısı oynanan anın sonucunu değiştirmiyor):
 Derinlik Forveti'nin "oynanan an" sütunu −%7,4 bu turdan **önce** de aynıydı (aynı tohumla doğrulandı,
-özellik anları turundan kalma) ve ayrı bir ayar turu gerektiriyor. `roleBalance.test` korunağı (40 maç, ±%8)
+özellik anları turundan kalma) ve ayrı bir ayar turu gerektiriyor (Tur 4'te çözüldü: "Rol denge Tur 4" bölümü). `roleBalance.test` korunağı (40 maç, ±%8)
 ve `roles.test` yeşil. `STATS_GUARD=1` (40 × 10) tolerans içinde; `statsBaseline.json` yeniden merkezlenmedi.
 
 **Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit): kariyer sezonu özeti değişti
 (an sayısı, şut ağırlıkları, maç ünü); 1000 AI maçının özeti değişmedi.
+
+## Rol denge Tur 4: Derinlik Forveti oynanan anda (Ekim 2026)
+
+Sorun: Derinlik Forveti "oynanan an" ölçüsünde mevki ortalamasının −%7,4 altındaydı (hedef ±%5). An bazında
+ölçüm (`ROLE_BALANCE` an kırılımı, 250 an/tür) kök nedeni gösterdi; hepsi futbol açısından ters duruyordu:
+
+- **Hızlanma:** v6'da Hız ikiye bölününce rolün "Hız" artısı yalnızca tam süratte kaldı. OVR 68'de Derinlik
+  Forveti'nin Hızlanması 56, Hedef Forvet'inki 63'tü. Arkaya koşu, 1v1 ve kontra ilk adımlarla kazanılır.
+- **Uzun top:** karışımın %20'si sırtı dönük havadan uzun top (`long_ball_control`, ×1,6) idi. Bu rolün
+  dört eksisinden üçü (Güç, Zıplama, Kafa) tam bu düelloda. %28 başarı, an başına −0,15 reyting.
+- **Zamanlı koşu ödülsüzdü:** savunma hattı topa kim koşarsa koşsun hep 0,55 sn'de dönüyordu. Hızlı forvet
+  yavaş forvetten daha az gol buluyordu (200 anda 15'e karşı 29).
+- **1v1 bitiricilik:** yakın mesafede Bitiricilik şut becerisinin en çok %50'siydi; Bitiricilik 88'lik
+  forvet, Bitiricilik 60'lık Hedef Forvet kadar gol atıyordu (Şut Gücü 58'e karşı 65).
+
+Değişiklikler:
+
+| Dosya | Değişiklik | Gerekçe |
+|---|---|---|
+| `sim/career/createHero.ts` | `PLUS_COMPANION`: Hız artısı olan rol Hızlanma'ya Hız artısının 0,6'sını alır (OVR bütçesi içinde, v6 göçündeki 0,6 Hız payı) | "Hız odaklı" ilk adımı da kapsar. Derinlik Forveti 56 → 70; Çizgi Kanadı, Hücumcu Bek, Agresif Stoper ve Teknik Çalımcı da aynı payı alır. |
+| `game/runtime.ts` | `inBehindTurn`: zamanlı koşuda topun arkaya atılmasıyla savunmacının dönüş süresi, forvetin Hız+Hızlanma farkına göre 0,45–0,85 sn | Hattı yakalayan hızlı forvet döndükleri anda gitmiş olur. Derinlik Forveti 200 zamanlı koşuda 15 → 30 gol; Hedef Forvet 29 → 20. |
+| `game/kick.ts` | `CLOSE_FINISHING` 0,5 → 0,7: dibinden şutta Bitiricilik'in payı | Ceza sahası içinde yerleştirme güçten önemli. Eşit özellikli sayfada (his testleri) etkisi sıfır. |
+| `sim/match/highlightGen.ts` | Derinlik Forveti karışımı: `long_ball_control` 1,6 → 0,7, `timed_run` → 2,0, `press_trap` → 2,2, `shoulder_duel` 0,4, `dribble` 0,7, `header` 0,35, `defend` 1,0 → 0,6; şut payı 0,83 aynı | Bu rolün uzun topu arkaya atılan toptur. Hızıyla stoperlere pres yapar, omuz omuza düelloya girmez. Şut payı 0,9 denendi: maç başı gol beklentisi +%14 çıktı (`roles.test` ±%8), 0,83'te kaldı. |
+
+Ölçüm (`ROLE_BALANCE=1`, 300 simülasyon maçı, OVR 68). Oynanan an hem 300 an (belgelenmiş yöntem) hem 600
+anla ölçüldü: 300 anda an türü örneklemesi tek başına ±%1,5 gürültü taşıyor. Derinlik Forveti 1.200 anda −%1,6.
+
+| Mevki | Rol | Maç reytingi (sim) | Δ | G+A / maç | Oynanan (300 an) | Δ | Oynanan (600 an) | Δ |
+|---|---|---|---|---|---|---|---|---|
+| GK | reflexKeeper | 6.62 | +0.2% | 0.00 | 6.08 | +0.9% | 6.01 | +0.7% |
+| GK | shotStopper | 6.62 | +0.0% | 0.00 | 5.97 | −0.9% | 5.93 | −0.8% |
+| GK | sweeperKeeper | 6.60 | −0.2% | 0.00 | 6.02 | −0.1% | 5.98 | +0.1% |
+| CB | stopper | 6.30 | +0.7% | 0.09 | 6.16 | +1.4% | 6.29 | +3.1% |
+| CB | aerialDefender | 6.15 | −1.6% | 0.17 | 6.08 | −0.0% | 5.95 | −2.5% |
+| CB | ballPlayingDefender | 6.31 | +0.9% | 0.19 | 6.00 | −1.4% | 6.07 | −0.6% |
+| LB | balancedFullBack | 6.26 | +0.6% | 0.36 | 6.11 | +1.6% | 6.01 | −0.1% |
+| LB | attackingFullBack | 6.30 | +1.3% | 0.43 | 5.99 | −0.3% | 6.12 | +1.8% |
+| LB | defensiveFullBack | 6.11 | −1.9% | 0.18 | 5.93 | −1.3% | 5.91 | −1.7% |
+| DM | anchor | 6.17 | −1.7% | 0.20 | 5.83 | +1.8% | 5.81 | +0.9% |
+| DM | boxToBox | 6.21 | −1.1% | 0.26 | 5.77 | +0.6% | 5.74 | −0.3% |
+| DM | playmaker | 6.45 | +2.8% | 0.38 | 5.59 | −2.4% | 5.73 | −0.5% |
+| CM | boxToBox | 6.41 | −1.1% | 0.41 | 5.90 | −1.4% | 5.89 | −1.1% |
+| CM | anchor | 6.43 | −0.8% | 0.35 | 6.07 | +1.5% | 6.07 | +2.0% |
+| CM | playmaker | 6.60 | +1.9% | 0.52 | 5.97 | −0.1% | 5.89 | −1.0% |
+| AM | playmaker | 6.63 | +0.2% | 0.63 | 5.53 | −2.8% | 5.67 | −0.6% |
+| AM | boxToBox | 6.60 | −0.2% | 0.62 | 5.84 | +2.8% | 5.73 | +0.6% |
+| LW | touchlineWinger | 6.60 | −1.7% | 0.80 | 6.35 | +4.4% | 6.39 | +3.3% |
+| LW | invertedWinger | 6.88 | +2.4% | 0.83 | 5.89 | −3.3% | 5.98 | −3.3% |
+| LW | freeWinger | 6.78 | +1.0% | 0.76 | 6.05 | −0.6% | 6.22 | +0.6% |
+| LW | dribbler | 6.60 | −1.7% | 0.68 | 6.05 | −0.5% | 6.16 | −0.5% |
+| ST | runner | 6.70 | +0.1% | 0.95 | 6.29 | −3.1% | 6.32 | −2.1% |
+| ST | targetForward | 6.68 | −0.3% | 0.83 | 6.47 | −0.3% | 6.34 | −1.8% |
+| ST | pivot | 6.72 | +0.3% | 0.85 | 6.71 | +3.4% | 6.71 | +3.9% |
+
+Sonuç: simülasyon ve oynanan maç reytingi her rolde mevki ortalamasının ±%5'i içinde (en uç: Çizgi Kanadı
+oynanan +%4,4, 600 anda +%3,3). Derinlik Forveti −%7,4 → −%3,1 (600 anda −%2,1). Kimliği daha belirgin:
+en sık anları 1v1, kontra, zamanlı koşu ve pres. Sırtı dönük uzun top ve kafa artık Hedef Forvet ile Pivot'ta.
+Simülasyon G+A 1,08 → 0,95 (Hedef 0,83, Pivot 0,85). `roles.test`, `createHero.test`, his/girdi tekrarı/performans
+testleri yeşil. Golden master değişmedi (`UPDATE_GOLDEN=1` aynı özeti üretti); kariyer sonu sütunları için
+`ROLE_BALANCE_CAREERS=12` aşağıdaki kariyer tablosunda.

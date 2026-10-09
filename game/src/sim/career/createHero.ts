@@ -123,10 +123,17 @@ export function roleTemplate(role: Role, pos: Position): Partial<Record<Attribut
     minus += ((w[k] ?? 0) * v) / total
   }
   const base = PLUS_BASE * (ROLE_IMPACT_TUNE[role] ?? 1)
+  // A strength's companion (Pace → Acceleration) is part of the same strength: it shares the OVR budget.
+  const companions = spec.plus.flatMap((k) => {
+    const c = PLUS_COMPANION[k]
+    return c && !spec.plus.includes(c[0]) && !spec.minus.includes(c[0]) ? [[c[0], c[1]] as const] : []
+  })
   let plus = 0
   for (const k of spec.plus) plus += ((w[k] ?? 0) * base) / total
+  for (const [c, f] of companions) plus += ((w[c] ?? 0) * base * f) / total
   const scale = plus > 0 ? Math.max(0.5, Math.min(ROLE_SCALE_MAX, (ROLE_OVR_GAIN[pos] - minus) / plus)) : 1
   for (const k of spec.plus) out[k] = Math.round(base * ((w[k] ?? 0) > 0 ? scale : 1) * 10) / 10
+  for (const [c, f] of companions) out[c] = Math.round(base * f * ((w[c] ?? 0) > 0 ? scale : 1) * 10) / 10
   // A role whose strengths sit outside the position's core (a sweeper keeper's passing) would start below the
   // others: the rest of the gain goes evenly into the position's other attributes ("solid elsewhere").
   const rest = ROLE_OVR_GAIN[pos] - minus - plus * scale
@@ -138,6 +145,12 @@ export function roleTemplate(role: Role, pos: Position): Partial<Record<Attribut
   }
   return out
 }
+/**
+ * Strengths that carry a companion attribute (split off in save v6): a role built on Pace ("Hız odaklı") is quick
+ * over the first yards too, so Acceleration gets 0.6 of Pace's bump (the v6 migration's own 0.6 Hız share).
+ * Role balance Tur 4: without it a Derinlik Forveti had slower first yards (56) than a Hedef Forvet (63) at OVR 68.
+ */
+export const PLUS_COMPANION: Readonly<Partial<Record<AttributeKey, readonly [AttributeKey, number]>>> = { pace: ['acceleration', 0.6] }
 /** Largest strength scale (keeps a 17-year-old's best attribute in a believable range). */
 const ROLE_SCALE_MAX = 2.4
 /** Largest even top-up of the position's other attributes. */
