@@ -1296,6 +1296,12 @@ export class MatchSim {
       const counts = (h.kinds ??= {})
       counts[kind] = (counts[kind] ?? 0) + 1
     }
+    // Match condition of every player (Stamina / Work Rate over the minutes played) and the armband.
+    for (const sp of gen.scenario.players) {
+      const r = this.s.players[sp.id]
+      if (r) sp.condition = Math.round((1 - r.fatigue) * 1000) / 1000
+    }
+    if (this.s.setup.heroCaptain) gen.scenario.heroCaptain = true
     this.s.seq++
     if (context !== 'shootout') h.generated++
     const highlight: Highlight = {

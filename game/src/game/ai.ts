@@ -273,8 +273,8 @@ export interface TackleOdds {
  */
 export function tackleOdds(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean, difficulty = 1): TackleOdds {
   const t = a01(tackler.attrs.tackling) * 0.7 + a01(tackler.attrs.strength) * 0.12 + a01(tackler.attrs.positioning) * 0.08 + a01(tackler.attrs.aggression ?? 50) * 0.1
-  // The carrier rides the challenge with dribbling, agility and balance (staying on his feet).
-  const c = a01(carrier.attrs.dribbling) * 0.55 + a01(carrier.attrs.agility) * 0.25 + a01(carrier.attrs.balance ?? carrier.attrs.strength) * 0.2
+  // The carrier rides the challenge with dribbling, agility, balance (staying on his feet) and strength (shielding it).
+  const c = a01(carrier.attrs.dribbling) * 0.45 + a01(carrier.attrs.agility) * 0.2 + a01(carrier.attrs.balance ?? carrier.attrs.strength) * 0.17 + a01(carrier.attrs.strength) * 0.18
   const diffAdj = tackler.isHero ? (1 - difficulty) * 0.25 : (difficulty - 1) * 0.3
   // Timing dominates: a tackle as the ball leaves the carrier's foot is usually clean, a lunge at his feet rarely.
   let win = 0.4 + (t - c) * 0.7 + (timing - 0.55) * 1.3 + diffAdj + (slide ? 0.06 : 0)

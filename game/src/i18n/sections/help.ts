@@ -66,6 +66,7 @@ export const tr = {
       distribute: 'Sol başparmakla halkanın altına geç; top elindeyken koşan arkadaşa dokun ya da ona doğru kaydır: yakınsa elle atar, uzaksa ayakla vurursun. Önüne at.',
       cornerPick: 'Bölgeye dokun: yakın direk, arka direk, penaltı noktası ya da kısa. Önce alttaki düğmelerle yüksekliği (sert/havalı) ve kavisi (içe/dışa) seç.',
       wallSet: '+ / − ile barajdaki oyuncu sayısını (2–5), oklarla barajın yerini ayarla ve onayla. Büyük baraj açıyı kapatır ama kaleciyi kör eder, ceza sahasında adam azalır.',
+      claim: 'Orta gelince düşeceği yere koş ve top başının üstündeyken dokun: zıpla ve yakala. Kalabalıkta yumrukla uzaklaştır.',
     },
     mouse: {
       shoot: 'Fareyi kaleye tut, sol tuşu basılı tut ve bırak: şut. Basılı tutma süresi gücü belirler.',
@@ -82,6 +83,7 @@ export const tr = {
       distribute: 'WASD ile halkanın altına geç; top elindeyken arkadaşa tıkla: yakınsa atar, uzaksa vurursun. Boşluk: ışıklı arkadaşa. Önüne at.',
       cornerPick: '1–4 ya da tıkla: bölge (yakın, arka, nokta, kısa). Z: sert/havalı, X: içe/dışa kavis. Boşluk/Enter: kullan.',
       wallSet: 'W/S ya da ↑/↓: baraj sayısı (2–5). A/D ya da ←/→: barajı kaydır. Boşluk/Enter: onayla. Büyük baraj kaleciyi kör eder.',
+      claim: 'WASD ile topun düşeceği yere git, top tepedeyken Boşluk: çık ve yakala.',
     },
     pad: {
       shoot: 'B’yi basılı tut ve bırak: şut. Sol analog nişanı belirler; LB ile aşırtma.',
@@ -98,6 +100,7 @@ export const tr = {
       distribute: 'Sol analogla halkanın altına geç; top elindeyken A: ışıklı arkadaşa at ya da vur. Arkadaş koşuyor, önüne at.',
       cornerPick: 'Yön tuşlarıyla bölgeyi seç; X: sert/havalı, Y: içe/dışa kavis; A: kullan.',
       wallSet: 'Yön ↑/↓: baraj sayısı, ←/→: barajı kaydır, A: onayla.',
+      claim: 'Sol çubukla düşüş noktasına git, top tepedeyken A: çık ve yakala.',
     },
     gesture: {
       swipe: 'Kaydırma hareketi',
@@ -278,6 +281,7 @@ export const en: Shape<typeof tr> = {
       distribute: 'Slide under the ring with the left thumb; with the ball in hand tap a runner or swipe toward him: close is a throw, far is a kick. Lead him.',
       cornerPick: 'Tap a zone: near post, far post, penalty spot or short. Set the height (driven/floated) and curl (in/out) with the buttons below first.',
       wallSet: 'Use + / − for the number in the wall (2–5) and the arrows to shift it, then confirm. A big wall covers the angle but screens your keeper and leaves fewer markers.',
+      claim: 'Run to where the cross will drop and tap as it comes over your head: jump and catch it. In traffic you punch it clear.',
     },
     mouse: {
       shoot: 'Point at the goal, hold the left button and release to shoot. Hold longer for more power.',
@@ -294,6 +298,7 @@ export const en: Shape<typeof tr> = {
       distribute: 'WASD to get under the ring; with the ball in hand click a runner: close is a throw, far is a kick. Space: the lit runner. Lead him.',
       cornerPick: '1–4 or click: zone (near, far, spot, short). Z: driven/floated, X: inswinger/outswinger. Space/Enter: take it.',
       wallSet: 'W/S or ↑/↓: players in the wall (2–5). A/D or ←/→: shift the wall. Space/Enter: confirm. A big wall screens your keeper.',
+      claim: 'WASD to the drop point, Space as the ball arrives overhead: come and claim it.',
     },
     pad: {
       shoot: 'Hold B and release to shoot. The left stick aims; LB chips.',
@@ -310,6 +315,7 @@ export const en: Shape<typeof tr> = {
       distribute: 'Left stick to get under the ring; with the ball in hand press A: throw or kick to the lit runner. He is running, so lead him.',
       cornerPick: 'D-pad picks the zone; X: driven/floated, Y: in/outswinger; A: take it.',
       wallSet: 'D-pad ↑/↓: players in the wall, ←/→: shift it, A: confirm.',
+      claim: 'Left stick to the drop point, A as the ball arrives overhead: come and claim it.',
     },
     gesture: {
       swipe: 'Swipe gesture',

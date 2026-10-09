@@ -60,6 +60,14 @@ export const MOMENT_ICON: Record<string, IconName> = {
   gk_1v1: 'shield-check',
   gk_sweep: 'shield-check',
   back_post: 'shield',
+  long_shot: 'crosshair',
+  switch_play: 'tactics',
+  recovery_run: 'run',
+  shoulder_duel: 'ball',
+  timed_run: 'flag',
+  press_trap: 'shield',
+  gk_claim: 'shield-check',
+  gk_distribution: 'ball',
 }
 
 /** Decorative pitch markings for a vertical pitch (viewBox 0 0 68 105). */

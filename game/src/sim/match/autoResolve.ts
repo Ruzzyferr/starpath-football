@@ -43,6 +43,15 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   gk_1v1: { reflexes: 0.25, gkPositioning: 0.3, diving: 0.15, acceleration: 0.15, composure: 0.15 },
   gk_sweep: { gkPositioning: 0.3, anticipation: 0.15, gkDistribution: 0.1, acceleration: 0.25, handling: 0.2 },
   back_post: { positioning: 0.3, anticipation: 0.15, heading: 0.25, jumping: 0.15, balance: 0.15 },
+  // Attribute moments: each one leans on the stats it exists for.
+  long_shot: { shooting: 0.55, curve: 0.15, composure: 0.2, strength: 0.1 },
+  switch_play: { longPassing: 0.45, vision: 0.3, composure: 0.15, passing: 0.1 },
+  recovery_run: { stamina: 0.25, workRate: 0.25, pace: 0.2, acceleration: 0.15, tackling: 0.15 },
+  shoulder_duel: { strength: 0.35, balance: 0.3, pace: 0.15, acceleration: 0.1, aggression: 0.1 },
+  timed_run: { positioning: 0.3, anticipation: 0.2, acceleration: 0.2, finishing: 0.2, composure: 0.1 },
+  press_trap: { anticipation: 0.3, workRate: 0.25, aggression: 0.2, acceleration: 0.15, tackling: 0.1 },
+  gk_claim: { handling: 0.35, jumping: 0.25, gkPositioning: 0.25, composure: 0.15 },
+  gk_distribution: { gkDistribution: 0.55, composure: 0.2, vision: 0.15, passing: 0.1 },
 }
 
 /** Base outcome weights per kind (they need not sum to 1). */
@@ -75,6 +84,14 @@ const BASE: Record<HighlightKind, Weights> = {
   gk_1v1: { defended: 0.6, conceded: 0.4 },
   gk_sweep: { defended: 0.78, conceded: 0.1, foul_committed: 0.04, shot_conceded: 0.08 },
   back_post: { defended: 0.52, shot_conceded: 0.2, conceded: 0.13, foul_committed: 0.05, lost_ball: 0.1 },
+  long_shot: { goal: 0.06, saved: 0.3, missed: 0.32, blocked: 0.14, woodwork: 0.04, lost_ball: 0.1, pass_complete: 0.04 },
+  switch_play: { pass_complete: 0.55, assist: 0.02, lost_ball: 0.3, foul_won: 0.05, timeout: 0.08 },
+  recovery_run: { defended: 0.45, shot_conceded: 0.2, conceded: 0.12, foul_committed: 0.1, timeout: 0.13 },
+  shoulder_duel: { pass_complete: 0.33, goal: 0.03, saved: 0.05, missed: 0.05, lost_ball: 0.42, foul_won: 0.08, foul_committed: 0.04 },
+  timed_run: { goal: 0.17, assist: 0.02, saved: 0.18, missed: 0.12, woodwork: 0.02, lost_ball: 0.45, foul_won: 0.04 },
+  press_trap: { defended: 0.4, timeout: 0.38, foul_committed: 0.1, shot_conceded: 0.04, lost_ball: 0.08 },
+  gk_claim: { defended: 0.72, conceded: 0.12, shot_conceded: 0.12, foul_committed: 0.04 },
+  gk_distribution: { pass_complete: 0.68, lost_ball: 0.26, timeout: 0.06 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */
@@ -135,7 +152,7 @@ function emptyResult(outcome: Outcome): HighlightResult {
 /** Fills consistent micro-stats for a sampled outcome. */
 function fillStats(kind: HighlightKind, r: HighlightResult, rng: Rng): void {
   const attacking = !DEFENSIVE_KINDS.has(kind)
-  if (attacking && kind !== 'penalty' && kind !== 'freekick' && kind !== 'corner' && kind !== 'rebound') {
+  if (attacking && !KEEPER_KINDS.has(kind) && kind !== 'penalty' && kind !== 'freekick' && kind !== 'corner' && kind !== 'rebound') {
     const p = rng.int(0, 2)
     r.passes += p
     r.passesCompleted += p

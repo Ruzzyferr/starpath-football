@@ -2503,6 +2503,14 @@ export class MatchScene extends Phaser.Scene {
           if (e.won && e.by === rt.hero.id) this.vibrate(60)
           break
         }
+        case 'shoulder': {
+          // Shoulder-to-shoulder contact: a thud, dust when someone goes down, a buzz when the hero comes through it.
+          this.sfx.scuff()
+          const p = project(e.x, e.y)
+          if (e.down) this.burst(this.puffFx, this.fxN(5, 760), p.x, p.y)
+          if (e.by === rt.hero.id) this.vibrate(40)
+          break
+        }
         case 'foul': {
           // The card goes to the fouler (the hero, or the opponent who chopped our man down).
           const by = this.agentById(e.by) ?? rt.hero

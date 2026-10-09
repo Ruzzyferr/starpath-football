@@ -520,7 +520,9 @@ export function headingNoise(req: KickRequest, skill: number): number {
   const pressure = 1 + req.pressure * (1.3 - comp)
   const overhit = powerSpread(req.power, req.attrs.composure)
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
-  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
+  // From range (beyond 20 m) a strike drifts more, and more so for a weak striker of the ball.
+  const range = req.kind === 'shot' ? 1 + Math.max(0, dist(req.from, req.target) - 20) * 0.06 * (1.2 - skill) : 1
+  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
 }
 

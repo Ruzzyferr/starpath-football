@@ -6,7 +6,7 @@
  */
 import { signal } from '@preact/signals'
 
-export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness' | 'cross' | 'headMachine' | 'tackleDuel' | 'distribute' | 'cornerPick' | 'wallSet'
+export type HintGroup = 'shoot' | 'pass' | 'move' | 'header' | 'defend' | 'keeper' | 'setPiece' | 'fitness' | 'cross' | 'headMachine' | 'tackleDuel' | 'distribute' | 'cornerPick' | 'wallSet' | 'claim'
 export type InputPlatform = 'touch' | 'mouse' | 'pad'
 export type HintContext = 'match' | 'drill'
 
@@ -37,6 +37,14 @@ const MATCH_GROUPS: Record<string, HintGroup[]> = {
   gk_1v1: ['keeper'],
   gk_sweep: ['keeper', 'move'],
   back_post: ['header', 'defend'],
+  long_shot: ['shoot'],
+  switch_play: ['pass', 'move'],
+  recovery_run: ['move', 'defend'],
+  shoulder_duel: ['move', 'shoot'],
+  timed_run: ['move', 'shoot'],
+  press_trap: ['defend', 'move'],
+  gk_claim: ['claim', 'keeper'],
+  gk_distribution: ['distribute'],
 }
 
 const DRILL_GROUPS: Record<string, HintGroup> = {
@@ -113,6 +121,8 @@ export function isHintSuccess(g: HintGroup, e: HintEvent, heroId?: string | null
       return heroKick || e.type === 'setPieceChoice'
     case 'wallSet':
       return e.type === 'setPieceChoice'
+    case 'claim':
+      return (e.type === 'jump' && byHero) || (e.type === 'save' && byHero)
     case 'fitness':
       return e.type === 'score' && e.good === true
     default:

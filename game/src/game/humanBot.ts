@@ -94,6 +94,12 @@ export interface HumanBotState {
   blockErr: number
   /** Real time the set-piece choice will be made (−1 = not yet planned). */
   choiceAt: number
+  /** timed_run: real time the run starts, and whether the call went in. */
+  runAt: number
+  called: boolean
+  /** gk_claim: real time the cross was seen (−1 = not yet), and whether the keeper committed. */
+  crossSeen: number
+  claimed: boolean
 }
 
 export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
@@ -122,6 +128,10 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     looseSince: -1,
     blockErr: Number.NaN,
     choiceAt: -1,
+    runAt: rng.range(0.5, 2.2),
+    called: false,
+    crossSeen: -1,
+    claimed: false,
   }
 }
 
@@ -266,11 +276,28 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
     return
   }
-  // Holding the ball in his hands: look up, then roll it out to a free team-mate (six-second rule).
+  // Holding the ball in his hands: look up, then roll it out to the freest team-mate (six-second rule).
   if (rt.heroIsKeeper && rt.keeperHoldLeft > 0) {
     if (st.heldSinceReal < 0) st.heldSinceReal = st.real
-    if (st.real - st.heldSinceReal > st.skill.reaction + 0.6) act({ kind: 'pass', dir: { x: 1, y: st.rng.range(-0.4, 0.4) } })
+    if (st.real - st.heldSinceReal > st.skill.reaction + 0.6) {
+      const space = (a: Agent) => Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, a.pos)), 30)
+      const mate = rt.agents
+        .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && dist(a.pos, hero.pos) < 40)
+        // A person sees the obvious free man; worse players misjudge who is free.
+        .map((a) => ({ a, v: space(a) + st.rng.normal(0, st.skill.aimSd * 2) - dist(a.pos, hero.pos) * 0.05 }))
+        .sort((p, q) => q.v - p.v)[0]?.a
+      if (mate) act({ kind: 'pass', target: { x: mate.pos.x + st.rng.normal(0, st.skill.aimSd), y: mate.pos.y + st.rng.normal(0, st.skill.aimSd) } })
+      else act({ kind: 'pass', dir: { x: 1, y: st.rng.range(-0.4, 0.4) } })
+    }
     return
+  }
+  // A cross into the box (gk_claim): read it, then come for it (or, now and then, stay on the line).
+  if (rt.heroIsKeeper && rt.kind === 'gk_claim' && !rt.owner && rt.ball.z > 0.9 && !st.claimed) {
+    if (st.crossSeen < 0) st.crossSeen = st.real
+    if (st.real - st.crossSeen > st.skill.reaction) {
+      st.claimed = true
+      if (!st.rng.chance(st.skill.wrongSide * 0.6)) act({ kind: 'action' })
+    }
   }
   if (rt.heroIsKeeper) {
     const shotIncoming = !rt.owner && Math.hypot(rt.ball.vx, rt.ball.vy) > 9 && rt.ball.vx < 0
@@ -322,6 +349,21 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
         act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0, chip: false, isTap: false } })
       }
       moveTo({ x: PITCH_LENGTH - 6, y: hero.pos.y }, true)
+      return
+    }
+    if (rt.kind === 'long_shot') {
+      // From range: set it, then strike it hard toward a corner.
+      if (held > 0.45 + st.skill.reaction * 0.6) act({ kind: 'shoot', target: aimPoint(st, 1.0), power: power(st, 0.08), curl: -0.2 * st.side * st.rng.range(0, 1), chip: false })
+      rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+      return
+    }
+    if (rt.kind === 'switch_play') {
+      // Look up and hit the far side.
+      const far = rt.agents
+        .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
+        .sort((p, q) => Math.abs(q.pos.y - hero.pos.y) - Math.abs(p.pos.y - hero.pos.y))[0]
+      if (far && held > 0.35 + st.skill.reaction) act({ kind: 'pass', target: { x: far.pos.x + 2 + st.rng.normal(0, st.skill.aimSd), y: far.pos.y + st.rng.normal(0, st.skill.aimSd) }, lofted: true })
+      rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
       return
     }
     if (rt.kind === 'hold_up') {
@@ -406,6 +448,8 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
       const drop = (pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
       moveTo({ x: drop.x, y: drop.y }, true)
+      // A ball over the top far from goal: run onto it and bring it down, don't head it.
+      if ((rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') && hero.pos.x < PITCH_LENGTH - 16) return
       const eta = dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / Math.max(4, Math.hypot(rt.ball.vx, rt.ball.vy))
       // Press when the ball is about to arrive, with human timing error (game time ≈ eta·timeScale real).
       if (eta < 0.3 + st.jumpErr && dist(hero.pos, { x: drop.x, y: drop.y }) < 1.8) {
@@ -414,7 +458,26 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       }
       return
     }
+    // A ball played into space (timed_run / shoulder_duel): run onto it, where it will be, not where it is.
+    if (rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') {
+      const t = Math.min(2, dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / 8)
+      moveTo({ x: rt.ball.x + rt.ball.vx * t * 0.7, y: rt.ball.y + rt.ball.vy * t * 0.7 }, true)
+      return
+    }
     moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+    return
+  }
+  // timed_run: creep along the line, then go — call for it just after setting off (human timing error).
+  if (rt.kind === 'timed_run' && owner.team === 'hero') {
+    if (st.real < st.runAt) {
+      moveTo({ x: hero.pos.x + 1.5, y: hero.pos.y }, false)
+      return
+    }
+    moveTo({ x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + st.side * 2 }, true)
+    if (!st.called && st.real > st.runAt + Math.max(0, st.rng.normal(0.2, st.skill.timingSd))) {
+      st.called = true
+      rt.queueAction({ kind: 'call', at: { x: hero.pos.x + 10, y: hero.pos.y } })
+    }
     return
   }
   // Team-mate on the ball: attack the box.

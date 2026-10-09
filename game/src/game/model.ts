@@ -110,6 +110,8 @@ export interface Agent {
   touch: number
   /** Generic action cooldown (tackles, jumps, skills), seconds. */
   cd: number
+  /** Top-speed multiplier from match fatigue (1 = fresh legs; see {@link legsFor}). Missing = 1. */
+  legs?: number
 }
 
 /** What an AI agent is currently trying to do. */
@@ -119,12 +121,51 @@ export type AgentIntent =
   | { kind: 'mark'; target: string }
   | { kind: 'hold' }
 
-/** Top speed (m/s) from pace, sprinting or not. */
+/** Top speed (m/s) from pace, sprinting or not (tired legs late in the match run slower). */
 export function topSpeed(a: Agent): number {
   const pace = a01(a.attrs.pace)
   const base = 5.2 + pace * 1.6
-  return a.sprint && a.stamina > 0.05 ? base + 1.4 + pace * 1.2 : base
+  return (a.sprint && a.stamina > 0.05 ? base + 1.4 + pace * 1.2 : base) * (a.legs ?? 1)
 }
+
+// ───────────────────────── Match fatigue (Stamina, Work Rate) ─────────────────────────
+
+/** Per-minute fatigue of the match sim (sim/match/engine updateFatigue): Stamina saves legs, Work Rate costs them. */
+export function fatiguePerMinute(stamina: number, workRate: number | undefined, keeper = false): number {
+  if (keeper) return 0.003
+  return 0.0085 * (1.3 - stamina / 100) * (0.85 + clamp01((workRate ?? 50) / 100) * 0.3)
+}
+
+/** Expected condition (1 − fatigue, 0..1) at `minute` for a player who started the match. */
+export function conditionAt(minute: number, stamina: number, workRate: number | undefined, keeper = false): number {
+  return clamp01(1 - Math.max(0, minute) * fatiguePerMinute(stamina, workRate, keeper))
+}
+
+/** Condition above which the legs are fresh: tiredness only bites late in a match. */
+export const FRESH_CONDITION = 0.75
+
+/** Top-speed multiplier for a condition: 1 while fresh, −15 % per unit of condition below {@link FRESH_CONDITION}. */
+export const legsFor = (condition: number): number => 1 - 0.15 * Math.max(0, FRESH_CONDITION - clamp01(condition))
+
+/** Sprint tank at the start of a moment: full early on, emptier late for a tired player. */
+export const sprintTankFor = (condition: number): number => clamp01(0.45 + 0.65 * clamp01(condition))
+
+/** Accuracy-noise multiplier from fatigue: tired legs, tired technique (+30 % per unit below fresh). */
+export const fatigueNoise = (condition: number): number => 1 + 0.3 * Math.max(0, FRESH_CONDITION - clamp01(condition))
+
+/**
+ * Sprint stamina drained per second: Stamina sets the engine (−35 % at 100), Work Rate the willingness to keep
+ * going (a hard worker paces his runs, −30 % at 100).
+ */
+export const sprintDrain = (stamina: number, workRate: number | undefined): number =>
+  0.22 * (1.3 - 0.6 * a01(stamina)) * (1.15 - 0.3 * a01(workRate ?? 50))
+
+/** Sprint stamina recovered per second when not sprinting (Stamina and Work Rate both help). */
+export const sprintRecover = (stamina: number, workRate: number | undefined): number =>
+  0.12 * (0.7 + 0.4 * a01(stamina) + 0.2 * a01(workRate ?? 50))
+
+/** Hero turning rate (rad/s) from Agility: 9 at 0, 19 at 100 (≈ 15.5 for a 65). */
+export const heroTurnRate = (agility: number): number => 9 + a01(agility) * 10
 
 /** Acceleration (m/s²): the acceleration attribute (first yards), a little agility (balance on the turn). */
 export function accel(a: Agent): number {

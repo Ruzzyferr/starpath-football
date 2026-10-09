@@ -190,7 +190,7 @@ describe('Hero highlights', () => {
       return out
     }
     const gk = kinds('GK')
-    expect(Object.keys(gk).every((k) => k === 'gk_save' || k === 'gk_penalty' || k === 'fk_wall' || k === 'gk_1v1' || k === 'gk_sweep')).toBe(true)
+    expect(Object.keys(gk).every((k) => k === 'gk_save' || k === 'gk_penalty' || k === 'fk_wall' || k === 'gk_1v1' || k === 'gk_sweep' || k === 'gk_claim' || k === 'gk_distribution')).toBe(true)
     const cb = kinds('CB')
     expect(cb.defend ?? 0).toBeGreaterThan((cb.one_on_one ?? 0) + (cb.cross ?? 0))
     const st = kinds('ST')

@@ -40,6 +40,14 @@ const BANDS: Record<FeelKind, [number, number]> = {
   gk_1v1: [0.42, 0.75],
   gk_sweep: [0.6, 0.92],
   back_post: [0.25, 0.6],
+  long_shot: [0, 1],
+  switch_play: [0, 1],
+  recovery_run: [0, 1],
+  shoulder_duel: [0, 1],
+  timed_run: [0, 1],
+  press_trap: [0, 1],
+  gk_claim: [0, 1],
+  gk_distribution: [0, 1],
 }
 
 const N = 60

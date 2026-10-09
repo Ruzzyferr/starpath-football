@@ -86,6 +86,22 @@ const BANDS: Record<HighlightKind, readonly [number, number, number, number]> = 
   gk_sweep: [14, 50, 48, 82],
   // Cross from their far flank into our box.
   back_post: [4, 34, 56, 92],
+  // 25-30 m out, the opposition block deep and narrow.
+  long_shot: [40, 80, 8, 38],
+  // Our build-up on one flank, their press shifted across.
+  switch_play: [18, 58, 30, 66],
+  // We lost it upfield: our team high, their break on.
+  recovery_run: [30, 70, 40, 86],
+  // A ball into the channel behind their line.
+  shoulder_duel: [34, 74, 16, 42],
+  // On their last line: a high line set at the edge of their third.
+  timed_run: [40, 80, 20, 44],
+  // They build from the back, our front line presses high.
+  press_trap: [52, 92, 4, 46],
+  // Cross into our box: everyone back.
+  gk_claim: [4, 34, 56, 92],
+  // Ball in our keeper's hands, their front line pressing high.
+  gk_distribution: [8, 40, 46, 80],
 }
 
 /** Seconds before the moment auto-ends. */
@@ -117,6 +133,14 @@ export const TIME_LIMITS: Record<HighlightKind, number> = {
   gk_1v1: 8,
   gk_sweep: 8,
   back_post: 8,
+  long_shot: 8,
+  switch_play: 10,
+  recovery_run: 12,
+  shoulder_duel: 9,
+  timed_run: 10,
+  press_trap: 10,
+  gk_claim: 8,
+  gk_distribution: 9,
 }
 
 const SLOT_X_MIN = 16
@@ -740,6 +764,227 @@ const placeBackPost: Placer = (l) => {
   return { ball: owned(cp, crosser?.player.id ?? null), passerId: null, finisherId: null, opponentId: runner?.player.id ?? null }
 }
 
+// ───────────────────────── Attribute moments ─────────────────────────
+
+/** long_shot: 25–30 m out with room to strike; their back line has dropped to the box. */
+const placeLongShot: Placer = (l) => {
+  const rng = l.input.rng
+  const hp = { x: rng.range(75, 80), y: rng.range(22, 46) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  set(l, gk?.player.id, { x: 102.5, y: 34 })
+  const skip = new Set([gk?.player.id ?? ''])
+  // The block has dropped: the nearest midfielder is 6–8 m off him, the back line at the box.
+  const [closer, ...rest] = nearest(l, l.opps, hp, 5, skip)
+  if (closer) set(l, closer.player.id, { x: hp.x + rng.range(6, 8), y: hp.y + rng.range(-2, 2) })
+  rest.forEach((o, i) => set(l, o.player.id, { x: rng.range(87, 90), y: 22 + i * 8 + rng.range(-1.5, 1.5) }))
+  const passer = pickMate(l, (m) => relationWeight(m) * (['CM', 'AM', 'DM'].includes(roleOf(m)) ? 2 : 0.5))
+  if (passer) set(l, passer.player.id, { x: hp.x - rng.range(8, 14), y: hp.y + rng.range(-12, 12) })
+  return { ball: owned(hp, l.input.heroId), passerId: passer?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
+}
+
+/** switch_play: pressed on one flank, near options marked, the far-side wide man free. */
+const placeSwitchPlay: Placer = (l) => {
+  const rng = l.input.rng
+  const top = (l.pos.get(l.input.heroId)?.y ?? 34) < PITCH_WIDTH / 2
+  const hp = { x: rng.range(36, 52), y: top ? rng.range(10, 18) : rng.range(50, 58) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  const skip = new Set([gk?.player.id ?? ''])
+  // Their press has shifted across to the ball side.
+  for (const o of l.opps) {
+    if (o === gk) continue
+    const p = l.pos.get(o.player.id)
+    if (p) set(l, o.player.id, { x: p.x, y: p.y * 0.55 + hp.y * 0.45 })
+  }
+  // Two pressers on the hero.
+  const pressers = nearest(l, l.opps, hp, 2, skip)
+  pressers.forEach((o, i) => {
+    skip.add(o.player.id)
+    set(l, o.player.id, { x: hp.x + (i ? rng.range(1, 3) : rng.range(4, 5)), y: hp.y + (top ? 1 : -1) * (i ? rng.range(4, 5) : rng.range(-1, 1)) })
+  })
+  // The far-side wide man: free on the opposite flank.
+  const farY = top ? rng.range(58, 63) : rng.range(5, 10)
+  const wide = pickMate(l, (m) => relationWeight(m) * (WIDE.has(roleOf(m)) ? 4 : ['CM', 'AM'].includes(roleOf(m)) ? 0.6 : 0.2) * (Math.abs((l.pos.get(m.player.id)?.y ?? 34) - hp.y) > 20 ? 2 : 0.5))
+  const fp = { x: hp.x + rng.range(6, 16), y: farY }
+  set(l, wide?.player.id, fp)
+  // Near options are marked tightly.
+  const near = nearest(l, l.mates.filter((m) => m !== wide && m.player.id !== l.input.heroId), hp, 2, new Set())
+  for (const m of near) {
+    const mp = l.pos.get(m.player.id)
+    const marker = nearest(l, l.opps, mp ?? hp, 1, skip)[0]
+    if (mp && marker) {
+      skip.add(marker.player.id)
+      set(l, marker.player.id, { x: mp.x + rng.range(0.8, 1.4), y: mp.y + rng.range(-0.8, 0.8) })
+    }
+  }
+  // Nobody within 14 m of the far-side man.
+  for (const o of l.opps) {
+    const p = l.pos.get(o.player.id)
+    if (o === gk || !p || Math.hypot(p.x - fp.x, p.y - fp.y) > 14) continue
+    set(l, o.player.id, { x: p.x, y: p.y + (top ? -1 : 1) * 14 })
+  }
+  return { ball: owned(hp, l.input.heroId), passerId: null, finisherId: wide?.player.id ?? null, opponentId: pressers[0]?.player.id ?? null }
+}
+
+/** recovery_run: we lost it upfield; their carrier breaks, the hero is a few strides behind him. */
+const placeRecoveryRun: Placer = (l) => {
+  const rng = l.input.rng
+  const att = oppAttacker(l)
+  const ap = { x: rng.range(50, 58), y: rng.range(18, 50) }
+  set(l, att?.player.id, ap)
+  // The hero is caught upfield: goal-wrong side of the carrier.
+  set(l, l.input.heroId, { x: ap.x + rng.range(6, 9), y: ap.y + rng.range(-3, 3) })
+  const support = l.opps.filter((o) => o !== att && ATTACKERS.has(roleOf(o)))[0]
+  set(l, support?.player.id, { x: ap.x - rng.range(2, 5), y: ap.y > 34 ? ap.y - rng.range(10, 14) : ap.y + rng.range(10, 14) })
+  const keeper = mateKeeper(l)
+  set(l, keeper?.player.id, { x: 3, y: 34 + (ap.y - 34) * 0.15 })
+  // One defender back on the edge of the box; the rest of the team caught upfield.
+  const skip = new Set([l.input.heroId, keeper?.player.id ?? ''])
+  const backs = nearest(l, l.mates, { x: 20, y: 34 }, 1, skip)
+  backs.forEach((b) => {
+    skip.add(b.player.id)
+    set(l, b.player.id, { x: rng.range(14, 18), y: 34 + (ap.y > 34 ? -1 : 1) * rng.range(6, 10) })
+  })
+  for (const m of l.mates) {
+    if (skip.has(m.player.id) || roleOf(m) === 'GK') continue
+    const p = l.pos.get(m.player.id)
+    if (p) set(l, m.player.id, { x: Math.max(p.x, ap.x + rng.range(12, 26)), y: p.y })
+  }
+  return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
+}
+
+/** shoulder_duel: a ball is about to be played into the channel; the hero and his marker side by side. */
+const placeShoulderDuel: Placer = (l) => {
+  const rng = l.input.rng
+  const top = rng.chance(0.5)
+  const hp = { x: rng.range(62, 70), y: top ? rng.range(14, 22) : rng.range(46, 54) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  const skip = new Set([gk?.player.id ?? ''])
+  const marker = nearest(l, l.opps, hp, 1, skip)[0]
+  // Shoulder to shoulder: level with him, on the inside.
+  if (marker) {
+    skip.add(marker.player.id)
+    set(l, marker.player.id, { x: hp.x + rng.range(-0.3, 0.3), y: hp.y + (top ? 1 : -1) * rng.range(0.7, 0.9) })
+  }
+  const passer = pickMate(l, (m) => relationWeight(m) * (['CB', 'DM', 'CM', 'LB', 'RB'].includes(roleOf(m)) ? 2 : 0.4) * (m.player.attrs.passing + 20))
+  // From behind, down the line: the ball runs on the outside of the pair.
+  const pp = { x: hp.x - rng.range(13, 17), y: clamp(hp.y - (top ? 1 : -1) * rng.range(2, 5), 4, 64) }
+  if (passer) set(l, passer.player.id, pp)
+  // Cover is a long way across: the duel decides it.
+  for (const o of l.opps) {
+    const p = l.pos.get(o.player.id)
+    if (o === gk || o === marker || !p || Math.hypot(p.x - hp.x, p.y - hp.y) > 9) continue
+    set(l, o.player.id, { x: p.x, y: p.y + (top ? 1 : -1) * 9 })
+  }
+  return { ball: owned(pp, passer?.player.id ?? null), passerId: passer?.player.id ?? null, finisherId: null, opponentId: marker?.player.id ?? null }
+}
+
+/** timed_run: the hero on their last line, a team-mate on the ball in midfield looking for the run. */
+const placeTimedRun: Placer = (l) => {
+  const rng = l.input.rng
+  const lineX = rng.range(76, 82)
+  const hp = { x: lineX - rng.range(1, 2), y: rng.range(26, 42) }
+  set(l, l.input.heroId, hp)
+  const gk = oppKeeper(l)
+  set(l, gk?.player.id, { x: 101.5, y: 34 })
+  const skip = new Set([gk?.player.id ?? ''])
+  // Their back four on one line across the pitch.
+  const backs = nearest(l, l.opps, { x: lineX + 6, y: 34 }, 4, skip)
+  backs.sort((a, b) => (l.pos.get(a.player.id)?.y ?? 0) - (l.pos.get(b.player.id)?.y ?? 0))
+  backs.forEach((b, i) => {
+    skip.add(b.player.id)
+    set(l, b.player.id, { x: lineX + rng.range(-0.3, 0.3), y: 14 + i * 13.5 + rng.range(-1, 1) })
+  })
+  const passer = pickMate(l, (m) => relationWeight(m) * (['CM', 'AM', 'DM'].includes(roleOf(m)) ? 3 : 0.3) * (m.player.attrs.vision + 20))
+  const pp = { x: lineX - rng.range(22, 28), y: rng.range(26, 42) }
+  if (passer) set(l, passer.player.id, pp)
+  // Their midfield has been bypassed: it is the back line against the run.
+  const screen = nearest(l, l.opps, pp, 1, skip)[0]
+  if (screen) set(l, screen.player.id, { x: pp.x - rng.range(1, 3), y: pp.y + (rng.chance(0.5) ? 1 : -1) * rng.range(3, 5) })
+  for (const o of l.opps) {
+    const p = l.pos.get(o.player.id)
+    if (o === gk || o === screen || skip.has(o.player.id) || !p) continue
+    set(l, o.player.id, { x: Math.min(p.x, pp.x - rng.range(2, 8)), y: p.y })
+  }
+  // Our other players keep out of the passing lane (wide or behind the ball).
+  for (const m of l.mates) {
+    const p = l.pos.get(m.player.id)
+    if (!p || m === passer || m.player.id === l.input.heroId || roleOf(m) === 'GK' || p.x < pp.x - 2) continue
+    if (Math.abs(p.y - (pp.y + hp.y) / 2) < 9) set(l, m.player.id, { x: p.x, y: p.y + (p.y < 34 ? -9 : 9) })
+  }
+  return { ball: owned(pp, passer?.player.id ?? null), passerId: passer?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
+}
+
+/** press_trap: their centre-back on the ball at the edge of their box; the hero presses him. */
+const placePressTrap: Placer = (l) => {
+  const rng = l.input.rng
+  const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
+  const carrier = pool.length ? rng.weighted(pool, (o) => (['CB', 'LB', 'RB', 'DM'].includes(roleOf(o)) ? 3 : 0.3)) : undefined
+  const cp = { x: rng.range(86, 92), y: rng.range(20, 48) }
+  set(l, carrier?.player.id, cp)
+  const gk = oppKeeper(l)
+  set(l, gk?.player.id, { x: 102.5, y: 34 + (cp.y - 34) * 0.15 })
+  // His options: the other centre-back across, a full-back wide and a midfielder showing short.
+  const others = pool.filter((o) => o !== carrier)
+  const options = [
+    { x: cp.x + rng.range(-1, 2), y: cp.y > 34 ? cp.y - rng.range(13, 17) : cp.y + rng.range(13, 17) },
+    { x: cp.x - rng.range(6, 10), y: cp.y > 34 ? rng.range(58, 63) : rng.range(5, 10) },
+    { x: cp.x - rng.range(10, 14), y: 34 + rng.range(-5, 5) },
+  ]
+  others.slice(0, 3).forEach((o, i) => set(l, o.player.id, options[i]!))
+  // The hero presses the man on the ball, curving his run to cut one lane.
+  set(l, l.input.heroId, { x: cp.x - rng.range(7, 10), y: cp.y + rng.range(-3, 3) })
+  // A team-mate presses the second option; the rest hold a midfield line.
+  const presser = nearest(l, l.mates, options[0]!, 1, new Set([l.input.heroId]))[0]
+  if (presser) set(l, presser.player.id, { x: options[0]!.x - rng.range(4, 6), y: options[0]!.y })
+  return { ball: owned(cp, carrier?.player.id ?? null), passerId: null, finisherId: null, opponentId: carrier?.player.id ?? null }
+}
+
+/** gk_claim: their winger is about to cross into our six-yard box; the hero keeper on his line. */
+const placeGkClaim: Placer = (l) => {
+  const rng = l.input.rng
+  const top = rng.chance(0.5)
+  const pool = l.opps.filter((o) => roleOf(o) !== 'GK')
+  const crosser = pool.length ? rng.weighted(pool, (o) => (WIDE.has(roleOf(o)) ? 3 : 0.3) * (o.player.attrs.crossing + 5)) : undefined
+  const cp = { x: rng.range(12, 20), y: top ? rng.range(3, 6) : PITCH_WIDTH - rng.range(3, 6) }
+  set(l, crosser?.player.id, cp)
+  set(l, l.input.heroId, { x: rng.range(1.5, 2.5), y: 34 + (cp.y - 34) * 0.1 })
+  // Their forwards attack the ball from the penalty spot, our defenders goal-side of them: the six-yard box is the keeper's.
+  const runners = pool.filter((o) => o !== crosser && ATTACKERS.has(roleOf(o))).slice(0, 3)
+  runners.forEach((r, i) => set(l, r.player.id, { x: rng.range(10, 13), y: 34 + (i - 1) * 5 + rng.range(-1.5, 1.5) }))
+  const backs = nearest(l, l.mates, { x: 8, y: 34 }, 3, new Set([l.input.heroId]))
+  backs.forEach((b, i) => set(l, b.player.id, { x: rng.range(9, 11), y: 34 + (i - 1) * 5 + rng.range(-1, 1) }))
+  return { ball: owned(cp, crosser?.player.id ?? null), passerId: null, finisherId: null, opponentId: runners[0]?.player.id ?? crosser?.player.id ?? null }
+}
+
+/** gk_distribution: the hero keeper has just gathered it; their forwards press our back line high. */
+const placeGkDistribution: Placer = (l) => {
+  const rng = l.input.rng
+  const hp = { x: rng.range(5, 9), y: rng.range(28, 40) }
+  set(l, l.input.heroId, hp)
+  const outfield = l.mates.filter((m) => m.player.id !== l.input.heroId && roleOf(m) !== 'GK')
+  const defs = outfield.filter((m) => ['CB', 'LB', 'RB', 'DM'].includes(roleOf(m))).slice(0, 4)
+  const spots = [{ x: rng.range(14, 18), y: rng.range(20, 26) }, { x: rng.range(14, 18), y: rng.range(42, 48) }, { x: rng.range(24, 32), y: rng.range(4, 10) }, { x: rng.range(24, 32), y: rng.range(58, 64) }]
+  defs.forEach((d, i) => set(l, d.player.id, spots[i]!))
+  // Their front line marks the short options; one of them is a little looser (the right pass).
+  const free = rng.int(0, Math.max(0, defs.length - 1))
+  const skip = new Set<string>()
+  defs.forEach((d, i) => {
+    const p = l.pos.get(d.player.id)
+    const marker = p ? nearest(l, l.opps, p, 1, skip)[0] : undefined
+    if (!p || !marker) return
+    skip.add(marker.player.id)
+    const gap = i === free ? rng.range(4.5, 6.5) : rng.range(1.2, 2.2)
+    set(l, marker.player.id, { x: p.x + (i === free ? gap * 0.6 : 0.8), y: p.y + (p.y > 34 ? -1 : 1) * (i === free ? gap * 0.8 : 0.6) })
+  })
+  // A presser on the keeper himself.
+  const presser = nearest(l, l.opps, hp, 1, skip)[0]
+  if (presser) set(l, presser.player.id, { x: hp.x + rng.range(9, 12), y: hp.y + rng.range(-3, 3) })
+  return { ball: owned(hp, l.input.heroId), passerId: null, finisherId: defs[free]?.player.id ?? null, opponentId: presser?.player.id ?? null }
+}
+
 const PLACERS: Record<HighlightKind, Placer> = {
   build_up: placeBuildUp,
   counter: placeCounter,
@@ -766,6 +1011,14 @@ const PLACERS: Record<HighlightKind, Placer> = {
   gk_1v1: placeGk1v1,
   gk_sweep: placeGkSweep,
   back_post: placeBackPost,
+  long_shot: placeLongShot,
+  switch_play: placeSwitchPlay,
+  recovery_run: placeRecoveryRun,
+  shoulder_duel: placeShoulderDuel,
+  timed_run: placeTimedRun,
+  press_trap: placePressTrap,
+  gk_claim: placeGkClaim,
+  gk_distribution: placeGkDistribution,
 }
 
 function toScenarioPlayer(sp: SlotPlayer, side: Side, pos: Vec2): ScenarioPlayer {
@@ -821,18 +1074,18 @@ export function buildScenario(input: ScenarioInput): GeneratedScenario {
 const KIND_WEIGHTS: Record<Position, Partial<Record<HighlightKind, number>>> = {
   // Plan 2.1#119 (S21): ST ≈ 45 % shot, 20 % header, 23 % pass/link, 10 % dribble; the shot share
   // stays at the BALANCE goal-tally level (docs/BALANCE.md) instead of the plan's 50 %.
-  ST: { build_up: 1.0, counter: 1.2, one_on_one: 1.7, header: 1.8, edge_of_box: 1.4, corner: 0.8, defend: 0.3, counter_2v1: 0.7, long_ball_control: 1.0, rebound: 0.9, hold_up: 1.0, dribble: 1.3 },
-  LW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9 },
-  RW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9 },
-  AM: { build_up: 2.0, counter: 1, one_on_one: 0.8, cross: 0.6, edge_of_box: 1.8, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6, dribble: 0.8 },
-  CM: { build_up: 2.5, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3, dribble: 0.3 },
-  DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5, block: 0.9, defend_1v1: 0.6 },
+  ST: { build_up: 1.0, counter: 1.2, one_on_one: 1.7, header: 1.8, edge_of_box: 1.4, corner: 0.8, defend: 0.3, counter_2v1: 0.7, long_ball_control: 1.0, rebound: 0.9, hold_up: 1.0, dribble: 1.3, timed_run: 0.6, shoulder_duel: 0.5, press_trap: 0.3, long_shot: 0.2 },
+  LW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9, timed_run: 0.35, shoulder_duel: 0.3, press_trap: 0.35, recovery_run: 0.45, long_shot: 0.35 },
+  RW: { build_up: 1.3, counter: 1.2, one_on_one: 1, cross: 2.5, edge_of_box: 1.1, corner: 0.4, defend: 0.8, counter_2v1: 0.9, long_ball_control: 0.8, rebound: 0.3, hold_up: 0.2, dribble: 0.9, timed_run: 0.35, shoulder_duel: 0.3, press_trap: 0.35, recovery_run: 0.45, long_shot: 0.35 },
+  AM: { build_up: 2.0, counter: 1, one_on_one: 0.8, cross: 0.6, edge_of_box: 1.8, corner: 0.3, defend: 0.6, counter_2v1: 0.8, long_ball_control: 0.5, rebound: 0.6, hold_up: 0.6, dribble: 0.8, long_shot: 0.8, press_trap: 0.35, timed_run: 0.25, switch_play: 0.3, recovery_run: 0.3 },
+  CM: { build_up: 2.5, counter: 1.1, one_on_one: 0.5, cross: 0.5, edge_of_box: 1.7, corner: 0.5, defend: 1.3, counter_2v1: 0.5, long_ball_control: 0.5, rebound: 0.3, interception: 0.8, block: 0.4, defend_1v1: 0.3, dribble: 0.3, long_shot: 0.7, switch_play: 0.8, recovery_run: 0.6, press_trap: 0.35 },
+  DM: { build_up: 2.8, counter: 0.7, one_on_one: 0.2, cross: 0.2, edge_of_box: 0.9, corner: 0.6, defend: 2.4, long_ball_control: 0.3, interception: 1.5, block: 0.9, defend_1v1: 0.6, switch_play: 0.8, recovery_run: 0.55, long_shot: 0.3, press_trap: 0.2 },
   // Full-backs (plan 2.1#124): overlap + cross going forward, and the back post when the ball is on the far side; 50/50.
-  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2 },
-  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2 },
-  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.0, rebound: 0.3, interception: 2, defend_1v1: 1.2, block: 1.1, back_post: 0.6 },
+  LB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2, switch_play: 0.45, recovery_run: 0.7, shoulder_duel: 0.15 },
+  RB: { build_up: 1.4, counter: 0.9, cross: 2, edge_of_box: 0.4, corner: 0.4, defend: 2.0, counter_2v1: 0.3, long_ball_control: 0.5, interception: 0.7, defend_1v1: 1.4, block: 0.5, back_post: 1.2, switch_play: 0.45, recovery_run: 0.7, shoulder_duel: 0.15 },
+  CB: { build_up: 0.9, counter: 0.2, edge_of_box: 0.2, corner: 2.2, defend: 3.0, rebound: 0.3, interception: 2, defend_1v1: 1.2, block: 1.1, back_post: 0.6, switch_play: 0.45, recovery_run: 0.3 },
   // Keeper career (plan 2.1#85): shot-stopping, 1v1s and sweeping (+ penalties / free kicks from set pieces).
-  GK: { gk_save: 0.55, gk_1v1: 0.25, gk_sweep: 0.2 },
+  GK: { gk_save: 0.55, gk_1v1: 0.25, gk_sweep: 0.2, gk_claim: 0.18, gk_distribution: 0.14 },
 }
 
 /**
@@ -921,7 +1174,7 @@ export const HIGHLIGHTS_MIN_90 = 4
 export const HIGHLIGHTS_MAX_90 = 9
 
 /** Kinds that end in a shot at goal for the hero. */
-const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'one_on_one', 'cross', 'edge_of_box', 'corner', 'counter_2v1', 'rebound', 'dribble', 'header'])
+const SHOOTING_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'one_on_one', 'cross', 'edge_of_box', 'corner', 'counter_2v1', 'rebound', 'dribble', 'header', 'long_shot', 'timed_run'])
 
 /** Keeper moments per 90 (plan 2.1#85): 4–8. */
 export const GK_HIGHLIGHTS_MAX_90 = 8
@@ -1021,6 +1274,8 @@ export function pickHighlightKind(pos: Position, rng: Rng, goalDiff: number, min
     for (const k of Object.keys(w) as HighlightKind[]) if (SHOOTING_KINDS.has(k)) w[k] = (w[k] ?? 0) * brake
   }
   const late = minute >= 70
+  // Recovery runs are a late-game test of the legs (Stamina, Work Rate).
+  if (w.recovery_run) w.recovery_run *= minute >= 65 ? 2 : minute < 45 ? 0.5 : 1
   if (late && goalDiff < 0 && w.defend) w.defend *= 0.5
   if (late && goalDiff > 0 && w.defend) w.defend *= 1.6
   if (late && goalDiff > 0 && w.counter) w.counter *= 1.5

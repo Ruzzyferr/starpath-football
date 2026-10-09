@@ -39,6 +39,7 @@ describe('2.1#58 a pass that reaches another team-mate is a completed pass', () 
       a!.vel = { x: 0, y: 0 }
       b!.vel = { x: 0, y: 0 }
       a!.noTouch = 10 // the ball runs through A (dummy / miscontrol)
+      b!.think = 10 // B waits for it (no AI run off the line)
       tried++
       rt.queueAction({ kind: 'pass', target: { ...a!.pos } })
       runUntil(rt, () => rt.owner === b, 4)

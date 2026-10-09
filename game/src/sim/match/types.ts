@@ -120,12 +120,21 @@ export type HighlightKind =
   | 'gk_1v1' // keeper (2.1#85): an attacker is through on goal, come out and narrow the angle
   | 'gk_sweep' // keeper (2.1#85): a ball over the top, come off the line and sweep it up first
   | 'back_post' // full-back / defender (2.1#124): a cross from the far flank, cover the back post
+  // Attribute moments (owner: every stat gets a moment that exercises it).
+  | 'long_shot' // 25–30 m out with space: a power shot from range (Shooting) — or work it closer
+  | 'switch_play' // pressed on one flank, the far side is free: hit the long diagonal (Long Passing, Vision)
+  | 'recovery_run' // we lost it upfield and they break: sprint back and win it (Pace, Stamina, Work Rate)
+  | 'shoulder_duel' // a ball into the channel: shoulder to shoulder with the defender (Strength, Balance)
+  | 'timed_run' // on the last line: time the run against the offside trap, then finish (Positioning, Anticipation)
+  | 'press_trap' // they play out from the back: press, read the pass, win it high (Anticipation, Work Rate, Aggression)
+  | 'gk_claim' // keeper: a cross into the six-yard box: come and claim it (Handling, Jumping, GK Positioning)
+  | 'gk_distribution' // keeper: ball in hands, the press is on: find a free team-mate (Distribution, Composure)
 
 /** Keeper-hero kinds (2.1#85: save, penalty, 1v1, sweeping). */
-export const KEEPER_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['gk_save', 'gk_penalty', 'gk_1v1', 'gk_sweep'])
+export const KEEPER_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['gk_save', 'gk_penalty', 'gk_1v1', 'gk_sweep', 'gk_claim', 'gk_distribution'])
 
 /** Kinds where the hero's team is defending (WP-14 adds defend_1v1 and block). */
-export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall', 'gk_1v1', 'gk_sweep', 'back_post'])
+export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall', 'gk_1v1', 'gk_sweep', 'back_post', 'recovery_run', 'press_trap', 'gk_claim'])
 
 export interface Vec2 {
   x: number
@@ -141,6 +150,8 @@ export interface ScenarioPlayer {
   isHero: boolean
   attrs: Attributes
   relationToHero: number
+  /** Match condition 0..1 (1 = fresh; the engine's 1 − fatigue). Missing = derived from the minute (game/model conditionAt). */
+  condition?: number
 }
 
 export interface HighlightScenario {
@@ -153,6 +164,8 @@ export interface HighlightScenario {
   prompt: string
   /** Hero's playing role: AI team-mates look for him the way the role likes (core/roles roleAiStyle). */
   heroRole?: Role
+  /** The hero wears the armband: his leadership lifts the team-mates more (×1.5). */
+  heroCaptain?: boolean
 }
 
 export interface Highlight {
