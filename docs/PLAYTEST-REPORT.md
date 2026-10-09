@@ -821,7 +821,7 @@ Hepsi düzeltildi. Rol dengesi (Derinlik Forveti −%7,4) ayrı bir commit'te d�
 |---|---|---|
 | İtibar 18 / 21 / 25 yaş (~15 / ~50 / 75–85) | 14/55/77 · 15/52/79 · 14/51/78 | Tutuyor |
 | ST kariyer gol/maç (0,6–0,8) | 0,71 · 0,70 · 0,70 | Tutuyor |
-| ST en iyi sezon (~1,0–1,3) | 1,03 · 0,94 · 0,96 | İki tohumda alt sınırın hemen altında. Standart karışımda yalnızca 5 forvet var; tohum gürültüsü. |
+| ST en iyi sezon (~1,0–1,3) | 1,03 · 0,94 · 0,96 | Standart karışımda yalnızca 5 forvet var. `BALANCE_ST=1` (12 forvet): 1,07 · 1,08 · 1,08, kariyer 0,73 · 0,75 · 0,72, 77–82 sezonu 26,5 · 28 · 26 gol. Tutuyor. |
 | ST sezonluk gol 71–76 / 77–82 (18–28 / 25–35) | 23/25 · 19/27 · 22/26 | Tutuyor |
 | İlk 1. kademe yaşı (21–23) | 21,0 · 20,0 · 21,0 | Tohum 2000'de bir yıl erken (önceki turlarda da 20,0–21,0) |
 | Pot ≥ 85 → 25 yaşına kadar OVR 80+ | 9/9 · 11/11 · 11/11 | Tutuyor |

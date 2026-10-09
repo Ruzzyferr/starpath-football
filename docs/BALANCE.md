@@ -1114,3 +1114,49 @@ en sık anları 1v1, kontra, zamanlı koşu ve pres. Sırtı dönük uzun top ve
 Simülasyon G+A 1,08 → 0,95 (Hedef 0,83, Pivot 0,85). `roles.test`, `createHero.test`, his/girdi tekrarı/performans
 testleri yeşil. Golden master değişmedi (`UPDATE_GOLDEN=1` aynı özeti üretti); kariyer sonu sütunları için
 `ROLE_BALANCE_CAREERS=12` aşağıdaki kariyer tablosunda.
+
+### Kariyer sonu (rol başına 12 kariyer × 8 sezon, `ROLE_BALANCE_CAREERS=12`, son kod)
+
+| Mevki | Rol | Kariyer son OVR | Δ | Son itibar | Δ | Kariyer reytingi | Δ |
+|---|---|---|---|---|---|---|---|
+| GK | reflexKeeper | 81.2 | −1.3% | 84 | +0.2% | 7.06 | +0.8% |
+| GK | shotStopper | 82.5 | +0.4% | 82 | −1.4% | 6.93 | −1.1% |
+| GK | sweeperKeeper | 82.9 | +0.9% | 85 | +1.1% | 7.03 | +0.3% |
+| CB | stopper | 77.8 | −1.1% | 61 | −3.6% | 6.47 | +0.5% |
+| CB | aerialDefender | 78.9 | +0.3% | 61 | −3.9% | 6.32 | −1.7% |
+| CB | ballPlayingDefender | 79.3 | +0.7% | 68 | +7.6% | 6.50 | +1.1% |
+| LB | balancedFullBack | 79.1 | −0.1% | 54 | −6.7% | 6.17 | −0.7% |
+| LB | attackingFullBack | 80.2 | +1.2% | 62 | +7.5% | 6.22 | −0.0% |
+| LB | defensiveFullBack | 78.3 | −1.1% | 57 | −0.9% | 6.27 | +0.8% |
+| DM | anchor | 82.3 | +0.8% | 70 | +0.6% | 6.39 | −0.5% |
+| DM | boxToBox | 81.6 | +0.0% | 67 | −4.0% | 6.36 | −0.9% |
+| DM | playmaker | 80.9 | −0.8% | 72 | +3.4% | 6.51 | +1.4% |
+| CM | boxToBox | 78.8 | −0.1% | 66 | −0.4% | 6.41 | −0.6% |
+| CM | anchor | 80.0 | +1.4% | 66 | −0.4% | 6.41 | −0.5% |
+| CM | playmaker | 77.9 | −1.3% | 66 | +0.8% | 6.52 | +1.1% |
+| AM | playmaker | 81.8 | +0.3% | 74 | +4.5% | 6.44 | +0.7% |
+| AM | boxToBox | 81.3 | −0.3% | 68 | −4.5% | 6.35 | −0.7% |
+| LW | touchlineWinger | 79.3 | −0.9% | 70 | −7.3% | 6.39 | −2.0% |
+| LW | invertedWinger | 80.8 | +1.0% | 80 | +5.7% | 6.66 | +2.1% |
+| LW | freeWinger | 80.5 | +0.6% | 79 | +4.4% | 6.57 | +0.7% |
+| LW | dribbler | 79.4 | −0.7% | 74 | −2.9% | 6.47 | −0.8% |
+| ST | runner | 78.5 | −0.6% | 76 | −1.9% | 6.49 | −0.2% |
+| ST | targetForward | 80.0 | +1.3% | 81 | +4.2% | 6.55 | +0.7% |
+| ST | pivot | 78.5 | −0.6% | 76 | −2.3% | 6.47 | −0.5% |
+
+Kariyer sonu OVR'si (en uç −%1,3) ve kariyer ortalama reytingi (en uç ±%2,1) her rolde ±%5 içinde. Derinlik
+Forveti üç ölçütte de ortalamada (−%0,6 / −%1,9 / −%0,2). **Kariyer sonu itibarı** yine en gürültülü ölçüt: 12
+kariyerde 5 rol ±%5 dışında çıktı. Bu rollerin mevkileri 30 kariyerle yeniden ölçüldü:
+- **Bekler:** üçü de içeride (−%1,9 … +%2,4). 12 kariyerdeki −%6,7 / +%7,5 gürültüydü.
+- **Hâlâ dışarıda üç rol:**
+  - Oyun Kurucu Stoper +%5,7…8,0
+  - Ters Kanat +%6,4…6,6
+  - Çizgi Kanadı −%5,4…5,7
+
+Bu üç sapma bu turdan önce de vardı (Çizgi Kanadı −%6,6, Ters Kanat +%4,8). Kaynakları:
+- Reyting farkı küçük (±%2): Ters Kanat'ın sim reytingi +%2,4, Çizgi Kanadı'nınki −%1,7.
+- Bu küçük fark ödüllerde büyüyor.
+
+Şut payı denendi: Çizgi Kanadı 1,09, Ters Kanat 0,92, Oyun Kurucu Stoper 0,92. İtibar farkı yalnızca 0,3–2 puan
+kapandı, `roles.test` gol bandı da sınırda kaldı. Değişiklik geri alındı. İtibar dengesi bir sonraki tura açık
+madde: ödül dağılımı orta ve asist rolleri lehine ayarlanabilir.
