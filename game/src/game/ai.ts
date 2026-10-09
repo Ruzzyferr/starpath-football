@@ -272,16 +272,16 @@ export interface TackleOdds {
  * @param slide sliding tackle (higher reward, higher foul risk)
  */
 export function tackleOdds(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean, difficulty = 1): TackleOdds {
-  const t = a01(tackler.attrs.tackling) * 0.7 + a01(tackler.attrs.strength) * 0.12 + a01(tackler.attrs.positioning) * 0.08 + a01(tackler.attrs.aggression ?? 50) * 0.1
+  const t = a01(tackler.attrs.tackling) * 0.62 + a01(tackler.attrs.strength) * 0.12 + a01(tackler.attrs.positioning) * 0.08 + a01(tackler.attrs.aggression ?? 50) * 0.18
   // The carrier rides the challenge with dribbling, agility, balance (staying on his feet) and strength (shielding it).
-  const c = a01(carrier.attrs.dribbling) * 0.45 + a01(carrier.attrs.agility) * 0.2 + a01(carrier.attrs.balance ?? carrier.attrs.strength) * 0.17 + a01(carrier.attrs.strength) * 0.18
+  const c = a01(carrier.attrs.dribbling) * 0.5 + a01(carrier.attrs.agility) * 0.17 + a01(carrier.attrs.balance ?? carrier.attrs.strength) * 0.15 + a01(carrier.attrs.strength) * 0.18
   const diffAdj = tackler.isHero ? (1 - difficulty) * 0.25 : (difficulty - 1) * 0.3
   // Timing dominates: a tackle as the ball leaves the carrier's foot is usually clean, a lunge at his feet rarely.
-  let win = 0.4 + (t - c) * 0.7 + (timing - 0.55) * 1.3 + diffAdj + (slide ? 0.06 : 0)
+  let win = 0.4 + (t - c) * 1.3 + (timing - 0.55) * 1.3 + diffAdj + (slide ? 0.06 : 0)
   if (fromBehind) win -= 0.22
   win = clampN(win, 0.05, 0.94)
   // Aggression: more fouls when the challenge goes in hard (±0.1 around 50).
-  let foul = (slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2 + (a01(tackler.attrs.aggression ?? 50) - 0.5) * 0.2
+  let foul = (slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2 + (a01(tackler.attrs.aggression ?? 50) - 0.5) * 0.6
   foul = clampN(foul, 0.02, 0.92)
   return { win, foul }
 }
@@ -434,8 +434,8 @@ export const gkPositioning01 = (gk: Agent): number => a01(gk.attrs.gkPositioning
  * Keeper positioning: on the bisector of the angle formed by the ball and the
  * posts, further off the line as the ball approaches; rushes out 1v1.
  * Positioning (GK) sets how faithfully he holds the bisector (a poor keeper
- * drifts back toward the middle of his goal, leaving the near post) and how
- * far he dares to come off his line.
+ * drifts back toward the middle of his goal, leaving the near post) and how early
+ * he rushes out in a 1v1.
  */
 export function keeperTarget(gk: Agent, w: AiWorld): { pos: Vec2; rushing: boolean } {
   const gx = ownGoalX(gk.team)
@@ -483,7 +483,9 @@ export function keeperReaction(gk: Agent, difficulty: number): number {
 
 /** Lateral speed of a keeper dive (m/s): Diving carries it, agility and spring add a little. */
 export function diveSpeed(gk: Agent): number {
-  return 3.6 + a01(gk.attrs.diving ?? gk.attrs.agility) * 1.5 + a01(gk.attrs.agility) * 0.4 + a01(gk.attrs.jumping) * 0.4
+  // A gifted diver (above 65) covers ground faster still.
+  const dv = a01(gk.attrs.diving ?? gk.attrs.agility)
+  return 3.6 + dv * 1.5 + Math.max(0, dv - 0.65) * 1.5 + a01(gk.attrs.agility) * 0.4 + a01(gk.attrs.jumping) * 0.4
 }
 
 /** Arm reach from body centre when diving/standing (m). */

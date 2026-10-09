@@ -40,14 +40,17 @@ const BANDS: Record<FeelKind, [number, number]> = {
   gk_1v1: [0.42, 0.75],
   gk_sweep: [0.6, 0.92],
   back_post: [0.25, 0.6],
-  long_shot: [0, 1],
-  switch_play: [0, 1],
-  recovery_run: [0, 1],
-  shoulder_duel: [0, 1],
-  timed_run: [0, 1],
-  press_trap: [0, 1],
-  gk_claim: [0, 1],
-  gk_distribution: [0, 1],
+  // Attribute moments (measured N=150 average, normal): long shot scored ~0.14, switch found the far side
+  // ~0.45, recovery run stopped it ~0.62, shoulder duel won ~0.35, timed run scored ~0.13 (offside trap and a
+  // finish), press won it ~0.52, cross claimed / kept out ~0.91, distribution found a man ~0.65.
+  long_shot: [0.06, 0.25],
+  switch_play: [0.3, 0.62],
+  recovery_run: [0.45, 0.78],
+  shoulder_duel: [0.22, 0.5],
+  timed_run: [0.05, 0.25],
+  press_trap: [0.38, 0.66],
+  gk_claim: [0.8, 0.98],
+  gk_distribution: [0.5, 0.8],
 }
 
 const N = 60

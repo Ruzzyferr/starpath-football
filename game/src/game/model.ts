@@ -144,8 +144,8 @@ export function conditionAt(minute: number, stamina: number, workRate: number | 
 /** Condition above which the legs are fresh: tiredness only bites late in a match. */
 export const FRESH_CONDITION = 0.75
 
-/** Top-speed multiplier for a condition: 1 while fresh, −15 % per unit of condition below {@link FRESH_CONDITION}. */
-export const legsFor = (condition: number): number => 1 - 0.15 * Math.max(0, FRESH_CONDITION - clamp01(condition))
+/** Top-speed multiplier for a condition: 1 while fresh, −25 % per unit of condition below {@link FRESH_CONDITION}. */
+export const legsFor = (condition: number): number => 1 - 0.25 * Math.max(0, FRESH_CONDITION - clamp01(condition))
 
 /** Sprint tank at the start of a moment: full early on, emptier late for a tired player. */
 export const sprintTankFor = (condition: number): number => clamp01(0.45 + 0.65 * clamp01(condition))
@@ -155,10 +155,10 @@ export const fatigueNoise = (condition: number): number => 1 + 0.3 * Math.max(0,
 
 /**
  * Sprint stamina drained per second: Stamina sets the engine (−35 % at 100), Work Rate the willingness to keep
- * going (a hard worker paces his runs, −30 % at 100).
+ * going (a hard worker paces his runs: −40 % from 0 to 100).
  */
 export const sprintDrain = (stamina: number, workRate: number | undefined): number =>
-  0.22 * (1.3 - 0.6 * a01(stamina)) * (1.15 - 0.3 * a01(workRate ?? 50))
+  0.22 * (1.3 - 0.6 * a01(stamina)) * (1.25 - 0.5 * a01(workRate ?? 50))
 
 /** Sprint stamina recovered per second when not sprinting (Stamina and Work Rate both help). */
 export const sprintRecover = (stamina: number, workRate: number | undefined): number =>
@@ -167,7 +167,20 @@ export const sprintRecover = (stamina: number, workRate: number | undefined): nu
 /** Hero turning rate (rad/s) from Agility: 9 at 0, 19 at 100 (≈ 15.5 for a 65). */
 export const heroTurnRate = (agility: number): number => 9 + a01(agility) * 10
 
+/**
+ * Change-of-direction multiplier on acceleration (Agility): 1 when carrying on straight, and on a full turn
+ * ×0.7 at Agility 40 up to ×1.24 at 85 (1 for a 65).
+ */
+export function turnAccelMult(a: Agent, desired: Vec2): number {
+  const v = Math.hypot(a.vel.x, a.vel.y)
+  const d = Math.hypot(desired.x, desired.y)
+  if (v < 0.5 || d < 0.1) return 1
+  const cos = (a.vel.x * desired.x + a.vel.y * desired.y) / (v * d)
+  const turn = clamp01(1 - cos)
+  return 1 + (a01(a.attrs.agility) - 0.65) * 1.2 * turn
+}
+
 /** Acceleration (m/s²): the acceleration attribute (first yards), a little agility (balance on the turn). */
 export function accel(a: Agent): number {
-  return 9 + a01(a.attrs.acceleration ?? a.attrs.pace) * 7 + a01(a.attrs.agility) * 2
+  return 6.6 + a01(a.attrs.acceleration ?? a.attrs.pace) * 10 + a01(a.attrs.agility) * 2
 }

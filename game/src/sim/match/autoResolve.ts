@@ -84,14 +84,15 @@ const BASE: Record<HighlightKind, Weights> = {
   gk_1v1: { defended: 0.6, conceded: 0.4 },
   gk_sweep: { defended: 0.78, conceded: 0.1, foul_committed: 0.04, shot_conceded: 0.08 },
   back_post: { defended: 0.52, shot_conceded: 0.2, conceded: 0.13, foul_committed: 0.05, lost_ball: 0.1 },
-  long_shot: { goal: 0.06, saved: 0.3, missed: 0.32, blocked: 0.14, woodwork: 0.04, lost_ball: 0.1, pass_complete: 0.04 },
-  switch_play: { pass_complete: 0.55, assist: 0.02, lost_ball: 0.3, foul_won: 0.05, timeout: 0.08 },
-  recovery_run: { defended: 0.45, shot_conceded: 0.2, conceded: 0.12, foul_committed: 0.1, timeout: 0.13 },
-  shoulder_duel: { pass_complete: 0.33, goal: 0.03, saved: 0.05, missed: 0.05, lost_ball: 0.42, foul_won: 0.08, foul_committed: 0.04 },
-  timed_run: { goal: 0.17, assist: 0.02, saved: 0.18, missed: 0.12, woodwork: 0.02, lost_ball: 0.45, foul_won: 0.04 },
-  press_trap: { defended: 0.4, timeout: 0.38, foul_committed: 0.1, shot_conceded: 0.04, lost_ball: 0.08 },
-  gk_claim: { defended: 0.72, conceded: 0.12, shot_conceded: 0.12, foul_committed: 0.04 },
-  gk_distribution: { pass_complete: 0.68, lost_ball: 0.26, timeout: 0.06 },
+  // Attribute moments: odds of a 65 hero match the played rates (feel.test bands, docs/BALANCE.md).
+  long_shot: { goal: 0.12, saved: 0.3, missed: 0.3, blocked: 0.12, woodwork: 0.04, lost_ball: 0.08, pass_complete: 0.04 },
+  switch_play: { pass_complete: 0.42, assist: 0.02, lost_ball: 0.43, foul_won: 0.03, timeout: 0.1 },
+  recovery_run: { defended: 0.6, shot_conceded: 0.15, conceded: 0.1, foul_committed: 0.08, timeout: 0.07 },
+  shoulder_duel: { pass_complete: 0.27, goal: 0.03, saved: 0.05, missed: 0.05, lost_ball: 0.45, foul_won: 0.07, foul_committed: 0.05 },
+  timed_run: { goal: 0.11, assist: 0.02, saved: 0.14, missed: 0.12, woodwork: 0.02, lost_ball: 0.55, foul_won: 0.04 },
+  press_trap: { defended: 0.52, timeout: 0.3, foul_committed: 0.1, shot_conceded: 0.03, lost_ball: 0.05 },
+  gk_claim: { defended: 0.75, conceded: 0.09, shot_conceded: 0.12, foul_committed: 0.04 },
+  gk_distribution: { pass_complete: 0.65, lost_ball: 0.29, timeout: 0.06 },
 }
 
 /** Outcomes that improve with skill (+) or worsen (−). */

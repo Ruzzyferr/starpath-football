@@ -291,7 +291,7 @@ export function kickSkill(kind: KickKind, at: Attributes, distance = 18): number
  * kick kind's own skill (passing / vision) the rest. Sheets without the attribute fall back to passing.
  */
 export function handsSkill(kind: KickKind, at: Attributes, distance = 18): number {
-  return a01((at.gkDistribution ?? at.passing) * 0.65) + kickSkill(kind, at, distance) * 0.35
+  return a01((at.gkDistribution ?? at.passing) * 0.8) + kickSkill(kind, at, distance) * 0.2
 }
 
 /** Maximum carry of a header (m), GDD 2.1#71. */
@@ -301,7 +301,8 @@ export const HEADER_RANGE = 18
 export function maxSpin(kind: KickKind, at: Attributes): number {
   // Curve is the bend a kicker can put on it; the kick's own technique adds the rest.
   const curve = kind === 'freekick' || kind === 'cross' ? curveOf(at) * 0.6 + at.setPieces * 0.2 + at.crossing * 0.2 : curveOf(at) * 0.6 + at.shooting * 0.2 + at.passing * 0.2
-  return 22 + a01(curve) * 42
+  // Curve is the bend: a 40 puts half the spin of an 85 on it (≈ 49 rad/s for a 65, as before).
+  return Math.max(5, -35 + a01(curve) * 130)
 }
 
 /** Largest bend (m) a kicker can put on a ball: 3.5 m scaled mostly by Curve, with set pieces and shooting (2.1#45). */
@@ -511,17 +512,22 @@ export function powerSpread(power: number, composure: number): number {
   return 1 + 0.15 * redT * (1 - a01(composure)) + Math.max(0, power - 1) * 4.8
 }
 
+/** Kicks whose accuracy falls away over a long distance (long passing). */
+const PASS_KINDS_RANGE: ReadonlySet<KickKind> = new Set<KickKind>(['pass', 'lofted', 'through'])
+
 /** Accuracy noise (radians, 1σ) for a kick. */
 export function headingNoise(req: KickRequest, skill: number): number {
   const baseDeg: Record<KickKind, number> = {
     pass: 2.6, lofted: 3.4, through: 3.2, shot: 4.2, chip: 4.5, cross: 4.0, header: 7, clear: 8, penalty: 2.4, freekick: 3.4,
   }
   const comp = a01(req.attrs.composure)
-  const pressure = 1 + req.pressure * (1.3 - comp)
+  // Composure under pressure: a nervous kicker (0) is shaken 1.6×, an ice-cold one (100) barely 1.2×.
+  const pressure = 1 + req.pressure * (1.6 - 1.4 * comp)
   const overhit = powerSpread(req.power, req.attrs.composure)
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
-  // From range (beyond 20 m) a strike drifts more, and more so for a weak striker of the ball.
-  const range = req.kind === 'shot' ? 1 + Math.max(0, dist(req.from, req.target) - 20) * 0.06 * (1.2 - skill) : 1
+  // From range a strike (beyond 20 m) drifts more for a weak kicker; a long pass (beyond 25 m) drifts more for a poor passer, less for a good one.
+  const d = dist(req.from, req.target)
+  const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.7, 1 + Math.max(0, d - 25) * 0.04 * (0.65 - skill)) : 1
   const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
 }
