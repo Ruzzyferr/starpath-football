@@ -821,3 +821,142 @@ iyi değil. 16 yaşında başlayan en düşük başlar ama en yüksek zirveye ve
 ST 77–82 tohum 1000'de 21 (n=17), iki tohumun ortalaması 25 (bant alt sınırı). **Golden master bilinçli olarak
 `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit, 15121d3): yeni özellikler, rol şablonları ve ayarlar her kariyer ve
 maç sonucunu değiştiriyor.
+
+
+## Özellik etki tablosu (Ekim 2026, save v6)
+
+Sahip isteği: **her özellik oyunun mekaniğini gözle görülür değiştirmeli** ve maç içi anlar her özelliği
+kullanacak kadar çeşitli olmalı. Ölçüm: aynı sahne / aynı tohum, kahramanın tek bir özelliği **40 (düşük)**
+ve **85 (yüksek)**, geri kalan her şey eşit (65; kaleci özellikleri saha oyuncusunda 25).
+
+- Canlı anlar: `src/game/attrSensitivity.ts` (`MOMENT_PROBES`, 31 ölçüm), testler
+  `src/game/attrSensitivity.{physical,technical,mental}.test.ts`. Rapor:
+  `ATTR_REPORT=1 npx vitest run src/game/attrSensitivity` (`ATTR_N_SCALE=2` örneklemi ikiye katlar).
+  Bot (ortalama insan) ya da sabit senaryolu girdiyle oynanır; hata ölçüleri medyan, eşik hem mutlak hem
+  göreli (`rel`). Eşiği geçemeyen özellik testi kırar: çözüm eşiği gevşetmek değil, mekaniği bağlamak.
+- Arka plan maç simülasyonu: `src/sim/match/attrSensitivity.ts` (`SIM_PROBES`), N=800 maç × 2. Metrik
+  çoğunlukla `xOwn` = kahramanın kendi katkısının beklenen değeri (an başına beklenen not + arka plan
+  düelloları); takım sonucu gürültüsünü dışarıda bırakır. Liderlik takım gol farkıyla, pas oranla, bitiricilik
+  gol+asistle, agresiflik müdahale ve kart (bedeli) ile ölçülür.
+
+### Canlı an: özellik → metrik → düşük / yüksek
+
+| Özellik | An | Metrik | 40 | 85 | Etki |
+|---|---|---|---|---|---|
+| pace | recovery_run | sprint top speed | 7.72 m/s | 8.98 m/s | 1.26 m/s |
+| acceleration | recovery_run | time to 5 m from standing | 0.95 s | 0.85 s | 0.10 s |
+| stamina | recovery_run | distance in an 8 s sprint at 85' | 44.44 m | 51.86 m | 7.42 m |
+| workRate | recovery_run | sprint time before the tank runs dry (70') | 3.83 s | 4.59 s | 0.77 s |
+| strength | shoulder_duel | shoulder contacts won | 34.2% | 77.2% | 43.0 pp |
+| balance | shoulder_duel | knocked off his feet per contact | 9.8% | 0.0% | 9.8 pp |
+| agility | dribble | time to turn and go back with the ball | 1.50 s | 1.23 s | 0.27 s |
+| jumping | corner | contested headers won at corners | 31.2% | 52.4% | 21.3 pp |
+| passing | build_up | short-pass miss at the receiver (median) | 0.15 m | 0.08 m | 0.07 m |
+| longPassing | switch_play | long diagonal miss at the far side (median) | 0.45 m | 0.24 m | 0.21 m |
+| crossing | cross | cross delivery error (median) | 1.11 m | 0.69 m | 0.42 m |
+| dribbling | dribble | take-on success | 29.7% | 47.3% | 17.7 pp |
+| firstTouch | long_ball_control | first touch killed it (no heavy touch) | 73.6% | 98.7% | 25.1 pp |
+| shooting | long_shot | shot speed at full power | 31.65 m/s | 34.13 m/s | 2.48 m/s |
+| finishing | one_on_one | close-range finish miss vs aim (median) | 0.49 m | 0.35 m | 0.14 m |
+| curve | freekick | bend on a full-curl free kick | 0.46 m | 1.01 m | 0.54 m |
+| heading | header | headers on target | 66.4% | 86.0% | 19.7 pp |
+| tackling | defend | standing tackles won per attempt | 71.2% | 86.0% | 14.8 pp |
+| setPieces | freekick | free-kick aim error (median) | 0.55 m | 0.38 m | 0.17 m |
+| vision | build_up | highlighted pass options | 2.00 # | 8.05 # | 6.05 # |
+| composure | edge_of_box | shot miss with a defender on him (median) | 1.66 m | 1.22 m | 0.44 m |
+| positioning | timed_run | caught offside | 44.7% | 0.0% | 44.7 pp |
+| anticipation | interception | read the pass and cut it out himself | 28.0% | 39.0% | 11.0 pp |
+| aggression | defend | fouls given away (trade-off) | 13.0% | 17.0% | 4.0 pp |
+| aggression | defend | tackles won per attempt | 73.4% | 88.9% | 15.5 pp |
+| leadership | cross | calls for the ball answered (captain) | 26.5% | 64.5% | 38.0 pp |
+| reflexes | gk_save | shots kept out | 50.0% | 60.7% | 10.7 pp |
+| diving | gk_save | fingertip reach of a full-stretch dive | 2.93 m | 3.63 m | 0.70 m |
+| handling | gk_save | saves held (not parried) | 23.3% | 54.1% | 30.8 pp |
+| gkPositioning | gk_claim | crosses claimed or punched | 21.3% | 33.3% | 12.0 pp |
+| gkDistribution | gk_distribution | kick-out miss at the far man (median) | 0.28 m | 0.16 m | 0.12 m |
+
+### Maç simülasyonu (N=1000 maç × 2, 40 → 85)
+
+| Özellik | Mevki | Metrik | Etki | Δ not | Δ takım gol farkı |
+|---|---|---|---|---|---|
+| pace | LW | xOwn | 0.104 | 0.061 | 0.051 |
+| acceleration | ST | xOwn | 0.148 | 0.185 | 0.130 |
+| stamina | CM | xOwn | 0.095 | 0.136 | 0.146 |
+| strength | CB | xOwn | 0.144 | 0.111 | -0.016 |
+| balance | ST | xOwn | 0.138 | 0.143 | 0.047 |
+| agility | LW | xOwn | 0.110 | 0.179 | 0.101 |
+| jumping | CB | xOwn | 0.088 | 0.069 | -0.013 |
+| passing | CM | passPct | 0.107 | 0.259 | 0.091 |
+| longPassing | CM | xOwn | 0.112 | 0.159 | 0.076 |
+| crossing | LW | xOwn | 0.232 | 0.219 | 0.062 |
+| dribbling | LW | xOwn | 0.170 | 0.173 | 0.124 |
+| firstTouch | ST | xOwn | 0.139 | 0.104 | -0.032 |
+| shooting | AM | xOwn | 0.120 | 0.147 | 0.100 |
+| finishing | ST | ga | 0.306 | 0.367 | 0.164 |
+| curve | AM | xOwn | 0.107 | 0.214 | 0.025 |
+| heading | CB | xOwn | 0.104 | 0.059 | 0.040 |
+| tackling | CB | xOwn | 0.207 | 0.256 | 0.079 |
+| setPieces | AM | xOwn | 0.124 | 0.131 | 0.041 |
+| vision | CM | xOwn | 0.133 | 0.111 | -0.012 |
+| composure | ST | xOwn | 0.278 | 0.366 | 0.153 |
+| positioning | CB | xOwn | 0.206 | 0.208 | -0.123 |
+| anticipation | CB | xOwn | 0.207 | 0.361 | 0.148 |
+| aggression | CB | tackles | 0.440 | 0.054 | 0.061 |
+| aggression | CB | cards | 0.026 | 0.054 | 0.061 |
+| leadership | CB | gd | 0.369 | 0.166 | 0.369 |
+| workRate | CM | xOwn | 0.088 | 0.133 | 0.158 |
+| reflexes | GK | xOwn | 0.317 | 0.637 | 0.215 |
+| diving | GK | xOwn | 0.241 | 0.444 | 0.098 |
+| handling | GK | xOwn | 0.263 | 0.414 | 0.072 |
+| gkPositioning | GK | xOwn | 0.407 | 0.775 | 0.243 |
+| gkDistribution | GK | xOwn | 0.228 | 0.177 | -0.050 |
+
+### Bağlanan mekanikler (özet)
+
+- **Kondisyon (Stamina) / Çalışkanlık (Work Rate):** dakikaya göre yorgunluk (`conditionAt`, motorun yorgunluk
+  modeliyle aynı). Geç dakikada depar deposu boş başlar, bacaklar yavaşlar (koşul 0.75 altı: −%25/birim),
+  isabet düşer; depar tüketimi Stamina ve Work Rate ile azalır, toparlanma ikisiyle artar. Simde Work Rate
+  daha çok koşar (yorgunluk ×0.85–1.15), takımına pres katkısı verir, topa daha çok gelir.
+- **Hız / İvme / Çeviklik:** tepe hız (pace), ilk adımlar (acceleration geniş aralık), yön değiştirme ivmesi ve
+  dönüş hızı (agility).
+- **Güç / Denge:** omuz omuza temas (`shoulderContact`: shoulder_duel, long_ball_control, recovery_run,
+  hold_up, counter); kaybeden çizgisinden çıkar, dengesi zayıfsa yere düşer ve topu kaybeder. Top taşıyanın
+  müdahaleye direnci güç içerir.
+- **Sıçrama / Kafa:** hava topu düellosu üstel ağırlık (sıçrama baskın), kafa isabeti kafa vuruşuyla.
+- **İlk dokunuş:** kontrol eşiği 6 + 14.5·FT m/s; kötü dokunuşta top daha uzağa seker.
+- **Şut / Bitiricilik / Falso / Duran top / Orta / Uzun pas / Pas:** vuruş modeli (hız, sapma, falso
+  aralığı −35 + 130·mix rad/s, uzun pasta mesafeyle büyüyen sapma iyi pasörde küçülür).
+- **Soğukkanlılık:** baskı altında sapma ×(1 + baskı·(1.6 − 1.4·comp)).
+- **Önsezi:** müdahale zamanlaması, rakip pasını okuyup koridora koşu (menzil 0.5 + 3.5·önsezi m),
+  ağır çekim penceresi, pas kesme erişimi.
+- **Pozisyon alma:** takım arkadaşı topu tutarken ofsayt çizgisinde durur (70 üstü tam), çizgi öne çıkınca
+  geri döner; zayıf pozisyon ~2 m kayar.
+- **Agresiflik:** müdahale gücü ↑, faul olasılığı ↑ (bedeli; simde kart oranı ↑).
+- **Liderlik:** AI takım arkadaşları daha hızlı karar verir, biraz daha hızlı koşar, daha temiz pas/orta atar,
+  daha çok müdahaleye girer, çağrıya daha çok cevap verir (kaptan ×1.5); simde takım birimleri
+  ×(1 ± %10·(L−65)/100, kaptan ×1.5); canlı hub'da yeni **kaptanın toparlaması (rally)** kararı.
+- **Kaleci:** refleks (el erişimi, ağır çekim), plonjon (erişim ve uçuş hızı), top tutma (yakala / çel),
+  pozisyon (açıortay sadakati, şut anında yan adım, orta karşılama koşusu ve sıçrama), oyun kurma (elden
+  dağıtım isabeti).
+- **Arka plan düelloları (`sim/match/heroDuels.ts`):** hava, omuz, sprint yarışı, çalım, pres, kontrol,
+  oyun değiştirme; kalecide orta yakalama ve dağıtım. Dakika anahtarlı hash ile (motor RNG'si değişmez),
+  rakip seviyesine karşı ±0.025 not; 15 dakikada bir "Oyuna katkı" satırı.
+
+### Yeni an türleri (özellik anları)
+
+| Tür | Özellikler | Mevkiler (ağırlık) | Ortalama bot başarısı | Bant |
+|---|---|---|---|---|
+| long_shot | Şut Gücü, Falso, Soğukkanlılık | AM, CM, LW/RW, ST | 0.14 (gol) | 0.06–0.25 |
+| switch_play | Uzun Pas, Vizyon | CM, DM, CB, FB | 0.45 (karşı kanat) | 0.30–0.62 |
+| recovery_run | Kondisyon, Çalışkanlık, Hız | CM, DM, FB, kanat (65'+ ×2) | 0.62 | 0.45–0.78 |
+| shoulder_duel | Güç, Denge | ST, kanat, FB | 0.35 | 0.22–0.50 |
+| timed_run | Pozisyon Alma, Önsezi, İvme | ST, kanat, AM | 0.13 (gol) | 0.05–0.25 |
+| press_trap | Önsezi, Çalışkanlık, Agresiflik | ST, kanat, AM, CM | 0.52 | 0.38–0.66 |
+| gk_claim | Top Tutma, Sıçrama, Pozisyon (GK) | GK | 0.91 (gol yememe) | 0.80–0.98 |
+| gk_distribution | Oyun Kurma (GK), Soğukkanlılık | GK | 0.65 | 0.50–0.80 |
+
+Her biri uçtan uca: yerleşim (`highlightGen`), mevki/rol ağırlığı, çalışma zamanı, oto-çözüm oranları
+(65'lik kahramanın oranı ölçülen oynanış oranına hizalı), TR/EN istem metni, kontrol ipucu (gk_claim için yeni
+`claim` ipucu), demo sayfası ve e2e, his bandı (`feel.test.ts`).
+
+Not: değişen mekanikler golden master'ı değiştirir (`src/sim/golden.json` lider tarafından yeniden üretilecek).
