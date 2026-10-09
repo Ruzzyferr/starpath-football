@@ -20,7 +20,9 @@ const SKILL_MIX: Record<HighlightKind, Partial<Record<AttributeKey, number>>> = 
   build_up: { passing: 0.3, longPassing: 0.1, vision: 0.25, firstTouch: 0.15, composure: 0.2 },
   counter: { pace: 0.15, acceleration: 0.15, dribbling: 0.25, finishing: 0.25, vision: 0.2 },
   one_on_one: { finishing: 0.45, composure: 0.3, dribbling: 0.15, acceleration: 0.1 },
-  cross: { crossing: 0.3, curve: 0.1, finishing: 0.25, heading: 0.15, composure: 0.2 },
+  // The hero delivers the cross (wide roles): the delivery decides it, not his own heading (role balance Tur 5:
+  // the old 40 % finishing + heading mix made the touchline winger's signature moment his weakest).
+  cross: { crossing: 0.45, curve: 0.15, vision: 0.1, composure: 0.15, finishing: 0.15 },
   edge_of_box: { shooting: 0.4, curve: 0.2, composure: 0.2, finishing: 0.2 },
   freekick: { setPieces: 0.45, curve: 0.25, shooting: 0.15, composure: 0.15 },
   penalty: { composure: 0.5, finishing: 0.3, setPieces: 0.2 },

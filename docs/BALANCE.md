@@ -1159,4 +1159,93 @@ Bu üç sapma bu turdan önce de vardı (Çizgi Kanadı −%6,6, Ters Kanat +%4,
 
 Şut payı denendi: Çizgi Kanadı 1,09, Ters Kanat 0,92, Oyun Kurucu Stoper 0,92. İtibar farkı yalnızca 0,3–2 puan
 kapandı, `roles.test` gol bandı da sınırda kaldı. Değişiklik geri alındı. İtibar dengesi bir sonraki tura açık
-madde: ödül dağılımı orta ve asist rolleri lehine ayarlanabilir.
+madde: ödül dağılımı orta ve asist rolleri lehine ayarlanabilir. **Kapandı (Tur 5, aşağıda).**
+
+### Kariyer sonu itibarı (Tur 5): açık madde kapandı
+
+Ölçüm: rol başına 30 kariyer × 8 sezon (`ROLE_BALANCE_CAREERS=30`), kaynak dökümü `SeasonSample.repFrom` + yeni
+`motm` / `awards` alanları (`balanceSim.ts`). Önce = HEAD (e5a6603).
+
+**Gerçek sürücü ödül değil, reyting.** Kariyer reytingindeki ±%2'lik fark itibarda 3–4 kat büyüyor: maç itibarı
+`(reyting − 6,5) × 0,4` ile, Maçın Adamı en yüksek reytinge, Sezonun 11'i / sezonun savunmacısı reyting × 8 ile,
+sezon duruşu 6,6 eşiğiyle gidiyor. Olay kartları sürücü değil, tersine telafi ediyor (düşük itibar daha çok kart
+itibarı alıyor). Rol başına (kariyer başına toplam):
+- **Çizgi Kanadı / Ters Kanat:** maç itibarı 35,7 / 43,5, MOTM/sezon 3,2 / 4,7, reyting 6,40 / 6,65; asist eşit
+  (6,1 / 5,9). Sebep: `cross` anının beceri karışımı %40 bitiricilik + kafa idi (orta yapan kahramanın kendi kafası).
+  Orta 80'lik Çizgi Kanadı'nın imza anı becerisi 58, orta 53'lük Ters Kanat'ınki 62 çıkıyordu.
+- **Oyun Kurucu Stoper / Hava Hakimi:** maç itibarı 25,4 / 16,2, MOTM/sezon 3,8 / 2,6, Sezonun 11'i 1,4 / 0,4,
+  reyting 6,48 / 6,28. Build-up anı stoper için en cömert an (pas tamamlama +0,08 ve pas başına +0,03);
+  Oyun Kurucu Stoper 2,0×, Hava Hakimi 0,8× alıyordu.
+
+**Değişiklikler:**
+- `autoResolve.SKILL_MIX.cross`: orta teslimatla ölçülür: orta 0,45, falso 0,15, vizyon 0,1, soğukkanlılık 0,15,
+  bitiricilik 0,15 (eski: orta 0,3, falso 0,1, bitiricilik 0,25, kafa 0,15, soğukkanlılık 0,2). Çizgi Kanadı 58 → 64,
+  Ters Kanat 62 → 62. Orta yapan bekleri de güçlendirdi, bu yüzden:
+- `ROLE_KIND_MULT`: Hücumcu Bek `cross` 1,7 → 1,4; Defansif Bek `build_up` 0,7 → 1,1, `counter` 0,6 → 0,8
+  (kimlik testi: hücumcu bekin orta + 2v1 payı defansifin ≥ 1,8 katı, 1,88). Oyun Kurucu Stoper `build_up`
+  2,0 → 1,6 (hâlâ stoperin 2 katından fazla), Hava Hakimi `build_up` 0,8 → 1,1.
+- İtibar formülü, ödüller ve kartlar değişmedi (denenen alternatif: top kapma başına maç itibarı; tüm savunmacıların
+  itibar düzeyini 5–7 puan kaydırıyor ve Hava Hakimi'ni geride bırakıyordu, alınmadı).
+
+| Mevki | Rol | Son itibar önce | Δ | Son itibar sonra | Δ |
+|---|---|---|---|---|---|
+| CB | stopper | 58 | −2.3% | 58 | −2.3% |
+| CB | aerialDefender | 56 | −5.7% | 59 | −1.5% |
+| CB | ballPlayingDefender | 64 | +8.0% | 62 | +3.9% |
+| LW | touchlineWinger | 70 | −5.7% | 74 | −2.2% |
+| LW | invertedWinger | 79 | +6.6% | 79 | +3.7% |
+| LW | freeWinger | 75 | +1.1% | 78 | +2.4% |
+| LW | dribbler | 73 | −1.9% | 73 | −3.8% |
+| LB | balanced / attacking / defensive | Tur 4: −1,9 … +2,4 | | 59 / 61 / 59 | −0.2% / +1.9% / −1.7% |
+
+Tam tablo, son kod, 24 rol (300 maç sim, 300 oynanan an, 30 kariyer × 8 sezon; her mevki ayrı süreçte
+`ROLE_BALANCE_POS=<mevki>`). Beş ölçütün hepsi her rolde ±%5 içinde; en uç değer Çizgi Kanadı'nın oynanan maç
+reytingi +%4,4.
+
+| Mevki | Rol | Maç reytingi (sim) | Δ | Oynanan maç reytingi | Δ | Kariyer son OVR | Δ | Son itibar | Δ | Kariyer reytingi | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| GK | reflexKeeper | 6.62 | +0.2% | 6.08 | +0.9% | 81.0 | −1.2% | 83 | −0.9% | 7.02 | +0.1% |
+| GK | shotStopper | 6.62 | +0.0% | 5.97 | −0.9% | 82.1 | +0.2% | 84 | −0.4% | 6.96 | −0.6% |
+| GK | sweeperKeeper | 6.60 | −0.2% | 6.02 | −0.1% | 82.8 | +1.0% | 85 | +1.3% | 7.04 | +0.5% |
+| CB | stopper | 6.30 | +1.1% | 6.16 | +1.1% | 77.7 | −1.1% | 58 | −2.3% | 6.46 | +0.8% |
+| CB | aerialDefender | 6.15 | −1.3% | 6.12 | +0.4% | 78.8 | +0.3% | 59 | −1.5% | 6.28 | −1.9% |
+| CB | ballPlayingDefender | 6.25 | +0.3% | 6.01 | −1.5% | 79.2 | +0.8% | 62 | +3.9% | 6.47 | +1.1% |
+| LB | balancedFullBack | 6.38 | +1.1% | 6.11 | +1.3% | 79.4 | +0.0% | 59 | −0.2% | 6.30 | +0.1% |
+| LB | attackingFullBack | 6.28 | −0.4% | 6.02 | −0.2% | 80.1 | +1.0% | 61 | +1.9% | 6.28 | −0.1% |
+| LB | defensiveFullBack | 6.26 | −0.7% | 5.97 | −1.0% | 78.5 | −1.0% | 59 | −1.7% | 6.30 | +0.0% |
+| DM | anchor | 6.24 | −1.0% | 5.83 | +1.8% | 82.2 | +0.9% | 71 | +0.7% | 6.45 | −0.0% |
+| DM | boxToBox | 6.23 | −1.2% | 5.77 | +0.6% | 81.5 | −0.0% | 68 | −2.3% | 6.40 | −0.8% |
+| DM | playmaker | 6.44 | +2.2% | 5.59 | −2.4% | 80.7 | −0.9% | 71 | +1.6% | 6.51 | +0.8% |
+| CM | boxToBox | 6.48 | −0.1% | 5.90 | −1.4% | 78.8 | +0.0% | 65 | −0.4% | 6.40 | −0.5% |
+| CM | anchor | 6.43 | −0.9% | 6.07 | +1.5% | 79.8 | +1.3% | 65 | −0.3% | 6.43 | −0.1% |
+| CM | playmaker | 6.56 | +1.0% | 5.97 | −0.1% | 77.7 | −1.4% | 66 | +0.7% | 6.47 | +0.6% |
+| AM | playmaker | 6.60 | +0.3% | 5.53 | −2.8% | 81.2 | +0.0% | 70 | −0.1% | 6.43 | +0.4% |
+| AM | boxToBox | 6.56 | −0.3% | 5.84 | +2.8% | 81.2 | +0.0% | 71 | +0.1% | 6.38 | −0.4% |
+| LW | touchlineWinger | 6.76 | +0.2% | 6.35 | +4.4% | 78.7 | −1.1% | 74 | −2.2% | 6.51 | −1.1% |
+| LW | invertedWinger | 6.86 | +1.7% | 5.89 | −3.3% | 80.5 | +1.2% | 79 | +3.7% | 6.67 | +1.4% |
+| LW | freeWinger | 6.71 | −0.5% | 6.05 | −0.6% | 80.0 | +0.6% | 78 | +2.4% | 6.60 | +0.4% |
+| LW | dribbler | 6.65 | −1.4% | 6.05 | −0.5% | 78.9 | −0.8% | 73 | −3.8% | 6.53 | −0.7% |
+| ST | runner | 6.70 | +0.1% | 6.29 | −3.1% | 78.3 | −0.6% | 76 | −0.8% | 6.48 | −0.2% |
+| ST | targetForward | 6.68 | −0.3% | 6.47 | −0.3% | 79.6 | +1.1% | 78 | +2.0% | 6.52 | +0.5% |
+| ST | pivot | 6.72 | +0.3% | 6.71 | +3.4% | 78.4 | −0.5% | 76 | −1.3% | 6.47 | −0.3% |
+
+`BALANCE=1` (30 kariyer × 10 sezon), tohum 1000 · 2000 · 3000, son kod:
+
+| Ölçüt | 1000 · 2000 · 3000 | Hedef |
+|---|---|---|
+| İtibar 18 / 21 / 25 | 14/55/80 · 14/54/78 · 14/51/78 | ~15 / ~50 / 75–85 |
+| OVR medyanı 21 / 25 | 76/81 · 75/81 · 77/82 | 17–21 sezonda +5–7 |
+| Pot ≥ 85: 25 yaşına kadar OVR 80+ | 9/9 · 11/11 · 11/11 | çoğunluk |
+| İlk 1. kademe / elit kulüp yaşı | 20,0/23,0 · 20,5/23,0 · 21,0/22,0 | 21–23 / 22–24 |
+| ST gol/maç kariyer / en iyi sezon (medyan) | 0,71/1,03 · 0,70/0,94 · 0,70/0,96 | ~0,6–0,8 / ~1,0–1,3 |
+| ST sezonluk gol 71–76 / 77–82 (standart karışım) | 23/25 · 19/27 · 22/26 | 18–28 / 25–35 |
+| Kanat/AM · orta saha sezonluk gol 77–82 | 13·7 · 11·8 · 9·9 | 10–18 · 6–12 |
+| 3. sezon net servet medyan / max | 117K/560K · 167K/508K · 112K/488K | ≤ 300K / ≤ 2M |
+| Kumarhane payı kumarbaz / herkes | %24/%4 · %14/%1 · %15/%2 | %15–35 / ≤ %5 |
+| Sakatlık/sezon, sakat hafta | 1,5/3,2 · 1,3/3,5 · 1,4/3,3 | 1–2 / 3–6 |
+| İflas | %0 her tohumda | ≤ %5 |
+
+Hedefler tutuyor. Sınırdakiler tohum gürültüsü düzeyinde: ilk 1. kademe yaşı (bilinen sınır, değişmedi),
+tohum 3000'de kanat/AM 77–82 bandı 9 (17 sezonluk örneklem; önceki turlarda da 9–10 ölçüldü), tohum 2000'de
+forvetin en iyi sezon medyanı 0,94 (5 forvet) ve kumarbaz payı %14 (6 kumarbaz). His / girdi tekrarı / performans
+testleri yeşil. Golden master değişmedi (`UPDATE_GOLDEN=1` aynı özeti üretti).

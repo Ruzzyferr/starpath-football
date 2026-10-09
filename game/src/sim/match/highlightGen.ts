@@ -1110,14 +1110,16 @@ export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind,
   anchor: { interception: 2.0, block: 1.6, defend: 1.4, defend_1v1: 1.4, build_up: 0.8, long_ball_control: 0.7, edge_of_box: 1.3, counter: 0.6, one_on_one: 0.4, cross: 0.6 },
   boxToBox: { rebound: 1.6, counter: 1.4, interception: 1.2, edge_of_box: 1.1, defend: 1.1, build_up: 0.85 },
   playmaker: { build_up: 1.5, long_ball_control: 1.3, counter_2v1: 1.3, edge_of_box: 1.1, defend: 0.55, interception: 0.6, block: 0.55, defend_1v1: 0.7 },
-  // Full-backs: overlap and cross; lock the flank; both.
-  attackingFullBack: { cross: 1.7, counter: 1.4, counter_2v1: 2.2, edge_of_box: 1.2, defend: 0.7, defend_1v1: 0.75, back_post: 0.75, build_up: 1.3 },
-  defensiveFullBack: { defend_1v1: 1.5, defend: 1.3, interception: 1.4, block: 1.4, back_post: 1.4, build_up: 0.7, cross: 0.5, counter: 0.6, counter_2v1: 0.4 },
+  // Full-backs: overlap and cross; lock the flank; both. Tur 5 (cross judged by delivery): attacking cross 1.7 → 1.4,
+  // defensive full-back plays a little more out from the back (build_up 0.7 → 1.1, counter 0.6 → 0.8).
+  attackingFullBack: { cross: 1.4, counter: 1.4, counter_2v1: 2.2, edge_of_box: 1.2, defend: 0.7, defend_1v1: 0.75, back_post: 0.75, build_up: 1.3 },
+  defensiveFullBack: { defend_1v1: 1.5, defend: 1.3, interception: 1.4, block: 1.4, back_post: 1.4, build_up: 1.1, cross: 0.5, counter: 0.8, counter_2v1: 0.4 },
   balancedFullBack: {},
-  // Centre-backs: step out and intercept; own the air; build from the back.
+  // Centre-backs: step out and intercept; own the air; build from the back. Tur 5 (career fame): ball-player
+  // build_up 2.0 → 1.6, aerial defender build_up 0.8 → 1.1.
   stopper: { interception: 1.8, defend_1v1: 1.7, defend: 1.0, block: 1.1, build_up: 0.6, back_post: 0.8 },
-  aerialDefender: { corner: 1.5, back_post: 2.0, defend: 1.15, interception: 0.9, defend_1v1: 0.75, build_up: 0.8 },
-  ballPlayingDefender: { build_up: 2.0, interception: 1.1, defend: 0.85, defend_1v1: 0.8, block: 0.9 },
+  aerialDefender: { corner: 1.5, back_post: 2.0, defend: 1.15, interception: 0.9, defend_1v1: 0.75, build_up: 1.1 },
+  ballPlayingDefender: { build_up: 1.6, interception: 1.1, defend: 0.85, defend_1v1: 0.8, block: 0.9 },
   // Keepers: point-blank reactions; diving saves; sweeping up behind the line.
   reflexKeeper: { gk_1v1: 1.5, gk_save: 1.1, gk_sweep: 0.7 },
   shotStopper: { gk_save: 1.25, gk_1v1: 0.9, gk_sweep: 0.7 },

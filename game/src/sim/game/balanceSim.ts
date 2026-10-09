@@ -82,6 +82,10 @@ export interface SeasonSample {
   days: number
   /** Hero fixtures this season vs. those missed while fit (not selected). */
   clubFixtures: number
+  /** Man-of-the-Match awards this season. */
+  motm: number
+  /** Award keys won this season (season awards, month awards). */
+  awards: string[]
   /** Reputation gained this season by source. */
   repFrom: { match: number; weekly: number; other: number; cards: number; shopping: number; transfer: number }
   /** Club changes this season (transfers, loans, free-agent signings). */
@@ -389,7 +393,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
         income: Math.round(acc.income),
         spend: { assets: Math.round(acc.assets), upkeep: Math.round(acc.upkeep), trainer: Math.round(acc.trainer), casino: Math.round(acc.casino), other: Math.round(known - acc.otherNet) },
         injuries: acc.injuries, weeksInjured: acc.weeksInjured, events: acc.events, weeks: acc.weeks, lowEnergyMornings: acc.lowEnergyMornings, days: acc.days,
-        clubFixtures: acc.clubFixtures,
+        clubFixtures: acc.clubFixtures, motm: last?.stats.motm ?? 0, awards: s.hero.awards.filter((a) => a.season === season).map((a) => a.key),
         repFrom: { match: acc.repMatch, weekly: acc.repWeekly, other: acc.repOther, cards: acc.repCards, shopping: acc.repShopping, transfer: acc.repTransfer },
         moves: acc.moves, negativeWeeks: acc.negativeWeeks,
       })
