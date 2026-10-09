@@ -23,7 +23,8 @@ import {
   playHorses, playRoulette, playSlots, resolveEventChoice, unlockPerk, AGENT_TIERS, horseRaceCard,
 } from './actions'
 import { describeEvent } from './eventsAdapter'
-import { GFLAG, activityContext, heroClub, readJson } from './internal'
+import { GFLAG, activityContext, heroClub, isInSeason, readJson } from './internal'
+import { ensureAgenda } from './agenda'
 import { newGame, type NewGameInput } from './newGame'
 import { getOffers, getSponsorOffers } from './season'
 
@@ -111,6 +112,10 @@ export interface CareerTrace {
   startOvr: number
   casinoNet: number
   clubs: string[]
+  /** Mandatory agenda tasks per in-season week (sim/game/agenda), and the kinds seen. */
+  agenda: { weeks: number; mandatory: number; kinds: Record<string, number> }
+  /** Playing time per matchday the hero was available for (season index from 0, week, appeared, started). */
+  matchdays: { s: number; wk: number; played: boolean; started: boolean }[]
 }
 
 /** Roles the balance careers play (the old archetype set, one per home position). */
@@ -289,7 +294,7 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   const s = newGame(careerInput(cfg), cfg.seed)
   const rng = new Rng(cfg.seed ^ 0x5eed)
   const trace: CareerTrace = {
-    cfg, samples: [], bankrupt: false, bankruptAt: null, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, startOvr: heroOvr(s.hero), casinoNet: 0, clubs: [],
+    cfg, samples: [], bankrupt: false, bankruptAt: null, firstTopTierAge: null, firstEliteAge: null, ovr80Age: null, boughtIsland: null, startOvr: heroOvr(s.hero), casinoNet: 0, clubs: [], matchdays: [], agenda: { weeks: 0, mandatory: 0, kinds: {} },
   }
   const startSeason = s.calendar.season
   const spent = { assets: 0 }
@@ -326,11 +331,18 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
         if (why && /energy/i.test(why.en)) acc.lowEnergyMornings++
       }
       if (isHeroMatchday(s) || ctx.matchToday) acc.clubFixtures++
+      if (isInSeason(s.calendar.week)) {
+        if (s.calendar.day === 0) trace.agenda.weeks++
+        for (const t of ensureAgenda(s).tasks) if (t.mandatory) { trace.agenda.mandatory++; trace.agenda.kinds[t.kind] = (trace.agenda.kinds[t.kind] ?? 0) + 1 }
+      }
     }
     const rep0 = s.hero.reputation
     const apps0 = s.hero.careerStats.apps
+    const starts0 = s.hero.careerStats.starts
+    const avail = s.calendar.slot === 0 && isHeroMatchday(s) && !!s.hero.contract
     const meter: CardMeter = { total: 0 }
     acc.events += playDay(s, cfg, rng, meter)
+    if (avail) trace.matchdays.push({ s: season - startSeason, wk: week, played: s.hero.careerStats.apps > apps0, started: s.hero.careerStats.starts > starts0 })
     const fromCards = meter.total
     acc.repCards += fromCards
     const dRep = s.hero.reputation - rep0 - fromCards

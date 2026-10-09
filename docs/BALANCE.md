@@ -1249,3 +1249,61 @@ Hedefler tutuyor. Sınırdakiler tohum gürültüsü düzeyinde: ilk 1. kademe y
 tohum 3000'de kanat/AM 77–82 bandı 9 (17 sezonluk örneklem; önceki turlarda da 9–10 ölçüldü), tohum 2000'de
 forvetin en iyi sezon medyanı 0,94 (5 forvet) ve kumarbaz payı %14 (6 kumarbaz). His / girdi tekrarı / performans
 testleri yeşil. Golden master değişmedi (`UPDATE_GOLDEN=1` aynı özeti üretti).
+
+## Kulübeden çıkış yolu ve günlük program (Ekim 2026, sahip geri bildirimi)
+
+Sahip (gerçek cihaz): "Sürekli yedekteyiz; maç gününe kadar sadece İlerle'ye basıyoruz." İki parça:
+
+**1. Adil ve motive eden süre** (`sim/game/selection.ts`, `career/squadRole.ts`, `sim/match/engine.ts`):
+
+| Mekanik | Değer |
+|---|---|
+| Garantili kamera | Süre almadan geçen 2 maç gününden sonra kulübedeki oyuncu 60–74' arası planlı girer (`MatchSetup.heroEntryMinute`; skor ±1 ise en çok 6 dk bekler; kendi RNG çatalı) |
+| Kuraklık terimi | 3 maç süre yoksa ilk 11 şansı +%30 (kaleci: 2 maçtan sonra +%50, kalecinin kamerası yok) |
+| Kupa erken turu (≤21 yaş veya kaleci, rol ≤ rotasyon) | +%22 (kaleci +%35) |
+| Önemsiz lig maçı (son çeyrek, şampiyon/orta sıra kesin, ≤21 yaş) | +%18 |
+| Mevki rakibi sakat/cezalı | rakip başına +%6 (en çok +%18) |
+| Yoğun fikstür (3 gün içinde ikinci maç) | +%8 |
+| Hocanın sınavı (A notu) / tutturamama | +%10 / −%2 (bir sonraki maça kadar) |
+| U21 / antrenman maçı reytingi ≥7,5 / ≥6,8 / <5,8 | +%6 / +%3 / −%3 |
+| Hazırlık hedefi (rakibe özel, en çok 2) / zorunlu antrenmanı atlama | +%3 her biri / −%8 |
+| Antrenman güveni | yalnız oynanan driller: A/S notu (perf − 0,7) × 5, D notu ceza; rol ≤ rotasyon ×1,5 (otomatik seans güven vermez) |
+| Kamera güveni | 45 dakika altı olumlu maç güveni ×1,5 |
+
+Tüm terimler `startProbability(..., extra)` ile seçim zarına girer; Home'daki "İlk 11 şansı" ölçeri ve kaldıraçlar
+(`selectionOutlook`) aynı modeli kopya üzerinde çalıştırarak hesaplar (uydurma sayı yok).
+
+Ölçüm (`PLAYTIME=1`, `sim/game/playingTime.test.ts`, yaş başına 12 kariyer × 2 sezon, uygun kulüp = ilk sözleşme):
+
+| Başlangıç yaşı | Önce: S1 süre aldığı maç günü (havuz · p25 · en düşük) / S1 ilk 11 / S2 2. yarı ilk 11 / en uzun süresiz seri (medyan · maks) | Sonra |
+|---|---|---|
+| 16 | %65 · %52 · %17 / %15 / %51 / 2 · 11 | %68 · %61 · %35 / %21 / %52 / 2 · 4 |
+| 17 | %70 · %63 · %33 / %23 / %52 / 2 · 10 | %75 · %75 · %39 / %33 / %63 / 2 · 3 |
+| 18 | %69 · %62 · %10 / %26 / %61 / 2 · 16 | %76 · %64 · %36 / %38 / %62 / 2 · 4 |
+
+Hedefler (S1 ≥ ~%60 süre, 2. sezon ortası ≥ %25 ilk 11) tutuyor; en düşük kariyerler kaleciler (S1 %37–46).
+
+**2. Hafta canlı** (`sim/game/agenda.ts`, `weekIdeas.ts`, `match.ts` U21/antrenman maçı, `ui/screens/bench/*`):
+"Bugünün programı" (zorunlu görevler gün ilerletmeyi kilitler; hızlı çöz / oyna-karar ver / bazıları sonuçlu atla),
+rakibin gerçek kadrosundan okunan hazırlık hedefleri (+2 maç içi özellik, +%3 şans), U21 (46') ve çift kale (61')
+maçları canlı maç akışında, hocanın sınavı (A notu hedefli drill), takım arkadaşıyla birebir (haftada 2), teknik
+direktörle konuşma (haftada 1), "Atladığın günler" notu (haftada en çok 1, engellemez). Maç gününe atla açık zorunlu
+görevleri tek onayla hızlı çözer; otopilot gün sonunda kalanları hızlı çözer (sim hiç takılmaz).
+
+Zorunlu görev yükü (6 kariyer × 2 sezon): sezon içi haftada 1,96 (hedef ~2–4); çeşit: takım antrenmanı,
+gelişim görüşmesi, toparlanma, fizyo, sponsor çekimi, doping testi, doğum günü, disiplin kurulu, akşam yemeği, basın.
+
+BALANCE (30 × 10), son kod, tohum 1000 · 2000 · 3000:
+
+| Ölçüt | Değer | Hedef |
+|---|---|---|
+| İtibar 18 / 21 / 25 | 13/53/77 · 15/54/78 · 17/54/79 | ~15 / ~50 / 75–85 |
+| OVR medyanı 21 / 25 | 76/81 · 75/81 · 76/82 | değişmedi |
+| Pot ≥ 85: 25'e kadar OVR 80+ | 9/9 · 11/11 · 11/11 | çoğunluk |
+| İlk 1. kademe yaşı | 20,0 · 20,0 · 20,0 | 21–23 (bilinen sınır) |
+| 3. sezon net servet medyan | 142K · 146K · 138K | ≤ 300K |
+| Kumarhane payı kumarbaz / herkes | %15/%2 · %22/%2 · %16/%3 | %15–35 / ≤ %5 |
+| İflas | %0 | ≤ %5 |
+
+**Golden master bilinçli olarak yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): kariyer akışı değişti (seçim
+terimleri, planlı kamera, günlük programın otomatik çözümü).

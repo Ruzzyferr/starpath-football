@@ -16,10 +16,13 @@ import { clamp, Rng } from '../../core/rng'
 import { customMomentOverrides, normalizeCustom } from '../../core/customDifficulty'
 import { MatchSim } from '../match'
 import type { EngineState, MatchSimOptions, MatchPlayer, MatchSetup, MatchTeam, Side, Weather } from '../match'
-import { fmtMoney, fill, lt } from '../career/common'
+import { absWeek, fmtMoney, fill, lt, meter } from '../career/common'
+import { addFatigue } from '../career/condition'
 import { applyMatchToHero, type HeroMatchInput } from '../career/matchOutcome'
 import { heroOvr } from '../career/progression'
-import { rollSelection } from '../career/squadRole'
+import { changeTrust, roleIndex, rollSelection } from '../career/squadRole'
+import { PREP_BUFF, agendaAfterMatch, prepBuffs } from './agenda'
+import { RESERVE_FLAG, afterClubMatch, cameoDue, selectionTerms, termsTotal, type ReserveRecord } from './selection'
 import { heroMatchAttributes } from '../career/matchPerks'
 import { objectivesAfterMatch } from './objectives'
 import { recordPassLinks } from './passLinks'
@@ -40,7 +43,7 @@ import { copyBook, fadeBook } from '../match/referee'
 import type { GoalCandidate } from '../world/worldTypes'
 import { rollEvents } from './eventsAdapter'
 import {
-  GFLAG, absDayOf, heroAvailableFor, heroClub, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
+  GFLAG, absDayOf, activityContext, heroAvailableFor, heroClub, isInSeason, log, readJson, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
 import { applyRust, preMatchCondition, type Cause, type PreMatchCondition } from '../life/butterfly'
 import {
@@ -63,6 +66,16 @@ interface ActiveMatchBlob {
   sim?: string
   /** International: the hero's national team id. */
   national?: string
+  /** Reserve (U21) or training match: not a fixture, see {@link prepareReserveMatch}. */
+  reserve?: ReserveMatchMeta
+}
+
+export type ReserveKind = 'reserve' | 'scrimmage'
+export interface ReserveMatchMeta {
+  kind: ReserveKind
+  name: LText
+  homeId: string
+  awayId: string
 }
 
 /** What the UI needs to start the hero's match. */
@@ -247,7 +260,8 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       starts = m >= 72 || rng.chance(0.5 + (m - 55) / 50)
       log(state, [], starts ? lt('Milli takımda ilk 11\'desin.', 'You start for your country.') : lt('Milli maçta yedek kulübesindesin.', 'You are on the bench for your country.'), 'career', '🎽')
     } else {
-      const roll = rollSelection(rng, state.hero, state.life, absDayOf(state))
+      // Match context (cup rotation, dead rubber, rivals out, coach's challenge…): sim/game/selection.
+      const roll = rollSelection(rng, state.hero, state.life, absDayOf(state), termsTotal(selectionTerms(state, ref)))
       for (const l of roll.lines) log(state, [], l, 'career', '🪑')
       starts = roll.starts
     }
@@ -277,6 +291,9 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       importance,
       difficulty: clamp(base * (1 + (1 - mental) * 0.5), 0.8, 1.4),
       ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
+      // Minutes drought (sim/game/selection): after CAMEO_AFTER matchdays without minutes the manager plans a 60–74' cameo.
+      ...(!national && !sel.starts && state.hero.position !== 'GK' && cameoDue(state)
+        ? { heroEntryMinute: new Rng(state.meta.seed).fork(`cameo:${fixture.id}`).int(60, 74) } : {}),
       // WP-14: the referee (stable per-country pool, picked by fixture) and the keepers' book on the hero.
       referee: refereeFor(state.meta.seed, home.countryId, fixture.id),
       ...(state.hero.keeperBook ? { keeperBook: copyBook(state.hero.keeperBook) } : {}),
@@ -284,6 +301,13 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       ...(!national && state.hero.contract?.role === 'captain' ? { heroCaptain: true } : {}),
       // Butterfly: who the dressing room agreed takes the penalties (teammates.penalty_taker card).
       ...(!national && typeof state.life.flags.penalty_taker === 'boolean' ? { heroPenaltyTaker: state.life.flags.penalty_taker } : {}),
+    }
+    // Daily agenda: preparation for this opponent = +PREP_BUFF on the trained attributes (sim/game/agenda).
+    if (!national) {
+      const buffs = prepBuffs(state, fixture.id)
+      const team = isHome ? setup.home : setup.away
+      const hp = [...team.lineup, ...team.bench].find((p) => p.isHero)
+      if (hp && buffs.length) hp.attrs = { ...hp.attrs, ...Object.fromEntries(buffs.map((k) => [k, clamp((hp.attrs[k] ?? 50) + PREP_BUFF, 1, 99)])) }
     }
     const opts: MatchSimOptions = {
       heroForm: state.hero.form, managerTrust: state.hero.managerTrust,
@@ -325,6 +349,12 @@ export function markedMan(hero: Pick<Hero, 'seasonStats' | 'history'>): number {
 export function startHeroMatch(state: GameState, lang: Lang = 'en'): MatchSim | null {
   const resumed = resumeHeroMatch(state)
   if (resumed) return resumed
+  const pending = readJson<ActiveMatchBlob | null>(state.life, GFLAG.match, null)
+  if (pending?.reserve && pending.fixtureId === state.activeMatchId) {
+    const sim = new MatchSim(pending.setup, lang, pending.opts)
+    saveMatchProgress(state, sim)
+    return sim
+  }
   const prep = prepareHeroMatch(state)
   if (!prep) return null
   // The focus is read at kick-off: the player may change it on the pre-match screen (GAP 2.1#9).
@@ -384,6 +414,7 @@ export interface HeroMatchReport {
 export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchReport {
   const blob = readJson<ActiveMatchBlob | null>(state.life, GFLAG.match, null)
   if (!blob) throw new Error('finishHeroMatch: no prepared match')
+  if (blob.reserve) return finishReserveMatch(state, sim, blob)
   if (!sim.finished) sim.simulateToEnd(true)
   const snap = sim.snapshot()
   const result = sim.result()
@@ -481,6 +512,8 @@ export function finishHeroMatch(state: GameState, sim: MatchSim): HeroMatchRepor
     }
     const applied = applyMatchToHero(state, input, rng)
     lines.push(...applied.lines)
+    afterClubMatch(state.life, st.minutes)
+    agendaAfterMatch(state, st.minutes)
 
     // ── Feats & records (sim/game/records; the achievement checker reads c:lastMatch) ──
     const kinds = heroGoalKinds(snap.events, side, HERO_ID)
@@ -589,4 +622,137 @@ export function autoPlayHeroMatch(state: GameState, lang: Lang = 'en'): HeroMatc
   if (!sim) return null
   sim.simulateToEnd(true)
   return finishHeroMatch(state, sim)
+}
+
+// ───────────────────────── Reserve / training match ─────────────────────────
+
+/** life.flags (JSON {reserve?: absWeek, scrimmage?: absWeek}): the week each kind was last played. */
+export const RESERVE_WEEK_FLAG = 'c:reserveWeek'
+/** Minute the hero comes on: a 45-minute U21 run-out, a 30-minute training match. */
+export const RESERVE_ENTRY: Readonly<Record<ReserveKind, number>> = { reserve: 46, scrimmage: 61 }
+/** Energy a reserve / training match needs. */
+export const RESERVE_ENERGY: Readonly<Record<ReserveKind, number>> = { reserve: 30, scrimmage: 20 }
+
+const playedWeek = (state: GameState, kind: ReserveKind): boolean =>
+  readJson<Partial<Record<ReserveKind, number>>>(state.life, RESERVE_WEEK_FLAG, {})[kind] === absWeek(state.calendar)
+
+/**
+ * Why a reserve (U21) or training match cannot be played now, null when it can.
+ * Day slots of an in-season non-matchday, once a week each; the U21 game is for
+ * players outside the first XI (youth/reserve/rotation or benched last time) and
+ * not the day before a match.
+ */
+export function reserveMatchBlock(state: GameState, kind: ReserveKind): LText | null {
+  const h = state.hero
+  const club = heroClub(state)
+  if (!club || !h.contract || h.retired) return lt('Bir kulübün yok.', 'You have no club.')
+  if (!isInSeason(state.calendar.week)) return lt('Sezon dışında maç yok.', 'No games in the off-season.')
+  if (h.injury) return lt('Sakatken oynayamazsın.', "You can't play while injured.")
+  if (state.activeMatchId) return lt('Önce maçını tamamla.', 'Finish your match first.')
+  const ctx = activityContext(state)
+  if (ctx.matchToday) return lt('Bugün asıl maç var.', 'Today is matchday.')
+  if (kind === 'reserve' && ctx.matchTomorrow) return lt('Maçtan önceki gün U21 maçı yok.', 'No U21 game the day before a match.')
+  if (state.calendar.slot > 1) return lt('Maçlar gündüz oynanır.', 'Games are played during the day.')
+  const bench = typeof state.life.flags.bench_streak === 'number' && state.life.flags.bench_streak > 0
+  if (kind === 'reserve' && roleIndex(h.contract.role) > roleIndex('rotation') && !bench) return lt('U21 maçları ilk 11 dışındakiler için.', 'U21 games are for players outside the first XI.')
+  if (playedWeek(state, kind)) return lt('Bu hafta zaten oynadın.', 'You already played one this week.')
+  if (state.life.energy < RESERVE_ENERGY[kind]) return lt('Enerjin yetersiz.', 'Not enough energy.')
+  return null
+}
+
+/** Club players outside the first XI, topped up from the XI's weakest so there are always 16. */
+function fringe(players: NpcPlayer[], formation: Club['formation']): NpcPlayer[] {
+  const xi = new Set(selectLineupFromPlayers(players, formation).playerIds)
+  const out = players.filter((p) => !xi.has(p.id) && p.injuredWeeks <= 0)
+  const top = players.filter((p) => xi.has(p.id)).sort((a, b) => a.ovr - b.ovr)
+  while (out.length < 16 && top.length) out.push(top.shift()!)
+  return out
+}
+
+/**
+ * Prepare a reserve (U21) or training match and make it the active match: the
+ * live match flow (ui/backend/liveMatch) plays it like a fixture. The hero's
+ * side is the club's fringe; the U21 opponent is another league club's fringe,
+ * the training match opponent the club's own first XI. The hero comes on at
+ * {@link RESERVE_ENTRY} (shorter than a full match). No table, stats or money:
+ * it gives minutes, sharpness, trust and a selection term (sim/game/selection).
+ */
+export function prepareReserveMatch(state: GameState, kind: ReserveKind): { ok: boolean; error?: LText } {
+  const why = reserveMatchBlock(state, kind)
+  if (why) return { ok: false, error: why }
+  const club = heroClub(state)!
+  const day = absDayOf(state)
+  const id = `reserve:${kind}:${day}`
+  const own = clubSource(state, club)
+  let opp: MatchTeamSource
+  if (kind === 'scrimmage') {
+    const xi = new Set(selectLineupFromPlayers(own.players, club.formation).playerIds)
+    opp = { ...own, colors: club.awayColors, players: own.players.filter((p) => xi.has(p.id)) }
+  } else {
+    const league = state.world.leagues[club.leagueId]
+    const others = (league?.clubIds ?? []).filter((c) => c !== club.id && state.world.clubs[c])
+    const oppClub = others.length ? state.world.clubs[new Rng(state.meta.seed).fork(`reserveOpp:${day}`).pick(others)]! : club
+    const src = clubSource(state, oppClub)
+    opp = { ...src, players: fringe(src.players, oppClub.formation), ...(oppClub.id === club.id ? { colors: club.awayColors } : {}) }
+  }
+  const home: MatchTeamSource = { ...own, players: fringe(own.players, club.formation) }
+  const name = kind === 'reserve' ? lt('U21 Ligi', 'U21 League') : lt('Antrenman Maçı', 'Training Match')
+  const base = state.meta.custom ? normalizeCustom(state.meta.custom).aiReaction : DIFFICULTY_FACTOR[state.meta.difficulty] ?? 1
+  const setup: MatchSetup = {
+    home: buildTeamFrom(state, home, true, false, 0.15),
+    away: buildTeamFrom(state, opp, false, false, 0.15),
+    seed: matchSeed(state.meta.seed, id),
+    competitionName: name.en,
+    weather: rollWeather(new Rng(state.meta.seed).fork(`weather:${id}`), club.countryId, state.calendar.week),
+    heroSide: 'home',
+    heroOnBench: true,
+    heroEntryMinute: RESERVE_ENTRY[kind],
+    knockout: false,
+    neutralVenue: false,
+    importance: 0.15,
+    difficulty: clamp(base * 0.9, 0.8, 1.4),
+    ...(state.world.gender === 'female' ? { gender: 'female' as const } : {}),
+  }
+  const opts: MatchSimOptions = { heroForm: state.hero.form, managerTrust: state.hero.managerTrust }
+  writeJson(state.life, GFLAG.match, {
+    fixtureId: id, compId: 'reserve', setup, opts, starts: false,
+    reserve: { kind, name, homeId: club.id, awayId: kind === 'scrimmage' ? club.id : opp.id },
+  } satisfies ActiveMatchBlob)
+  state.activeMatchId = id
+  return { ok: true }
+}
+
+/** Apply a finished reserve / training match: minutes, sharpness, trust, form; it takes one day slot. */
+function finishReserveMatch(state: GameState, sim: MatchSim, blob: ActiveMatchBlob): HeroMatchReport {
+  if (!sim.finished) sim.simulateToEnd(true)
+  const meta = blob.reserve!
+  const snap = sim.snapshot()
+  const result = sim.result()
+  const st = snap.heroStats
+  const gf = result.home
+  const ga = result.away
+  const won = gf > ga
+  const drew = gf === ga
+  const { hero, life } = state
+  const rating = st.minutes > 0 ? st.rating : 0
+  const lines: LText[] = []
+  if (st.minutes > 0) {
+    hero.sharpness = meter(hero.sharpness + (st.minutes / 90) * 12)
+    addFatigue(hero, (st.minutes / 90) * 10)
+    hero.form = meter(hero.form + clamp((rating - 6.5) * 2, -4, 5))
+    // The staff watch reserve games too, at half the weight of a first-team cameo.
+    changeTrust(hero, (rating - 6.3) * 1.5 * clamp(st.minutes / 45, 0.3, 1))
+    const wk = weekCounters(life)
+    wk.minutes += st.minutes
+    writeJson(life, GFLAG.week, wk)
+    writeJson(life, RESERVE_FLAG, { day: absDayOf(state), rating: Math.round(rating * 10) / 10, minutes: st.minutes, kind: meta.kind } satisfies ReserveRecord)
+  }
+  life.energy = meter(life.energy - RESERVE_ENERGY[meta.kind] * 0.7)
+  writeJson(life, RESERVE_WEEK_FLAG, { ...readJson<Partial<Record<ReserveKind, number>>>(life, RESERVE_WEEK_FLAG, {}), [meta.kind]: absWeek(state.calendar) })
+  log(state, lines, fill(meta.kind === 'reserve'
+    ? lt('U21 maçı: {gf}-{ga}. {m} dakika, reyting {r}.', 'U21 game: {gf}-{ga}. {m} minutes, rating {r}.')
+    : lt('Antrenman maçı: {gf}-{ga}. {m} dakika, reyting {r}.', 'Training match: {gf}-{ga}. {m} minutes, rating {r}.'), { gf, ga, m: st.minutes, r: rating.toFixed(1) }), 'match', '⚽')
+  clearActiveMatch(state)
+  state.calendar.slot = Math.min(2, state.calendar.slot + 1)
+  return { result, won, drew, goalsFor: gf, goalsAgainst: ga, rating, minutes: st.minutes, lines, newEvents: 0 }
 }

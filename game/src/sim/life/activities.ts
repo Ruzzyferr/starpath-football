@@ -15,6 +15,7 @@ import { DIET_FLAG, addFatigue, dietActive, recoverFatigue } from '../career/con
 import { perkValue } from '../career/perks'
 import { applyXpBundle } from '../career/progression'
 import { fatigueEfficiency, runTraining, trainingEnergyCost, type TrainingIntensity, type TrainingType } from '../career/training'
+import { updateTrustFromTraining } from '../career/squadRole'
 import { assetEffectTotal } from './assetEffects'
 import { changeRelation, teammateAverage } from './relationships'
 import { casinoExclusion } from './casino'
@@ -244,6 +245,11 @@ export function performActivity(
       lines.push(...r.lines)
       if (r.injured) tags.push('injury')
       if ((opts.performance ?? 0.6) >= 0.8 && ctx.inSeason) changeRelation(life, 'manager', 1, { hero, cause: 'activity', why: { tr: 'Antrenmanda göz doldurdun', en: 'You impressed in training' } })
+      // A played drill (scored) moves the manager's trust: A/S grades get you noticed (career/squadRole).
+      if (opts.performance !== undefined && ctx.inSeason && hero.contract) {
+        const dt = updateTrustFromTraining(hero, opts.performance)
+        if (dt >= 0.5) lines.push(fill(lt('Teknik direktör antrenmanını not etti (güven +{n}).', 'The manager noted your session (trust +{n}).'), { n: Math.round(dt * 10) / 10 }))
+      }
       break
     }
     case 'gym': {

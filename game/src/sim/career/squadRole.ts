@@ -63,19 +63,36 @@ export function updateTrustFromMatch(hero: Hero, rating: number, minutes: number
 export const trustBlameShield = (goals: number, assists: number, won: boolean): number =>
   clamp((Math.max(0, goals) + Math.max(0, assists) + (won && goals > 0 ? 0.5 : 0)) / 2, 0, 1)
 
+/** Multiplier on the positive trust of a cameo under 45 minutes. */
+export const CAMEO_TRUST_MULT = 1.5
+
 /** Raw (pre-`changeTrust`) trust change of a match; mirrored by ui/backend/postMatch.ts. */
 export function trustRawFromMatch(rating: number, minutes: number, goals = 0, assists = 0, won = false): number {
   const weight = clamp(minutes / 90, 0.3, 1.2)
   const raw = (rating - 6.3) * 3 * weight
-  return raw < 0 ? raw * (1 - trustBlameShield(goals, assists, won)) : raw
+  if (raw < 0) return raw * (1 - trustBlameShield(goals, assists, won))
+  // A bright cameo (under 45') is what gets a bench player noticed: +50% of the positive part.
+  return minutes < 45 ? raw * CAMEO_TRUST_MULT : raw
 }
 
 /**
- * Trust from training effort: (performance − 0.5) × 1.2 per session. A week of
- * excellent mini-game sessions (0.9) is worth about one good match.
+ * Trust from a played training drill (in season): only sessions the staff
+ * notice count. An A or S grade (performance ≥ 0.78) earns (performance − 0.7) × 5
+ * (S ≈ +1.25), a D grade (< 0.4) costs (performance − 0.4) × 3; everything in
+ * between is routine. Players still fighting for a place (youth, reserve,
+ * rotation) are watched more closely: their good sessions count
+ * {@link BENCH_TRAINING_TRUST_MULT}×. Auto-resolved sessions (no score) earn nothing.
  */
 export const updateTrustFromTraining = (hero: Hero, performance: number): number =>
-  changeTrust(hero, (clamp(performance, 0, 1) - 0.5) * 1.2)
+  changeTrust(hero, trainingTrustRaw(hero, performance))
+export const BENCH_TRAINING_TRUST_MULT = 1.5
+export function trainingTrustRaw(hero: Hero, performance: number): number {
+  const p = clamp(performance, 0, 1)
+  if (p < 0.4) return (p - 0.4) * 3
+  if (p < 0.78) return 0
+  const d = (p - 0.7) * 5
+  return hero.contract && roleIndex(hero.contract.role) <= roleIndex('rotation') ? d * BENCH_TRAINING_TRUST_MULT : d
+}
 
 /**
  * Discipline incident (late to training, red card, nightclub photos…).
@@ -213,8 +230,10 @@ export function ratingTerm(life: Life): number {
  * Adjustments: form ±0.12, recent ratings ±0.12, trust ±0.08, fatigue > 60 up to −0.3 (rotation for
  * freshness), sharpness < 40 −0.1, promised start +0.15, a night out before the match −0.06..−0.15 and
  * discipline < 40 up to −0.1 (`today` = absolute day, life/butterfly). Injured/suspended → 0.
+ * `extra` = the match context the world layer adds (cup rotation, dead rubber, injured rivals,
+ * the coach's challenge…; sim/game/selection `selectionTerms`).
  */
-export function startProbability(hero: Hero, life: Life, today?: number): number {
+export function startProbability(hero: Hero, life: Life, today?: number, extra = 0): number {
   if (hero.injury || hero.suspendedMatches > 0 || !hero.contract) return 0
   let p = ROLE_START_BASE[hero.contract.role]
   p += formTerm(hero) + ratingTerm(life) + trustTerm(hero)
@@ -225,6 +244,7 @@ export function startProbability(hero: Hero, life: Life, today?: number): number
   // Echoes (life/echoes): a tactical voice the manager listens to, weeks as stand-in captain.
   p += echoSelection(hero, life).value
   if (life.flags.promised_start === true) p += 0.15
+  p += extra
   if (formGuaranteeActive(hero, life)) p = Math.max(p, FORM_GUARANTEE_START)
   if (hero.contract.minutesGuarantee) p = Math.max(p, MINUTES_GUARANTEE_START)
   return clamp(p, 0, 0.99)
@@ -273,8 +293,8 @@ export const ROLE_EXPECTED_MINUTES: Readonly<Record<SquadRole, [number, number]>
 }
 
 /** Roll selection for the next match and update bench-streak bookkeeping. */
-export function rollSelection(rng: Rng, hero: Hero, life: Life, today?: number): { starts: boolean; lines: Lines } {
-  const starts = rng.chance(startProbability(hero, life, today))
+export function rollSelection(rng: Rng, hero: Hero, life: Life, today?: number, extra = 0): { starts: boolean; lines: Lines } {
+  const starts = rng.chance(startProbability(hero, life, today, extra))
   return { starts, lines: trackSelection(hero, life, starts) }
 }
 

@@ -1124,9 +1124,13 @@ export class MatchSim {
   }
 
   private substitutions(): void {
-    if (this.s.period < 1 || this.s.clock < 55) return
+    if (this.s.period < 1) return
+    // A planned hero entry (reserve match second half) may come before the usual 55' window.
+    const early = this.s.clock < 55
+    if (early && this.s.setup.heroEntryMinute === undefined) return
     for (const side of ['home', 'away'] as const) {
       this.heroBenchEntry(side)
+      if (early) continue
       this.heroSubOff(side)
       this.aiSub(side)
     }
@@ -1155,15 +1159,24 @@ export class MatchSim {
     const h = this.s.hero
     if (!h.id || h.side !== side || !this.s.setup.heroOnBench) return
     const rt = this.s.players[h.id]!
-    if (rt.onPitch || rt.gone || this.s.clock > 80 || this.s.period > 1) return
+    const planned = this.s.setup.heroEntryMinute
+    if (rt.onPitch || rt.gone || this.s.period > 1 || this.s.clock > Math.max(80, planned ?? 0)) return
     const t = this.s.teams[side]
     if (t.subsLeft <= 0) return
     const hero = this.player(h.id)
-    if (hero.position === 'GK') return
+    if (hero.position === 'GK' && planned === undefined) return
     const diff = this.s.score[idx(side)] - this.s.score[idx(other(side))]
-    const hazard = 0.045 * (0.5 + h.trust / 100) * (diff < 0 ? 1.5 : diff > 0 ? 0.8 : 1)
-    if (!this.rng.chance(hazard)) return
-    const out = this.onPitch(side)
+    if (planned !== undefined) {
+      // A decided change: on at the planned minute once the game state suits it (level or a
+      // two-goal margin), at the latest 6 minutes later. No RNG draw, so other matches are untouched.
+      if (this.s.clock < planned) return
+      if (Math.abs(diff) === 1 && this.s.clock < planned + 6) return
+    } else {
+      const hazard = 0.045 * (0.5 + h.trust / 100) * (diff < 0 ? 1.5 : diff > 0 ? 0.8 : 1)
+      if (!this.rng.chance(hazard)) return
+    }
+    const keeper = hero.position === 'GK' ? this.onPitch(side).find((p) => p.position === 'GK') : undefined
+    const out = keeper ?? this.onPitch(side)
       .filter((p) => p.position !== 'GK' && positionGroup(p.position) === positionGroup(hero.position))
       .sort((a, b) => this.subNeed(b) - this.subNeed(a))[0]
       ?? this.onPitch(side).filter((p) => p.position !== 'GK').sort((a, b) => this.subNeed(b) - this.subNeed(a))[0]

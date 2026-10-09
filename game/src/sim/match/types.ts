@@ -63,6 +63,12 @@ export interface MatchSetup {
   heroSide: Side | null
   /** Hero starts on the bench and may come on as a sub. */
   heroOnBench: boolean
+  /**
+   * Bench hero: the manager has decided to bring him on from this minute (guaranteed cameo after a run
+   * without minutes, or the second half of a reserve match). The change waits for a suitable game state
+   * (level, or a two-goal margin either way) for up to 6 minutes. Missing = the usual random entry.
+   */
+  heroEntryMinute?: number
   /** Knockout: if level after 90' → extra time + penalties. */
   knockout: boolean
   neutralVenue: boolean

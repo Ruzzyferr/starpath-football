@@ -3,6 +3,7 @@
  * returns `{ ok, lines, error? }` (plus an optional typed `value`). No action
  * throws for a user mistake; invalid input yields `ok: false` + `error`.
  */
+import { agendaAfterActivity } from './agenda'
 import type { AttributeGroup, GameState, Investment, LText, PendingEvent } from '../../core/types'
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
@@ -74,7 +75,9 @@ export function doActivity(state: GameState, activityId: string, opts: ActivityO
     return { ...r, extra }
   })
   if (!res.ok) return fail(res.lines[0] ?? lt('Yapılamaz.', 'Not possible.'))
-  const lines = [...res.lines, ...res.extra]
+  // Daily agenda: the matching preparation goal of today is done (sim/game/agenda).
+  const prep = agendaAfterActivity(state, activityId)
+  const lines = [...res.lines, ...res.extra, ...(prep ? [prep] : [])]
   const used = Math.max(1, res.slotsUsed)
   let advance: AdvanceReport | undefined
   // The casino keeps the evening open: games are played, then the UI ends the day (advanceDay).

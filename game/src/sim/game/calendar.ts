@@ -40,6 +40,7 @@ import {
   readJson, transferWindow, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
 } from './internal'
 import { autoPlayHeroMatch, clearActiveMatch, HERO_ID } from './match'
+import { autoResolveAgenda, ensureAgenda } from './agenda'
 import {
   endSeasonForHero, evaluateNationalTeam, generateHeroOffers, generateSponsorOffers, getOffers, newSeasonRollover,
   syncClubRelations, syncEventFlags,
@@ -85,6 +86,8 @@ export function advanceDay(state: GameState): AdvanceReport {
   const r = emptyReport()
   const events0 = state.pendingEvents.length
   const offers0 = getOffers(state).length
+  // Daily agenda: whatever mandatory task is still open is quick-resolved (sim/game/agenda; the UI blocks Advance first).
+  if (!state.hero.retired) autoResolveAgenda(state)
 
   // 1. Hero match not played by the UI → simulate it.
   if (isHeroMatchday(state)) {
@@ -117,6 +120,7 @@ export function advanceDay(state: GameState): AdvanceReport {
     }
     cal.slot = 0
     logAll(state, r.lines, startDay(state.hero, state.life, { calendar: cal }), 'event')
+    if (!state.hero.retired) ensureAgenda(state)
     resetCasinoDay(state.life)
     r.lines.push(...syncEventFlags(state))
   })
