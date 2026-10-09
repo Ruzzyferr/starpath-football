@@ -69,7 +69,7 @@ export const tr = {
     short: 'VIP {n} · limit %{p}',
   },
   band: {
-    label: 'Kumarhane durumu', balance: 'Bakiye', limit: 'Günlük kayıp limiti', used: '{lost} / {limit} kullanıldı', noLimit: 'Limit yok',
+    label: 'Kumarhane durumu', balance: 'Bakiye', limit: 'Günlük kayıp limiti', used: '{lost} / {limit} kullanıldı', noLimit: 'Limit yok', closed: 'Kapalı: kumarhane akşam açılır',
     left: '{left} kaldı', exhausted: 'Limit doldu', session: 'Oturum', minutes: '{n} dk', setLimit: 'Limit koy', slider: 'Bahis kaydırıcısı',
   },
   clearBet: 'Temizle',
@@ -233,7 +233,7 @@ export const en: Shape<typeof tr> = {
     short: 'VIP {n} · limit {p}%',
   },
   band: {
-    label: 'Casino status', balance: 'Balance', limit: 'Daily loss limit', used: '{lost} / {limit} used', noLimit: 'No limit',
+    label: 'Casino status', balance: 'Balance', limit: 'Daily loss limit', used: '{lost} / {limit} used', noLimit: 'No limit', closed: 'Closed: the casino opens in the evening',
     left: '{left} left', exhausted: 'Limit reached', session: 'Session', minutes: '{n} min', setLimit: 'Set a limit', slider: 'Bet slider',
   },
   clearBet: 'Clear',

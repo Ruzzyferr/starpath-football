@@ -760,6 +760,7 @@ export const realData: GameData = {
       addiction: Math.round(c.addiction), won: Math.round(c.won), lost: Math.round(c.lost), visitsThisWeek: c.visitsThisWeek,
       minBet: 50, maxBet: Math.floor(lim.maxStake / 50) * 50, lossLimit: lim.lossLimit, lostToday: Math.round(lim.lostToday),
       ageLock: s ? casinoAgeLock(s.hero, s.calendar.season) : null,
+      closed: !!s && s.life.flags[GFLAG.casinoDay] !== absDayOf(s) && s.calendar.slot < 2,
       slots: slotRulesView(),
     }
   },

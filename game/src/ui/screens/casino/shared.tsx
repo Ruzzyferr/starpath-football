@@ -48,6 +48,7 @@ export function LimitBand() {
         )}
       </span>
       <span class="cas-band-item" data-testid="casino-band-session"><Icon name="stopwatch" size={15} /><span class="micro t-mid">{t('casino.band.session')}</span><b class="num">{t('casino.band.minutes', { n: mins })}</b></span>
+      {st.closed && <span class="cas-band-item cas-band-closed" role="status" data-testid="casino-closed"><Icon name="moon" size={15} /><b>{t('casino.band.closed')}</b></span>}
     </div>
   )
 }

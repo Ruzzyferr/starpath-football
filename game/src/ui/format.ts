@@ -71,8 +71,8 @@ export function formatSigned(n: number, lang: Lang = currentLang.value, digits =
   return (n > 0 ? '+' : '−') + s
 }
 
-export function formatPercent(fraction: number, lang: Lang = currentLang.value): string {
-  const v = Math.round(fraction * 100)
+export function formatPercent(fraction: number, lang: Lang = currentLang.value, digits = 0): string {
+  const v = digits > 0 ? formatNumber(fraction * 100, lang, digits) : String(Math.round(fraction * 100))
   return lang === 'tr' ? `%${v}` : `${v}%`
 }
 

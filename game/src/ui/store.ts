@@ -307,6 +307,8 @@ export interface CardView {
   faceDown?: boolean
 }
 export interface BlackjackView {
+  /** The action was refused (closed, limit, no money): nothing was dealt. */
+  rejected?: boolean
   bet: number
   player: CardView[]
   dealer: CardView[]
@@ -340,6 +342,7 @@ export interface RouletteBet {
   amount: number
 }
 export interface RouletteResult {
+  rejected?: boolean
   number: number
   color: 'red' | 'black' | 'green'
   net: number
@@ -357,6 +360,7 @@ export interface SlotLineWin {
   amount: number
 }
 export interface SlotsResult {
+  rejected?: boolean
   /** Middle row, 3 symbol indices (see SLOT_SYMBOLS in screens). */
   reels: number[]
   /** Full visible window: window[reel][row], rows top→bottom (3×3). */
@@ -386,6 +390,7 @@ export interface HorseView {
   form: string // e.g. "1-3-2"
 }
 export interface HorseRaceResult {
+  rejected?: boolean
   /** frames × 8 progress values in 0..1 (1 = finish line). ~60 frames. */
   timeline: number[][]
   order: number[] // finishing order (horse indices)
@@ -403,6 +408,8 @@ export interface CasinoStatus {
   lostToday: number
   /** Non-null while the hero is under the legal gambling age. */
   ageLock: { minAge: number; yearsLeft: number } | null
+  /** The casino opens in the evening (until the hero visits today). */
+  closed?: boolean
   slots: SlotRules
 }
 

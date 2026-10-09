@@ -99,3 +99,61 @@ test('PT-F10: a locked perk explains what it still needs', async ({ page, shot }
   await expect(page.getByTestId('perk-needs').locator('li').first()).toHaveText(/\S/)
   await shot('pt-perk-needs')
 })
+
+test('PT-L1: a closed casino refuses the spin without animating a fake result', async ({ page, shot }) => {
+  await page.goto('/?autostart=1&seed=31337')
+  await waitForApp(page)
+  // Adult hero, Monday morning: the casino opens in the evening.
+  await sp(page, `(() => { sp.clearEvents(); const s = sp.state(); s.hero.birthYear = s.calendar.season - 22; s.calendar.slot = 0; sp.navigate('roulette') })()`)
+  await expect(page.getByTestId('casino-closed')).toBeVisible()
+  const before = await sp<number>(page, 'sp.state().life.money')
+  await page.getByRole('button', { name: 'Red', exact: true }).click()
+  await page.getByRole('button', { name: /^Spin/ }).click()
+  await expect(page.locator('.toast').filter({ hasText: /evening/ }).first()).toBeVisible()
+  await page.waitForTimeout(600)
+  await expect(page.locator('.rl-readout')).not.toContainText(/spinning|Net:/)
+  expect(await sp<number>(page, 'sp.state().life.money')).toBe(before)
+  await shot('pt-casino-closed')
+})
+
+test('PT-L2: the loan slider never offers more than the bank will lend, and previews rate and payment', async ({ page }) => {
+  await page.goto('/?autostart=1&dev=casino&seed=31337')
+  await waitForApp(page)
+  await sp(page, `(() => { sp.clearEvents(); sp.navigate('life') })()`)
+  await page.getByTestId('phone-app-bank').click()
+  const limit = await page.evaluate(async () => {
+    const s = (window as unknown as { __sp: { state: () => { life: { bank: { creditScore: number } } } } }).__sp.state()
+    return s.life.bank.creditScore
+  })
+  expect(limit).toBeGreaterThan(0)
+  const slider = page.getByRole('slider', { name: /Loan amount/ })
+  if (await slider.count()) {
+    const max = Number(await slider.getAttribute('aria-valuemax'))
+    await expect(page.getByTestId('loan-preview')).toContainText(/APR · weekly payment/)
+    // Take the maximum the slider offers: the bank must accept it (or the button is disabled with a reason shown).
+    await slider.focus()
+    await page.keyboard.press('End')
+    const btn = page.getByRole('button', { name: 'Take a loan' })
+    if (await btn.isEnabled()) {
+      await btn.click()
+      await expect(page.locator('.toast').filter({ hasText: /rejected|at most/ })).toHaveCount(0)
+      expect(await sp<number>(page, 'sp.state().life.bank.loan?.principal ?? 0')).toBe(max)
+    } else {
+      await expect(page.getByTestId('loan-preview')).toContainText(/40%/)
+    }
+  } else {
+    await expect(page.getByTestId('loan-none')).toBeVisible()
+  }
+})
+
+test('PT-L3: a refused relationship interaction does not also toast success', async ({ page }) => {
+  await page.goto('/?autostart=1&dev=casino&seed=31337')
+  await waitForApp(page)
+  await sp(page, `(() => { sp.clearEvents(); sp.navigate('life') })()`)
+  await page.getByTestId('phone-app-relations').click()
+  const person = page.locator('.life-person').first()
+  await person.getByRole('button', { name: /^Call,/ }).click()
+  await person.getByRole('button', { name: /^Dinner,/ }).click()
+  await expect(page.locator('.toast').filter({ hasText: /already spent time/ }).first()).toBeVisible()
+  await expect(page.locator('.toast').filter({ hasText: /^You spent time with/ })).toHaveCount(0)
+})

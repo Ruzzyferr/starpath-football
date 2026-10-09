@@ -110,6 +110,7 @@ function SlotsGame() {
   const spin = () => {
     if (spinning) return
     const res = actions.casino.slotsSpin(bet)
+    if (res.rejected) return
     setPrev(win)
     setWin(res.window)
     setResult(null)

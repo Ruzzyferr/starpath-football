@@ -228,7 +228,7 @@ function overallResult(outcomes: BlackjackOutcome[], net: number): BlackjackView
   return outcomes.every((o) => o === 'bust') ? 'bust' : 'lose'
 }
 
-const emptyBj = (): BlackjackView => ({ bet: 0, player: [], dealer: [], playerTotal: 0, dealerTotal: null, phase: 'done', result: null, payout: 0, canDouble: false, hands: [], active: 0, canSplit: false })
+const emptyBj = (): BlackjackView => ({ rejected: true, bet: 0, player: [], dealer: [], playerTotal: 0, dealerTotal: null, phase: 'done', result: null, payout: 0, canDouble: false, hands: [], active: 0, canSplit: false })
 
 /** Games need a casino visit today (the evening activity); visit automatically when possible. */
 function ensureCasino(s: GameState): boolean {
@@ -324,7 +324,9 @@ function negoView(s: GameState, st: NegotiationState, lines: LText[]): Negotiati
   const t = st.offer.terms
   const q = s.life.agent?.quality ?? 0
   const status: NegotiationView['status'] =
-    st.status === 'agreed' ? 'accepted' : st.status === 'walkedAway' ? 'walkedAway' : st.status === 'rejected' ? 'rejected' : 'open'
+    // The sim's 'walkedAway' is the CLUB leaving the table (patience ran out): to the player
+    // that is a collapse, not "you walked away" (that one is set by walkAway() below).
+    st.status === 'agreed' ? 'accepted' : st.status === 'walkedAway' || st.status === 'rejected' ? 'rejected' : 'open'
   const agentLine: LText = !s.life.agent
     ? L('Menajerin yok; kulüp seni zorlayacak.', 'No agent: the club will squeeze you.')
     : st.status === 'expired'
@@ -667,7 +669,7 @@ export const realActions: GameActions = {
       if (!r.ok || !r.value) {
         notify(r.error)
         commit(s)
-        return blackjack.value ?? emptyBj()
+        return { ...(blackjack.value ?? emptyBj()), rejected: true }
       }
       const v = bjView(s, r.value)
       casinoDone(s)
@@ -679,14 +681,14 @@ export const realActions: GameActions = {
     blackjackSplit: () => bjAct('split'),
     rouletteSpin(bets) {
       const s = get()
-      if (!ensureCasino(s)) return { number: 0, color: 'green', net: 0 }
+      if (!ensureCasino(s)) return { number: 0, color: 'green', net: 0, rejected: true }
       const input = bets.map((b) => ({ type: ROULETTE_TYPE[b.kind] ?? 'red', stake: Math.round(b.amount), ...(b.value !== undefined ? { selection: b.value } : {}) }))
       const total = input.reduce((a, b) => a + b.stake, 0)
       const r = G.playRoulette(s, input)
       if (!r.ok || !r.value) {
         notify(r.error)
         commit(s)
-        return { number: 0, color: 'green', net: 0 }
+        return { number: 0, color: 'green', net: 0, rejected: true }
       }
       const n = r.value.pocket
       const red = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36].includes(n)
@@ -695,7 +697,7 @@ export const realActions: GameActions = {
     },
     slotsSpin(bet) {
       const s = get()
-      const none = { reels: [0, 1, 2], window: [[1, 0, 2], [2, 1, 0], [0, 2, 1]], wins: [], net: 0, winLine: false }
+      const none = { reels: [0, 1, 2], window: [[1, 0, 2], [2, 1, 0], [0, 2, 1]], wins: [], net: 0, winLine: false, rejected: true }
       if (!ensureCasino(s)) return none
       const stake = Math.round(bet)
       const r = G.playSlots(s, stake)
@@ -709,7 +711,7 @@ export const realActions: GameActions = {
     },
     horseRace(bet, horse) {
       const s = get()
-      const none = { timeline: [Array.from({ length: 8 }, () => 0)], order: [0, 1, 2, 3, 4, 5, 6, 7], net: 0 }
+      const none = { timeline: [Array.from({ length: 8 }, () => 0)], order: [0, 1, 2, 3, 4, 5, 6, 7], net: 0, rejected: true }
       if (!ensureCasino(s)) return none
       // Bet on exactly the card the player saw.
       writeJson(s.life, GFLAG.race, raceCardFor(s))

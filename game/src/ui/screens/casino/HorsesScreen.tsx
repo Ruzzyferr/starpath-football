@@ -50,6 +50,7 @@ function HorsesMain() {
   const start = () => {
     if (pick === null || racing) return
     const res = actions.casino.horseRace(bet, pick)
+    if (res.rejected) return // refused (closed / limit / money): the toast says why, no fake race
     setResult(res)
     setDone(false)
     setRacing(true)

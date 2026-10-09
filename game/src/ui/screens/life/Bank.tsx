@@ -2,11 +2,11 @@ import { useState } from 'preact/hooks'
 import type { Investment } from '../../../core/types'
 import { lt, t } from '../../../i18n'
 import { Button, Card, CardHeader, Chip, LineChart, MeterRing, Money, Segmented, Slider, Sparkline, toast } from '../../components'
-import { formatMoney, formatPercent } from '../../format'
+import { formatMoney, formatNumber, formatPercent } from '../../format'
 import { actions, data, gameState, type InvestKind } from '../../store'
 import { UnlockGate } from '../../tutorial/UnlockGate'
 import { absWeek } from '../../../sim/career/common'
-import { TERM_OPTIONS, termInterest } from '../../../sim/life/economy'
+import { INCOME_TAX, TERM_OPTIONS, amortizedPayment, loanRate, maxLoan, termInterest, weeklyIncome } from '../../../sim/life/economy'
 
 const KINDS: InvestKind[] = ['index', 'bonds', 'property', 'startup', 'crypto']
 const step = (max: number) => (max > 1_000_000 ? 10_000 : max > 100_000 ? 1_000 : 100)
@@ -57,7 +57,14 @@ export function Bank() {
   const move = Math.min(amt, maxMove)
   const scoreMax = bank.creditScore > 100 ? 850 : 100
   const scorePct = bank.creditScore / scoreMax
-  const loanMax = Math.max(10_000, Math.round((scorePct * 2_000_000) / 10_000) * 10_000)
+  // The bank's real ceiling (sim maxLoan: income × credit), so the slider never offers a refusal.
+  const loanMax = Math.floor(maxLoan(s.life, s.hero) / 1_000) * 1_000
+  const loanStep = loanMax >= 100_000 ? 10_000 : 1_000
+  const loanMin = Math.min(loanStep, loanMax)
+  const loanV = Math.max(loanMin, Math.min(loanAmt, loanMax))
+  const loanApr = loanRate(bank.creditScore)
+  const loanPay = amortizedPayment(loanV, loanApr, loanWeeks)
+  const loanTooHigh = loanPay > weeklyIncome(s.life, s.hero) * (1 - INCOME_TAX) * 0.4
   const invMax = Math.max(0, Math.floor(money))
   const inv = Math.min(invAmt, invMax)
   const netWorth = data.netWorthHistory()
@@ -131,7 +138,7 @@ export function Bank() {
             label={t('life.bank.term.title')}
             value={termWeeks}
             onChange={setTermWeeks}
-            options={TERM_OPTIONS.map((o) => ({ id: o.weeks, label: t('life.bank.term.weeks', { w: o.weeks, r: +(o.rate * 100).toFixed(1) }) }))}
+            options={TERM_OPTIONS.map((o) => ({ id: o.weeks, label: t('life.bank.term.weeks', { w: o.weeks, r: formatNumber(o.rate * 100, undefined, 1) }) }))}
           />
           <Slider label={t('life.bank.amount')} value={Math.min(termAmt, Math.floor(money))} min={0} max={Math.max(1, Math.floor(money))} step={step(money)} onChange={setTermAmt} format={(v) => formatMoney(v)} />
           <Button
@@ -155,7 +162,7 @@ export function Bank() {
             (bank.termDeposits ?? []).map((d) => (
               <div class="bank-inv" key={d.id} data-testid="bank-term-row">
                 <div class="grow">
-                  <div class="num">{formatMoney(d.amount)} · {formatPercent(d.rate)}</div>
+                  <div class="num">{formatMoney(d.amount)} · {formatPercent(d.rate, undefined, 1)}</div>
                   <div class="t-xs t-lo">{t('life.bank.term.matures', { n: Math.max(0, d.maturesAt - absWeek(s.calendar)), i: formatMoney(Math.round(termInterest(d))) })}</div>
                 </div>
                 <Button size="sm" variant="ghost" onClick={() => { actions.bankBreakTerm(d.id); toast(t('life.bank.term.broken'), 'info', 'coins') }}>{t('life.bank.term.break')}</Button>
@@ -172,7 +179,7 @@ export function Bank() {
             <dl class="bank-loan-specs">
               <div><dt>{t('life.bank.remaining')}</dt><dd class="num t-neg">{formatMoney(bank.loan.remaining)}</dd></div>
               <div><dt>{t('life.bank.weeklyPayment')}</dt><dd class="num">{formatMoney(bank.loan.weeklyPayment)}</dd></div>
-              <div><dt>{t('life.bank.rate')}</dt><dd class="num">{formatPercent(bank.loan.rate)}</dd></div>
+              <div><dt>{t('life.bank.rate')}</dt><dd class="num">{formatPercent(bank.loan.rate, undefined, 1)}</dd></div>
             </dl>
             <div class="bank-loan-bar" aria-hidden="true">
               <span style={{ transform: `scaleX(${1 - bank.loan.remaining / (bank.loan.principal || 1)})` }} />
@@ -216,19 +223,30 @@ export function Bank() {
         ) : (
           <div class="stack">
             <p class="t-sm t-lo">{t('life.bank.noLoan')}</p>
-            <Slider label={t('life.bank.loanAmount')} value={Math.min(loanAmt, loanMax)} min={10_000} max={loanMax} step={10_000} onChange={setLoanAmt} format={(v) => formatMoney(v)} />
+            {loanMax < 1_000 ? (
+              <p class="t-sm t-warn" data-testid="loan-none">{t('life.bank.loanNone')}</p>
+            ) : (
+              <Slider label={t('life.bank.loanAmount')} value={loanV} min={loanMin} max={loanMax} step={loanStep} onChange={setLoanAmt} format={(v) => formatMoney(v)} />
+            )}
             <Segmented
               label={t('life.bank.loanWeeks')}
               value={loanWeeks}
               onChange={setLoanWeeks}
               options={[26, 52, 104].map((w) => ({ id: w, label: t('life.bank.weeksN', { n: w }) }))}
             />
+            {loanMax >= 1_000 && (
+              <p class={`t-sm ${loanTooHigh ? 't-neg' : 't-mid'}`} data-testid="loan-preview">
+                {t('life.bank.loanPreview', { rate: formatPercent(loanApr, undefined, 1), pay: formatMoney(loanPay) })}
+                {loanTooHigh ? ` ${t('life.bank.loanTooHigh')}` : ''}
+              </p>
+            )}
             <Button
               variant="secondary"
               block
               icon="bank"
+              disabled={loanMax < 1_000 || loanTooHigh}
               onClick={() => {
-                const v = Math.min(loanAmt, loanMax)
+                const v = loanV
                 const ok = actions.takeLoan(v, loanWeeks)
                 toast(ok ? t('life.bank.loanTaken', { amount: formatMoney(v) }) : t('life.bank.loanRejected'), ok ? 'success' : 'error')
               }}

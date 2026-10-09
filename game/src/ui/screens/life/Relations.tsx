@@ -134,7 +134,8 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
   }
   const interact = (k: InteractionKind) => {
     const deltas = actions.interact(rel.id, k)
-    toast(deltas.length ? t('life.rel.done', { name: rel.name, deltas: deltasText(deltas) }) : t('life.rel.doneEmpty', { name: rel.name }), 'success', 'heart')
+    // Empty = refused (already met today / no money / no energy): the backend's toast says why.
+    if (deltas.length) toast(t('life.rel.done', { name: rel.name, deltas: deltasText(deltas) }), 'success', 'heart')
   }
   return (
     <article class="life-person card card-default pad-md">

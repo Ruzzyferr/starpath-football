@@ -110,6 +110,7 @@ function RouletteMain() {
     const list = Object.values(bets)
     if (!list.length || spinning) return
     const res = actions.casino.rouletteSpin(list)
+    if (res.rejected) return
     const idx = WHEEL.indexOf(res.number)
     const desired = (360 - idx * STEP) % 360
     const current = ((rotation % 360) + 360) % 360

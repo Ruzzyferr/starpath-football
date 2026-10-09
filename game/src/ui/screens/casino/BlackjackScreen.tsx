@@ -70,6 +70,7 @@ function BlackjackMain() {
 
   const run = (fn: () => BlackjackView) => {
     const v = fn()
+    if (v.rejected) return
     setView(v)
     if (v.phase === 'done') haptic(v.payout > 0 ? 'success' : v.payout < 0 ? 'warning' : 'tap')
   }
