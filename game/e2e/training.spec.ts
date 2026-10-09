@@ -157,3 +157,57 @@ test('trainer tab hires the offered trainer by name', async ({ page, shot }) => 
   await assertCleanText(page)
   await shot('t5-trainer')
 })
+
+/** A session card by its exact title (descriptions mention other sessions' names). */
+const sessionCard = (page: import('@playwright/test').Page, name: string) =>
+  page.locator('.trn-session').filter({ has: page.getByRole('heading', { name, exact: true }) })
+
+test('every attribute has a session: the new sessions list numbered XP per attribute and the role’s development areas', async ({ page, shot }) => {
+  await openTraining(page)
+  for (const name of ['Explosive Starts', 'Core & Contact', 'Switch of Play', 'Reading the Game', 'Pressing Drill', 'Captaincy & Team Talk']) {
+    await expect(sessionCard(page, name)).toHaveCount(1)
+  }
+  await expect(page.getByTestId('dev-focus')).toBeVisible()
+  const gains = sessionCard(page, 'Explosive Starts').locator('.trn-gain')
+  await expect(gains.first()).toContainText(/Acceleration/)
+  await expect(gains.first()).toContainText(/\+\d+\.\d XP/)
+  expect(await page.locator('.trn-gain.is-weak').count()).toBeGreaterThan(0)
+  // Captaincy is a talk, not a ball drill: auto only.
+  await expect(sessionCard(page, 'Captaincy & Team Talk').getByRole('button', { name: 'Do session' })).toBeVisible()
+  await assertCleanText(page)
+  await shot('t5-attr-sessions')
+  for (const [session, drill] of [['Reading the Game', 'Piggy in the Middle'], ['Pressing Drill', 'Pressing Square'], ['Switch of Play', 'Switch of Play'], ['Core & Contact', 'Shoulder Charge']]) {
+    await sessionCard(page, session).getByRole('button', { name: 'Play drill' }).click()
+    const overlay = page.locator('.trn-drill')
+    await expect(overlay.locator('.trn-drill-card h2')).toHaveText(drill)
+    await assertCleanText(page)
+    await overlay.getByRole('button', { name: 'Cancel' }).click()
+    await expect(overlay).toHaveCount(0)
+  }
+})
+
+test('play explosive starts with the keyboard: go on the light, graded result, acceleration XP', async ({ page, shot }) => {
+  await openTraining(page)
+  const xp0 = await sp<number>(page, 'sp.state().hero.attrs.acceleration + (sp.state().hero.attrXp.acceleration ?? 0)')
+  await sessionCard(page, 'Explosive Starts').getByRole('button', { name: 'Play drill' }).click()
+  const overlay = page.locator('.trn-drill')
+  await expect(overlay.locator('.trn-drill-card h2')).toHaveText('Off the Light')
+  await overlay.getByRole('button', { name: 'Start' }).click()
+  await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(3000) // countdown
+  const result = overlay.locator('.trn-drill-result')
+  // Tap Space every 0.4 s while holding Shift (drive): some false starts, many starts, dips at the line.
+  await page.keyboard.down('Shift')
+  for (let i = 0; i < 120 && !(await result.isVisible()); i++) {
+    await page.keyboard.press('Space')
+    if (i === 12) await shot('t6-sprint-live')
+    await page.waitForTimeout(400)
+  }
+  await page.keyboard.up('Shift')
+  await expect(result).toBeVisible({ timeout: 30_000 })
+  await expect(result.locator('.trn-grade')).toHaveText(/^[SABCD]$/)
+  await expect(result).toContainText(/\+\d+ XP/)
+  await result.getByRole('button', { name: 'Done' }).click()
+  await expect(overlay).toHaveCount(0)
+  expect(await sp<number>(page, 'sp.state().hero.attrs.acceleration + (sp.state().hero.attrXp.acceleration ?? 0)')).toBeGreaterThan(xp0)
+})
