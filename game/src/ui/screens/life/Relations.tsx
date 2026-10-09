@@ -170,7 +170,7 @@ function PersonCard({ rel, week }: { rel: Relationship; week: number }) {
         </ul>
       )}
       <div class="row-between life-person-sub">
-        <span class="t-xs t-lo">{ago === 0 ? t('life.rel.thisWeek') : t('life.rel.lastContact', { n: ago })}</span>
+        <span class="t-xs t-lo">{rel.memory.length === 0 && ago === 0 ? t('life.rel.noContact') : ago === 0 ? t('life.rel.thisWeek') : t('life.rel.lastContact', { n: ago })}</span>
         <div class="life-person-tools">
           {canFriend && (
             <Button size="sm" variant="ghost" icon={rel.closeFriend ? 'heart' : 'users'} class="life-friend-btn" data-testid="close-friend-toggle" aria-pressed={!!rel.closeFriend} onClick={toggleFriend}>
