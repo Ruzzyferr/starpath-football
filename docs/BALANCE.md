@@ -960,3 +960,41 @@ Her biri uçtan uca: yerleşim (`highlightGen`), mevki/rol ağırlığı, çalı
 `claim` ipucu), demo sayfası ve e2e, his bandı (`feel.test.ts`).
 
 Not: değişen mekanikler golden master'ı değiştirir (`src/sim/golden.json` lider tarafından yeniden üretilecek).
+
+## Kelebek bağları (Ekim 2026, `docs/SYSTEMS-MAP.md`)
+
+Sahip ilkesi "en küçük şeyin bile bir yerde etkisi olmalı" için çıkmaz sokaklar bağlandı (ayrıntı ve tam
+liste: `docs/SYSTEMS-MAP.md`). Dengeye dokunanlar: maça yorgun başlama (yorgunluk > 40, enerji < 40, dün gece
+dışarıda), keskinlik < 55 iken pas tutma (en fazla −%6), maçta yaşam kaynaklı sakatlık yatkınlığı (sağlık,
+stres, tükenmişlik), takım uyumu (takım morali ±%4), kaptanlık liderlik XP'si, maç öncesi gece ve disiplin
+< 40 için ilk 11 cezası, disiplinin milli çağrıya ve sponsor teklif sıklığına etkisi, takipçi ve ödüllerin
+sponsor sıklığına etkisi, lüks alım tepkileri, işletme zararı stresi, düşman basın / sevgili krizi / soğuk
+soyunma odası stresi, kumarhanede +5 yorgunluk, penaltıcı sırası.
+
+Ölçüm: otopilot maç günlerinde neredeyse hiç yorgun ya da paslı başlamıyor (8 kariyer × 4 sezon, 932 maç:
+maç günü ortalama yorgunluk 2, enerji 100, keskinlik 99,5; başlangıç yorgunluğu 0, takım uyumu ortalama
+×1,013, yatkınlık ×1,013). Yani bağlar ortalama oyuncunun sayılarını değil, oyuncunun **seçimlerinin** sonucunu
+değiştiriyor: 26 yaş itibarında parti personası 76,7 → 75,3 (tohum 1000) ve 77,7 → 72,3 (tohum 2000),
+kumarbaz 73,3 → 68,7 · 61,2 → 62,7 (gece hayatı ve düşük disiplin artık formaya ve çağrıya mal oluyor); pro
+personası değişmedi (78,4 → 79,9 · 78,3 → 78,9).
+
+| Ölçüt (30 × 10) | Önce: tohum 1000 · 2000 · 3000 · 4000 | Sonra: 1000 · 2000 · 3000 · 4000 | Hedef |
+|---|---|---|---|
+| İtibar 18 / 21 / 25 | 13/48/71 · 13/46/70 · 11/40/70 · 11/45/72 | 9/40/74 · 12/44/71 · 12/45/74 · 13/44/76 | ~15 / ~50 / 75–85 |
+| İlk 1. kademe / elit kulüp yaşı | 21,0/22,0 · 20,5/23,0 · 20,0/22,0 · 20,0/23,0 | 20,0/23,0 · 21,0/23,0 · 20,5/22,0 · 20,0/23,0 | 21–23 / 22–24 |
+| ST gol/maç kariyer / en iyi sezon | 0,56/0,97 · 0,58/1,00 · 0,50/0,81 · 0,50/0,86 | 0,56/0,88 · 0,55/0,90 · 0,62/0,92 · 0,56/0,95 | ~0,6–0,8 / ~1,0–1,3 |
+| 3. sezon net servet medyan | 122K · 134K · 131K · 112K | 112K · 151K · 126K · 127K | ≤ 300K |
+| Kumarhane payı kumarbaz / herkes | %12/%2 · %19/%2 · %13/%2 · %31/%3 | %22/%4 · %18/%2 · %31/%4 · %26/%3 | %15–35 / ≤ %5 |
+| Kart/hafta, sakatlık/sezon, sakat hafta | 1,7/1,4/3,3 · 1,8/1,5/3,6 · 1,8/1,5/3,3 · 1,8/1,4/3,3 | 1,7/1,4/3,3 · 1,7/1,5/3,3 · 1,7/1,4/3,4 · 1,7/1,4/3,3 | 1,5–2,5 / 1–2 / 3–6 |
+| İflas | %0 her tohumda | %0 her tohumda | ≤ %5 |
+
+"Önce" sütunu bu turun başındaki kod (c3d8f94); 1000 ve 2000 için "Sonra" son kod, 3000 ve 4000 için
+penaltıcı sırası bağlanmadan hemen önceki kod (yalnızca o kartı gören kariyerleri etkiler). Dört tohumun
+ortalamasında 21 yaş itibarı 44,8 → 43,3 (tohum gürültüsü içinde, tohum 1000 tek başına 48 → 40), 25 yaş
+itibarı 70,8 → 73,5 (hedefe yaklaştı), ST kariyer gol/maç 0,54 → 0,57. 21 ve 25 yaş itibarı ile ST en iyi
+sezonu bu turdan **önce de** hedefin alt sınırının altındaydı (c3d8f94 ile gelen özellik bağları); bu tur o
+açığı büyütmedi, ayrı bir ayar turu gerektiriyor.
+
+**Golden master bilinçli olarak yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): 1000 AI maçının özeti değişmedi,
+kariyer sezonu özeti değişti (maç hazırlığı, seçilme, sponsor sıklığı ve lüks tepkileri kariyer akışını
+değiştiriyor).
