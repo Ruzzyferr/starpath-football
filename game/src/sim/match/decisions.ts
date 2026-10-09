@@ -15,8 +15,8 @@
 import type { LText } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
 
-export type DecisionKind = 'penaltyTaker' | 'freeKickTaker' | 'provocation' | 'celebrate' | 'refCall' | 'shout'
-export const DECISION_KINDS: readonly DecisionKind[] = ['penaltyTaker', 'freeKickTaker', 'provocation', 'celebrate', 'refCall', 'shout']
+export type DecisionKind = 'penaltyTaker' | 'freeKickTaker' | 'provocation' | 'celebrate' | 'refCall' | 'shout' | 'rally'
+export const DECISION_KINDS: readonly DecisionKind[] = ['penaltyTaker', 'freeKickTaker', 'provocation', 'celebrate', 'refCall', 'shout', 'rally']
 
 export const MAX_PER_MATCH = 2
 export const COOLDOWN = 20
@@ -39,6 +39,8 @@ export interface DecisionEffects {
   fans?: number
   managerTrust?: number
   discipline?: number
+  /** Momentum boost for the hero's side (match only; applied by the engine). */
+  teamBoost?: number
   /** Hero is booked (yellow) in the match. */
   book?: boolean
 }
@@ -103,20 +105,22 @@ export interface DecisionOutcome {
 }
 
 type Fx = DecisionOutcome['effects']
-const ZERO: Fx = { rating: 0, morale: 0, teammates: 0, manager: 0, press: 0, fans: 0, managerTrust: 0, discipline: 0, book: false }
+const ZERO: Fx = { rating: 0, morale: 0, teammates: 0, manager: 0, press: 0, fans: 0, managerTrust: 0, discipline: 0, teamBoost: 0, book: false }
 
 function add(a: Fx, b: DecisionEffects | undefined): Fx {
   if (!b) return a
   return {
     rating: a.rating + (b.rating ?? 0), morale: a.morale + (b.morale ?? 0), teammates: a.teammates + (b.teammates ?? 0),
     manager: a.manager + (b.manager ?? 0), press: a.press + (b.press ?? 0), fans: a.fans + (b.fans ?? 0),
-    managerTrust: a.managerTrust + (b.managerTrust ?? 0), discipline: a.discipline + (b.discipline ?? 0), book: a.book || !!b.book,
+    managerTrust: a.managerTrust + (b.managerTrust ?? 0), discipline: a.discipline + (b.discipline ?? 0), teamBoost: a.teamBoost + (b.teamBoost ?? 0), book: a.book || !!b.book,
   }
 }
 
 // ───────────────────────── Content ─────────────────────────
 
-export function decisionDef(kind: DecisionKind, heroOvr = 60): DecisionDef {
+export function decisionDef(kind: DecisionKind, heroOvr = 60, leadership = 60): DecisionDef {
+  /** Gamble odds shift with leadership (60 = neutral). */
+  const lead = (base: number) => clamp(base + (leadership - 60) / 100 * 0.5, 0.2, 0.9)
   switch (kind) {
     case 'penaltyTaker':
     case 'freeKickTaker': {
@@ -179,11 +183,26 @@ export function decisionDef(kind: DecisionKind, heroOvr = 60): DecisionDef {
           { id: 'polite', label: lt('Nazikçe sor', 'Ask politely'), hint: lt('Saygı kazanırsın', 'Earns respect'), effects: { discipline: 1, teammates: 1, press: 1 } },
           {
             id: 'protest', label: lt('Sert itiraz et', 'Protest hard'), hint: lt('Kart riski, ama takım arkanda', 'Card risk, but the team is behind you'),
-            gamble: { chance: 0.5, win: { teammates: 2, fans: 1, morale: 1 }, lose: { discipline: -3, managerTrust: -1, rating: -0.2, book: true } },
+            gamble: { chance: lead(0.5), win: { teammates: 2, fans: 1, morale: 1 }, lose: { discipline: -3, managerTrust: -1, rating: -0.2, book: true } },
           },
           { id: 'calm', label: lt('Takımı sakinleştir', 'Calm the team down'), hint: lt('Liderlik göstergesi', 'A show of leadership'), effects: { teammates: 2, manager: 1 } },
         ],
         fallback: 'polite',
+      }
+    case 'rally':
+      return {
+        kind,
+        title: lt('Kaptan toparlıyor', "Captain's rally"),
+        prompt: lt('Gol yedik. Kaptan olarak takımı ayağa kaldırma zamanı.', 'We have just conceded. As captain, it is time to lift the side.'),
+        options: [
+          {
+            id: 'rally', label: lt('Takımı topla', 'Rally the team'), hint: lt('Liderliğin takımı ayağa kaldırır', 'Your leadership lifts the side'),
+            gamble: { chance: clamp(0.25 + leadership / 100 * 0.6, 0.25, 0.9), win: { teammates: 2, morale: 2, teamBoost: 1 }, lose: { teammates: -1 } },
+          },
+          { id: 'focus', label: lt('Sakin kal, işine bak', 'Stay calm, do your job'), hint: lt('Soğukkanlı, hoca memnun', 'Cool-headed; the manager approves'), effects: { rating: 0.05, managerTrust: 1 } },
+          { id: 'blame', label: lt('Savunmaya sitem et', 'Have a go at the defence'), hint: lt('Takım kırılabilir', 'The team may sulk'), effects: { teammates: -2, morale: -1 } },
+        ],
+        fallback: 'focus',
       }
     case 'shout':
     default:
@@ -195,7 +214,7 @@ export function decisionDef(kind: DecisionKind, heroOvr = 60): DecisionDef {
           { id: 'rally', label: lt('Hadi, bastırıyoruz!', 'Come on, push up!'), hint: lt('Moral verir', 'Lifts morale'), effects: { teammates: 2, morale: 1, rating: 0.05 } },
           {
             id: 'demand', label: lt('Daha fazlasını iste', 'Demand more'), hint: lt('Ya motive eder ya kırar', 'Fires them up or stings'),
-            gamble: { chance: 0.55, win: { teammates: 1, rating: 0.1, managerTrust: 1 }, lose: { teammates: -2, morale: -1 } },
+            gamble: { chance: lead(0.55), win: { teammates: 1, rating: 0.1, managerTrust: 1 }, lose: { teammates: -2, morale: -1 } },
           },
           { id: 'organise', label: lt('Düzeni hatırlat', 'Reorganise the shape'), hint: lt('Hocayı memnun eder', 'Pleases the manager'), effects: { manager: 2, managerTrust: 1 } },
         ],
@@ -227,6 +246,7 @@ export function pickDecision(ctx: DecisionContext): DecisionKind | null {
   if (!ctx.isKeeper && has('freekick', true)) cands.push(['freeKickTaker', 0.3])
   if (has('goal', true)) cands.push(['celebrate', 0.45])
   if (ctx.isCaptain && (has('yellow', false) || has('red', false) || has('penalty', false))) cands.push(['refCall', 0.7])
+  if (ctx.isCaptain && ctx.minute >= 20 && has('goal', false)) cands.push(['rally', 0.5])
   if (ctx.heroYellow === 0 && ctx.diff <= 0) cands.push(['provocation', ctx.isKeeper ? PROVOCATION_P / 2 : PROVOCATION_P])
   if (ctx.minute >= 55 && ctx.diff < 0) cands.push(['shout', SHOUT_P_LOSING])
   else if (ctx.minute >= 40 && ctx.diff === 0) cands.push(['shout', SHOUT_P_LEVEL])

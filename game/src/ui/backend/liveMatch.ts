@@ -350,7 +350,7 @@ function maybeOpenDecision(l: Live): void {
     isCaptain: s.hero.contract?.role === 'captain', heroOvr: heroOvr(s.hero), heroYellow: snap.heroStats.yellow,
   })
   if (!kind) return
-  l.decision = decisionDef(kind, heroOvr(s.hero))
+  l.decision = decisionDef(kind, heroOvr(s.hero), s.hero.attrs.leadership)
   l.decisionMinute = snap.minute
   stopTimer()
 }
@@ -360,7 +360,7 @@ export function debugOpenDecision(kind: DecisionKind): boolean {
   const l = live
   const s = current()
   if (!l || !s || l.decision || l.finalized || l.momentActive) return false
-  l.decision = decisionDef(kind, heroOvr(s.hero))
+  l.decision = decisionDef(kind, heroOvr(s.hero), s.hero.attrs.leadership)
   l.decisionMinute = l.sim.snapshot().minute
   stopTimer()
   publish()
@@ -376,7 +376,7 @@ export function decide(optionId: string): void {
   const out = resolveDecision(def, optionId, `${l.fixtureId}:${l.decisionMinute}`)
   l.decision = null
   recordDecision(s, out)
-  l.sim.applyHeroDecision(out.effects.rating, out.effects.book)
+  l.sim.applyHeroDecision(out.effects.rating, out.effects.book, out.effects.teamBoost)
   commit(s, { silent: true })
   persistProgress(true)
   publish()

@@ -116,3 +116,31 @@ describe('decision windows after playtest Tur 3', () => {
     expect(n / 200).toBeLessThan(0.8)
   })
 })
+
+describe('leadership and the captain rally', () => {
+  const chanceOf = (kind: Parameters<typeof decisionDef>[0], lead: number, id: string) =>
+    decisionDef(kind, 70, lead).options.find((o) => o.id === id)!.gamble!.chance
+  it('rally opens for a captain after conceding, never for a non-captain', () => {
+    const conceded = { type: 'goal', own: false, minute: 40 }
+    let n = 0
+    for (let k = 0; k < 40; k++) {
+      if (pickDecision({ ...base, seed: `y${k}`, isCaptain: true, last: conceded }) === 'rally') n++
+      expect(pickDecision({ ...base, seed: `y${k}`, isCaptain: false, last: conceded })).not.toBe('rally')
+    }
+    expect(n).toBeGreaterThan(8)
+    expect(pickDecision({ ...base, minute: 10, isCaptain: true, last: { ...conceded, minute: 10 } })).not.toBe('rally')
+  })
+  it('higher leadership raises gamble odds', () => {
+    expect(chanceOf('rally', 90, 'rally')).toBeGreaterThan(chanceOf('rally', 30, 'rally'))
+    expect(chanceOf('refCall', 90, 'protest')).toBeGreaterThan(chanceOf('refCall', 30, 'protest'))
+    expect(chanceOf('shout', 90, 'demand')).toBeGreaterThan(chanceOf('shout', 30, 'demand'))
+    expect(chanceOf('refCall', 60, 'protest')).toBe(0.5)
+  })
+  it('a won rally carries teamBoost', () => {
+    const def = decisionDef('rally', 70, 90)
+    let boosted = false
+    for (let k = 0; k < 40; k++) if (resolveDecision(def, 'rally', `z${k}`).effects.teamBoost === 1) boosted = true
+    expect(boosted).toBe(true)
+    expect(resolveDecision(def, 'focus', 'z').effects.teamBoost).toBe(0)
+  })
+})

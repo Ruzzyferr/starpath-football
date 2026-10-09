@@ -5,7 +5,7 @@ import { Icon } from '../../icons'
 import { actions, type DecisionView } from '../../store'
 
 const KIND_ICON: Record<string, 'whistle' | 'star' | 'chat'> = {
-  penaltyTaker: 'whistle', freeKickTaker: 'whistle', provocation: 'chat', celebrate: 'star', refCall: 'whistle', shout: 'chat',
+  penaltyTaker: 'whistle', freeKickTaker: 'whistle', provocation: 'chat', celebrate: 'star', refCall: 'whistle', shout: 'chat', rally: 'chat',
 }
 
 /**
