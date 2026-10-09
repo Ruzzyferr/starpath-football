@@ -6,7 +6,7 @@ import {
   BASE_STAKE_SHARE, CASINO_FLAGS, VIP_TURNOVER, casinoCareerCost, casinoVipTier, maxStakeFor, stakeShareFor,
 } from '../../../sim/life/casino'
 import { Card, Chip } from '../../components'
-import { formatMoney } from '../../format'
+import { formatMoney, formatNumber } from '../../format'
 import { Icon } from '../../icons'
 import { gameState, navigate } from '../../store'
 import { HelplineNote } from './ResponsiblePanel'
@@ -40,7 +40,7 @@ export function VipCard() {
         <h2 class="h3 grow">{t('casino.vip.title')}</h2>
         <Chip tone={tier > 0 ? 'gold' : 'neutral'}>{tier > 0 ? t('casino.vip.tier', { n: tier }) : t('casino.vip.none')}</Chip>
       </div>
-      <p class="t-sm" data-testid="casino-vip-limit">{t('casino.vip.limit', { p: pct(stakeShareFor(life)), m: formatMoney(maxStakeFor(life), { compact: true }) })}</p>
+      <p class="t-sm" data-testid="casino-vip-limit">{t('casino.vip.limit', { p: formatNumber(pct(stakeShareFor(life)), undefined, 1), m: formatMoney(maxStakeFor(life), { compact: true }), min: formatMoney(maxStakeFor({ ...life, money: 0 }), { compact: true }) })}</p>
       <p class="t-xs t-mid">
         {nextAt === null ? t('casino.vip.max') : t('casino.vip.next', { n: formatMoney(Math.max(0, nextAt - turnover), { compact: true }) })}
         {tier > 0 && ` · ${t('casino.vip.comps')}`}

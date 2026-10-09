@@ -10,7 +10,7 @@ import {
   projectUpkeep, projectsLegacyPoints, stadiumLevel, stakeDividend, stakePct, stakeValue,
 } from '../../../sim/life/projects'
 import { Button, Card, Chip, EmptyState, Money, SectionTitle, Slider } from '../../components'
-import { formatMoney } from '../../format'
+import { formatMoney, formatNumber, formatPercent } from '../../format'
 import { Icon, type IconName } from '../../icons'
 import { gameState } from '../../store'
 import { lifePlus } from '../../backend/lifePlus'
@@ -96,13 +96,13 @@ function Stake({ s }: { s: GameState }) {
     <ProjectCard id="stake" icon="trend-up" title={t('life.projects.stake.title')}>
       <p class="t-sm t-mid">{t('life.projects.stake.body', { max: STAKE_MAX_PCT, yield: Math.round(STAKE_YIELD * 100) })}</p>
       <dl class="biz-stats">
-        <div><dt>{t('life.projects.stake.owned')}</dt><dd class="num" data-testid="prj-stake-pct">{owned}%</dd></div>
+        <div><dt>{t('life.projects.stake.owned')}</dt><dd class="num" data-testid="prj-stake-pct">{formatPercent(owned / 100)}</dd></div>
         <div><dt>{t('life.projects.stake.dividend')}</dt><dd class="num t-pos" data-testid="prj-dividend">{money(stakeDividend(s.life))}{t('common.perWeek')}</dd></div>
         <div><dt>{t('life.projects.stake.value')}</dt><dd class="num">{money(stakeValue(s.life))}</dd></div>
       </dl>
       {clubName && <p class="t-xs t-mid row"><Icon name="shield" size={14} /> {t('life.projects.stake.club', { club: clubName })}</p>}
       {room > 0 && clubId ? (
-        <Slider label={t('life.projects.stake.pick')} value={p} min={1} max={room} step={1} onChange={setPct} format={(v) => `${v}% · ${money(v * STAKE_PRICE_PER_PCT)}`} />
+        <Slider label={t('life.projects.stake.pick')} value={p} min={1} max={room} step={1} onChange={setPct} format={(v) => `${formatPercent(v / 100)} · ${money(v * STAKE_PRICE_PER_PCT)}`} />
       ) : <p class="t-xs t-lo">{room <= 0 ? t('life.projects.stake.full') : t('life.projects.stake.noClub')}</p>}
       <div class="row wrap">
         <Button variant="primary" icon="coins" disabled={blocked} onClick={() => clubId && lifePlus.buyStake(clubId, p)}>
@@ -122,7 +122,7 @@ function Fund({ s }: { s: GameState }) {
   const canFund = s.life.money >= 10_000
   return (
     <ProjectCard id="fund" icon="bank" title={t('life.projects.fund.title')}>
-      <p class="t-sm t-mid">{t('life.projects.fund.body', { growth: (FUND_GROWTH * 100).toFixed(1) })}</p>
+      <p class="t-sm t-mid">{t('life.projects.fund.body', { growth: formatNumber(FUND_GROWTH * 100, undefined, 1) })}</p>
       <dl class="biz-stats">
         <div><dt>{t('life.projects.fund.balance')}</dt><dd class="num" data-testid="prj-fund-balance">{money(fund)}</dd></div>
         <div><dt>{t('life.projects.fund.child')}</dt><dd class="num t-pos">+{money(legacyFundBonus(fund))}</dd></div>

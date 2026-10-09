@@ -227,7 +227,7 @@ export function LifeScreen() {
           <p class="ph-aside-blurb t-mid">{t(`life.phone.blurb.${app ?? 'home'}`)}</p>
           <PhoneContext badge={badge} apps={apps} />
           <p class="ph-keys-line t-lo">
-            <span><kbd>Arrows</kbd> {t('life.phone.keyMove')}</span>
+            <span><kbd>{t('life.phone.kbdArrows')}</kbd> {t('life.phone.keyMove')}</span>
             <span><kbd>Enter</kbd> {t('life.phone.keyOpen')}</span>
             <span><kbd>Esc</kbd> {t('life.phone.keyBack')}</span>
           </p>

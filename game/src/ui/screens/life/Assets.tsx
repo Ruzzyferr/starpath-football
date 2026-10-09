@@ -170,7 +170,7 @@ export function Assets() {
               <span class={`life-asset-badge cat-${buying.category}`}><Icon name={assetIcon(buying.icon, buying.category)} size={26} /></span>
               <h3 class="h3">{lt(buying.name)}</h3>
             </div>
-            <p class="t-mid">{t('life.assets.buyBody', { name: lt(buying.name), upkeep: formatMoney(buying.upkeep) })}</p>
+            {buying.upkeep > 0 && <p class="t-mid">{t('life.assets.buyBody', { name: lt(buying.name), upkeep: formatMoney(buying.upkeep) })}</p>}
             {(() => {
               const net = weeklyIncome(s.life, s.hero) * (1 - INCOME_TAX)
               return net > 0 ? <p class="t-sm t-lo" data-testid="asset-weeks">{t('life.assets.weeksOfPay', { n: Math.max(1, Math.round(buying.price / net)) })}</p> : null

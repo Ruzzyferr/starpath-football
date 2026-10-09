@@ -116,7 +116,7 @@ export const tr = {
     inWeeks: '{week}. haftada açılır · {n} hafta kaldı',
     atAge: '{age} yaşında açılır',
     shortWeek: '{week}. haftada',
-    shortAge: '{age} yaşında',
+    shortAge: '{age} yaşında açılır',
     inYears: '{n} {n|yıl|yıl} sonra, {age} yaşında açılır',
     lockedTitle: '{feature} henüz kilitli',
     lockedBody: 'İlk haftalarda futboluna odaklan. Bu bölüm zamanı gelince açılacak.',
