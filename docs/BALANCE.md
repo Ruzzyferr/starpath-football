@@ -652,3 +652,172 @@ Boy (`hero.heightCm`, rolün varsayılanı ±5 cm) maçta kafa/sıçramaya −4.
 
 **Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit): rol şablonları başlangıç
 özelliklerini, rol karışımı ve boy maç sonuçlarını değiştiriyor.
+
+## Rol denge yaması (save v6, Ekim 2026)
+
+Sahibin cihaz testindeki geri bildirimi: rol ekranında yalnızca ok çipi olarak görünen, ama numaralı özellik
+listesinde olmayan istatistikler vardı; bir rol "Önerilen" etiketiyle doğru seçim gibi duruyordu; başlangıç yaşı
+16–18 ile sınırlıydı. Bu yama üçünü birlikte çözer.
+
+### Yeni özellikler (save v6, `MIGRATIONS[5]`)
+
+Her rolün ve her çipin konuştuğu her istatistik artık gerçek, numaralı bir özellik: sihirbaz önizlemesinde ve
+Profil listesinde görünür, antrenmanla gelişir, yaşla düşer, hem arka plan simülasyonunda hem oynanan anda etkisi
+vardır. Yedi yeni özellik (toplam 30, dört grup):
+
+| Grup | Özellikler (yeniler kalın) |
+|---|---|
+| Fiziksel | Hız (tam sürat), **Hızlanma**, Dayanıklılık, Güç, **Denge**, Çeviklik, Zıplama |
+| Teknik | Pas, **Uzun Pas**, Orta, Dribbling, İlk Dokunuş, Şut Gücü, Bitiricilik, **Falso**, Kafa, Top Kapma, Duran Top |
+| Zihinsel | Vizyon, Soğukkanlılık, Pozisyon Alma, **Önsezi**, **Agresiflik**, Liderlik, Çalışkanlık |
+| Kaleci | Refleks, **Plonjon**, Top Tutma, Pozisyon (Kaleci), Oyun Kurma (Kaleci) |
+
+| Yeni özellik | Simülasyon (sim/match) | Oynanan an (game/) | Antrenman |
+|---|---|---|---|
+| Hızlanma | savunma/hücum birim karışımı; kontra, 1v1, dribbling, savunma 1v1, kaleci süpürme | `model.accel` (ilk adımlar), take-on şansı | Kondisyon, Top Sürme |
+| Uzun Pas | orta saha birimi, kaleci oyun kurma; arka plan pas isabeti | 20 m üstü pas, ara pas, havadan pas, uzaklaştırma (`kickSkill`) | Pas, Orta, Çıkış |
+| Falso | uzaktan şut, frikik, korner becerisi; kenar/frikik/korner anları | `curlCap`, `maxSpin`, frikik ve orta isabeti | Duran Top, Orta, Şut |
+| Önsezi | savunma birimi; pas arası, seken top, arka direk, baraj | pas arası okuma (`runtime`), forvetin ofsayta düşmeden koşusu, take-on savunması | Taktik, Top Kapma |
+| Agresiflik | savunma birimi; arka plan top kazanma; NPC faul seçimi; savunma anlarında faul payı (`aggressionFoulMult`) | AI müdahale sıklığı, müdahale gücü ve faul riski (`tackleOdds`) | Top Kapma, Kafa |
+| Plonjon | kaleci birimi; kurtarış ve penaltı anları | dalış hızı (`diveSpeed`), parmak ucu kurtarışlar (`saveChance`) | Kaleci |
+| Denge | savunma birimi; hold-up, kafa, korner, arka direk, dribbling | omuz omuza müdahaleye direnç (`tackleOdds`), hava topu düellosu ağırlığı | Kondisyon, Top Sürme, Kafa |
+
+Göç: v5 kayıtlar yedi değeri eski sayfadan türetir (dondurulmuş `deriveAttrsV6`; ör. Hızlanma = 0,6 Hız + 0,4
+Çeviklik, Denge = 0,5 Güç + 0,3 Çeviklik + 0,2 Soğukkanlılık); özellik geçmişi her satırı kendi değerlerinden
+genişletir. NPC'ler `deriveAttributes` ile türetilir (pozisyon şablonları ve "flavour"lar yeni özellikleri içerir).
+OVR ağırlıkları yeni özellikleri mevki önemine göre içerir. Her oturum ve maç XP'sini daha çok özelliğe yaydığı için
+puan maliyeti `XP_COST_SCALE = 0,8` ile ölçeklendi (aşağıdaki BALANCE satırları bu ayarla). "Şut" etiketi
+"Şut Gücü" oldu (Bitiricilik'ten ayrışsın diye); her özelliğin açıklaması Sözlük'te (Oyuncu kategorisi).
+
+### Rol tanımları: 4 artı / 4 eksi
+
+Futbol içinden bir arkadaşın rol tanımı esas alındı (her rol tam 4 güçlü, 4 zayıf yan). Hangi özelliğin artı/eksi
+olduğu tanımdan; miktarı `createHero.roleTemplate` belirler: eksi 8 puan, mevkinin en önemli özelliğinde %30'una
+kadar azalır (zayıf yan gerçek ama mevkinin çekirdeğini çökertmez); OVR'ye sayılan artılar her rol aynı başlangıç
+OVR'sine ulaşacak şekilde ölçeklenir (en çok ×2,4); artıları mevkinin OVR çekirdeği dışında kalan roller (ör. Libero
+Kaleci) eksik kalan kazancı mevkinin diğer özelliklerine eşit dağıtır ("diğer yerlerde sağlam", en çok +24).
+Sihirbaz kartında 8 çip, önizlemede 8 numaralı satır (rolsüz mevki sayfasına göre farkıyla) gösterilir.
+
+| Mevki | Rol | Etiket | + | − |
+|---|---|---|---|---|
+| KL | Refleks Kalecisi | Refleks odaklı | Top Tutma, Çeviklik, Refleks, Soğukkanlılık | Pas, Oyun Kurma (K), Zıplama, Güç |
+| KL | Kurtarış Ustası | Hava hakimiyeti | Top Tutma, Zıplama, Çeviklik, Oyun Kurma (K) | Pas, Güç, Soğukkanlılık, Pozisyon (K) |
+| KL | Libero Kaleci | Oyun zekâsı | Pas, Oyun Kurma (K), Çeviklik, Güç | Refleks, Top Tutma, Zıplama, Soğukkanlılık |
+| Bek | Dengeli Bek | Fizik odaklı | Pozisyon Alma, Güç, Top Kapma, Orta | Dayanıklılık, Dribbling, Çeviklik, Hız |
+| Bek | Hücumcu Bek | Hız odaklı | Güç, Hız, Orta, Dribbling | Dayanıklılık, Çeviklik, Top Kapma, Pozisyon Alma |
+| Bek | Defansif Bek | Savunma odaklı | Top Kapma, Dayanıklılık, Çeviklik, Pozisyon Alma | Güç, Hız, Orta, Dribbling |
+| STP | Agresif Stoper | Fizik odaklı | Hız, Güç, Top Kapma, Pas | Zıplama, Vizyon, Soğukkanlılık, Denge |
+| STP | Hava Hakimi | Hava hakimiyeti | Denge, Zıplama, Soğukkanlılık, Güç | Hız, Top Kapma, Pas, Vizyon |
+| STP | Oyun Kurucu Stoper | Teknik odaklı | Vizyon, Pas, Soğukkanlılık, Denge | Zıplama, Top Kapma, Güç, Hız |
+| OS | Oyun Kurucu | Oyun zekâsı | Pas, Vizyon, Duran Top, İlk Dokunuş | Dayanıklılık, Şut, Çalışkanlık, Dribbling |
+| OS | Box-to-Box | Dayanıklılık odaklı | Dayanıklılık, Pas, Çalışkanlık, Vizyon | Dribbling, Şut, Duran Top, İlk Dokunuş |
+| OS | Ön Libero | Savunma odaklı | Çalışkanlık, Pas, Top Kapma, Dayanıklılık | Vizyon, Şut, Dribbling, Duran Top |
+| Kanat | Çizgi Kanadı | Hız odaklı | Hız, Şut, Orta, Dribbling | Pas, Vizyon, Kafa, Bitiricilik |
+| Kanat | Ters Kanat | Teknik odaklı | Pas, Bitiricilik, İlk Dokunuş, Vizyon | Şut, Orta, Hız, Dribbling |
+| Kanat | Serbest Kanat | Oyun zekâsı | Vizyon, Pas, İlk Dokunuş, Çeviklik | Dribbling, Çalışkanlık, Top Kapma, Kafa |
+| Kanat | Teknik Çalımcı | Yetenek odaklı | İlk Dokunuş, Dribbling, Hız, Pas | Güç, Kafa, Zıplama, Orta |
+| SNT | Derinlik Forveti | Hız odaklı | Hız, İlk Dokunuş, Bitiricilik, Pozisyon Alma | Güç, Zıplama, Pas, Kafa |
+| SNT | Hedef Forvet | Fizik odaklı | İlk Dokunuş, Güç, Zıplama, Pozisyon Alma | Hız, Bitiricilik, Pas, Kafa |
+| SNT | Pivot Santrfor | Hava hakimiyeti | Güç, Zıplama, Bitiricilik, Kafa | Pas, Pozisyon Alma, Hız, İlk Dokunuş |
+
+"Önerilen" rozeti kaldırıldı (kartlarda ve "Önerilen yetenek" yazısında); her kart nötr bir oyun tarzı etiketi taşır.
+AM'de iki rol (Oyun Kurucu, Box-to-Box) kaldı: ikisi de aşağıdaki bantta.
+
+### Ölçüm (`sim/game/roleBalance.ts`, `ROLE_BALANCE=1`)
+
+Her rol, kendi başlangıç şablonu ortak OVR 68'e taşınarak ölçülür (aynı genel güç, farklı şekil): 300 maçlık arka
+plan simülasyonu (anlar otomatik çözülür), rolün kendi an karışımından 300 an (ortalama bot, normal zorluk; tahmini
+maç reytingi = 6,0 + 6 × an başına reyting değişimi) ve rol başına 10 otomatik kariyer × 8 sezon. Δ = mevki
+ortalamasına göre fark; hedef ±%5. Ayarlar (`highlightGen.ROLE_KIND_MULT` / `ROLE_SHOT_SHARE`): Derinlik
+Forveti 1v1 2,0 → 1,7; Pivot şut payı 1,0 → 1,05; Oyun Kurucu build-up 1,7 → 1,5 ve şut payı 0,9 → 0,86; Hava
+Hakimi şut payı 1,1 → 1,25, pas arası 0,75 → 0,9, savunma 1,1 → 1,15; Oyun Kurucu Stoper build-up 2,6 → 2,0;
+Çizgi Kanadı / Teknik Çalımcı / Ters Kanat şut payı 1,06 / 1,05 / 0,93. İtibar eğrisi için `MATCH_REP_SCALE`
+0,72 → 0,76.
+
+| Mevki | Rol | Maç reytingi (sim) | Δ | G+A / maç | Savunma / maç | Oynanan maç reytingi | Δ | Kariyer son OVR | Δ | Son itibar | Δ | Kariyer reytingi | Δ |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| GK | reflexKeeper | 6.72 | +1.3% | 0.00 | 4.27 | 5.56 | −0.7% | 81.3 | −1.1% | 86 | +2.0% | 7.29 | +1.9% |
+| GK | shotStopper | 6.46 | −2.6% | 0.00 | 4.00 | 5.52 | −1.4% | 82.4 | +0.3% | 84 | −0.2% | 7.08 | −1.1% |
+| GK | sweeperKeeper | 6.72 | +1.3% | 0.00 | 3.65 | 5.72 | +2.1% | 82.9 | +0.9% | 83 | −1.8% | 7.10 | −0.8% |
+| CB | stopper | 6.36 | +0.2% | 0.10 | 3.85 | 6.35 | +3.8% | 76.9 | −1.2% | 55 | −0.3% | 6.45 | +1.6% |
+| CB | aerialDefender | 6.22 | −2.0% | 0.19 | 3.66 | 6.02 | −1.6% | 78.3 | +0.5% | 56 | +0.5% | 6.20 | −2.3% |
+| CB | ballPlayingDefender | 6.47 | +1.8% | 0.21 | 3.79 | 5.98 | −2.2% | 78.5 | +0.8% | 55 | −0.3% | 6.39 | +0.7% |
+| LB | balancedFullBack | 6.56 | +2.5% | 0.35 | 3.40 | 6.24 | +1.6% | 78.6 | +0.0% | 53 | +0.4% | 6.32 | +0.4% |
+| LB | attackingFullBack | 6.35 | −0.8% | 0.46 | 2.75 | 6.13 | −0.3% | 79.3 | +0.9% | 51 | −3.4% | 6.29 | −0.1% |
+| LB | defensiveFullBack | 6.29 | −1.7% | 0.23 | 3.71 | 6.07 | −1.2% | 77.8 | −0.9% | 54 | +3.1% | 6.28 | −0.2% |
+| DM | anchor | 6.27 | −2.4% | 0.19 | 3.41 | 6.20 | +3.7% | 81.3 | +0.7% | 63 | −3.7% | 6.48 | −0.7% |
+| DM | boxToBox | 6.31 | −1.9% | 0.30 | 2.83 | 5.90 | −1.3% | 80.4 | −0.4% | 64 | −2.9% | 6.44 | −1.4% |
+| DM | playmaker | 6.70 | +4.3% | 0.42 | 2.80 | 5.83 | −2.5% | 80.6 | −0.2% | 70 | +6.6% | 6.66 | +2.0% |
+| CM | boxToBox | 6.54 | −1.7% | 0.48 | 0.56 | 6.20 | +1.6% | 78.8 | +0.4% | 66 | −0.5% | 6.49 | −0.8% |
+| CM | anchor | 6.64 | −0.3% | 0.43 | 1.03 | 6.09 | −0.2% | 79.8 | +1.6% | 66 | +0.4% | 6.52 | −0.5% |
+| CM | playmaker | 6.80 | +2.1% | 0.57 | 0.34 | 6.01 | −1.4% | 76.9 | −2.0% | 66 | +0.1% | 6.63 | +1.3% |
+| AM | playmaker | 6.90 | −0.2% | 0.73 | 0.05 | 6.03 | −0.1% | 81.5 | +0.1% | 75 | +1.7% | 6.64 | +0.7% |
+| AM | boxToBox | 6.92 | +0.2% | 0.80 | 0.13 | 6.05 | +0.1% | 81.4 | −0.1% | 72 | −1.7% | 6.55 | −0.7% |
+| LW | touchlineWinger | 6.71 | −2.1% | 0.80 | 0.11 | 6.47 | +1.4% | 78.8 | −0.8% | 69 | −6.6% | 6.52 | −1.9% |
+| LW | invertedWinger | 7.07 | +3.2% | 0.91 | 0.14 | 6.37 | −0.2% | 80.5 | +1.4% | 78 | +4.8% | 6.72 | +1.1% |
+| LW | freeWinger | 6.87 | +0.3% | 0.76 | 0.05 | 6.44 | +0.9% | 79.5 | +0.2% | 78 | +4.8% | 6.75 | +1.5% |
+| LW | dribbler | 6.75 | −1.5% | 0.73 | 0.10 | 6.25 | −2.1% | 78.7 | −0.9% | 72 | −2.9% | 6.60 | −0.7% |
+| ST | runner | 6.95 | +1.7% | 1.07 | 0.11 | 6.49 | +0.5% | 78.0 | −0.8% | 73 | −1.8% | 6.58 | +0.2% |
+| ST | targetForward | 6.63 | −3.0% | 0.73 | 0.03 | 6.61 | +2.4% | 79.6 | +1.2% | 78 | +4.9% | 6.61 | +0.7% |
+| ST | pivot | 6.92 | +1.3% | 0.99 | 0.06 | 6.27 | −2.9% | 78.4 | −0.3% | 72 | −3.1% | 6.51 | −0.9% |
+
+Sonuç: maç reytingi (simülasyon ve oynanan), kariyer sonu OVR ve kariyer ortalama reytingi her rolde mevki
+ortalamasının ±%5'i içinde. Kariyer sonu itibarı en gürültülü ölçüt (rol başına 12 kariyer, kulüp ve kupa şansı);
+22 rol ±%5 içinde, Oyun Kurucu (DM) +%6,6 ve Çizgi Kanadı −%6,6 (sırasıyla reyting +%2,0 / −%1,9; aradaki fark
+kariyer şansı gürültüsü düzeyinde). Rollerin imza anları belirgin ölçüde farklı: Derinlik Forveti 1v1 ve uzun
+top, Hedef Forvet hold-up, Pivot kafa ve korner; Çizgi Kanadı orta, Teknik Çalımcı dribbling; Agresif Stoper pas
+arası, Hava Hakimi arka direk ve korner; Libero Kaleci süpürme.
+
+`roleBalance.test` korunağı: 40 maçlık otomatik simülasyonda her rolün reytingi mevki ortalamasının ±%8'i içinde
+(40 maçta ±%3 gürültü). Tam rapor:
+`ROLE_BALANCE=1 ROLE_BALANCE_CAREERS=12 ROLE_BALANCE_OUT=rol.md npx vitest run src/sim/game/roleBalance.test.ts -t "full report"`.
+
+### Başlangıç yaşı 16–21
+
+Genç başlayan daha düşük sayfa ama daha yüksek tavan ve hızlı gelişim yıllarına (≤ 20) daha çok zaman; yaşlı
+başlayan hazır bir sayfa, biraz itibar ve daha az tavan, zirveye kadar daha az yıl alır (`createHero.START_AGE_EFFECT`;
+yaş eğrisi ve düşüş herkes için aynı gerçek yaşta). Sihirbaz takası gösterir: başlangıç OVR'si (17'ye göre fark),
+potansiyel kayması ve zirveye kalan yıl.
+
+| Yaş | Özellik | Potansiyel | Asgari boşluk | İtibar |
+|---|---|---|---|---|
+| 16 | −2,5 | +2 | 13 | 0 |
+| 17 | 0 | 0 | 12 | 0 |
+| 18 | +4 | −0,5 | 11 | +3 |
+| 19 | +8 | −1 | 10 | +7 |
+| 20 | +12 | −2 | 9 | +11 |
+| 21 | +16 | −3 | 8 | +16 |
+
+Ölçüm (`BALANCE_AGES=1`, yaş başına 12 kariyer, hepsi 30 yaşına kadar, tohum 1000; medyan):
+
+| Başlangıç yaşı | Başlangıç OVR | Pot. | OVR 21 | OVR 25 | Zirve OVR | İtibar 21 | İtibar 25 | İtibar 30 | 1. kademe yaşı | Gol+asist (30 yaşa kadar) | Kupa (30) |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 16 | 44 | 85.5 | 77.5 | 82 | 85 | 57.5 | 77.5 | 88 | 19.5 (100%) | 244.5 | 4.6 |
+| 17 | 47 | 83.5 | 74.5 | 81 | 83.5 | 52.5 | 79 | 89.5 | 20.5 (100%) | 207 | 4.6 |
+| 18 | 51 | 83 | 73.5 | 79.5 | 82 | 47.5 | 76.5 | 91.5 | 21.0 (100%) | 202.5 | 4.0 |
+| 19 | 55 | 82.5 | 71.5 | 78 | 82 | 43 | 75 | 85.5 | 22.5 (100%) | 178.5 | 4.2 |
+| 20 | 59 | 81.5 | 70 | 78.5 | 82 | 36.5 | 70.5 | 86.5 | 22.0 (100%) | 187 | 3.7 |
+| 21 | 63 | 80.5 | 67.5 | 78.5 | 81.5 | 31 | 66.5 | 80.5 | 23.0 (100%) | 155 | 2.3 |
+21 yaşında başlayan 63 OVR ile en hazır başlar ve 25'te 78,5'e ulaşır, ama zirvesi (81,5) ve 30 yaşındaki itibarı
+(80,5) gençlerinkinin altında kalır, 30 yaşına kadar daha az gol+asist ve kupa toplar: hiçbir yaş kesin olarak daha
+iyi değil. 16 yaşında başlayan en düşük başlar ama en yüksek zirveye ve en uzun kariyere sahiptir. (Bu tablo
+`MATCH_REP_SCALE` 0,76 öncesi ölçüldü; ayar tüm yaşları aynı oranda yukarı taşır.)
+
+### BALANCE (17 yaş standart karışım, son kod)
+
+| Ölçüt (tohum 1000 · 2000) | Değer | Hedef |
+|---|---|---|
+| İtibar 18 / 21 / 25 | 12/49/77 · 12/51/78 | ~15 / ~50 / 75–85 |
+| OVR 21 / 25 (medyan) | 75/81 · 76/81 | 17–21 sezonda +5–7 |
+| İlk 1. kademe / elit kulüp yaşı | 21,0 · 20,0 / 23,0 · 23,0 | 21–23 / 22–24 |
+| Pot ≥ 85: 25 yaşına kadar OVR 80+ | 9/9 · 11/11 | çoğunluk |
+| 3. sezon net servet medyan / max | 128K/929K · 123K/557K | ≤300K / ≤2M |
+| ST gol/maç kariyer / en iyi sezon | 0,62/0,96 · 0,69/0,96 | ~0,6–0,8 / ~1,0–1,3 |
+| ST sezonluk gol 71–76 / 77–82 | 23/21 · 22/29 | 18–28 / 25–35 |
+| Kumarhane payı kumarbaz / herkes | %22/%3 · %24/%2 | %15–35 / ≤%5 |
+| Kart/hafta, sakatlık/sezon, sakat hafta | 1,7/1,5/3,7 · 1,8/1,4/3,2 | 1,5–2,5 / 1–2 / 3–6 |
+| İflas | %0 · %0 | ≤%5 |
+
+ST 77–82 tohum 1000'de 21 (n=17), iki tohumun ortalaması 25 (bant alt sınırı). **Golden master bilinçli olarak
+`UPDATE_GOLDEN=1` ile yenilendi** (aynı commit, 15121d3): yeni özellikler, rol şablonları ve ayarlar her kariyer ve
+maç sonucunu değiştiriyor.
