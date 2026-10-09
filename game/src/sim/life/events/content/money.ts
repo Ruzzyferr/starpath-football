@@ -90,7 +90,7 @@ export const moneyEvents: EventDef[] = [
             )
           if (r < 0.65)
             return fx(t('Yavaş ama istikrarlı büyüme. Payını küçük bir kârla devrettin.', 'Slow, steady growth. You sold your stake for a modest profit.'), money(a * 1.15), happy(2), flags({ startup_stake: null }))
-          return fx(t('Para bitti. {founder} özür diledi; sen de halı saha kiralamanın neden zor olduğunu öğrendin.', 'The money ran out. {founder} apologised; you learned why renting pitches is hard.'), stress(6), happy(-4), flags({ startup_stake: null }))
+          return fx(t('Para bitti. {founder} özür diledi; sen de halı saha kiralamanın neden zor olduğunu öğrendin.', 'The money ran out. {founder} apologised; you learned why renting pitches is hard.'), stress(6), happy(-4), flags({ startup_stake: null, startup_flop: true }))
         },
       },
       {

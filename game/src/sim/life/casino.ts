@@ -21,6 +21,7 @@
  *  Horses = 1/1.15 ≈ 87% (15% overround, like a real tote)
  *  Craps pass line ≈ 98.6% · Over/Under 7 ≈ 83.3%
  */
+import { achievementAddictionResist } from './echoes'
 import type { Calendar, Hero, Life } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, fmtMoney, lt, meter, pushNews, type Lines } from '../career/common'
@@ -855,7 +856,8 @@ export function canBet(life: Life, stake: number): { ok: boolean; reason: LText 
  *  - `addiction_resist` perk (Poker Face) scales all gains down
  */
 function addAddiction(life: Life, hero: Pick<Hero, 'perks'> | null, amount: number): void {
-  const resist = hero ? clamp(perkValue(hero, 'addiction_resist'), 0, 0.8) : 0
+  // Echo: the "In Control" achievement earned in this career (life/echoes) adds a little resistance.
+  const resist = clamp((hero ? perkValue(hero, 'addiction_resist') : 0) + achievementAddictionResist(life), 0, 0.8)
   life.casino.addiction = meter(life.casino.addiction + amount * (1 - resist), 0)
 }
 

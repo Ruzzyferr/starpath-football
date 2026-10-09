@@ -11,7 +11,7 @@ Yöntem:
   `key: 'alan'`) ve okuma (`.alan`) taraması; olay bayrakları (`life.flags`) için ayrıca `setFlags` /
   `addFlags` / `flags.x =` yazımları ile `hasFlag` / `flagNum` / `flags.x` okumaları eşleştirildi. Tarayıcı
   betikleri depoya konmadı (oturum çalışma alanında), sonuçlar aşağıdaki tablolara elle işlendi.
-- **Çalışma zamanı kontrolü.** `src/sim/game/butterfly.test.ts`: 23 senaryo; her biri aynı tohumdan iki
+- **Çalışma zamanı kontrolü.** `src/sim/game/butterfly.test.ts`: 37 senaryo ve 32 bayraklık tarama; her biri aynı tohumdan iki
   kariyer kurar, **tek bir küçük eylemi** değiştirir ve haftalar sonraki etkiyi kontrol kopyasıyla karşılaştırır.
 
 Kısaltmalar: *H* = `hero`, *L* = `life`, modül yolları `src/sim/` altındadır.
@@ -175,19 +175,91 @@ flowchart LR
 - Akademi → taraftar ve ün her hafta → Legacy çocuğuna itibar bonusu.
 - Uyku kalitesi / dinlenme / diyet → yorgunluk toparlanması ve yaşlanmanın yavaşlaması.
 
-### 3.3 Kalan, bilinçli olarak anlatı hafızası olan bayraklar
+### 3.3 Anlatı bayrakları artık yankılanıyor (0 çıkmaz)
 
-Aşağıdaki olay bayrakları yalnızca hikâyenin hatırlanması için yazılıyor (bir sonraki kartın metni veya
-koşulu değil). Hepsi tek seferlik anı niteliğinde; bir sonraki turda olay zincirlerine bağlanmaya adaydır:
-`abroad_class`, `armband_passed`, `business_curious`, `cb_link_code`, `child_letter`, `curfew_breaker`,
-`diet_plan`, `family_siblings`, `fixing_backed_out`, `fixing_buried`, `fixing_cleared`, `fixing_refused`,
-`foundation_pitches`, `friend_entourage`, `grandma_promise`, `homecoming_plan`, `knew_mate_bets`,
-`loan_spell`, `mental_health_voice`, `museum_lent`, `nemesis_award`, `partner_sacrificed`, `relapse`,
-`renewal_push`, `secret_mascot`, `smart_saver`, `stand_in_captain`, `startup_face`, `tactics_voice`,
-`ultras_friend`, `wants_home`, `wants_transfer_for_partner`.
+Önceki turda 32 olay bayrağı yalnızca hikâye hafızasıydı. Hepsi `src/sim/life/echoes.ts` üzerinden gerçek
+hayattaki karşılığına bağlandı. Haftalık katman (`weeklyEchoes`, `game/calendar` haftalık tikinde) bayrağın
+ilk görüldüğü haftayı `echo:<bayrak>` altında tutar; bir söz tutulunca ya da bir sır ortaya çıkınca bayrak
+`'kept'`, `'broken'`, `'leaked'` gibi bir duruma yazılır ve ikinci kez tetiklenmez. Rastgelelik yalnızca
+bayrak beklemedeyken ve verilen `Rng` ile kullanılır (deterministik). Kulübe bağlı bayraklar (taktik sesi,
+yedek kaptanlık, pazubent devri, stoper kodları, yenileme pazarlığı) kahraman kulüp değiştirince `'past'` olur.
 
-Diğer bilinçli sınırlar: başarımlar yalnızca meta ilerlemedir; kredi notu yalnızca kredi faizini belirler;
-milli takımda takım uyumu uygulanmaz (soyunma odası kulübe aittir).
+| Bayrak (olay) | Gerçek hayattaki karşılığı | Kod | Görünürlük |
+|---|---|---|---|
+| `abroad_class` (dil kursu) | Aynı ülkede kaldıkça 24 hafta boyunca 4 haftada bir takım arkadaşları +1 (25'e kadar) ve stres −1 | `weeklyEchoes` | günlük ("şakaları artık anlıyorsun"), ilişki defteri |
+| `armband_passed` (pazubent devri) | Aynı kulüpte takım uyumu +%1; Onur Listesi +10 ve belgesel satırı | `echoChemistry`, `echoLegacy` | maç sonu "Maça nasıl geldin?", Onur Listesi dökümü |
+| `business_curious` (kuzenin iş fikri, "kendi işini kur") | İlk açılan işletmenin marka puanı 40 yerine 46 (ödev yapıldı); bayrak tüketilir | `businessHomework`, `life/business.openBusiness` | işletme kartındaki marka |
+| `cb_link_code` (stoper ikilisinin kodu) | Aynı kulüpte takım uyumu +%0,5 | `echoChemistry` | maç sonu |
+| `child_letter` (gelecekteki çocuğa mektup) | Onur Listesi +5, belgesel satırı; Legacy çocuğu mutluluk +6, stres −5, ebeveyn ilişkisi +10 | `echoLegacy`, `legacy.applyLegacyStart` | Legacy başlangıç günlüğü ("Kasada mektubu buldun") |
+| `curfew_breaker` (yakalanmadan gece kaçamağı) | Alışkanlık: 10 hafta boyunca disiplin −0,2/hafta (toplam −2) | `weeklyEchoes` | günlük |
+| `diet_plan` (diyetisyenle sezon) | 38 hafta boyunca sağlık +0,25/hafta (92'ye kadar), yorgunluk −0,5/hafta | `weeklyEchoes` | günlük (sezon sonu satırı) |
+| `family_siblings` (kardeş sayısı, yaratılışta) | Stres 55 üstündeyken kardeş başına −0,15/hafta (yük paylaşılır, en çok 2 kardeş) | `weeklyEchoes` | (sessiz; stres) |
+| `fixing_backed_out` (şikeden son anda dönmek) | Şantaj çözülene kadar en çok 10 hafta stres +0,5/hafta | `weeklyEchoes` | günlük ("bilinmeyen numaralar") |
+| `fixing_buried` (sus payı) | 26 hafta stres +0,3/hafta; sonra %35 ihtimalle haber patlar (itibar −3, disiplin −4, basın −6, başkan −5, sponsor −0,04, Onur Listesi −20), yoksa yük kalkar (stres −3) | `weeklyEchoes`, `echoSponsor`, `echoLegacy` | haber, günlük, sponsor "Neden?" |
+| `fixing_cleared` (soruşturma delil yetersizliğinden kapandı) | Pazarlık marjı aynı kulüpte −%3 (başka kulüpte −%1); sponsor sıklığı −0,02 | `echoLeverage`, `echoSponsor` | sözleşme ekranı, sponsor "Neden?" |
+| `fixing_refused` (sessizce reddetmek) | 8 hafta stres +0,3/hafta, sonra gurur: disiplin +2; Onur Listesi +10 ("şikeye hayır") | `weeklyEchoes`, `echoLegacy` | günlük, belgesel |
+| `foundation_pitches` (vakfın ikinci sahası) | 104 hafta boyunca 8 haftada bir taraftar +1 (40'a kadar); Onur Listesi +15 ve belgesel satırı | `weeklyEchoes`, `echoLegacy` | ilişki defteri, belgesel |
+| `friend_entourage` (arkadaşı ekibe almak) | 52 hafta maaşın %3'ü (en az 150) haftalık gider, 6 haftada bir menajer −1 | `weeklyEchoes` | günlük (başta ve sonda) |
+| `grandma_promise` ("yazın gelirim" sözü) | Bir aile ziyareti (`family_visit`) sözü tutar: baba +6, mutluluk +4. Yaz ziyaretsiz geçerse: baba −6, anne −3, mutluluk −3 | `activityEcho`, `weeklyEchoes` | aktivite satırı, günlük, ilişki defteri |
+| `homecoming_plan` ("sözleşme bitince dönelim") | Bir sonraki kulüp memlekette ise sevgili +10, mutluluk +6; başka bir ülke ise sevgili −10, stres +3 | `weeklyEchoes` (kulüp değişimi) | günlük |
+| `knew_mate_bets` (arkadaşın bahsini görmezden gelmek) | 12 hafta stres +0,25/hafta; sonra %40 soruşturma ortaya çıkarır: disiplin −4, başkan −5, basın −3, sponsor −0,02, haber | `weeklyEchoes`, `echoSponsor` | haber, günlük |
+| `loan_spell` (kiralık) | 16 hafta keskinlik en az 70 (her hafta oynuyorsun), dönüşte hoca güveni +4 | `weeklyEchoes` | günlük |
+| `mental_health_voice` (hikâyeni paylaşmak) | Sponsor sıklığı +0,02; 52 hafta 6 haftada bir basın +1 (30'a kadar); Onur Listesi +10 | `echoSponsor`, `weeklyEchoes`, `echoLegacy` | sponsor "Neden?", belgesel |
+| `museum_lent` (koleksiyonu müzeye vermek) | Sergi süresince (104 hafta) 6 haftada bir taraftar +1 (50'ye kadar); Onur Listesi +15, belgesel | `weeklyEchoes`, `echoLegacy` | ilişki defteri, belgesel |
+| `nemesis_award` (göz devirme capsi) | 20 hafta boyunca 5 haftada bir basın −1 (−10'a doğru) | `weeklyEchoes` | ilişki defteri |
+| `partner_sacrificed` (sevgilinin kariyerinden vazgeçmesi) | 26 hafta boyunca 4 haftada bir sevgili −1 (fedakârlık aranızda durur) | `weeklyEchoes` | günlük, ilişki defteri |
+| `relapse` (kumar nüksü) | 8 hafta bağımlılık +1,5/hafta, stres +0,3/hafta | `weeklyEchoes` | günlük |
+| `renewal_push` ("hak ettiğimi istiyorum") | Aynı kulüpte yenilemede marj +%3, sabır +5 | `echoLeverage` | sözleşme ekranı "Pazarlığı etkileyenler" |
+| `secret_mascot` (gizli maskot) | 20 hafta sonra sır çözülür: taraftar +4, basın +2, takipçi +%3, mutluluk +2, haber (tribün tezahüratı) | `weeklyEchoes` | haber, günlük |
+| `smart_saver` (ücretleri sormak) | Yatırım satış ücreti kalıcı olarak yarıya iner | `feeWise`, `life/economy.sellInvestment` | satış tutarı |
+| `stand_in_captain` (yedek kaptan konuşması) | Aynı kulüpte ilk 11 şansı +%2 | `echoSelection`, `career/squadRole` | "Neden oynuyorum?" paneli |
+| `startup_face` (girişimin reklam yüzü) | Sponsor sıklığı +0,02; girişim batarsa (`startup_flop`) −0,02 | `echoSponsor` | sponsor "Neden?" |
+| `tactics_voice` (alternatif taktik önerisi kabul gördü) | Aynı kulüpte ilk 11 şansı +%2 | `echoSelection` | "Neden oynuyorum?" paneli |
+| `ultras_friend` (ultras toplantısı) | 52 hafta 4 haftada bir taraftar +1 (50'ye kadar); sponsor sıklığı −0,02 | `weeklyEchoes`, `echoSponsor` | sponsor "Neden?", ilişki defteri |
+| `wants_home` ("memlekete yakın bir kulüp") | Yurt dışındayken 4 haftada bir mutluluk −0,5 (sıla özlemi); memlekete transferde mutluluk +6 | `weeklyEchoes` | günlük |
+| `wants_transfer_for_partner` (sevgilinin şehrindeki kulüpler) | 52 hafta içinde kulüp değişirse sevgili +8; değişmezse sevgili −6 | `weeklyEchoes` | günlük |
+
+Bilinçli istisna yok: en "süs" bayrak bile (`secret_mascot`, `nemesis_award`) küçük ve makul bir izi olan bir
+ilişkiye bağlandı. `butterfly.test.ts` her bayrağı (`ECHO_FLAGS`) aynı tohumdan kontrol kopyasıyla 64 hafta
+oynatır ve en az bir gözlemlenebilir farkı şart koşar.
+
+### 3.4 Başarımlar → oyun (`src/sim/game/achievementEffects.ts`)
+
+Başarım deposu küresel kalır (Steam, kariyerler arası). Yanına kayda yazılan **kariyer başına** ikinci bir
+depo (`c:ach`) eklendi: aynı olaylar (arayüz köprüsü `ui/backend/meta.ts`) bu kariyerde kazanılan başarımı
+belirler ve küçük bir yankı uygulanır. Kural: XP yok, özellik yok, birikmeyen etkiler; durumsal soğukkanlılık
+en çok +4 puan (tek bir maç yeteneği +6), itibar en çok +2 (azalan getiriyle). Meta başarımlar (veda, hanedan,
+koleksiyoncu, üç ömür…) yalnızca meta kalır. Sistemden önceki kayıtlarda o ana kadar kazanılanlar sessizce
+kaydedilir (bir anda bonus yağmuru olmaz). Günlükte "🏵️ {başarım}: {etki}" satırı görünür.
+
+| Başarım | Bir kerelik | Kalıcı (bu kariyer) |
+|---|---|---|
+| Penaltı (`penalty_goal`) | - | Penaltıda soğukkanlılık +2 |
+| Frikik Golü / Frikik Uzmanı | Uzman: 4 hafta marka ilgisi | Frikikte soğukkanlılık +1 / +3 (toplam +4) |
+| Kafa Golü | - | Açık oyun kafa anında soğukkanlılık +1 |
+| Hat-trick | takipçi +%2, basın +1, moral +3 | Birebirde soğukkanlılık +1 |
+| Final Golü, Dev Avcısı | Dev avcısı: taraftar +2 | Büyük maçta (önem ≥ 0,7) soğukkanlılık +1'er |
+| Gol Yok, Aşılmaz Duvar (kaleci) | Duvar: basın +1, 4 hafta marka | Kaleci birebirinde soğukkanlılık +1 / +2 |
+| Kontrol Sende | - | Kumar dürtüsü artışları ×0,9 |
+| Altın Yıldız | itibar +2, takipçi +%5, basın +3, 8 hafta marka ilgisi | - |
+| Gol Kralı | itibar +1, basın +2, 6 hafta marka | - |
+| 50 / 100 / 250 / 500 gol | itibar +0,5…+2, takipçi +%2…+%5, 0–8 hafta marka | - |
+| 50 / 150 asist, 10 maçın adamı, 10 kupa, 5 hat-trick, 4 gol, kusursuz maç, ilk ödül, OVR 80 / 90, Harika Çocuk, golcü kaleci, 100K / 1M takipçi | itibar 0–1, basın 0–3, 4–8 hafta marka ilgisi (sponsor sıklığı +0,03) | - |
+| 100 / 300 / 500 maç, milli çağrı, 50 milli maç, 20 milli gol, on sezon, seçmeden yıldız, kulüp rekoru | taraftar +1…+3 (yer yer itibar +0,5…+1, basın +2, güven +2) | - |
+| Örnek Profesyonel | hoca güveni +3, 6 hafta marka ilgisi | - |
+| S notu, 10 S notu, tüm drillerde S, 100 drill, 25 gol yememe | hoca güveni +1…+2 | - |
+| İlk kupa, takımın yıldızı, 5 maç seri, 3 asist | moral +2…+3 | - |
+| Ev sahibi, kârdayken kalk | stres −2 / −1 | - |
+| Hepsi | - | Onur Listesi'nde başarım başına 3 puan (en çok 45), "Hayat hikâyesi ve başarımlar" satırı |
+
+Gol kutlamaları zaten başarımlarla açılıyor (`ui/backend/celebration.ts`); bu kozmetik bağ değişmedi.
+Marka ilgisi `ach:spotlight` haftalık eriyen sayaçtır ve sponsor "Neden?" panelinde "Son başarın markaların
+dikkatini çekti" satırıyla görünür. Durumsal soğukkanlılık otomatik çözülen anlarda (motor `skipHighlight`)
+uygulanır; canlı oynanan anda sonucu oyuncunun eli belirler.
+
+Diğer bilinçli sınırlar: kredi notu yalnızca kredi faizini belirler; milli takımda takım uyumu uygulanmaz
+(soyunma odası kulübe aittir); başarım yankıları yalnızca arayüzde oynanan kariyerde çalışır (otomatik denge
+simülasyonu başarım olayı üretmez, bu yüzden denge ölçümleri başarımlardan etkilenmez).
 
 ## 4. Zincir testleri (`src/sim/game/butterfly.test.ts`)
 
@@ -218,6 +290,20 @@ Her test aynı tohumla iki kopya kurar ve tek eylemi değiştirir:
 | u | Menajerle iyi ilişki | pazarlık sabrı ve marjı |
 | v | Penaltıcılığı üstlenmek | 40 maçta vurulan penaltı sayısı |
 | w | Mağazadan lüks alım (eylem yolu) | işlem satırı, son lüks kaydı |
+| `ECHO_FLAGS` × 32 | Her anlatı bayrağı tek tek | 64 haftada en az bir gözlemlenebilir fark (ilişki, stres, disiplin, para, sponsor, seçilme, uyum, pazarlık, Onur Listesi…) |
+| x | Babaanneye söz | aile ziyareti sözü tutar, ziyaretsiz yaz baba ilişkisini düşürür |
+| y | Gizli maskot | 20 hafta sonra taraftar, takipçi, haber |
+| z | Memlekete dönüş planı | memlekete transfer sevgiliyi ısıtır, başka ülke soğutur |
+| aa | Taktik sesi | ilk 11 şansı ve neden satırı; kulüp değişince düşer |
+| ab | Ultras / ruh sağlığı sesi | sponsor sıklığı ve sponsor "Neden?" satırı |
+| ac | Yenileme pazarlığı / kapanan soruşturma | pazarlık marjı, sabır, neden satırı |
+| ad | Sus payı | 26 hafta sonra ya sızar (itibar, sponsor) ya söner |
+| ae | Müze ve mektup | Onur Listesi, belgesel satırı, Legacy çocuğunun mutluluğu |
+| af | Penaltı başarımı | penaltı gol olasılığı biraz artar; maç kurulumunda yalnızca kahramanda |
+| ag | Altın Yıldız başarımı | itibar (≤ 1,5), takipçi, marka ilgisi; 8 haftada söner; ikinci kez uygulanmaz |
+| ah | Kariyer başarım deposu | bir kez kazanılır, günlük satırı, Onur Listesi; eski kayıt sessiz |
+| ai | Kontrol Sende | kumar bağımlılığı daha yavaş artar |
+| - | Başarım etkileri tablosu | hiçbir etki tavanı aşmaz (itibar ≤ 2, takipçi ≤ %5, güven ≤ 3, durumsal soğukkanlılık ≤ 3) |
 
 ## 5. Görünürlük
 

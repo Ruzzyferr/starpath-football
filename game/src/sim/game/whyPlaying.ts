@@ -3,6 +3,7 @@
  * start the next match. Mirrors `startProbability` term by term so the
  * explanation can never drift from the sim; returns the strongest factors.
  */
+import { echoSelection } from '../life/echoes'
 import type { GameState, LText } from '../../core/types'
 import { lt } from '../career/common'
 import { heroOvr } from '../career/progression'
@@ -82,6 +83,7 @@ export function whyPlaying(state: GameState): WhyPlaying | null {
     }
     const conduct = disciplineSelectionPenalty(state.life)
     if (conduct >= 0.01) f.push({ key: 'conduct', points: -pp(conduct), actionable: true, label: lt('Disiplin sicilin kötü, teknik direktör sana güvenmiyor.', 'Your discipline record is poor; the manager is wary of you.') })
+    for (const c of echoSelection(h, state.life).causes) f.push({ key: c.key, points: 2, actionable: false, label: c.label })
     if (state.life.flags.promised_start === true) f.push({ key: 'promise', points: 15, actionable: false, label: lt('Teknik direktör ilk 11 sözü verdi.', 'The manager promised you a start.') })
     if (formGuaranteeActive(h, state.life)) f.push({ key: 'formClause', points: 0, actionable: false, label: lt(`Form maddesi: şans en az %${pp(FORM_GUARANTEE_START)}.`, `Form clause: chance is at least ${pp(FORM_GUARANTEE_START)}%.`) })
     if (h.contract.minutesGuarantee) f.push({ key: 'minutes', points: 0, actionable: false, label: lt(`Süre garantin var: şans en az %${pp(MINUTES_GUARANTEE_START)}.`, `You hold a minutes guarantee: chance is at least ${pp(MINUTES_GUARANTEE_START)}%.`) })

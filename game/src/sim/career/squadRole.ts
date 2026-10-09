@@ -9,6 +9,7 @@
  * you think you deserve to play builds frustration; the hero may complain
  * (polite / demand / public), each with different risk profiles.
  */
+import { echoSelection } from '../life/echoes'
 import type { Calendar, Hero, Life, SquadRole } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, heroAge, lt, meter, type Lines } from './common'
@@ -221,6 +222,8 @@ export function startProbability(hero: Hero, life: Life, today?: number): number
   if (hero.sharpness < 40) p -= 0.1
   // Butterfly (life/butterfly): a night out before the match and a poor conduct record cost the shirt.
   p -= preMatchNightPenalty(life, today) + disciplineSelectionPenalty(life)
+  // Echoes (life/echoes): a tactical voice the manager listens to, weeks as stand-in captain.
+  p += echoSelection(hero, life).value
   if (life.flags.promised_start === true) p += 0.15
   if (formGuaranteeActive(hero, life)) p = Math.max(p, FORM_GUARANTEE_START)
   if (hero.contract.minutesGuarantee) p = Math.max(p, MINUTES_GUARANTEE_START)

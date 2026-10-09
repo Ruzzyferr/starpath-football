@@ -11,6 +11,7 @@
  *  - Actions & views for the retirement flow, documentary, Hall of Fame,
  *    Legacy New Game+, trials, records, potential, market reference.
  */
+import { careerAchievementEvent } from '../../sim/game/achievementEffects'
 import { effect, signal } from '@preact/signals'
 import type { GameState, LText } from '../../core/types'
 import { lt as render, t } from '../../i18n'
@@ -117,6 +118,8 @@ export function achievementEvent(ev: AchEvent, s: GameState | null = current()):
   store.update((d) => {
     unlocked = processAchievementEvent(d.achievements, ev, s, Date.now())
   })
+  // The same event feeds the per-career store: feats earned in THIS career echo in the game (sim/game/achievementEffects).
+  if (s) careerAchievementEvent(s, ev)
   publish()
   announce(unlocked)
   return unlocked

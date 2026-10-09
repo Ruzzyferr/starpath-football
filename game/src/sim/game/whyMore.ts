@@ -4,6 +4,7 @@
  * Star went elsewhere. Every panel lists the three biggest factors with a
  * percentage share; shares always sum to 100 over the listed factors.
  */
+import { echoSponsor } from '../life/echoes'
 import type { GameState, LText } from '../../core/types'
 import { clamp, lt } from '../career/common'
 import { heroOvr, potentialStars } from '../career/progression'
@@ -77,6 +78,7 @@ export function whySponsors(state: GameState): Why {
     { key: 'perks', label: lt('Sponsor yeteneği', 'Sponsor perk'), value: Math.log(1 + perkValue(h, 'sponsor_value')), actionable: true },
     { key: 'awards', label: lt('Son ödüllerin markaların ilgisini çekiyor', 'Your recent awards draw the brands'), value: Math.min(0.06, 0.03 * h.awards.filter((a) => a.season >= state.calendar.season - 1).length) * 4, actionable: false },
     { key: 'conduct', label: lt('Disiplin sicilin markaları ürkütüyor', 'Your conduct record scares the brands off'), value: l.discipline < 40 ? -((40 - l.discipline) / 40) * 0.05 * 4 : 0, actionable: true },
+    ...echoSponsor(l).causes.map((c) => ({ key: c.key, label: c.label, value: c.value * 4, actionable: false })),
     { key: 'slots', label: slotsFull ? lt('Tüm sponsor yuvaları dolu', 'All sponsor slots are full') : lt('Boş yuva var', 'Open sponsor slots'), value: slotsFull ? -0.5 : 0, actionable: true },
   ]
   return { title: lt('Sponsor teklifleri neden böyle?', 'Why are sponsor offers like this?'), rows: topShares(raw) }

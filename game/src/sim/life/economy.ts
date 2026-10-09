@@ -6,6 +6,7 @@
  * Every function is pure-ish: it mutates the passed Life/Hero and returns
  * localized feedback lines; randomness comes only from the passed Rng.
  */
+import { feeWise } from './echoes'
 import type { AssetDef, Calendar, Hero, Investment, Life, OwnedAsset, TermDeposit } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, finite, fmtMoney, lt, type Lines } from '../career/common'
@@ -358,7 +359,8 @@ export function sellInvestment(life: Life, id: string): { amount: number; lines:
   const idx = life.bank.investments.findIndex((i) => i.id === id)
   if (idx < 0) return { amount: 0, lines: [lt('Yatırım bulunamadı.', 'Investment not found.')] }
   const inv = life.bank.investments[idx]!
-  const amount = Math.max(0, Math.round(finite(inv.value * (1 - INVESTMENT_KINDS[inv.kind].sellFee))))
+  // Echo: a hero who once asked about the fees (`smart_saver`) pays half the sale fee.
+  const amount = Math.max(0, Math.round(finite(inv.value * (1 - INVESTMENT_KINDS[inv.kind].sellFee * feeWise(life)))))
   life.bank.investments.splice(idx, 1)
   life.money += amount
   const pl = amount - inv.amount

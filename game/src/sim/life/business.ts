@@ -15,6 +15,7 @@
  * All state lives in `life.businesses` (plain data); the weekly tick runs
  * inside `weeklyEconomy` so its cash flow lands in the economy breakdown.
  */
+import { businessHomework } from './echoes'
 import type { Business, BusinessKind, BusinessPnl, Calendar, Hero, LText, Life } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { absWeek, clamp, fill, fmtMoney, lt, meter, type Lines } from '../career/common'
@@ -107,7 +108,8 @@ export function openBusiness(life: Life, hero: Pick<Hero, 'reputation'>, kind: B
   const w = absWeek(cal)
   const nm = (name ?? '').trim().slice(0, 28) || def.names[w % def.names.length]
   const b: Business = {
-    id: `biz_${kind}_${w}`, kind, name: nm!, level: 1, manager: false, brand: 40, openedWeek: w,
+    // Echo: the homework done after the cousin's pitch (`business_curious`) gives the brand a head start.
+    id: `biz_${kind}_${w}`, kind, name: nm!, level: 1, manager: false, brand: 40 + businessHomework(life), openedWeek: w,
     invested: def.price, totalProfit: 0, history: [],
   }
   businesses(life).push(b)

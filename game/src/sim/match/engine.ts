@@ -236,7 +236,10 @@ export class MatchSim {
     if (!pending) return []
     const hero = this.heroPlayer()
     if (!hero) return this.resolveHighlight({ outcome: 'timeout', passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 })
-    const r = autoResolve(pending.highlight.kind, hero.attrs, this.s.setup.difficulty, this.rng, this.heroInjuryRisk())
+    // A moment the hero has already mastered in this career is met with a steadier mind (achievementEffects).
+    const extra = hero.kindComposure?.[pending.highlight.kind] ?? 0
+    const attrs = extra ? { ...hero.attrs, composure: Math.min(99, hero.attrs.composure + extra) } : hero.attrs
+    const r = autoResolve(pending.highlight.kind, attrs, this.s.setup.difficulty, this.rng, this.heroInjuryRisk())
     this.resolvingAuto = true
     try {
       return this.resolveHighlight(r)

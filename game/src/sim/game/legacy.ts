@@ -26,12 +26,14 @@ export interface LegacyStart {
   legacyScore: number
   inheritance: number
   reputationBonus: number
+  /** The parent left a letter (echo of `child_letter`): the child starts calmer and happier. */
+  letter?: boolean
 }
 
 export const LEGACY_PARENT_FLAG = 'c:legacyParentId'
 
 /** Legacy terms for a child of `entry`. */
-export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'> & Partial<Pick<HallOfFameEntry, 'legacyFund' | 'academyLevel' | 'owner'>>): LegacyStart {
+export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name' | 'gender' | 'legacyScore' | 'netWorth'> & Partial<Pick<HallOfFameEntry, 'legacyFund' | 'academyLevel' | 'owner' | 'letter'>>): LegacyStart {
   return {
     parentCareerId: entry.careerId,
     parentName: entry.name,
@@ -39,6 +41,7 @@ export function legacyStartFrom(entry: Pick<HallOfFameEntry, 'careerId' | 'name'
     legacyScore: entry.legacyScore,
     inheritance: Math.round(clamp(Math.max(0, entry.netWorth) * 0.02, 5_000, 150_000)) + legacyFundBonus(entry.legacyFund ?? 0),
     reputationBonus: Math.round(clamp(entry.legacyScore / 150, 3, 10)) + legacyAcademyBonus(entry.academyLevel ?? 0) + (entry.owner ? 2 : 0),
+    ...(entry.letter ? { letter: true } : {}),
   }
 }
 
@@ -56,6 +59,12 @@ export function applyLegacyStart(state: GameState, l: LegacyStart): void {
     rel.name = l.parentName
     rel.value = Math.max(rel.value, 70)
     rel.lastContactWeek = absWeek(state.calendar)
+  }
+  if (l.letter) {
+    life.happiness = clamp(life.happiness + 6, 0, 100)
+    life.stress = clamp(life.stress - 5, 0, 100)
+    if (rel) rel.value = clamp(rel.value + 10, -100, 100)
+    pushLog(life, state.calendar, fill(lt('Kasada {p}\'in sana bıraktığı mektubu buldun: zaferler, korkular, pişmanlıklar. Bu yolda yalnız olmadığını hissettin.', 'In the safe you found the letter {p} left you: victories, fears, regrets. You feel less alone on this road.'), { p: l.parentName }), 'career', '📔')
   }
   pushLog(life, state.calendar, fill(lt('Efsane {p}\'in çocuğu olarak sahneye çıkıyorsun. Miras: {m}, şöhret +{r}.', 'You step out as the child of legend {p}. Inheritance: {m}, reputation +{r}.'), { p: l.parentName, m: fmtMoney(l.inheritance), r: l.reputationBonus }), 'career', '🧬')
 }

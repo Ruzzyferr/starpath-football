@@ -34,6 +34,8 @@ export interface MatchPlayer {
   marked?: number
   /** Hero only: playing role (core/roles), set while he plays in a slot the role belongs to. */
   role?: Role
+  /** Hero only: composure points proven in a kind of moment (career achievements, sim/game/achievementEffects). */
+  kindComposure?: Partial<Record<HighlightKind, number>>
 }
 
 export interface MatchTeam {

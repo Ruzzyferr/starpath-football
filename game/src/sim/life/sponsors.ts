@@ -5,6 +5,7 @@
  * economy tick (it sums `life.sponsors[].weekly`); this module only manages
  * the deals themselves.
  */
+import { echoSponsor } from './echoes'
 import type { Calendar, Hero, LText, Life, SponsorDeal } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { NEWS_SOURCES, clamp, fill, fmtMoney, lt, pushNews, type Lines } from '../career/common'
@@ -124,11 +125,13 @@ export const heldCategories = (life: Life): Set<SponsorCategory> => new Set(life
  * sits inside that curve), +0.03 per award of this or last season (max +0.06),
  * and brands keep away from a poor conduct record (discipline < 40: up to −0.05).
  */
-export function sponsorOfferChance(hero: Pick<Hero, 'reputation' | 'awards'>, life: Pick<Life, 'followers' | 'discipline'>, season: number): number {
+export function sponsorOfferChance(hero: Pick<Hero, 'reputation' | 'awards'>, life: Pick<Life, 'followers' | 'discipline'> & Partial<Pick<Life, 'flags'>>, season: number): number {
   let p = 0.08 + hero.reputation / 250
   p += clamp(Math.log10(Math.max(1, life.followers) / 10_000) * 0.03, 0, 0.09)
   p += Math.min(0.06, 0.03 * (hero.awards ?? []).filter((a) => a.season >= season - 1).length)
   if (life.discipline < 40) p -= ((40 - life.discipline) / 40) * 0.05
+  // Echoes (life/echoes): public stands, scandals and a fresh headline achievement.
+  if (life.flags) p += echoSponsor({ flags: life.flags }).value
   return clamp(p, 0.02, 0.9)
 }
 

@@ -23,6 +23,7 @@ import { NEWS_SOURCES, absWeek, clamp, fill, heroAge, lt, meter, pushNews, type 
 import { perkValue } from '../career/perks'
 import { changeRelation, closeCircleMood, teammateAverage } from './relationships'
 import { addStress, isBurnedOut, mentalMatchModifier } from './wellbeing'
+import { echoChemistry, echoLeverage } from './echoes'
 
 /** A cause shown to the player: what happened, and whether it helped or hurt. */
 export interface Cause {
@@ -168,11 +169,15 @@ export function dressingRoomChemistry(hero: Pick<Hero, 'contract' | 'attrs'>, li
   let m = 1 + clamp((avg / 100) * 0.08, -0.04, 0.04)
   const captain = hero.contract?.role === 'captain' && (hero.attrs?.leadership ?? 0) >= 70
   if (captain) m += 0.01
+  // Echoes: a handed-over armband or a centre-back duo's shared codes (life/echoes).
+  const echo = echoChemistry(hero, life)
+  m += echo.value
   m = Math.round(m * 1000) / 1000
   let cause: Cause | null = null
   if (avg <= -15) cause = { key: 'chem', tone: 'neg', label: lt('Soyunma odasındaki soğukluk takımın uyumunu bozdu.', 'The cold dressing room hurt the team’s chemistry.') }
   else if (captain) cause = { key: 'chem', tone: 'pos', label: lt('Kaptanlığın takımı bir arada tuttu.', 'Your captaincy held the team together.') }
   else if (avg >= 30) cause = { key: 'chem', tone: 'pos', label: lt('Takım arkadaşlarınla bağın takıma moral verdi.', 'Your bond with your teammates lifted the team.') }
+  else if (echo.cause) cause = { ...echo.cause, key: 'chem' }
   return { mult: m, cause }
 }
 
@@ -306,7 +311,7 @@ export interface Leverage {
  * loyalty pledge (+2 %), awards of this or last season (+3 % each, max +9 %)
  * and a poor discipline record (−3 %).
  */
-export function negotiationLeverage(hero: Pick<Hero, 'awards'>, life: Pick<Life, 'agent' | 'relationships' | 'flags' | 'discipline'>, season: number, sameClub: boolean): Leverage {
+export function negotiationLeverage(hero: Pick<Hero, 'awards'> & { contract?: Hero['contract'] }, life: Pick<Life, 'agent' | 'relationships' | 'flags' | 'discipline'>, season: number, sameClub: boolean): Leverage {
   let headroom = 0
   let patience = 0
   const causes: Cause[] = []
@@ -338,6 +343,11 @@ export function negotiationLeverage(hero: Pick<Hero, 'awards'>, life: Pick<Life,
     headroom -= 0.03
     causes.push({ key: 'discipline', tone: 'neg', label: lt('Disiplin sicilin pazarlık gücünü zayıflattı.', 'Your discipline record weakens your hand.') })
   }
+  // Echoes: a renewal pushed for earlier, a closed investigation (life/echoes).
+  const echo = echoLeverage(life, sameClub, hero.contract?.clubId)
+  headroom += echo.headroom
+  patience += echo.patience
+  causes.push(...echo.causes)
   return { headroom: Math.round(headroom * 1000) / 1000, patience, causes }
 }
 

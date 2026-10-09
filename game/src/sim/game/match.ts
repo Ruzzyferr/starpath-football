@@ -7,6 +7,7 @@
  * lives in `life.flags['g:match']` as JSON; `state.activeMatchId` holds the
  * fixture id while a match is prepared or in progress.
  */
+import { achievementMatchBonus } from './achievementEffects'
 import { heroHeight, roleFits, withHeight } from '../../core/roles'
 import { heroGender } from '../../core/gender'
 import type { MatchBonuses } from '../career/matchPay'
@@ -175,14 +176,16 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   // Perk hook (career/matchPerks): match_* perks become attribute boosts read by the sim and the Phaser runtime.
   const marked = markedMan(hero)
   // Height (save v5): taller heroes win more in the air (heading / jumping), see core/roles withHeight.
+  // Career achievements: composure the hero has proven on big nights and in certain moments (achievementEffects).
+  const ach = achievementMatchBonus(state.life, importance)
   const heroAttrs = withHeight(
-    heroMatchAttributes(hero, applyRust({ ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental), 1, 99) }, cond?.rustMult ?? 1), { importance }),
+    heroMatchAttributes(hero, applyRust({ ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental) + ach.composure, 1, 99) }, cond?.rustMult ?? 1), { importance }),
     heroHeight(hero), heroGender(hero),
   )
   // The role shapes the hero's moments (highlightGen ROLE_KIND_MULT) while he plays in a slot it belongs to.
   const heroPlayer = (slot: Position): MatchPlayer => ({
     id: HERO_ID, name: hero.nickname || hero.lastName, number: hero.shirtNumber, position: slot, ovr: heroOvr(hero),
-    attrs: heroAttrs, isHero: true, relationToHero: 100, ...(marked > 0 ? { marked } : {}),
+    attrs: heroAttrs, isHero: true, relationToHero: 100, ...(marked > 0 ? { marked } : {}), ...(Object.keys(ach.kinds).length ? { kindComposure: ach.kinds } : {}),
     ...(hero.role && roleFits(slot, hero.role) ? { role: hero.role } : {}),
   })
   const used = new Set<number>(heroSide ? [hero.shirtNumber] : [])

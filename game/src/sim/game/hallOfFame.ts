@@ -9,6 +9,8 @@
  *   + trophies×25 + awards×40 + caps×1.5 + international goals×3
  *   + peak reputation×2 + 10·log10(1 + net worth / 10 000)
  */
+import { echoLegacy } from '../life/echoes'
+import { careerAchievementLegacy } from './achievementEffects'
 import type { Gender, GameState, LText, Position } from '../../core/types'
 import { heroAge, lt } from '../career/common'
 import { heroOvr } from '../career/progression'
@@ -96,6 +98,10 @@ export interface CareerSummary {
   academyLevel?: number
   /** Legacy points from projects (academy, stadium, club stake, collection). */
   projectsScore?: number
+  /** Legacy points from the life the hero led: causes, stands, scandals and career achievements (life/echoes, achievementEffects). */
+  characterScore?: number
+  /** The hero left a letter for a future child (veteran event): the Legacy child starts steadier. */
+  letter?: boolean
   /** Majority club ownership at retirement (chairman-owner epilogue); absent when the hero holds less than 51%. */
   owner?: ClubOwnerInfo & { clubName: string }
 }
@@ -106,7 +112,7 @@ export type HallOfFameEntry = CareerSummary
 const r1 = (n: number): number => Math.round(n * 10) / 10
 
 /** Legacy score + its breakdown. */
-export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'> & { postCareer?: PostCareerPath; projectsScore?: number }): { total: number; breakdown: ScoreLine[] } {
+export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awards' | 'caps' | 'intGoals' | 'reputation' | 'netWorth'> & { postCareer?: PostCareerPath; projectsScore?: number; characterScore?: number }): { total: number; breakdown: ScoreLine[] } {
   const lines: ScoreLine[] = [
     { key: 'goals', label: lt('Goller', 'Goals'), value: s.totals.goals * 2 },
     { key: 'assists', label: lt('Asistler', 'Assists'), value: s.totals.assists },
@@ -119,6 +125,7 @@ export function legacyScore(s: Pick<CareerSummary, 'totals' | 'trophies' | 'awar
     { key: 'wealth', label: lt('Servet', 'Wealth'), value: r1(10 * Math.log10(1 + Math.max(0, s.netWorth) / 10_000)) },
   ]
   if (s.projectsScore) lines.push({ key: 'projects', label: lt('Vakıf, akademi ve koleksiyon', 'Foundation, academy and collection'), value: s.projectsScore })
+  if (s.characterScore) lines.push({ key: 'character', label: lt('Hayat hikâyesi ve başarımlar', 'Life story and achievements'), value: s.characterScore })
   if (s.postCareer) lines.push({ key: 'postCareer', label: POST_CAREER[s.postCareer].label, value: POST_CAREER[s.postCareer].score })
   return { total: Math.round(lines.reduce((a, b) => a + b.value, 0)), breakdown: lines }
 }
@@ -169,7 +176,8 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
   const ownedClubName = state.world.clubs[String(state.life.flags[PROJECT_FLAGS.stakeClub] ?? '')]?.name ?? ''
   const ownerInfo = clubOwnerOf(state.life, ownedClubName)
   const owner = ownerInfo ? { ...ownerInfo, clubName: ownedClubName } : null
-  const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}), ...(projectsScore > 0 ? { projectsScore } : {}) })
+  const characterScore = echoLegacy(state.life).points + careerAchievementLegacy(state.life)
+  const score = legacyScore({ ...base, ...(opts.postCareer ? { postCareer: opts.postCareer } : {}), ...(projectsScore > 0 ? { projectsScore } : {}), ...(characterScore !== 0 ? { characterScore } : {}) })
   const ovr = heroOvr(h)
   return {
     careerId: state.meta.id,
@@ -203,6 +211,8 @@ export function buildCareerSummary(state: GameState, opts: { peakOvr?: number; t
     ...(academy > 0 ? { academyLevel: academy } : {}),
     ...(projectsScore > 0 ? { projectsScore } : {}),
     ...(owner ? { owner } : {}),
+    ...(characterScore !== 0 ? { characterScore } : {}),
+    ...(state.life.flags.child_letter === true ? { letter: true } : {}),
   }
 }
 
@@ -244,6 +254,8 @@ export function bestMoments(state: GameState): LText[] {
   }
   const ownerInfo = clubOwnerOf(state.life, state.world.clubs[String(state.life.flags[PROJECT_FLAGS.stakeClub] ?? '')]?.name ?? '')
   if (ownerInfo) cands.push({ w: 88, t: ownerInfo.headline })
+  // Echoes: the documentary remembers the life, not only the trophies (life/echoes).
+  for (const m of echoLegacy(state.life).moments) cands.push({ w: 42, t: m })
   const nt = h.nationalTeam
   if (nt.caps > 0) cands.push({ w: 60 + Math.min(30, nt.caps / 2), t: { tr: `🎽 ${nt.caps} milli maç, ${nt.goals} gol`, en: `🎽 ${nt.caps} caps, ${nt.goals} international goals` } })
   const best = [...h.history].sort((a, b) => b.stats.goals - a.stats.goals)[0]

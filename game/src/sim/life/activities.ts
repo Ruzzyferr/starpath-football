@@ -6,6 +6,7 @@
  * and the game layer moves `calendar.slot` forward (and calls
  * {@link startDay} when a new day begins).
  */
+import { activityEcho } from './echoes'
 import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
 import { hashString, type Rng } from '../../core/rng'
 import { ACTIVITIES, ACTIVITY_BY_ID, DONE_VARIANTS, type ActivityDef, type MoneyFormula, type RelationTarget } from '../../data/activities'
@@ -347,6 +348,8 @@ export function performActivity(
     life.flags.nightlife_act = def.id // butterfly: the night before a match names its cause
   }
   if (def.conditions.cooldownDays) life.flags[`act_${def.id}`] = today
+  // Echoes (life/echoes): a family visit keeps grandma's promise.
+  lines.push(...activityEcho(hero, life, def.id, ctx.calendar))
   if (ctx.matchTomorrow && def.triggerTags.includes('nightlife')) tags.push('pre_match_night')
 
   if (def.special !== 'train' && def.special !== 'post') {
