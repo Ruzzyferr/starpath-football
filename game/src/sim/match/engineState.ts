@@ -109,6 +109,8 @@ export interface HeroRuntime {
   kinds?: Partial<Record<HighlightKind, number>>
   /** Keepers' book on the hero (setup.keeperBook + this match), WP-14. */
   book?: ShotBook
+  /** Background duel rating not yet booked (heroDuels.ts; flushed every 15 minutes). */
+  duel?: number
 }
 
 /** Complete engine state. */

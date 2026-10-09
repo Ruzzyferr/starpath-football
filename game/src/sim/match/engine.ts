@@ -36,6 +36,7 @@ import {
 } from './highlightGen'
 import { EARLY_BRAKE_MINUTE, MIN_MOMENT_CHANCE, earlyBrake, momentChance } from './fairness'
 import { backgroundPasses, mergePassNet } from './passNet'
+import { heroDuelMinute, heroTeamLift, workRateFatigueMult } from './heroDuels'
 import { HEAT_COLS, HEAT_ROWS, addHeat, backgroundPresence, emptyHeat, shotEntry, typicalShotSpot } from './heroMap'
 import { formationSlots } from './formations'
 import { backgroundRedReason, banMatches, copyBook, noteShot, refCardMult, refFoulMult, type RedReason } from './referee'
@@ -526,6 +527,11 @@ export class MatchSim {
     const t = this.team(side)
     let m = 1 + (clamp(t.morale, 0.8, 1.2) - 1) * 0.3
     if (side === 'home' && !this.s.setup.neutralVenue) m *= HOME_ADVANTAGE
+    // The hero's leadership (more as captain) and work rate lift his own team while he is on the pitch.
+    if (side === this.s.hero.side && this.heroOnPitch()) {
+      const hero = this.heroPlayer()
+      if (hero) m *= heroTeamLift(hero.attrs, !!this.s.setup.heroCaptain, hero.position === 'GK')
+    }
     return { gk: r.gk, def: r.def * m, mid: r.mid * m, att: r.att * m, n: r.n }
   }
 
@@ -674,7 +680,9 @@ export class MatchSim {
       const st = STYLES[this.team(side).style].fatigue
       for (const id of this.s.teams[side].onPitch) {
         const p = this.player(id)
-        const rate = p.position === 'GK' ? 0.003 : 0.0085 * (1.3 - p.attrs.stamina / 100)
+        let rate = p.position === 'GK' ? 0.003 : 0.0085 * (1.3 - p.attrs.stamina / 100)
+        // The hero's work rate: more pressing and recovery runs cost more legs.
+        if (p.isHero) rate *= workRateFatigueMult(p.attrs.workRate)
         const r = this.s.players[id]!
         r.fatigue = Math.min(1, r.fatigue + Math.max(0.001, rate) * st * w)
       }
@@ -1326,7 +1334,10 @@ export class MatchSim {
     const hero = this.heroPlayer() as MatchPlayer
     const inPossession = att === h.side
     const rel = 0.75 + 0.25 * (1 + this.teammateRelationAvg() / 100)
-    const rate = HERO_PASS_RATE[hero.position] * rel * (inPossession ? 1.4 : 0.6)
+    // A hard runner shows for the ball more; tired legs (late, low stamina) less.
+    const condition = 1 - (this.s.players[hero.id]?.fatigue ?? 0)
+    const legs = (0.85 + clamp(hero.attrs.workRate / 100, 0, 1) * 0.3) * (0.7 + 0.3 * condition)
+    const rate = HERO_PASS_RATE[hero.position] * rel * legs * (inPossession ? 1.4 : 0.6)
     const attempts = (this.rng.next() < rate ? 1 : 0) + (this.rng.next() < rate * 0.4 ? 1 : 0)
     // Most of a player's passes are short; long passing carries the switches and balls over the top.
     const pComplete = clamp(0.55 + (hero.attrs.passing * 0.75 + hero.attrs.longPassing * 0.25) * 0.0035, 0.5, 0.93)
@@ -1348,6 +1359,31 @@ export class MatchSim {
     const win = 0.04 * (0.55 + hero.attrs.aggression * 0.005 + hero.attrs.anticipation * 0.004)
     if (!inPossession && (g === 1 || hero.position === 'DM') && this.rng.chance(win)) h.stats.tackles++
     if (inPossession && g === 3 && this.rng.chance(0.02)) h.stats.dribbles++
+    this.heroDuels(hero, inPossession, condition)
+  }
+
+  /**
+   * Background duels (heroDuels.ts): headers, shoulder battles, races, take-ons, pressing; a keeper's claims
+   * and distribution. Hash-seeded (no engine draws); the rating moves in 15-minute instalments.
+   */
+  private heroDuels(hero: MatchPlayer, inPossession: boolean, condition: number): void {
+    const h = this.s.hero
+    const side = h.side as Side
+    const opps = this.onPitch(other(side)).filter((p) => p.position !== 'GK')
+    const oppLevel = opps.length ? opps.reduce((t, p) => t + p.ovr, 0) / opps.length : 65
+    const oppFat = opps.length ? opps.reduce((t, p) => t + (this.s.players[p.id]?.fatigue ?? 0), 0) / opps.length : 0
+    const key = `${this.s.setup.seed >>> 0}:${this.s.period}:${this.s.clock}:${this.s.stoppageUsed}`
+    const d = heroDuelMinute(key, hero.position, hero.attrs, inPossession, oppLevel, condition, 1 - oppFat)
+    h.duel = (h.duel ?? 0) + d.delta
+    if (this.s.clock % 15 === 0) this.flushDuels()
+  }
+
+  private flushDuels(): void {
+    const h = this.s.hero
+    if (!h.duel) return
+    const v = h.duel
+    h.duel = 0
+    this.rate(v, { source: 'background', key: 'involvement' })
   }
 
   // ───────────────────────── Highlight resolution ─────────────────────────
@@ -1725,6 +1761,7 @@ export class MatchSim {
 
   private finalizeHero(gf: number, ga: number): number {
     const h = this.s.hero
+    this.flushDuels()
     const hero = this.heroPlayer() as MatchPlayer
     const parts = finalRatingParts({
       position: hero.position,
