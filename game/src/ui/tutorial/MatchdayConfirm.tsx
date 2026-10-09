@@ -5,9 +5,9 @@
  */
 import { signal } from '@preact/signals'
 import { t } from '../../i18n'
-import { Button, Modal } from '../components'
+import { Button, Modal, toastAction } from '../components'
 import { Icon } from '../icons'
-import { actions, data, gameState, navigate, type FixtureView } from '../store'
+import { actions, activeEvent, data, gameState, navigate, type FixtureView } from '../store'
 
 /** Selector: today's hero match is due now and would be simulated by Advance. */
 export function matchDueNow(): FixtureView | null {
@@ -35,6 +35,28 @@ export function requestAdvance(): void {
     return
   }
   actions.advance()
+}
+
+/**
+ * "Skip to match day" from any UI entry point. Never a silent no-op (iOS
+ * playtest): a pending decision card blocks the calendar, so the tap says so
+ * and offers to open it; at kick-off time it asks Play / Sim / Cancel.
+ */
+export function requestSkipToMatch(): void {
+  const s = gameState.value
+  if (!s) return
+  if (s.pendingEvents.length > 0) {
+    toastAction(t('home.skipBlockedDecision'), t('home.skipOpenDecision'), () => {
+      activeEvent.value = 0
+    })
+    return
+  }
+  const fx = matchDueNow()
+  if (fx) {
+    matchdayPrompt.value = fx
+    return
+  }
+  actions.advanceToMatch()
 }
 
 export function MatchdayConfirmHost() {

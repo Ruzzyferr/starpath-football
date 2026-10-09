@@ -47,6 +47,17 @@ export function toastUndo(text: string, onUndo: () => void, ms = 6000): void {
   setTimeout(() => dismiss(id), ms)
 }
 
+/** Toast with one inline action button ("Open decision"), so a blocked tap always says why and where to go. */
+export function toastAction(text: string, label: string, onClick: () => void, kind: ToastKind = 'warning', ms = 6000): void {
+  const id = nextId++
+  const fam = family(kind, text)
+  const item: ToastItem = { id, kind, text, action: { label, onClick: () => { dismiss(id); onClick() } } }
+  toasts.value = [...toasts.value.filter((x) => family(x.kind, x.text) !== fam).slice(-2), item]
+  haptic('error')
+  sfx('notify')
+  setTimeout(() => dismiss(id), ms)
+}
+
 export function dismiss(id: number): void {
   toasts.value = toasts.value.filter((x) => x.id !== id)
 }

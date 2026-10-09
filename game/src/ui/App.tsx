@@ -6,7 +6,7 @@
 import { startGamepadNav } from '../input/gamepadNav'
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
-import { actions, activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
+import { activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
 import { pauseLiveMatchOnBack } from '../platform/back'
@@ -55,7 +55,7 @@ import { TrialsScreen } from './screens/legacy/TrialsScreen'
 import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
 import { CoachTour } from './tutorial/CoachTour'
-import { MatchdayConfirmHost, requestAdvance } from './tutorial/MatchdayConfirm'
+import { MatchdayConfirmHost, requestAdvance, requestSkipToMatch } from './tutorial/MatchdayConfirm'
 import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 import { tour } from './tutorial/tour'
 import { ShortcutsModal, shortcutsOpen } from './layout/ShortcutsModal'
@@ -148,7 +148,7 @@ function useKeyboardShortcuts() {
       const k = e.key.toLowerCase()
       if (k === 't') { e.preventDefault(); navigate('training'); return }
       if (k === 'i') { e.preventDefault(); navigate('inbox'); return }
-      if (k === 'm' && (id === 'home' || id === 'planner')) { e.preventDefault(); actions.advanceToMatch(); return }
+      if (k === 'm' && (id === 'home' || id === 'planner')) { e.preventDefault(); requestSkipToMatch(); return }
       if (e.key === ' ' && (document.activeElement === document.body || document.activeElement?.id === 'main') && (id === 'home' || id === 'planner')) {
         e.preventDefault()
         requestAdvance()

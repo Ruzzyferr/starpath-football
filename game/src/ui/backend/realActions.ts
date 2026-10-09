@@ -140,13 +140,21 @@ function slotsOf(activityId: string): number {
 function advanceToMatch(): void {
   const s = get()
   if (lockedOut(s)) return
-  if (live.liveActive()) return
+  // Every early exit says why (a silent no-op read as a dead button on iPhone).
+  if (live.liveActive()) {
+    notify(L('Önce maçını tamamla.', 'Finish your match first.'), 'info')
+    return
+  }
   if (G.isHeroMatchday(s)) {
     // Already matchday: just move to the match slot.
     if (s.calendar.slot === 0) {
       const r = G.advanceSlot(s)
       afterTime(s, [r])
-    }
+    } else notify(L('Bugün maç günü: Maçı oyna ile sahaya çık.', "It's match day: tap Play match to kick off."), 'info')
+    return
+  }
+  if (s.pendingEvents.length > 0) {
+    notify(L('Önce bekleyen kararı ver.', 'Make the pending decision first.'), 'warning')
     return
   }
   const rep = G.advanceToNextMatch(s, { maxDays: 30 })

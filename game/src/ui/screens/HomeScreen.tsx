@@ -14,7 +14,7 @@ import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { actions, activeEvent, data, gameState, heroClub, navigate, type ScreenId } from '../store'
 import { InfoTip } from '../tutorial/InfoTip'
-import { requestAdvance } from '../tutorial/MatchdayConfirm'
+import { requestAdvance, requestSkipToMatch } from '../tutorial/MatchdayConfirm'
 import { LockChip, NewTag } from '../tutorial/UnlockGate'
 import { features } from '../tutorial/unlocks'
 
@@ -82,7 +82,7 @@ export function HomeScreen() {
       showBack={false}
       footer={
         <div class="home-cta">
-          <Button variant="ghost" icon="skip" onClick={() => actions.advanceToMatch()} class="home-cta-auto">
+          <Button variant="ghost" icon="skip" onClick={() => requestSkipToMatch()} class="home-cta-auto">
             {t('home.autoToMatch')}
           </Button>
           <Button variant="primary" size="lg" icon="fast-forward" class="home-cta-main" haptic="select" onClick={() => requestAdvance()} title={t('home.advanceHint')} data-tour="advance">
