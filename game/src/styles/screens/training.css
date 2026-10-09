@@ -280,7 +280,9 @@ html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
   overscroll-behavior: contain;
   touch-action: none;
 }
-.trn-drill-stage { position: absolute; inset: 0; }
+/* The canvas HUD (title, score, clock) stays out of the notch / status bar and the
+   home indicator: the stage is inset by the safe areas, the band behind is --bg-0. */
+.trn-drill-stage { position: absolute; inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
 .trn-drill-stage canvas { display: block; }
 .trn-drill.is-intro .trn-drill-stage,
 .trn-drill.is-result .trn-drill-stage,

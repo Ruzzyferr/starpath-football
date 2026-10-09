@@ -8,6 +8,7 @@ import { AI_REACTION_MAX, AI_REACTION_MIN, DEFAULT_CUSTOM } from '../../core/cus
 import { START_YEAR } from '../../core/config'
 import { lt, t } from '../../i18n'
 import { foldSearch } from '../a11y/collate'
+import { formatNumber } from '../format'
 import { Button, Chip, Flag, PlayerCard, Segmented, Slider, Switch, TextField, toast, type PlayerCardStat } from '../components'
 import { Icon, type IconName } from '../icons'
 import { roleKeys } from '../roleView'
@@ -154,7 +155,7 @@ export function NewCareerScreen() {
   }
 
   const filtered = query.trim()
-    ? countries.filter((c) => foldSearch(lt(c.name) + ' ' + c.id).includes(foldSearch(query)))
+    ? countries.filter((c) => foldSearch(`${c.name.tr} ${c.name.en} ${c.id}`).includes(foldSearch(query)))
     : countries
 
   const age = START_YEAR - form.birthYear
@@ -453,7 +454,8 @@ const START_AGES: readonly number[] = Array.from({ length: START_AGE_MAX - START
 function AgeTradeOff({ age, ovr, refOvr }: { age: number; ovr: number; refOvr: number }) {
   const e = startAgeEffect(age)
   const d = ovr - refOvr
-  const signed = (n: number) => (n > 0 ? `+${n}` : n < 0 ? `−${Math.abs(n)}` : '±0')
+  const num = (n: number) => formatNumber(Math.abs(n), undefined, Number.isInteger(n) ? 0 : 1)
+  const signed = (n: number) => (n > 0 ? `+${num(n)}` : n < 0 ? `−${num(n)}` : '±0')
   const kind = age < REF_START_AGE ? 'young' : age > REF_START_AGE ? 'old' : 'ref'
   return (
     <div class="wiz-age-trade" data-testid="age-trade" aria-live="polite">

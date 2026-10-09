@@ -82,9 +82,9 @@ export const lifestyleScale = (money: number): number => 1 + clamp(Math.log10(Ma
 export const TRAINER_FEES: Readonly<Record<1 | 2 | 3, number>> = { 1: 800, 2: 2500, 3: 7000 }
 
 export const TRAINER_NAMES: Readonly<Record<1 | 2 | 3, readonly string[]>> = {
-  1: ['Kerem Hoca', 'Coach Dani', 'Selim Usta', 'Coach Mikey'],
-  2: ['Dr. Ercan Aksoy', 'Coach Helena Brandt', 'Tolga Sezer', 'Coach Rafael Moura'],
-  3: ['Prof. Victor Hale', 'Dr. Leyla Karaca', 'Coach Anders Lund', 'Dr. Matteo Ricci'],
+  1: ['Kerem Hoca', 'Dani Ortega', 'Selim Usta', 'Mikey Doyle'],
+  2: ['Dr. Ercan Aksoy', 'Helena Brandt', 'Tolga Sezer', 'Rafael Moura'],
+  3: ['Prof. Victor Hale', 'Dr. Leyla Karaca', 'Anders Lund', 'Dr. Matteo Ricci'],
 }
 
 const GROUP_INDEX: Readonly<Record<AttributeGroup, number>> = { physical: 0, technical: 1, mental: 2, goalkeeping: 3 }

@@ -77,7 +77,9 @@ export function DeltaChip({ delta, compact, direction }: { delta: Delta; compact
     >
       {icon && <Icon name={icon} size={13} weight={2.4} />}
       <span class="num delta-value">{value}{delta.uncertain ? '?' : ''}</span>
-      {!compact && <span class="delta-label">{label}</span>}
+      {/* Compact chips drop the label only when a dedicated icon names the stat; attribute
+          gains (shared sparkle icon) keep their name, or "+1? +1?" says nothing on touch. */}
+      {(!compact || !(delta.key in STAT_ICONS)) && <span class="delta-label">{label}</span>}
       <span class="sr-only">{glyph}</span>
     </span>
   )
@@ -90,7 +92,7 @@ export function DeltaList({ deltas, compact, max, direction }: { deltas: Delta[]
       {list.map((d, i) => (
         <DeltaChip key={`${d.key}-${i}`} delta={d} compact={compact} direction={direction} />
       ))}
-      {max && deltas.length > max ? <span class="chip chip-neutral">+{deltas.length - max}</span> : null}
+      {max && deltas.length > max ? <span class="chip chip-neutral delta-more">{t('ui.moreN', { n: deltas.length - max })}</span> : null}
     </div>
   )
 }

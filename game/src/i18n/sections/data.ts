@@ -133,7 +133,7 @@ export const tr = {
     easy: 'Hata affedilir, maçlar daha cömert.',
     normal: 'Dengeli kariyer; önerilen.',
     hard: 'Rakipler sert, kulüpler sabırsız.',
-    legend: 'Tek kayıt hakkı yok. Her karar kalıcı.',
+    legend: 'Kaydı geri yükleyip hatayı silmek yok. Her karar kalıcı.',
   },
   weather: { clear: 'Açık', rain: 'Yağmurlu', snow: 'Karlı', wind: 'Rüzgârlı', hot: 'Sıcak' },
   comp: { league: 'Lig', cup: 'Kupa', continental: 'Kıtasal', international: 'Milli', friendly: 'Hazırlık' },

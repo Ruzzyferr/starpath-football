@@ -10,17 +10,34 @@ import { haptic } from '../../haptics'
 import { gameState, navigate, settings } from '../../store'
 import { drillFinished, finishTrial, trialInvites, type TrialResultView } from '../../backend/meta'
 import { startTourIfDue } from '../../tutorial/tour'
+import { DrillHints } from '../../tutorial/ControlHint'
+import { DrillDiagram } from '../training/DrillDiagram'
 import type { TrialInvite } from '../../../sim/game/trials'
 
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
 
-/** Plays one training drill for a trial and reports the performance (null = cancelled / failed to load). */
+const isTouch = (): boolean =>
+  typeof window !== 'undefined' && (('ontouchstart' in window) || window.matchMedia?.('(pointer: coarse)').matches === true)
+
+/**
+ * Plays one training drill for a trial and reports the performance (null = cancelled / failed to load).
+ * The career's very first mini-game: a how-to card (goal, controls, target) comes before the countdown.
+ */
 function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performance: number | null) => void }) {
   const host = useRef<HTMLDivElement>(null)
   const handle = useRef<{ stop(): void } | null>(null)
+  const [phase, setPhase] = useState<'intro' | 'playing'>('intro')
   const [loading, setLoading] = useState(true)
   useEffect(() => {
     document.documentElement.classList.add('trn-drill-open')
+    return () => {
+      document.documentElement.classList.remove('trn-drill-open')
+      handle.current?.stop()
+      handle.current = null
+    }
+  }, [])
+  useEffect(() => {
+    if (phase !== 'playing') return
     let cancelled = false
     void (async () => {
       const s = gameState.value
@@ -47,19 +64,48 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
     })()
     return () => {
       cancelled = true
-      document.documentElement.classList.remove('trn-drill-open')
-      handle.current?.stop()
-      handle.current = null
     }
-  }, [invite.id])
+  }, [invite.id, phase])
+  const touch = isTouch()
+  const kind = invite.drill
   return createPortal(
-    <div class="trn-drill is-playing" role="dialog" aria-modal="true" aria-label={invite.clubName}>
+    <div class={`trn-drill is-${phase === 'intro' ? 'intro' : 'playing'}`} role="dialog" aria-modal="true" aria-label={invite.clubName} data-testid="trial-drill">
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
-      <button type="button" class="trn-drill-quit" onClick={() => onDone(null)} aria-label={t('training.drill.quit')}>
-        <Icon name="close" size={20} />
-        <span>{t('training.drill.quit')}</span>
-      </button>
-      {loading && <div class="trn-drill-center"><Spinner /></div>}
+      {phase === 'playing' && (
+        <button type="button" class="trn-drill-quit" onClick={() => onDone(null)} aria-label={t('training.drill.quit')}>
+          <Icon name="close" size={20} />
+          <span>{t('training.drill.quit')}</span>
+        </button>
+      )}
+      <DrillHints active={phase === 'playing' && !loading} drill={kind} variant={undefined} />
+      {phase === 'playing' && loading && <div class="trn-drill-center"><Spinner /></div>}
+      {phase === 'intro' && (
+        <div class="trn-drill-card stack" data-testid="trial-intro">
+          <DrillDiagram kind={kind} />
+          <div class="micro t-lo">{invite.clubName} · {t(`meta.trials.kind.${invite.kind}`)}</div>
+          <h2 class="h2">{tx(`training.drill.${kind}`, undefined, kind)}</h2>
+          <p class="t-mid">{tx(`training.drill.goal.${kind}`)}</p>
+          <div class="trn-drill-controls">
+            <div class={touch ? 'is-primary' : ''}>
+              <div class="micro t-lo"><Icon name="phone" size={14} /> {t('training.drill.touch')}</div>
+              <p class="t-sm">{tx(`training.drill.touchControls.${kind}`)}</p>
+            </div>
+            <div class={touch ? '' : 'is-primary'}>
+              <div class="micro t-lo"><Icon name="keyboard" size={14} /> {t('training.drill.pc')}</div>
+              <p class="t-sm">{tx(`training.drill.pcControls.${kind}`)}</p>
+            </div>
+          </div>
+          <div class="row wrap trn-drill-meta">
+            <Chip tone={invite.target > 0 ? 'gold' : 'info'} icon="target">
+              {invite.target > 0 ? t('meta.trials.target', { p: Math.round(invite.target * 100) }) : t('meta.trials.guaranteed')}
+            </Chip>
+          </div>
+          <div class="row trn-drill-actions">
+            <Button variant="ghost" onClick={() => onDone(null)}>{t('common.cancel')}</Button>
+            <Button variant="primary" icon="play" onClick={() => setPhase('playing')} autoFocus data-testid="trial-start">{t('training.drill.start')}</Button>
+          </div>
+        </div>
+      )}
     </div>,
     document.body,
   )

@@ -21,7 +21,7 @@ test('auto training applies the session and shows XP', async ({ page, shot }) =>
   await shot('t1-sessions')
   const xp0 = await sp<number>(page, 'Object.values(sp.state().hero.attrXp).reduce((a, b) => a + b, 0) + Object.values(sp.state().hero.attrs).reduce((a, b) => a + b, 0)')
   const e0 = await sp<number>(page, 'sp.state().life.energy')
-  await card.getByRole('button', { name: 'Auto (0.6)' }).click()
+  await card.getByRole('button', { name: 'Auto (60%)' }).click()
   await expect(page.locator('.toast').filter({ hasText: /XP/ }).first()).toBeVisible()
   expect(await sp<number>(page, 'sp.state().life.energy')).toBeLessThan(e0)
   const xp1 = await sp<number>(page, 'Object.values(sp.state().hero.attrXp).reduce((a, b) => a + b, 0) + Object.values(sp.state().hero.attrs).reduce((a, b) => a + b, 0)')

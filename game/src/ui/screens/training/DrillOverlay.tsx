@@ -160,7 +160,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
           </div>
           <div class="row wrap trn-drill-meta">
             <Chip tone="gold" icon="energy">{t('training.session.energy', { n: session.energy })}</Chip>
-            <Chip tone="violet" icon="sparkle">{t('training.session.xpRange', { a: Math.round(session.xpMax * 0.25), b: session.xpMax })}</Chip>
+            <Chip tone="violet" icon="sparkle">{t('training.session.xpRange', { a: session.xpMin ?? Math.round(session.xpMax * 0.25), b: session.xpMax })}</Chip>
           </div>
           <div class="row trn-drill-actions">
             <Button variant="ghost" onClick={() => onClose(null)}>{t('common.cancel')}</Button>

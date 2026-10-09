@@ -148,6 +148,8 @@ export interface TrainingSessionView {
   xp: number
   /** Expected total XP for a perfect (1.0) drill. */
   xpMax: number
+  /** XP of a 0% drill: the true floor of the playable range. */
+  xpMin?: number
   injuryRisk: Risk
   /** Can be done right now (energy, injury, time of day…). */
   available: boolean
@@ -187,6 +189,17 @@ export interface PerkView {
   available: boolean
   /** Tree branch and tier 1..3 (2.3#39); absent for innate perks. */
   branch?: 'technical' | 'physical' | 'mental'
+  tier?: number
+  /** Unmet requirements of a not-yet-owned perk (empty object = unlockable). */
+  needs?: PerkNeeds
+}
+export interface PerkNeeds {
+  points?: number
+  ovr?: number
+  position?: boolean
+  attrs?: { key: AttributeKey; need: number; have: number }[]
+  reputation?: number
+  /** Perks of the same branch still needed below this tier. */
   tier?: number
 }
 export interface TrainerOffer {

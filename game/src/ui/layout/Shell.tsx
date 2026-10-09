@@ -245,11 +245,14 @@ export function ContextPanel() {
           <Badge count={pending} />
         </button>
       )}
-      <div class="ctx-advance">
-        <Button variant="primary" size="lg" block icon="fast-forward" onClick={() => requestAdvance()} haptic="select">
-          {tx('home.advance', undefined, t('common.continue'))}
-        </Button>
-      </div>
+      {/* Home has its own Advance bar; a second primary button beside it is noise. */}
+      {screen.value !== 'home' && (
+        <div class="ctx-advance">
+          <Button variant="primary" size="lg" block icon="fast-forward" onClick={() => requestAdvance()} haptic="select">
+            {tx('home.advance', undefined, t('common.continue'))}
+          </Button>
+        </div>
+      )}
     </aside>
   )
 }

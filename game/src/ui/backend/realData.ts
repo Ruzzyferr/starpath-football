@@ -15,7 +15,7 @@ import { ASSETS } from '../../data/assets'
 import { PERKS, PERK_BRANCH, perkTier, type PerkGroup } from '../../data/perks'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { absWeek, heroAge } from '../../sim/career/common'
-import { perkBlock, perkValue } from '../../sim/career/perks'
+import { TIER_ROOTS_NEEDED, branchDepth, perkBlock, perkValue } from '../../sim/career/perks'
 import { heroOvr } from '../../sim/career/progression'
 import { TRAINER_QUALITY_BONUS, TRAINING_TYPES, trainingEnergyCost, trainingXp, trainingXpTotal, type TrainingType } from '../../sim/career/training'
 import { developmentAreas } from '../../sim/career/attributeLife'
@@ -36,7 +36,7 @@ import { clubFixtures, playerDisplayName, seasonCompetitions, topScorers as worl
 import { gameState } from '../store'
 import type {
   ActivityCategory, ActivityView, CasinoStatus, DayPlanView, DaySlotView, Delta, EventCategory, EventView, FixtureView, GameData,
-  HorseView, InterestView, PerkView, Risk, ScorerRow, SeasonSummaryView, SocialPostView, SquadMemberView, StatKey, TrainerOffer,
+  HorseView, InterestView, PerkNeeds, PerkView, Risk, ScorerRow, SeasonSummaryView, SocialPostView, SquadMemberView, StatKey, TrainerOffer,
   TrainingSessionView,
 } from '../store'
 import { casinoAgeLock, slotRulesView } from './casinoView'
@@ -325,6 +325,7 @@ function trainingSessions(s: GameState): TrainingSessionView[] {
           energy: trainingEnergyCost(t), focus,
           xp: Math.round(trainingXpTotal(s.hero, s.life, t)),
           xpMax: Math.round(trainingXpTotal(s.hero, s.life, t, 1)),
+          xpMin: Math.round(trainingXpTotal(s.hero, s.life, t, 0)),
           injuryRisk: d.injuryRisk >= 0.007 ? 'medium' : d.injuryRisk > 0.003 ? 'low' : 'safe',
           available: block === null,
           ...(block ? { lockedReason: block } : {}),
@@ -339,6 +340,27 @@ const PERK_GROUP_ICON: Record<PerkGroup, string> = {
   goalkeeping: 'shield-check', lifestyle: 'star', innate: 'sparkle',
 }
 const PERK_GROUPS: PerkGroup[] = ['finishing', 'playmaking', 'dribbling', 'physical', 'defending', 'mental', 'goalkeeping', 'lifestyle', 'innate']
+
+/** Every unmet requirement of a perk (the sheet explains a locked node instead of a bare lock). */
+function perkNeeds(h: GameState['hero'], p: (typeof PERKS)[number]): PerkNeeds {
+  const r = p.requirement
+  const n: PerkNeeds = {}
+  if (h.perkPoints < p.cost) n.points = p.cost - h.perkPoints
+  if (r.minOvr !== undefined && heroOvr(h) < r.minOvr) n.ovr = r.minOvr
+  if (r.positions && !r.positions.includes(h.position)) n.position = true
+  const attrs = Object.entries(r.attrs ?? {})
+    .filter(([k, v]) => h.attrs[k as AttributeKey] < (v ?? 0))
+    .map(([k, v]) => ({ key: k as AttributeKey, need: v ?? 0, have: h.attrs[k as AttributeKey] }))
+  if (attrs.length) n.attrs = attrs
+  if (r.minReputation !== undefined && h.reputation < r.minReputation) n.reputation = r.minReputation
+  const branch = PERK_BRANCH[p.group]
+  const tier = perkTier(p) as 1 | 2 | 3
+  if (branch && tier > 1) {
+    const missing = TIER_ROOTS_NEEDED[tier] - branchDepth(h, branch, tier)
+    if (missing > 0) n.tier = missing
+  }
+  return n
+}
 
 function perksView(s: GameState): PerkView[] {
   return cached(s, 'perks', () => {
@@ -363,6 +385,7 @@ function perksView(s: GameState): PerkView[] {
         out.push({
           id: p.id, name: p.name, desc: p.desc, icon: PERK_GROUP_ICON[g], row, col, requires: [...(p.requirement.perks ?? [])],
           cost: p.cost, owned, available: !owned && perkBlock(h, p.id) === null,
+          ...(owned || g === 'innate' ? {} : { needs: perkNeeds(h, p) }),
           ...(PERK_BRANCH[p.group] ? { branch: PERK_BRANCH[p.group]!, tier: perkTier(p) } : {}),
         })
       })

@@ -63,7 +63,7 @@ function SessionCard({ s, onPlay }: { s: TrainingSessionView; onPlay: (s: Traini
         <span class="trn-meta"><Icon name="energy" size={16} class="t-gold" />{t('training.session.energy', { n: s.energy })}</span>
         <span class="trn-meta trn-xp" title={t('training.session.xpAuto', { n: s.xp })}>
           <Icon name="sparkle" size={16} />
-          {s.drill ? t('training.session.xpRange', { a: s.xp, b: s.xpMax }) : t('training.session.xp', { n: s.xp })}
+          {s.drill ? t('training.session.xpRange', { a: s.xpMin ?? s.xp, b: s.xpMax }) : t('training.session.xp', { n: s.xp })}
         </span>
       </div>
       {locked && <p class="t-xs trn-warn trn-session-lock"><Icon name="lock" size={13} /> {reason}</p>}
@@ -287,6 +287,19 @@ function PerkTree() {
               <p class="t-sm t-lo">
                 {t('training.perks.requires', { list: current.requires.map((r) => lt(byId.get(r)?.name ?? r)).join(', ') })}
               </p>
+            )}
+            {current.needs && !current.owned && Object.keys(current.needs).length > 0 && (
+              <div class="stack trn-perk-needs" data-testid="perk-needs">
+                <div class="micro t-lo">{t('training.perks.need.title')}</div>
+                <ul class="t-sm">
+                  {current.needs.points ? <li>{t('training.perks.need.points', { n: current.needs.points })}</li> : null}
+                  {current.needs.ovr ? <li>{t('training.perks.need.ovr', { n: current.needs.ovr })}</li> : null}
+                  {current.needs.position ? <li>{t('training.perks.need.position')}</li> : null}
+                  {current.needs.attrs?.map((a) => <li key={a.key}>{t('training.perks.need.attr', { attr: t(`data.attr.${a.key}` as never), need: a.need, have: a.have })}</li>)}
+                  {current.needs.reputation ? <li>{t('training.perks.need.reputation', { n: current.needs.reputation })}</li> : null}
+                  {current.needs.tier ? <li>{t('training.perks.need.tier', { n: current.needs.tier })}</li> : null}
+                </ul>
+              </div>
             )}
           </div>
         )}
