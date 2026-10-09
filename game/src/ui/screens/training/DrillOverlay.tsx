@@ -211,7 +211,7 @@ export function DrillOverlay({ session, onClose }: { session: TrainingSessionVie
               {outcome.deltas.length > 1 && (
                 <div class="stack">
                   <div class="micro t-lo">{t('training.result.gained')}</div>
-                  <DeltaList deltas={outcome.deltas.filter((d) => d.key !== 'xp')} compact />
+                  <DeltaList deltas={outcome.deltas.filter((d) => d.key !== 'xp')} />
                 </div>
               )}
               {outcome.injured && <p class="t-sm t-neg">{t('training.result.injured')}</p>}
