@@ -45,6 +45,8 @@ test.describe('trial flavor', () => {
     await sp(page, 'sp.actions.advance()')
     await page.getByTestId('pw-buy').click()
     await expect(page.getByTestId('pw-buy')).toHaveCount(0, { timeout: 15_000 })
+    // Like a user: settle today's mandatory agenda tasks (they gate Advance with a toast naming them), then advance.
+    await sp(page, 'sp.clearEvents()')
     await sp(page, 'sp.actions.advance()')
     expect(await sp<string>(page, 'JSON.stringify(sp.state().calendar)')).not.toBe(week)
     await expect(page.getByTestId('pw-buy')).toHaveCount(0)
