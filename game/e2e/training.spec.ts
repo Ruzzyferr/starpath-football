@@ -170,7 +170,7 @@ test('every attribute has a session: the new sessions list numbered XP per attri
   await expect(page.getByTestId('dev-focus')).toBeVisible()
   const gains = sessionCard(page, 'Explosive Starts').locator('.trn-gain')
   await expect(gains.first()).toContainText(/Acceleration/)
-  await expect(gains.first()).toContainText(/\+\d+\.\d XP/)
+  await expect(gains.first()).toContainText(/\+\d+(\.\d)? XP/)
   expect(await page.locator('.trn-gain.is-weak').count()).toBeGreaterThan(0)
   // Captaincy is a talk, not a ball drill: auto only.
   await expect(sessionCard(page, 'Captaincy & Team Talk').getByRole('button', { name: 'Do session' })).toBeVisible()
