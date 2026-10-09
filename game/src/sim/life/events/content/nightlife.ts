@@ -34,7 +34,7 @@ export const nightlifeEvents: EventDef[] = [
               ),
       },
       {
-        label: t('El salla, VIP\'de sakin takıl', 'Wave, keep it low-key in VIP'),
+        label: t('El salla, VIP bölümünde sakin takıl', 'Wave, keep it low-key in VIP'),
         effects: () => fx(t('Gülümseme, el sallama, sonra köşede su. Profesyonel bir gece.', 'A smile, a wave, then water in a corner booth. A professional night.'), happy(3), energy(-4)),
       },
       {

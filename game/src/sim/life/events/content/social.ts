@@ -175,6 +175,7 @@ export const socialEvents: EventDef[] = [
     category: 'social',
     weight: 1,
     cooldownWeeks: 14,
+    maxPerCareer: 10, // playtest Tur 4: ×15–17 in one 12–16 season career
     conditions: ({ state }) => state.life.followers >= 1000,
     vars: (ctx, rng) => ({ brand: pickBrand(rng), amount: wageX(ctx.state, 1, 600) }),
     title: t('Gelen Kutusunda Teklif', 'A Brand Slides into the DMs'),
@@ -248,7 +249,7 @@ export const socialEvents: EventDef[] = [
     icon: '😬',
     choices: [
       {
-        label: t('Caps\'i kendin paylaş', 'Share the meme yourself'),
+        label: t('Görseli kendin paylaş', 'Share the meme yourself'),
         effects: (ctx) => fx(t('"En azından kiramı ödüyorum." Kendinle dalga geçebilmen herkesin gözünde puan.', '"At least I pay my rent." Laughing at yourself wins everyone over.'), folPct(ctx, 9), rep(1), fans(4), stress(-3)),
       },
       {

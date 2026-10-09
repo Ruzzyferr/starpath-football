@@ -294,6 +294,9 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
 
 interface Headline { text: LText; sentiment: -1 | 0 | 1 }
 
+/** Positions with a clean-sheet headline (keepers, centre-backs; holding midfielders and full-backs). */
+const CLEAN_SHEET_POS: ReadonlySet<string> = new Set(['GK', 'CB', 'DM', 'LB', 'RB'])
+
 /**
  * Situational headline templates (≥10 situations, several variants each).
  * Only "newsworthy" games produce a headline: goals ≥ 2, rating ≥ 8 or ≤ 4.5,
@@ -344,6 +347,9 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
       lt('{opp} ağlarını iki kez sarstı: {name}', '{name} rattles the {opp} net twice'),
       lt('İki gol, tek isim: {name}', 'Two goals, one name: {name}'),
       lt('{name} fileleri iki kez havalandırdı', '{name} finds the net twice'),
+      lt('İki vuruş, iki gol: {name}', 'Two strikes, two goals: {name}'),
+      lt('Bir değil iki: {name} durmuyor', 'Not one but two: {name} keeps going'),
+      lt('{name} skor tabelasına iki kez adını yazdırdı', '{name} on the scoresheet twice'),
     ], 1)
   }
   if (goals >= 1 && m.won && m.importance >= 0.7) {
@@ -362,7 +368,22 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
       lt('Gollerin mimarı {name}: {a} asist', 'Architect {name}: {a} assists'),
     ], 1)
   }
-  if (m.cleanSheet && (hero.position === 'GK' || hero.position === 'CB') && rating >= 7.5) {
+  // Defensive clean sheets (playtest Tur 4: four CB variants printed ×20 in a career; DM and full-back clean
+  // sheets fell through to the generic "dazzling display" line).
+  if (m.cleanSheet && CLEAN_SHEET_POS.has(hero.position) && rating >= 7.5) {
+    if (hero.position !== 'GK' && hero.position !== 'CB') {
+      return T([
+        lt('{name} önde kesti, arkada kapattı: {opp} gol bulamadı', '{name} broke it up and shut the door: no goal for {opp}'),
+        lt('Sessiz kahraman {name}: sıfır gol, sayısız top kapma', 'Quiet hero {name}: a clean sheet and countless tackles'),
+        lt('{opp} hücumu {name} filtresinden geçemedi', '{opp} could not get through the {name} filter'),
+        lt('Gol yememenin arkasındaki isim: {name}', 'The name behind the clean sheet: {name}'),
+        lt('{name} kanadı kilitledi, {opp} çaresiz', '{name} locks the flank, {opp} helpless'),
+        lt('Kirli işleri {name} yaptı, kale gole kapandı', '{name} did the dirty work, the goal stayed shut'),
+        lt('{opp} atakları {name} önünde söndü', '{opp} attacks fizzled out in front of {name}'),
+        lt('Her ikili mücadelede {name}: sıfır gol', '{name} in every duel: a clean sheet'),
+        lt('{name} görünmez duvar gibiydi', '{name} was an invisible wall'),
+      ], 1)
+    }
     return T(hero.position === 'GK'
       ? [
         lt('{name} geçit vermedi: kalesini gole kapattı', '{name} stands firm as clean sheet secured'),
@@ -371,12 +392,18 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
         lt('Kale kapısında kilit: {name}', 'Lock on the goal: {name}'),
         lt('{name} kurtarışlarıyla sıfırı korudu', '{name} saves keep the clean sheet'),
         lt('Gol yok, geçit yok: {name} yine iş başında', 'No goals, no way through: {name} at it again'),
+        lt('{opp} şut çekti, {name} hepsine cevap verdi', '{opp} kept shooting, {name} had an answer for all of it'),
+        lt('Eldivenler konuştu: {name} gol vermedi', 'The gloves did the talking: {name} keeps a clean sheet'),
       ]
       : [
         lt('{name} geçit vermedi: savunma kale gibi', '{name} stands firm at the back'),
         lt('Duvar gibi {name}: {opp} çaresiz kaldı', 'Brick wall {name} frustrates {opp}'),
         lt('{opp} hücumu {name} barajını aşamadı', '{opp} attack cannot get past {name}'),
         lt('Savunmanın patronu {name}: gol yok', 'Defensive boss {name}: nothing gets through'),
+        lt('{opp} forvetleri {name} ile geçen 90 dakikayı unutmak isteyecek', '{opp} forwards will want to forget 90 minutes against {name}'),
+        lt('Hava topları da yerdeki toplar da {name}: kalesi gole kapalı', 'In the air and on the ground it was all {name}: no goal'),
+        lt('{name} arkada duvar ördü', '{name} builds a wall at the back'),
+        lt('Sıfırın mimarı {name}', 'Architect of the clean sheet: {name}'),
       ], 1)
   }
   if (rating >= 8) {
@@ -402,6 +429,9 @@ function pickHeadline(rng: Rng, hero: Hero, m: HeroMatchInput, rating: number, g
       lt('{name} attı ama yetmedi', '{name} scores in vain'),
       lt('{name} golüne rağmen {opp} kazandı', '{opp} win despite {name} goal'),
       lt('Tek teselli {name} golü', '{name} goal the only consolation'),
+      lt('{name} skoru dengelemeye yetmedi', '{name} strike not enough'),
+      lt('{opp} kazandı, {name} golüyle iz bıraktı', '{opp} win, but {name} leaves a mark'),
+      lt('Kayıp gecede bir parıltı: {name}', 'One bright spot on a losing night: {name}'),
     ], 0)
   }
   return null

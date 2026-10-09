@@ -427,6 +427,7 @@ export const teammatesEvents: EventDef[] = [
     category: 'teammates',
     weight: (ctx) => (ctx.state.hero.reputation > 40 ? 1.3 : 0.5),
     cooldownWeeks: 26,
+    maxPerCareer: 10, // playtest Tur 4: ×15–17 in one 12–16 season career
     triggers: ['match_win', 'scored', 'weekly'],
     conditions: ({ state }) => hasClub(state),
     title: t('Kıskançlık Kokusu', 'Whiff of Jealousy'),

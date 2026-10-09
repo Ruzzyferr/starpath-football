@@ -265,6 +265,8 @@ export const managerEvents: EventDef[] = [
       {
         label: t('Menajerini arat, "kulübe huzursuz" haberi yaptır', 'Get your agent to leak "unsettled" stories'),
         risk: 'high',
+        requires: ({ state }) => !!state.life.agent,
+        lockedHint: t('Bir menajerin yok.', 'You have no agent.'),
         effects: () =>
           fx(
             t('Haber çıktı, transfer söylentileri başladı. Hoca okudu.', 'The story ran and transfer rumours began. The gaffer read it.'),

@@ -678,3 +678,166 @@ En ağır yedisi düzeltildi; kalanlar aşağıda sıralı.
 | Kart / hafta | 1,75 | 1,76 |
 
 **Açık kalanlar.** (1) Harness yatırımcısı hisseyi 27 yaşından sonra %5'lik parçalarla alıyor, 10 sezonda %51'e ulaşmadı; çoğunluk akışı birim testlerle ve `club_majority_offer` kartıyla doğrulandı, uzun bir yatırımcı koşusu hâlâ gerekiyor. (2) Hedef başarı oranı biraz düştü; ödül/süre ayarı sonraya. (3) Tek örnekli servetler tohum gürültüsü; ölçüt için BALANCE tablosu.
+
+
+# Tur 4 (baş tasarımcı, Ekim 2026): 8 kariyer × 12 sezon, beş kişilik, üç başlangıç yaşı
+
+**Soru:** Rol yaması, özellik anları, yankılar ve kelebek zincirlerinden sonra uzun bir kariyer, titiz bir taraftarın gözünde mantıklı mı? Durum, metin ve haber birbirini tutuyor mu? Her sistem hikâye üretiyor mu?
+
+**Kısa cevap:** Kariyerler dolu ve tutarlı:
+- Ölü hafta %0,5, 397 farklı kart.
+- Kaleci ve stoper de ödül ve milli maç topluyor.
+- Yatırımcı stoper kulübün %75'ini aldı (Tur 3b'nin açık maddesi kapandı).
+
+Ama dört yerde metin durumla çelişiyordu:
+- Zirvedeki yıldız her pazartesi "milyonlarca takipçi kaybettin" okuyordu.
+- 100 itibarlı yıldıza yabancılar "Top mu oynuyorsun, hobi olarak mı?" diyordu (bir kariyerde 10 kez).
+- Bir akşam yemeği 210.000 € tuttu.
+- "Akademiden Çıkan İlk Yetenek" kartı üç kez geldi.
+
+Hepsi düzeltildi. Rol dengesi (Derinlik Forveti −%7,4) ayrı bir commit'te düzeltildi; ayrıntı BALANCE.md'nin "Rol denge Tur 4" bölümünde.
+
+## Yöntem
+
+- Harness'e dördüncü plan eklendi: `PLAYTEST=1 PLAYTEST_PLAN=r4` (`game/src/sim/game/playtest.node.test.ts`).
+  - Harness artık her rolü ve mevkiyi alabiliyor (`position`).
+  - Yeni persona **family** (aile önce): akşamlar evde, sevgiliyle, kumarhane yok. Romantik ve aile kartlarında sıcak seçeneği seçiyor.
+  - `PLAYTEST_ONLY=1,3` yalnızca seçilen kariyerleri koşar.
+- **8 kariyer × 12 sezon:**
+  - Derinlik Forveti (TR, pro, 16 yaş)
+  - Pivot Santrfor (kadın, TR, party, 18)
+  - Ters Kanat (BR, ağır kumarbaz, 18)
+  - Agresif Stoper (TR, yatırımcı, 21)
+  - Ön Libero DM (kadın, TR, family, 16)
+  - Libero Kaleci (DE, pro, 18)
+  - Hücumcu Bek (TR, family, 21)
+  - Oyun Kurucu AM (ES, yatırımcı, 16)
+- **Uzun koşu:** Hedef Forvet (TR, pro, 18) emekliliğe kadar oynadı (34 yaş, 16 sezon). Ardından Legacy çocuğu (Çizgi Kanadı, family) 5 sezon oynadı.
+- **Toplam:** 5.190 hafta, ~4.300 maç, ~9.000 kart.
+- **Önce:** Bu turun içerik düzeltmelerinden önceki kod (`r4a`, rol yaması dahil). **Sonra:** Son kod (`r4c`). Aynı tohumlar kullanıldı. RNG akışı değiştiği için kariyerler birebir aynı değil.
+
+## Bulgular (oyuncu etkisine göre sıralı)
+
+### 1. Zirvedeki yıldız her hafta "milyonlarca takipçi kaybettin" okuyordu (durum ↔ metin)
+- **Kanıt:** Uzun koşudaki forvet 25 yaşından sonra itibar 100'de ve sezonda 30+ gol atıyor.
+  - Haftalık özet 455 kez "📉 3,7 Mn takipçi kaybettin" dedi.
+  - Aynı haftanın maç satırları ise "Takipçi +465 B (219 Mn)" diyordu.
+  - Sayı aslında sabitti. Ün tavanının üstündeki fazla haftada %8 eriyor, her maç yeniden ekliyor. Satır yalnızca erimeyi gösteriyordu.
+- **Düzeltme (`sim/life/social.ts`):**
+  - Haftalık satır artık haftanın **net** değişimini söylüyor (maç, paylaşım ve kart dahil; `g:followersWeek`).
+  - Tavanda %1'in altındaki dalgalanma haber sayılmıyor, satır basılmıyor.
+- **Önce → sonra:**
+  - "Kaybettin" satırı kariyer başına 104–455 → 60–190.
+  - Uzun koşuda 455 → 190. Kalanlar gerçek düşüş yılları (32+ yaş).
+  - "Kazandın" satırı 151–308 → 167–289.
+
+### 2. 100 itibarlı yıldıza "Top mu oynuyorsun? Hobi olarak mı?" (10 kez; durum ↔ metin)
+- **Kanıt:** `romance.meet_someone` kartı ("İlk kez kimse seni tanımıyor") itibar sınırı olmadan, 12 haftada bir geliyordu.
+  - Bekâr kalan DM'de 10 kez geldi, hep aynı arkadaşın doğum gününde.
+  - Altın Yıldız adayı, 87 OVR'lik bir futbolcuyu kimse tanımıyordu.
+- **Düzeltme (`content/romance.ts`):**
+  - Bu kart artık yalnızca itibar < 60 iken geliyor, kariyer başına en çok 4 kez.
+  - Ünlüler için yeni kart: `romance.meet_someone_famous` ("Kameraların Olmadığı Bir Akşam"). Karşındaki seni tanıyor ama maçtan hiç söz etmiyor. "Kameralardan uzak bir yer" seçeneği seni dedikodu köşesine düşürebilir.
+- **Harness:** family persona romantik kartlarda "Şu an tek aşkın futbol" seçeneğini seçmiyor. Sevgili ilişkisi önce 10 kariyerin 3'ünde vardı, sonra 7'sinde.
+- **Önce → sonra:** Kariyer başına `meet_someone` en çok 10 → 8 (ünsüz yıllarda). Yıldız DM'de 10 → 2.
+
+### 3. İlk buluşma yemeği 210.000 € (ekonomi ↔ metin)
+- **Kanıt:** Yemeğin fiyatı "yarım haftalık maaş"tı. Haftada 414 B € kazanan yıldız, çatı katı restoranına 207.000 € ödedi.
+- **Düzeltme:** `DINNER_MAX` 12.000 €.
+- **Önce → sonra:** En pahalı yemek 210.000 € → 12.000 €.
+
+### 4. "Akademiden Çıkan İlk Yetenek" üç kez geldi (mantık)
+- **Kanıt:** `mentor.academy_first_graduate` kariyer başına 3 kez geldi (6, 10 ve 12 mezunla). Her seferinde başlık "ilk" diyordu.
+- **Düzeltme:** Başlık "Akademiden Parlayan Bir Yetenek" oldu. Metin zaten toplam mezun sayısını söylüyor.
+
+### 5. Manşet tekrarı: stoperin dört manşeti ×17–20 basıldı, DM ve bekin gol yememesi hiç manşet olmuyordu
+- **Kanıt:**
+  - "Kaan geçit vermedi: savunma kale gibi" ×20, "Savunmanın patronu Kaan" ×17, "Tek teselli Emir golü" ×18.
+  - Ön Libero ve beklerin temiz sayfaları, genel "Göz kamaştıran performans: Nehir" satırına düşüyordu (×16).
+- **Düzeltme (`sim/career/matchOutcome.ts`):**
+  - Stoper havuzu 4 → 8, kaleci 6 → 8, iki gol 5 → 8, teselli golü 3 → 6 varyant.
+  - DM ve bekler için 9 varyantlı yeni bir temiz sayfa havuzu.
+- **Önce → sonra:**
+  - Stoper için en sık manşet ×20 → ×17. Havuz büyüdü, ama 7,5+ reytingli temiz sayfa 12 sezonda ~140 kez oluyor ve her biri hâlâ manşet. Seyreltme Açık maddelerde.
+  - Manşet benzersizliği %52 → %51. DM ve beklerin temiz sayfaları artık ayrı manşet olduğu için toplam 6.004 → 6.242'ye çıktı.
+
+### 6. Aynı kart bir kariyerde 15–17 kez geliyordu
+- **Kanıt:** Tek kariyerde `teammates.jealous_star` ×17, `rumour.feud_gossip` ×16, `social.brand_dm` ×15.
+- **Düzeltme:** Üçüne de kariyer başına 10 tavanı.
+- **Önce → sonra:**
+  - Bu üç kart en sık tekrar edenler listesinden çıktı.
+  - En sık tekrar hâlâ `health.minor_knock`: 16 sezonda ×22. Dolgu kartı, gerçekçi.
+  - Sezonda 3'ten fazla gelen aynı kart: 3 → 1 durum.
+
+### 7. Menajeri olmayan oyuncuya "Menajerini arat" seçeneği (hayalet ajan)
+- **Kanıt:** `manager.dropped` kartında menajer seçeneği her zaman açıktı.
+- **Düzeltme:** Seçenek artık menajer istiyor. Kilitliyken "Bir menajerin yok." yazıyor.
+- Kalan `scam.fake_agent` bayrağı harness'in yanlış alarmı: dolandırıcı menajer zaten kartın konusu.
+
+### 8. Türkçe
+- **Ekler** (harness ek bayrağı 71 → 0):
+  - "Caps'i kendin paylaş" (×47) → "Görseli kendin paylaş".
+  - "VIP'de" (×18; doğrusu "VIP'te") → "VIP bölümünde".
+  - "Kendi Podcast'in" → "Kendi Podcast Programın".
+- **Büyük harf:** "Hesabı sen ödedin, kimseye söylemedin. şef Mira Volkan ertesi gün…" cümlesi küçük harfle başlıyordu. Artık "Ertesi gün şef Mira Volkan…".
+- **Harness:** Milli maç satırı kulüp adıyla basılıyordu ("Stade Nice 1-0 England"). Artık "Türkiye 1-0 İngiltere". Bu hata oyunda değil, harness'teydi.
+- **Not:** `nextHeroFixture` milli rakibin adını hep İngilizce veriyor (`teamName(...).en`). Arayüz kendi fikstür görünümünü kullandığı için ekranda görünmüyor.
+
+### 9. Role ve yaşa göre sonuçlar (düzeltme gerekmedi, izleniyor)
+- **Hedef Forvet, uzun koşu:** 579 maç / 493 gol (0,85), 83 milli maç, 11 kupa, 85 ödül, "Ölümsüz Efsane".
+  - "Önce" koşusunda 33 yaşında bir sezonda 48 maçta 61 gol attı. Gerekçe: kupa ve Avrupa maçlarıyla 48 maç, OVR hâlâ 80.
+  - BALANCE harness'inde forvet kariyeri 0,70–0,71 gol/maç, en iyi sezon 0,94–1,03. Persona harness'i (canlı maç, röportaj) bu sayıları yukarı itiyor.
+- **Başlangıç yaşı:**
+  - 21 yaşında başlayan stoper ve bek, 22–23 yaşında 2. kademede başladı ve 26–30 yaşında 1. kademeye çıktı.
+  - 16 yaşında başlayan DM, 19 yaşında 1. kademede, 23 yaşında 85 OVR. Hedeflerle uyumlu.
+- **Kaleci (pro, DE):** 39 milli maç. VIP ve proje kartları dolu.
+- **Kumarbaz kanat:** 589 kumarhane gecesi, net −1,7…−3,8 M. Bedel manşetlerde görünüyor.
+
+## Tempo ve tekrar (önce → sonra)
+
+| Metrik | Önce (r4a) | Sonra (r4c) |
+|---|---|---|
+| Kart/hafta · farklı kart | 1,73 · 399 | 1,74 · 397 |
+| Ölü hafta · ardışık ölü dizisi | %0,7 · 1 | %0,5 · 0 |
+| En çok tekrar eden 2. kart | `jealous_star` ×17 | `penalty_taker` ×16 |
+| Sezonda 3'ten fazla gelen aynı kart | 3 | 1 |
+| "Takipçi kaybettin" satırı (kariyer başına) | 104–455 | 60–190 |
+| Ek bayrağı | 71 | 0 |
+| Sevgili ilişkisi kurulan kariyer | 3/10 | 7/10 |
+| Hedef başarısı | %48 | %49 |
+
+| Evre (sonra) | Kart/hf | Yeni kart | Kahraman haberi/hf | Hedef/hf | Milli/hf | Ölü % |
+|---|---|---|---|---|---|---|
+| Genç (≤20) | 1,72 | %58 | 0,72 | 0,82 | 0,12 | 0,7 |
+| Yükseliş (21–24) | 1,76 | %27 | 0,96 | 0,74 | 0,09 | 0,7 |
+| Zirve (25–30) | 1,75 | %11 | 1,15 | 0,74 | 0,16 | 0,3 |
+| Düşüş (31+) | 1,73 | %13 | 1,42 | 0,80 | 0,15 | 0,3 |
+
+## Denge ve doğrulama
+
+- **BALANCE** (`BALANCE=1`, 30 × 10), son kod, tohum 1000 · 2000 · 3000:
+
+| Hedef | Son ölçüm (1000 · 2000 · 3000) | Durum |
+|---|---|---|
+| İtibar 18 / 21 / 25 yaş (~15 / ~50 / 75–85) | 14/55/77 · 15/52/79 · 14/51/78 | Tutuyor |
+| ST kariyer gol/maç (0,6–0,8) | 0,71 · 0,70 · 0,70 | Tutuyor |
+| ST en iyi sezon (~1,0–1,3) | 1,03 · 0,94 · 0,96 | İki tohumda alt sınırın hemen altında. Standart karışımda yalnızca 5 forvet var; tohum gürültüsü. |
+| ST sezonluk gol 71–76 / 77–82 (18–28 / 25–35) | 23/25 · 19/27 · 22/26 | Tutuyor |
+| İlk 1. kademe yaşı (21–23) | 21,0 · 20,0 · 21,0 | Tohum 2000'de bir yıl erken (önceki turlarda da 20,0–21,0) |
+| Pot ≥ 85 → 25 yaşına kadar OVR 80+ | 9/9 · 11/11 · 11/11 | Tutuyor |
+| 3. sezon net servet medyanı (≤ 300K) | 123K · 175K · 137K | Tutuyor |
+| Kart/hafta (1,5–2,5) | 1,7 · 1,7 · 1,7 | Tutuyor |
+| Sakatlık/sezon · sakat hafta (1–2 · 3–6) | 1,4–1,5 · 3,3–3,9 | Tutuyor |
+| İflas | yok | Tutuyor |
+| Kumarhane payı: kumarbaz / herkes (%15–35 / ≤ %5) | %19/%3 · %21/%2 · %9/%1 | Tohum 3000'de kumarbaz payı bandın altında. 6 kumarbazlık örneklem gürültüsü (BALANCE.md'de bilinen sınır). |
+
+- **Golden master bilinçli olarak yenilendi** (`UPDATE_GOLDEN=1`, içerik commit'iyle aynı commit'te). Sebep: haftalık takipçi satırı, yeni romantik kart, kart tavanları ve manşet havuzları kariyer akışını değiştiriyor. 1000 AI maçının özeti değişmedi.
+- His, girdi tekrarı ve performans testleri yeşil.
+- Tam test seti makine yük altındayken iki 5 sn zaman aşımı verdi (`keeper.test` ve golden'ın çift koşusu). İkisi tek başına yeşil.
+
+## Açık maddeler (sonraki tur)
+
+- **Temiz sayfa manşet hacmi:** Stoper ve kaleci 12 sezonda ~140 manşet alıyor. Seri koşulu ("5 maçtır gol yok") ya da büyük maç koşulu daha az ama daha anlamlı manşet verir.
+- **Persona harness'inde itibar tavanı:** 2. kademedeki bek 29 yaşında itibar 90 (Tur 3'ten beri). BALANCE harness'inde eğri hedefte. Fark, PR'ı her fırsatta kullanan personadan geliyor.
+- **Milli rakip adı:** `nextHeroFixture.opponentName` İngilizce. Türkçe oyunda maç önü röportajı "England" diyebilir. Alan yerelleştirilmiş ad (`LText`) taşımalı.
+- **Kumarbaz payı:** Tohuma göre %9–21. Ortalama bile bandın alt sınırına yakın.

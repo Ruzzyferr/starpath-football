@@ -16,6 +16,11 @@ import {
 import type { EventDef } from '../types'
 import { partnerNamePool } from '../../../game/partnerPref'
 
+/** Reputation from which strangers know the hero (the "nobody knows me" meeting stops). */
+const FAMOUS_REP = 60
+/** Most a date dinner costs. */
+const DINNER_MAX = 12_000
+
 /** Flags to clear when a relationship ends. */
 const SINGLE = { romance_stage: null, long_distance: null }
 
@@ -26,7 +31,10 @@ export const romanceEvents: EventDef[] = [
     category: 'romance',
     weight: 1.2,
     cooldownWeeks: 12,
-    conditions: ({ state }) => !hasRel(state, 'partner') && getFlag(state, 'romance_stage') !== 'crush' && age(state) >= 18,
+    // "For once nobody knows who you are" only works before fame (playtest Tur 4: a reputation-100 star heard
+    // "you kick a ball, as a hobby?" ten times in one career). Famous heroes get romance.meet_someone_famous.
+    maxPerCareer: 4,
+    conditions: ({ state }) => !hasRel(state, 'partner') && getFlag(state, 'romance_stage') !== 'crush' && age(state) >= 18 && state.hero.reputation < FAMOUS_REP,
     vars: (ctx, rng) => ({ crush: rng.pick(partnerNamePool(ctx.state)) }),
     title: t('Kafede Biri', 'Someone at the Café'),
     text: t(
@@ -67,13 +75,52 @@ export const romanceEvents: EventDef[] = [
     ],
   },
   {
+    id: 'romance.meet_someone_famous',
+    category: 'romance',
+    weight: 1.1,
+    cooldownWeeks: 16,
+    maxPerCareer: 4,
+    conditions: ({ state }) => !hasRel(state, 'partner') && getFlag(state, 'romance_stage') !== 'crush' && age(state) >= 18 && state.hero.reputation >= FAMOUS_REP,
+    vars: (ctx, rng) => ({ crush: rng.pick(partnerNamePool(ctx.state)) }),
+    title: t('Kameraların Olmadığı Bir Akşam', 'An Evening Without Cameras'),
+    text: t(
+      '{friendName} evinde küçük bir yemek verdi, telefonlar kapıda bir sepete. Yanına {crush} oturdu. Seni tanıdığı belliydi ama bir kez bile maçtan söz etmedi; en son ne zaman tatile çıktığını sordu. Cevabı bulamadın.',
+      '{friendName} hosted a small dinner, phones left in a basket at the door. {crush} sat next to you. They clearly knew who you were but never mentioned football once; they asked when you last had a holiday. You could not remember.',
+    ),
+    icon: '☕',
+    choices: [
+      {
+        label: t('Numarasını iste', 'Ask for their number'),
+        risk: 'medium',
+        effects: (_ctx, rng) =>
+          rng.chance(0.65)
+            ? fx(t('Numarayı verdi, bir şartla: "Fotoğraf yok, paylaşım yok."', 'They gave it, on one condition: "No photos, no posts."'), happy(6), flags({ romance_stage: 'crush' }), follow(chain('romance.first_date', 1)))
+            : fx(t('"Senin hayatın biraz kalabalık bana," dedi gülümseyerek. Haklıydı.', '"Your life is a bit crowded for me," they said with a smile. Fair.'), happy(-3), morale(-2)),
+      },
+      {
+        label: t('Kameralardan uzak bir yere davet et', 'Invite them somewhere away from the cameras'),
+        hint: t('Ün burada işe yaramaz; samimiyet yarar.', 'Fame does not help here; sincerity does.'),
+        risk: 'high',
+        effects: (_ctx, rng) =>
+          rng.chance(0.5)
+            ? fx(t('Bir balıkçı kahvesinde iki çay. Kimse dönüp bakmadı, ikiniz de bunu sevdiniz.', 'Two teas at a little harbour café. Nobody looked twice, and you both loved that.'), happy(8), flags({ romance_stage: 'crush' }), follow(chain('romance.first_date', 2)))
+            : fx(t('Ertesi gün bir köşe yazısı: "{heroName} gece yarısı gizemli biriyle." Bir daha aramadı.', 'Next day a gossip column: "{heroName} out at midnight with a mystery date." They never called again.'), happy(-4), press(-1)),
+      },
+      {
+        label: t('Şu an tek aşkın futbol', 'Football is your only love right now'),
+        effects: () => fx(t('Erken kalktın, sofradan da erken. Sabah antrenmanda ilk sendin.', 'You left the table early. First in at training the next morning.'), form(3), sharp(3), happy(-2)),
+      },
+    ],
+  },
+  {
     id: 'romance.first_date',
     category: 'romance',
     weight: 1,
     cooldownWeeks: 0,
     followUpOnly: true,
     conditions: ({ state }) => !hasRel(state, 'partner'),
-    vars: ({ state }) => ({ dinner: wageX(state, 0.5, 300) }),
+    // Half a week's wage, but a dinner is still a dinner (a 414K-a-week star paid 207K for one: playtest Tur 4).
+    vars: ({ state }) => ({ dinner: Math.min(wageX(state, 0.5, 300), DINNER_MAX) }),
     title: t('İlk Buluşma', 'First Date'),
     text: t(
       '{crush} ile ilk buluşma. Nereye götüreceğine karar vermen lazım ve {friendName} grup sohbetinde yirmi farklı öneri attı, hepsi berbat.',

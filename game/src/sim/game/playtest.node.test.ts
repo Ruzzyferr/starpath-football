@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { Rng } from '../../core/rng'
-import type { Background, GameState, Gender, LText } from '../../core/types'
+import type { Background, GameState, Gender, LText, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
 import { PERKS } from '../../data/perks'
 import { ACTIVITY_BY_ID } from '../../data/activities'
@@ -54,11 +54,13 @@ import {
   projectUpkeep, stadiumLevel, stakePct, STAKE_MAX_PCT, STAKE_PRICE_PER_PCT,
 } from '../life/projects'
 import { casinoVipTier } from '../life/casino'
+import { teamName } from '../world/national'
 
 const env = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 const FULL = env.PLAYTEST === '1'
 
-type Persona = 'pro' | 'social' | 'gambler' | 'party' | 'spender' | 'investor'
+/** family: family-first (evenings at home, partner, safe choices, no casino). */
+type Persona = 'pro' | 'social' | 'gambler' | 'party' | 'spender' | 'investor' | 'family'
 
 interface PtConfig {
   seed: number
@@ -66,7 +68,9 @@ interface PtConfig {
   last: string
   gender: Gender
   nationality: string
-  role: BalanceRole
+  role: Role
+  /** Position (default: the balance role's own, ROLE_POS). */
+  position?: Position
   background: Background
   persona: Persona
   startAge: number
@@ -78,7 +82,7 @@ interface PtConfig {
   seasons?: number
 }
 
-const POS = ROLE_POS
+const posOf = (c: Pick<PtConfig, 'role' | 'position'>): Position => c.position ?? ROLE_POS[c.role as BalanceRole] ?? 'ST'
 
 const CONFIGS: PtConfig[] = [
   { seed: 4242, first: 'Arda', last: 'Yıldız', gender: 'male', nationality: 'TR', role: 'runner', background: 'academy', persona: 'pro', startAge: 16 },
@@ -116,6 +120,20 @@ const CONFIGS_R3: PtConfig[] = [
 
 // Round 3b (PLAYTEST_PLAN=r3b): the same seeds as r3 for the ST, the CB and the investor (before/after of the Tur 3b changes).
 const CONFIGS_R3B: PtConfig[] = [CONFIGS_R3[0]!, CONFIGS_R3[3]!, CONFIGS_R3[2]!]
+// Round 4 (PLAYTEST_PLAN=r4): 8 careers x 12 seasons across positions/roles, start ages 16/18/21 and five personas,
+// plus a full career (to retirement) whose child plays a 5-season Legacy career.
+const CONFIGS_R4: PtConfig[] = [
+  { seed: 4101, first: 'Barış', last: 'Kurt', gender: 'male', nationality: 'TR', role: 'runner', background: 'academy', persona: 'pro', startAge: 16 },
+  { seed: 4102, first: 'Selin', last: 'Aydemir', gender: 'female', nationality: 'TR', role: 'pivot', position: 'ST', background: 'street', persona: 'party', startAge: 18 },
+  { seed: 4103, first: 'Lucas', last: 'Moreira', gender: 'male', nationality: 'BR', role: 'invertedWinger', position: 'LW', background: 'footballFamily', persona: 'gambler', startAge: 18, heavy: true },
+  { seed: 4104, first: 'Kaan', last: 'Erdem', gender: 'male', nationality: 'TR', role: 'stopper', position: 'CB', background: 'lateBloomer', persona: 'investor', startAge: 21 },
+  { seed: 4105, first: 'Nehir', last: 'Polat', gender: 'female', nationality: 'TR', role: 'anchor', position: 'DM', background: 'academy', persona: 'family', startAge: 16 },
+  { seed: 4106, first: 'Tom', last: 'Becker', gender: 'male', nationality: 'DE', role: 'sweeperKeeper', position: 'GK', background: 'academy', persona: 'pro', startAge: 18 },
+  { seed: 4107, first: 'Umut', last: 'Sarı', gender: 'male', nationality: 'TR', role: 'attackingFullBack', position: 'LB', background: 'street', persona: 'family', startAge: 21 },
+  { seed: 4108, first: 'Mateo', last: 'García', gender: 'male', nationality: 'ES', role: 'playmaker', position: 'AM', background: 'footballFamily', persona: 'investor', startAge: 16 },
+  { seed: 4109, first: 'Emir', last: 'Tan', gender: 'male', nationality: 'TR', role: 'targetForward', position: 'ST', background: 'street', persona: 'pro', startAge: 18, seasons: 22 },
+  { seed: 4110, first: 'Deniz', last: 'Tan', gender: 'male', nationality: 'TR', role: 'touchlineWinger', background: 'footballFamily', persona: 'family', startAge: 16, legacyOf: 8, seasons: 5 },
+]
 
 type Phase = 'genç (≤20)' | 'yükseliş (21–24)' | 'zirve (25–30)' | 'düşüş (31+)'
 const PHASES: Phase[] = ['genç (≤20)', 'yükseliş (21–24)', 'zirve (25–30)', 'düşüş (31+)']
@@ -123,7 +141,7 @@ const phaseOf = (a: number): Phase => (a <= 20 ? PHASES[0] : a <= 24 ? PHASES[1]
 
 const input = (c: PtConfig): NewGameInput => ({
   firstName: c.first, lastName: c.last, nickname: c.first, nationality: c.nationality, birthYear: 2026 - c.startAge,
-  position: POS[c.role], foot: 'R', role: c.role, background: c.background,
+  position: posOf(c), foot: 'R', role: c.role, background: c.background,
   appearance: { skin: 1, hairStyle: 2, hairColor: 0, beard: 0, eyeColor: 1, face: 0, accessory: 0 }, gender: c.gender, difficulty: 'normal',
 })
 
@@ -295,7 +313,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
       for (const x of suffixIssues(t)) flag('ek', `${x} ← ${t}`)
       if (e.icon === '🎯' || e.icon === '⌛') wk.objectiveEvents++
       if (/[Mm]illi|U21|U19|A [Tt]akım|kadroya çağr/.test(t)) wk.national++
-      if (e.icon === '🎯' || e.icon === '⌛') out.objectives.push(t.startsWith('Yeni') ? 'yeni' : t.startsWith('Sezon hedefi') ? 'sezon' : t.startsWith('Hedef tamam') ? 'tamam' : 'kaçtı')
+      if (e.icon === '🎯' || e.icon === '⌛') out.objectives.push(t.startsWith('Yeni') ? 'yeni' : (t.startsWith('Yönetim hedefi') || t.startsWith('Kişisel hedef')) ? 'sezon' : t.startsWith('Hedef tamam') ? 'tamam' : 'kaçtı')
     }
     lastLog = L[L.length - 1]
     const N = s.life.news
@@ -320,7 +338,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
     const p = cfg.persona
     const safeOnes = enabled.filter((i) => risks[i] !== 'high')
     const bold = enabled.filter((i) => risks[i] === 'high' || risks[i] === 'medium')
-    if ((p === 'pro' || p === 'investor') && safeOnes.length && rng.chance(0.7)) return rng.pick(safeOnes)
+    if ((p === 'pro' || p === 'investor' || p === 'family') && safeOnes.length && rng.chance(0.7)) return rng.pick(safeOnes)
     if ((p === 'party' || p === 'gambler') && bold.length && rng.chance(0.6)) return rng.pick(bold)
     return rng.pick(enabled)
   }
@@ -353,7 +371,9 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
         if (prof.every((p) => p.text === prof[0].text)) flag('aynı-sonuç', `${pe.defId}`)
       }
       const invest = enabled.filter((i) => /yatır|inşa|kur\b|kuralım|ortak|hisse|fon|temel at|büyüt/i.test(v.choices[i]?.label ?? ''))
-      const pick = cfg.persona === 'investor' && invest.length && rng.chance(0.75) ? rng.pick(invest) : enabled.length ? choosePick(enabled, v.choices.map((c) => c.risk)) : 0
+      // Family-first: in romance and family cards, the warm first option (never "football is my only love").
+      const warm = cfg.persona === 'family' && (v.category === 'romance' || v.category === 'family') && enabled.includes(0) && !/tek aşkın futbol|iptal et/i.test(v.choices[0]?.label ?? '')
+      const pick = warm && rng.chance(0.8) ? 0 : cfg.persona === 'investor' && invest.length && rng.chance(0.75) ? rng.pick(invest) : enabled.length ? choosePick(enabled, v.choices.map((c) => c.risk)) : 0
       const r = rep('kart', () => resolveEventChoice(s, 0, pick))
       if (!r.ok && s.pendingEvents[0] === pe) s.pendingEvents.splice(0, 1)
       wk.cards++
@@ -386,9 +406,12 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
     out.matches++
     wk.heroMatches++
     const comp = nf ? tr(nf.compName) : '?'
-    const opp = nf?.opponentName ?? '?'
+    // National-team fixtures: the hero's country against theirs (Tur 4: was printed as "<club> 1-0 England").
+    const intl = nf?.compType === 'international'
+    const opp = intl && nf ? tr(teamName(nf.opponentId)) : nf?.opponentName ?? '?'
+    const mine0 = intl ? tr(teamName(s.world.national?.hero.teamId ?? '')) : club?.name ?? '?'
     const home = nf?.isHome ?? true
-    const score = home ? `${club?.name ?? '?'} ${mr.goalsFor}-${mr.goalsAgainst} ${opp}` : `${opp} ${mr.goalsAgainst}-${mr.goalsFor} ${club?.name ?? '?'}`
+    const score = home ? `${mine0} ${mr.goalsFor}-${mr.goalsAgainst} ${opp}` : `${opp} ${mr.goalsAgainst}-${mr.goalsFor} ${mine0}`
     const mine = mr.result.scorers.filter((x) => x.playerId === 'hero').length
     T.push(`[${when()}] ⚽ MAÇ (${comp}) ${score} — puan ${mr.rating.toFixed(1)}, ${mr.minutes}', ${mine} gol`)
     for (const l of mr.lines.slice(0, 4)) out.commentary.push(norm(tr(l)))
@@ -450,11 +473,11 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
     const p = cfg.persona
     const a = age()
     const opts: [string, number][] = [
-      ['rest', 3], ['family_visit', 1.2], ['friend_hangout', p === 'social' ? 2.5 : 1], ['team_dinner', 1], ['hobby_gaming', 0.8], ['hobby_music', 0.5],
+      ['rest', 3], ['family_visit', p === 'family' ? 3.5 : 1.2], ['friend_hangout', p === 'social' ? 2.5 : 1], ['team_dinner', 1], ['hobby_gaming', 0.8], ['hobby_music', 0.5],
       ['shopping', p === 'spender' ? 2 : 0.4], ['social_post', 0.6],
     ]
-    if (hasPartner) opts.push(['date_night', p === 'social' ? 2 : 1])
-    if (a >= 18) opts.push(['party', p === 'party' ? 3 : p === 'social' ? 0.8 : 0.25], ['casino', cfg.heavy ? 4 : p === 'gambler' ? 1.6 : 0.08])
+    if (hasPartner) opts.push(['date_night', p === 'social' || p === 'family' ? 2.5 : 1])
+    if (a >= 18) opts.push(['party', p === 'party' ? 3 : p === 'social' ? 0.8 : p === 'family' ? 0.05 : 0.25], ['casino', cfg.heavy ? 4 : p === 'gambler' ? 1.6 : p === 'family' ? 0 : 0.08])
     return rng.weighted(opts, (x) => x[1])[0]
   }
   const dayChoice = (slot: number): string | null => {
@@ -661,7 +684,7 @@ function runPlaytest(cfg: PtConfig, idx: number, seasons: number, legacy?: Legac
 
   let guard = 0
   let lastSeasonSeen = s.calendar.season
-  T.push(`=== KARİYER ${idx + 1}: ${cfg.first} ${cfg.last} (${cfg.gender === 'female' ? 'K' : 'E'}, ${cfg.nationality}, ${POS[cfg.role]}, ${cfg.background}, persona ${cfg.persona}, ${cfg.startAge} yaş) ===`)
+  T.push(`=== KARİYER ${idx + 1}: ${cfg.first} ${cfg.last} (${cfg.gender === 'female' ? 'K' : 'E'}, ${cfg.nationality}, ${posOf(cfg)}, ${cfg.background}, persona ${cfg.persona}, ${cfg.startAge} yaş) ===`)
   drain()
   let awardsSeen = s.hero.awards.length
   while (s.calendar.season < startSeason + seasons && guard++ < 8000 && !s.hero.retired) {
@@ -867,7 +890,7 @@ export function analyse(runs: CareerOut[]): string {
   }
   o.push('## Sezon özetleri', '')
   for (const r of runs) {
-    o.push(`### ${r.cfg.first} ${r.cfg.last} (${r.cfg.persona}, ${POS[r.cfg.role]})`, '| S | Yaş | OVR | İtibar | Kulüp (kademe) | Maç/Gol | Maaş | Para | Net servet | Alım | Parası boşta hafta | Projeler | Takım arkadaşı min/ort/max | VIP |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
+    o.push(`### ${r.cfg.first} ${r.cfg.last} (${r.cfg.persona}, ${posOf(r.cfg)})`, '| S | Yaş | OVR | İtibar | Kulüp (kademe) | Maç/Gol | Maaş | Para | Net servet | Alım | Parası boşta hafta | Projeler | Takım arkadaşı min/ort/max | VIP |', '|---|---|---|---|---|---|---|---|---|---|---|---|---|---|')
     for (const x of r.seasons) o.push(`| ${x.season} | ${x.age} | ${x.ovr} | ${x.rep} | ${x.club} (${x.tier ?? '-'}) | ${x.apps}/${x.goals} | ${x.wage} | ${x.money} | ${x.netWorth} | ${x.purchases} | ${x.moneyIdleWeeks} | ${x.proj} | ${x.mates} | ${x.vip} |`)
     o.push('')
   }
@@ -890,15 +913,20 @@ describe('playtest harness', () => {
     const r2 = FULL && env.PLAYTEST_PLAN === 'r2'
     const r3 = FULL && env.PLAYTEST_PLAN === 'r3'
     const r3b = FULL && env.PLAYTEST_PLAN === 'r3b'
-    const set = r3b ? CONFIGS_R3B : r3 ? CONFIGS_R3 : r2 ? CONFIGS_R2 : CONFIGS
-    const n = FULL ? Number(env.PLAYTEST_N ?? (r3 || r3b || r2 ? set.length : 5)) : 1
-    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? (r3 || r3b ? 10 : r2 ? 8 : 6)) : 1
+    const r4 = FULL && env.PLAYTEST_PLAN === 'r4'
+    // PLAYTEST_ONLY=1,3: only these (1-based) careers of the plan (a legacy child still needs its parent).
+    const only = env.PLAYTEST_ONLY ? new Set(env.PLAYTEST_ONLY.split(',').map((x) => Number(x) - 1)) : null
+    const set = r4 ? CONFIGS_R4 : r3b ? CONFIGS_R3B : r3 ? CONFIGS_R3 : r2 ? CONFIGS_R2 : CONFIGS
+    const n = FULL ? Number(env.PLAYTEST_N ?? (r4 || r3 || r3b || r2 ? set.length : 5)) : 1
+    const seasons = FULL ? Number(env.PLAYTEST_SEASONS ?? (r4 ? 12 : r3 || r3b ? 10 : r2 ? 8 : 6)) : 1
     const runs: CareerOut[] = []
     for (let i = 0; i < n; i++) {
       const cfg = set[i % set.length]
+      if (only && !only.has(i)) { runs.push(null as unknown as CareerOut); continue }
       const parent = cfg.legacyOf !== undefined ? runs[cfg.legacyOf]?.summary ?? null : null
       runs.push(runPlaytest(cfg, i, cfg.seasons ?? seasons, parent ? legacyStartFrom(parent) : undefined))
     }
+    if (only) runs.splice(0, runs.length, ...runs.filter(Boolean))
     expect(runs[0].cards.length).toBeGreaterThan(0)
     expect(runs[0].matches).toBeGreaterThan(0)
     if (!FULL) return
@@ -907,5 +935,5 @@ describe('playtest harness', () => {
     runs.forEach((r, i) => writeFileSync(join(dir, `career-${i + 1}.txt`), r.transcript.join('\n'), 'utf8'))
     writeFileSync(join(dir, 'analysis.md'), analyse(runs), 'utf8')
     writeFileSync(join(dir, 'metrics.json'), JSON.stringify(runs.map((r) => ({ cfg: r.cfg, weeks: r.weeks, seasons: r.seasons, cards: r.cards })), null, 0), 'utf8')
-  }, FULL ? 1_800_000 : 60_000)
+  }, FULL ? 7_200_000 : 60_000)
 })

@@ -84,7 +84,7 @@ export const projectEvents: EventDef[] = [
     id: 'mentor.academy_first_graduate', category: 'mentor', weight: 1, cooldownWeeks: 40, maxPerCareer: 3, minAge: 24,
     conditions: ({ state }) => academyLevel(state.life) >= 1 && academyGraduates(state.life) >= 1,
     vars: ({ state }) => ({ n: academyGraduates(state.life) }),
-    title: t('Akademiden Çıkan İlk Yetenek', 'The First Talent Out of the Academy'),
+    title: t('Akademiden Parlayan Bir Yetenek', 'A Bright Talent Out of the Academy'),
     text: t('Akademiden toplam {n} genç mezun oldu. Biri ise çok parlak: büyük kulüplerin gözü üstünde. Çocuk seni arıyor: "{g:Abi|Abla}, ne yapayım?"', '{n} youngsters have graduated from the academy so far. One of them is brilliant, and big clubs are watching. The kid calls you: "What should I do?"'),
     icon: '🎓',
     choices: [

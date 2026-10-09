@@ -83,6 +83,9 @@ export const followerCeiling = (reputation: number): number => 5000 * Math.pow(3
 export const followerMultiplier = (hero: Pick<Hero, 'perks'>, life: Life): number =>
   1 + perkValue(hero, 'followers_gain') + assetEffectTotal(life, 'followers')
 
+/** Life flag: follower count at the last weekly tick (the weekly line reports the net change since). */
+export const WEEK_FOLLOWERS_FLAG = 'g:followersWeek'
+
 /** Weekly fade of the follower excess above the fame ceiling. */
 export const OVER_CEILING_FADE = 0.08
 
@@ -121,8 +124,16 @@ export function weeklySocialTick(rng: Rng, hero: Hero, life: Life, ctx: SocialCo
   const lines: Lines = []
   const g = organicFollowerGrowth(hero, life, ctx)
   life.followers = Math.max(0, life.followers + g)
-  if (g >= 1000) lines.push(fill(lt('📈 Bu hafta {n} yeni takipçi kazandın.', '📈 You gained {n} new followers this week.'), { n: fmtNum(g) }))
-  else if (g < 0) lines.push(fill(lt('📉 {n} takipçi kaybettin.', '📉 You lost {n} followers.'), { n: fmtNum(-g) }))
+  // The weekly line reports the week's NET change (matches, posts and cards included), not just the organic part:
+  // a star above his fame ceiling sheds the excess while every match adds more, and "you lost 4M followers" every
+  // Monday of a 40-goal season contradicted the "+1.2M followers" after each match (playtest Tur 4).
+  const prev = life.flags[WEEK_FOLLOWERS_FLAG]
+  const net = typeof prev === 'number' ? life.followers - prev : g
+  life.flags[WEEK_FOLLOWERS_FLAG] = life.followers
+  // A plateau (a star at his fame ceiling) wobbles by under 1 % a week: not news either way.
+  const notable = Math.max(1000, life.followers * 0.01)
+  if (net >= notable) lines.push(fill(lt('📈 Bu hafta {n} yeni takipçi kazandın.', '📈 You gained {n} new followers this week.'), { n: fmtNum(net) }))
+  else if (net <= -notable) lines.push(fill(lt('📉 Bu hafta {n} takipçi kaybettin.', '📉 You lost {n} followers this week.'), { n: fmtNum(-net) }))
   if (life.followers >= 10000) {
     let p = 0.1
     if ((life.relationships.fans?.value ?? 0) < -20) p += 0.2

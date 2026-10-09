@@ -228,6 +228,7 @@ export const rumourEvents: EventDef[] = [
     category: 'rumour',
     weight: 1,
     cooldownWeeks: 24,
+    maxPerCareer: 10, // playtest Tur 4: ×15–17 in one 12–16 season career
     triggers: ['weekly', 'post_match'],
     conditions: ({ state }) => hasClub(state),
     title: t('"Soyunma Odasında Buz Gibi Hava"', '"Ice-Cold Dressing Room"'),

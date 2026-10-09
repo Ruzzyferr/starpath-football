@@ -68,7 +68,7 @@ export const businessEvents: EventDef[] = [
       },
       {
         label: t('Mahremiyetine saygı göster', 'Respect their privacy'),
-        effects: () => fx(t('Hesabı sen ödedin, kimseye söylemedin. {star} ertesi gün kendisi paylaştı: "Burası bir cennet."', 'You paid the bill and told no one. Next day {star} posted it themself: "This place is heaven."'), brand(10), rep(1)),
+        effects: () => fx(t('Hesabı sen ödedin, kimseye söylemedin. Ertesi gün {star} kendisi paylaştı: "Burası bir cennet."', 'You paid the bill and told no one. Next day {star} posted it themself: "This place is heaven."'), brand(10), rep(1)),
       },
     ],
   },

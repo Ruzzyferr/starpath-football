@@ -23,7 +23,7 @@ export const veteran2Events: EventDef[] = [
     id: 'press.podcast_offer', category: 'press', weight: 1, cooldownWeeks: 78, maxPerCareer: 1,
     conditions: ({ state }) => vet(state, 29) && state.hero.reputation >= 40,
     vars: ({ state }) => ({ fee: nice(Math.max(4_000, state.hero.reputation * 120)) }),
-    title: t('Kendi Podcast\'in', 'Your Own Podcast'),
+    title: t('Kendi Podcast Programın', 'Your Own Podcast'),
     text: t('İki tanıdık yapımcı haftalık bir podcast önerdi: soyunma odası hikâyeleri, antrenör sohbetleri, bol kahve. Haftada bir akşam ve ayda {fee} sabit. Mikrofonun önünde en büyük riskin ağzından kaçan bir cümle.', 'Two familiar producers propose a weekly podcast: dressing-room stories, coach chats, plenty of coffee. One evening a week and {fee} a month. The biggest risk at the mic is a sentence that slips out.'),
     icon: '🎧',
     choices: [
