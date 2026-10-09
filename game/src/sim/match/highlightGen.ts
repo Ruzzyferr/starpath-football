@@ -1166,7 +1166,8 @@ function roleMix(pos: Position, role: Role | undefined): Partial<Record<Highligh
 
 /** Base number of open-play highlights per 90 minutes by position. */
 const BASE_COUNT: Record<Position, number> = {
-  ST: 6, LW: 5.8, RW: 5.8, AM: 6, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5,
+  // ST 6 → 6.4 (Oct 2026): restores the striker's chances diluted by the attribute moments (shoulder duel, press).
+  ST: 6.4, LW: 5.8, RW: 5.8, AM: 6, CM: 6, DM: 5.5, LB: 5.5, RB: 5.5, CB: 5, GK: 5,
 }
 
 /** Minimum / maximum highlights per 90 minutes. */
@@ -1195,8 +1196,10 @@ export function kindWeights(pos: Position, ovr?: number, marked = 0, role?: Role
  * a season (BALANCE.md, gol dengesi) without touching per-kind odds.
  */
 const tightening = (ovr?: number): number => (ovr === undefined ? 0 : clamp((ovr - 68) / 16, 0, 1))
-const SHOOT_TIGHTENING = 0.6
-const COUNT_TIGHTENING = 0.2
+// Balance pass (Oct 2026): 0.6 → 0.4 and ELITE_SHOOT 0.5 → 0.2, COUNT_TIGHTENING 0.2 → 0.15. After the attribute
+// moments joined the mix, 77-82 strikers had fallen to ~13-17 goals a season (target 25-35, BALANCE.md).
+const SHOOT_TIGHTENING = 0.4
+const COUNT_TIGHTENING = 0.15
 /**
  * Second stage for stars (playtest Tur 2: 407 goals in 459 games; ST careers at 0.91 goals a
  * game, best seasons 1.35). Elite players are man-marked and doubled: from OVR 74 to 88 clean
@@ -1204,7 +1207,7 @@ const COUNT_TIGHTENING = 0.2
  * about 1.0 in a peak season (real-world elite range). 0 at 74 and below, 1 at 88+.
  */
 const eliteMarking = (ovr?: number): number => (ovr === undefined ? 0 : clamp((ovr - 74) / 14, 0, 1))
-const ELITE_SHOOT = 0.5
+const ELITE_SHOOT = 0.2
 const ELITE_COUNT = 0.1
 
 /** Kinds where the hero's team is defending. */

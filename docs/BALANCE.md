@@ -993,8 +993,64 @@ penaltıcı sırası bağlanmadan hemen önceki kod (yalnızca o kartı gören k
 ortalamasında 21 yaş itibarı 44,8 → 43,3 (tohum gürültüsü içinde, tohum 1000 tek başına 48 → 40), 25 yaş
 itibarı 70,8 → 73,5 (hedefe yaklaştı), ST kariyer gol/maç 0,54 → 0,57. 21 ve 25 yaş itibarı ile ST en iyi
 sezonu bu turdan **önce de** hedefin alt sınırının altındaydı (c3d8f94 ile gelen özellik bağları); bu tur o
-açığı büyütmedi, ayrı bir ayar turu gerektiriyor.
+açığı büyütmedi; ayar turu aşağıda ("İtibar eğrisi ve golcü hacmi turu").
 
 **Golden master bilinçli olarak yenilendi** (`UPDATE_GOLDEN=1`, aynı commit): 1000 AI maçının özeti değişmedi,
 kariyer sezonu özeti değişti (maç hazırlığı, seçilme, sponsor sıklığı ve lüks tepkileri kariyer akışını
 değiştiriyor).
+
+## İtibar eğrisi ve golcü hacmi turu (Ekim 2026, yankılar sonrası)
+
+Sorun: kelebek ve özellik bağlarından sonra 21 ve 25 yaş itibarı (~43 / ~73) ve forvetin gol hacmi (kariyer
+0,56 gol/maç, en iyi sezon ~0,9, 77–82 OVR sezonu 13–17 gol) hedefin altındaydı. Kök neden iki parçalı:
+özellik anları (omuz omuza, pres tuzağı…) forvetin an karışımını sulandırdı, OVR 68 üstündeki "sıkılaşan
+savunma" ve 74 üstündeki "yıldız markajı" ise yüksek OVR'li hücumcunun şut anlarını eskisinden sert kesiyordu
+(77–82 bandında 71–76 bandından **az** gol). İtibar tarafında ise ilk sezonların maç ünü küçüktü.
+
+Değişiklikler (önemsiz eylemlerden ün şişirilmedi; ün yine sahadan geliyor):
+
+| Dosya | Değişiklik | Gerekçe |
+|---|---|---|
+| `sim/match/highlightGen.ts` | `SHOOT_TIGHTENING` 0,6 → 0,4, `ELITE_SHOOT` 0,5 → 0,2, `COUNT_TIGHTENING` 0,2 → 0,15 | Yıldız markajı yerinde ama yüksek OVR artık düşük OVR'den az gol demek değil. Pozisyondaki bütün roller aynı çarpanı aldığı için rol dengesi korunur. |
+| `sim/match/highlightGen.ts` | Forvet temel an sayısı 6 → 6,4 | Özellik anlarının forvetten aldığı şans payını geri verir. |
+| `sim/career/matchOutcome.ts` | `youthSpotlight(yaş)`: pozitif maç ünü 18 ve altında ×1,8, 22'de ×1'e iner (`YOUTH_SPOTLIGHT` 0,8) | Gerçek hayatta gol atan bir genç, aynı şeyi yapan oturmuş bir oyuncudan çok daha fazla manşet olur. Erken itibar eğrisini (18 / 21) taşır. |
+| `sim/career/matchOutcome.ts` | `MATCH_REP_SCALE` 0,76 → 0,8 | 25 yaş bandını 75–85'in içine alır. |
+| `sim/game/balance.test.ts` | `BALANCE_ST=1` forvet raporu (üç forvet rolü, 12 kariyer × 10 sezon) | Standart karışımda yalnızca 5 forvet var; bant medyanları 14–18 sezonluk örneklemle oynuyordu. |
+
+Ölçüm: `BALANCE=1`, 30 kariyer × 10 sezon, tohum 1000 · 2000 · 3000. "Önce" bu turun başındaki kod (yankılar
+dahil, cc239df); "sonra" son kod.
+
+| Ölçüt | Önce: 1000 · 2000 · 3000 | Sonra: 1000 · 2000 · 3000 | Hedef |
+|---|---|---|---|
+| İtibar 18 / 21 / 25 | 9/40/74 · 12/44/71 · 12/45/74 | 14/54/75 · 16/50/78 · 15/49/78 | ~15 / ~50 / 75–85 |
+| OVR medyanı 21 / 25 | 76/81 · 76/81 · 76/82 | 75/81 · 76/81 · 76/82 | 17–21 sezonda +5–7 |
+| Pot ≥ 85: 25 yaşına kadar OVR 80+ | 9/9 · 11/11 · 11/11 | 9/9 · 11/11 · 11/11 | çoğunluk |
+| İlk 1. kademe / elit kulüp yaşı | 20,0/23,0 · 21,0/23,0 · 20,5/22,0 | 20,0/23,0 · 20,5/22,0 · 20,0/22,0 | 21–23 / 22–24 |
+| ST gol/maç kariyer / en iyi sezon | 0,56/0,88 · 0,55/0,90 · 0,62/0,92 | 0,74/1,07 · 0,73/1,09 · 0,70/1,06 | ~0,6–0,8 / ~1,0–1,3 |
+| ST sezonluk gol 71–76 / 77–82 (standart karışım, 5 forvet) | 21/13 · 19/17 · 19/17 | 23/18 · 20/22 · 21/24 | 18–28 / 25–35 |
+| ST sezonluk gol 71–76 / 77–82 (`BALANCE_ST`, 12 forvet) | 20/19,5 · 22/21 · 18,5/22 | 18/26,5 · 23/26 · 17/27,5 | 18–28 / 25–35 |
+| Kanat/AM · orta saha sezonluk gol 77–82 | 10·4 · 9·6 · 9·5 | 12·7 · 11·8 · 12·5 | 10–18 · 6–12 |
+| 3. sezon net servet medyan / max | 112K/446K · 151K/942K · 126K/1,1M | 153K/1,1M · 183K/508K · 140K/488K | ≤ 300K / ≤ 2M |
+| Kumarhane payı kumarbaz / herkes | %22/%4 · %18/%2 · %31/%4 | %13/%2 · %9/%1 · %28/%4 | %15–35 / ≤ %5 |
+| Kart/hafta, sakatlık/sezon, sakat hafta | 1,7/1,4/3,3 · 1,7/1,5/3,3 · 1,7/1,4/3,4 | 1,7/1,4/3,1 · 1,8/1,4/3,0 · 1,8/1,6/3,6 | 1,5–2,5 / 1–2 / 3–6 |
+| İflas | %0 her tohumda | %0 her tohumda | ≤ %5 |
+
+Sonuç: itibar eğrisi üç tohumda da hedefte (21 yaş 49–54, 25 yaş 75–78), forvetin kariyer ve en iyi sezon
+oranı bandın ortasında. 77–82 bandı büyük örneklemde (`BALANCE_ST`) 26–27,5 ile hedefte; standart karışımın
+5 forvetlik örnekleminde 18–24 (14–18 sezon, p90 33–36), tohum gürültüsü. Bilinen sınırlar:
+
+- **İlk 1. kademe yaşı** 20,0–20,5 (hedef 21–23); bu tur öncesinde de 20,0–21,0 idi, değişmedi sayılır.
+- **Kumarbaz kumarhane payı** tohum 2000'de %9 (hedef %15–35); bu ölçüt 6 kumarbazla ölçülüyor ve önceki
+  turlarda da aynı kodla %12–%31 arasında oynadı (kod değişikliği RNG akışını kaydırır). Üç tohumun
+  ortalaması %17 (hedefte); genel pay her tohumda ≤ %4.
+- **Forvet en iyi sezonu** 1,06–1,09: "~1,0–1,3" bandının alt üçte birinde, bilinçli (yıldız markajı korunuyor).
+
+Rol dengesi (`ROLE_BALANCE=1`, 300 simülasyon maçı + 300 oynanan an, OVR 68): simülasyon maç reytingi her rolde
+mevki ortalamasının ±%2,8'i içinde (forvet rolleri −0,8 / −0,3 / +1,1). Bu turun değişiklikleri OVR 68'de
+oynanan anları etkilemiyor (sıkılaşma 68 üstünde başlıyor, an sayısı oynanan anın sonucunu değiştirmiyor):
+Derinlik Forveti'nin "oynanan an" sütunu −%7,4 bu turdan **önce** de aynıydı (aynı tohumla doğrulandı,
+özellik anları turundan kalma) ve ayrı bir ayar turu gerektiriyor. `roleBalance.test` korunağı (40 maç, ±%8)
+ve `roles.test` yeşil. `STATS_GUARD=1` (40 × 10) tolerans içinde; `statsBaseline.json` yeniden merkezlenmedi.
+
+**Golden master bilinçli olarak `UPDATE_GOLDEN=1` ile yenilendi** (aynı commit): kariyer sezonu özeti değişti
+(an sayısı, şut ağırlıkları, maç ünü); 1000 AI maçının özeti değişmedi.

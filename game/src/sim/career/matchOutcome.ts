@@ -6,7 +6,7 @@
 import type { AttributeKey, GameState, Hero, LText, NewsItem } from '../../core/types'
 import { Rng } from '../../core/rng'
 import {
-  NEWS_SOURCES, absWeek, clamp, fill, fmtMoney, fmtNum, lt, meter, pushLog, pushNews, signed, type Lines,
+  NEWS_SOURCES, absWeek, clamp, fill, fmtMoney, fmtNum, heroAge, lt, meter, pushLog, pushNews, signed, type Lines,
 } from './common'
 import { POSITION_WEIGHTS, applyXpBundle } from './progression'
 import { perkValue } from './perks'
@@ -76,7 +76,15 @@ export const NEUTRAL_RATING = 6.5
  * 90+ by 19 and 100 by 20 for nearly every career. Now a regular starter at a
  * small club gains ~5–8 a season, a star in a top league ~8–12 until fame saturates.
  */
-export const MATCH_REP_SCALE = 0.76
+export const MATCH_REP_SCALE = 0.8
+
+/**
+ * Breakthrough spotlight (balance pass, Oct 2026): a teenager who performs gets far more
+ * headlines than a settled pro doing the same. Positive match fame × 1.8 at 18 and younger,
+ * tapering to × 1 at 22 (BALANCE.md: reputation 18 / 21 / 25 had slipped to ~11 / 44 / 74).
+ */
+export const YOUTH_SPOTLIGHT = 0.8
+export const youthSpotlight = (age: number): number => 1 + clamp((22 - age) / 4, 0, 1) * YOUTH_SPOTLIGHT
 
 /** Form = EMA of a rating-derived target: ~last 5 matches matter (α = 0.35). */
 export const FORM_ALPHA = 0.35
@@ -196,7 +204,7 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
   const stage = 0.5 + imp + clamp(((m.opponentReputation ?? 50) - 50) / 100, -0.3, 0.4)
   let repD = ((rating - NEUTRAL_RATING) * 0.4 + goals * 0.45 + assists * 0.25 + (m.motm ? 0.5 : 0)) * stage * MATCH_REP_SCALE
   // Fame gets harder to add the more you have: ×0.75 at 20, ×0.4 at 50, ×0.1 at 85.
-  repD = repD > 0 ? repD * Math.pow(Math.max(0, 1 - hero.reputation / 100), 1.3) : repD * 0.5
+  repD = repD > 0 ? repD * Math.pow(Math.max(0, 1 - hero.reputation / 100), 1.3) * youthSpotlight(heroAge(hero, cal.season)) : repD * 0.5
   const repBefore = hero.reputation
   hero.reputation = clamp(Math.round((hero.reputation + repD) * 100) / 100, 0, 100)
   const reputationDelta = hero.reputation - repBefore

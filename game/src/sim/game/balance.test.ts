@@ -175,4 +175,27 @@ describe('balance simulator', () => {
     if (env.BALANCE_OUT) writeFileSync(env.BALANCE_OUT, text)
     expect(out.length).toBe(8)
   }, 7_200_000)
+
+  // Striker goal volume on a bigger sample than the standard mix (5 runners): all three striker roles,
+  // BALANCE_ST=1 [BALANCE_N=12] [BALANCE_SEED] [BALANCE_OUT=<file>]. One line: career / best-season goals
+  // per match and season goals in the 71-76 and 77-82 OVR bands (≥ 15 matches).
+  it.skipIf(!env.BALANCE_ST)('striker report', () => {
+    const n = Number(env.BALANCE_N) || 12
+    const seed = Number(env.BALANCE_SEED) || 1000
+    const roles = ['runner', 'targetForward', 'pivot'] as const
+    const mix = standardMix(n * 6, 10, seed)
+    const traces = Array.from({ length: n }, (_, i) => runCareer({ ...mix[i * 5 + 1]!, role: roles[i % 3]!, position: 'ST' }))
+    const career = traces.map((t) => {
+      const apps = t.samples.reduce((a, r) => a + r.apps, 0)
+      return apps ? t.samples.reduce((a, r) => a + r.goals, 0) / apps : 0
+    })
+    const best = traces.map((t) => Math.max(0, ...t.samples.filter((r) => r.apps >= 15).map((r) => r.goals / r.apps)))
+    const band = (lo: number, hi: number) => traces.flatMap((t) => t.samples.filter((r) => r.apps >= 15 && r.ovr >= lo && r.ovr <= hi).map((r) => r.goals))
+    const b1 = band(71, 76)
+    const b2 = band(77, 82)
+    const text = `seed ${seed}, ${n} strikers × 10 seasons: goals/match career ${med(career).toFixed(2)}, best season ${med(best).toFixed(2)}; season goals 71-76 ${med(b1)} (n ${b1.length}), 77-82 ${med(b2)} (n ${b2.length})`
+    console.log(text)
+    if (env.BALANCE_OUT) writeFileSync(env.BALANCE_OUT, text)
+    expect(traces.length).toBe(n)
+  }, 3_600_000)
 })
