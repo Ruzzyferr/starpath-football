@@ -125,7 +125,7 @@ test.beforeEach(async ({ page }) => {
   await preferEnglish(page)
 })
 
-test('live match: play a moment with real input, sim to the end, post-match rating', async ({ page, shot, isMobile }) => {
+test('live match: play a moment with real input, sim to the end, post-match rating', async ({ page, shot, isMobile, browserName }) => {
   await page.goto('/?autostart=1&seed=777')
   await waitForApp(page)
   await sp(page, 'sp.toMatchday()')
@@ -159,7 +159,8 @@ test('live match: play a moment with real input, sim to the end, post-match rati
   await page.waitForTimeout(400)
   await shot('c4-moment-live')
   const kind = (await dbg(page))?.kind
-  const inputs = isMobile ? await playTouch(page) : await playDesktop(page)
+  // Touch swipes go through CDP (Chromium only); WebKit plays with the keyboard path.
+  const inputs = isMobile && browserName === 'chromium' ? await playTouch(page) : await playDesktop(page)
   await expect.poll(() => momentActive(page), { timeout: 120_000 }).toBe(false)
   const res = await page.evaluate(() => (window as unknown as { __spLastHighlight?: { outcome: string } }).__spLastHighlight ?? null)
   const fallback = await page.evaluate(() => (window as unknown as { __spHighlightFallback?: string }).__spHighlightFallback ?? null)
@@ -175,10 +176,8 @@ test('live match: play a moment with real input, sim to the end, post-match rati
   for (let i = 0; i < 10; i++) {
     if (await card.count()) await card.getByRole('button', { name: 'Sim moment' }).click()
     const simBtn = page.getByRole('button', { name: 'Sim to the end' })
-    if (await simBtn.isEnabled().catch(() => false)) {
-      await simBtn.click()
-      break
-    }
+    // A moment card can disable the button between the check and the click: retry the loop then.
+    if (await simBtn.isEnabled().catch(() => false) && (await simBtn.click({ timeout: 3000 }).then(() => true, () => false))) break
     await page.waitForTimeout(200)
   }
   await expect(page.locator('.lm-fulltime')).toBeVisible({ timeout: 30_000 })

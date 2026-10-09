@@ -1,5 +1,5 @@
 import { existsSync } from 'node:fs'
-import { defineConfig } from '@playwright/test'
+import { defineConfig, devices } from '@playwright/test'
 
 /**
  * Real-browser end-to-end suite (game/e2e). Locally it uses the installed
@@ -8,11 +8,18 @@ import { defineConfig } from '@playwright/test'
  * (`npx playwright install --with-deps chromium`). Override with
  * PW_CHANNEL=chrome|msedge|chromium.
  *
- *   npm run e2e                 both projects
+ *   npm run e2e                 all projects
  *   npx playwright test --project=desktop e2e/match.spec.ts
  *
  * Screenshots of every step go to $E2E_SHOTS (default test-results/shots).
  */
+/**
+ * Specs that also run in WebKit with an iPhone descriptor (touch, DPR 3), so
+ * iOS / WKWebView regressions (blank textures, dead buttons) surface on every
+ * run. Needs `npx playwright install webkit` once.
+ */
+const WEBKIT_SPECS = /(?:^|[\\/])(?:demo|match|training|onboarding|smoke|ios)\.spec\.ts$/
+
 const PORT = Number(process.env.PW_PORT ?? 5287)
 
 function chromeInstalled(): boolean {
@@ -39,7 +46,6 @@ export default defineConfig({
   reporter: [['list']],
   use: {
     baseURL: `http://127.0.0.1:${PORT}`,
-    channel,
     headless: true,
     trace: 'retain-on-failure',
     actionTimeout: 15_000,
@@ -47,11 +53,21 @@ export default defineConfig({
   projects: [
     {
       name: 'desktop',
-      use: { viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
+      use: { channel, viewport: { width: 1440, height: 900 }, deviceScaleFactor: 1 },
     },
     {
       name: 'mobile',
-      use: { viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+      use: { channel, viewport: { width: 390, height: 844 }, deviceScaleFactor: 3, isMobile: true, hasTouch: true },
+    },
+    {
+      // iPhone 15 in WebKit: the engine iOS / Capacitor's WKWebView runs.
+      name: 'webkit-iphone',
+      testMatch: WEBKIT_SPECS,
+      // Headless WebKit's WebGL is software-rendered and slow under two workers: one retry for timing flakes.
+      retries: 1,
+      // Runtime budget: a representative slice of the slow Phaser specs (WebKit runs them ~2x slower).
+      grepInvert: /match-demo autopilot reaches an outcome: (?!(?:build_up|penalty|gk_save|corner)$)|goalkeeper distribution|cross station|explosive starts/,
+      use: { ...devices['iPhone 15'] },
     },
   ],
   webServer: {
