@@ -9,6 +9,7 @@ import { useStorage } from './persistence'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
 import { pendingDecisions } from '../../sim/game/matchDecisions'
+import { quickResolveAll } from './benchPath'
 
 describe('in-match decision window', () => {
   beforeAll(() => {
@@ -30,6 +31,8 @@ describe('in-match decision window', () => {
       }
       const fx = D.nextFixture()
       if (fx?.daysUntil === 0 && (gameState.value?.calendar.slot ?? 0) >= 1) break
+      // Like a user: settle today's mandatory agenda tasks (they gate skipping to the match).
+      quickResolveAll()
       A.advanceToMatch()
     }
     const s = gameState.value!
