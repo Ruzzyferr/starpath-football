@@ -59,6 +59,10 @@ export type MandatoryKind =
   | 'teamTraining' | 'disciplinary' | 'pressConference' | 'dopingTest' | 'physio' | 'sponsorShoot' | 'autographs'
   | 'boardMeeting' | 'nationalCamp' | 'dateNight' | 'familyBirthday' | 'captainMentoring' | 'charity' | 'recoverySession' | 'devMeeting'
   | 'teamMeeting' | 'fitnessTest' | 'clubMedia' | 'gymBlock' | 'communityVisit'
+export const MANDATORY_KINDS: readonly MandatoryKind[] = [
+  'teamTraining', 'disciplinary', 'pressConference', 'dopingTest', 'physio', 'sponsorShoot', 'autographs', 'boardMeeting', 'nationalCamp', 'dateNight',
+  'familyBirthday', 'captainMentoring', 'charity', 'recoverySession', 'devMeeting', 'teamMeeting', 'fitnessTest', 'clubMedia', 'gymBlock', 'communityVisit',
+]
 export type PrepKind = 'train' | 'rest' | 'video'
 
 export interface TaskChoice {
@@ -211,7 +215,8 @@ function pickMandatory(s: GameState, rng: Rng): MandatoryKind[] {
   return out.slice(0, MAX_MANDATORY_PER_DAY)
 }
 
-function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTask {
+/** A mandatory task of a kind for a day (exported for the no-op audit test). */
+export function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTask {
   const id = `m:${kind}:${day}`
   const T = (title: LText, why: LText, reward: LText, extra: Partial<AgendaTask> = {}): AgendaTask => ({ id, mandatory: true, kind, title, why, reward, ...extra })
   const next = nextClubFixture(s)
@@ -263,7 +268,7 @@ function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTa
       return T(lt('Gelişim görüşmesi', 'Development talk'), lt('Altyapı koordinatörü gelişimini konuşmak istiyor.', 'The academy coordinator wants to discuss your progress.'), lt('Hızlı: kısa görüşme, hoca +1', 'Quick: a short talk, manager +1'),
         { play: { choices: [ch('goals', lt('Hedeflerini birlikte koyun', 'Set goals together'), lt('Moral +3, hoca +2', 'Morale +3, manager +2')), ch('feedback', lt('Açık eleştiri iste', 'Ask for honest criticism'), lt('Güven +1.5', 'Trust +1.5'))] }, skip: lt('Hoca −2', 'Manager −2') })
     case 'teamMeeting':
-      return T(lt('Takım toplantısı', 'Team meeting'), fill(lt('Hoca {o} maçı için planı anlatıyor.', 'The manager walks the squad through the plan for {o}.'), { o: opp }), lt('Hızlı: dinle, not al', 'Quick: listen, take notes'),
+      return T(lt('Takım toplantısı', 'Team meeting'), fill(lt('Hoca {o} maçı için planı anlatıyor.', 'The manager walks the squad through the plan for {o}.'), { o: opp }), lt('Hızlı: dinle, not al (pozisyon XP)', 'Quick: listen, take notes (positioning XP)'),
         { play: { choices: [ch('ask', lt('Soru sor', 'Ask a question'), lt('Hoca +2', 'Manager +2')), ch('team', lt('Takıma söz al', 'Speak to the group'), lt('Takım +3, moral +2', 'Teammates +3, morale +2'))] }, skip: lt('Hoca −3, disiplin −3', 'Manager −3, discipline −3') })
     case 'gymBlock':
       return T(lt('Zorunlu kuvvet çalışması', 'Compulsory gym block'), lt('Kondisyoner bu hafta herkesi salona çağırdı.', 'The fitness coach has called everyone into the gym this week.'), lt('Hızlı: programı bitir, enerji −6', 'Quick: finish the programme, energy −6'),
@@ -407,6 +412,10 @@ function save(s: GameState, a: Agenda): void {
 
 const rel = (s: GameState, id: string, d: number, why?: LText): number => changeRelation(s.life, id, d, { hero: s.hero, cause: 'activity', week: absWeek(s.calendar), ...(why ? { why } : {}) })
 const family = (s: GameState, d: number): void => { for (const id of ['mother', 'father', 'sibling']) rel(s, id, d) }
+/** The whole dressing room: every current teammate's bond (there is no single 'teammates' relationship). */
+const squad = (s: GameState, d: number): void => {
+  for (const r of Object.values(s.life.relationships)) if (r.kind === 'teammate') rel(s, r.id, d)
+}
 
 /**
  * Resolve a mandatory task. `quick` = the average outcome, `played` = a better
@@ -507,8 +516,8 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       else { const v = mode === 'played'; family(s, v ? 8 : 3); if (v) { life.happiness = meter(life.happiness + 4); life.energy = meter(life.energy - 8) } line = lt('Annenin doğum gününü kutladın.', 'You celebrated your mother’s birthday.') }
       break
     case 'captainMentoring':
-      if (mode === 'skip') { rel(s, 'teammates', -2); rel(s, MANAGER_REL, -2); line = lt('Gençlerle konuşmadın.', 'You did not talk to the youngsters.') }
-      else { const d = mode === 'played'; rel(s, 'teammates', d ? 5 : 2); if (d) { life.energy = meter(life.energy - 8); applyXpBundle(h, { leadership: 6 }, s.calendar.season) } line = lt('Kaptan olarak gençlerle konuştun.', 'You talked to the youngsters as captain.') }
+      if (mode === 'skip') { squad(s, -2); rel(s, MANAGER_REL, -2); line = lt('Gençlerle konuşmadın.', 'You did not talk to the youngsters.') }
+      else { const d = mode === 'played'; squad(s, d ? 5 : 2); if (d) { life.energy = meter(life.energy - 8); applyXpBundle(h, { leadership: 6 }, s.calendar.season) } line = lt('Kaptan olarak gençlerle konuştun.', 'You talked to the youngsters as captain.') }
       break
     case 'recoverySession':
       if (mode === 'skip') { life.discipline = meter(life.discipline - 2); line = lt('Toparlanmaya gitmedin.', 'You skipped recovery.') }
@@ -522,9 +531,9 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       break
     case 'teamMeeting':
       if (mode === 'skip') { rel(s, MANAGER_REL, -3); life.discipline = meter(life.discipline - 3); line = lt('Takım toplantısına gitmedin.', 'You skipped the team meeting.') }
-      else if (mode === 'played' && choice === 'team') { rel(s, 'teammates', 3); h.morale = meter(h.morale + 2); line = lt('Takıma konuştun; soyunma odası dinledi.', 'You spoke to the group; the dressing room listened.') }
+      else if (mode === 'played' && choice === 'team') { squad(s, 3); h.morale = meter(h.morale + 2); line = lt('Takıma konuştun; soyunma odası dinledi.', 'You spoke to the group; the dressing room listened.') }
       else if (mode === 'played') { rel(s, MANAGER_REL, 2); line = lt('Sorduğun soru hocanın hoşuna gitti.', 'The manager liked your question.') }
-      else line = lt('Toplantıyı dinledin, notlarını aldın.', 'You listened and took notes.')
+      else { applyXpBundle(h, { positioning: 1 }, s.calendar.season); line = lt('Toplantıyı dinledin, notlarını aldın.', 'You listened and took notes.') }
       break
     case 'gymBlock':
       if (mode === 'skip') { life.discipline = meter(life.discipline - 3); line = lt('Kuvvet çalışmasına gitmedin.', 'You skipped the gym block.') }
