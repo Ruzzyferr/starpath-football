@@ -1,5 +1,5 @@
 import type { CDPSession, Page } from '@playwright/test'
-import { test, expect, preferEnglish, waitForApp, sp } from './fixtures'
+import { test, expect, preferEnglish, waitForApp, sp, dismissControlHint } from './fixtures'
 
 /**
  * Touch shooting (owner feedback from the Android build): every deliberate
@@ -149,6 +149,7 @@ async function openShootingDrill(page: Page): Promise<void> {
   const overlay = page.locator('.trn-drill')
   await overlay.getByRole('button', { name: 'Start' }).click()
   await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await dismissControlHint(page, 3000)
 }
 
 const trainingInfo = (page: Page) => page.evaluate(() => (globalThis as unknown as { __spTraining?: { debugInfo(): Info } }).__spTraining?.debugInfo() ?? null)

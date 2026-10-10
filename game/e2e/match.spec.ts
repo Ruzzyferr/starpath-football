@@ -1,5 +1,5 @@
 import type { CDPSession, Page } from '@playwright/test'
-import { test, expect, preferEnglish, assertCleanText, waitForApp, sp } from './fixtures'
+import { test, expect, preferEnglish, assertCleanText, waitForApp, sp, dismissControlHint } from './fixtures'
 
 interface Pt { x: number; y: number }
 interface Dbg {
@@ -155,6 +155,7 @@ test('live match: play a moment with real input, sim to the end, post-match rati
 
   await card.getByRole('button', { name: 'Play moment' }).click()
   await page.waitForFunction(() => !!(window as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 30_000 })
+  await dismissControlHint(page)
   await page.waitForFunction(() => (window as unknown as { __spScene: { debugInfo(): { phase: string } } }).__spScene.debugInfo().phase === 'live', undefined, { timeout: 20_000 })
   await page.waitForTimeout(400)
   await shot('c4-moment-live')
@@ -189,4 +190,64 @@ test('live match: play a moment with real input, sim to the end, post-match rati
   await page.waitForTimeout(1200) // let the entrance animation settle before the screenshot
   await assertCleanText(page)
   await shot('c7-postmatch')
+})
+
+// ───────────────────────── Pause gate (TestFlight build 5) ─────────────────────────
+
+interface Frozen { clock: number; timeLeft: number; phase: string; paused: boolean; ballWorld: { x: number; y: number; z: number } }
+const frozenState = async (page: Page): Promise<Frozen | null> => {
+  const d = (await dbg(page)) as unknown as Frozen | null
+  return d ? { clock: d.clock, timeLeft: d.timeLeft, phase: d.phase, paused: d.paused, ballWorld: d.ballWorld } : null
+}
+
+/** Background the page the way the OS does (visibilitychange → platform/lifecycle → sp:app-pause). */
+const setHidden = (page: Page, hidden: boolean) =>
+  page.evaluate((h) => {
+    Object.defineProperty(document, 'visibilityState', { configurable: true, get: () => (h ? 'hidden' : 'visible') })
+    document.dispatchEvent(new Event('visibilitychange'))
+  }, hidden)
+
+test('pause gate: a moment stays frozen behind its hint card and on background, then runs after a 3-2-1', async ({ page, shot }) => {
+  await page.goto('/?autostart=1&seed=777')
+  await waitForApp(page)
+  await sp(page, 'sp.toMatchday()')
+  await sp(page, "(() => { const s = sp.state(); s.hero.contract.role = 'captain'; s.hero.managerTrust = 100; s.hero.form = 90; s.hero.fatigue = 0; s.hero.sharpness = 100; s.life.flags.promised_start = true })()")
+  await page.keyboard.press('Escape')
+  await page.getByRole('button', { name: 'Play match' }).click()
+  await page.getByRole('button', { name: 'Kick off' }).click()
+  await expect(page.locator('.lm-root')).toBeVisible()
+  await page.locator('.lm-controls').getByText('4×').click()
+  const card = page.locator('.lm-moment')
+  await expect(card).toBeVisible({ timeout: 120_000 })
+  await card.getByRole('button', { name: 'Play moment' }).click()
+  await page.waitForFunction(() => !!(window as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 30_000 })
+
+  // The hint card is up and the moment has not moved at all.
+  const hint = page.locator('.control-hint')
+  await expect(hint).toBeVisible({ timeout: 15_000 })
+  const before = await frozenState(page)
+  expect(before?.paused).toBe(true)
+  await shot('pg1-hint-frozen')
+  await page.waitForTimeout(10_000)
+  const after = await frozenState(page)
+  expect(after, 'moment state unchanged after 10 s behind the hint').toEqual(before)
+  expect(await momentActive(page)).toBe(true)
+  expect(await page.evaluate(() => (window as unknown as { __spLastHighlight?: unknown }).__spLastHighlight ?? null)).toBeNull()
+
+  // Dismiss: a 3-2-1 beat, then the moment runs.
+  await hint.locator('.control-hint-close').click()
+  await expect(hint).toHaveCount(0)
+  expect(await page.evaluate(() => (window as unknown as { __spPauseGate: { beat(): string | null } }).__spPauseGate.beat())).toMatch(/^[123]$/)
+  await expect.poll(async () => (await frozenState(page))?.clock ?? 0, { timeout: 20_000 }).toBeGreaterThan(before!.clock)
+
+  // Backgrounding freezes it again; coming back resumes after the same beat.
+  await setHidden(page, true)
+  await page.waitForTimeout(200)
+  const bg = await frozenState(page)
+  expect(bg?.paused).toBe(true)
+  await page.waitForTimeout(3000)
+  expect(await frozenState(page)).toEqual(bg)
+  await setHidden(page, false)
+  await expect.poll(async () => (await frozenState(page))?.clock ?? 0, { timeout: 20_000 }).toBeGreaterThan(bg!.clock)
+  await shot('pg2-resumed')
 })

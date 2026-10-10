@@ -11,6 +11,7 @@ import Phaser from 'phaser'
 import type { KitColors } from '../../core/types'
 import { colorNum, luminance, mixHex } from '../art'
 import { createMatchGame } from '../MatchScene'
+import { pauseGate, wireAppPause } from '../pauseGate'
 import { PITCH_L, PITCH_W, actorAt, ballAt, type Clip, type ScoutFrame, type ScoutingGame, type ScoutingResult } from './scouting'
 
 export interface ScoutingSceneOptions {
@@ -94,6 +95,11 @@ class ScoutingScene extends Phaser.Scene {
     this.cam = { ...this.sg.clip.focus }
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.scale.off(Phaser.Scale.Events.RESIZE, this.layout, this))
+    // Shared pause source (game/pauseGate): backgrounding the app freezes the clip and its clock.
+    wireAppPause()
+    const gateTok = pauseGate.attach()
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => pauseGate.detach(gateTok))
+    this.events.once(Phaser.Scenes.Events.DESTROY, () => pauseGate.detach(gateTok))
     this.layout()
     this.emit()
     if (import.meta.env.DEV) (globalThis as { __spScouting?: ScoutingScene }).__spScouting = this
@@ -166,6 +172,10 @@ class ScoutingScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(0.1, deltaMs / 1000)
+    if (!this.sg.finished && !pauseGate.tick(Math.min(0.25, Math.max(0, deltaMs / 1000)))) {
+      this.draw(this.sg.frame())
+      return
+    }
     this.clock += dt
     this.sg.update(dt)
     this.emit()

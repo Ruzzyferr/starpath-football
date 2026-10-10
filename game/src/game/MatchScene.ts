@@ -63,6 +63,7 @@ import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figur
 import { BAND_COLOR, BAND_PATTERN, LANDING_KINDS, firstLanding, landingErrorRadius, powerBand, previewFraction, previewVisible, speedLabel, techniqueOf } from './aimView'
 import { clothSettled, createCloth, hitCloth, stepCloth, type NetCloth } from './netCloth'
 import { bulletDesaturation, bulletVignette, composureRingRadius } from './bulletTime'
+import { pauseGate, wireAppPause } from './pauseGate'
 import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, nearestPoints, newSpring, springStep, type Spring2 } from './camera'
 import { ObjectPool } from './pool'
 import { probeKick } from './touchProbe'
@@ -388,6 +389,8 @@ export class MatchScene extends Phaser.Scene {
   /** Launch speed read-out at the power ring (2.1#21). */
   private speedText: Phaser.GameObjects.Text | null = null
   private paused = false
+  /** Big centred "3 / 2 / 1" / PAUSED read-out while the pause gate holds the moment. */
+  private gateText: Phaser.GameObjects.Text | null = null
   private auto: AutopilotState | null = null
   private kits!: { hero: KitColors; opp: KitColors; heroGk: KitColors; oppGk: KitColors }
 
@@ -423,6 +426,7 @@ export class MatchScene extends Phaser.Scene {
     this.ring2 = null
     this.baked = []
     this.paused = false
+    this.gateText = null
   }
 
   create(): void {
@@ -518,17 +522,13 @@ export class MatchScene extends Phaser.Scene {
     }
     window.addEventListener('keydown', this.onKey)
     if (replayOnly) this.startReplay(replayOnly.frames, replayOnly.keyTime, false)
-    // App backgrounded (platform/lifecycle): hold the highlight paused; the player resumes with the pause key / tap.
-    const onAppPause = () => {
-      if (this.mode === 'play' && !this.paused) {
-        this.paused = true
-        this.promptText.setText(this.s.paused)
-      }
-    }
-    window.addEventListener('sp:app-pause', onAppPause)
-    const offAppPause = () => window.removeEventListener('sp:app-pause', onAppPause)
-    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offAppPause)
-    this.events.once(Phaser.Scenes.Events.DESTROY, offAppPause)
+    // One shared pause source (game/pauseGate): a control hint, the app in the background / a system
+    // sheet or the pause key freezes the whole moment; it resumes after a 3-2-1 beat.
+    wireAppPause()
+    const gateTok = pauseGate.attach()
+    const offGate = () => pauseGate.detach(gateTok)
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, offGate)
+    this.events.once(Phaser.Scenes.Events.DESTROY, offGate)
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanup())
     // Dev/e2e: expose the live scene (debugInfo / FPS probes). Stripped from production builds.
@@ -588,6 +588,10 @@ export class MatchScene extends Phaser.Scene {
       cornerChoice: rt.cornerChoice,
       wallChoice: rt.wallChoice,
       wall: rt.setPiece?.wall.length ?? 0,
+      /** Pause gate (hint / background / pause key / resume beat) is freezing the moment. */
+      paused: this.paused,
+      clock: rt.time,
+      ballWorld: { x: rt.ball.x, y: rt.ball.y, z: rt.ball.z },
     }
   }
 
@@ -1146,7 +1150,6 @@ export class MatchScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(0.05, Math.max(0, deltaMs / 1000))
-    this.elapsed += dt
     const rt = this.rt
     const intent = this.input0.poll({
       heroPos: rt.hero.pos,
@@ -1158,13 +1161,19 @@ export class MatchScene extends Phaser.Scene {
     this.lastIntent = intent
     if (intent.any) this.sfx.unlock()
 
-    if (intent.pause && this.mode === 'play') {
-      this.paused = !this.paused
-      this.promptText.setText(this.paused ? this.s.paused : this.data0.highlight.scenario.prompt)
-    }
-    if (this.mode === 'play' && this.paused) {
+    if (intent.pause && this.mode === 'play') pauseGate.toggle('user')
+    // Frozen while anything holds the gate (hint card, background, pause key) and during the
+    // resume countdown: no physics, AI, bullet time, time limit or sound cues; input is dropped.
+    this.paused = this.mode === 'play' && !pauseGate.tick(Math.min(0.25, Math.max(0, deltaMs / 1000)))
+    if (!this.paused) this.elapsed += dt
+    this.drawGate()
+    if (this.paused) {
       this.renderLive(0)
-    } else if (this.mode === 'play') {
+      this.drawOverlay(0)
+      this.updateHud(0, intent)
+      return
+    }
+    if (this.mode === 'play') {
       if (!this.reel) this.updatePicker(dt, intent)
       if (this.reel) {
         this.stepReel(dt)
@@ -1185,6 +1194,22 @@ export class MatchScene extends Phaser.Scene {
     }
     this.drawOverlay(dt)
     this.updateHud(dt, intent)
+  }
+
+  /** Pause-gate read-out: the resume beat ("3", "2", "1") or PAUSED for the pause key / background. */
+  private drawGate(): void {
+    const beat = this.mode === 'play' ? pauseGate.beat() : null
+    const label = beat ?? (this.paused && (pauseGate.has('user') || pauseGate.has('app')) ? this.s.paused : null)
+    if (!label) {
+      this.gateText?.setVisible(false)
+      return
+    }
+    if (!this.gateText) this.gateText = this.text(beat ? 64 : 28, '#ffffff', '800', 'score').setDepth(9_000_000)
+    this.gateText
+      .setFontSize(Math.round((beat ? 64 : 28) * this.hudU))
+      .setText(label)
+      .setVisible(true)
+      .setPosition(this.scale.width / 2, this.hudTop + (this.scale.height - this.hudTop) / 2)
   }
 
   /** Feeds stored input frames (each at its recorded dt) so a goal reel reproduces the moment exactly. */

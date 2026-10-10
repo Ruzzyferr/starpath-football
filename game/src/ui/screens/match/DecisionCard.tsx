@@ -3,6 +3,7 @@ import { t, lt } from '../../../i18n'
 import { Button, Modal } from '../../components'
 import { Icon } from '../../icons'
 import { actions, type DecisionView } from '../../store'
+import { pauseGate } from '../../../game/pauseGate'
 
 const KIND_ICON: Record<string, 'whistle' | 'star' | 'chat'> = {
   penaltyTaker: 'whistle', freeKickTaker: 'whistle', provocation: 'chat', celebrate: 'star', refCall: 'whistle', shout: 'chat', rally: 'chat',
@@ -27,7 +28,10 @@ export function DecisionCard({ d }: { d: DecisionView }) {
 
   useEffect(() => {
     if (hold) return
-    const id = setInterval(() => setLeft((v) => Math.max(0, v - 1)), 1000)
+    // The app in the background / a system sheet (pause gate) stops the decision clock too.
+    const id = setInterval(() => {
+      if (!pauseGate.held()) setLeft((v) => Math.max(0, v - 1))
+    }, 1000)
     return () => clearInterval(id)
   }, [hold])
 

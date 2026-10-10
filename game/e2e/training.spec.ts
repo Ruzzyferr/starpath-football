@@ -1,4 +1,4 @@
-import { test, expect, preferEnglish, assertCleanText, waitForApp, sp } from './fixtures'
+import { test, expect, preferEnglish, assertCleanText, waitForApp, sp, dismissControlHint } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await preferEnglish(page)
@@ -39,6 +39,7 @@ test('play the finishing drill to the end and get a graded result', async ({ pag
   await overlay.getByRole('button', { name: 'Start' }).click()
   const canvas = overlay.locator('canvas')
   await expect(canvas).toBeVisible({ timeout: 20_000 })
+  await dismissControlHint(page)
   await page.waitForTimeout(3200) // countdown
   const box = (await canvas.boundingBox())!
   const mobile = info.project.name === 'mobile'
@@ -96,6 +97,7 @@ test('play the cross station with the keyboard and get a graded result', async (
   const overlay = page.locator('.trn-drill')
   await overlay.getByRole('button', { name: 'Start' }).click()
   await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await dismissControlHint(page)
   await page.waitForTimeout(3000) // countdown
   const result = overlay.locator('.trn-drill-result')
   // Space crosses to the lit zone; keep delivering until the session ends.
@@ -122,6 +124,7 @@ test('goalkeeper distribution & claiming drill is listed for keepers and plays t
   await shot('t6-distribution-intro')
   await overlay.getByRole('button', { name: 'Start' }).click()
   await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await dismissControlHint(page)
   await page.waitForTimeout(6500)
   await shot('t6-distribution-play')
   const result = overlay.locator('.trn-drill-result')
@@ -194,6 +197,7 @@ test('play explosive starts with the keyboard: go on the light, graded result, a
   await expect(overlay.locator('.trn-drill-card h2')).toHaveText('Off the Light')
   await overlay.getByRole('button', { name: 'Start' }).click()
   await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  await dismissControlHint(page)
   await page.waitForTimeout(3000) // countdown
   const result = overlay.locator('.trn-drill-result')
   // Tap Space every 0.4 s while holding Shift (drive): some false starts, many starts, dips at the line.
@@ -298,4 +302,29 @@ test('opponent video: "just skim it" keeps the old instant path (no match bonus)
   await page.getByTestId('scout-quick').click()
   await expect(page.getByTestId('scout')).toHaveCount(0)
   expect(await sp<string | null>(page, `sp.state().life.flags['c:scout'] ?? null`)).toBeNull()
+})
+
+test('pause gate: the drill is frozen behind its first-run hint and starts after Got it', async ({ page, shot }) => {
+  await openTraining(page)
+  await page.locator('.trn-session', { hasText: 'Shooting Drill' }).getByRole('button', { name: 'Play drill' }).click()
+  const overlay = page.locator('.trn-drill')
+  await overlay.getByRole('button', { name: 'Start' }).click()
+  await expect(overlay.locator('canvas')).toBeVisible({ timeout: 20_000 })
+  const hint = page.locator('.control-hint')
+  await expect(hint).toBeVisible({ timeout: 10_000 })
+  type Info = { paused: boolean; elapsed: number; live: boolean; ballWorld: unknown; heroWorld: unknown }
+  const info = () => page.evaluate(() => {
+    const d = (globalThis as unknown as { __spTraining?: { debugInfo(): Info } }).__spTraining?.debugInfo()
+    return d ? { paused: d.paused, elapsed: d.elapsed, live: d.live, ballWorld: d.ballWorld, heroWorld: d.heroWorld } : null
+  })
+  // The hold is on before the card paints (layout effect); wait for the scene's next frame to report it.
+  await expect.poll(async () => (await info())?.paused, { timeout: 5000 }).toBe(true)
+  const before = await info()
+  await page.waitForTimeout(10_000)
+  expect(await info(), 'drill unchanged after 10 s behind the hint').toEqual(before)
+  await shot('pg-drill-hint')
+  await hint.locator('.control-hint-close').click()
+  await expect(hint).toHaveCount(0)
+  await expect.poll(async () => (await info())?.elapsed ?? 0, { timeout: 20_000 }).toBeGreaterThan(before!.elapsed + 0.5)
+  expect((await info())?.paused).toBe(false)
 })

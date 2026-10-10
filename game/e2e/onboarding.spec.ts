@@ -277,7 +277,8 @@ test('first match moment shows a platform-aware control hint', async ({ page, is
   const card = page.locator('.lm-moment')
   await expect(card).toBeVisible({ timeout: 120_000 })
   await card.getByRole('button', { name: 'Play moment' }).click()
-  await page.waitForFunction(() => (window as unknown as { __spScene?: { debugInfo(): { phase: string } } }).__spScene?.debugInfo().phase === 'live', undefined, { timeout: 30_000 })
+  // The hint is up as soon as the scene is; the moment stays frozen behind it (game/pauseGate).
+  await page.waitForFunction(() => !!(window as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 30_000 })
   const hint = page.locator('.control-hint')
   await expect(hint).toBeVisible({ timeout: 30_000 })
   await page.waitForTimeout(900)

@@ -1,14 +1,16 @@
 /**
  * Contextual control hint drawn over a Phaser scene (match moment / drill).
- * Platform-aware text + an animated gesture illustration. It never blocks the
- * play area (pointer-events: none) except for its small "Got it" button, and
- * it disappears once the player performs the hinted action successfully.
+ * Platform-aware text + an animated gesture illustration. While it is on
+ * screen it holds the shared pause gate (game/pauseGate): the moment / drill
+ * stays frozen until "Got it", then resumes after a 3-2-1 beat (TestFlight
+ * build 5: the moment used to play out behind the card).
  */
 import '../../styles/screens/help.css'
-import { useEffect, useState } from 'preact/hooks'
+import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
 import { t, tx } from '../../i18n'
 import { Icon } from '../icons'
 import { helpPrefs, hintSeen, markHintSeen } from './prefs'
+import { pauseGate } from '../../game/pauseGate'
 import {
   gestureFor, hintId, inputPlatform, isHintSuccess, onHintEvent, pickDrillHint, pickMatchHint, watchInputPlatform,
   type HintContext, type HintGroup, type InputPlatform,
@@ -78,17 +80,28 @@ const OWN_GOAL_GROUPS: ReadonlySet<HintGroup> = new Set<HintGroup>(['keeper', 'c
 
 export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: HintGroup; onDone: () => void }) {
   const [success, setSuccess] = useState(false)
-  // Appear once the scene is actually running (first gameplay event), not over the loading screen.
-  const [ready, setReady] = useState(false)
-  useEffect(() => {
+  // Appear once the scene is up (it attaches to the pause gate), not over the loading screen.
+  const [ready, setReady] = useState(pauseGate.isAttached())
+  // Layout effect: the hold is on before the card is painted, never a frame later.
+  useLayoutEffect(() => {
     watchInputPlatform()
+    // Freeze the moment for as long as the card is up: the hold is taken before the scene even loads.
+    const reason = `hint:${ctx}`
+    pauseGate.hold(reason)
+    const sync = () => {
+      if (pauseGate.isAttached()) setReady(true)
+    }
+    sync()
     const fallback = setTimeout(() => setReady(true), 4000)
+    const offGate = pauseGate.subscribe(sync)
     const off = onHintEvent(() => setReady(true))
     return () => {
       clearTimeout(fallback)
+      offGate()
       off()
+      pauseGate.release(reason)
     }
-  }, [])
+  }, [ctx])
   useEffect(() => {
     if (success) return
     return onHintEvent((e, heroId) => {
@@ -137,7 +150,7 @@ export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: H
 /** Shows the first unlearned hint for the live highlight (while it is on screen). */
 export function MatchHints({ active, kind, momentId }: { active: boolean; kind: string | undefined; momentId: string | undefined }) {
   const [group, setGroup] = useState<HintGroup | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     setGroup(active && kind && helpPrefs.value.tips ? pickMatchHint(kind, hintSeen) : null)
   }, [active, momentId])
   if (!group || !active) return null
@@ -147,7 +160,7 @@ export function MatchHints({ active, kind, momentId }: { active: boolean; kind: 
 /** First-run hint for a training drill. */
 export function DrillHints({ active, drill, variant }: { active: boolean; drill: string | undefined; variant: string | undefined }) {
   const [group, setGroup] = useState<HintGroup | null>(null)
-  useEffect(() => {
+  useLayoutEffect(() => {
     setGroup(active && drill && helpPrefs.value.tips ? pickDrillHint(drill, variant, hintSeen) : null)
   }, [active, drill, variant])
   if (!group || !active) return null

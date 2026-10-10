@@ -13,6 +13,7 @@ import type { Highlight, HighlightResult, Weather } from '../../sim/match'
 import type { UiSettings } from '../store'
 import { resolveQuality } from '../../game/quality'
 import { emitHintEvent } from '../tutorial/hints'
+import { pauseGate } from '../../game/pauseGate'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from '../../game/presentation'
 import type { MomentRecording } from '../../game/moments'
 import type { InputRecording } from '../../game/inputReplay'
@@ -56,9 +57,9 @@ export function playHighlight(
 ): HighlightSession {
   let stopped = false
   let handle: { stop(): void } | null = null
-  let watchdog: ReturnType<typeof setTimeout> | null = null
+  let watchdog: ReturnType<typeof setInterval> | null = null
   const clearWatchdog = () => {
-    if (watchdog) clearTimeout(watchdog)
+    if (watchdog) clearInterval(watchdog)
     watchdog = null
   }
   const container = typeof document !== 'undefined' ? document.getElementById('match-canvas') : null
@@ -108,12 +109,17 @@ export function playHighlight(
         },
       )
       // Safety net: a moment never lasts this long (time limit + intro/replay); fall back to the sim.
-      watchdog = setTimeout(() => {
-        if (stopped) return
+      // Only time the moment can actually run counts: a hint card / background (pause gate) stops it.
+      let budgetMs = (Math.max(5, req.highlight.scenario.timeLimit) + 120) * 1000
+      watchdog = setInterval(() => {
+        if (stopped || pauseGate.held()) return
+        budgetMs -= 1000
+        if (budgetMs > 0) return
+        clearWatchdog()
         stopped = true
         handle?.stop()
         onFallback('watchdog')
-      }, (Math.max(5, req.highlight.scenario.timeLimit) + 120) * 1000)
+      }, 1000)
     })
     .catch((e: unknown) => {
       console.warn('[StarPath] highlight player unavailable, auto-resolving', e)

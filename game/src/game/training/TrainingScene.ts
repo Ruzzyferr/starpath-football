@@ -20,6 +20,7 @@ import type { AimAssist } from '../kick'
 import { clampN } from '../model'
 import { createMatchGame } from '../MatchScene'
 import { canvasSafeInsets } from '../../platform/viewport'
+import { pauseGate, wireAppPause } from '../pauseGate'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from '../view'
 import type { ActorView, Drill, DrillEvent, DrillKind, DrillLabel, DrillPrompt, DrillResult, DrillView, Grade, Tone } from './types'
 
@@ -323,9 +324,29 @@ export class TrainingScene extends Phaser.Scene {
     this.cam.zoom = this.baseZoom(view.span) * 0.85
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.cleanup())
     this.events.once(Phaser.Scenes.Events.DESTROY, () => this.cleanup())
+    // Shared pause source (game/pauseGate): the drill hint card / background freezes the drill.
+    wireAppPause()
+    this.gateTok = pauseGate.attach()
+    this.gateText = null
+  }
+
+  private gateTok = 0
+
+  /** "3 / 2 / 1" resume beat over the pitch while the pause gate holds the drill. */
+  private gateText: Phaser.GameObjects.Text | null = null
+
+  private drawGate(): void {
+    const beat = pauseGate.beat()
+    if (!beat) {
+      this.gateText?.setVisible(false)
+      return
+    }
+    if (!this.gateText) this.gateText = this.text(56).setDepth(9_000_000)
+    this.gateText.setText(beat).setVisible(true).setPosition(this.scale.width / 2, this.scale.height / 2)
   }
 
   private cleanup(): void {
+    pauseGate.detach(this.gateTok)
     this.input0?.dispose()
     this.sfx?.dispose()
     this.scale.off(Phaser.Scale.Events.RESIZE, this.layout, this)
@@ -424,6 +445,10 @@ export class TrainingScene extends Phaser.Scene {
     return {
       live: this.drill.live,
       finished: this.drill.finished,
+      paused: !pauseGate.running(),
+      elapsed: this.elapsed,
+      ballWorld: v.ball ? { x: v.ball.x, y: v.ball.y, z: v.ball.z } : null,
+      heroWorld: { x: v.hero.x, y: v.hero.y },
       heroOnBall: v.heroOnBall,
       hero: css(v.hero.x, v.hero.y),
       ball: v.ball ? css(v.ball.x, v.ball.y, v.ball.z) : null,
@@ -442,7 +467,6 @@ export class TrainingScene extends Phaser.Scene {
 
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(0.05, Math.max(0, deltaMs / 1000))
-    this.elapsed += dt
     const before = this.drill.view()
     const intent = this.input0.poll({
       heroPos: { x: before.hero.x, y: before.hero.y },
@@ -451,6 +475,15 @@ export class TrainingScene extends Phaser.Scene {
       heroIsKeeper: before.heroIsKeeper,
       noMove: this.drill.heroStatic,
     })
+    this.drawGate()
+    // Frozen (hint card up, app in the background, resume beat): no drill clock, AI or input.
+    if (!this.drill.finished && !pauseGate.tick(Math.min(0.25, Math.max(0, deltaMs / 1000)))) {
+      const v0 = this.drill.view()
+      this.render(v0, 0)
+      this.updateHud(v0, 0, intent)
+      return
+    }
+    this.elapsed += dt
     this.lastIntent = intent
     if (intent.any) {
       this.sfx.unlock()

@@ -70,6 +70,19 @@ export async function preferEnglish(page: Page): Promise<void> {
   })
 }
 
+/**
+ * First-run control hint (match moment / drill): while it is up the scene is frozen (game/pauseGate),
+ * so a test that plays must dismiss it. Returns whether a hint was shown. The resume beat follows.
+ */
+export async function dismissControlHint(page: Page, timeout = 6000): Promise<boolean> {
+  const btn = page.locator('.control-hint .control-hint-close')
+  const shown = await btn.waitFor({ state: 'visible', timeout }).then(() => true, () => false)
+  if (!shown) return false
+  await btn.click()
+  await expect(btn).toHaveCount(0)
+  return true
+}
+
 /** Text of the page body, checked for render bugs. */
 export async function assertCleanText(page: Page): Promise<void> {
   const text = await page.locator('body').innerText()

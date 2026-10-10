@@ -5,7 +5,7 @@
  * merge with env(). Also: no double-tap zoom, no input-focus zoom (fields >= 16px).
  */
 import type { Page } from '@playwright/test'
-import { test, expect, preferEnglish, waitForApp, sp } from './fixtures'
+import { test, expect, preferEnglish, waitForApp, sp, dismissControlHint } from './fixtures'
 
 interface Device {
   name: string
@@ -238,6 +238,7 @@ test.describe('zoom guards', () => {
     await shot(page, PRO, 'decision-card')
     await card.getByRole('button', { name: 'Play moment' }).click()
     await page.waitForFunction(() => !!(window as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 30_000 })
+    await dismissControlHint(page)
     await page.waitForFunction(() => (window as unknown as { __spScene: { debugInfo(): { phase: string } } }).__spScene.debugInfo().phase === 'live', undefined, { timeout: 20_000 })
     await expectClear(page, PRO, 'live moment')
     const canvasTa = await page.locator('#match-canvas canvas').first().evaluate((c) => getComputedStyle(c).touchAction)
