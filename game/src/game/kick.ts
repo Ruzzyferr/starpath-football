@@ -218,7 +218,33 @@ export interface KickRequest {
   placed?: boolean
   /** Keeper distribution out of the hands (throw / roll / kick-out): accuracy leans on Distribution (GK). */
   fromHands?: boolean
+  /**
+   * Frame-safe execution (hero shots): base chance (0..1, plus up to +0.3 from skill) that an
+   * execution error which would carry an on-target aim past a post or over the bar is folded
+   * back inside the frame — a scuffed finish toward the keeper rather than a flip far wide.
+   */
+  frameSafe?: number
+  /** Execution skill (0..1) overriding {@link kickSkill}: the hero's moment skill from the moment's own attributes (game/momentSkill). */
+  skill?: number
+  /**
+   * Chance (0..1) the contact is a mis-hit (hero kicks, see {@link heroMisHit}): a pass or cross goes
+   * well off line with the wrong weight, a shot is scuffed tamely toward the middle of the goal.
+   */
+  misHit?: number
 }
+
+/**
+ * Mis-hit chance of a hero kick from its moment skill (0..1) and pressure (0..1):
+ * ~31 % at skill 0.4, ~18 % at 0.6, ~8 % at 0.8, ~5 % at 0.9 — smooth and
+ * strictly falling, so every attribute point counts. Pressure (a man on you)
+ * raises it by up to 150 %.
+ */
+export function heroMisHit(skill: number, pressure = 0, scale = 1): number {
+  const s = clamp01(skill)
+  return clamp01((0.03 + 0.28 * Math.pow((1 - s) / 0.6, 1.6)) * (1 + 1.5 * clamp01(pressure)) * scale)
+}
+/** Mis-hit heading error range (deg) for passes and crosses. */
+export const MISHIT_DEG = [12, 22] as const
 
 /** Placed-shot modifiers (plan 2.1#47). */
 export const PLACED_NOISE = 0.85
@@ -537,6 +563,80 @@ export function headingNoise(req: KickRequest, skill: number): number {
   return (deg * Math.PI) / 180
 }
 
+/** Lateral margin (m) inside each post that still counts as "in the frame" for frame-safe finishing. */
+export const FRAME_SAFE_MARGIN = 0.12
+/** Half the goal mouth (m). */
+const HALF_GOAL = (POST_Y_HIGH - POST_Y_LOW) / 2
+
+/** Chance (0..1) a frame-threatening execution error is folded back in: the difficulty's base plus up to +0.3 from skill. */
+export function frameKeep(base: number, skill: number): number {
+  return clamp01(base + 0.3 * clamp01(skill))
+}
+
+/**
+ * Folds a lateral execution error (heading error `errA`) that would take an
+ * on-target aim past the post back inside the frame (reflected off the post,
+ * i.e. toward the keeper) when `keep()` says so. Aims already outside the frame are untouched.
+ */
+export function foldLateral(errA: number, from: Vec2, target: Vec2, keep: () => boolean): number {
+  const lim = HALF_GOAL - FRAME_SAFE_MARGIN
+  const aimOff = target.y - GOAL_CENTER_Y
+  if (Math.abs(aimOff) > lim) return errA
+  // Lateral displacement at the goal line (heading error rotates the whole flight about the kicker).
+  const ax = target.x - from.x
+  const ay = target.y - from.y
+  const along = Math.hypot(ax, ay)
+  const disp = (Math.tan(errA) * along * along) / Math.max(1, ax)
+  const y = aimOff + disp
+  if (Math.abs(y) <= lim || !keep()) return errA
+  const sgn = Math.sign(y)
+  const folded = sgn * Math.max(0, lim - (Math.abs(y) - lim))
+  return Math.atan(((folded - aimOff) * Math.max(1, ax)) / (along * along))
+}
+
+/**
+ * Folds a vertical launch error that would lift an under-the-bar aim over the bar
+ * (flight time `t`) back under it when `keep()` says so.
+ */
+export function foldHeight(hErr: number, aimZ: number, t: number, keep: () => boolean): number {
+  const bar = GOAL_HEIGHT - FRAME_SAFE_MARGIN
+  if (aimZ > bar - 0.2) return hErr
+  // A vz error of e lifts the ball by ≈ e·t at the line.
+  const z = aimZ + hErr * t
+  if (z <= bar || !keep()) return hErr
+  const folded = Math.max(0.2, bar - (z - bar))
+  return (folded - aimZ) / Math.max(0.05, t)
+}
+
+/** Shot-intent magnet (assist): how far (m) outside a post a swipe still reads as "that corner". */
+export const SHOT_INTENT_SLACK: Record<AimAssist, number> = { full: 3, half: 2, manual: 0 }
+/** Distance (m) from the goal centre beyond which a swipe reads as "that side" and is drawn toward the corner. */
+export const SHOT_INTENT_INNER: Record<AimAssist, number> = { full: 0.9, half: 1.35, manual: 0 }
+/** The corner the magnet finishes in: this many metres inside the post. */
+export const CORNER_INSIDE = 0.45
+/** Beyond the slack the magnet fades out over this many metres (no cliff). */
+const INTENT_FADE = 2
+
+/**
+ * Intent-respecting shot target (goal line): a swipe at one side of the goal —
+ * at the corner, or a little past the post, which on a phone is the same
+ * intent — finishes toward that corner, just inside the post. Central aims
+ * (at the keeper) are barely moved and a clearly wide swipe stays wide.
+ */
+export function intentShotTarget(raw: Vec2, assist: AimAssist): Vec2 {
+  const slack = SHOT_INTENT_SLACK[assist]
+  if (slack <= 0) return raw
+  const d = raw.y - GOAL_CENTER_Y
+  const a = Math.abs(d)
+  const inner = SHOT_INTENT_INNER[assist]
+  const corner = HALF_GOAL - CORNER_INSIDE
+  const outer = HALF_GOAL + slack
+  if (a <= inner || a >= outer + INTENT_FADE) return raw
+  // Rises fast toward the corner (square-root ease), holds it out to the slack, then fades back to the raw aim.
+  const m = a <= corner ? inner + (corner - inner) * Math.sqrt((a - inner) / (corner - inner)) : a <= outer ? corner : corner + ((a - outer) / INTENT_FADE) * (outer + INTENT_FADE - corner)
+  return { x: raw.x, y: GOAL_CENTER_Y + Math.sign(d) * m }
+}
+
 /**
  * Plans a kick: assist → solve → noise.
  * @param req kick request
@@ -544,7 +644,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
  */
 export function planKick(req: KickRequest, rng?: Rng): KickPlan {
   const distance = dist(req.from, req.target)
-  const skill = req.fromHands ? handsSkill(req.kind, req.attrs, distance) : kickSkill(req.kind, req.attrs, distance)
+  const skill = req.skill ?? (req.fromHands ? handsSkill(req.kind, req.attrs, distance) : kickSkill(req.kind, req.attrs, distance))
   let target = req.target
   let targetZ = req.targetZ
   const isShot = req.kind === 'shot' || req.kind === 'penalty' || req.kind === 'freekick' || req.kind === 'header'
@@ -584,17 +684,39 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
 
   if (rng) {
     const sd = headingNoise(req, skill)
-    const errA = rng.normal(0, sd)
+    let errA = rng.normal(0, sd)
+    // Height and pace scatter grows with power and lack of skill.
+    let hErr = rng.normal(0, (0.35 + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
+    let pace = 1
+    if (req.misHit !== undefined && rng.chance(req.misHit)) {
+      if (isShot || req.kind === 'chip') {
+        // Scuffed finish: tamely toward the middle (where the keeper is), well short of full pace.
+        const ax = Math.max(1, target.x - req.from.x)
+        const along = Math.hypot(ax, target.y - req.from.y)
+        const aimOff = target.y - GOAL_CENTER_Y
+        const want = aimOff * rng.range(0.1, 0.55)
+        errA = Math.atan(((want - aimOff) * ax) / (along * along))
+        pace = rng.range(0.62, 0.8)
+      } else {
+        errA += (rng.chance(0.5) ? 1 : -1) * rng.range(MISHIT_DEG[0], MISHIT_DEG[1]) * (Math.PI / 180)
+        pace = rng.chance(0.5) ? rng.range(0.7, 0.85) : rng.range(1.2, 1.35)
+      }
+    }
+    if (req.frameSafe !== undefined && isShot) {
+      const keep = frameKeep(req.frameSafe, skill)
+      const dGoal = Math.max(1, Math.abs(target.x - req.from.x))
+      errA = foldLateral(errA, req.from, target, () => rng.chance(keep))
+      const tFlight = dGoal / Math.max(6, Math.hypot(vx, vy))
+      hErr = foldHeight(hErr, solved.aimZ, tFlight, () => rng.chance(keep))
+    }
     const c = Math.cos(errA)
     const s = Math.sin(errA)
     const nvx = vx * c - vy * s
     const nvy = vx * s + vy * c
     vx = nvx
     vy = nvy
-    // Height and pace scatter grows with power and lack of skill.
-    const hErr = rng.normal(0, (0.35 + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
     vz = Math.max(0, vz + hErr)
-    const sErr = 1 + rng.normal(0, 0.04 * (1.3 - skill))
+    const sErr = (1 + rng.normal(0, 0.04 * (1.3 - skill))) * pace
     vx *= sErr
     vy *= sErr
     spin.side *= 1 + rng.normal(0, 0.12 * (1.2 - skill))
@@ -670,6 +792,58 @@ export function pickPassTarget(
     }
   }
   return best
+}
+
+/** PASS button cone (rad): team-mates within it of the stick are the intended ones. */
+export const BUTTON_PASS_CONE: Record<AimAssist, number> = { full: (45 * Math.PI) / 180, half: (35 * Math.PI) / 180, manual: (22 * Math.PI) / 180 }
+/** Beyond the cone the button still finds the obvious free man up to this far off the stick (never backwards). */
+export const BUTTON_PASS_WIDE = (100 * Math.PI) / 180
+/** Lane openness (kick.laneOpenness) below which a man in the cone counts as marked: the button looks for a free one first. */
+export const BUTTON_PASS_OPEN = 0.3
+
+/**
+ * PASS button target (intent-respecting): the best OPEN team-mate within the
+ * stick's cone (angle first, then how open he is); with no open man there —
+ * typically the stick still pushed upfield while running, at a marked forward —
+ * the clearly free man up to {@link BUTTON_PASS_WIDE} off the stick, and only
+ * then a marked man in the cone. Never a ball into empty space when a team-mate
+ * is on; null only when nobody is.
+ */
+export function buttonPassTarget(
+  from: Vec2,
+  dir: Vec2,
+  mates: readonly PassCandidate[],
+  opponents: readonly Vec2[],
+  assist: AimAssist,
+): PassCandidate | null {
+  const da = angleOf(dir)
+  const cone = BUTTON_PASS_CONE[assist]
+  // Tiers: an open man in the cone; else the clearly free man off the stick; else anyone in the cone (marked).
+  const best: [PassCandidate | null, PassCandidate | null, PassCandidate | null] = [null, null, null]
+  const score = [-Infinity, -Infinity, -Infinity]
+  for (const m of mates) {
+    const d = dist(from, m.pos)
+    if (d < 2.5 || d > 45) continue
+    const off = Math.abs(angleDiff(angleOf(sub(m.pos, from)), da))
+    const open = laneOpenness(from, m.pos, opponents)
+    let tier: 0 | 1 | 2
+    let sc: number
+    if (off <= cone && open >= BUTTON_PASS_OPEN) {
+      tier = 0
+      sc = -off * 2.2 + open * 1.0 - d * 0.012
+    } else if (off <= BUTTON_PASS_WIDE && open > 0.45) {
+      tier = 1
+      sc = -off * 1.2 + open * 1.2 - d * 0.02
+    } else if (off <= cone) {
+      tier = 2
+      sc = -off * 2.2 + open * 1.0 - d * 0.012
+    } else continue
+    if (sc > score[tier]!) {
+      score[tier] = sc
+      best[tier] = m
+    }
+  }
+  return best[0] ?? best[1] ?? best[2]
 }
 
 /** 0..1 how open the lane from a to b is (1 = no opponent near the line). */

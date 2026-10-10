@@ -13,21 +13,23 @@ import { FEEL_KINDS, feelRate, playFeel, type FeelKind } from './feelHarness'
  * defend ~55–65%, cross 15–25%, corner 20–30%, 1v1 ~40%. Bands allow for N=60 sampling noise.
  */
 const BANDS: Record<FeelKind, [number, number]> = {
-  one_on_one: [0.25, 0.55],
+  // Oct 2026 intent pass (playtester build 7): placed hero finishes beat the keeper, frame-safe execution — 1v1 ~0.65.
+  one_on_one: [0.4, 0.78],
   penalty: [0.62, 0.88],
   freekick: [0.06, 0.28],
   edge_of_box: [0.05, 0.25],
   cross: [0.1, 0.3],
   corner: [0.15, 0.38],
-  defend: [0.48, 0.75],
+  // Hero standing tackle now a smooth curve in the tackle moment skill (game/momentSkill): ~0.78.
+  defend: [0.48, 0.88],
   gk_save: [0.5, 0.85],
-  counter_2v1: [0.12, 0.45],
+  counter_2v1: [0.12, 0.6],
   long_ball_control: [0.15, 0.6],
   rebound: [0.06, 0.4],
   interception: [0.42, 0.8],
   // WP-14 kinds (measured N=120 average: hold-up ~0.62, 1v1 ~0.70, block ~0.45).
   hold_up: [0.45, 0.8],
-  defend_1v1: [0.5, 0.85],
+  defend_1v1: [0.5, 0.95],
   block: [0.3, 0.65],
   // Set-piece choices (2.1#95 / #97). Hero corner: assist or goal (measured N=200 ~0.13);
   // free kick against with the hero in goal: kept out (measured N=60 ~0.72).
@@ -46,7 +48,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   long_shot: [0.06, 0.25],
   switch_play: [0.3, 0.62],
   recovery_run: [0.45, 0.78],
-  shoulder_duel: [0.22, 0.5],
+  shoulder_duel: [0.22, 0.65],
   timed_run: [0.05, 0.25],
   press_trap: [0.38, 0.66],
   gk_claim: [0.8, 0.98],

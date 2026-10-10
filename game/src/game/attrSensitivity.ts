@@ -411,7 +411,8 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: momentShare('timed_run', 'ST', (rt) => !!rt.result?.offside?.byHero),
   },
   {
-    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.1, n: 200,
+    // Anticipation also feeds the hero's tackle moment skill (game/momentSkill), which lifts the low end of this share: 5 pp+.
+    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.045, n: 200,
     run: momentShare('interception', 'CB', (rt) => (rt as unknown as { stats: { tackles: number } }).stats.tackles > 0),
   },
   {
