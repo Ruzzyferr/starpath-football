@@ -36,8 +36,8 @@ export function heroCardStats(h: Hero) {
   return cardStatKeys(h.position).map((k) => ({ label: t(`data.attrShort.${k}`), value: h.attrs[k] }))
 }
 
-const TILES: { id: 'planner' | 'training' | 'life' | 'contract' | 'club' | 'inbox' | 'casino' | 'world'; icon: IconName; screen: ScreenId }[] = [
-  { id: 'planner', icon: 'calendar', screen: 'planner' },
+const TILES: { id: 'activities' | 'training' | 'life' | 'contract' | 'club' | 'inbox' | 'casino' | 'world'; icon: IconName; screen: ScreenId }[] = [
+  { id: 'activities', icon: 'calendar', screen: 'activities' },
   { id: 'training', icon: 'barbell', screen: 'training' },
   { id: 'life', icon: 'life', screen: 'life' },
   { id: 'contract', icon: 'handshake', screen: 'contract' },

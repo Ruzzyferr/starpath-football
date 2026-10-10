@@ -13,7 +13,7 @@ test.beforeEach(async ({ page }) => {
   await preferEnglish(page)
 })
 
-const SCREENS = ['home', 'planner', 'profile', 'club', 'inbox', 'life', 'settings', 'training'] as const
+const SCREENS = ['home', 'activities', 'profile', 'club', 'inbox', 'life', 'settings', 'training'] as const
 
 for (const name of SCREENS) {
   test(`visual: ${name} fits and keeps its type`, async ({ page }, info) => {

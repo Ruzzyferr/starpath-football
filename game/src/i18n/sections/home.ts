@@ -27,7 +27,7 @@ export const tr = {
   formTrend: 'Son maç notları',
   quick: 'Hızlı erişim',
   tiles: {
-    planner: 'Günü planla',
+    activities: 'Aktiviteler',
     training: 'Antrenman',
     life: 'Yaşam',
     contract: 'Sözleşme',
@@ -37,7 +37,7 @@ export const tr = {
     world: 'Dünya',
   },
   tileSub: {
-    planner: '3 zaman dilimi',
+    activities: 'Dinlen, eğlen, çalış',
     training: 'Gelişim ve yetenekler',
     life: 'İlişkiler, varlıklar, banka',
     contract: '{n} sezon kaldı',
@@ -91,7 +91,7 @@ export const en: Shape<typeof tr> = {
   formTrend: 'Recent match ratings',
   quick: 'Quick access',
   tiles: {
-    planner: 'Plan the day',
+    activities: 'Activities',
     training: 'Training',
     life: 'Life',
     contract: 'Contract',
@@ -101,7 +101,7 @@ export const en: Shape<typeof tr> = {
     world: 'World',
   },
   tileSub: {
-    planner: '3 time slots',
+    activities: 'Rest, play, work',
     training: 'Growth and perks',
     life: 'People, assets, bank',
     contract: '{n} {n|season|seasons} left',

@@ -19,7 +19,7 @@ import { SavesScreen } from './screens/SavesScreen'
 import { CreditsScreen } from './screens/CreditsScreen'
 import { MenuScreen } from './screens/MenuScreen'
 import { HomeScreen } from './screens/HomeScreen'
-import { PlannerScreen } from './screens/PlannerScreen'
+import { ActivitiesScreen } from './screens/ActivitiesScreen'
 import { InboxScreen } from './screens/InboxScreen'
 import { CareerLogScreen } from './screens/CareerLogScreen'
 import { ObjectivesScreen } from './screens/ObjectivesScreen'
@@ -68,7 +68,7 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   credits: CreditsScreen,
   menu: MenuScreen,
   home: HomeScreen,
-  planner: PlannerScreen,
+  activities: ActivitiesScreen,
   inbox: InboxScreen,
   careerLog: CareerLogScreen,
   objectives: ObjectivesScreen,
@@ -148,8 +148,8 @@ function useKeyboardShortcuts() {
       const k = e.key.toLowerCase()
       if (k === 't') { e.preventDefault(); navigate('training'); return }
       if (k === 'i') { e.preventDefault(); navigate('inbox'); return }
-      if (k === 'm' && (id === 'home' || id === 'planner')) { e.preventDefault(); requestSkipToMatch(); return }
-      if (e.key === ' ' && (document.activeElement === document.body || document.activeElement?.id === 'main') && (id === 'home' || id === 'planner')) {
+      if (k === 'm' && (id === 'home' || id === 'activities')) { e.preventDefault(); requestSkipToMatch(); return }
+      if (e.key === ' ' && (document.activeElement === document.body || document.activeElement?.id === 'main') && (id === 'home' || id === 'activities')) {
         e.preventDefault()
         requestAdvance()
       }

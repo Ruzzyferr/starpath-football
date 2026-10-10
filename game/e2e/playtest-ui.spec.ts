@@ -61,18 +61,17 @@ test('PT-F6: the trial drill opens on a how-to card (goal, controls, target) bef
   await expect(page.getByTestId('trials')).toBeVisible()
 })
 
-test('PT-F4: planner activity chips name the attributes a session trains', async ({ page, shot }) => {
+test('PT-F4: activity chips name the attributes a session trains', async ({ page, shot }) => {
   await page.goto('/?autostart=1&seed=778')
   await waitForApp(page)
-  await sp(page, `(() => { sp.clearEvents(); sp.navigate('planner') })()`)
-  await page.locator('button.plan-slot-body').first().click()
-  const row = page.locator('.plan-picker button.plan-act', { hasText: 'Passing Drill' })
+  await sp(page, `(() => { sp.clearEvents(); sp.navigate('activities') })()`)
+  const row = page.locator('.plan-catalog button.plan-act', { hasText: 'Passing Drill' })
   await expect(row).toBeVisible()
   const labels = await row.locator('.delta-chip.is-uncertain .delta-label').allInnerTexts()
   expect(labels.length).toBeGreaterThan(0)
   expect(labels.join(' ')).toMatch(/Passing/)
   // The "+n more" overflow chip says so in words instead of looking like a stat.
-  for (const t of await page.locator('.plan-picker .delta-more').allInnerTexts()) expect(t).toMatch(/more/)
+  for (const t of await page.locator('.plan-catalog .delta-more').allInnerTexts()) expect(t).toMatch(/more/)
   await shot('pt-planner-chips')
 })
 

@@ -123,7 +123,7 @@ export const tr = {
   partnerWomen: 'Kadınlar',
   partnerMen: 'Erkekler',
   hideCasino: 'Kumarhaneyi gizle',
-  hideCasinoDesc: 'Menüden, günlük planlamadan ve olaylardan kumarhaneyi çıkarır',
+  hideCasinoDesc: 'Menüden, aktivitelerden ve olaylardan kumarhaneyi çıkarır',
   ctl: {
     title: 'Tuş atamaları (PC)',
     desc: 'Bir satıra tıkla, sonra yeni tuşa bas. Ok tuşları hareket için her zaman çalışır.',
@@ -309,7 +309,7 @@ export const en: Shape<typeof tr> = {
   partnerWomen: 'Women',
   partnerMen: 'Men',
   hideCasino: 'Hide casino',
-  hideCasinoDesc: 'Removes the casino from the menu, daily planner and events',
+  hideCasinoDesc: 'Removes the casino from the menu, activities and events',
   ctl: {
     title: 'Key bindings (PC)',
     desc: 'Click a row, then press the new key. Arrow keys always work for movement.',

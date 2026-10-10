@@ -49,7 +49,7 @@ async function clippedText(page: Page) {
   })
 }
 
-const OVERFLOW_SCREENS = ['home', 'planner', 'profile', 'life', 'settings', 'saves', 'training', 'world']
+const OVERFLOW_SCREENS = ['home', 'activities', 'profile', 'life', 'settings', 'saves', 'training', 'world']
 
 for (const name of OVERFLOW_SCREENS) {
   test(`${name}: pseudo-locale (+35% text) at 390px does not overflow or clip`, async ({ page }) => {
@@ -73,7 +73,7 @@ test('200% text scale at 390px: no horizontal overflow on core screens', async (
   await waitForApp(page)
   await sp(page, 'sp.clearEvents()')
   await page.evaluate(() => document.documentElement.style.setProperty('--text-scale', '2'))
-  for (const name of ['home', 'planner', 'profile', 'settings']) {
+  for (const name of ['home', 'activities', 'profile', 'settings']) {
     await sp(page, `sp.navigate('${name}')`)
     await page.waitForTimeout(400)
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)

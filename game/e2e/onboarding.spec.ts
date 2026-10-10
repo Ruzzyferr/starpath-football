@@ -83,24 +83,20 @@ test('new career: coach tour runs end to end and does not come back after reload
   await snapWp6(page, P, '03-tour-condition')
 
   await next.click()
-  await expect(coach(page)).toHaveAttribute('data-step', 'planner')
+  await expect(coach(page)).toHaveAttribute('data-step', 'agenda')
+  // The day planner (slot pickers) is gone: the tour explains today's agenda on Home.
+  await expect(page.locator('[data-tour="agenda"]')).toBeVisible()
+  await expect(page.locator('.plan-slots')).toHaveCount(0)
   await page.waitForTimeout(400)
-  await snapWp6(page, P, '04-tour-planner-tile')
-  // Action step: tapping the highlighted tile completes it.
-  await page.locator('[data-tour="tile-planner"]').click()
-  await expect(coach(page)).toHaveAttribute('data-step', 'planSlot')
-  await expect(page.locator('.plan-slots')).toBeVisible()
-  await page.waitForTimeout(400)
-  await snapWp6(page, P, '05-tour-plan-slot')
+  await snapWp6(page, P, '04-tour-agenda')
 
-  await page.locator('.plan-slot-body:not([disabled])').first().click()
-  await expect(page.locator('.plan-picker')).toBeVisible()
-  await expect(coach(page)).toHaveCount(0) // steps aside for the picker
-  await page.locator('.plan-picker .plan-act:not([disabled])').first().click()
+  await next.click()
   await expect(coach(page)).toHaveAttribute('data-step', 'advance')
   await page.waitForTimeout(400)
   await snapWp6(page, P, '06-tour-advance')
 
+  // Like a user: settle today's mandatory tasks (they gate Advance), then advance.
+  await sp(page, 'sp.clearEvents()')
   await page.locator('.page-footer [data-tour="advance"]').click()
   await closeModals(page)
   await expect(coach(page)).toHaveAttribute('data-step', 'decisions')

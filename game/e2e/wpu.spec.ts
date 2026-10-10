@@ -128,7 +128,7 @@ test('contract: patience preview follows the sliders', async ({ page, shot }) =>
 })
 
 // 2.7#22 / #38 / #39: one filled (chunky) button per screen, and destructive actions are danger-styled.
-const CTA_SCREENS = ['home', 'planner', 'training', 'profile', 'club', 'world', 'contract', 'life', 'inbox', 'menu', 'settings', 'trophies', 'objectives', 'saves', 'board']
+const CTA_SCREENS = ['home', 'activities', 'training', 'profile', 'club', 'world', 'contract', 'life', 'inbox', 'menu', 'settings', 'trophies', 'objectives', 'saves', 'board']
 const DESTRUCTIVE = /^(sell|retire|delete|leave|walk away|quit|erase|remove)\b|^reset (all|progress|career|save)/i
 
 test('single CTA per screen and danger styling for destructive actions', async ({ page }) => {

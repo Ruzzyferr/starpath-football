@@ -25,17 +25,13 @@ export const tr = {
         title: 'Kondisyonun',
         body: 'Form, maç keskinliği ve yorgunluk sahadaki performansını belirler. Bir terimi anlamadıysan yanındaki ⓘ simgesine dokun.',
       },
-      planner: {
-        title: 'Günü planla',
-        body: 'Her gün sabah, öğleden sonra ve akşam olmak üzere üç zaman dilimine ayrılır. Planlayıcıyı açalım.',
-      },
-      planSlot: {
-        title: 'Bir dilim seç',
-        body: 'Boş bir zaman dilimine dokun ve bir etkinlik seç. Antrenman gelişim getirir; dinlenmek enerji kazandırır.',
+      agenda: {
+        title: 'Günün programı',
+        body: 'Her günün bir programı var. Kilitli “Zorunlu” görevleri bitirmeden gün ilerlemez: tek dokunuşla hızlıca hallet ya da oynayıp daha iyi sonuç al. “Önerilen” hazırlıklar maç için avantaj verir.',
       },
       advance: {
         title: 'Zamanı ilerlet',
-        body: 'Vurgulanan düğme planladığın etkinliği oynatır ve zamanı bir sonraki dilime taşır. Hadi bir kez dene.',
+        body: 'Zorunlu görevler bitince bu düğme zamanı ilerletir. Antrenman, dinlenme ve diğer etkinlikler Antrenman ve Aktiviteler bölümlerinde, istediğin an.',
       },
       decisions: {
         title: 'Kararlar',
@@ -194,7 +190,7 @@ export const tr = {
       agent: { name: 'Menajer', def: 'Sözleşme görüşmelerinde sana yardım eder, kulübün sınırını tahmin eder ve dolandırıcılara karşı uyarır. İyisi pahalıdır.' },
       injury: { name: 'Sakatlık', def: 'Sakatken maçlara çıkamaz ve antrenman yapamazsın. Yorgunluk ve düşük sağlık riski artırır.' },
       suspension: { name: 'Ceza', def: 'Kırmızı kart ya da kart birikimi sonrası oynayamayacağın maç sayısı.' },
-      slot: { name: 'Zaman dilimi', def: 'Her gün sabah, öğleden sonra ve akşam olmak üzere üç dilimden oluşur. Her dilime bir etkinlik planlayabilirsin.' },
+      slot: { name: 'Zaman dilimi', def: 'Her gün sabah, öğleden sonra ve akşamdan oluşur. Her etkinlik ya da görev günün bir bölümünü kullanır.' },
       netWorth: { name: 'Net servet', def: 'Paran, birikimlerin, yatırımların ve varlıklarının toplam değerinden borçlarının düşülmüş hâli.' },
       sponsor: { name: 'Sponsorluk', def: 'Markalarla yapılan anlaşma. Haftalık gelir sağlar, karşılığında belirli bir imaj ve davranış beklenir.' },
       investment: { name: 'Yatırım', def: 'Paranı büyütmek için riskli ya da güvenli araçlara yatırman. Değeri haftadan haftaya dalgalanır.' },
@@ -240,17 +236,13 @@ export const en: Shape<typeof tr> = {
         title: 'Your condition',
         body: 'Form, match sharpness and fatigue decide how you perform on the pitch. Not sure what a term means? Tap the ⓘ next to it.',
       },
-      planner: {
-        title: 'Plan your day',
-        body: 'Every day has three slots: morning, afternoon and evening. Let’s open the planner.',
-      },
-      planSlot: {
-        title: 'Pick a slot',
-        body: 'Tap an empty slot and choose an activity. Training improves you, resting restores energy.',
+      agenda: {
+        title: 'Today’s programme',
+        body: 'Every day has a programme. The day will not move on until the locked “Mandatory” tasks are done: settle them with one tap, or play them for a better outcome. “Suggested” preparation gives you an edge in the next match.',
       },
       advance: {
         title: 'Move time forward',
-        body: 'The highlighted button plays your planned activity and moves time on to the next slot. Give it a try.',
+        body: 'Once the mandatory tasks are done, this button moves time on. Training, rest and other activities live under Training and Activities, whenever you like.',
       },
       decisions: {
         title: 'Decisions',
@@ -409,7 +401,7 @@ export const en: Shape<typeof tr> = {
       agent: { name: 'Agent', def: 'Helps in contract talks, estimates the club’s limit and warns you about scams. Good ones are expensive.' },
       injury: { name: 'Injury', def: 'While injured you cannot play or train. Fatigue and low health raise the risk.' },
       suspension: { name: 'Suspension', def: 'The number of matches you must sit out after a red card or too many yellows.' },
-      slot: { name: 'Time slot', def: 'Each day has three slots: morning, afternoon and evening. You can plan one activity per slot.' },
+      slot: { name: 'Time slot', def: 'Each day has a morning, an afternoon and an evening. Every activity or task uses part of the day.' },
       netWorth: { name: 'Net worth', def: 'The total value of your cash, savings, investments and assets, minus what you owe.' },
       sponsor: { name: 'Sponsorship', def: 'A deal with a brand. It pays weekly; in return you are expected to keep a certain image and behaviour.' },
       investment: { name: 'Investment', def: 'Putting money into safe or risky products to grow it. Values move week to week.' },

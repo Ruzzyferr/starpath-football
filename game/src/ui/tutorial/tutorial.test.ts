@@ -41,26 +41,26 @@ describe('tour state machine', () => {
   })
 
   it('action steps complete only with their own action', () => {
-    const planner = TOUR_STEPS.findIndex((x) => x.waitFor === 'openPlanner')
-    const planSlot = TOUR_STEPS.findIndex((x) => x.waitFor === 'planSlot')
+    const agenda = TOUR_STEPS.findIndex((x) => x.id === 'agenda')
     const advance = TOUR_STEPS.findIndex((x) => x.waitFor === 'advance')
-    expect(planner).toBeGreaterThan(0)
-    expect(planSlot).toBe(planner + 1)
-    expect(advance).toBe(planSlot + 1)
-    const s: TourState = { status: 'active', step: planner }
+    expect(agenda).toBeGreaterThan(0)
+    expect(advance).toBe(agenda + 1)
+    // The agenda step is informational: actions do not skip it.
+    const s: TourState = { status: 'active', step: agenda }
     expect(reduceTour(s, { type: 'action', action: 'advance' })).toBe(s)
-    const s2 = reduceTour(s, { type: 'action', action: 'openPlanner' })
-    expect(s2.step).toBe(planSlot)
-    const s3 = reduceTour(s2, { type: 'action', action: 'planSlot' })
-    const s4 = reduceTour(s3, { type: 'action', action: 'advance' })
+    const s2 = reduceTour(s, { type: 'next' })
+    expect(s2.step).toBe(advance)
+    const s4 = reduceTour(s2, { type: 'action', action: 'advance' })
     expect(currentStep(s4)?.id).toBe('decisions')
+    // No step points at the removed day planner.
+    expect(TOUR_STEPS.some((x) => (x.screen as string) === 'planner' || x.target === 'plan-slot')).toBe(false)
     // Info steps ignore actions.
     expect(reduceTour({ status: 'active', step: 0 }, { type: 'action', action: 'advance' }).step).toBe(0)
   })
 
-  it('covers status bar, planner, decisions, advance and matchday with real targets', () => {
+  it('covers status bar, agenda, decisions, advance and matchday with real targets', () => {
     const ids = TOUR_STEPS.map((x) => x.id)
-    expect(ids).toEqual(expect.arrayContaining(['meters', 'planSlot', 'decisions', 'advance', 'matchday']))
+    expect(ids).toEqual(expect.arrayContaining(['meters', 'agenda', 'decisions', 'advance', 'matchday']))
     for (const st of TOUR_STEPS.slice(1)) expect(st.target, st.id).toBeTruthy()
   })
 })

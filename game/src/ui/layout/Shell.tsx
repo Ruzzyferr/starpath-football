@@ -26,7 +26,7 @@ export const TABS: { id: TabId; icon: IconName; screen: ScreenId; key: string }[
 ]
 
 const TAB_OF: Partial<Record<ScreenId, TabId>> = {
-  home: 'home', planner: 'home', inbox: 'home', careerLog: 'home', objectives: 'home',
+  home: 'home', activities: 'home', inbox: 'home', careerLog: 'home', objectives: 'home',
   profile: 'career', training: 'career', club: 'career', contract: 'career', trophies: 'career',
   life: 'life', casino: 'life', blackjack: 'life', roulette: 'life', slots: 'life', horses: 'life',
   world: 'world',
@@ -39,7 +39,7 @@ export function tabOf(id: ScreenId): TabId | null {
 /** Secondary destinations shown under each tab in the desktop sidebar. */
 const SUB: Record<TabId, { screen: ScreenId; icon: IconName }[]> = {
   home: [
-    { screen: 'planner', icon: 'calendar' },
+    { screen: 'activities', icon: 'calendar' },
     { screen: 'inbox', icon: 'newspaper' },
     { screen: 'careerLog', icon: 'history' },
   ],

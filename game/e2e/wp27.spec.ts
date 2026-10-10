@@ -6,23 +6,19 @@ test.beforeEach(async ({ page }) => {
   await preferEnglish(page)
 })
 
-test('clearing a planned slot offers a 6 second undo that restores it', async ({ page, shot }) => {
+test('activities run directly (no slot pickers) and use part of the day', async ({ page, shot }) => {
   await page.goto('/?autostart=1&seed=88')
   await waitForApp(page)
-  await sp(page, `sp.navigate('planner')`)
-  const body = page.locator('.plan-slot-body:not([disabled])').first()
-  await body.click()
-  await page.locator('.plan-picker .plan-act:not([disabled])').first().click()
-  const name = await page.locator('.plan-slot-act').first().innerText()
-  await body.click()
-  await page.getByRole('button', { name: /Clear/i }).click()
-  await expect(page.locator('.plan-slot-act')).toHaveCount(0)
-  const undo = page.getByTestId('toast-action')
-  await expect(undo).toBeVisible()
-  await page.waitForTimeout(600)
-  await shot('w27-undo')
-  await undo.click()
-  await expect(page.locator('.plan-slot-act').first()).toHaveText(name)
+  await sp(page, `(() => { sp.clearEvents(); sp.navigate('planner') })()`)
+  // Legacy route redirects to Activities; the three-slot planner is gone.
+  expect(await sp<string>(page, `sp.screen().id`)).toBe('activities')
+  await expect(page.locator('.plan-slots, .plan-picker')).toHaveCount(0)
+  const before = await sp<string>(page, `JSON.stringify([sp.state().calendar.day, sp.state().calendar.slot])`)
+  await page.getByTestId('act-rest').click()
+  await page.waitForTimeout(300)
+  await shot('w27-activity-open')
+  await page.getByTestId('act-do').click()
+  await expect.poll(() => sp<string>(page, `JSON.stringify([sp.state().calendar.day, sp.state().calendar.slot])`)).not.toBe(before)
 })
 
 test('profile "Why?" panel lists at most three factors', async ({ page, shot }) => {
@@ -54,7 +50,7 @@ test('profile shows finance donuts after a few weeks', async ({ page, shot }) =>
   await shot('w27-finance')
 })
 
-const LIGHT_SCREENS = ['home', 'planner', 'training', 'profile', 'club', 'world', 'contract', 'life', 'inbox', 'menu', 'settings', 'trophies', 'board', 'whatsNew']
+const LIGHT_SCREENS = ['home', 'activities', 'training', 'profile', 'club', 'world', 'contract', 'life', 'inbox', 'menu', 'settings', 'trophies', 'board', 'whatsNew']
 
 test('light theme: AA contrast on the main screens', async ({ page, shot }) => {
   await page.addInitScript(() => localStorage.setItem('starpath.settings.v1', JSON.stringify({ lang: 'en', vibration: false, theme: 'light' })))
@@ -76,7 +72,7 @@ test('hub reaches core screens within two taps (2.7#23)', async ({ page }) => {
   await page.goto('/?autostart=1&seed=88')
   await waitForApp(page)
   // One tap from the hub: home tiles.
-  for (const id of ['planner', 'training', 'life', 'contract', 'club', 'inbox', 'world']) {
+  for (const id of ['activities', 'training', 'life', 'contract', 'club', 'inbox', 'world']) {
     await sp(page, `sp.navigate('home')`)
     await page.locator(`[data-tour="tile-${id}"]`).click()
     expect(await sp<string>(page, `sp.screen().id`), id).toBe(id)
@@ -90,10 +86,10 @@ test('hub reaches core screens within two taps (2.7#23)', async ({ page }) => {
   }
 })
 
-test('planner shows the 7-day strip and keyboard shortcuts work (2.7#24, #31)', async ({ page }) => {
+test('activities show the 7-day strip and keyboard shortcuts work (2.7#24, #31)', async ({ page }) => {
   await page.goto('/?autostart=1&seed=88')
   await waitForApp(page)
-  await sp(page, `sp.navigate('planner')`)
+  await sp(page, `sp.navigate('activities')`)
   await expect(page.locator('.plan-day')).toHaveCount(7)
   await page.locator('body').click({ position: { x: 5, y: 5 } })
   await page.keyboard.press('?')

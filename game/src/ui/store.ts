@@ -830,7 +830,7 @@ export const blackjack = signal<BlackjackView | null>(null)
 
 // Routing --------------------------------------------------------------------
 export type ScreenId =
-  | 'title' | 'newCareer' | 'home' | 'planner' | 'training' | 'profile' | 'club' | 'world'
+  | 'title' | 'newCareer' | 'home' | 'activities' | 'training' | 'profile' | 'club' | 'world'
   | 'contract' | 'life' | 'casino' | 'blackjack' | 'roulette' | 'slots' | 'horses'
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
   | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
@@ -848,6 +848,8 @@ const history: Route[] = []
 export const navDirection = signal<1 | -1 | 0>(0)
 
 export function navigate(id: ScreenId, params?: Route['params'], opts?: { replace?: boolean; tab?: boolean }): void {
+  // The old three-slot day planner was removed (TestFlight build 4); legacy links land on Activities.
+  if ((id as string) === 'planner') id = 'activities'
   const next: Route = { id, params }
   if (opts?.tab) {
     history.length = 0

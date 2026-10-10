@@ -28,7 +28,7 @@ test('title screen has no serious axe violations', async ({ page }) => {
 
 const SCREENS: [string, string][] = [
   ['home', `sp.navigate('home')`],
-  ['planner', `sp.navigate('planner')`],
+  ['activities', `sp.navigate('activities')`],
   ['profile', `sp.navigate('profile')`],
   ['life', `sp.navigate('life')`],
   ['settings', `sp.navigate('settings')`],
@@ -67,7 +67,7 @@ test('settings: palettes apply and key rebinding reports conflicts', async ({ pa
   await expect(page.getByRole('button', { name: /^Pass: Q$/ })).toBeVisible()
 })
 
-test('hide casino removes it from navigation and the planner', async ({ page }) => {
+test('hide casino removes it from navigation and activities', async ({ page }) => {
   await page.goto('/?autostart=1&seed=4242')
   await waitForApp(page)
   await sp(page, `sp.navigate('settings')`)

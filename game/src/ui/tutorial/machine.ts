@@ -8,10 +8,10 @@
 import type { ScreenId } from '../store'
 
 /** Something the player does that can complete an "action" step. */
-export type TourAction = 'openPlanner' | 'planSlot' | 'advance'
+export type TourAction = 'advance'
 
 export interface TourStep {
-  id: 'welcome' | 'meters' | 'condition' | 'planner' | 'planSlot' | 'advance' | 'decisions' | 'matchday'
+  id: 'welcome' | 'meters' | 'condition' | 'agenda' | 'advance' | 'decisions' | 'matchday'
   /** `data-tour` id of the element to spotlight (none = centred card). */
   target?: string
   /** Screen the step lives on (the tour navigates there when the step starts). */
@@ -24,9 +24,9 @@ export const TOUR_STEPS: readonly TourStep[] = [
   { id: 'welcome', screen: 'home' },
   { id: 'meters', target: 'status', screen: 'home' },
   { id: 'condition', target: 'condition', screen: 'home' },
-  { id: 'planner', target: 'tile-planner', screen: 'home', waitFor: 'openPlanner' },
-  { id: 'planSlot', target: 'plan-slot', screen: 'planner', waitFor: 'planSlot' },
-  { id: 'advance', target: 'advance', screen: 'planner', waitFor: 'advance' },
+  // The three-slot day planner was removed (TestFlight build 4): the day is the agenda on Home.
+  { id: 'agenda', target: 'agenda', screen: 'home' },
+  { id: 'advance', target: 'advance', screen: 'home', waitFor: 'advance' },
   { id: 'decisions', target: 'bell', screen: 'home' },
   { id: 'matchday', target: 'fixture', screen: 'home' },
 ]

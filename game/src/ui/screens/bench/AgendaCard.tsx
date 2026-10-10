@@ -123,7 +123,7 @@ export function AgendaCard() {
     setDrillTask({ task, session })
   }
   return (
-    <section class="ag-card" data-testid="agenda" aria-labelledby="ag-title">
+    <section class="ag-card" data-testid="agenda" data-tour="agenda" aria-labelledby="ag-title">
       <div class="ag-head">
         <span class="ag-head-icon" aria-hidden="true"><Icon name="calendar" size={20} /></span>
         <div class="grow">

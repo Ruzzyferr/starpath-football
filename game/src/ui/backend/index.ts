@@ -4,23 +4,23 @@
  * supports a dev shortcut:
  *
  *   ?autostart=1            create a default career and open Home
- *   ?autostart=1&dev=<id>   …then jump to a screen (planner, life, casino,
+ *   ?autostart=1&dev=<id>   …then jump to a screen (activities, life, casino,
  *                           preMatch, liveMatch, postMatch, …), advancing time
  *                           to a matchday / the evening when the screen needs it
  *   &seed=<n>               deterministic career seed
  *   &storage=memory         in-memory saves (headless testing)
  */
 import { quickResolveAll } from './benchPath'
-import { commit } from './session'
+import { commit, onCommit } from './session'
 import { installPrefsSync } from './prefsSync'
 import type { NewGameInput, ScreenId } from '../store'
 import { effect } from '@preact/signals'
-import { activeEvent, gameState, installBackend, match, navigate, pendingNav, screen } from '../store'
+import { activeEvent, gameState, installBackend, match, navigate, pendingNav, screen, settings } from '../store'
 import { ADULT_AGE, isAdult } from '../../sim/career/common'
 import { realActions } from './realActions'
 import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
-import { checkSaveIntegrity, flushAutosave, refreshSlots, useStorage } from './persistence'
+import { checkSaveIntegrity, flushAutosave, installAutosaveTriggers, markDirty, refreshSlots, setAutosaveSource, useStorage } from './persistence'
 import { debugOpenDecision, persistNow } from './liveMatch'
 import * as meta from './meta'
 import { flushObjectiveToasts, forceCompleteObjective, installObjectivesFeed } from './objectivesFeed'
@@ -134,14 +134,11 @@ export function installRealBackend(): void {
   // &storage=memory: keep saves in memory (headless browsers without a working IndexedDB).
   if (globalThis.location?.search.includes('storage=memory')) useStorage(new MemoryStorage())
   void refreshSlots().then(() => checkSaveIntegrity())
-  if (typeof document !== 'undefined') {
-    document.addEventListener('visibilitychange', () => {
-      if (document.visibilityState === 'hidden' && gameState.value) {
-        persistNow()
-        void flushAutosave()
-      }
-    })
-  }
+  // Autosave (default ON, Settings toggle): every commit marks the career dirty; backgrounding the app
+  // (Capacitor pause / visibilitychange) or closing the page saves at once (live match snapshot first).
+  setAutosaveSource(() => settings.value.autosave !== false)
+  onCommit(() => markDirty())
+  installAutosaveTriggers(() => persistNow())
   let params: URLSearchParams
   try {
     params = new URLSearchParams(globalThis.location?.search ?? '')

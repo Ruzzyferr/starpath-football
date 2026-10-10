@@ -3,7 +3,7 @@
  *
  * Spotlights real UI elements by their `data-tour` id, explains them through
  * the coach character and advances on "Next" or when the player performs the
- * step's action (open the planner, plan a slot, advance time). Focus is
+ * step's action (advance time). Focus is
  * trapped between the coach card and (for action steps) the highlighted
  * element; ←/→ step back/forward, Esc skips. The overlay steps aside while
  * any modal (decision card, activity picker…) is open.
@@ -14,7 +14,7 @@ import { t } from '../../i18n'
 import { Avatar } from '../components'
 import { Icon } from '../icons'
 import { readSafeInsets } from '../../platform/viewport'
-import { activeEvent, data, gameState, navigate, screen, type ScreenId } from '../store'
+import { activeEvent, gameState, navigate, screen, type ScreenId } from '../store'
 import { TOUR_STEPS, currentStep } from './machine'
 import { dispatchTour, tour } from './tour'
 
@@ -37,14 +37,6 @@ function findTarget(id: string): HTMLElement | null {
 const sameRect = (a: Rect | null, b: Rect | null) =>
   a === b || (!!a && !!b && Math.abs(a.x - b.x) < 0.5 && Math.abs(a.y - b.y) < 0.5 && Math.abs(a.w - b.w) < 0.5 && Math.abs(a.h - b.h) < 0.5)
 
-function plannedKey(): string {
-  try {
-    return data.dayPlan().slots.map((s) => `${s.slot}:${s.activityId ?? ''}`).join('|')
-  } catch {
-    return ''
-  }
-}
-
 export function CoachTour() {
   const st = tour.value
   const step = currentStep(st)
@@ -57,7 +49,7 @@ export function CoachTour() {
   const card = useRef<HTMLDivElement>(null)
   const primary = useRef<HTMLButtonElement>(null)
   const navigatedFor = useRef(-1)
-  const snap = useRef<{ step: number; cal: string; plan: string }>({ step: -1, cal: '', plan: '' })
+  const snap = useRef<{ step: number; cal: string }>({ step: -1, cal: '' })
 
   const visible = !!s && !!step && !IMMERSIVE.has(route)
   const calKey = s ? `${s.calendar.season}-${s.calendar.week}-${s.calendar.day}-${s.calendar.slot}` : ''
@@ -67,10 +59,10 @@ export function CoachTour() {
     if (!visible || !step) return
     if (navigatedFor.current !== st.step) {
       navigatedFor.current = st.step
-      if (step.screen && screen.value.id !== step.screen && !(step.id === 'advance' && screen.value.id === 'home')) {
+      if (step.screen && screen.value.id !== step.screen && !(step.id === 'advance' && screen.value.id === 'activities')) {
         navigate(step.screen, undefined, { tab: true })
       }
-      snap.current = { step: st.step, cal: calKey, plan: plannedKey() }
+      snap.current = { step: st.step, cal: calKey }
       requestAnimationFrame(() => {
         if (step.target) findTarget(step.target)?.scrollIntoView?.({ block: 'center', behavior: 'smooth' })
         primary.current?.focus({ preventScroll: true })
@@ -81,9 +73,7 @@ export function CoachTour() {
   // Action steps complete themselves.
   useEffect(() => {
     if (!visible || !step?.waitFor || snap.current.step !== st.step) return
-    if (step.waitFor === 'openPlanner' && route === 'planner') dispatchTour({ type: 'action', action: 'openPlanner' })
-    else if (step.waitFor === 'planSlot' && plannedKey() !== snap.current.plan) dispatchTour({ type: 'action', action: 'planSlot' })
-    else if (step.waitFor === 'advance' && calKey !== snap.current.cal) dispatchTour({ type: 'action', action: 'advance' })
+    if (step.waitFor === 'advance' && calKey !== snap.current.cal) dispatchTour({ type: 'action', action: 'advance' })
   })
 
   // Follow the target and get out of the way of modals.

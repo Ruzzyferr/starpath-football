@@ -61,112 +61,6 @@
   gap: var(--sp-1);
 }
 
-/* Slots */
-.plan-slots {
-  display: grid;
-  gap: var(--sp-3);
-}
-@media (min-width: 900px) {
-  .plan-slots {
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-  }
-}
-.plan-slot {
-  position: relative;
-  display: flex;
-  flex-direction: column;
-  gap: var(--sp-2);
-  padding: var(--sp-3);
-  border-radius: var(--r-card);
-  background: var(--surface-1);
-  border: 1px solid var(--border);
-  box-shadow: var(--sh-card);
-  overflow: hidden;
-}
-.plan-slot::before {
-  content: '';
-  position: absolute;
-  inset: 0 auto 0 0;
-  width: 4px;
-  background: var(--surface-3);
-}
-.plan-slot.state-current {
-  border-color: rgba(31, 212, 122, 0.55);
-  box-shadow: var(--sh-glow-pitch);
-}
-.plan-slot.state-current::before { background: var(--brand-pitch); }
-.plan-slot.state-match::before { background: var(--accent-gold); }
-.plan-slot.state-done { opacity: 0.6; }
-.plan-slot.state-blocked { opacity: 0.5; }
-
-.plan-slot-time {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-2);
-  color: var(--text-mid);
-}
-.plan-slot-name {
-  flex: 1;
-  font-family: var(--font-display);
-  font-weight: 800;
-  font-style: italic;
-  font-size: var(--fs-h3);
-  text-transform: uppercase;
-  color: var(--text-hi);
-}
-.plan-slot-state {
-  padding: 3px 8px;
-  border-radius: var(--r-chip);
-  background: var(--surface-3);
-  color: var(--text-mid);
-}
-.state-chip-current { background: var(--brand-pitch); color: var(--text-on-pitch); }
-.state-chip-match { background: var(--accent-gold); color: var(--text-on-gold); }
-
-.plan-slot-body {
-  display: flex;
-  align-items: center;
-  gap: var(--sp-3);
-  width: 100%;
-  min-height: 72px;
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-btn);
-  background: var(--bg-1);
-  border: 1px dashed var(--border-strong);
-  text-align: left;
-  transition: transform var(--dur-micro) var(--ease-out);
-}
-.plan-slot-body:not(:disabled):active {
-  transform: scale(0.985);
-}
-button.plan-slot-body:not(:disabled):hover {
-  border-color: var(--brand-pitch);
-}
-.plan-slot-match {
-  border-style: solid;
-  border-color: rgba(255, 200, 61, 0.5);
-  color: var(--accent-gold);
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-lg);
-}
-.plan-slot-act {
-  display: block;
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: var(--fs-lg);
-  margin-bottom: var(--sp-1);
-}
-.plan-slot-empty {
-  color: var(--text-lo);
-  font-weight: 600;
-}
-.plan-slot-actions {
-  display: flex;
-  justify-content: flex-end;
-}
-
-/* Activity icon badges by category */
 .plan-act-icon {
   display: grid;
   place-items: center;
@@ -188,10 +82,7 @@ button.plan-slot-body:not(:disabled):hover {
 .plan-act-icon.cat-charity { background: rgba(31, 212, 122, 0.14); color: var(--brand-pitch); }
 .plan-act-empty { background: var(--surface-2); color: var(--text-lo); }
 
-/* Picker */
-.plan-picker .tabs {
-  margin-bottom: var(--sp-3);
-}
+/* Activity catalogue */
 .plan-groups {
   display: flex;
   flex-direction: column;
@@ -204,14 +95,10 @@ button.plan-slot-body:not(:disabled):hover {
   gap: var(--sp-2);
 }
 .plan-group-head {
-  position: sticky;
-  top: 0;
-  z-index: 1;
   display: flex;
   align-items: center;
   gap: var(--sp-2);
   padding: var(--sp-2) 0;
-  background: var(--surface-2);
   font-family: var(--font-display);
   font-weight: 700;
   font-size: var(--fs-sm);
@@ -277,4 +164,41 @@ button.plan-slot-body:not(:disabled):hover {
 .plan-act-check {
   color: var(--brand-pitch);
   flex: none;
+}
+
+.plan-catalog {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.plan-act-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.plan-act-item {
+  display: flex;
+  flex-direction: column;
+}
+.plan-act-chev {
+  flex: none;
+  align-self: center;
+}
+.plan-act-item.is-open .plan-act {
+  border-bottom-left-radius: 0;
+  border-bottom-right-radius: 0;
+}
+.plan-act-go {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--brand-pitch);
+  border-top: 0;
+  border-radius: 0 0 var(--r-card) var(--r-card);
+  background: var(--surface-2);
 }
