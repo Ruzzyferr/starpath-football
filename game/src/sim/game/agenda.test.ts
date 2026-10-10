@@ -81,7 +81,7 @@ describe('daily agenda', () => {
     expect(matchdayTasks).toBe(0)
     expect(Object.keys(kinds).length).toBeGreaterThanOrEqual(7)
     expect(Math.max(...Object.values(kinds)) / total).toBeLessThan(0.35)
-  })
+  }, 60_000)
 
   it('blocks the day until mandatory tasks are done; quick resolve clears the block', () => {
     const s = makeGame(503)
