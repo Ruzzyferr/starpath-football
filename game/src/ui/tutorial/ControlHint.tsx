@@ -18,13 +18,13 @@ import type { LText } from '../../core/types'
 import { Icon, type IconName } from '../icons'
 import { helpPrefs, hideTutorial } from './prefs'
 import { pauseGate } from '../../game/pauseGate'
-import { gestureFor, inputPlatform, onHintEvent, watchInputPlatform, type HintGroup } from './hints'
+import { gestureFor, inputPlatform, onHintEvent, watchInputPlatform, type HintGroup, type InputPlatform } from './hints'
 import { drillTutorialKey, howToFor, matchTutorialKey, shouldShowTutorial, type HowTo } from './howTo'
 
-function Gesture({ kind, group }: { kind: 'swipe' | 'tap' | 'click' | 'keys'; group: HintGroup }) {
+function Gesture({ kind, group, platform }: { kind: 'swipe' | 'tap' | 'click' | 'keys'; group: HintGroup; platform: InputPlatform }) {
   const label = t(`help.hints.gesture.${kind}`)
   if (kind === 'keys') {
-    const pad = inputPlatform.value === 'pad'
+    const pad = platform === 'pad'
     const keys = pad
       ? (group === 'pass' || group === 'defend' || group === 'fitness' || group === 'cross' || group === 'tackleDuel' || group === 'distribute' || group === 'cornerPick' || group === 'wallSet' || group === 'claim' ? ['A'] : group === 'move' ? ['L', 'RT'] : ['B'])
       : group === 'move' || group === 'tackleDuel' || group === 'wallSet' ? ['W', 'A', 'S', 'D'] : group === 'cornerPick' ? ['1', '2', '3', '4'] : group === 'fitness' ? ['␣'] : ['␣']
@@ -82,8 +82,7 @@ const ICON: Record<string, IconName> = { scout: 'eye', doping: 'wind', dialogue:
 const FOCUSABLE = 'button:not([disabled]), input:not([disabled])'
 
 /** Controls text for the current input platform. */
-function controlsText(h: HowTo): string[] {
-  const p = inputPlatform.value
+function controlsText(h: HowTo, p: InputPlatform): string[] {
   if (h.controls) return [copy(p === 'touch' ? h.controls.touch : h.controls.pc)]
   return h.groups.slice(0, 2).map((g) => tx(`help.hints.${p}.${g}`))
 }
@@ -106,6 +105,9 @@ export function TutorialCard({ tkey, gate, countdown, onDone, onQuit }: { tkey: 
   const quitBtn = useRef<HTMLButtonElement>(null)
   const done = useRef(false)
   const dontRef = useRef(false)
+  // The card's platform is fixed while it is up: a pointer / key switching the detected device
+  // mid-tap re-laid the card out and moved Start away between press and release (no click).
+  const [platform] = useState<InputPlatform>(() => inputPlatform.peek())
   dontRef.current = dontShow
 
   // Layout effect: the hold is on before the card is painted, never a frame later.
@@ -199,7 +201,7 @@ export function TutorialCard({ tkey, gate, countdown, onDone, onQuit }: { tkey: 
           <>
             <div class="tut-head">
               <div class="control-hint-art tut-art" aria-hidden="true">
-                {group ? <Gesture kind={gestureFor(group, inputPlatform.value)} group={group} /> : <Icon name={ICON[tkey] ?? 'info'} size={34} />}
+                {group ? <Gesture kind={gestureFor(group, platform)} group={group} platform={platform} /> : <Icon name={ICON[tkey] ?? 'info'} size={34} />}
               </div>
               <div class="tut-titles">
                 <span class="micro control-hint-eyebrow">{t('help.howTo.eyebrow')}</span>
@@ -212,8 +214,8 @@ export function TutorialCard({ tkey, gate, countdown, onDone, onQuit }: { tkey: 
                 <p>{copy(how.goal)}</p>
               </section>
               <section class="tut-sec">
-                <h3 class="micro tut-label"><Icon name={inputPlatform.value === 'touch' ? 'phone' : 'keyboard'} size={14} /> {t('help.howTo.controls')}</h3>
-                {controlsText(how).map((c, i) => <p key={i} class="tut-controls">{c}</p>)}
+                <h3 class="micro tut-label"><Icon name={platform === 'touch' ? 'phone' : 'keyboard'} size={14} /> {t('help.howTo.controls')}</h3>
+                {controlsText(how, platform).map((c, i) => <p key={i} class="tut-controls">{c}</p>)}
               </section>
               <section class="tut-sec tut-tip">
                 <h3 class="micro tut-label"><Icon name="sparkle" size={14} /> {t('help.howTo.tip')} <span class="tut-attr" data-testid="tutorial-attr">{t(`data.attr.${how.attr}` as never)}</span></h3>
@@ -235,7 +237,7 @@ export function TutorialCard({ tkey, gate, countdown, onDone, onQuit }: { tkey: 
                 <Icon name="play" size={18} /> {t('help.howTo.start')}
               </button>
             </div>
-            {inputPlatform.value !== 'touch' && <p class="t-xs t-lo tut-keys" aria-hidden="true">{t('help.howTo.startHint')}</p>}
+            {platform !== 'touch' && <p class="t-xs t-lo tut-keys" aria-hidden="true">{t('help.howTo.startHint')}</p>}
           </>
         )}
       </div>
@@ -262,6 +264,21 @@ export function MatchHints({ active, kind, momentId }: { active: boolean; kind: 
 /** How-to card before every training drill (per drill / variant). */
 export function DrillHints({ active, drill, variant, onQuit }: { active: boolean; drill: string | undefined; variant: string | undefined; onQuit?: () => void }) {
   return <GameTutorial active={active} tkey={drill ? drillTutorialKey(drill, variant) : null} instance={`${drill}|${variant}`} onQuit={onQuit} />
+}
+
+/**
+ * The tip block of a kind's how-to card (attribute chip + tip), for intros that already are the
+ * how-to (the trial drill's intro card) so they do not stack a second card.
+ */
+export function HowToTip({ tkey }: { tkey: string }) {
+  const how = howToFor(tkey)
+  if (!how) return null
+  return (
+    <section class="tut-sec tut-tip tut-inline" data-testid="howto-tip">
+      <h3 class="micro tut-label"><Icon name="sparkle" size={14} /> {t('help.howTo.tip')} <span class="tut-attr" data-testid="tutorial-attr">{t(`data.attr.${how.attr}` as never)}</span></h3>
+      <p>{lt(how.tip)}</p>
+    </section>
+  )
 }
 
 /** DOM "3 / 2 / 1" over a scene that does not draw the gate's resume beat itself (scouting video). */

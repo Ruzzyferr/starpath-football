@@ -561,3 +561,8 @@
 .tut-actions.has-quit { flex-direction: row; }
 .tut-actions.has-quit .control-hint-close { flex: 1; }
 .tut-quit { flex: none; min-height: 48px; padding: 0 16px; color: #dbe3f0; }
+/* The tip inside a light/dark intro card (trial drill): theme colours, not the dark game overlay. */
+.tut-sec.tut-inline { text-align: left; }
+.tut-sec.tut-inline p { color: var(--text-mid); }
+.tut-sec.tut-inline .tut-label { color: var(--text-lo, var(--text-mid)); }
+.tut-sec.tut-inline .tut-attr { color: var(--accent-gold); }

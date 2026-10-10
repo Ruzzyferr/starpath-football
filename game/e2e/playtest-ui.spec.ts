@@ -45,11 +45,16 @@ test('PT-F6: the trial drill opens on a how-to card (goal, controls, target) bef
   await expect(intro).toBeVisible()
   await expect(intro).toContainText(/Target: \d+%/)
   await expect(intro.locator('.trn-drill-controls > div')).toHaveCount(2)
+  // The intro IS the how-to: it carries the tip (attribute named) and no second card follows it.
+  await expect(intro.getByTestId('howto-tip')).toBeVisible()
+  await expect(intro.getByTestId('tutorial-attr')).not.toBeEmpty()
   await expect(page.locator('.trn-drill canvas')).toHaveCount(0) // nothing runs yet
   await assertCleanText(page)
   await shot('pt-trial-intro')
   await page.getByTestId('trial-start').click()
   await expect(page.locator('.trn-drill canvas')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(1500)
+  await expect(page.getByTestId('tutorial')).toHaveCount(0)
   // PT-F1: the canvas (and its HUD) starts below the status-bar inset.
   const stage = await page.locator('.trn-drill-stage').boundingBox()
   expect(stage!.y).toBeGreaterThanOrEqual(46)

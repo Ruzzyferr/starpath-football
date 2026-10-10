@@ -10,7 +10,8 @@ import { haptic } from '../../haptics'
 import { gameState, navigate, settings } from '../../store'
 import { drillFinished, finishTrial, trialInvites, type TrialResultView } from '../../backend/meta'
 import { startTourIfDue } from '../../tutorial/tour'
-import { DrillHints } from '../../tutorial/ControlHint'
+import { HowToTip } from '../../tutorial/ControlHint'
+import { drillTutorialKey } from '../../tutorial/howTo'
 import { DrillDiagram } from '../training/DrillDiagram'
 import type { TrialInvite } from '../../../sim/game/trials'
 
@@ -21,7 +22,8 @@ const isTouch = (): boolean =>
 
 /**
  * Plays one training drill for a trial and reports the performance (null = cancelled / failed to load).
- * The career's very first mini-game: a how-to card (goal, controls, target) comes before the countdown.
+ * The career's very first mini-game: its intro card IS the how-to (goal, controls, tip, target), shown
+ * every time before the countdown; the generic how-to card is not stacked on top of it.
  */
 function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performance: number | null) => void }) {
   const host = useRef<HTMLDivElement>(null)
@@ -77,7 +79,6 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           <span>{t('training.drill.quit')}</span>
         </button>
       )}
-      <DrillHints active={phase === 'playing' && !loading} drill={kind} variant={undefined} onQuit={() => onDone(null)} />
       {phase === 'playing' && loading && <div class="trn-drill-center"><Spinner /></div>}
       {phase === 'intro' && (
         <div class="trn-drill-card stack" data-testid="trial-intro">
@@ -95,6 +96,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
               <p class="t-sm">{tx(`training.drill.pcControls.${kind}`)}</p>
             </div>
           </div>
+          <HowToTip tkey={drillTutorialKey(kind)} />
           <div class="row wrap trn-drill-meta">
             <Chip tone={invite.target > 0 ? 'gold' : 'info'} icon="target">
               {invite.target > 0 ? t('meta.trials.target', { p: Math.round(invite.target * 100) }) : t('meta.trials.guaranteed')}
