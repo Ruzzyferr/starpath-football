@@ -1364,7 +1364,7 @@ kariyer reytingi ±%2,0 içinde; itibar 22/24 rol ±%5 içinde, Ters Kanat +%5,1
 
 "Tek bir maç mini oyununu kazanamadım": gerçek girdi yollarıyla oynayan "mantıklı insan" botu (`game/src/game/intentHarness.ts`, test `intent.test.ts`; rapor `INTENT_REPORT=1 INTENT_CURVES=1`). Normal zorluk, yarım yardım, takımlar OVR 62, N=150, deterministik seed.
 
-Başlangıç kahramanı (OVR 57), iyi girdi — önce → sonra: 1v1 köşe vuruşu %39 (aut %17) → %74 (aut %3); ŞUT düğmesi %55 → %73; koşarken PAS (çubuk ileri) %29 → %77; pas %97 → %91; ara pas %94 → %81; orta %99 → %83; müdahale (ilk temas) %37 → %57. Önce pas / ara pas / orta özelliklerden bağımsızdı (düz), müdahale 40–60 arasında düzdü.
+Başlangıç kahramanı (OVR 57), iyi girdi — önce → sonra: 1v1 köşe vuruşu %39 (aut %17) → %74 (aut %3); ŞUT düğmesi %55 → %73; koşarken PAS (çubuk ileri) %29 → %77; pas %97 → %91; ara pas %94 → %81; orta %99 → %83; müdahale (ilk temas) %37 → %64. Önce pas / ara pas / orta özelliklerden bağımsızdı (düz), müdahale 40–60 arasında düzdü.
 
 Özellik eğrisi (ilgili özellikler = X; `game/momentSkill.ts`), iyi / özensiz girdi:
 
