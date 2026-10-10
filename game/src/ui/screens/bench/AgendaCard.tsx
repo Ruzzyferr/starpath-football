@@ -10,6 +10,7 @@ import { agendaSkipPrompt, quickResolveAndSkip, resolveAgendaTask, todayAgenda, 
 import { DrillOverlay } from '../training/DrillOverlay'
 import { openScouting } from '../../backend/scouting'
 import { runBenchAction } from './benchActions'
+import { benchScene } from '../../backend/scenes'
 
 const TASK_ICON: Record<string, IconName> = {
   teamTraining: 'tactics', disciplinary: 'gavel', pressConference: 'megaphone', dopingTest: 'first-aid', physio: 'heartbeat', sponsorShoot: 'camera',
@@ -46,6 +47,8 @@ function MandatoryRow({ task, onDrill }: { task: AgendaTask; onDrill: (task: Age
         <div class="ag-actions">
           <Button size="sm" variant="primary" icon="check" onClick={() => { haptic('select'); say(resolveAgendaTask(task.id, 'quick')) }} data-testid="ag-quick">{t('bench.agenda.quick')}</Button>
           {task.play?.drill && <Button size="sm" variant="secondary" icon="play" onClick={() => onDrill(task)} data-testid="ag-play">{t('bench.agenda.play')}</Button>}
+          {task.play?.scene && <Button size="sm" variant="secondary" icon="chat" onClick={() => { haptic('select'); benchScene.value = { kind: 'nationalCamp', taskId: task.id } }} data-testid="ag-play">{t('bench.agenda.play')}</Button>}
+          {task.play?.game === 'doping' && <Button size="sm" variant="secondary" icon="play" onClick={() => { haptic('select'); benchScene.value = { kind: 'doping', taskId: task.id } }} data-testid="ag-play">{t('bench.agenda.play')}</Button>}
           {choices.length > 0 && <Button size="sm" variant="secondary" icon="chat" aria-expanded={open} onClick={() => setOpen(!open)} data-testid="ag-decide">{t('bench.agenda.decide')}</Button>}
           {task.skip && <Button size="sm" variant="ghost" onClick={() => setConfirmSkip(true)} data-testid="ag-skip">{t('bench.agenda.skip')}</Button>}
         </div>

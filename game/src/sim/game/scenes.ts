@@ -90,7 +90,12 @@ export interface SceneOutcome {
 
 const STYLES: readonly SceneStyle[] = ['demanding', 'fatherly', 'tactician']
 const styleOf = (seed: number, key: string): SceneStyle => STYLES[hashString(`${seed}:style:${key}`) % STYLES.length]!
-const staffLook = (seed: number, key: string, nation: string): Appearance => randomAppearance(new Rng(hashString(`${seed}:look:${key}`)), nameStyleOf(nation), 52)
+/** Staff portraits: a manager's haircut (buzz, crop, side part, bald, slick back), seeded per person. */
+const STAFF_HAIR = [0, 1, 2, 9, 11] as const
+function staffLook(seed: number, key: string, nation: string): Appearance {
+  const h = hashString(`${seed}:look:${key}`)
+  return { ...randomAppearance(new Rng(h), nameStyleOf(nation), 52), hairStyle: STAFF_HAIR[h % STAFF_HAIR.length]! }
+}
 const sceneRng = (s: GameState, id: SceneId): Rng => new Rng(s.meta.seed).fork(`scene:${id}:${absDayOf(s)}`)
 const opt = (id: string, label: LText, tone: LText, reply: LText): SceneOption => ({ id, label, tone, reply })
 /** The chosen option of each step (unknown / missing picks fall back to the first). */

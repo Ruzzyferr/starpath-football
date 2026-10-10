@@ -56,6 +56,7 @@ import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
 import { CoachTour } from './tutorial/CoachTour'
 import { ScoutingHost } from './screens/training/ScoutingOverlay'
+import { BenchSceneHost } from './screens/bench/BenchSceneHost'
 import { MatchdayConfirmHost, requestAdvance, requestSkipToMatch } from './tutorial/MatchdayConfirm'
 import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 import { tour } from './tutorial/tour'
@@ -122,7 +123,8 @@ function useKeyboardShortcuts() {
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.defaultPrevented || e.ctrlKey || e.metaKey || e.altKey) return
-      if (document.querySelector('.modal-root')) return
+      // Any open modal or full-screen moment (dialogue scene, mini-game) owns the keys.
+      if (document.querySelector('.modal-root, [role=dialog][aria-modal=true]')) return
       if (isTyping(document.activeElement)) return
       const id = screen.value.id
       const inShell = !IMMERSIVE.has(id) && !!gameState.value
@@ -230,6 +232,7 @@ export function App() {
       {gameState.value && <UnlockNotifier />}
       <MatchdayConfirmHost />
       {gameState.value && <ScoutingHost />}
+      {gameState.value && !retired && <BenchSceneHost />}
       <ShortcutsModal />
       <QuickMute />
       <ToastHost />

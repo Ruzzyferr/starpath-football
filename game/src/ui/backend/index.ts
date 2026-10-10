@@ -24,6 +24,7 @@ import { checkSaveIntegrity, flushAutosave, installAutosaveTriggers, markDirty, 
 import { debugOpenDecision, persistNow } from './liveMatch'
 import * as meta from './meta'
 import { flushObjectiveToasts, forceCompleteObjective, installObjectivesFeed } from './objectivesFeed'
+import { openManagerTalk, openOneOnOne, openTeamDinner } from './scenes'
 
 export const DEFAULT_CAREER: NewGameInput = {
   firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', birthYear: 2009,
@@ -118,6 +119,8 @@ function installDebugApi(): void {
     meta,
     /** Force-complete the first active objective (fires the completion toast). */
     completeObjective: () => (gameState.value ? forceCompleteObjective(gameState.value) : false),
+    /** Open a bench moment (dialogue scene / 1-on-1 drill) the way its card does (ui/backend/scenes). */
+    moment: (kind: 'talk' | 'teamDinner' | 'oneOnOne') => (kind === 'talk' ? openManagerTalk() : kind === 'teamDinner' ? openTeamDinner() : openOneOnOne()),
   }
 }
 

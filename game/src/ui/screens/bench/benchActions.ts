@@ -2,11 +2,10 @@
  * Deep links of the bench-path cards (selection levers, today's ideas): each
  * key runs the real action or opens the screen where it happens.
  */
-import { lt, t } from '../../../i18n'
-import { toast } from '../../components'
 import { haptic } from '../../haptics'
 import { actions, navigate } from '../../store'
-import { doOneOnOne, startReserveMatch, talkManager } from '../../backend/benchPath'
+import { startReserveMatch } from '../../backend/benchPath'
+import { openManagerTalk, openOneOnOne, openTeamDinner } from '../../backend/scenes'
 import { openScouting } from '../../backend/scouting'
 
 export type BenchAction = 'impress' | 'drill' | 'training' | 'talk' | 'rest' | 'reserve' | 'scrimmage' | 'oneOnOne' | 'video' | 'teamDinner'
@@ -21,11 +20,10 @@ export function runBenchAction(a: BenchAction): void {
     case 'training':
       navigate('training')
       return
-    case 'talk': {
-      const lines = talkManager()
-      if (lines.length) toast(lines.map((l) => lt(l)).join(' '), 'success', 'chat', 6000)
+    case 'talk':
+      // The manager's office is a short dialogue scene now (quick resolve inside).
+      openManagerTalk()
       return
-    }
     case 'rest':
       actions.doActivity('rest')
       return
@@ -33,19 +31,15 @@ export function runBenchAction(a: BenchAction): void {
       openScouting()
       return
     case 'teamDinner':
-      actions.doActivity('team_dinner')
+      openTeamDinner()
       return
     case 'reserve':
     case 'scrimmage':
       if (startReserveMatch(a)) navigate('preMatch')
       return
-    case 'oneOnOne': {
-      const r = doOneOnOne()
-      if (r.ok && r.partner) {
-        const xp = (r.xp ?? []).map((x) => t('bench.oneOnOne.xp', { a: t(`data.attr.${x.key}` as never), x: x.xp })).join(' · ')
-        toast(`${t('bench.oneOnOne.done', { n: r.partner })} · ${xp}`, 'success', 'handshake', 5000)
-      }
+    case 'oneOnOne':
+      // A short pair drill with the partner now (quick resolve inside).
+      openOneOnOne()
       return
-    }
   }
 }

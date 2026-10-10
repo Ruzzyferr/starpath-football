@@ -37,7 +37,12 @@ const VARIANT_KEYS = new Set(['setPiece', 'rondo', 'switch', 'diving', 'contact'
 const drillKey = (s: TrainingSessionView): string =>
   s.drill?.variant && VARIANT_KEYS.has(s.drill.variant) ? s.drill.variant : s.drill?.kind ?? 'finishing'
 
-export function DrillOverlay({ session, onClose, challenge, onDrillResult }: { session: TrainingSessionView; onClose: (outcome: TrainingOutcomeView | null) => void; challenge?: { reward: number }; onDrillResult?: (performance: number, grade: string) => void }) {
+/**
+ * `apply` replaces the normal training session (a drill reused for another
+ * activity, e.g. the 1-on-1 with a teammate): called with the performance, or
+ * undefined for the auto fallback.
+ */
+export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply }: { session: TrainingSessionView; onClose: (outcome: TrainingOutcomeView | null) => void; challenge?: { reward: number }; onDrillResult?: (performance: number, grade: string) => void; apply?: (performance: number | undefined) => TrainingOutcomeView }) {
   const [chal, setChal] = useState<{ passed: boolean } | null>(null)
   const [phase, setPhase] = useState<Phase>('intro')
   const [result, setResult] = useState<DrillResult | null>(null)
@@ -107,7 +112,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult }: { s
             const c = impressResult(r.performance, r.grade)
             if (c) setChal({ passed: c.passed })
           }
-          const o = actions.trainSession(session.id, r.performance)
+          const o = apply ? apply(r.performance) : actions.trainSession(session.id, r.performance)
           if (o.ok) onDrillResult?.(r.performance, r.grade)
           setOutcome(o)
           setPhase('result')
@@ -128,7 +133,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult }: { s
   }
 
   const auto = () => {
-    const o = actions.trainSession(session.id)
+    const o = apply ? apply(undefined) : actions.trainSession(session.id)
     if (!o.ok) toast(lt(o.error) || t('training.result.notApplied'), 'warning')
     onClose(o.ok ? o : null)
   }
@@ -183,6 +188,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult }: { s
           </div>
           <div class="row trn-drill-actions">
             <Button variant="ghost" onClick={() => onClose(null)}>{t('common.cancel')}</Button>
+            {apply && <Button variant="secondary" icon="fast-forward" onClick={auto} data-testid="drill-quick">{t('bench.scene.quick')}</Button>}
             <Button variant="primary" icon="play" onClick={() => void start()} autoFocus>{t('training.drill.start')}</Button>
           </div>
         </div>
