@@ -79,19 +79,35 @@ test('a mandatory task blocks Advance until it is decided', async ({ page, shot 
 test('skip to matchday asks once to quick-resolve the open tasks', async ({ page, shot }) => {
   await inSeason(page, 31)
   await injectTask(page, 'pressConference', false)
+  const day0 = await sp<number>(page, 'sp.state().calendar.day + sp.state().calendar.week * 7')
   await sp(page, 'sp.actions.advanceToMatch()')
-  const modal = page.getByRole('dialog')
+  // Only the skip confirm: the days it skips may well bring a decision card of their own.
+  const modal = page.getByRole('dialog', { name: 'Mandatory tasks are open' })
   await expect(modal).toBeVisible()
   await page.waitForTimeout(5000)
   await shot('agenda-skip-confirm')
   await page.getByTestId('ag-skip-all').click()
   await expect(modal).toHaveCount(0)
+  // The skip runs to matchday unless a decision card lands on the way (the skip stops for those by design).
   const fx = await sp<{ daysUntil: number } | null>(page, 'sp.data.nextFixture()')
-  expect(fx?.daysUntil ?? 0).toBeLessThanOrEqual(1)
+  const pending = await sp<number>(page, 'sp.state().pendingEvents.length')
+  expect((fx?.daysUntil ?? 0) <= 1 || pending > 0).toBe(true)
+  expect(await sp<number>(page, 'sp.state().calendar.day + sp.state().calendar.week * 7')).toBeGreaterThan(day0)
+  // Asked once: the open task was quick-resolved, so the prompt does not come back.
+  await expect(modal).toHaveCount(0)
 })
 
 test('the coach’s challenge opens a drill with a target grade', async ({ page, shot }) => {
   await inSeason(page, 99)
+  // The challenge needs a fit hero on a day slot (seed 99 can carry a knock into week 2).
+  await page.evaluate(() => {
+    const w = window as unknown as { __sp: { state: () => { hero: { injury: unknown }; calendar: { slot: number }; life: { energy: number } }; touch: () => void } }
+    const s = w.__sp.state()
+    s.hero.injury = null
+    s.calendar.slot = 0
+    s.life.energy = 100
+    w.__sp.touch()
+  })
   await sp(page, "sp.navigate('training', { challenge: '1' }, { tab: true })")
   const banner = page.getByTestId('drill-challenge')
   if (await banner.count() === 0) {
