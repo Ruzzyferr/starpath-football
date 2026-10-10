@@ -7,6 +7,7 @@ import { toast } from '../../components'
 import { haptic } from '../../haptics'
 import { actions, navigate } from '../../store'
 import { doOneOnOne, startReserveMatch, talkManager } from '../../backend/benchPath'
+import { openScouting } from '../../backend/scouting'
 
 export type BenchAction = 'impress' | 'drill' | 'training' | 'talk' | 'rest' | 'reserve' | 'scrimmage' | 'oneOnOne' | 'video' | 'teamDinner'
 
@@ -29,7 +30,7 @@ export function runBenchAction(a: BenchAction): void {
       actions.doActivity('rest')
       return
     case 'video':
-      actions.doActivity('video')
+      openScouting()
       return
     case 'teamDinner':
       actions.doActivity('team_dinner')

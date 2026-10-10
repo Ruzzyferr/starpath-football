@@ -446,6 +446,33 @@
 .pm-ref[data-strictness='5'] .pm-ref-pip.is-on {
   background: var(--state-danger);
 }
+/* Opponent analysis (video scouting mini-game). */
+.pm-scout {
+  border-left: 3px solid var(--accent-gold);
+}
+.pm-scout-grade {
+  color: var(--accent-gold);
+  font-weight: 800;
+}
+.pm-scout-bonus {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  font-weight: 600;
+}
+.pm-scout-notes {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+.pm-scout-notes li {
+  display: flex;
+  gap: 6px;
+  align-items: flex-start;
+}
 .pm-hint {
   flex-direction: row;
   align-items: flex-start;

@@ -8,12 +8,13 @@ import { haptic } from '../../haptics'
 import { actions, data, gameState, navigate, stateVersion, type TrainingSessionView } from '../../store'
 import { agendaSkipPrompt, quickResolveAndSkip, resolveAgendaTask, todayAgenda, todayIdeas, type WeekIdea } from '../../backend/benchPath'
 import { DrillOverlay } from '../training/DrillOverlay'
+import { openScouting } from '../../backend/scouting'
 import { runBenchAction } from './benchActions'
 
 const TASK_ICON: Record<string, IconName> = {
   teamTraining: 'tactics', disciplinary: 'gavel', pressConference: 'megaphone', dopingTest: 'first-aid', physio: 'heartbeat', sponsorShoot: 'camera',
   autographs: 'users', boardMeeting: 'building', nationalCamp: 'flag', dateNight: 'heart', familyBirthday: 'gift', captainMentoring: 'crown',
-  charity: 'hand-heart', recoverySession: 'heartbeat', devMeeting: 'chart-line', train: 'barbell', rest: 'bed', video: 'eye',
+  charity: 'hand-heart', recoverySession: 'heartbeat', devMeeting: 'chart-line', teamMeeting: 'chat', gymBlock: 'barbell', fitnessTest: 'energy', clubMedia: 'camera', communityVisit: 'hand-heart', train: 'barbell', rest: 'bed', video: 'eye',
 }
 const IDEA_ICON: Record<WeekIdea['action'], IconName> = {
   impress: 'target', reserve: 'ball', scrimmage: 'whistle', talk: 'chat', oneOnOne: 'handshake', rest: 'bed', video: 'eye', training: 'barbell', teamDinner: 'fork-knife',
@@ -80,6 +81,8 @@ function PrepRow({ task }: { task: AgendaTask }) {
   const go = () => {
     haptic('select')
     if (task.kind === 'train') navigate('training')
+    // The opponent video is a mini-game now (game/training/scouting), not an instant resolve.
+    else if (task.kind === 'video') openScouting()
     else if (task.activity) actions.doActivity(task.activity)
   }
   return (

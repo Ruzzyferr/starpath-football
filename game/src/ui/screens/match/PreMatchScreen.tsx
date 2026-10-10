@@ -11,6 +11,20 @@ import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 import { FocusPicker } from './FocusPicker'
 import { SelectionMeter } from '../bench/SelectionMeter'
 import { layoutTeam, type LayoutOut } from './pitchLayout'
+import { scoutCard } from '../../backend/scouting'
+
+/** "Rakip analizi": what the video session spotted and the buff it gives for this match. */
+function ScoutCard({ fixtureId }: { fixtureId: string }) {
+  const c = scoutCard(fixtureId)
+  if (!c) return null
+  return (
+    <div class="pm-card pm-scout" data-testid="pm-scout">
+      <h3 class="micro t-mid row-between"><span>{t('match.pre.scoutTitle')}</span><span class="pm-scout-grade">{t('match.pre.scoutGrade', { g: c.grade })}</span></h3>
+      <p class="t-sm pm-scout-bonus"><Icon name="eye" size={16} class="t-gold" /> {t('match.pre.scoutBonus', { a: c.attrs.map((k) => t(`data.attr.${k}` as never)).join(' · '), b: c.bonus })}</p>
+      {c.notes.length > 0 && <ul class="pm-scout-notes">{c.notes.map((n, i) => <li key={i} class="t-xs t-mid"><Icon name="check" size={12} class="t-pos" /> {lt(n)}</li>)}</ul>}
+    </div>
+  )
+}
 
 function Disc({ p, team, side, box, you }: { p: LineupPlayer; team: TeamView; side: 'home' | 'away'; box: LayoutOut; you: string }) {
   // Home occupies the bottom half (own goal at the bottom), away the top half;
@@ -254,6 +268,7 @@ export function PreMatchScreen() {
             </div>
           )}
 
+          <ScoutCard fixtureId={fx.fixtureId} />
           {pm.referee && <RefereeCard r={pm.referee} />}
           {!friendly && <ExpectationCard homeId={fx.home.id} />}
           {!friendly && !pm.heroStarting && <SelectionMeter compact context="preMatch" />}

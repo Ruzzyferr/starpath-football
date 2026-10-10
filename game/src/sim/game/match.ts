@@ -22,6 +22,7 @@ import { applyMatchToHero, type HeroMatchInput } from '../career/matchOutcome'
 import { heroOvr } from '../career/progression'
 import { changeTrust, roleIndex, rollSelection } from '../career/squadRole'
 import { PREP_BUFF, agendaAfterMatch, prepBuffs } from './agenda'
+import { scoutAttrs, scoutBuff } from './oppScouting'
 import { RESERVE_FLAG, afterClubMatch, cameoDue, selectionTerms, termsTotal, type ReserveRecord } from './selection'
 import { heroMatchAttributes } from '../career/matchPerks'
 import { objectivesAfterMatch } from './objectives'
@@ -308,6 +309,9 @@ export function prepareHeroMatch(state: GameState): HeroMatchPrep | null {
       const team = isHome ? setup.home : setup.away
       const hp = [...team.lineup, ...team.bench].find((p) => p.isHero)
       if (hp && buffs.length) hp.attrs = { ...hp.attrs, ...Object.fromEntries(buffs.map((k) => [k, clamp((hp.attrs[k] ?? 50) + PREP_BUFF, 1, 99)])) }
+      // Opponent video scouting (mini-game): reading their habits = sharper anticipation / positioning (sim/game/oppScouting).
+      const scout = scoutBuff(state, fixture.id)
+      if (hp && scout) hp.attrs = { ...hp.attrs, ...Object.fromEntries(scoutAttrs(hp.position).map((k) => [k, clamp((hp.attrs[k] ?? 50) + scout.bonus, 1, 99)])) }
     }
     const opts: MatchSimOptions = {
       heroForm: state.hero.form, managerTrust: state.hero.managerTrust,

@@ -55,6 +55,7 @@ import { TrialsScreen } from './screens/legacy/TrialsScreen'
 import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
 import { CoachTour } from './tutorial/CoachTour'
+import { ScoutingHost } from './screens/training/ScoutingOverlay'
 import { MatchdayConfirmHost, requestAdvance, requestSkipToMatch } from './tutorial/MatchdayConfirm'
 import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 import { tour } from './tutorial/tour'
@@ -228,6 +229,7 @@ export function App() {
       {gameState.value && !retired && <CoachTour />}
       {gameState.value && <UnlockNotifier />}
       <MatchdayConfirmHost />
+      {gameState.value && <ScoutingHost />}
       <ShortcutsModal />
       <QuickMute />
       <ToastHost />

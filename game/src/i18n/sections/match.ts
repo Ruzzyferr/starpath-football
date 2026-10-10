@@ -4,6 +4,9 @@ import type { Shape } from '../shape'
 export const tr = {
   title: 'Maç',
   pre: {
+    scoutTitle: 'Rakip analizi',
+    scoutBonus: 'Video analizinden: {a} +{b}',
+    scoutGrade: 'Not {g}',
     title: 'Maç Önü',
     kickOff: 'Başlama vuruşu',
     venue: 'Stadyum',
@@ -142,6 +145,9 @@ export const tr = {
 export const en: Shape<typeof tr> = {
   title: 'Match',
   pre: {
+    scoutTitle: 'Opponent analysis',
+    scoutBonus: 'From the video session: {a} +{b}',
+    scoutGrade: 'Grade {g}',
     title: 'Pre-Match',
     kickOff: 'Kick off',
     venue: 'Venue',

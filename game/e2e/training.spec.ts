@@ -211,3 +211,91 @@ test('play explosive starts with the keyboard: go on the light, graded result, a
   await expect(overlay).toHaveCount(0)
   expect(await sp<number>(page, 'sp.state().hero.attrs.acceleration + (sp.state().hero.attrXp.acceleration ?? 0)')).toBeGreaterThan(xp0)
 })
+
+// ───────────────────────── Opponent video scouting (TestFlight build 4) ─────────────────────────
+
+/** In season, a club match coming in 2+ days, morning, full energy, no cards. */
+async function beforeMatch(page: import('@playwright/test').Page): Promise<void> {
+  await page.goto('/?autostart=1&seed=4242')
+  await waitForApp(page)
+  await sp(page, 'sp.toMatchday()')
+  await sp(page, 'sp.actions.advance()')
+  await sp(page, 'sp.clearEvents()')
+  for (let i = 0; i < 30; i++) {
+    const fx = await sp<{ daysUntil: number } | null>(page, 'sp.data.nextFixture()')
+    const slot = await sp<number>(page, 'sp.state().calendar.slot')
+    if (fx && fx.daysUntil >= 2 && fx.daysUntil <= 5 && slot === 0) break
+    await sp(page, 'sp.actions.advance()')
+    await sp(page, 'sp.clearEvents()')
+  }
+  await sp(page, `(() => { sp.clearEvents(); const s = sp.state(); s.life.energy = 100; s.hero.fatigue = 0; s.hero.injury = null; sp.touch(); sp.navigate('activities') })()`)
+  const dlg = page.getByRole('dialog')
+  if (await dlg.count()) await dlg.getByRole('button', { name: 'Close' }).first().click()
+}
+
+/** The scene's current clip state (dev global). */
+const clipState = (page: import('@playwright/test').Page) =>
+  page.evaluate(() => {
+    const sc = (globalThis as unknown as { __spScouting?: { sg: { phase: string; index: number; clip: { correct: number } } } }).__spScouting
+    return sc ? { phase: sc.sg.phase, index: sc.sg.index, correct: sc.sg.clip.correct } : null
+  })
+
+test('opponent video is a playable scouting mini-game that buffs the next match', async ({ page, shot }) => {
+  await beforeMatch(page)
+  const slot0 = await sp<number>(page, 'sp.state().calendar.slot')
+  await page.getByTestId('act-video').click()
+  await page.getByTestId('act-do').click()
+  const ov = page.getByTestId('scout')
+  await expect(ov).toBeVisible()
+  await expect(page.getByTestId('scout-hint')).toBeVisible()
+  await assertCleanText(page)
+  await shot('scout-intro')
+  await page.getByTestId('scout-start').click()
+  await expect(page.getByTestId('scout-panel')).toBeVisible()
+  await expect(page.locator('#scout-canvas canvas')).toBeVisible()
+  await page.waitForTimeout(5500)
+  await shot('scout-play')
+  // Answer every clip: the first by keyboard, the rest by tapping the right option.
+  for (let i = 0; i < 4; i++) {
+    await expect.poll(async () => (await clipState(page))?.phase, { timeout: 15_000 }).toBe('clip')
+    const st = (await clipState(page))!
+    if (i === 0) await page.keyboard.press(String(st.correct + 1))
+    else await page.getByTestId(`scout-opt-${st.correct}`).click()
+    await expect(page.locator('.scout-opt.is-correct')).toBeVisible()
+    if (i === 0) {
+      await page.waitForTimeout(900)
+      await shot('scout-feedback')
+    }
+  }
+  const res = page.getByTestId('scout-result')
+  await expect(res).toBeVisible({ timeout: 20_000 })
+  await expect(res).toContainText(/anticipation and positioning \+[34]/)
+  await shot('scout-result')
+  await page.getByTestId('scout-done').click()
+  await expect(ov).toHaveCount(0)
+  // Time and the prep goal were used like the old activity; the buff is stored for the fixture.
+  expect(await sp<number>(page, 'sp.state().calendar.slot')).not.toBe(slot0)
+  const buff = await sp<{ bonus: number } | null>(page, `JSON.parse(sp.state().life.flags['c:scout'] ?? 'null')`)
+  expect(buff?.bonus ?? 0).toBeGreaterThanOrEqual(3)
+  // Pre-match "Opponent analysis" card.
+  for (let i = 0; i < 20; i++) {
+    const fx = await sp<{ daysUntil: number; fixtureId: string } | null>(page, 'sp.data.nextFixture()')
+    if (fx && fx.daysUntil === 0 && (await sp<number>(page, 'sp.state().calendar.slot')) >= 1) break
+    await sp(page, '(() => { sp.clearEvents(); sp.actions.advance(); sp.clearEvents() })()')
+  }
+  expect(await sp<string>(page, 'sp.data.nextFixture().fixtureId')).toBe(await sp<string>(page, `JSON.parse(sp.state().life.flags['c:scout']).fixtureId`))
+  await sp(page, `(() => { sp.clearEvents(); sp.navigate('home') })()`)
+  await page.getByRole('button', { name: 'Play match' }).click()
+  await expect(page.getByTestId('pm-scout')).toBeVisible({ timeout: 30_000 })
+  await page.getByTestId('pm-scout').scrollIntoViewIfNeeded()
+  await shot('scout-prematch')
+})
+
+test('opponent video: "just skim it" keeps the old instant path (no match bonus)', async ({ page }) => {
+  await beforeMatch(page)
+  await page.getByTestId('act-video').click()
+  await page.getByTestId('act-do').click()
+  await page.getByTestId('scout-quick').click()
+  await expect(page.getByTestId('scout')).toHaveCount(0)
+  expect(await sp<string | null>(page, `sp.state().life.flags['c:scout'] ?? null`)).toBeNull()
+})

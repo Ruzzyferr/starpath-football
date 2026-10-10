@@ -1,5 +1,6 @@
 import { AgendaCard } from './bench/AgendaCard'
 import { agendaBlockReason } from '../backend/benchPath'
+import { openScouting } from '../backend/scouting'
 import '../../styles/screens/planner.css'
 import { useState } from 'preact/hooks'
 import { lt, t, tx } from '../../i18n'
@@ -111,6 +112,12 @@ export function ActivitiesScreen() {
   const blocked = agendaBlockReason()
 
   const doNow = (a: ActivityView) => {
+    // Studying the opponent is the video-scouting mini-game (plain activity when no match is coming).
+    if (a.id === 'video') {
+      setOpen(null)
+      openScouting()
+      return
+    }
     const deltas = actions.doActivity(a.id)
     if (deltas.length === 0) return // the backend already explained why it failed
     setOpen(null)
