@@ -176,6 +176,8 @@ interface TouchGesture {
 interface ButtonTouch {
   id: number
   kind: 'sprint' | 'skill' | 'ctx'
+  /** A context tap button pressed with the ball at his feet: fires on release unless it became a swipe. */
+  pending?: ActionId
   x: number
   y: number
   t: number
@@ -426,8 +428,13 @@ export class InputController {
       .sort((q1, q2) => Math.hypot(p.x - q1.x, p.y - q1.y) / q1.r - Math.hypot(p.x - q2.x, p.y - q2.y) / q2.r)[0]
     if (!b) return false
     this.ctxDown.set(pointerId, b.id)
-    if (!b.hold) this.pressButton(b.id)
-    if (!this.button) this.button = { id: pointerId, kind: 'ctx', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
+    // With the ball at his feet a thumb may start on a button on its way to goal: the tap waits for the
+    // release (a drag becomes the swipe). Off the ball / in goal it fires at once and never swipes.
+    const c = this.lastCtx
+    const onBall = !!c?.heroOnBall && !c.heroIsKeeper
+    const wait = onBall && !b.hold && !this.button
+    if (!b.hold && !wait) this.pressButton(b.id)
+    if (!this.button) this.button = { id: pointerId, kind: 'ctx', x: p.x, y: p.y, t, pts: [this.point(p, t)], ...(wait ? { pending: b.id } : {}) }
     return true
   }
 
@@ -532,10 +539,11 @@ export class InputController {
       // Dragged off the button: it is a swipe (the thumb started on SPRINT/SKILL on its way to goal).
       // Only with the ball at his feet (TestFlight 6): off the ball a thumb drifting on SPRINT
       // turned into a swipe = a slide tackle / keeper dive, and the player threw himself down.
-      // Context buttons never turn into swipes (a quick flick off SPRINT is still read on release).
+      // Context buttons follow the same rule: with the ball a drag is the swipe, off it never.
       const ctx = this.lastCtx
       const onBall = !!ctx?.heroOnBall && !ctx.heroIsKeeper
-      if (b.kind !== 'ctx' && onBall && !this.gesture && Math.hypot(p.x - b.x, p.y - b.y) / this.unit() > BUTTON_DRAG_TO_SWIPE) {
+      if (onBall && !this.gesture && Math.hypot(p.x - b.x, p.y - b.y) / this.unit() > BUTTON_DRAG_TO_SWIPE) {
+        this.ctxDown.delete(b.id)
         if (this.sprintTouch === b.id) this.sprintTouch = null
         if (this.skillTouch === b.id) this.skillTouch = null
         this.button = null
@@ -607,13 +615,14 @@ export class InputController {
       // A short sharp flick off the button toward goal (with the ball) is a shot, not a button press.
       if (!cancel) this.sample(b.pts, e, p, t)
       const ctx = this.lastCtx
-      const flickable = b.kind !== 'ctx' || ctxId === 'sprint'
+      const flickable = b.kind !== 'ctx' || ctxId === 'sprint' || !!b.pending
       const sw = flickable && !cancel && ctx?.heroOnBall && !ctx.heroIsKeeper ? analyzeSwipe(b.pts, 1) : null
       if (sw && !sw.isTap && sw.length >= BUTTON_FLICK_MIN && t - b.t <= 0.25 && facesGoal(ctx!.ballPos, sw.dir)) {
         this.queueSwipe(sw)
         probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
       } else {
         if (b.kind === 'skill' && !cancel) this.queued.push({ kind: 'skill' })
+        if (b.pending && !cancel) this.pressButton(b.pending)
         probeGesture({ outcome: 'button', ...ignored })
       }
     }

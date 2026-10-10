@@ -339,6 +339,25 @@ describe('InputController touch swipes', () => {
     input.setButtons(null)
   })
 
+  it('context buttons on the ball: a tap fires on release, a swipe that starts on one is a swipe', () => {
+    input.setButtons([
+      { id: 'pass', hold: false, key: 'KeyQ' },
+      { id: 'shoot', hold: false, key: 'KeyC' },
+      { id: 'skill', hold: false, key: 'Space' },
+      { id: 'sprint', hold: true, key: 'ShiftLeft' },
+    ])
+    const ui = input.touchUi()
+    const at = (id: string) => ui.buttons.find((b) => b.id === id)!
+    input.poll(ctx)
+    canvas.dispatchEvent(ptr('pointerdown', 12, at('skill').x, at('skill').y, clock))
+    expect(input.poll(ctx).actions).toEqual([])
+    clock += 0.08
+    canvas.dispatchEvent(ptr('pointerup', 12, at('skill').x, at('skill').y, clock))
+    expect(input.poll(ctx).actions).toEqual([{ kind: 'btn', id: 'skill' }])
+    for (const id of ['pass', 'shoot', 'sprint']) expect(doSwipe(at(id).x, at(id).y, 0.28 * W, 0.3, { id: 13 }).map((a) => a.kind), id).toEqual(['swipe'])
+    input.setButtons(null)
+  })
+
   it('a swipe ended by pointercancel still shoots', () => {
     expect(doSwipe(W * 0.7, H * 0.8, 200, 0.15, { cancel: true }).map((a) => a.kind)).toEqual(['swipe'])
   })
