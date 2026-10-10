@@ -16,6 +16,8 @@ export function SaveIndicator() {
   const st = saveStatus.value
   const [visible, setVisible] = useState(false)
   useEffect(() => {
+    // Waiting for the debounced autosave: leave the badge as it is (no flicker on every action).
+    if (st.phase === 'pending') return
     if (st.kind !== 'auto' || st.phase === 'idle' || st.phase === 'error') {
       setVisible(false)
       return

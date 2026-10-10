@@ -7,8 +7,12 @@ import { installBackend } from '../store'
 import { DEFAULT_CAREER } from './index'
 import {
   autosaveEnabled, flushAutosave, installAutosaveTriggers, isDirty, markDirty, refreshSlots, saveStatus,
-  scheduleAutosave, setAutosaveSource, slotInfos, useStorage,
+  loadState, saveState, scheduleAutosave, setAutosaveSource, slotInfos, useStorage,
 } from './persistence'
+import { gameState } from '../store'
+
+/** Queue a save of the current state object right now (what a decision-card resolve does). */
+const flushAutosaveNow = (): Promise<void> => saveState(gameState.value!, 1, 'auto')
 import { quickResolveAll } from './benchPath'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
@@ -65,6 +69,27 @@ describe('autosave scheduling', () => {
     expect(store.liveWrites).toBe(1)
     expect(saveStatus.value).toMatchObject({ phase: 'saved', kind: 'auto' })
     expect(isDirty()).toBe(false)
+  })
+
+  it('newest state wins: a save queued before a commit writes the live state, and "Saved" never covers an older one', async () => {
+    quickResolveAll()
+    const before = { ...gameState.value!.calendar }
+    // A save is queued (e.g. the immediate save after a decision card) …
+    const queued = flushAutosaveNow()
+    // … and the player acts before it runs: the commit replaces the state object.
+    A.advance()
+    expect(saveStatus.value.phase).toBe('pending')
+    await queued
+    await vi.advanceTimersByTimeAsync(4000)
+    await flushAutosave()
+    const slot = (await refreshSlots())[0]!
+    expect(saveStatus.value.phase).toBe('saved')
+    expect(isDirty()).toBe(false)
+    const live = gameState.value!
+    expect(live.calendar).not.toEqual(before)
+    expect(slot.updatedAt).toBeGreaterThan(0)
+    const loaded = await loadState(1)
+    expect(loaded.state!.calendar).toEqual(live.calendar)
   })
 
   it('advancing time autosaves without any manual action', async () => {

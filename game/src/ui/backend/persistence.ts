@@ -110,7 +110,8 @@ function queue(fn: () => Promise<void>): Promise<void> {
 
 /** Save indicator state ("Kaydediliyor…" / "Kaydedildi" / error) for the subtle HUD badge. */
 export interface SaveStatus {
-  phase: 'idle' | 'saving' | 'saved' | 'error'
+  /** `pending`: newer changes are waiting for the debounced autosave (the badge never says "Saved" for an old snapshot). */
+  phase: 'idle' | 'pending' | 'saving' | 'saved' | 'error'
   kind: 'auto' | 'manual'
   at: number
   error?: string
@@ -130,15 +131,21 @@ export function saveState(state: GameState, uiSlot = state.meta.slot || 1, kind:
   const slot = Math.min(3, Math.max(1, Math.round(uiSlot)))
   return queue(async () => {
     saveStatus.value = { phase: 'saving', kind, at: Date.now() }
+    // Newest state wins: a save queued behind another one writes the live career as it is NOW,
+    // never the (older) snapshot object it was asked for — commits replace the state object.
+    const live = current()
+    const isLive = !!live && (state === live || state.meta.id === live.meta.id)
+    const snap = isLive ? live : state
     // Changes made from here on are not in this snapshot.
-    if (state === current() || state.meta.id === current()?.meta.id) {
+    if (isLive) {
       dirty = false
       savedVersion = stateVersion.peek()
     }
     try {
       // saveGame serializes synchronously (and stamps meta.slot with the manager index): restore the UI slot at once.
-      const p = saveGame(manager(), toMgr(slot), state, Date.now())
-      state.meta.slot = slot
+      const p = saveGame(manager(), toMgr(slot), snap, Date.now())
+      snap.meta.slot = slot
+      if (snap !== state) state.meta.slot = slot
       await p
     } catch (e) {
       dirty = true
@@ -146,7 +153,9 @@ export function saveState(state: GameState, uiSlot = state.meta.slot || 1, kind:
       saveStatus.value = { phase: 'error', kind, at: Date.now(), error: String((e as Error)?.message ?? e) }
       throw e
     }
-    saveStatus.value = { phase: 'saved', kind, at: Date.now() }
+    // Still "pending" if newer changes arrived meanwhile and an autosave for them is on its way.
+    const newer = isLive && isDirty() && autosaveEnabled() && (pending || timer !== null)
+    saveStatus.value = { phase: newer ? 'pending' : 'saved', kind, at: Date.now() }
     await refreshSlots()
   })
 }
@@ -272,6 +281,8 @@ export function scheduleAutosave(delay = 1200): void {
   dirty = true
   if (!autosaveEnabled()) return
   pending = true
+  // The last "Saved" no longer covers the live state.
+  if (saveStatus.peek().phase !== 'saving') saveStatus.value = { phase: 'pending', kind: 'auto', at: Date.now() }
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
     timer = null
