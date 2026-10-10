@@ -1335,3 +1335,27 @@ OVR 21/25 76/81 · 76/82 · 76/82; ilk 1. kademe / elit yaşı 21,0/23,0 · 20,0
 139K · 131K · 162K; iflas %3 (kumarbaz) · %0 · %0; kumarbaz payı %12 · %23 · %21 (1000'de 6 kumarbazlık örneklem gürültüsü).
 PLAYTIME (24 kariyer): S1 süre %70 / %72 / %76, S2 ikinci yarı ilk 11 %56 / %60 / %66, en uzun süresiz seri medyan 2,
 maks 5 / 6 / 4; HEAD ile aynı (itibar seçimi etkilemiyor). Golden master değişmedi.
+## TestFlight build 4: günlük plan kaldırıldı, zorunlu görev sıklığı, rakip video analizi
+
+**Günü planla kaldırıldı:** Sabah / Öğleden sonra / Akşam dilim seçicileri yok; gün, Ana Sayfa'daki günlük
+programla (Zorunlu + Önerilen) ilerliyor. Etkinlikler "Aktiviteler" ekranından doğrudan yapılıyor (zaman ve enerji
+eskisi gibi harcanıyor); eski `planner` rotası `activities`'e yönleniyor. Koç turu: planner/planSlot adımları yerine
+tek "Günün programı" adımı.
+
+**Zorunlu görev yükü** (`sim/game/agenda.ts`): haftalık bütçe 4 → 6 (görev başına sayılıyor, `c:agendaHist`); maç
+günü ve maçtan iki gün sonraki izin günü boş, diğer günlerin ~%90'ında bir görev, ~%20'sinde ikinci görev. Yeni
+sıradan görevler: takım toplantısı, zorunlu kuvvet çalışması, kondisyon testi, kulüp TV röportajı, okul ziyareti
+(hızlı çöz / oyna / atla). Ölçüm: agenda.test (3 tohum) haftada 4,85, günlerin %37'si boş, %6'sı iki görevli;
+PLAYTIME (6 kariyer × 2 sezon) haftada 5,13 (önce 1,96). En sık tür toplam görevlerin < %35'i.
+
+**Rakip video analizi** (`sim/game/oppScouting.ts`, `game/training/scouting.ts`): rakibin gerçek kadrosu/stilinden
+4 klip, 3 seçenek; skor → not → o maç için önsezi + pozisyon alma (kaleci: önsezi, kaleci pozisyonu, refleks)
+S +4 · A +3 · B +2 · C +1, önsezi/vizyon XP. Otopilot oynamadığı için denge ölçümlerini etkilemiyor.
+
+BALANCE (30 × 10), tohum 1000 · 2000 · 3000: itibar 18/21/25 13/55/82 · 14/55/81 · 19/56/81 (hedef ~15/~50/75–85);
+OVR 21/25 75/81 · 76/81 · 77/82; pot ≥ 85 için 25'e kadar OVR 80+ 9/9 · 11/11 · 11/11; kumarhane payı (herkes)
+%4 · %2 · %3; iflas %0 · %0 · %3 (pro). PLAYTIME (yaş başına 12 kariyer): S1 süre %71 / %75 / %75, S2 ikinci yarı
+ilk 11 %60 / %64 / %62, süresiz seri medyan 2. Rol dengesi (rol başına 12 kariyer × 8 sezon): kariyer OVR ±%1,4,
+kariyer reytingi ±%2,0 içinde; itibar 22/24 rol ±%5 içinde, Ters Kanat +%5,1 ve Teknik Çalımcı −%5,1 sınırda
+(12 kariyerlik itibar gürültüsü; önceki raporda da Ters Kanat +%5,0). **Golden master bilinçli olarak yenilendi**
+(`UPDATE_GOLDEN=1`, zorunlu görev commit'i): otopilot daha çok görevi hızlı çözüyor.
