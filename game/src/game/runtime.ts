@@ -835,6 +835,23 @@ export class HighlightRuntime {
     return offsideSnapshot(this.agents, this.ball.x, this.hero)
   }
 
+  /**
+   * The team-mate the PASS button would play to right now with the stick at `stick` (pitch
+   * direction; none = the hero's facing), for the target preview drawn before the press.
+   */
+  passButtonTarget(stick?: Vec2): string | null {
+    if (!this.heroOnBall || this.hero.isKeeper || this.phase !== 'live' || this.setPiece) return null
+    const opp = this.agents.filter((a) => a.team === 'opp').map((a) => a.pos)
+    return this.passMate({ x: this.ball.x, y: this.ball.y }, stick && len(stick) > 0.2 ? stick : undefined, this.passCandidates(), opp)?.id ?? null
+  }
+
+  /** PASS target (intent): the best open man in the stick's cone, else the obvious free one — not a ball into space. */
+  private passMate(from: Vec2, stick: Vec2 | undefined, mates: readonly PassCandidate[], opp: readonly Vec2[]): PassCandidate | null {
+    const dir = stick && len(stick) > 0.2 ? norm(stick) : fromAngle(this.hero.facing)
+    if (stick) return buttonPassTarget(from, dir, mates, opp, this.assist)
+    return pickPassTarget(from, dir, mates, opp, this.assist === 'manual' ? 'half' : this.assist) ?? buttonPassTarget(from, dir, mates, opp, this.assist)
+  }
+
   passOptions(): readonly string[] {
     if (!this.heroOnBall || this.hero.isKeeper || this.phase !== 'live' || this.setPiece?.kind === 'penalty') return []
     if (this.passOpts.t >= 0 && this.time - this.passOpts.t < 0.15) return this.passOpts.ids
@@ -1286,8 +1303,7 @@ export class HighlightRuntime {
           const point = ahead ? add(leadPosition(from, ahead, 14), scale(dir, 5)) : add(from, scale(dir, 18))
           return through(point, act.lofted ?? false, 0.7)
         }
-        // Intent: the best man in the stick's cone, else the obvious free one (not a ball into space).
-        const mate = act.dir ? buttonPassTarget(from, dir, mates, opp, this.assist) : pickPassTarget(from, dir, mates, opp, this.assist === 'manual' ? 'half' : this.assist) ?? buttonPassTarget(from, dir, mates, opp, this.assist)
+        const mate = this.passMate(from, act.dir, mates, opp)
         if (mate) return pass(mate, act.lofted ?? dist(from, mate.pos) > 30, 0.6)
         return through(add(from, scale(dir, 14)), act.lofted ?? false, 0.6)
       }
@@ -1477,7 +1493,7 @@ export class HighlightRuntime {
       if (incoming && this.ball.z < 1.0 && dist(hero.pos, ballP) < 1.6) {
         // First-time volley / shot.
         const aim = this.heroHeaderAim ?? this.autoGoalAim()
-        const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, assistPull: this.assistPull(), env: this.env, noiseScale: this.noiseScale() * 1.3 * HERO_SHOT_NOISE }, this.rng)
+        const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, assistPull: this.assistPull(), env: this.env, noiseScale: this.noiseScale() * 1.3 * HERO_SHOT_NOISE, frameSafe: this.frameSafe(), skill: momentSkill('shot', hero.attrs) }, this.rng)
         this.kickBall(hero, plan, 'shot', 0.85, null)
         return
       }

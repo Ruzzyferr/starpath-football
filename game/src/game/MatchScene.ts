@@ -1924,6 +1924,27 @@ export class MatchScene extends Phaser.Scene {
         g.strokeEllipse(bp.x, bp.y, r * 2, r * 2 * TILT, 20)
       }
     }
+    // PASS target preview: the man the PASS button will find with the stick as it is now (intent, before the press).
+    if (!pv && rt.heroOnBall && this.mode === 'play' && contextActions(rt.actionContext()).includes('pass')) {
+      const id = rt.passButtonTarget(this.lastIntent?.move)
+      const a = id ? this.agentById(id) : null
+      if (a) {
+        const bp = project(a.pos.x, a.pos.y)
+        const bb = project(rt.ball.x, rt.ball.y)
+        const pr = (1.05 + (this.rm ? 0 : Math.sin(this.elapsed * 6) * 0.08)) * PPM
+        g.lineStyle(0.07 * PPM, 0xffd23f, 0.45)
+        const n = 9
+        for (let i = 0; i < n; i += 2) {
+          const t0 = i / n
+          const t1 = (i + 1) / n
+          g.lineBetween(bb.x + (bp.x - bb.x) * t0, bb.y + (bp.y - bb.y) * t0, bb.x + (bp.x - bb.x) * t1, bb.y + (bp.y - bb.y) * t1)
+        }
+        g.lineStyle(0.12 * PPM, 0xffd23f, 0.95)
+        g.strokeEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT, 24)
+        g.fillStyle(0xffd23f, 0.16)
+        g.fillEllipse(bp.x, bp.y, pr * 2, pr * 2 * TILT, 24)
+      }
+    }
     // One-two: the receiver who will return the ball (tap again); solid once requested.
     const ot = rt.oneTwoHint()
     if (ot) {
