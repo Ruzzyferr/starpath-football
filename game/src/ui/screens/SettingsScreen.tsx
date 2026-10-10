@@ -143,6 +143,7 @@ export function SettingsScreen() {
               ]}
             />
           </Field>
+          <Switch label={t('settings.autosave')} desc={t('settings.autosaveDesc')} checked={s.autosave !== false} onChange={(autosave) => updateSettings({ autosave })} />
         </Group>
 
         <Group title={t('settings.sections.audio')} icon="speaker">

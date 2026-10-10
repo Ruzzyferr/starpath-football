@@ -40,3 +40,45 @@ export async function migrateMissing(from: SaveStorage, to: SaveStorage, keys: s
   }
   return n
 }
+
+/**
+ * Native file storage with a browser-storage safety net: when a native write
+ * fails (plugin bug, permissions, full disk) the value goes to `fallback`
+ * instead of the save failing. Invariant: `fallback` holds a key only while its
+ * newest write went there, so get() reads the fallback first and a successful
+ * native write clears the fallback copy.
+ */
+export class FallbackStorage implements SaveStorage {
+  /** Called once per key the first time a native write falls back (diagnostics). */
+  onFallback: ((key: string, error: unknown) => void) | null = null
+
+  private readonly primary: SaveStorage
+  private readonly fallback: SaveStorage
+
+  constructor(primary: SaveStorage, fallback: SaveStorage) {
+    this.primary = primary
+    this.fallback = fallback
+  }
+
+  async get(key: string): Promise<string | null> {
+    const f = await this.fallback.get(key).catch(() => null)
+    if (f !== null) return f
+    return this.primary.get(key)
+  }
+
+  async set(key: string, value: string): Promise<void> {
+    try {
+      await this.primary.set(key, value)
+    } catch (e) {
+      await this.fallback.set(key, value)
+      try { this.onFallback?.(key, e) } catch { /* ignore */ }
+      return
+    }
+    await this.fallback.remove(key).catch(() => undefined)
+  }
+
+  async remove(key: string): Promise<void> {
+    await this.fallback.remove(key).catch(() => undefined)
+    await this.primary.remove(key)
+  }
+}

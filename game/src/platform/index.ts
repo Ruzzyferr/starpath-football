@@ -13,12 +13,12 @@
  */
 import { effect } from '@preact/signals'
 import { IdbStorage, type SaveStorage } from '../state/save'
-import { useStorage } from '../ui/backend/persistence'
+import { checkSaveIntegrity, refreshSlots, useStorage } from '../ui/backend/persistence'
 import { screen } from '../ui/store'
 import { detectPlatform, isMobileNative, type PlatformId } from './detect'
 import { knownSaveKeys } from './keys'
 import { trackAudioContexts, watchVisibility } from './lifecycle'
-import { ElectronFileStorage, migrateMissing } from './storage'
+import { ElectronFileStorage, FallbackStorage, migrateMissing } from './storage'
 import { handleBack } from './back'
 import { installGlRecovery } from './glRecovery'
 import { flushAutosave } from '../ui/backend/persistence'
@@ -75,7 +75,12 @@ export const platform = {
 
 async function pickStorage(): Promise<SaveStorage | null> {
   if (id === 'electron' && window.starpathNative) return new ElectronFileStorage(window.starpathNative)
-  if (cap) return new cap.CapacitorFileStorage()
+  if (cap) {
+    // Native files, with IndexedDB as a safety net if a native write ever fails (TestFlight build 4).
+    const fb = new FallbackStorage(new cap.CapacitorFileStorage({ absolute: id === 'ios' }), new IdbStorage())
+    fb.onFallback = (key, e) => recordError(`native save write failed (${key}): ${String((e as Error)?.message ?? e)}`, 'save')
+    return fb
+  }
   return null // web: SaveManager's default (IndexedDB → compressed localStorage)
 }
 
@@ -116,7 +121,7 @@ export async function initPlatform(): Promise<PlatformId> {
   installGlRecovery()
   noteRecovery()
   // Desktop: the shell asks us to flush the autosave before the window closes (2.9#45).
-  if (id === 'electron') window.starpathNative?.onBeforeQuit(() => flushAutosave())
+  if (id === 'electron') window.starpathNative?.onBeforeQuit(() => flushAutosave(true))
 
   if (isMobileNative(id)) {
     try {
@@ -135,6 +140,9 @@ export async function initPlatform(): Promise<PlatformId> {
     if (st) {
       await migrateFromIdb(st)
       useStorage(st)
+      // The backend listed the slots before the native storage was chosen: list them again from the
+      // real storage, otherwise "Continue" / Load show nothing after a relaunch on iOS/Android.
+      void refreshSlots().then(() => checkSaveIntegrity())
     }
   } catch (e) {
     console.warn('[StarPath] native save storage unavailable, using browser storage', e)

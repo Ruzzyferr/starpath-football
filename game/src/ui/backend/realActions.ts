@@ -404,7 +404,7 @@ export const realActions: GameActions = {
     s.meta.slot = slot
     recordWeek(s)
     replaceState(s)
-    void saveState(s, slot).catch((e: unknown) => console.warn('[StarPath] initial save failed', e))
+    void saveState(s, slot, 'auto').catch((e: unknown) => console.warn('[StarPath] initial save failed', e))
   },
   async save(slot) {
     const s = get()

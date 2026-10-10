@@ -910,3 +910,30 @@
 .why-more-bar > span { display: block; height: 100%; background: var(--accent-blue); }
 .why-more-list li.is-pos .why-more-bar > span { background: var(--brand-pitch); }
 .why-more-list li.is-neg .why-more-bar > span { background: var(--state-danger); }
+
+/* Autosave badge (SaveIndicator) */
+.save-indicator {
+  position: fixed;
+  left: calc(var(--safe-left) + 12px);
+  bottom: calc(var(--safe-bottom) + var(--tabbar-h) + 10px);
+  z-index: 60;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  color: var(--text-mid);
+  font-size: var(--fs-sm);
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.save-indicator.is-on { opacity: 0.92; transform: none; }
+.save-indicator:empty { padding: 0; border: 0; }
+@media (min-width: 900px) {
+  .save-indicator { left: calc(var(--safe-left) + 88px); bottom: calc(var(--safe-bottom) + 16px); }
+}
+[data-motion='reduced'] .save-indicator { transition: none; }

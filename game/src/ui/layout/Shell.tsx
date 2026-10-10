@@ -14,6 +14,7 @@ import { Logo } from './Logo'
 import { seasonLabel } from '../format'
 import { requestAdvance } from '../tutorial/MatchdayConfirm'
 import { NewTag } from '../tutorial/UnlockGate'
+import { SaveIndicator } from '../components/SaveIndicator'
 
 export type TabId = 'home' | 'career' | 'life' | 'world' | 'menu'
 
@@ -270,6 +271,7 @@ export function Shell({ children }: { children: ComponentChildren }) {
       </div>
       <ContextPanel />
       <TabBar />
+      <SaveIndicator />
     </div>
   )
 }

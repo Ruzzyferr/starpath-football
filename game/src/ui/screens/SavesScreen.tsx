@@ -44,7 +44,14 @@ export function SavesScreen() {
 
   const save = (slot: number) =>
     run(`save${slot}`, async () => {
-      await actions.save(slot)
+      try {
+        await actions.save(slot)
+      } catch (e) {
+        // Say why (storage full, native write refused…) instead of a generic error.
+        const reason = String((e as Error)?.message ?? e).slice(0, 120) || t('common.error')
+        toast(t('saves.saveFailed', { reason }), 'error')
+        return
+      }
       toast(t('saves.saved', { n: slot }), 'success', 'floppy')
     })
 

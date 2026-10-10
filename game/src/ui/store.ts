@@ -887,6 +887,8 @@ export interface UiSettings extends Settings, Omit<AudioSettingsFields, 'sound' 
   reducedMotion: boolean
   /** Offer timed in-match decision windows (off = never; the match never waits on a timer). */
   matchDecisions: boolean
+  /** Save the career to its slot automatically (day advance, matches, app background). Default ON. */
+  autosave: boolean
   highContrast: boolean
   /** Colour theme: dark (default), light, or follow the OS. */
   theme: 'dark' | 'light' | 'system'
@@ -941,6 +943,7 @@ export const DEFAULT_SETTINGS: UiSettings = {
   textScale: 1,
   reducedMotion: false,
   matchDecisions: true,
+  autosave: true,
   highContrast: false,
   theme: 'dark',
   lowFx: false,

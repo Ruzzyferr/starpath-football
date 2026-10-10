@@ -13,7 +13,7 @@ import { signal } from '@preact/signals'
 import type { GameState } from '../../core/types'
 import { loadGame, saveGame, unpackState } from '../../sim/game'
 import { MemoryStorage, SaveManager, defaultStorage, migrate, openEnvelope, type SaveNotice, type SaveStorage } from '../../state/save'
-import type { SaveSlotInfo } from '../store'
+import { stateVersion, type SaveSlotInfo } from '../store'
 import { current, notify } from './session'
 
 export const UI_SLOTS = [1, 2, 3] as const
@@ -26,6 +26,7 @@ export function useStorage(s: SaveStorage): void {
   storage = s
   mgr = new SaveManager(s)
   mgr.onNotice = onSaveNotice
+  slotsGen++ // a listing still running against the previous storage must not overwrite the new one
 }
 
 /** Player-facing messages for SaveManager notices (backup skipped, migrated, integrity problems). */
@@ -63,9 +64,19 @@ const toMgr = (uiSlot: number): number => uiSlot - 1
 /** Slot cards, refreshed asynchronously after every save/delete/import. */
 export const slotInfos = signal<SaveSlotInfo[]>(UI_SLOTS.map((slot) => ({ slot, empty: true })))
 
+let slotsGen = 0
+
 export async function refreshSlots(): Promise<SaveSlotInfo[]> {
+  let m: SaveManager
   try {
-    const sums = await manager().summaries()
+    m = manager() // may install the default storage (which bumps the generation): before taking ours
+  } catch {
+    return slotInfos.value
+  }
+  const gen = ++slotsGen
+  try {
+    const sums = await m.summaries()
+    if (gen !== slotsGen) return slotInfos.value
     slotInfos.value = UI_SLOTS.map((slot) => {
       const s = sums[toMgr(slot)]
       if (!s) return { slot, empty: true }
@@ -97,13 +108,45 @@ function queue(fn: () => Promise<void>): Promise<void> {
   return next
 }
 
-export function saveState(state: GameState, uiSlot = state.meta.slot || 1): Promise<void> {
+/** Save indicator state ("Kaydediliyor…" / "Kaydedildi" / error) for the subtle HUD badge. */
+export interface SaveStatus {
+  phase: 'idle' | 'saving' | 'saved' | 'error'
+  kind: 'auto' | 'manual'
+  at: number
+  error?: string
+}
+export const saveStatus = signal<SaveStatus>({ phase: 'idle', kind: 'auto', at: 0 })
+
+/** True while the live state has changes no save has picked up yet. */
+let dirty = false
+/** stateVersion (bumped by every commit, silent ones included) at the last save of the live career. */
+let savedVersion = -1
+export function markDirty(): void {
+  dirty = true
+}
+export const isDirty = (): boolean => dirty || (!!current() && stateVersion.peek() !== savedVersion)
+
+export function saveState(state: GameState, uiSlot = state.meta.slot || 1, kind: SaveStatus['kind'] = 'manual'): Promise<void> {
   const slot = Math.min(3, Math.max(1, Math.round(uiSlot)))
   return queue(async () => {
-    // saveGame serializes synchronously (and stamps meta.slot with the manager index): restore the UI slot at once.
-    const p = saveGame(manager(), toMgr(slot), state, Date.now())
-    state.meta.slot = slot
-    await p
+    saveStatus.value = { phase: 'saving', kind, at: Date.now() }
+    // Changes made from here on are not in this snapshot.
+    if (state === current() || state.meta.id === current()?.meta.id) {
+      dirty = false
+      savedVersion = stateVersion.peek()
+    }
+    try {
+      // saveGame serializes synchronously (and stamps meta.slot with the manager index): restore the UI slot at once.
+      const p = saveGame(manager(), toMgr(slot), state, Date.now())
+      state.meta.slot = slot
+      await p
+    } catch (e) {
+      dirty = true
+      savedVersion = -1
+      saveStatus.value = { phase: 'error', kind, at: Date.now(), error: String((e as Error)?.message ?? e) }
+      throw e
+    }
+    saveStatus.value = { phase: 'saved', kind, at: Date.now() }
     await refreshSlots()
   })
 }
@@ -183,27 +226,57 @@ export function deleteAll(): Promise<void> {
 
 let timer: ReturnType<typeof setTimeout> | null = null
 let pending = false
+let retries = 0
 /** Last autosave error (shown once). */
 export const autosaveError = signal<string | null>(null)
 
-/** Request an autosave of the live state (debounced ~1.2 s, then on idle). */
+/** Autosave switch (Settings → "Otomatik kayıt"); default ON. Wired to the settings signal by the backend. */
+let autosaveOn: () => boolean = () => true
+export function setAutosaveSource(fn: () => boolean): void {
+  autosaveOn = fn
+}
+export const autosaveEnabled = (): boolean => {
+  try {
+    return autosaveOn() !== false
+  } catch {
+    return true
+  }
+}
+
+function runAutosave(): Promise<void> {
+  pending = false
+  const s = current()
+  if (!s) return Promise.resolve()
+  return saveState(s, s.meta.slot || 1, 'auto').then(
+    () => {
+      retries = 0
+      autosaveError.value = null
+    },
+    (e: unknown) => {
+      const msg = String((e as Error)?.message ?? e)
+      recordError(e, 'save') // opt-in local log (2.12#120)
+      // Transient failures (busy bridge, storage hiccup): retry a few times with backoff, then tell the player once.
+      if (retries < 3) {
+        retries++
+        scheduleAutosave(1500 * 2 ** retries)
+      } else if (autosaveError.value === null) {
+        autosaveError.value = msg
+        notify({ tr: 'Otomatik kayıt başarısız. Ayarlar → Kayıtlar’dan elle kaydet.', en: 'Autosave failed. Save manually from Settings → Saves.' }, 'error')
+      }
+    },
+  )
+}
+
+/** Request an autosave of the live state (debounced ~1.2 s, then on idle). No-op when autosave is off. */
 export function scheduleAutosave(delay = 1200): void {
+  dirty = true
+  if (!autosaveEnabled()) return
   pending = true
   if (timer) clearTimeout(timer)
   timer = setTimeout(() => {
     timer = null
     const run = () => {
-      if (!pending) return
-      pending = false
-      const s = current()
-      if (!s) return
-      saveState(s).then(
-        () => { autosaveError.value = null },
-        (e: unknown) => {
-          autosaveError.value = String((e as Error)?.message ?? e)
-          recordError(e, 'save') // opt-in local log (2.12#120)
-        },
-      )
+      if (pending) void runAutosave()
     }
     const ric = (globalThis as { requestIdleCallback?: (cb: () => void, o?: { timeout: number }) => void }).requestIdleCallback
     if (ric) ric(run, { timeout: 2000 })
@@ -211,18 +284,40 @@ export function scheduleAutosave(delay = 1200): void {
   }, delay)
 }
 
-/** Flush a pending autosave now (e.g. before unload / in tests). */
-export async function flushAutosave(): Promise<void> {
+/**
+ * Flush a pending autosave now (before unload, on app background, before loading a slot, in tests).
+ * With `force`, also saves unsaved changes that no autosave was scheduled for (app going to background).
+ */
+export async function flushAutosave(force = false): Promise<void> {
   if (timer) {
     clearTimeout(timer)
     timer = null
   }
-  if (pending) {
-    pending = false
-    const s = current()
-    if (s) await saveState(s)
-  }
+  if (pending || (force && isDirty() && autosaveEnabled())) await runAutosave()
   await chain
+}
+
+let triggersInstalled = false
+/**
+ * Crash-safe autosave triggers: the app going to the background (Capacitor App pause / appStateChange →
+ * `sp:app-pause`, browser visibilitychange) or the page being closed (pagehide) saves unsaved changes at once.
+ * `beforeSave` runs first (e.g. persist the live-match snapshot into the state).
+ */
+export function installAutosaveTriggers(beforeSave: () => void = () => {}): void {
+  if (triggersInstalled || typeof window === 'undefined') return
+  triggersInstalled = true
+  const now = () => {
+    if (!current()) return
+    try { beforeSave() } catch { /* ignore */ }
+    void flushAutosave(true).catch(() => undefined)
+  }
+  window.addEventListener('sp:app-pause', now)
+  window.addEventListener('pagehide', now)
+  if (typeof document !== 'undefined') {
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') now()
+    })
+  }
 }
 
 export const storageForTests = (): SaveStorage | null => storage
