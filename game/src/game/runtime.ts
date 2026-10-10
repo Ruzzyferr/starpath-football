@@ -10,6 +10,7 @@
  * previous and current step for smooth rendering in slow motion.
  */
 import { stepTimeScale, type ScaleRamp } from './bulletTime'
+import type { ActionContext, ActionId } from './actionSet'
 import { Rng } from '../core/rng'
 import { roleAiStyle, type RoleAiStyle } from '../core/roles'
 import type { Difficulty } from '../core/types'
@@ -216,10 +217,14 @@ export interface HeroControl {
   /** Desired movement, length ≤ 1. */
   move: Vec2
   sprint: boolean
+  /** A held context button (jockey / shield; see game/actionSet). Missing = none. */
+  hold?: 'jockey' | 'shield' | null
 }
 
 /** Discrete hero intents (already converted to pitch space). */
 export type HeroAction =
+  /** A context button (game/actionSet). `dir` = pitch direction the scene attached (dive side, pass direction). */
+  | { kind: 'btn'; id: ActionId; dir?: Vec2 }
   | { kind: 'swipe'; swipe: SwipeFeatures }
   | { kind: 'tapAt'; at: Vec2 }
   | { kind: 'shoot'; target: Vec2; power: number; curl: number; chip: boolean }
@@ -507,6 +512,20 @@ export class HighlightRuntime {
   private readCut: { to: Vec2; until: number } | null = null
   /** Keeper coming for a cross (gk_claim): until when he commits to the landing point. */
   private claimUntil = -1
+  /** Context button PUNCH: the keeper coming for this cross punches it rather than catching. */
+  private punchCross = false
+  /** Context button run (tackle/slide close-in, intercept, press, rush, block): flat out to `to()` until `until`. */
+  private dash: { to: () => Vec2 | null; until: number; why: 'engage' | 'intercept' | 'press' | 'rush' | 'block' } | null = null
+  /** TACKLE / SLIDE pressed out of range: the challenge goes in as soon as he is close enough. */
+  private engage: { slide: boolean; until: number } | null = null
+  /** BLOCK: until when the hero is spread in the shot's line (wider body, Positioning / Aggression). */
+  private blockUntil = -1
+  /** STAY (keeper): set and big, no auto-positioning drift, until then. */
+  private stayUntil = -1
+  /** Seconds the hero has been jockeying a carrier (a patient defender times his tackle better). */
+  private jockeyT = 0
+  /** Sold by a dribble / a missed standing tackle: on his feet but stopping and turning until then. */
+  private stumbleUntil = -1
   /** Vision pass options cache (ids, best first). */
   private passOpts: { t: number; ids: string[] } = { t: -1, ids: [] }
   /**
@@ -637,6 +656,35 @@ export class HighlightRuntime {
   setControl(c: HeroControl): void {
     this.control.move = len(c.move) > 1 ? norm(c.move) : { ...c.move }
     this.control.sprint = c.sprint
+    this.control.hold = c.hold ?? null
+  }
+
+  /** What the context buttons need to know right now (game/actionSet). */
+  actionContext(): ActionContext {
+    const o = this.owner
+    return {
+      kind: this.kind,
+      heroIsKeeper: this.hero.isKeeper,
+      heroOnBall: this.owner === this.hero,
+      heroTaker: !!this.setPiece && this.setPiece.takerId === this.hero.id && this.phase !== 'post' && this.phase !== 'done',
+      oppInPossession: o ? o.team === 'opp' : this.defending || this.lastPossTeam === 'opp',
+    }
+  }
+
+  /** A high ball (cross / corner) is dropping into the hero keeper's box: CLAIM / PUNCH are live. */
+  get crossIncoming(): boolean {
+    return this.hero.isKeeper && this.crossInFlight()
+  }
+
+  /** The hero is jockeying a carrier (held JOCKEY, goal-side and close). */
+  private jockeying(): boolean {
+    const o = this.owner
+    return this.control.hold === 'jockey' && this.hero.state === 'run' && !!o && o.team === 'opp' && dist(o.pos, this.hero.pos) < 3.2
+  }
+
+  /** The hero is shielding the ball (held SHIELD on the ball). */
+  private shielding(): boolean {
+    return this.control.hold === 'shield' && this.owner === this.hero
   }
 
   /** Queues a discrete action (processed on the next step). */
@@ -1035,7 +1083,7 @@ export class HighlightRuntime {
 
   private heroBusy(): boolean {
     const s = this.hero.state
-    return s === 'slide' || s === 'dive' || s === 'down'
+    return s === 'slide' || s === 'dive' || s === 'down' || this.time < this.stumbleUntil
   }
 
   private handleAction(act: HeroAction): void {
@@ -1045,6 +1093,7 @@ export class HighlightRuntime {
     if (act.kind === 'corner' || act.kind === 'wall') return
     if (this.kind === 'corner_kick' && this.setPiece?.takerId === hero.id) return
     if (this.heroBusy()) return
+    if (act.kind === 'btn') return this.buttonAction(act)
     if (hero.isKeeper && this.owner !== hero) {
       this.keeperAction(act)
       return
@@ -1162,6 +1211,56 @@ export class HighlightRuntime {
         const mate = pickPassTarget(from, dir, mates, opp, this.assist === 'manual' ? 'half' : this.assist)
         if (mate) return pass(mate, act.lofted ?? dist(from, mate.pos) > 30, 0.6)
         return through(add(from, scale(dir, 14)), act.lofted ?? false, 0.6)
+      }
+      case 'btn': {
+        const dir = act.dir && len(act.dir) > 0.2 ? norm(act.dir) : undefined
+        switch (act.id) {
+          case 'pass':
+            return this.resolveHeroKick({ kind: 'pass', dir }, preview)
+          case 'through':
+            return this.resolveHeroKick({ kind: 'pass', dir, through: true }, preview)
+          case 'shoot': {
+            // Placed toward the far side of the keeper; Shooting / Composure decide how true it flies.
+            const aim = this.autoGoalAim()
+            return shot({ x: PITCH_LENGTH, y: aim.y }, 0.85, 0, false)
+          }
+          case 'lofted': {
+            // Long Passing / Vision: the switch to the freest team-mate at least 20 m away.
+            const far = mates
+              .map((m) => ({ m, d: dist(from, m.pos), open: laneOpenness(from, m.pos, opp) }))
+              .filter((c) => c.d > 20)
+              .sort((p, q) => q.open * 0.6 + q.d / 60 - (p.open * 0.6 + p.d / 60))[0]
+            if (far) return pass(far.m, true, 0.75)
+            return through(add(from, scale(dir ?? fromAngle(hero.facing), 30)), true, 0.75)
+          }
+          case 'cross': {
+            // Crossing: whip it toward the runner in the box (or the penalty spot area).
+            const sideY = from.y < GOAL_CENTER_Y ? 1 : -1
+            const runner = mates.filter((m) => m.pos.x > PITCH_LENGTH - 18 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 12).sort((p, q) => dist(p.pos, { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }) - dist(q.pos, { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }))[0]
+            const target = runner ? leadPosition(from, runner, 18, 3) : { x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + sideY * 2 }
+            const plan = planKick({ ...base, kind: 'cross', target: inField(target, 2), targetZ: 1.8, power: 0.7, curl: 0.4 * sideY, noiseScale: this.noiseScale() }, rng)
+            return { plan, kind: 'cross' as KickKind, power: 0.7, passTo: null }
+          }
+          case 'throw': {
+            // Out of the hands to the nearest team-mate with a clear lane (GK Distribution).
+            const near = mates
+              .map((m) => ({ m, d: dist(from, m.pos), open: laneOpenness(from, m.pos, opp) }))
+              .filter((c) => c.d < 32)
+              .sort((p, q) => q.open - q.d / 60 - (p.open - p.d / 60))[0]
+            if (near) return pass(near.m, false, 0.55)
+            return this.resolveHeroKick({ kind: 'pass', dir }, preview)
+          }
+          case 'kick': {
+            // A long kick upfield to the furthest free team-mate.
+            const far = mates
+              .map((m) => ({ m, open: laneOpenness(from, m.pos, opp) }))
+              .sort((p, q) => q.m.pos.x * attackDir(hero.team) + q.open * 20 - (p.m.pos.x * attackDir(hero.team) + p.open * 20))[0]
+            if (far) return pass(far.m, true, 0.85)
+            return through(add(from, { x: attackDir(hero.team) * 40, y: 0 }), true, 0.85)
+          }
+          default:
+            return null
+        }
       }
       case 'action': {
         // Quick contextual play: shoot if facing goal in range, else pass forward.
@@ -1464,7 +1563,9 @@ export class HighlightRuntime {
     if (hero.cd > 0) return
     hero.cd = 0.9
     // Anticipation: reading the carrier's touch times the challenge better.
-    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9)
+    // A patient jockey (JOCKEY held first) waits for the touch: better timed, more so with Anticipation.
+    const patience = Math.min(0.18, this.jockeyT * 0.12) * (0.5 + a01(hero.attrs.anticipation ?? 50))
+    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9 + patience)
     const behind = isBehind(carrier, hero)
     const odds = tackleOdds(hero, carrier, timing, behind, false, this.difficulty)
     const st = standingTackleWin(odds.win, this.ballGap(carrier))
@@ -1473,11 +1574,12 @@ export class HighlightRuntime {
     } else if (this.rng.chance(odds.foul * refHighlightFoulMult(this.refStrictness))) {
       this.heroFoul(carrier, false, behind)
     } else {
-      hero.state = 'down'
       // Diving in at his feet (early) gets you beaten: longer stumble, he accelerates past.
-      hero.stateT = st.early ? -0.4 : -0.15
+      // He stays on his feet (a missed standing tackle is not a fall), just out of the play for a beat.
+      this.stumbleUntil = this.time + KEEPER_GETUP + (st.early ? 0.4 : 0.15)
+      hero.vel = scale(hero.vel, 0.3)
       if (st.early) carrier.vel = scale(carrier.vel, 1.15)
-      hero.noTouch = 0.6
+      hero.noTouch = this.stumbleUntil - this.time
       this.events.push({ type: 'tackle', by: hero.id, won: false, slide: false, x: hero.pos.x, y: hero.pos.y })
     }
   }
@@ -1492,6 +1594,221 @@ export class HighlightRuntime {
     hero.vel = scale(hero.actionDir, Math.max(len(hero.vel), topSpeed({ ...hero, sprint: true })) + 1.2)
     this.heroTackleResolved = false
     this.events.push({ type: 'tackle', by: hero.id, won: false, slide: true, x: hero.pos.x, y: hero.pos.y })
+  }
+
+  // ───────────────────────── Context buttons (game/actionSet) ─────────────────────────
+
+  /** One context button press. Holds (SPRINT / JOCKEY / SHIELD) are read from the control every step instead. */
+  private buttonAction(act: Extract<HeroAction, { kind: 'btn' }>): void {
+    const hero = this.hero
+    switch (act.id) {
+      case 'sprint':
+      case 'jockey':
+      case 'shield':
+        return
+      case 'call':
+        return this.callForBall(null)
+      case 'skill':
+        if (this.owner === hero) this.skillMove()
+        return
+      case 'pass':
+      case 'through':
+      case 'lofted':
+      case 'cross':
+      case 'throw':
+      case 'kick':
+      case 'shoot': {
+        if (this.owner !== hero) {
+          // Off the ball SHOOT is the first-time finish of a ball dropping to him (rebound, cut-back).
+          if (act.id === 'shoot' && !hero.isKeeper) this.offBallAction({ kind: 'action' })
+          return
+        }
+        const k = this.resolveHeroKick(act, false)
+        if (!k) return
+        this.kickBall(hero, k.plan, k.kind, k.power, k.passTo)
+        if (this.keeperHold && this.keeperHold.releasedAt < 0) this.keeperHold = { ...this.keeperHold, releasedAt: this.time, thrown: k.kind === 'pass' || k.kind === 'through' }
+        return
+      }
+      case 'head':
+      case 'jump':
+        return this.heroJump()
+      case 'tackle':
+      case 'slide':
+        if (!this.tryEngage(act.id === 'slide')) this.engage = { slide: act.id === 'slide', until: this.time + 1.1 }
+        return
+      case 'block':
+        return this.startBlock()
+      case 'intercept':
+        return this.startIntercept()
+      case 'press':
+        return this.startPress()
+      case 'dive':
+        return this.keeperDive(null)
+      case 'diveLeft':
+      case 'diveRight':
+        return this.keeperDive(act.dir ?? { x: 0, y: act.id === 'diveLeft' ? -1 : 1 })
+      case 'stay':
+        // Set and big: no early dive, no drifting (a centre penalty or a 1v1 chip meets a body).
+        hero.vel = scale(hero.vel, 0.3)
+        this.stayUntil = this.time + 0.9
+        this.dash = null
+        return
+      case 'rush':
+        return this.startRush()
+      case 'claim':
+      case 'punch':
+        if (this.crossInFlight()) {
+          this.claimUntil = this.time + 2.6
+          this.punchCross = act.id === 'punch'
+        } else if (act.id === 'claim') this.startRush()
+        return
+    }
+  }
+
+  /** HEAD / JUMP: up for the ball (Jumping sets the height, Heading the reach), aimed at goal or cleared. */
+  private heroJump(): void {
+    const hero = this.hero
+    if (hero.cd > 0 || (hero.state !== 'run' && hero.state !== 'wall')) return
+    hero.state = 'jump'
+    hero.stateT = 0
+    hero.cd = 0.75
+    if (!this.heroHeaderAim) this.heroHeaderAim = this.autoGoalAim()
+    this.events.push({ type: 'jump', by: hero.id })
+  }
+
+  /**
+   * TACKLE / SLIDE: goes in now if in range (standing: 1.8 m, slide: 5.5 m — Tackling / Aggression /
+   * timing decide it, with the foul and card risk of {@link tackleOdds}); returns false when out of range.
+   */
+  private tryEngage(slide: boolean): boolean {
+    const hero = this.hero
+    if (hero.cd > 0 || hero.state !== 'run') return false
+    const c = this.owner
+    const ballP = { x: this.ball.x, y: this.ball.y }
+    if (c && c.team === 'opp') {
+      const d = dist(hero.pos, c.pos)
+      if (!slide && d < 1.8) {
+        this.standingTackle(c)
+        return true
+      }
+      if (slide && d < 5.5) {
+        this.startSlide(norm(sub(add(ballP, scale(c.vel, 0.25)), hero.pos)))
+        return true
+      }
+      return false
+    }
+    // A loose ball: slide onto it (or step in and take it).
+    if (!c && this.ball.z < 0.7) {
+      const d = dist(hero.pos, ballP)
+      if (slide && d < 5.5 && d > 0.6) {
+        this.startSlide(norm(sub(add(ballP, { x: this.ball.vx * 0.2, y: this.ball.vy * 0.2 }), hero.pos)))
+        return true
+      }
+    }
+    return false
+  }
+
+  /** BLOCK: into the line between the ball and goal, body spread (Positioning finds the line, Aggression commits). */
+  private startBlock(): void {
+    const hero = this.hero
+    this.blockUntil = this.time + 1.1
+    if (hero.state === 'wall') return
+    const err = (1 - a01(hero.attrs.positioning)) * 0.8
+    const off = this.rng.range(-err, err)
+    this.dash = {
+      why: 'block',
+      until: this.time + 1.1,
+      to: () => {
+        const b = { x: this.ball.x, y: this.ball.y }
+        const goal = { x: ownGoalX(hero.team), y: GOAL_CENTER_Y }
+        const dir = norm(sub(goal, b))
+        const p = add(b, scale(dir, Math.min(2.2, dist(b, goal) * 0.5)))
+        return { x: p.x - dir.y * off, y: p.y + dir.x * off }
+      },
+    }
+  }
+
+  /** INTERCEPT: reads the pass (Anticipation) and attacks the lane / the ball's path. */
+  private startIntercept(): void {
+    const hero = this.hero
+    const read = a01(hero.attrs.anticipation ?? hero.attrs.positioning)
+    if (read > 0.5) this.readBurstUntil = this.time + 0.4 * read
+    this.dash = {
+      why: 'intercept',
+      until: this.time + 1.2,
+      to: () => {
+        const o = this.owner
+        if (!o) return interceptPoint(hero, this.aiWorld(), 1.5).point
+        if (o.team !== 'opp') return null
+        // On the ball: step into the lane to his likeliest pass (a better reader picks the right one).
+        const mates = this.agents.filter((a) => a.team === 'opp' && a !== o && !a.isKeeper).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))
+        const m = mates[read > 0.55 || mates.length < 2 ? 0 : 1]
+        if (!m) return o.pos
+        return add(o.pos, scale(sub(m.pos, o.pos), 0.45))
+      },
+    }
+  }
+
+  /** PRESS: flat out at the carrier (Work Rate); arriving hurries his decision (Aggression). */
+  private startPress(): void {
+    this.dash = {
+      why: 'press',
+      until: this.time + 1.3,
+      to: () => {
+        const o = this.owner
+        if (o && o.team === 'opp') return o.pos
+        return o ? null : interceptPoint(this.hero, this.aiWorld(), 1.5).point
+      },
+    }
+  }
+
+  /** RUSH (keeper): off the line at the ball / the man on it to smother or sweep. */
+  private startRush(): void {
+    this.stayUntil = -1
+    this.dash = {
+      why: 'rush',
+      until: this.time + 1.2,
+      to: () => {
+        const o = this.owner
+        if (o === this.hero) return null
+        const b = { x: this.ball.x + this.ball.vx * 0.25, y: this.ball.y + this.ball.vy * 0.25 }
+        return o ? add(o.pos, scale(norm(sub({ x: ownGoalX(this.hero.team), y: GOAL_CENTER_Y }, o.pos)), 0.6)) : b
+      },
+    }
+  }
+
+  /** DIVE: toward the shot's crossing point (Diving / Reflexes carry him), or a chosen side. */
+  private keeperDive(side: Vec2 | null): void {
+    const hero = this.hero
+    if (!hero.isKeeper || this.owner === hero) return
+    let dir = side
+    if (!dir) {
+      const plan = planSave(hero, this.aiWorld(), 0)
+      const p = plan ? plan.point : { x: this.ball.x, y: this.ball.y }
+      dir = Math.abs(p.y - hero.pos.y) > 0.3 ? norm(sub(p, hero.pos)) : { x: 0, y: this.ball.y >= hero.pos.y ? 1 : -1 }
+    }
+    this.stayUntil = -1
+    this.keeperAction({ kind: 'dive', dir })
+  }
+
+  /** A context-button run in progress: where to go (null = done). */
+  private dashMove(): Vec2 | null {
+    const d = this.dash
+    if (!d) return null
+    if (this.time > d.until) {
+      this.dash = null
+      return null
+    }
+    const to = d.to()
+    if (!to) {
+      this.dash = null
+      return null
+    }
+    const v = sub(to, this.hero.pos)
+    const l = len(v)
+    // Block / rush arrive and hold; the others run through.
+    if (l < 0.25) return { x: 0, y: 0 }
+    return scale(norm(v), d.why === 'block' || d.why === 'rush' ? Math.min(1, l / 1.2) : 1)
   }
 
   private winBall(tackler: Agent, from: Agent, slide: boolean): void {
@@ -1745,6 +2062,10 @@ export class HighlightRuntime {
       return
     }
     if (hero.state === 'slide' || hero.state === 'dive' || hero.state === 'down' || hero.state === 'celebrate') return
+    if (this.time < this.stumbleUntil) {
+      hero.vel = scale(hero.vel, 0.85)
+      return
+    }
     const locked = (this.setPiece !== null && this.setPiece.takerId === hero.id) || hero.state === 'wall'
     if (locked || this.phase === 'post') {
       hero.vel = scale(hero.vel, 0.8)
@@ -1754,7 +2075,7 @@ export class HighlightRuntime {
     hero.sprint = this.control.sprint
     let mv = this.control.move
     // Assisted keeper auto-positioning when idle.
-    if (hero.isKeeper && len(mv) < 0.1 && this.assist !== 'manual' && hero.state === 'run') {
+    if (hero.isKeeper && len(mv) < 0.1 && this.assist !== 'manual' && hero.state === 'run' && this.time >= this.stayUntil) {
       const tgt = keeperTarget(hero, this.aiWorld()).pos
       const v = arrive(hero, tgt, topSpeed(hero) * (this.assist === 'full' ? 0.7 : 0.4) * (0.6 + 0.8 * a01(hero.attrs.gkPositioning)), 1.5)
       mv = scale(v, 1 / Math.max(1, topSpeed(hero)))
@@ -1787,8 +2108,61 @@ export class HighlightRuntime {
         hero.sprint = true
       }
     } else this.readCut = null
+    // Context buttons (game/actionSet): a challenge closing in, a run to a point, jockeying.
+    if (this.engage) {
+      const o = this.owner
+      if (this.time > this.engage.until || hero.state !== 'run') this.engage = null
+      else if (this.tryEngage(this.engage.slide)) {
+        this.engage = null
+        return
+      } else if (o && o.team !== 'opp') this.engage = null
+      else {
+        const to = o ? add(o.pos, scale(o.vel, 0.2)) : { x: this.ball.x, y: this.ball.y }
+        mv = norm(sub(to, hero.pos))
+        hero.sprint = true
+      }
+    }
+    if (!this.engage) {
+      const dm = this.dashMove()
+      // Pulling the stick the other way calls the run off.
+      if (dm && len(this.control.move) > 0.4 && len(dm) > 0.1 && dot(norm(this.control.move), norm(dm)) < 0) this.dash = null
+      else if (dm) {
+        mv = dm
+        hero.sprint = len(dm) > 0.6
+        const o = this.owner
+        // PRESS arriving: the carrier is hurried into his next decision (Aggression closes him down harder).
+        if (this.dash?.why === 'press' && o && o.team === 'opp' && dist(o.pos, hero.pos) < 1.8) {
+          o.think = Math.min(o.think, 0.04 + (1 - a01(hero.attrs.aggression ?? 50)) * 0.12)
+          this.dash = null
+        }
+      }
+    }
+    const jo = this.owner
+    if (this.control.hold === 'jockey' && jo && jo.team === 'opp' && hero.state === 'run' && dist(jo.pos, hero.pos) < 12) {
+      // Jockey: goal-side of the carrier at arm's length, feet quick, no lunging (Positioning).
+      const spot = add(jo.pos, scale(norm(sub({ x: ownGoalX(hero.team), y: GOAL_CENTER_Y }, jo.pos)), 1.7))
+      const v = sub(spot, hero.pos)
+      mv = len(v) < 0.15 ? { x: 0, y: 0 } : scale(norm(v), Math.min(1, len(v) / 0.8))
+      hero.sprint = dist(jo.pos, hero.pos) > 5 && this.control.sprint
+      this.engage = null
+      this.dash = null
+    }
+    if (this.jockeying()) this.jockeyT += DT
+    else this.jockeyT = Math.max(0, this.jockeyT - DT * 2)
+    // Shielding: slow, body between ball and man (Strength / Balance hold him off, see duels).
+    if (this.shielding()) hero.sprint = false
     let max = topSpeed(hero)
     if (this.owner === hero) max *= 0.86 + a01(hero.attrs.dribbling) * 0.1
+    if (this.jockeying()) max *= 0.86 + a01(hero.attrs.positioning) * 0.18
+    if (this.control.hold === 'jockey' && jo && jo.team === 'opp') {
+      // Backing off at his pace: a good positional defender keeps the distance (drains the tank if he must sprint).
+      const need = len(jo.vel) * (0.92 + 0.12 * a01(hero.attrs.positioning))
+      if (need > max) {
+        hero.sprint = hero.stamina > 0.05
+        max = Math.min(topSpeed(hero), need)
+      }
+    }
+    if (this.shielding()) max *= 0.55
     // Positioning: with a team-mate on the ball, a clever forward holds the offside line instead of drifting past it.
     mv = this.holdTheLine(mv)
     if (hero.state === 'skill') {
@@ -1902,6 +2276,8 @@ export class HighlightRuntime {
       // A carrier running at a retreating defence attacks the space at pace.
       const chased = this.agents.some((o) => o.team !== a.team && !o.isKeeper && dist(o.pos, a.pos) < 6)
       speed = (chased || a.team === 'opp' ? topSpeed({ ...a, sprint: true }) * (0.8 + a01(a.attrs.dribbling) * 0.12) : speed) * 0.92
+      // Jockeyed (JOCKEY button): a set defender goal-side checks his run (the hero's Positioning).
+      if (a.team === 'opp' && this.jockeying()) speed *= 0.84 - 0.12 * a01(this.hero.attrs.positioning)
     }
     // corner_kick: team-mates attack the zones the hero picked.
     const run = this.runs && this.time < this.runsUntil ? this.runs.get(a.id) : undefined
@@ -2257,11 +2633,11 @@ export class HighlightRuntime {
         const toA = norm(sub(a.pos, def.pos))
         const closing = def.vel.x * toA.x + def.vel.y * toA.y
         def.cd = Math.max(def.cd, 0.5)
-        def.vel = scale(def.vel, closing > 2.5 ? 0.15 : 0.45)
-        if (closing > 2.5) {
-          def.state = 'down'
-          def.stateT = 0.1
-        }
+        // A set jockey (JOCKEY held) is never sold like that; a rushing one stumbles and has to stop and turn
+        // (on his feet: TestFlight 6, sprinting at a dribbler used to dump the hero on the floor).
+        const sold = closing > 2.5 && !this.jockeying()
+        def.vel = scale(def.vel, sold ? 0.15 : 0.45)
+        if (sold) this.stumbleUntil = this.time + KEEPER_GETUP - 0.1
       }
       this.events.push({ type: 'skill', by: a.id, success: true })
     } else {
@@ -2434,6 +2810,13 @@ export class HighlightRuntime {
     else if (sp > 0.8) want = Math.atan2(a.vel.y, a.vel.x)
     else want = Math.atan2(this.ball.y - a.pos.y, this.ball.x - a.pos.x)
     if (this.setPiece && this.setPiece.takerId === a.id && a.isHero) want = Math.atan2(GOAL_CENTER_Y - a.pos.y, PITCH_LENGTH - a.pos.x)
+    // Shielding: back to the nearest challenger, the ball on the far side of the body.
+    if (a.isHero && this.shielding()) {
+      const m = this.agents.filter((o) => o.team !== a.team && !o.isKeeper).sort((p, q) => dist(p.pos, a.pos) - dist(q.pos, a.pos))[0]
+      if (m && dist(m.pos, a.pos) < 4) want = Math.atan2(a.pos.y - m.pos.y, a.pos.x - m.pos.x)
+    }
+    // Jockeying: square on to the carrier, backing off (never facing away from him).
+    if (a.isHero && this.jockeying()) want = Math.atan2(this.owner!.pos.y - a.pos.y, this.owner!.pos.x - a.pos.x)
     if (this.setPiece?.kind === 'penalty' && this.setPiece.takerId === a.id && !a.isHero) return
     const rate = (a.isHero ? heroTurnRate(a.attrs.agility) : 8 + a01(a.attrs.agility) * 5) * DT
     const d = angleDiff(want, a.facing)
@@ -2550,7 +2933,9 @@ export class HighlightRuntime {
         continue
       }
       // Shot blocks by opponents of the shooter (bodies in the way, incl. jumping wall).
-      const blockR = a.isHero && this.kind === 'block' ? (a.state === 'slide' ? HERO_BLOCK_SLIDE_R : HERO_BLOCK_R) : 0.46
+      // BLOCK button: spread in the line, wider with Positioning and Aggression (committing the body).
+      const spread = a.isHero && this.time < this.blockUntil ? HERO_BLOCK_R * (0.95 + a01(a.attrs.positioning) * 0.15 + a01(a.attrs.aggression ?? 50) * 0.15) : 0
+      const blockR = a.isHero && this.kind === 'block' ? Math.max(spread, a.state === 'slide' ? HERO_BLOCK_SLIDE_R : HERO_BLOCK_R) : spread || 0.46
       if (this.shot && this.shot.by.team !== a.team && speed > 12 && d < blockR && b.z < 1.8 + a.z) {
         if (d < bestD) {
           best = a
@@ -2787,6 +3172,11 @@ export class HighlightRuntime {
     // High ball (cross / corner): catch it, or punch it clear under pressure (WP-14).
     if (!this.shot && b.z > 1.3) {
       const crowd = Math.min(2, this.agents.filter((o) => o.team !== k.team && !o.isKeeper && dist(o.pos, k.pos) < 1.6).length) / 2
+      // PUNCH chosen (context button): he goes up with fists rather than hands.
+      if (k.isHero && this.punchCross) {
+        this.punchCross = false
+        return this.punch(k, speed)
+      }
       if (this.rng.chance(punchChance(k, b.z, crowd, speed))) return this.punch(k, speed)
     }
     const held = speed < 11 || this.rng.chance(catchChance(k, speed, stretch, this.difficulty))
@@ -2908,7 +3298,9 @@ export class HighlightRuntime {
       a.cd = 1.1
       const behind = isBehind(o, a)
       const odds = tackleOdds(a, o, this.exposure(o), behind, false, this.difficulty)
-      if (this.rng.chance(looseBallWin(odds.win, this.ballGap(o)))) {
+      // SHIELD held: Strength and Balance keep the ball away from the challenge.
+      const shield = o.isHero && this.shielding() ? 1 - (0.2 + a01(o.attrs.strength) * 0.3 + a01(o.attrs.balance ?? o.attrs.strength) * 0.15) : 1
+      if (this.rng.chance(looseBallWin(odds.win, this.ballGap(o)) * shield)) {
         this.winBall(a, o, false)
         if (o.isHero) o.noTouch = 0.7
       } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3 * refHighlightFoulMult(this.refStrictness))) {
@@ -2937,7 +3329,7 @@ export class HighlightRuntime {
   private shoulderContact(): void {
     if (this.time - this.shoulderAt < 0.3) return
     const hero = this.hero
-    if (hero.state !== 'run' || hero.isKeeper) return
+    if (hero.state !== 'run' || hero.isKeeper || this.time < this.stumbleUntil) return
     const o = this.owner
     let opp: Agent | null = null
     let best = 1.15
@@ -2965,7 +3357,10 @@ export class HighlightRuntime {
     const away = norm(sub(loser.pos, winner.pos))
     loser.vel = add(scale(loser.vel, 0.55), scale(away, 1.2))
     // Off his feet: poor balance against a strong man.
-    const pDown = clampN(0.05 + (a01(winner.attrs.strength) - a01(loser.attrs.balance ?? loser.attrs.strength)) * 0.6, 0, 0.6)
+    const gap = a01(winner.attrs.strength) - a01(loser.attrs.balance ?? loser.attrs.strength)
+    // The hero only goes over when clearly out-muscled (TestFlight 6: sprinting alongside a defender
+    // kept dumping him on the floor), and hardly ever while shielding.
+    const pDown = loser.isHero ? clampN(gap * 0.8 - (this.shielding() ? 0.15 : 0), 0, 0.36) : clampN(0.05 + gap * 0.6, 0, 0.6)
     const down = this.rng.chance(pDown)
     if (down) {
       loser.state = 'down'
@@ -3038,9 +3433,11 @@ export class HighlightRuntime {
    * Beaten, he is left on the ground. Returns true when the duel ended play.
    */
   private keeperSmother(o: Agent): boolean {
-    const k = this.agents.find((a) => a.isKeeper && a.team !== o.team && !a.isHero)
+    // The hero keeper smothers only when he chose to come (RUSH): Handling / Agility / GK Positioning vs the dribble.
+    const k = this.agents.find((a) => a.isKeeper && a.team !== o.team && (!a.isHero || this.dash?.why === 'rush'))
     if (!k || k.state !== 'run' || k.cd > 0 || k.noTouch > 0 || !this.inOwnBox(k, o.pos)) return false
     if (dist(k.pos, { x: this.ball.x, y: this.ball.y }) > 1.5 && dist(k.pos, o.pos) > 1.3) return false
+    if (k.isHero) this.dash = null
     k.cd = 1.2
     const g = a01(k.attrs.handling) * 0.35 + a01(k.attrs.agility) * 0.35 + a01(k.attrs.gkPositioning) * 0.3
     const c = a01(o.attrs.dribbling) * 0.6 + a01(o.attrs.agility) * 0.25 + a01(o.attrs.composure) * 0.15

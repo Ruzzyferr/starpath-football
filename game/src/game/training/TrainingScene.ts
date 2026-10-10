@@ -158,7 +158,8 @@ const CONTROLS: Record<DrillKind, { button: keyof Strings['buttons'] | null; spr
   passing: { button: 'loft', sprint: false, stick: false, level: false },
   dribbling: { button: 'skill', sprint: true, stick: true, level: true },
   fitness: { button: 'go', sprint: true, stick: false, level: true },
-  goalkeeping: { button: 'dive', sprint: true, stick: true, level: false },
+  // The keeper drill has no sprint (it never read the button): DIVE + the stick only.
+  goalkeeping: { button: 'dive', sprint: false, stick: true, level: false },
   crossing: { button: 'cross', sprint: false, stick: false, level: false },
   heading: { button: 'head', sprint: false, stick: true, level: false },
   tackling: { button: 'tackle', sprint: true, stick: true, level: false },
@@ -316,6 +317,9 @@ export class TrainingScene extends Phaser.Scene {
       ui: () => this.ui,
       insets: canvasSafeInsets(this.game.canvas, () => this.ui),
     })
+    // Hidden buttons must not swallow taps either (the keeper drill has no SPRINT, finishing no button).
+    const ctl = CONTROLS[this.drill.kind]
+    this.input0.setLegacyButtons(ctl.sprint, ctl.button !== null)
     this.layout()
     this.scale.on(Phaser.Scale.Events.RESIZE, this.layout, this)
     const f = project(view.focus.x, view.focus.y)

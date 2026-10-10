@@ -264,6 +264,81 @@ describe('InputController touch swipes', () => {
     expect(input.poll(ctx).actions.map((a) => a.kind)).toEqual(['skill'])
   })
 
+  // TestFlight 6: "I press Sprint and the player throws himself to the ground". Off the ball a thumb
+  // drifting on SPRINT used to become a swipe = a slide tackle (or a keeper dive).
+  it('off the ball, a thumb sliding around on SPRINT stays sprint: no swipe, no slide', () => {
+    const off = { ...ctx, heroOnBall: false }
+    const ui = input.touchUi()
+    input.poll(off)
+    canvas.dispatchEvent(ptr('pointerdown', 4, ui.sprint.x, ui.sprint.y, clock))
+    let sprinting = true
+    for (let k = 1; k <= 20; k++) {
+      clock += 0.03
+      canvas.dispatchEvent(ptr('pointermove', 4, ui.sprint.x - k * 4, ui.sprint.y - k * 3, clock))
+      const f = input.poll(off)
+      sprinting &&= f.sprint
+      expect(f.actions).toEqual([])
+    }
+    clock += 0.03
+    canvas.dispatchEvent(ptr('pointerup', 4, ui.sprint.x - 80, ui.sprint.y - 60, clock))
+    expect(input.poll(off).actions).toEqual([])
+    expect(sprinting).toBe(true)
+    // Same for a keeper (it used to be a dive).
+    const gk = { ...off, heroIsKeeper: true }
+    input.poll(gk)
+    canvas.dispatchEvent(ptr('pointerdown', 5, ui.sprint.x, ui.sprint.y, clock))
+    for (let k = 1; k <= 10; k++) {
+      clock += 0.03
+      canvas.dispatchEvent(ptr('pointermove', 5, ui.sprint.x - k * 8, ui.sprint.y, clock))
+    }
+    canvas.dispatchEvent(ptr('pointerup', 5, ui.sprint.x - 80, ui.sprint.y, clock + 0.03))
+    expect(input.poll(gk).actions).toEqual([])
+  })
+
+  it('context buttons: a tap fires its button on the press, SPRINT / JOCKEY are holds, a drag never swipes', () => {
+    const def = { ...ctx, heroOnBall: false }
+    input.setButtons([
+      { id: 'tackle', hold: false, key: 'KeyF' },
+      { id: 'slide', hold: false, key: 'Space' },
+      { id: 'jockey', hold: true, key: 'KeyE' },
+      { id: 'sprint', hold: true, key: 'ShiftLeft' },
+    ])
+    const ui = input.touchUi()
+    expect(ui.buttons.map((b) => b.id)).toEqual(['tackle', 'slide', 'jockey', 'sprint'])
+    // Buttons never overlap and stay on screen.
+    for (const b of ui.buttons) {
+      expect(b.x - b.r).toBeGreaterThanOrEqual(0)
+      expect(b.x + b.r).toBeLessThanOrEqual(W)
+      expect(b.y + b.r).toBeLessThanOrEqual(H)
+      for (const o of ui.buttons) if (o !== b) expect(Math.hypot(o.x - b.x, o.y - b.y)).toBeGreaterThan(o.r + b.r)
+    }
+    const at = (id: string) => ui.buttons.find((b) => b.id === id)!
+    input.poll(def)
+    canvas.dispatchEvent(ptr('pointerdown', 7, at('tackle').x, at('tackle').y, clock))
+    expect(input.poll(def).actions).toEqual([{ kind: 'btn', id: 'tackle' }])
+    canvas.dispatchEvent(ptr('pointerup', 7, at('tackle').x, at('tackle').y, clock + 0.05))
+    expect(input.poll(def).actions).toEqual([])
+    // Hold SPRINT and drag the thumb across the screen: sprint all the way, never a swipe.
+    canvas.dispatchEvent(ptr('pointerdown', 8, at('sprint').x, at('sprint').y, clock))
+    for (let k = 1; k <= 12; k++) {
+      clock += 0.02
+      canvas.dispatchEvent(ptr('pointermove', 8, at('sprint').x - k * 15, at('sprint').y - k * 20, clock))
+      const f = input.poll(def)
+      expect(f.sprint).toBe(true)
+      expect(f.actions).toEqual([])
+    }
+    canvas.dispatchEvent(ptr('pointerup', 8, at('sprint').x - 180, at('sprint').y - 240, clock + 0.02))
+    const after = input.poll(def)
+    expect(after.actions).toEqual([])
+    expect(after.sprint).toBe(false)
+    // JOCKEY is a hold.
+    canvas.dispatchEvent(ptr('pointerdown', 9, at('jockey').x, at('jockey').y, clock))
+    expect(input.poll(def).hold).toBe('jockey')
+    canvas.dispatchEvent(ptr('pointerup', 9, at('jockey').x, at('jockey').y, clock + 0.3))
+    expect(input.poll(def).hold).toBe(null)
+    input.setButtons(null)
+  })
+
   it('a swipe ended by pointercancel still shoots', () => {
     expect(doSwipe(W * 0.7, H * 0.8, 200, 0.15, { cancel: true }).map((a) => a.kind)).toEqual(['swipe'])
   })

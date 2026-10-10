@@ -31,7 +31,10 @@ import {
 } from './art'
 import { Sfx } from './audio'
 import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot'
-import { InputController, type FrameIntent } from './input'
+import { InputController, type FrameIntent, type ContextButtonUi } from './input'
+import { ACTION_DEFS, assignKeys, contextActions } from './actionSet'
+import { drawActionIcon } from './actionIcons'
+import { getBindings, keyLabel } from '../input/bindings'
 import { effectiveAimAssist, getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
 import { KIT_MIN_DISTANCE, cvdDistance, distinctOpponentKit } from '../core/colorVision'
 import { pickBallStyle, type BallStyle } from '../core/kitContrast'
@@ -302,6 +305,10 @@ export class MatchScene extends Phaser.Scene {
   private tagText!: Phaser.GameObjects.Text
   private sprintText!: Phaser.GameObjects.Text
   private skillText!: Phaser.GameObjects.Text
+  /** Context buttons (game/actionSet): label and key-cap texts, one per slot. */
+  private readonly ctxLabels: Phaser.GameObjects.Text[] = []
+  private readonly ctxKeyTexts: Phaser.GameObjects.Text[] = []
+  private ctxLayoutKey = ''
   private replayText!: Phaser.GameObjects.Text
   private vignette!: Phaser.GameObjects.Image
   private flash!: Phaser.GameObjects.Rectangle
@@ -592,6 +599,11 @@ export class MatchScene extends Phaser.Scene {
       paused: this.paused,
       clock: rt.time,
       ballWorld: { x: rt.ball.x, y: rt.ball.y, z: rt.ball.z },
+      heroWorld: { x: rt.hero.pos.x, y: rt.hero.pos.y },
+      heroState: rt.hero.state,
+      stamina: rt.hero.stamina,
+      /** Context buttons on screen (CSS px), see game/actionSet. */
+      buttons: this.input0.touchUi().buttons.map((b) => ({ id: b.id, hold: b.hold, key: b.key, down: b.down, x: r.left + b.x * kx, y: r.top + b.y * ky, r: b.r * kx })),
     }
   }
 
@@ -999,6 +1011,10 @@ export class MatchScene extends Phaser.Scene {
     this.tagText.setText(`${this.rt.hero.number}  ${this.rt.hero.name}`)
     this.sprintText.setText(this.s.sprint)
     this.skillText.setText(this.s.skill)
+    for (let i = 0; i < 4; i++) {
+      this.ctxLabels.push(this.text(11, '#ffffff', '800').setAlpha(0))
+      this.ctxKeyTexts.push(this.text(9, '#0b1220', '800', 'display', false).setAlpha(0))
+    }
     this.focusText.setText(this.s.focus)
     this.replayText.setText(`● ${this.s.replay}`)
     this.angleText = this.text(12, '#ffffff', '700').setAlpha(0)
@@ -1151,6 +1167,7 @@ export class MatchScene extends Phaser.Scene {
   update(_time: number, deltaMs: number): void {
     const dt = Math.min(0.05, Math.max(0, deltaMs / 1000))
     const rt = this.rt
+    this.syncButtons()
     const intent = this.input0.poll({
       heroPos: rt.hero.pos,
       ballPos: { x: rt.ball.x, y: rt.ball.y },
@@ -1194,6 +1211,95 @@ export class MatchScene extends Phaser.Scene {
     }
     this.drawOverlay(dt)
     this.updateHud(dt, intent)
+  }
+
+  /**
+   * Context buttons for what the hero is doing now (game/actionSet): none while a set-piece choice is
+   * pending, the autopilot plays, a reel runs or the moment is over.
+   */
+  private syncButtons(): void {
+    const rt = this.rt
+    const live = this.mode === 'play' && !this.auto && !this.reel && !rt.pendingChoice && (rt.phase === 'live' || rt.phase === 'intro')
+    if (!live) {
+      this.input0.setButtons([])
+      return
+    }
+    const ids = contextActions(rt.actionContext())
+    const keys = assignKeys(ids)
+    const bd = getBindings()
+    this.input0.setButtons(
+      ids.map((id) => {
+        const k = keys.get(id)
+        return { id, hold: ACTION_DEFS[id].hold, key: k ? bd[k] : null }
+      }),
+    )
+  }
+
+  /** Draws the context buttons: dark glass disc, tone ring, vector icon, label; key caps with a keyboard. */
+  private drawContextButtons(g: Phaser.GameObjects.Graphics, btns: readonly ContextButtonUi[], touch: boolean, stamina: number): void {
+    const u = this.hudU
+    const show = this.mode === 'play'
+    const lang = this.data0.opts.lang === 'tr' ? 'tr' : 'en'
+    const layoutKey = btns.map((b) => `${b.id}:${Math.round(b.r)}:${b.key ?? ''}`).join('|') + (touch ? 't' : 'k')
+    const relayout = layoutKey !== this.ctxLayoutKey
+    this.ctxLayoutKey = layoutKey
+    for (let i = 0; i < this.ctxLabels.length; i++) {
+      const b = btns[i]
+      const label = this.ctxLabels[i]!
+      const keyT = this.ctxKeyTexts[i]!
+      if (!b || !show) {
+        label.setAlpha(0)
+        keyT.setAlpha(0)
+        continue
+      }
+      const def = ACTION_DEFS[b.id]
+      // PUNCH only bites on a cross: dimmed until one is dropping into the box.
+      let a = b.id !== 'punch' || this.rt.crossIncoming ? 1 : 0.45
+      // Never hide the play: a button over the hero or the ball (keeper moments put our goal there) turns see-through.
+      const hs = this.worldToScreen(this.rt.hero.pos.x, this.rt.hero.pos.y)
+      const bs = this.worldToScreen(this.rt.ball.x, this.rt.ball.y)
+      if (Math.hypot(hs.x - b.x, hs.y - b.y) < b.r * 1.35 || Math.hypot(bs.x - b.x, bs.y - b.y) < b.r * 1.2) a *= 0.42
+      const main = i === 0
+      // Glass disc with a soft drop shadow.
+      g.fillStyle(0x000000, 0.28 * a)
+      g.fillCircle(b.x, b.y + 2.5 * u, b.r)
+      g.fillStyle(0x0b1220, (b.down ? 0.86 : 0.62) * a)
+      g.fillCircle(b.x, b.y, b.r)
+      g.fillStyle(def.tone, (b.down ? 0.3 : 0.1) * a)
+      g.fillCircle(b.x, b.y, b.r * 0.94)
+      g.lineStyle((main ? 3 : 2.2) * u, def.tone, (b.down ? 1 : 0.85) * a)
+      g.strokeCircle(b.x, b.y, b.r)
+      g.lineStyle(1 * u, 0xffffff, 0.16 * a)
+      g.strokeCircle(b.x, b.y, b.r * 0.82)
+      drawActionIcon(g, def.icon, b.x, b.y - b.r * 0.2, b.r * (main ? 0.3 : 0.32), b.down ? 0xffffff : def.tone, 0.96 * a, Math.max(1.6, b.r * 0.075))
+      if (b.id === 'sprint') {
+        // Stamina arc around SPRINT (Stamina / Work Rate set how fast it drains and refills).
+        g.lineStyle(3 * u, stamina > 0.25 ? 0x5dff8a : 0xff8a3d, 0.9)
+        g.beginPath()
+        g.arc(b.x, b.y, b.r + 4 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * clampN(stamina, 0, 1))
+        g.strokePath()
+      }
+      if (relayout) {
+        label.setScale(1).setText(def.label[lang]).setFontSize(Math.round(Math.max(9 * u, b.r * (main ? 0.25 : 0.27))))
+        // Long labels shrink to fit the disc.
+        const maxW = b.r * 1.7
+        if (label.width > maxW) label.setScale(maxW / label.width)
+        keyT.setText(b.key ? keyLabel(b.key) : '').setFontSize(Math.round(Math.max(8 * u, b.r * 0.2)))
+      }
+      label.setPosition(b.x, b.y + b.r * 0.42).setAlpha(a)
+      if (!touch && b.key) {
+        // Key cap at the disc's shoulder.
+        const kw = Math.max(keyT.width + 8 * u, 16 * u)
+        const kh = keyT.height + 2 * u
+        const kx = b.x + b.r * 0.62
+        const ky = b.y - b.r * 0.78
+        g.fillStyle(0x000000, 0.3 * a)
+        g.fillRoundedRect(kx - kw / 2, ky - kh / 2 + 1.5 * u, kw, kh, 4 * u)
+        g.fillStyle(0xf2f5ff, 0.95 * a)
+        g.fillRoundedRect(kx - kw / 2, ky - kh / 2, kw, kh, 4 * u)
+        keyT.setPosition(kx, ky).setAlpha(a)
+      } else keyT.setAlpha(0)
+    }
   }
 
   /** Pause-gate read-out: the resume beat ("3", "2", "1") or PAUSED for the pause key / background. */
@@ -2841,29 +2947,13 @@ export class MatchScene extends Phaser.Scene {
       }
     }
 
-    // Touch controls.
+    // Touch controls: the moment's context buttons (game/actionSet) and the joystick.
     const tu = this.input0.touchUi()
     const showTouch = tu.enabled && this.mode === 'play'
-    this.sprintText.setAlpha(showTouch ? 0.9 : 0).setPosition(tu.sprint.x, tu.sprint.y)
-    // A keeper has no dribble skill: no SKILL button in his moments (input ignores it too).
-    const showSkill = showTouch && !rt.heroIsKeeper
-    this.skillText.setAlpha(showSkill ? 0.9 : 0).setPosition(tu.skill.x, tu.skill.y)
+    this.sprintText.setAlpha(0)
+    this.skillText.setAlpha(0)
+    this.drawContextButtons(g, tu.buttons, tu.enabled, hero.stamina)
     if (showTouch) {
-      g.fillStyle(0x000000, tu.sprint.down ? 0.55 : 0.3)
-      g.fillCircle(tu.sprint.x, tu.sprint.y, tu.sprint.r)
-      g.lineStyle(2 * u, 0xffffff, tu.sprint.down ? 0.9 : 0.45)
-      g.strokeCircle(tu.sprint.x, tu.sprint.y, tu.sprint.r)
-      // Stamina arc on the sprint button.
-      g.lineStyle(3 * u, 0x5dff8a, 0.85)
-      g.beginPath()
-      g.arc(tu.sprint.x, tu.sprint.y, tu.sprint.r + 4 * u, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * hero.stamina)
-      g.strokePath()
-      if (showSkill) {
-        g.fillStyle(0x000000, tu.skill.down ? 0.55 : 0.3)
-        g.fillCircle(tu.skill.x, tu.skill.y, tu.skill.r)
-        g.lineStyle(2 * u, 0xffd23f, tu.skill.down ? 0.95 : 0.5)
-        g.strokeCircle(tu.skill.x, tu.skill.y, tu.skill.r)
-      }
       if (tu.joystick) {
         const j = tu.joystick
         g.fillStyle(0xffffff, 0.08)

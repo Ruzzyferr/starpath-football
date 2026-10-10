@@ -23,6 +23,8 @@ export interface InputFrame {
   dt: number
   move?: Vec2
   sprint?: boolean
+  /** Held context button (JOCKEY / SHIELD); omitted = unchanged. */
+  hold?: 'jockey' | 'shield' | null
   actions?: HeroAction[]
   aim?: AimState | null
 }
@@ -41,12 +43,13 @@ export interface FrameInput {
   sprint: boolean
   actions: readonly HeroAction[]
   aim: AimState | null
+  hold?: 'jockey' | 'shield' | null
 }
 
 /** Records applied input frames (delta-compressed). */
 export class InputRecorder {
   readonly frames: InputFrame[] = []
-  private last: { mx: number; my: number; sprint: boolean } | null = null
+  private last: { mx: number; my: number; sprint: boolean; hold: 'jockey' | 'shield' | null } | null = null
   private lastAim = 'null'
 
   /** Appends one applied frame. */
@@ -55,7 +58,9 @@ export class InputRecorder {
     const l = this.last
     if (!l || l.mx !== input.move.x || l.my !== input.move.y) f.move = { x: input.move.x, y: input.move.y }
     if (!l || l.sprint !== input.sprint) f.sprint = input.sprint
-    this.last = { mx: input.move.x, my: input.move.y, sprint: input.sprint }
+    const hold = input.hold ?? null
+    if (l ? l.hold !== hold : hold !== null) f.hold = hold
+    this.last = { mx: input.move.x, my: input.move.y, sprint: input.sprint, hold }
     if (input.actions.length) f.actions = input.actions.map((a) => structuredCloneSafe(a))
     // Cheap path for the common no-aim frame; serialise only while aiming.
     const aimKey = input.aim ? JSON.stringify(input.aim) : 'null'
@@ -131,7 +136,7 @@ function structuredCloneSafe<T>(v: T): T {
  * and the replayer both go through here, so they cannot drift apart.
  */
 export function applyInput(rt: HighlightRuntime, input: FrameInput, dt: number, rec?: InputRecorder | null): void {
-  rt.setControl({ move: input.move, sprint: input.sprint })
+  rt.setControl({ move: input.move, sprint: input.sprint, hold: input.hold ?? null })
   for (const a of input.actions) rt.queueAction(a)
   rt.aim = input.aim && rt.heroOnBall ? input.aim : null
   rec?.record(input, dt)
@@ -147,12 +152,14 @@ export function replayInputs(highlight: Highlight, rec: InputRecording, onFrame?
   const rt = new HighlightRuntime(highlight, rec.opts)
   let move: Vec2 = { x: 0, y: 0 }
   let sprint = false
+  let hold: 'jockey' | 'shield' | null = null
   let aim: AimState | null = null
   for (const f of rec.frames) {
     if (f.move) move = f.move
     if (f.sprint !== undefined) sprint = f.sprint
+    if (f.hold !== undefined) hold = f.hold
     if (f.aim !== undefined) aim = f.aim
-    applyInput(rt, { move, sprint, actions: f.actions ?? [], aim }, f.dt)
+    applyInput(rt, { move, sprint, actions: f.actions ?? [], aim, hold }, f.dt)
     onFrame?.(rt)
   }
   return rt

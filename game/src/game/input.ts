@@ -40,6 +40,7 @@ import {
 } from './kick'
 import { clampN, dist, len, norm, sub, type Vec2 } from './model'
 import type { AimState, HeroAction } from './runtime'
+import type { ActionId } from './actionSet'
 import { getBindings, isBound, type BindAction } from '../input/bindings'
 import { getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
 import { probeGesture } from './touchProbe'
@@ -86,12 +87,57 @@ export interface InputContext {
   noMove?: boolean
 }
 
+/** A context button the scene asked for (match moments, game/actionSet). */
+export interface ContextButton {
+  id: ActionId
+  hold: boolean
+  /** KeyboardEvent.code it answers to (shown on the button with a mouse / keyboard). */
+  key: string | null
+}
+
+/** One laid-out context button. */
+export interface ContextButtonUi extends ContextButton {
+  x: number
+  y: number
+  r: number
+  down: boolean
+}
+
 /** Touch UI geometry for rendering. */
 export interface TouchUi {
   enabled: boolean
   joystick: { baseX: number; baseY: number; knobX: number; knobY: number; r: number } | null
   sprint: { x: number; y: number; r: number; down: boolean }
   skill: { x: number; y: number; r: number; down: boolean }
+  /** Context buttons (match): replace SPRINT / SKILL when set; empty otherwise. */
+  buttons: ContextButtonUi[]
+}
+
+/** Ids that keep their own keyboard handling (Shift sprint, C hold-shot, Q/R pass to the cursor, G call). */
+const LEGACY_KEY_IDS: ReadonlySet<ActionId> = new Set<ActionId>(['sprint', 'shoot', 'pass', 'through', 'call'])
+
+/**
+ * Context-button positions: the first (main) button in the thumb's corner, the rest in an arc around it
+ * (left, up-left, up), mirrored for left-handed play.
+ */
+export function contextButtonLayout(
+  n: number,
+  corner: { x: number; y: number },
+  r: number,
+  leftHanded: boolean,
+): { x: number; y: number; r: number }[] {
+  const out: { x: number; y: number; r: number }[] = []
+  if (n <= 0) return out
+  out.push({ x: corner.x, y: corner.y, r })
+  const rs = r * 0.8
+  const d = r * 2.3
+  const angles = n === 2 ? [180] : n === 3 ? [180, 90] : [180, 135, 90]
+  const sx = leftHanded ? -1 : 1
+  for (let i = 1; i < n && i - 1 < angles.length; i++) {
+    const a = (angles[i - 1]! * Math.PI) / 180
+    out.push({ x: corner.x + Math.cos(a) * d * sx, y: corner.y - Math.sin(a) * d, r: rs })
+  }
+  return out
 }
 
 /** Everything the scene needs from input for one frame. */
@@ -113,6 +159,8 @@ export interface FrameIntent {
   oscillating: boolean
   /** Extra curl dialled in with the mouse wheel (-1..1). */
   wheelCurl: number
+  /** Held context button other than sprint (JOCKEY / SHIELD), or null. */
+  hold: 'jockey' | 'shield' | null
 }
 
 interface TouchGesture {
@@ -127,7 +175,7 @@ interface TouchGesture {
 /** A touch that began on an on-screen button: a tap/hold uses the button, a drag becomes a swipe. */
 interface ButtonTouch {
   id: number
-  kind: 'sprint' | 'skill'
+  kind: 'sprint' | 'skill' | 'ctx'
   x: number
   y: number
   t: number
@@ -193,6 +241,54 @@ export class InputController {
   private wheel = 0
   private anyFlag = false
   private readonly off: (() => void)[] = []
+  /** Context buttons (null = the legacy SPRINT / SKILL pair, as in training). */
+  private ctxButtons: ContextButton[] | null = null
+  /** Pointer id → context button held down by it. */
+  private readonly ctxDown = new Map<number, ActionId>()
+  /** Last polled movement (a PASS / THROUGH button plays along it). */
+  private lastMove: Vec2 = { x: 0, y: 0 }
+
+  /**
+   * Context buttons for this frame (match moments). Pass null for the legacy SPRINT / SKILL pair.
+   * Buttons that disappear release their touches.
+   */
+  setButtons(btns: readonly ContextButton[] | null): void {
+    const cur = this.ctxButtons
+    const same = cur && btns && cur.length === btns.length && cur.every((b, i) => b.id === btns[i]!.id && b.key === btns[i]!.key)
+    if (same || (!cur && !btns)) return
+    this.ctxButtons = btns ? btns.map((b) => ({ ...b })) : null
+    const ids = new Set(btns?.map((b) => b.id) ?? [])
+    for (const [p, id] of [...this.ctxDown]) {
+      if (!ids.has(id)) {
+        this.ctxDown.delete(p)
+        if (this.button?.id === p) this.button = null
+      }
+    }
+  }
+
+  private legacy = { sprint: true, skill: true }
+
+  /** Which of the legacy SPRINT / SKILL buttons exist (training drills): a hidden one takes no touches. */
+  setLegacyButtons(sprint: boolean, skill: boolean): void {
+    this.legacy = { sprint, skill }
+  }
+
+  /** Queues a context-button press as a runtime action (dive sides / passes carry a pitch direction). */
+  private pressButton(id: ActionId): void {
+    const dir =
+      id === 'diveLeft' ? this.map.screenDirToWorld(-1, 0)
+        : id === 'diveRight' ? this.map.screenDirToWorld(1, 0)
+          : len(this.lastMove) > 0.2 ? { ...this.lastMove } : undefined
+    this.queued.push(dir ? { kind: 'btn', id, dir } : { kind: 'btn', id })
+    this.skipFlag = true
+  }
+
+  /** True while a context button with this id is held (touch, mouse or its key). */
+  private ctxHeld(id: ActionId): boolean {
+    for (const v of this.ctxDown.values()) if (v === id) return true
+    const b = this.ctxButtons?.find((q) => q.id === id)
+    return !!b?.key && this.keys.has(b.key)
+  }
 
   constructor(canvas: HTMLCanvasElement, mapper: InputMapper) {
     this.canvas = canvas
@@ -234,6 +330,7 @@ export class InputController {
       this.button = null
       this.sprintTouch = null
       this.skillTouch = null
+      this.ctxDown.clear()
       this.others.clear()
       this.mouseHold = null
       this.meter = null
@@ -309,11 +406,29 @@ export class InputController {
     const sprint = { x: m(w - side - pad - r), y: bottom - pad - r, r, down: this.sprintTouch !== null }
     const skill = { x: m(w - side - pad - r * 3.4), y: bottom - pad - r * 0.7, r: r * 0.8, down: this.skillTouch !== null }
     const joy = this.joy ? { baseX: this.joy.bx, baseY: this.joy.by, knobX: this.joy.x, knobY: this.joy.y, r: r * 1.25 } : null
-    return { enabled: this.touchMode, joystick: joy, sprint, skill }
+    const btns = this.ctxButtons ?? []
+    // Keyboard / mouse: smaller buttons (they are a legend you can also click).
+    const rc = this.touchMode ? r : r * 0.78
+    const corner = { x: m(w - side - pad - rc), y: bottom - pad - rc }
+    const lay = contextButtonLayout(btns.length, corner, rc, prefs.leftHanded)
+    const buttons = btns.map((b, i) => ({ ...b, ...(lay[i] ?? lay[0]!), down: this.ctxHeld(b.id) }))
+    return { enabled: this.touchMode, joystick: joy, sprint, skill, buttons }
   }
 
   private hit(b: { x: number; y: number; r: number }, p: { x: number; y: number }): boolean {
     return Math.hypot(p.x - b.x, p.y - b.y) < b.r * 1.15
+  }
+
+  /** Press on a context button (the nearest one under the finger). Tap buttons fire on the press. */
+  private ctxHit(ui: TouchUi, p: { x: number; y: number }, pointerId: number, t: number): boolean {
+    const b = ui.buttons
+      .filter((q) => this.hit(q, p))
+      .sort((q1, q2) => Math.hypot(p.x - q1.x, p.y - q1.y) / q1.r - Math.hypot(p.x - q2.x, p.y - q2.y) / q2.r)[0]
+    if (!b) return false
+    this.ctxDown.set(pointerId, b.id)
+    if (!b.hold) this.pressButton(b.id)
+    if (!this.button) this.button = { id: pointerId, kind: 'ctx', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
+    return true
   }
 
   private onDown(e: PointerEvent): void {
@@ -332,12 +447,15 @@ export class InputController {
       if (g0 && t - g0.pts[g0.pts.length - 1]!.t > STALE_GESTURE) this.gesture = null
       const ui = this.touchUi()
       const noMove = !!this.lastCtx?.noMove
-      if (!noMove && !this.button && this.hit(ui.sprint, p)) {
+      if (this.ctxButtons) {
+        // Context buttons replace SPRINT / SKILL: a press is that button, never the start of a swipe.
+        if (this.ctxHit(ui, p, e.pointerId, t)) return
+      } else if (this.legacy.sprint && !noMove && !this.button && this.hit(ui.sprint, p)) {
         this.sprintTouch = e.pointerId
         this.button = { id: e.pointerId, kind: 'sprint', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
         return
       }
-      if (!noMove && !this.lastCtx?.heroIsKeeper && !this.button && this.hit(ui.skill, p)) {
+      if (!this.ctxButtons && this.legacy.skill && !noMove && !this.lastCtx?.heroIsKeeper && !this.button && this.hit(ui.skill, p)) {
         // The skill fires on release (a drag off the button is a swipe instead).
         this.skillTouch = e.pointerId
         this.button = { id: e.pointerId, kind: 'skill', x: p.x, y: p.y, t, pts: [this.point(p, t)] }
@@ -374,6 +492,7 @@ export class InputController {
     }
     // Mouse.
     this.mouse = { x: p.x, y: p.y, inside: true }
+    if (e.button === 0 && this.ctxButtons && this.ctxHit(this.touchUi(), p, e.pointerId, t)) return
     if (e.button === 2) {
       this.queued.push({ kind: 'pass', target: this.map.toWorld(p.x, p.y), through: true, lofted: this.chipMod() })
       return
@@ -411,7 +530,12 @@ export class InputController {
     if (b && b.id === e.pointerId) {
       this.sample(b.pts, e, p, t)
       // Dragged off the button: it is a swipe (the thumb started on SPRINT/SKILL on its way to goal).
-      if (!this.gesture && Math.hypot(p.x - b.x, p.y - b.y) / this.unit() > BUTTON_DRAG_TO_SWIPE) {
+      // Only with the ball at his feet (TestFlight 6): off the ball a thumb drifting on SPRINT
+      // turned into a swipe = a slide tackle / keeper dive, and the player threw himself down.
+      // Context buttons never turn into swipes (a quick flick off SPRINT is still read on release).
+      const ctx = this.lastCtx
+      const onBall = !!ctx?.heroOnBall && !ctx.heroIsKeeper
+      if (b.kind !== 'ctx' && onBall && !this.gesture && Math.hypot(p.x - b.x, p.y - b.y) / this.unit() > BUTTON_DRAG_TO_SWIPE) {
         if (this.sprintTouch === b.id) this.sprintTouch = null
         if (this.skillTouch === b.id) this.skillTouch = null
         this.button = null
@@ -468,8 +592,11 @@ export class InputController {
   private onUp(e: PointerEvent, cancel = false): void {
     const p = this.toGame(e)
     const t = this.stamp(e)
+    const ctxId = this.ctxDown.get(e.pointerId)
+    this.ctxDown.delete(e.pointerId)
     if (e.pointerType === 'mouse') {
-      if (e.button === 0 && this.mouseHold && !cancel) this.releaseMouse(p, t)
+      if (this.button?.id === e.pointerId) this.button = null
+      else if (e.button === 0 && this.mouseHold && !cancel) this.releaseMouse(p, t)
       this.mouseHold = null
       return
     }
@@ -480,7 +607,8 @@ export class InputController {
       // A short sharp flick off the button toward goal (with the ball) is a shot, not a button press.
       if (!cancel) this.sample(b.pts, e, p, t)
       const ctx = this.lastCtx
-      const sw = !cancel && ctx?.heroOnBall && !ctx.heroIsKeeper ? analyzeSwipe(b.pts, 1) : null
+      const flickable = b.kind !== 'ctx' || ctxId === 'sprint'
+      const sw = flickable && !cancel && ctx?.heroOnBall && !ctx.heroIsKeeper ? analyzeSwipe(b.pts, 1) : null
       if (sw && !sw.isTap && sw.length >= BUTTON_FLICK_MIN && t - b.t <= 0.25 && facesGoal(ctx!.ballPos, sw.dir)) {
         this.queueSwipe(sw)
         probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
@@ -672,6 +800,13 @@ export class InputController {
     if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'Space'].includes(code)) e.preventDefault()
     if (down) {
       this.anyFlag = true
+      // Context buttons own their keys (shown on the buttons); sprint / shot / pass / call keep the classic handling.
+      const cb = this.ctxButtons?.find((q) => q.key === code && !LEGACY_KEY_IDS.has(q.id))
+      if (cb) {
+        if (!this.keys.has(code) && !cb.hold) this.pressButton(cb.id)
+        this.keys.add(code)
+        return
+      }
       if (!this.keys.has(code)) {
         const act = isBound(code, 'skill') ? 'skill' : isBound(code, 'action') ? 'action' : isBound(code, 'pass') ? 'pass' : isBound(code, 'through') ? 'through' : isBound(code, 'shoot') ? 'shoot' : isBound(code, 'call') ? 'call' : isBound(code, 'pause') ? 'pause' : null
         if (act === 'call') this.queued.push({ kind: 'call' })
@@ -740,6 +875,13 @@ export class InputController {
       }
     }
     if (this.sprintTouch !== null) sprint = true
+    // Context buttons: SPRINT held, or JOCKEY / SHIELD.
+    let hold: FrameIntent['hold'] = null
+    if (this.ctxButtons) {
+      if (this.ctxHeld('sprint')) sprint = true
+      if (this.ctxHeld('jockey')) hold = 'jockey'
+      else if (this.ctxHeld('shield')) hold = 'shield'
+    }
 
     // Touch long-press off the ball: raise the hand and call for it.
     const lg = this.gesture
@@ -807,7 +949,8 @@ export class InputController {
     this.pauseFlag = false
     const any = this.anyFlag
     this.anyFlag = false
-    return { move, sprint, actions, aim, power, skip, pause, any, oscillating, wheelCurl: this.wheel }
+    this.lastMove = move
+    return { move, sprint, actions, aim, power, skip, pause, any, oscillating, wheelCurl: this.wheel, hold }
   }
 
   private pollPad(ctx: InputContext, t: number): { move: Vec2; sprint: boolean; aim: AimState | null; power: number } | null {
