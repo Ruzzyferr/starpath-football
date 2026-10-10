@@ -110,9 +110,12 @@ describe('autosave scheduling', () => {
     store.failNext = 1
     scheduleAutosave()
     await vi.advanceTimersByTimeAsync(1300)
-    await flushAutosave() // the failing attempt (WebCrypto hashing runs on the real clock)
+    // The failing attempt (WebCrypto hashing runs on the real clock, so wait for it under load).
+    await vi.waitFor(async () => {
+      await flushAutosave()
+      expect(store.failNext).toBe(0)
+    }, { timeout: 10_000, interval: 20 })
     expect(store.liveWrites).toBe(0)
-    expect(store.failNext).toBe(0)
     // The retry fires on its own after the backoff.
     await vi.waitFor(async () => {
       await vi.advanceTimersByTimeAsync(1000)
