@@ -1,22 +1,24 @@
 /**
- * Contextual control hint drawn over a Phaser scene (match moment / drill).
- * Platform-aware text + an animated gesture illustration. While it is on
- * screen it holds the shared pause gate (game/pauseGate): the moment / drill
- * stays frozen until "Got it", then resumes after a 3-2-1 beat (TestFlight
- * build 5: the moment used to play out behind the card).
+ * How-to card before every mini-game (match moment, training drill, opponent video, doping test,
+ * dialogue scene). TestFlight build 6: the old control hints were "seen once" per control group,
+ * so after the first few moments no card ever showed again. Now the card shows EVERY time unless
+ * the player turned "Mini oyun ipuçları" off or ticked "Bir daha gösterme" for that kind
+ * (tutorial/prefs). Card copy lives in tutorial/howTo.ts (one per-kind data source).
+ *
+ * A modal dialog (focus trap, Enter / Space starts, Esc too). Over a Phaser scene it holds the
+ * shared pause gate (game/pauseGate): the moment / drill / clip stays frozen until Start, then the
+ * gate's 3-2-1 beat runs before play resumes. Without a scene (doping test) it runs its own 3-2-1.
  */
 import '../../styles/screens/help.css'
-import { useEffect, useLayoutEffect, useState } from 'preact/hooks'
-import { t, tx } from '../../i18n'
-import { Icon } from '../icons'
-import { helpPrefs, hintSeen, markHintSeen } from './prefs'
+import { createPortal } from 'preact/compat'
+import { useEffect, useLayoutEffect, useRef, useState } from 'preact/hooks'
+import { lt, t, tx } from '../../i18n'
+import type { LText } from '../../core/types'
+import { Icon, type IconName } from '../icons'
+import { helpPrefs, hideTutorial } from './prefs'
 import { pauseGate } from '../../game/pauseGate'
-import {
-  gestureFor, hintId, inputPlatform, isHintSuccess, onHintEvent, pickDrillHint, pickMatchHint, watchInputPlatform,
-  type HintContext, type HintGroup, type InputPlatform,
-} from './hints'
-
-const PLATFORM_KEY: Record<InputPlatform, 'touch' | 'mouse' | 'pad'> = { touch: 'touch', mouse: 'mouse', pad: 'pad' }
+import { gestureFor, inputPlatform, onHintEvent, watchInputPlatform, type HintGroup } from './hints'
+import { drillTutorialKey, howToFor, matchTutorialKey, shouldShowTutorial, type HowTo } from './howTo'
 
 function Gesture({ kind, group }: { kind: 'swipe' | 'tap' | 'click' | 'keys'; group: HintGroup }) {
   const label = t(`help.hints.gesture.${kind}`)
@@ -74,19 +76,40 @@ function Hand() {
   )
 }
 
-/** One hint card. `onDone` fires after success or dismissal. */
-/** Keeper moments: our goal and keeper sit at the bottom of the phone screen, so the hint goes up top. */
-const OWN_GOAL_GROUPS: ReadonlySet<HintGroup> = new Set<HintGroup>(['keeper', 'claim', 'wallSet'])
+const copy = (c: LText | string): string => (typeof c === 'string' ? tx(c) : lt(c))
+const ICON: Record<string, IconName> = { scout: 'eye', doping: 'wind', dialogue: 'chat' }
+const FOCUSABLE = 'button:not([disabled]), input:not([disabled])'
 
-export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: HintGroup; onDone: () => void }) {
-  const [success, setSuccess] = useState(false)
-  // Appear once the scene is up (it attaches to the pause gate), not over the loading screen.
-  const [ready, setReady] = useState(pauseGate.isAttached())
+/** Controls text for the current input platform. */
+function controlsText(h: HowTo): string[] {
+  const p = inputPlatform.value
+  if (h.controls) return [copy(p === 'touch' ? h.controls.touch : h.controls.pc)]
+  return h.groups.slice(0, 2).map((g) => tx(`help.hints.${p}.${g}`))
+}
+
+/** Show the card for this key now? (master switch + per-kind "don't show again"). */
+export const tutorialVisible = (key: string): boolean => shouldShowTutorial(key, helpPrefs.value)
+
+/**
+ * The how-to card. `gate`: hold the pause gate (a Phaser scene plays behind it) and wait for the
+ * scene to attach before painting. `countdown`: no scene behind: run a DOM 3-2-1 before `onDone`.
+ */
+export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; gate?: boolean; countdown?: boolean; onDone: () => void }) {
+  const how = howToFor(tkey)
+  const [ready, setReady] = useState(!gate || pauseGate.isAttached())
+  const [dontShow, setDontShow] = useState(false)
+  const [beat, setBeat] = useState<number | null>(null)
+  const card = useRef<HTMLDivElement>(null)
+  const startBtn = useRef<HTMLButtonElement>(null)
+  const done = useRef(false)
+  const dontRef = useRef(false)
+  dontRef.current = dontShow
+
   // Layout effect: the hold is on before the card is painted, never a frame later.
   useLayoutEffect(() => {
     watchInputPlatform()
-    // Freeze the moment for as long as the card is up: the hold is taken before the scene even loads.
-    const reason = `hint:${ctx}`
+    if (!gate) return
+    const reason = `hint:${tkey}`
     pauseGate.hold(reason)
     const sync = () => {
       if (pauseGate.isAttached()) setReady(true)
@@ -101,68 +124,138 @@ export function ControlHint({ ctx, group, onDone }: { ctx: HintContext; group: H
       off()
       pauseGate.release(reason)
     }
-  }, [ctx])
-  useEffect(() => {
-    if (success) return
-    return onHintEvent((e, heroId) => {
-      if (!isHintSuccess(group, e, heroId)) return
-      markHintSeen(hintId(ctx, group))
-      setSuccess(true)
-    })
-  }, [ctx, group, success])
-  useEffect(() => {
-    if (!success) return
-    const id = setTimeout(onDone, 1100)
-    return () => clearTimeout(id)
-  }, [success])
+  }, [tkey, gate])
 
-  if (!ready && !success) return null
-  const platform = PLATFORM_KEY[inputPlatform.value]
-  const text = tx(`help.hints.${platform}.${group}`)
-  const gesture = gestureFor(group, inputPlatform.value)
-  return (
-    <div class={`control-hint${success ? ' is-success' : ''}${OWN_GOAL_GROUPS.has(group) ? ' is-top' : ''}`} role="status" aria-live="polite" data-hint={hintId(ctx, group)}>
-      <div class="control-hint-card">
-        <div class="control-hint-art" aria-hidden={success}>
-          {success ? <span class="control-hint-check"><Icon name="check" size={30} /></span> : <Gesture kind={gesture} group={group} />}
-        </div>
-        <div class="control-hint-text">
-          <span class="micro control-hint-eyebrow">{t('help.hints.title')}</span>
-          <p>{text}</p>
-        </div>
-        {!success && (
-          <button
-            type="button"
-            class="control-hint-close"
-            onClick={() => {
-              markHintSeen(hintId(ctx, group))
-              onDone()
-            }}
-          >
-            {t('help.hints.gotIt')}
-          </button>
+  const start = () => {
+    if (done.current) return
+    done.current = true
+    if (dontRef.current) hideTutorial(tkey)
+    if (countdown) setBeat(3)
+    else onDone()
+  }
+
+  // Own 3-2-1 (no scene behind the card).
+  useEffect(() => {
+    if (beat === null) return
+    const id = setTimeout(() => (beat <= 1 ? onDone() : setBeat(beat - 1)), 500)
+    return () => clearTimeout(id)
+  }, [beat])
+
+  // Focus the start button once painted; trap focus and keys inside the card.
+  useEffect(() => {
+    if (!ready || beat !== null) return
+    startBtn.current?.focus({ preventScroll: true })
+    const onKey = (e: KeyboardEvent) => {
+      const root = card.current
+      if (!root) return
+      const target = e.target instanceof Node && root.contains(e.target) ? e.target : null
+      if (e.key === 'Tab') {
+        const items = [...root.querySelectorAll<HTMLElement>(FOCUSABLE)]
+        const i = items.indexOf(document.activeElement as HTMLElement)
+        const next = e.shiftKey ? (i <= 0 ? items.length - 1 : i - 1) : (i < 0 || i === items.length - 1 ? 0 : i + 1)
+        e.preventDefault()
+        items[next]?.focus()
+      } else if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ' || e.code === 'Space') {
+        // Space on the checkbox toggles it; anything else starts (handled here, not by the button's
+        // native keyup click, which a scene's key capture behind the card may cancel).
+        if (!(target instanceof HTMLInputElement && e.key !== 'Enter' && e.key !== 'Escape')) {
+          e.preventDefault()
+          start()
+        }
+      }
+      // Nothing reaches the scene / overlay behind the card while it is up.
+      e.stopPropagation()
+    }
+    window.addEventListener('keydown', onKey, true)
+    return () => window.removeEventListener('keydown', onKey, true)
+  }, [ready, beat])
+
+  if (!how || (!ready && beat === null)) return null
+  const title = copy(how.title)
+  const group: HintGroup | undefined = how.groups[0]
+  const id = `tut-${tkey.replace(/[^a-z0-9]/gi, '-')}`
+  return createPortal(
+    <div class={`control-hint tut${beat !== null ? ' is-counting' : ''}`} data-tutorial={tkey} data-testid="tutorial">
+      <div class="control-hint-card tut-card" ref={card} role="dialog" aria-modal="true" aria-labelledby={`${id}-t`} aria-describedby={`${id}-g`}>
+        {beat !== null ? (
+          <div class="tut-beat" role="status" aria-live="assertive" aria-label={t('help.howTo.countdown', { n: beat })}>
+            <span key={beat}>{beat}</span>
+          </div>
+        ) : (
+          <>
+            <div class="tut-head">
+              <div class="control-hint-art tut-art" aria-hidden="true">
+                {group ? <Gesture kind={gestureFor(group, inputPlatform.value)} group={group} /> : <Icon name={ICON[tkey] ?? 'info'} size={34} />}
+              </div>
+              <div class="tut-titles">
+                <span class="micro control-hint-eyebrow">{t('help.howTo.eyebrow')}</span>
+                <h2 class="h3 tut-title" id={`${id}-t`} aria-label={t('help.howTo.dialog', { t: title })}>{title}</h2>
+              </div>
+            </div>
+            <div class="tut-body">
+              <section class="tut-sec" id={`${id}-g`}>
+                <h3 class="micro tut-label"><Icon name="target" size={14} /> {t('help.howTo.goal')}</h3>
+                <p>{copy(how.goal)}</p>
+              </section>
+              <section class="tut-sec">
+                <h3 class="micro tut-label"><Icon name={inputPlatform.value === 'touch' ? 'phone' : 'keyboard'} size={14} /> {t('help.howTo.controls')}</h3>
+                {controlsText(how).map((c, i) => <p key={i} class="tut-controls">{c}</p>)}
+              </section>
+              <section class="tut-sec tut-tip">
+                <h3 class="micro tut-label"><Icon name="sparkle" size={14} /> {t('help.howTo.tip')} <span class="tut-attr" data-testid="tutorial-attr">{t(`data.attr.${how.attr}` as never)}</span></h3>
+                <p>{lt(how.tip)}</p>
+              </section>
+            </div>
+            <label class="tut-dont">
+              <input type="checkbox" checked={dontShow} onChange={(e) => setDontShow((e.target as HTMLInputElement).checked)} aria-describedby={`${id}-d`} data-testid="tutorial-dont-show" />
+              <span>{t('help.howTo.dontShow')}</span>
+            </label>
+            <p class="sr-only" id={`${id}-d`}>{t('help.howTo.dontShowDesc')}</p>
+            <button type="button" class="btn btn-primary btn-md btn-block control-hint-close" ref={startBtn} onClick={start} data-testid="tutorial-start">
+              <Icon name="play" size={18} /> {t('help.howTo.start')}
+            </button>
+            {inputPlatform.value !== 'touch' && <p class="t-xs t-lo tut-keys" aria-hidden="true">{t('help.howTo.startHint')}</p>}
+          </>
         )}
       </div>
-    </div>
+    </div>,
+    document.body,
   )
 }
 
-/** Shows the first unlearned hint for the live highlight (while it is on screen). */
-export function MatchHints({ active, kind, momentId }: { active: boolean; kind: string | undefined; momentId: string | undefined }) {
-  const [group, setGroup] = useState<HintGroup | null>(null)
+/** A card keyed to one play: shows when `active` turns on for a new `instance`, if visible for `tkey`. */
+export function GameTutorial({ active, tkey, instance, gate = true }: { active: boolean; tkey: string | null; instance?: string; gate?: boolean }) {
+  const [open, setOpen] = useState<string | null>(null)
   useLayoutEffect(() => {
-    setGroup(active && kind && helpPrefs.value.tips ? pickMatchHint(kind, hintSeen) : null)
-  }, [active, momentId])
-  if (!group || !active) return null
-  return <ControlHint ctx="match" group={group} onDone={() => setGroup(null)} />
+    setOpen(active && tkey && tutorialVisible(tkey) ? tkey : null)
+  }, [active, tkey, instance])
+  if (!open || !active) return null
+  return <TutorialCard key={`${open}|${instance ?? ''}`} tkey={open} gate={gate} onDone={() => setOpen(null)} />
 }
 
-/** First-run hint for a training drill. */
+/** How-to card before every match moment (per moment kind). */
+export function MatchHints({ active, kind, momentId }: { active: boolean; kind: string | undefined; momentId: string | undefined }) {
+  return <GameTutorial active={active} tkey={kind ? matchTutorialKey(kind) : null} instance={momentId} />
+}
+
+/** How-to card before every training drill (per drill / variant). */
 export function DrillHints({ active, drill, variant }: { active: boolean; drill: string | undefined; variant: string | undefined }) {
-  const [group, setGroup] = useState<HintGroup | null>(null)
-  useLayoutEffect(() => {
-    setGroup(active && drill && helpPrefs.value.tips ? pickDrillHint(drill, variant, hintSeen) : null)
-  }, [active, drill, variant])
-  if (!group || !active) return null
-  return <ControlHint ctx="drill" group={group} onDone={() => setGroup(null)} />
+  return <GameTutorial active={active} tkey={drill ? drillTutorialKey(drill, variant) : null} instance={`${drill}|${variant}`} />
+}
+
+/** DOM "3 / 2 / 1" over a scene that does not draw the gate's resume beat itself (scouting video). */
+export function GateBeat() {
+  const [beat, setBeat] = useState<string | null>(null)
+  useEffect(() => {
+    let raf = 0
+    const tick = () => {
+      const b = pauseGate.beat()
+      setBeat((o) => (o === b ? o : b))
+      raf = requestAnimationFrame(tick)
+    }
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
+  if (!beat) return null
+  return <div class="tut-gate-beat" role="status" aria-live="assertive"><span key={beat}>{beat}</span></div>
 }

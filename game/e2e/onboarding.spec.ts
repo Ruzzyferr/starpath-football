@@ -286,10 +286,9 @@ test('first match moment shows a platform-aware control hint', async ({ page, is
   if (isMobile) expect(text).toMatch(/Swipe|Tap|Drag|joystick/i)
   else expect(text).toMatch(/click|Click|WASD|Space|button/)
   await snapWp6(page, P, '51-match-hint')
-  await hint.getByRole('button', { name: 'Got it' }).click()
+  expect(await hint.getAttribute('data-tutorial')).toMatch(/^match:/)
+  await hint.getByRole('button', { name: 'Start' }).click()
   await expect(hint).toHaveCount(0)
-  const seen = await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.help.v1') ?? '{}').seenHints as string[])
-  expect(seen.some((s) => s.startsWith('match:'))).toBe(true)
 })
 
 test('live match control bar fits at phone width in Turkish', async ({ page }, info) => {

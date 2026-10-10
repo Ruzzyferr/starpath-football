@@ -1,8 +1,8 @@
-/** Settings › Help & tips: tips switch, replay/skip tutorial, reset hints, glossary. */
+/** Settings › Help & tips: tips switch, mini-game tips switch + "show all again", replay/skip tutorial, glossary. */
 import { t } from '../../i18n'
 import { Button, Switch, toast } from '../components'
 import { gameState, navigate } from '../store'
-import { helpPrefs, resetHints, updateHelp } from './prefs'
+import { helpPrefs, resetTutorials, updateHelp } from './prefs'
 import { replayTour, skipTour, tour } from './tour'
 
 export function HelpSettings() {
@@ -12,6 +12,8 @@ export function HelpSettings() {
   return (
     <>
       <Switch label={t('help.settings.tips')} desc={t('help.settings.tipsDesc')} checked={p.tips} onChange={(tips) => updateHelp({ tips })} />
+      <Switch label={t('help.settings.gameTips')} desc={t('help.settings.gameTipsDesc')} checked={p.gameTips} onChange={(gameTips) => updateHelp({ gameTips })} />
+      {p.hiddenTutorials.length > 0 && <p class="t-xs t-mid help-hidden-count" data-testid="tutorials-hidden">{t('help.settings.hidden', { n: p.hiddenTutorials.length })}</p>}
       <div class="help-actions">
         {active ? (
           <Button variant="secondary" icon="skip" onClick={() => skipTour()} data-testid="tour-skip">
@@ -35,9 +37,10 @@ export function HelpSettings() {
           variant="ghost"
           icon="history"
           onClick={() => {
-            resetHints()
+            resetTutorials()
             toast(t('help.settings.resetHintsDone'), 'success')
           }}
+          data-testid="tutorials-reset"
         >
           {t('help.settings.resetHints')}
         </Button>

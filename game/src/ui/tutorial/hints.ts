@@ -11,7 +11,7 @@ export type InputPlatform = 'touch' | 'mouse' | 'pad'
 export type HintContext = 'match' | 'drill'
 
 /** Highlight kind → hint groups, most relevant first. */
-const MATCH_GROUPS: Record<string, HintGroup[]> = {
+export const MATCH_GROUPS: Record<string, HintGroup[]> = {
   build_up: ['pass', 'move', 'shoot'],
   counter: ['move', 'shoot', 'pass'],
   one_on_one: ['shoot', 'move'],

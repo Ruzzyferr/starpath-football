@@ -143,6 +143,8 @@ test('quitting a drill cancels the session', async ({ page }) => {
   await page.locator('.trn-session', { hasText: 'Dribbling Course' }).getByRole('button', { name: 'Play drill' }).click()
   await page.locator('.trn-drill').getByRole('button', { name: 'Start' }).click()
   await expect(page.locator('.trn-drill canvas')).toBeVisible({ timeout: 20_000 })
+  // The how-to card is modal over the frozen drill: close it, then quit.
+  expect(await dismissControlHint(page)).toBe(true)
   await page.locator('.trn-drill-quit').click()
   await expect(page.locator('.trn-drill')).toHaveCount(0)
   expect(await sp<number>(page, 'sp.state().life.energy')).toBe(100)
@@ -257,6 +259,8 @@ test('opponent video is a playable scouting mini-game that buffs the next match'
   await page.getByTestId('scout-start').click()
   await expect(page.getByTestId('scout-panel')).toBeVisible()
   await expect(page.locator('#scout-canvas canvas')).toBeVisible()
+  // How-to card before every video (the clip is frozen behind it), then a 3-2-1.
+  expect(await dismissControlHint(page)).toBe(true)
   await page.waitForTimeout(5500)
   await shot('scout-play')
   // Answer every clip: the first by keyboard, the rest by tapping the right option.

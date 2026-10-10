@@ -16,6 +16,7 @@ import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { gameState, settings } from '../../store'
 import { finishScouting, scoutReport, scoutingOpen, type ScoutOutcome } from '../../backend/scouting'
+import { GameTutorial, GateBeat } from '../../tutorial/ControlHint'
 
 type Phase = 'intro' | 'loading' | 'playing' | 'result' | 'error'
 
@@ -163,6 +164,8 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
           <span>{t('training.scout.quit')}</span>
         </button>
       )}
+      <GameTutorial active={phase === 'playing'} tkey="scout" />
+      {phase === 'playing' && <GateBeat />}
       {phase === 'loading' && (
         <div class="trn-drill-center">
           <Spinner />

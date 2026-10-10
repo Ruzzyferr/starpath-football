@@ -18,6 +18,7 @@ import { Icon } from '../../icons'
 import { settings } from '../../store'
 import type { DopingOutcome } from '../../backend/scenes'
 import { EffectChips } from './DialogueScene'
+import { TutorialCard, tutorialVisible } from '../../tutorial/ControlHint'
 
 type Phase = 'intro' | 'breath' | 'forms' | 'result'
 const FORMS = ['consent', 'seal', 'declare'] as const
@@ -46,6 +47,8 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
   onClose: () => void
 }) {
   const [phase, setPhase] = useState<Phase>('intro')
+  // How-to card between the intro and the breathing (every time unless hidden), then its own 3-2-1.
+  const [howTo, setHowTo] = useState(false)
   const [v, setV] = useState(0.35)
   const [center, setCenter] = useState(0.5)
   const [left, setLeft] = useState(BREATH_SECONDS)
@@ -200,10 +203,12 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
           <p class="t-sm dop-ctrl"><Icon name={touch ? 'phone' : 'keyboard'} size={14} /> {touch ? t('bench.doping.touch') : t('bench.doping.pc')}</p>
           <div class="row dop-actions">
             <Button variant="ghost" icon="fast-forward" onClick={onQuick} data-testid="doping-quick">{t('bench.scene.quick')}</Button>
-            <Button variant="primary" icon="play" onClick={() => setPhase('breath')} autoFocus data-testid="doping-start">{t('bench.doping.start')}</Button>
+            <Button variant="primary" icon="play" onClick={() => (tutorialVisible('doping') ? setHowTo(true) : setPhase('breath'))} autoFocus data-testid="doping-start">{t('bench.doping.start')}</Button>
           </div>
         </div>
       )}
+
+      {howTo && phase === 'intro' && <TutorialCard tkey="doping" countdown onDone={() => { setHowTo(false); setPhase('breath') }} />}
 
       {phase === 'breath' && (
         <div class="dop-stage">

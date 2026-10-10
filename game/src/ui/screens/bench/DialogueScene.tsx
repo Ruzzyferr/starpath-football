@@ -15,6 +15,7 @@ import { haptic } from '../../haptics'
 import { Icon, type IconName } from '../../icons'
 import { formatMoney } from '../../format'
 import type { Scene, SceneEffect, SceneOutcome } from '../../backend/scenes'
+import { TutorialCard, tutorialVisible } from '../../tutorial/ControlHint'
 
 type Line = { who: 'npc' | 'hero'; cast: number; text: LText; tone?: LText }
 
@@ -69,6 +70,8 @@ export function DialogueScene({ scene, onFinish, onQuick, onClose }: {
   const [log, setLog] = useState<Line[]>(() => [{ who: 'npc', cast: scene.steps[0]!.who, text: scene.steps[0]!.line }])
   const [outcome, setOutcome] = useState<SceneOutcome | null>(null)
   const [busy, setBusy] = useState(false)
+  // How-to card over the scene (every time unless hidden); nothing runs behind it.
+  const [howTo, setHowTo] = useState(() => tutorialVisible('dialogue'))
   const logRef = useRef<HTMLOListElement>(null)
   const firstOpt = useRef<HTMLButtonElement>(null)
   const cur = scene.steps[step]
@@ -82,8 +85,8 @@ export function DialogueScene({ scene, onFinish, onQuick, onClose }: {
   useEffect(() => {
     const el = logRef.current
     if (el) el.scrollTop = el.scrollHeight
-    if (!busy && !outcome) firstOpt.current?.focus({ preventScroll: true })
-  }, [log.length, busy, outcome])
+    if (!busy && !outcome && !howTo) firstOpt.current?.focus({ preventScroll: true })
+  }, [log.length, busy, outcome, howTo])
 
   const choose = (i: number) => {
     if (busy || outcome || !cur) return
@@ -226,6 +229,7 @@ export function DialogueScene({ scene, onFinish, onQuick, onClose }: {
           <Button variant="primary" block onClick={onClose} autoFocus data-testid="scene-done">{t('bench.scene.done')}</Button>
         </div>
       )}
+      {howTo && <TutorialCard tkey="dialogue" onDone={() => setHowTo(false)} />}
     </div>,
     document.body,
   )

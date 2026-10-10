@@ -6,7 +6,7 @@
  * moved.
  */
 import type { Page } from '@playwright/test'
-import { test, expect, preferEnglish, waitForApp, sp, assertCleanText } from './fixtures'
+import { test, expect, preferEnglish, waitForApp, sp, assertCleanText, dismissControlHint } from './fixtures'
 
 test.beforeEach(async ({ page }) => {
   await preferEnglish(page)
@@ -55,6 +55,8 @@ test('national camp check-in is a three-line talk with the coach', async ({ page
   await task.getByTestId('ag-play').click()
   const scene = page.getByTestId('scene-nationalCamp')
   await expect(scene).toBeVisible()
+  // The how-to card comes first (every time unless hidden).
+  expect(await dismissControlHint(page)).toBe(true)
   await expect(scene.getByRole('button', { name: /^Answer 1:/ })).toBeFocused()
   await page.waitForTimeout(600)
   await shot('moment-camp')
@@ -86,6 +88,8 @@ test('doping test: breathe in the band, sign the forms in order', async ({ page,
   await page.waitForTimeout(400)
   await shot('moment-doping-intro')
   await dlg.getByTestId('doping-start').click()
+  // How-to card, then a 3-2-1 before the breathing starts.
+  expect(await dismissControlHint(page)).toBe(true)
   const hold = dlg.getByTestId('doping-hold')
   await expect(hold).toBeVisible()
   await expect(dlg.getByRole('meter', { name: 'Breathing rhythm' })).toBeVisible()
@@ -131,6 +135,8 @@ test('talk to the manager: two choices, the start chance moves', async ({ page, 
   await sp(page, "sp.moment('talk')")
   const scene = page.getByTestId('scene-managerTalk')
   await expect(scene).toBeVisible()
+  // The how-to card comes first (every time unless hidden).
+  expect(await dismissControlHint(page)).toBe(true)
   await page.waitForTimeout(600)
   await shot('moment-talk')
   await scene.getByTestId('scene-opt-ask').click()
@@ -162,6 +168,8 @@ test('team dinner: pick a seat, a topic and the bill', async ({ page, shot }) =>
   await sp(page, "sp.moment('teamDinner')")
   const scene = page.getByTestId('scene-teamDinner')
   await expect(scene).toBeVisible()
+  // The how-to card comes first (every time unless hidden).
+  expect(await dismissControlHint(page)).toBe(true)
   await page.waitForTimeout(600)
   await shot('moment-dinner')
   await scene.getByTestId('scene-opt-sitA').click()
