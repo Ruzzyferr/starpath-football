@@ -252,6 +252,9 @@ const zpx = (z: number) => z * PPM * ZS
 /**
  * The interactive highlight scene. Create through {@link startHighlight}.
  */
+/** Within this distance (m) of goal the live camera leans toward the goal so the goal mouth stays on a phone screen. */
+const GOAL_FRAME_RANGE = 36
+
 export class MatchScene extends Phaser.Scene {
   private data0!: SceneData
   private rt!: HighlightRuntime
@@ -2171,7 +2174,9 @@ export class MatchScene extends Phaser.Scene {
           // touch buttons, framing the ball (and the runners upfield) with him.
           px = rt.kind === 'gk_distribution' ? rt.hero.pos.x + 11 : Math.min(Math.max(bx, rt.hero.pos.x), rt.hero.pos.x + 14) * 0.5 + rt.hero.pos.x * 0.5 + 6
         } else {
-          if (rt.heroOnBall) px += 5
+          // On the ball in range: frame the goal mouth too (playtester: a corner you cannot see cannot be aimed at).
+          const toGoal = PITCH_LENGTH - bx
+          if (rt.heroOnBall) px += rt.heroIsKeeper || toGoal > GOAL_FRAME_RANGE ? 5 : clampN(toGoal * 0.3, 5, 7.5)
           if (rt.heroIsKeeper) px += 7
         }
         // Look-ahead (2.2#3): 18 % of the screen along the carrier's run (the ball's flight when loose).
@@ -2252,6 +2257,8 @@ export class MatchScene extends Phaser.Scene {
     const picked = ids.map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m).slice(0, 3)
     const rest = nearestPoints(rt.ball, mates.filter((m) => !picked.includes(m)).map((m) => m.pos), 3 - picked.length)
     const opts = [...picked.map((m) => m.pos), ...rest]
+    // On the ball within range of goal: the goal mouth is in the opening frame too (you aim at what you see).
+    if (rt.heroOnBall && !rt.heroIsKeeper && PITCH_LENGTH - rt.ball.x < GOAL_FRAME_RANGE) opts.push({ x: PITCH_LENGTH, y: GOAL_CENTER_Y })
     const h = this.scale.height - this.hudTop
     const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base)
     this.openCam = { x: f.x, y: f.y, zoomMult: f.zoomMult, t0: this.elapsed, fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom }
