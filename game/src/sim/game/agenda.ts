@@ -2,12 +2,14 @@
  * Daily agenda (owner: "a footballer's every moment is planned").
  *
  * Every day has a program:
- *  - MANDATORY tasks (0–2 a day, ~2–4 a week): team training before a match,
+ *  - MANDATORY tasks (0–2 a day, ~4–6 a week in season — most days one, some
+ *    days two, matchday and the day off none): team training before a match,
  *    the disciplinary hearing after a ban, a press conference around a big
  *    game, a doping test, the physio when injured or worn out, a sponsor
  *    shoot, an autograph session, the chairman's meeting in a contract year,
  *    national-team check-in, a date with the partner, the mother's birthday,
- *    captain's mentoring, a charity evening. The day cannot be advanced (UI)
+ *    captain's mentoring, a charity evening, the weekly team meeting, a
+ *    fitness test, a compulsory gym block, club TV and community visits. The day cannot be advanced (UI)
  *    until they are done. Each resolves QUICKLY (one tap, average outcome) or
  *    PLAYED/decided for a better outcome (a drill or a choice); some can be
  *    SKIPPED as an explicit decision with real consequences.
@@ -41,9 +43,11 @@ export const AGENDA_LAST_FLAG = 'c:agendaLast'
 export const PREP_FLAG = 'c:prep'
 /** JSON {fixtureId}: compulsory training skipped before this match (selection term). */
 export const SKIPPED_TRAINING_FLAG = 'c:skippedTraining'
-/** Max mandatory tasks a day; the weekly budget the generator aims at. */
+/** JSON number[]: the absolute day of every mandatory task set in the last week (weekly budget). */
+export const AGENDA_HIST_FLAG = 'c:agendaHist'
+/** Max mandatory tasks a day; the weekly budget the generator aims at (owner: ~4–6 a week in season). */
 export const MAX_MANDATORY_PER_DAY = 2
-export const WEEKLY_MANDATORY_CAP = 4
+export const WEEKLY_MANDATORY_CAP = 6
 /** Start-chance term per completed preparation goal (max 2 count) and for skipped compulsory training. */
 export const PREP_SELECTION = 0.03
 export const SKIPPED_TRAINING_SELECTION = -0.08
@@ -53,6 +57,7 @@ export const PREP_BUFF = 2
 export type MandatoryKind =
   | 'teamTraining' | 'disciplinary' | 'pressConference' | 'dopingTest' | 'physio' | 'sponsorShoot' | 'autographs'
   | 'boardMeeting' | 'nationalCamp' | 'dateNight' | 'familyBirthday' | 'captainMentoring' | 'charity' | 'recoverySession' | 'devMeeting'
+  | 'teamMeeting' | 'fitnessTest' | 'clubMedia' | 'gymBlock' | 'communityVisit'
 export type PrepKind = 'train' | 'rest' | 'video'
 
 export interface TaskChoice {
@@ -97,11 +102,10 @@ const cooled = (s: GameState, k: MandatoryKind, days: number): boolean => {
   return l === undefined || today(s) - l >= days
 }
 
-/** Mandatory tasks set in the last 6 days (weekly budget). */
+/** Mandatory tasks set in the last 6 days (weekly budget; every task counts, not just the last of each kind). */
 function recentMandatory(s: GameState): number {
-  const l = lastDays(s)
   const d = today(s)
-  return Object.values(l).filter((x): x is number => typeof x === 'number' && d - x < DAYS_PER_WEEK && d - x > 0).length
+  return readJson<number[]>(s.life, AGENDA_HIST_FLAG, []).filter((x) => typeof x === 'number' && d - x < DAYS_PER_WEEK && d - x > 0).length
 }
 
 /** Deterministic day of the year for a family birthday (week, day). */
@@ -167,25 +171,39 @@ function mandatoryCandidates(s: GameState): Cand[] {
   if (s.life.relationships.mother && cal.week === b.week && cal.day === b.day) out.push({ kind: 'familyBirthday', forced: true, weight: 9 })
   if (h.contract.role === 'captain' && until >= 2 && cooled(s, 'captainMentoring', 7)) out.push({ kind: 'captainMentoring', weight: 1.4 })
   if (h.reputation >= 55 && until >= 2 && cooled(s, 'charity', 28)) out.push({ kind: 'charity', weight: 0.7 })
+  // The ordinary club week (TestFlight build 4: "more mandatory tasks, most days one").
+  if (inSeason && until >= 2 && until <= 5 && cooled(s, 'teamMeeting', 5)) out.push({ kind: 'teamMeeting', weight: 2.2 })
+  if (inSeason && until >= 2 && !h.injury && cooled(s, 'gymBlock', 4)) out.push({ kind: 'gymBlock', weight: 1.8 })
+  if (until >= 2 && !h.injury && cooled(s, 'fitnessTest', 12)) out.push({ kind: 'fitnessTest', weight: 1.3 })
+  if (until >= 2 && cooled(s, 'clubMedia', 7)) out.push({ kind: 'clubMedia', weight: 1.2 })
+  if (until >= 2 && cooled(s, 'communityVisit', 14)) out.push({ kind: 'communityVisit', weight: 0.8 })
   return out
 }
 
-/** Today's mandatory kinds: forced ones first, then a weighted draw kept inside the weekly budget. */
+/**
+ * Today's mandatory kinds: forced ones first, then the club week kept inside
+ * the weekly budget — team training the day before a match, recovery the
+ * morning after, one ordinary duty on most other days and now and then a
+ * second. Matchday and the day off (two days after a match) stay free.
+ */
 function pickMandatory(s: GameState, rng: Rng): MandatoryKind[] {
   const c = mandatoryCandidates(s)
   const out: MandatoryKind[] = c.filter((x) => x.forced).map((x) => x.kind).slice(0, MAX_MANDATORY_PER_DAY)
+  const next = nextClubFixture(s)
+  const until = next ? daysUntil(s, next.fixture) : 99
+  if (until === 0) return out // matchday: the match is the programme
+  const last = readJson<{ day: number } | null>(s.life, LAST_CLUB_MATCH_FLAG, null)
+  if (last && today(s) - last.day === 2 && until >= 2 && rng.chance(0.75)) return out // the day off
   const budget = WEEKLY_MANDATORY_CAP - recentMandatory(s)
+  const room = (): boolean => out.length < MAX_MANDATORY_PER_DAY && budget - out.length > 0
   const pool = c.filter((x) => !x.forced && !out.includes(x.kind))
   // Team training before a match is the backbone of the week: in whenever the budget allows.
-  const tt = pool.find((x) => x.kind === 'teamTraining')
-  if (tt && out.length < MAX_MANDATORY_PER_DAY && budget > 0 && rng.chance(0.8)) out.push('teamTraining')
-  const rest = pool.filter((x) => x.kind !== 'teamTraining')
-  const rec = pool.find((x) => x.kind === 'recoverySession')
-  if (rec && out.length < MAX_MANDATORY_PER_DAY && budget - out.length > 0 && rng.chance(0.75)) out.push('recoverySession')
-  const rest2 = rest.filter((x) => !out.includes(x.kind))
-  if (rest2.length && out.length < MAX_MANDATORY_PER_DAY && budget - out.length > 0 && rng.chance(0.35)) {
-    out.push(rng.weighted(rest2, (x) => x.weight).kind)
-  }
+  if (pool.some((x) => x.kind === 'teamTraining') && room() && rng.chance(0.9)) out.push('teamTraining')
+  if (pool.some((x) => x.kind === 'recoverySession') && room() && rng.chance(0.85)) out.push('recoverySession')
+  const rest = (): Cand[] => pool.filter((x) => x.kind !== 'teamTraining' && x.kind !== 'recoverySession' && !out.includes(x.kind))
+  // Most days carry one duty; some days a second one.
+  if (!out.length && rest().length && room() && rng.chance(0.9)) out.push(rng.weighted(rest(), (x) => x.weight).kind)
+  if (out.length === 1 && rest().length && room() && rng.chance(0.2)) out.push(rng.weighted(rest(), (x) => x.weight).kind)
   return out.slice(0, MAX_MANDATORY_PER_DAY)
 }
 
@@ -239,6 +257,21 @@ function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTa
     case 'devMeeting':
       return T(lt('Gelişim görüşmesi', 'Development talk'), lt('Altyapı koordinatörü gelişimini konuşmak istiyor.', 'The academy coordinator wants to discuss your progress.'), lt('Hızlı: kısa görüşme, hoca +1', 'Quick: a short talk, manager +1'),
         { play: { choices: [ch('goals', lt('Hedeflerini birlikte koyun', 'Set goals together'), lt('Moral +3, hoca +2', 'Morale +3, manager +2')), ch('feedback', lt('Açık eleştiri iste', 'Ask for honest criticism'), lt('Güven +1.5', 'Trust +1.5'))] }, skip: lt('Hoca −2', 'Manager −2') })
+    case 'teamMeeting':
+      return T(lt('Takım toplantısı', 'Team meeting'), fill(lt('Hoca {o} maçı için planı anlatıyor.', 'The manager walks the squad through the plan for {o}.'), { o: opp }), lt('Hızlı: dinle, not al', 'Quick: listen, take notes'),
+        { play: { choices: [ch('ask', lt('Soru sor', 'Ask a question'), lt('Hoca +2', 'Manager +2')), ch('team', lt('Takıma söz al', 'Speak to the group'), lt('Takım +3, moral +2', 'Teammates +3, morale +2'))] }, skip: lt('Hoca −3, disiplin −3', 'Manager −3, discipline −3') })
+    case 'gymBlock':
+      return T(lt('Zorunlu kuvvet çalışması', 'Compulsory gym block'), lt('Kondisyoner bu hafta herkesi salona çağırdı.', 'The fitness coach has called everyone into the gym this week.'), lt('Hızlı: programı bitir, enerji −6', 'Quick: finish the programme, energy −6'),
+        { play: { drill: 'core' }, skip: lt('Kondisyoner kızar: disiplin −3', 'The fitness coach is annoyed: discipline −3') })
+    case 'fitnessTest':
+      return T(lt('Kondisyon testi', 'Fitness test'), lt('Sağlık ekibi koşu ve sıçrama testlerini yapıyor.', 'The medical staff run the sprint and jump tests.'), lt('Hızlı: testi geç, enerji −5', 'Quick: pass the test, energy −5'),
+        { play: { drill: 'physical' } })
+    case 'clubMedia':
+      return T(lt('Kulüp TV röportajı', 'Club TV interview'), lt('Kulübün kanalı seninle kısa bir röportaj istiyor.', 'The club channel wants a short interview with you.'), lt('Hızlı: kısa röportaj, taraftar +1', 'Quick: a short interview, fans +1'),
+        { play: { choices: [ch('fun', lt('Eğlenceli ol', 'Have some fun'), lt('Taraftar +3, takipçi +', 'Fans +3, followers +')), ch('serious', lt('Ciddi ve odaklı', 'Serious and focused'), lt('Basın +2, hoca +1', 'Press +2, manager +1'))] }, skip: lt('Basın −2', 'Press −2') })
+    case 'communityVisit':
+      return T(lt('Kulübün okul ziyareti', 'Club school visit'), lt('Kulüp oyuncularla bir okulu ziyaret ediyor.', 'The club is taking players to visit a school.'), lt('Hızlı: katıl, taraftar +1', 'Quick: attend, fans +1'),
+        { play: { choices: [ch('play', lt('Çocuklarla top oyna', 'Play football with the kids'), lt('Taraftar +3, mutluluk +3, enerji −6', 'Fans +3, happiness +3, energy −6'))] }, skip: lt('Taraftar −2', 'Fans −2') })
     case 'charity':
       return T(lt('Hayır gecesi', 'Charity evening'), lt('Vakfın için düzenlenen gece.', 'An evening organised for your foundation.'), lt('Hızlı: katıl, taraftar +2', 'Quick: attend, fans +2'),
         { play: { choices: [ch('speech', lt('Konuşma yap', 'Give a speech'), lt('Taraftar +4, basın +3', 'Fans +4, press +3'))] }, skip: lt('Basın −3, taraftar −2', 'Press −3, fans −2') })
@@ -315,7 +348,7 @@ function prepTasks(s: GameState, day: number, rng: Rng): AgendaTask[] {
     out.push({
       id: `p:video:${day}`, mandatory: false, kind: 'video', activity: 'video',
       title: lt('Rakip videosu izle', 'Study the opponent'), why: lt('Video analiz: rakibin alışkanlıklarını öğren.', 'Video analysis: learn the opponent’s habits.'),
-      reward: fill(lt('İlk 11 şansı +%{p} · hoca +1', 'Start chance +{p}% · manager +1'), { p: Math.round(PREP_SELECTION * 100) }),
+      reward: fill(lt('İlk 11 şansı +%{p} · klipleri oku: maçta önsezi/pozisyon +4’e kadar', 'Start chance +{p}% · read the clips: up to +4 anticipation/positioning in the match'), { p: Math.round(PREP_SELECTION * 100) }),
     })
   }
   return out.slice(0, 3)
@@ -339,6 +372,9 @@ export function ensureAgenda(s: GameState): Agenda {
     const l = lastDays(s)
     for (const t of a.tasks) if (t.mandatory) l[t.kind as MandatoryKind] = a.day
     writeJson(s.life, AGENDA_LAST_FLAG, l)
+    const hist = readJson<number[]>(s.life, AGENDA_HIST_FLAG, []).filter((x) => a.day - x < DAYS_PER_WEEK)
+    for (const t of a.tasks) if (t.mandatory) hist.push(a.day)
+    writeJson(s.life, AGENDA_HIST_FLAG, hist)
   }
   return a
 }
@@ -465,6 +501,35 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       else if (mode === 'played' && choice === 'feedback') { changeTrust(h, 1.5); line = lt('Açık eleştiriyi dinledin; hoca bunu sevdi.', 'You took the honest criticism; the manager liked that.') }
       else if (mode === 'played') { h.morale = meter(h.morale + 3); rel(s, MANAGER_REL, 2); line = lt('Birlikte hedefler koydunuz.', 'You set goals together.') }
       else { rel(s, MANAGER_REL, 1); line = lt('Kısa bir gelişim görüşmesi yaptın.', 'A short development talk.') }
+      break
+    case 'teamMeeting':
+      if (mode === 'skip') { rel(s, MANAGER_REL, -3); life.discipline = meter(life.discipline - 3); line = lt('Takım toplantısına gitmedin.', 'You skipped the team meeting.') }
+      else if (mode === 'played' && choice === 'team') { rel(s, 'teammates', 3); h.morale = meter(h.morale + 2); line = lt('Takıma konuştun; soyunma odası dinledi.', 'You spoke to the group; the dressing room listened.') }
+      else if (mode === 'played') { rel(s, MANAGER_REL, 2); line = lt('Sorduğun soru hocanın hoşuna gitti.', 'The manager liked your question.') }
+      else line = lt('Toplantıyı dinledin, notlarını aldın.', 'You listened and took notes.')
+      break
+    case 'gymBlock':
+      if (mode === 'skip') { life.discipline = meter(life.discipline - 3); line = lt('Kuvvet çalışmasına gitmedin.', 'You skipped the gym block.') }
+      else if (mode === 'played') { changeTrust(h, Math.max(0, trainingTrustRaw(h, clamp(opts.performance ?? 0.6, 0, 1))) * 0.5); line = lt('Kuvvet çalışmasını bitirdin.', 'You finished the gym block.') }
+      else { life.energy = meter(life.energy - 6); line = lt('Kuvvet programını tamamladın.', 'You completed the strength programme.') }
+      break
+    case 'fitnessTest':
+      if (mode === 'played') {
+        const perf = clamp(opts.performance ?? 0.6, 0, 1)
+        if (perf >= 0.75) changeTrust(h, 0.8)
+        line = perf >= 0.75 ? lt('Testte takımın en iyileri arasındaydın.', 'You were among the best in the squad in the test.') : lt('Kondisyon testini geçtin.', 'You passed the fitness test.')
+      } else { life.energy = meter(life.energy - 5); line = lt('Kondisyon testini geçtin.', 'You passed the fitness test.') }
+      break
+    case 'clubMedia':
+      if (mode === 'skip') { rel(s, 'press', -2); line = lt('Kulüp TV röportajını kaçırdın.', 'You missed the club TV interview.') }
+      else if (mode === 'played' && choice === 'serious') { rel(s, 'press', 2); rel(s, MANAGER_REL, 1); line = lt('Ciddi ve odaklı göründün.', 'You came across serious and focused.') }
+      else if (mode === 'played') { rel(s, 'fans', 3); life.followers = Math.round(life.followers * 1.002) + 20; line = lt('Röportaj sosyal medyada çok paylaşıldı.', 'The interview was shared widely online.') }
+      else { rel(s, 'fans', 1); line = lt('Kulüp TV için kısa bir röportaj verdin.', 'You gave club TV a short interview.') }
+      break
+    case 'communityVisit':
+      if (mode === 'skip') { rel(s, 'fans', -2); line = lt('Okul ziyaretine katılmadın.', 'You skipped the school visit.') }
+      else if (mode === 'played') { rel(s, 'fans', 3); life.happiness = meter(life.happiness + 3); life.energy = meter(life.energy - 6); line = lt('Çocuklarla top oynadın; günün en güzel anı.', 'You played football with the kids; the best moment of the day.') }
+      else { rel(s, 'fans', 1); line = lt('Okul ziyaretine katıldın.', 'You joined the school visit.') }
       break
     case 'charity':
       if (mode === 'skip') { rel(s, 'press', -3); rel(s, 'fans', -2); line = lt('Hayır gecesine gitmedin.', 'You skipped the charity evening.') }

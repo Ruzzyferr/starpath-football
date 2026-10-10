@@ -36,28 +36,51 @@ describe('daily agenda', () => {
     expect(JSON.stringify(generateAgenda(a))).toBe(JSON.stringify(generateAgenda(b)))
   })
 
-  it('never sets more than 2 mandatory tasks a day, averages 1–5 a week in season and varies the kinds', () => {
-    const s = makeGame(502)
-    const kinds = new Set<string>()
+  it('sets 4–6 mandatory tasks a week in season (most days one, some two, matchday free) and varies the kinds', () => {
     let mandatory = 0
     let weeks = 0
-    for (let d = 0; d < 7 * 30; d++) {
-      s.pendingEvents.length = 0
-      const a = ensureAgenda(s)
-      const m = a.tasks.filter((t) => t.mandatory)
-      expect(m.length).toBeLessThanOrEqual(MAX_MANDATORY_PER_DAY)
-      if (s.calendar.week >= 2 && s.calendar.week <= 40) {
-        mandatory += m.length
-        if (s.calendar.day === 0) weeks++
+    let days = 0
+    let zero = 0
+    let two = 0
+    let matchdayTasks = 0
+    const kinds: Record<string, number> = {}
+    for (const seed of [502, 503, 504]) {
+      const s = makeGame(seed)
+      let repeat = 0
+      let prev = ''
+      for (let d = 0; d < 7 * 30; d++) {
+        s.pendingEvents.length = 0
+        const a = ensureAgenda(s)
+        const m = a.tasks.filter((t) => t.mandatory)
+        expect(m.length).toBeLessThanOrEqual(MAX_MANDATORY_PER_DAY)
+        if (s.calendar.week >= 2 && s.calendar.week <= 40) {
+          mandatory += m.length
+          days++
+          if (m.length === 0) zero++
+          if (m.length === 2) two++
+          if (isHeroMatchday(s) && m.some((t) => t.kind !== 'disciplinary' && t.kind !== 'familyBirthday' && t.kind !== 'physio')) matchdayTasks++
+          if (s.calendar.day === 0) weeks++
+          for (const t of m) kinds[t.kind] = (kinds[t.kind] ?? 0) + 1
+          // No spam: the same ordinary duty never on two consecutive days.
+          const key = m.map((t) => t.kind).filter((k) => k !== 'physio').sort().join(',')
+          if (key && key === prev) repeat++
+          prev = key
+        }
+        if (isHeroMatchday(s)) autoPlayHeroMatch(s)
+        advanceDay(s)
       }
-      for (const t of m) kinds.add(t.kind)
-      if (isHeroMatchday(s)) autoPlayHeroMatch(s)
-      advanceDay(s)
+      expect(repeat).toBeLessThanOrEqual(3)
     }
     const perWeek = mandatory / Math.max(1, weeks)
-    expect(perWeek).toBeGreaterThanOrEqual(1)
-    expect(perWeek).toBeLessThanOrEqual(5)
-    expect(kinds.size).toBeGreaterThanOrEqual(2)
+    const total = Object.values(kinds).reduce((x, y) => x + y, 0)
+    expect(perWeek).toBeGreaterThanOrEqual(4)
+    expect(perWeek).toBeLessThanOrEqual(6)
+    expect(zero / days).toBeGreaterThan(0.1) // rest days exist
+    expect(zero / days).toBeLessThan(0.45)
+    expect(two / days).toBeGreaterThan(0.03) // some days carry two
+    expect(matchdayTasks).toBe(0)
+    expect(Object.keys(kinds).length).toBeGreaterThanOrEqual(7)
+    expect(Math.max(...Object.values(kinds)) / total).toBeLessThan(0.35)
   })
 
   it('blocks the day until mandatory tasks are done; quick resolve clears the block', () => {
