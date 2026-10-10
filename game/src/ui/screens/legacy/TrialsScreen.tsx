@@ -77,7 +77,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           <span>{t('training.drill.quit')}</span>
         </button>
       )}
-      <DrillHints active={phase === 'playing' && !loading} drill={kind} variant={undefined} />
+      <DrillHints active={phase === 'playing' && !loading} drill={kind} variant={undefined} onQuit={() => onDone(null)} />
       {phase === 'playing' && loading && <div class="trn-drill-center"><Spinner /></div>}
       {phase === 'intro' && (
         <div class="trn-drill-card stack" data-testid="trial-intro">

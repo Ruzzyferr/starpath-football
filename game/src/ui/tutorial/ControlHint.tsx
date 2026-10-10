@@ -5,7 +5,8 @@
  * the player turned "Mini oyun ipuçları" off or ticked "Bir daha gösterme" for that kind
  * (tutorial/prefs). Card copy lives in tutorial/howTo.ts (one per-kind data source).
  *
- * A modal dialog (focus trap, Enter / Space starts, Esc too). Over a Phaser scene it holds the
+ * A modal dialog (focus trap, Enter / Space starts, Esc too). Where backing out was possible before
+ * (drills, opponent video, doping test) a secondary Quit button closes the mini-game without starting. Over a Phaser scene it holds the
  * shared pause gate (game/pauseGate): the moment / drill / clip stays frozen until Start, then the
  * gate's 3-2-1 beat runs before play resumes. Without a scene (doping test) it runs its own 3-2-1.
  */
@@ -93,14 +94,16 @@ export const tutorialVisible = (key: string): boolean => shouldShowTutorial(key,
 /**
  * The how-to card. `gate`: hold the pause gate (a Phaser scene plays behind it) and wait for the
  * scene to attach before painting. `countdown`: no scene behind: run a DOM 3-2-1 before `onDone`.
+ * `onQuit`: show a secondary Quit button that backs out of the mini-game (not for match moments).
  */
-export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; gate?: boolean; countdown?: boolean; onDone: () => void }) {
+export function TutorialCard({ tkey, gate, countdown, onDone, onQuit }: { tkey: string; gate?: boolean; countdown?: boolean; onDone: () => void; onQuit?: () => void }) {
   const how = howToFor(tkey)
   const [ready, setReady] = useState(!gate || pauseGate.isAttached())
   const [dontShow, setDontShow] = useState(false)
   const [beat, setBeat] = useState<number | null>(null)
   const card = useRef<HTMLDivElement>(null)
   const startBtn = useRef<HTMLButtonElement>(null)
+  const quitBtn = useRef<HTMLButtonElement>(null)
   const done = useRef(false)
   const dontRef = useRef(false)
   dontRef.current = dontShow
@@ -134,6 +137,13 @@ export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; 
     else onDone()
   }
 
+  const quit = () => {
+    if (done.current || !onQuit) return
+    done.current = true
+    if (dontRef.current) hideTutorial(tkey)
+    onQuit()
+  }
+
   // Own 3-2-1 (no scene behind the card).
   useEffect(() => {
     if (beat === null) return
@@ -158,7 +168,11 @@ export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; 
       } else if (e.key === 'Enter' || e.key === 'Escape' || e.key === ' ' || e.code === 'Space') {
         // Space on the checkbox toggles it; anything else starts (handled here, not by the button's
         // native keyup click, which a scene's key capture behind the card may cancel).
-        if (!(target instanceof HTMLInputElement && e.key !== 'Enter' && e.key !== 'Escape')) {
+        if (target && target === quitBtn.current && e.key !== 'Escape') {
+          // Enter / Space on the focused Quit button activate it (the button's own action).
+          e.preventDefault()
+          quit()
+        } else if (!(target instanceof HTMLInputElement && e.key !== 'Enter' && e.key !== 'Escape')) {
           e.preventDefault()
           start()
         }
@@ -211,9 +225,16 @@ export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; 
               <span>{t('help.howTo.dontShow')}</span>
             </label>
             <p class="sr-only" id={`${id}-d`}>{t('help.howTo.dontShowDesc')}</p>
-            <button type="button" class="btn btn-primary btn-md btn-block control-hint-close" ref={startBtn} onClick={start} data-testid="tutorial-start">
-              <Icon name="play" size={18} /> {t('help.howTo.start')}
-            </button>
+            <div class={`tut-actions${onQuit ? ' has-quit' : ''}`}>
+              {onQuit && (
+                <button type="button" class="btn btn-ghost btn-md tut-quit" ref={quitBtn} onClick={quit} data-testid="tutorial-quit">
+                  {t('help.howTo.quit')}
+                </button>
+              )}
+              <button type="button" class="btn btn-primary btn-md btn-block control-hint-close" ref={startBtn} onClick={start} data-testid="tutorial-start">
+                <Icon name="play" size={18} /> {t('help.howTo.start')}
+              </button>
+            </div>
             {inputPlatform.value !== 'touch' && <p class="t-xs t-lo tut-keys" aria-hidden="true">{t('help.howTo.startHint')}</p>}
           </>
         )}
@@ -224,13 +245,13 @@ export function TutorialCard({ tkey, gate, countdown, onDone }: { tkey: string; 
 }
 
 /** A card keyed to one play: shows when `active` turns on for a new `instance`, if visible for `tkey`. */
-export function GameTutorial({ active, tkey, instance, gate = true }: { active: boolean; tkey: string | null; instance?: string; gate?: boolean }) {
+export function GameTutorial({ active, tkey, instance, gate = true, onQuit }: { active: boolean; tkey: string | null; instance?: string; gate?: boolean; onQuit?: () => void }) {
   const [open, setOpen] = useState<string | null>(null)
   useLayoutEffect(() => {
     setOpen(active && tkey && tutorialVisible(tkey) ? tkey : null)
   }, [active, tkey, instance])
   if (!open || !active) return null
-  return <TutorialCard key={`${open}|${instance ?? ''}`} tkey={open} gate={gate} onDone={() => setOpen(null)} />
+  return <TutorialCard key={`${open}|${instance ?? ''}`} tkey={open} gate={gate} onDone={() => setOpen(null)} onQuit={onQuit} />
 }
 
 /** How-to card before every match moment (per moment kind). */
@@ -239,8 +260,8 @@ export function MatchHints({ active, kind, momentId }: { active: boolean; kind: 
 }
 
 /** How-to card before every training drill (per drill / variant). */
-export function DrillHints({ active, drill, variant }: { active: boolean; drill: string | undefined; variant: string | undefined }) {
-  return <GameTutorial active={active} tkey={drill ? drillTutorialKey(drill, variant) : null} instance={`${drill}|${variant}`} />
+export function DrillHints({ active, drill, variant, onQuit }: { active: boolean; drill: string | undefined; variant: string | undefined; onQuit?: () => void }) {
+  return <GameTutorial active={active} tkey={drill ? drillTutorialKey(drill, variant) : null} instance={`${drill}|${variant}`} onQuit={onQuit} />
 }
 
 /** DOM "3 / 2 / 1" over a scene that does not draw the gate's resume beat itself (scouting video). */

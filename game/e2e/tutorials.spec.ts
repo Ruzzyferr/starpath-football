@@ -70,6 +70,8 @@ test('match: the how-to card shows before two moments in a row, frozen until Sta
     await moment.getByRole('button', { name: 'Play moment' }).click()
     await expectCard(page, /^match:/)
     expect(await gateHeld(page), 'scene frozen behind the card').toBe(true)
+    // Match moments cannot be skipped: no Quit on their card.
+    await expect(card(page).getByTestId('tutorial-quit')).toHaveCount(0)
     kinds.push((await card(page).getAttribute('data-tutorial'))!)
     if (n === 0) {
       await page.waitForTimeout(500)
@@ -102,6 +104,8 @@ test('drills: card every time; "Don\'t show again" hides that kind only; "Show a
   await expect(card(page).getByTestId('tutorial-dont-show')).toBeFocused()
   await page.keyboard.press('Space')
   await expect(card(page).getByTestId('tutorial-dont-show')).toBeChecked()
+  await page.keyboard.press('Tab')
+  await expect(card(page).getByTestId('tutorial-quit')).toBeFocused()
   await page.keyboard.press('Tab')
   await expect(card(page).getByTestId('tutorial-start')).toBeFocused()
   await page.waitForTimeout(300)
@@ -141,6 +145,18 @@ test('drills: card every time; "Don\'t show again" hides that kind only; "Show a
   await expectCard(page, 'drill:finishing')
   await card(page).getByTestId('tutorial-start').click()
   await quitDrill(page)
+
+  // "Quit" on the card backs out of the drill without starting it (no energy spent).
+  const e0 = await sp<number>(page, 'sp.state().life.energy')
+  await startDrill(page, 'Shooting Drill')
+  await expectCard(page, 'drill:finishing')
+  const quit = card(page).getByTestId('tutorial-quit')
+  await expect(quit).toHaveText('Quit')
+  await quit.click()
+  await expect(card(page)).toHaveCount(0)
+  await expect(page.locator('.trn-drill')).toHaveCount(0)
+  expect(await gateHeld(page)).toBe(false)
+  expect(await sp<number>(page, 'sp.state().life.energy')).toBe(e0)
 })
 
 test('the global "Mini-game tips" switch turns every card off', async ({ page }) => {

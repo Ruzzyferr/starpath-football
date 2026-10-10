@@ -150,7 +150,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
           <span>{t('training.drill.quit')}</span>
         </button>
       )}
-      <DrillHints active={phase === 'playing'} drill={drill?.kind} variant={drill?.variant} />
+      <DrillHints active={phase === 'playing'} drill={drill?.kind} variant={drill?.variant} onQuit={quit} />
       {phase === 'loading' && (
         <div class="trn-drill-center">
           <Spinner />

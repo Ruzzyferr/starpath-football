@@ -164,7 +164,7 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
           <span>{t('training.scout.quit')}</span>
         </button>
       )}
-      <GameTutorial active={phase === 'playing'} tkey="scout" />
+      <GameTutorial active={phase === 'playing'} tkey="scout" onQuit={quit} />
       {phase === 'playing' && <GateBeat />}
       {phase === 'loading' && (
         <div class="trn-drill-center">

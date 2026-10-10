@@ -208,7 +208,7 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
         </div>
       )}
 
-      {howTo && phase === 'intro' && <TutorialCard tkey="doping" countdown onDone={() => { setHowTo(false); setPhase('breath') }} />}
+      {howTo && phase === 'intro' && <TutorialCard tkey="doping" countdown onDone={() => { setHowTo(false); setPhase('breath') }} onQuit={onClose} />}
 
       {phase === 'breath' && (
         <div class="dop-stage">
