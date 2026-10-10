@@ -448,9 +448,10 @@ export const mockActions: GameActions = {
     }
   },
 
-  resolveEvent(index, choice): EventOutcomeView {
+  resolveEvent(ref, choice): EventOutcomeView {
     const s = get()
-    const pe = s.pendingEvents[index]
+    const index = typeof ref === 'number' ? ref : s.pendingEvents.findIndex((p) => (p.uid ?? p.defId) === ref)
+    const pe = index >= 0 ? s.pendingEvents[index] : undefined
     const def = pe && EVENTS.find((e) => e.id === pe.defId)
     if (!pe || !def) return { text: L('Olay bulunamadı.', 'Event not found.'), deltas: [], success: false }
     const c = (def.choices[choice] ?? def.choices[0])!

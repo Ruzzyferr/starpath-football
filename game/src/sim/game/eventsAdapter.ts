@@ -6,6 +6,7 @@
 import type { GameState, Lang, PendingEvent } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { describeEvent as engineDescribe, resolveEvent as engineResolve, rollEvents as engineRoll } from '../life/events/engine'
+export { EventAlreadyResolvedError, findPending, isEventResolved, pendingKey } from '../life/events/engine'
 import type { EventView } from '../life/events/engine'
 import type { ResolvedEffect } from '../life/events/types'
 

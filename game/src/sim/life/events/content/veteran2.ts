@@ -103,7 +103,7 @@ export const veteran2Events: EventDef[] = [
     text: t('{partnerName} telefonu uzattı: küçük yavru yürüyor! Ama deplasman yolculuğuna bir saat var. Videoyu şimdi izlemek mi, bir sonraki sefer gerçeğini canlı görmek mi?', '{partnerName} held out the phone: the little one is walking! But your away trip leaves in an hour. Watch the video now or catch the next steps live?'),
     icon: '👣',
     choices: [
-      { label: t('Yolculuğu ertele, evde kal', 'Delay the trip and stay home'), risk: 'medium', effects: () => fx(t('Hoca kaşını kaldırdı ama anladı. O akşam çocuğun düştüğü ve güldüğü an hafızana yazıldı.', 'The manager raised an eyebrow but understood. That evening, the moment the child fell and laughed was etched in your memory.'), happy(12), rel('partner', 6), boss(-2), stress(-5)) },
+      { kind: 'certain', label: t('Yolculuğu ertele, evde kal', 'Delay the trip and stay home'), risk: 'medium', effects: () => fx(t('Hoca kaşını kaldırdı ama anladı. O akşam çocuğun düştüğü ve güldüğü an hafızana yazıldı.', 'The manager raised an eyebrow but understood. That evening, the moment the child fell and laughed was etched in your memory.'), happy(12), rel('partner', 6), boss(-2), stress(-5)) },
       { label: t('Görüntülü ara, yola çık', 'Video-call and travel'), effects: () => fx(t('Telefon ekranında adımlar. Yol boyunca gülümsedin.', 'Steps on a phone screen. You smiled all the way.'), happy(6), rel('partner', 2)) },
       { label: t('Videoyu sonra izle', 'Watch the video later'), effects: () => fx(t('Videoyu üç gün sonra izledin. {partnerName} hissetti.', 'You watched the video three days later. {partnerName} felt it.'), rel('partner', -4), happy(-2)) },
     ],
@@ -115,7 +115,7 @@ export const veteran2Events: EventDef[] = [
     text: t('Çocuğun okulda "meslek günü" var. Ebeveynler mesleklerini anlatıyor ve herkes seni bekliyor. Aynı gün antrenman var.', 'Your child\'s school has a career day. Parents explain their jobs and everyone expects you. There is training the same day.'),
     icon: '🏫',
     choices: [
-      { label: t('Antrenmanı kaçır, okula git', 'Skip training and go to school'), risk: 'medium', effects: () => fx(t('Sınıf seni dinledi ve bir çocuk "büyüyünce kaleci olacağım" dedi. Hocaya özür mesajı yazdın.', 'The class listened to you and one kid said, "I will be a goalkeeper when I grow up." You sent the manager an apology.'), happy(10), rel('partner', 4), boss(-2), trust(-1)) },
+      { kind: 'certain', label: t('Antrenmanı kaçır, okula git', 'Skip training and go to school'), risk: 'medium', effects: () => fx(t('Sınıf seni dinledi ve bir çocuk "büyüyünce kaleci olacağım" dedi. Hocaya özür mesajı yazdın.', 'The class listened to you and one kid said, "I will be a goalkeeper when I grow up." You sent the manager an apology.'), happy(10), rel('partner', 4), boss(-2), trust(-1)) },
       { label: t('Videoyla katıl', 'Join through video'), effects: () => fx(t('Sınıfın projektöründe yüzün belirdi. Çocuğun bundan bir gün sonra "babam/annem ekranda" demesi sevimliydi.', 'Your face filled the class projector. It was cute when your child said the next day, "that was on the screen."'), happy(5), rel('partner', 1)) },
       { label: t('Antrenmandan sonra uğra', 'Stop by after training'), effects: () => fx(t('Okulda yalnızca birkaç öğrenci kalmıştı. Yine de bir çizim hediye aldın.', 'Only a few pupils were left at school. You still got a drawing as a present.'), happy(4), fatigue(3)) },
     ],
@@ -165,7 +165,7 @@ export const veteran2Events: EventDef[] = [
     icon: '🥅',
     choices: [
       { label: t('Kenarda sessiz izle', 'Watch silently from the side'), effects: () => fx(t('Sessizce izledin; çocuk ilk tüneli attı ve gülümsedi.', 'You watched quietly; the child nutmegged somebody and grinned.'), happy(10), rel('partner', 3)) },
-      { label: t('Sahaya in, birkaç ipucu ver', 'Step on and give a few tips'), risk: 'medium', effects: () => fx(t('Hoca "aile müdahalesi" dedi. Çocuk utandı; ama pas verirken güzel gülüyordu.', 'The coach said "family interference". The child blushed, but smiled lovely while passing.'), happy(4), rel('partner', -1), press(1)) },
+      { kind: 'certain', label: t('Sahaya in, birkaç ipucu ver', 'Step on and give a few tips'), risk: 'medium', effects: () => fx(t('Hoca "aile müdahalesi" dedi. Çocuk utandı; ama pas verirken güzel gülüyordu.', 'The coach said "family interference". The child blushed, but smiled lovely while passing.'), happy(4), rel('partner', -1), press(1)) },
       { label: t('Gelme, çocuk kendi adını kursun', 'Stay away; let them make their own name'), effects: () => fx(t('Çocuk bir mesaj attı: "Sensiz daha rahattım." Gururlu ve biraz kırgın hissettin.', 'The child sent a message: "I was more relaxed without you." You felt proud and a bit hurt.'), happy(5), stress(-1)) },
     ],
   },
@@ -176,7 +176,7 @@ export const veteran2Events: EventDef[] = [
     text: t('Seni futbolla tanıştıran dede hastanede. Hekimler "birkaç gün" diyor. Önümüzdeki hafta kritik maç. Dede telefonla "Git, oyna. Beni maçında izlerim" diyor.', 'The grandfather who introduced you to football is in hospital. Doctors say "a few days". A key match is next week. On the phone he says: "Go play. I will watch you in the match."'),
     icon: '🕯️',
     choices: [
-      { label: t('Yanında kal, maçı kaçır', 'Stay by his side and miss the match'), risk: 'medium', effects: () => fx(t('Dedenin elini tuttun, eski maç hikâyelerini dinledin. Son gece bir şey fısıldadı: "Gururluyum."', 'You held his hand and listened to old match stories. On the last night he whispered, "I am proud."'), happy(-6), stress(5), rel('mother', 5), boss(-2), flags({ grandpa_farewell: true })) },
+      { kind: 'certain', label: t('Yanında kal, maçı kaçır', 'Stay by his side and miss the match'), risk: 'medium', effects: () => fx(t('Dedenin elini tuttun, eski maç hikâyelerini dinledin. Son gece bir şey fısıldadı: "Gururluyum."', 'You held his hand and listened to old match stories. On the last night he whispered, "I am proud."'), happy(-6), stress(5), rel('mother', 5), boss(-2), flags({ grandpa_farewell: true })) },
       { label: t('Maçı oyna, dedenin için gol ara', 'Play the match and play for him'), effects: (_c, rng) => rng.chance(0.5) ? fx(t('Gol attın ve parmağını gökyüzüne kaldırdın. Sonra hastaneye koştun.', 'You scored and pointed to the sky. Then you ran to the hospital.'), happy(4), stress(4), form(3), fans(4), flags({ grandpa_farewell: true })) : fx(t('Maçta kafan başka yerdeydi. Sonra hastaneye gittin; zaman kalmamıştı.', 'Your mind was elsewhere in the match. Then you went to the hospital; there was no time left.'), happy(-8), stress(6), form(-3), flags({ grandpa_farewell: true })) },
       { label: t('Hastaneye kısa sürede git ve dön', 'Make a brief hospital visit and return'), effects: () => fx(t('Bir saatlik ziyaret ağır geçti. Dede gülümsedi: "Şimdi git."', 'The one-hour visit was heavy. Grandpa smiled: "Now go."'), happy(-3), stress(3), flags({ grandpa_farewell: true })) },
     ],

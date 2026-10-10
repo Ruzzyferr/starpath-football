@@ -25,8 +25,8 @@ import { scoutInterest } from '../../sim/career/transfers'
 import { activityBlock, activityEnergy, activityMoney, TRAINER_FEES, trainerName, type ActivityContext } from '../../sim/life/activities'
 import { createRace, type RaceCard } from '../../sim/life/casino'
 import { netWorth } from '../../sim/life/economy'
-import { getEventDef, absoluteWeek } from '../../sim/life/events/engine'
-import { choiceOdds } from '../../sim/life/events/odds'
+import { getEventDef, absoluteWeek, pendingKey } from '../../sim/life/events/engine'
+import { certainResult, choiceOdds, successResult, type ChoiceOdds } from '../../sim/life/events/odds'
 import type { EventCategory as SimEventCategory } from '../../sim/life/events/types'
 import { teammateId } from '../../sim/life/relationships'
 import { getSponsorOffers, getOffers, nextHeroFixture, activityContext, heroClub, GFLAG, isHeroMatchday, type SeasonDigest } from '../../sim/game'
@@ -194,6 +194,15 @@ const fillVars = (text: LText, vars: Record<string, string | number>): LText => 
   return { tr: sub(text.tr), en: sub(text.en) }
 }
 
+/** Run a content function that may throw on odd state; fall back instead of breaking the card. */
+function safe<T>(fn: () => T, fallback: T): T {
+  try {
+    return fn()
+  } catch {
+    return fallback
+  }
+}
+
 function eventView(s: GameState, index: number): EventView | null {
   const pe = s.pendingEvents[index]
   if (!pe) return null
@@ -206,31 +215,24 @@ function eventView(s: GameState, index: number): EventView | null {
     for (const [k, v] of Object.entries(pe.vars)) vars[k] = typeof v === 'number' && /amount|money|fee|price|cost|sum/i.test(k) ? money(v) : v
     return {
       index,
+      uid: pendingKey(pe),
       defId: def.id,
       category: EVENT_CAT[def.category] ?? 'social',
       title: fillVars(def.title, vars),
       body: fillVars(def.text, vars),
       choices: def.choices.map((c, ci) => {
-        let met = true
-        try { met = c.requires ? c.requires(ctx) : true } catch { met = false }
-        // Preview: dry-run the effect function with two seeds (it never mutates); differing deltas are "uncertain".
-        let preview: Delta[] = []
-        try {
-          const a = c.effects(ctx, new Rng(hashString(`${def.id}:a`)))
-          const b = c.effects(ctx, new Rng(hashString(`${def.id}:b`)))
-          const sig = (x: (typeof a.deltas)[number]) => JSON.stringify(x)
-          preview = eventDeltas(s, a.deltas, (i) => !b.deltas[i] || sig(a.deltas[i]!) !== sig(b.deltas[i]))
-        } catch {
-          preview = []
-        }
+        const met = safe(() => (c.requires ? c.requires(ctx) : true), false)
+        const o = safe((): ChoiceOdds | null => choiceOdds(s, def, ci, pe.vars), null)
+        const preview: Delta[] = o?.kind === 'certain'
+          // Certain: the exact, fixed consequence that will be applied (no "uncertain" marks).
+          ? safe(() => eventDeltas(s, certainResult(ctx, def, ci).deltas), [])
+          // Chance: what it does if it works; every chip is marked uncertain (the wheel decides).
+          : safe(() => eventDeltas(s, successResult(ctx, def, ci)?.deltas ?? [], () => true), [])
         let odds: EventChoiceView['odds']
         let risk: Risk = c.risk ?? 'safe'
-        try {
-          const o = choiceOdds(s, def, ci, pe.vars)
-          odds = { pct: Math.round(o.success * 100), mixed: Math.round(o.mixed * 100), fail: Math.round(o.fail * 100), noRisk: o.noRisk, factors: o.factors.map((f) => ({ key: f.key, label: f.label, pts: f.pts })) }
+        if (o) {
+          odds = { pct: Math.round(o.success * 100), mixed: Math.round(o.mixed * 100), fail: Math.round(o.fail * 100), noRisk: o.noRisk, kind: o.kind, factors: o.factors.map((f) => ({ key: f.key, label: f.label, pts: f.pts })) }
           risk = o.noRisk ? 'safe' : o.risk
-        } catch {
-          odds = undefined
         }
         return {
           label: fillVars(c.label, vars),

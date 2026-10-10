@@ -405,6 +405,7 @@ export const weirdEvents: EventDef[] = [
       },
       {
         label: t('Maçı oynamayı reddet', 'Refuse to play without them'),
+        kind: 'certain',
         hint: t('Gerçekten mi?', 'Really?'),
         risk: 'high',
         effects: () => fx(t('Hoca bunu "kariyerinin en saçma talebi" diye kayda geçti.', 'The gaffer logged it as "the most absurd request of my career".'), boss(-10), disc(-6), press(-3), flags({ lucky_socks: null })),

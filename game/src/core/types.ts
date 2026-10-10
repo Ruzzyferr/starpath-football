@@ -611,6 +611,8 @@ export interface PendingEvent {
   /** Template variables resolved when the event fired (names, amounts). */
   vars: Record<string, string | number>
   firedAt: Calendar
+  /** Unique card id (one per firing): resolving is idempotent by this key. Older saves lack it. */
+  uid?: string
 }
 
 // ───────────────────────── Root state ─────────────────────────

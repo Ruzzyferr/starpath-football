@@ -181,8 +181,13 @@ export interface ResolvedEffect {
   deltas: AppliedDelta[]
   followUps: FollowUp[]
   news?: NewsSpec
-  /** How the roll went (no-risk choices always 'success'). */
-  outcome?: 'success' | 'mixed' | 'fail'
+  /**
+   * How it went: a chance choice's roll (`success` / `mixed` / `fail`), or `certain`
+   * for a no-wheel choice that applied its fixed, shown-in-advance consequence.
+   */
+  outcome?: 'success' | 'mixed' | 'fail' | 'certain'
+  /** Pending-card key this resolution consumed (idempotency ledger). */
+  key?: string
   /** The odds the card showed for this choice (success chance 0..1); absent for no-risk choices. */
   chance?: number
   /** The half-worked share the card showed (0..1). */
@@ -191,15 +196,25 @@ export interface ResolvedEffect {
   roll?: number
 }
 
+/**
+ * The two kinds of choice (owner spec, TestFlight build 7):
+ * - `chance`: a gamble (persuade, bluff, negotiate…): the odds wheel spins and success,
+ *   mixed and fail each have their own consequence;
+ * - `certain`: no wheel, no roll: a fixed consequence shown on the button before choosing
+ *   (apologise, accept the bench, pay, skip the party…).
+ */
+export type ChoiceKind = 'chance' | 'certain'
+
 export interface ChoiceDef {
   label: LText
   hint?: LText
   risk?: 'low' | 'medium' | 'high'
   /**
-   * Explicit no-risk option (no roll, always resolves as written). Leave unset to
-   * let the odds model decide: a deterministic, untagged choice with a small upside
-   * is no-risk, everything else rolls (sim/life/events/odds).
+   * Explicit kind. Leave unset to let the classifier decide by the choice's nature
+   * (sim/life/events/odds `classifyChoice`: label verbs, authored risk and branches).
    */
+  kind?: ChoiceKind
+  /** Legacy alias: `true` = `kind: 'certain'`, `false` = `kind: 'chance'`. */
   noRisk?: boolean
   /** Gate (money, relationship level…). A locked choice is shown disabled. */
   requires?: (ctx: EventCtx) => boolean

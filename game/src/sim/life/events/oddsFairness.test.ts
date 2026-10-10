@@ -152,10 +152,10 @@ describe('decision-card odds are honest', () => {
   it('in the game, two identical cards resolved back to back get different, fresh draws from the saved rng', () => {
     const s = makeGame(34)
     const rows = rolledChoices(s)
-    const r = rows.find((x) => pctOf(x.odds.success) >= 60 && pctOf(x.odds.success) <= 85)!
+    const r = rows.find((x) => !x.def.choices[x.idx]!.requires && pctOf(x.odds.success) >= 60 && pctOf(x.odds.success) <= 85)!
     const draws: number[] = []
     for (let i = 0; i < 40; i++) {
-      s.pendingEvents = [{ defId: r.def.id, vars: r.vars, firedAt: { ...s.calendar } }]
+      s.pendingEvents = [{ defId: r.def.id, vars: r.vars, firedAt: { ...s.calendar }, uid: `${r.def.id}#t${i}` }]
       const before = JSON.stringify(s.rng)
       const res = resolveEventChoice(s, 0, r.idx)
       if (!res.ok || !res.value) continue

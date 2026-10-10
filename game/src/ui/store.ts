@@ -125,10 +125,12 @@ export interface EventChoiceView {
    * `factors` = what moves it (percentage points, strongest first). `mixed` / `fail` =
    * the half-worked and backfire shares (%); pct + mixed + fail = 100 exactly.
    */
-  odds?: { pct: number; mixed?: number; fail?: number; noRisk: boolean; factors: { key: string; label: LText; pts: number }[] }
+  odds?: { pct: number; mixed?: number; fail?: number; noRisk: boolean; kind?: 'chance' | 'certain'; factors: { key: string; label: LText; pts: number }[] }
 }
 export interface EventView {
   index: number
+  /** Unique key of this card (resolve by it: a stale index can never hit another card). */
+  uid?: string
   defId: string
   category: EventCategory
   title: LText
@@ -141,8 +143,10 @@ export interface EventOutcomeView {
   text: LText
   deltas: Delta[]
   success: boolean
-  /** How the roll went: it worked, half worked, or backfired. */
-  tier?: 'success' | 'mixed' | 'fail'
+  /** How it went: the roll worked, half worked or backfired — or a certain choice applied as shown. */
+  tier?: 'success' | 'mixed' | 'fail' | 'certain'
+  /** The card had already been answered: nothing changed (one-shot guard). */
+  already?: boolean
   /** The success chance the card showed (%), absent for no-risk options. */
   pct?: number
   /** The half-worked share the card showed (%). */
@@ -722,7 +726,8 @@ export interface GameActions {
   advanceToMatch(): void
 
   // events
-  resolveEvent(index: number, choice: number): EventOutcomeView
+  /** One-shot: by card uid (preferred) or queue index; a second call for the same card is a no-op (`already`). */
+  resolveEvent(ref: number | string, choice: number): EventOutcomeView
 
   // training
   /** Train with a mini-game score (omit = auto 0.6). Returns the stat chips. */
@@ -896,6 +901,12 @@ export const pendingNav = signal<ScreenId | null>(null)
 
 /** Index of the event currently shown in the decision modal (null = closed). */
 export const activeEvent = signal<number | null>(null)
+/**
+ * The answered card's result, kept outside the modal component: the decision is already
+ * committed in the sim (card gone, key in the resolved ledger, save flushed), so a re-render
+ * or remount of the modal shows this result (wheel, then outcome), never the card again.
+ */
+export const eventResult = signal<{ uid: string; out: EventOutcomeView; label: string; phase: 'spin' | 'outcome' } | null>(null)
 
 // Settings --------------------------------------------------------------------
 /** Audio mixer fields (WP-3): `sound` = SFX channel, `music` = music channel, the rest below. */

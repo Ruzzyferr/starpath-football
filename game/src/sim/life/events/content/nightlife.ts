@@ -304,6 +304,7 @@ id: 'nightlife.bar_fight',
       },
       {
         label: t('Sonuna kadar kal', 'Stay till the end'),
+        kind: 'certain',
         risk: 'high',
         effects: (ctx) =>
           fx(

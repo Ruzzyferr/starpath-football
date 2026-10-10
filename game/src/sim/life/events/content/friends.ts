@@ -38,6 +38,7 @@ export const friendsEvents: EventDef[] = [
       },
       {
         label: t('Yarısını ver, gerisini kendisi bulsun', 'Give half, the rest is on them'),
+        kind: 'certain',
         risk: 'medium',
         requires: (ctx) => canAfford(ctx.state, nice(num(ctx, 'amount') / 2)),
         lockedHint: t('Yarısı bile zor.', 'Even half is a stretch.'),
@@ -134,6 +135,7 @@ export const friendsEvents: EventDef[] = [
       },
       {
         label: t('Yorum yapma', 'Say nothing'),
+        kind: 'certain',
         risk: 'medium',
         effects: () => fx(t('Haber üç gün konuşuldu, sonra unutuldu. Ama arkadaşın unutmadı.', 'The story ran for three days, then faded. Your friend did not forget.'), press(-3), fans(-2), rel('bestFriend', -6), follow(chain('friends.debt_reunion', 8))),
       },

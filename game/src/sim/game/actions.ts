@@ -32,7 +32,7 @@ import { acceptSponsor as acceptSponsorFn } from '../life/sponsors'
 import { clubStrength } from '../world/queries'
 import { managerProfile } from '../world/profiles'
 import { advanceDay, type AdvanceReport } from './calendar'
-import { describeEvent, resolveEvent, rollEvents, type ResolvedEffect } from './eventsAdapter'
+import { EventAlreadyResolvedError, describeEvent, findPending, isEventResolved, resolveEvent, rollEvents, type ResolvedEffect } from './eventsAdapter'
 import { GFLAG, absDayOf, activityContext, clubContextOf, heroClub, isInSeason, log, logAll, readJson, withRng, writeJson } from './internal'
 import { getOffers, getSponsorOffers, setOffers, setSponsorOffers, syncClubRelations, syncEventFlags } from './season'
 
@@ -491,18 +491,28 @@ export function unlockPerk(state: GameState, perkId: string): ActionResult {
   return state.hero.perks.length > before ? okr(lines) : fail(lines[0]!)
 }
 
+/** Error line for a card that was already answered (re-tap, stale screen, reload). */
+export const EVENT_ALREADY_RESOLVED = lt('Bu karar zaten verildi.', 'This decision has already been made.')
+
 /**
- * Resolve a pending decision card by index. Locked or invalid choices return
- * `ok: false` instead of throwing.
+ * Resolve a pending decision card — by its key (`pendingKey`, preferred: a stale
+ * index can never hit a different card) or by queue index. One-shot: a card that
+ * was already answered returns `ok: false` with {@link EVENT_ALREADY_RESOLVED} and
+ * changes nothing. Locked or invalid choices return `ok: false` instead of throwing.
  */
-export function resolveEventChoice(state: GameState, index: number, choice: number): ActionResult<ResolvedEffect> {
-  const pending: PendingEvent | undefined = state.pendingEvents[index]
-  if (!pending) return fail(lt('Karar kartı bulunamadı.', 'Decision card not found.'))
+export function resolveEventChoice(state: GameState, ref: number | string, choice: number): ActionResult<ResolvedEffect> {
+  const index = typeof ref === 'string' ? findPending(state, ref) : ref
+  const pending: PendingEvent | undefined = index >= 0 ? state.pendingEvents[index] : undefined
+  if (!pending) {
+    if (typeof ref === 'string' && isEventResolved(state, ref)) return fail(EVENT_ALREADY_RESOLVED)
+    return fail(lt('Karar kartı bulunamadı.', 'Decision card not found.'))
+  }
   try {
     const res = withRng(state, (rng) => resolveEvent(state, rng, pending, choice))
     const lines = [res.text, ...syncEventFlags(state)]
     return okr(lines, res)
-  } catch {
+  } catch (e) {
+    if (e instanceof EventAlreadyResolvedError) return fail(EVENT_ALREADY_RESOLVED)
     // Unknown definition → drop the card so the game can never soft-lock.
     const view = describeEvent(state, pending, 'en')
     if (!view) {

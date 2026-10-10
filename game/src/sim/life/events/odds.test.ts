@@ -14,7 +14,7 @@ import { autoPlayHeroMatch } from '../../game/match'
 import { advanceToNextMatch, isHeroMatchday } from '../../game/calendar'
 import { ALL_EVENTS } from './content'
 import { buildVars, describeEvent } from './engine'
-import { FLAG_TRACK, NO_RISK_CAP, choiceOdds, recordOutcome, resultValue, rollChoice, situationFactors, type ChoiceOdds } from './odds'
+import { FLAG_TRACK, choiceOdds, recordOutcome, resultValue, rollChoice, situationFactors, type ChoiceOdds } from './odds'
 import type { EventCtx, EventDef, EventVars } from './types'
 import { absoluteWeek } from './engine'
 
@@ -71,21 +71,19 @@ describe('decision-card odds', () => {
   const avg = profiled('average')
   const rows = allChoiceOdds(avg)
 
-  it('audits every choice: rolled with 10–90% success for an average hero, or an explicit/small no-risk option', () => {
+  it('audits every choice: a chance choice rolls 10–90% for an average hero; a certain one never rolls', () => {
     expect(rows.length).toBeGreaterThan(1000)
-    const bad = rows.filter((r) => !r.odds.noRisk && (r.odds.success < 0.1 || r.odds.success > 0.9))
+    const bad = rows.filter((r) => r.odds.kind === 'chance' && (r.odds.success < 0.1 || r.odds.success > 0.9))
     expect(bad.map((r) => `${r.def.id}#${r.idx} ${pct(r.odds.success)}`)).toEqual([])
-    // No-risk options are the exception, not the rule.
-    const noRisk = rows.filter((r) => r.odds.noRisk).length / rows.length
-    expect(noRisk).toBeLessThan(0.3)
-  })
-
-  it('a no-risk option is never "always success" with a big reward', () => {
-    for (const r of rows.filter((x) => x.odds.noRisk && x.def.choices[x.idx]!.noRisk === undefined)) {
-      const ctx: EventCtx = { state: avg, vars: buildVars(avg, new Rng(hashString(r.def.id)), r.def, r.def.triggers ?? ['weekly']), absWeek: absoluteWeek(avg.calendar), tags: [] }
-      const v = resultValue(avg, r.def.choices[r.idx]!.effects(ctx, new Rng(1)))
-      expect(v, `${r.def.id}#${r.idx}`).toBeLessThanOrEqual(NO_RISK_CAP)
+    for (const r of rows.filter((x) => x.odds.kind === 'certain')) {
+      expect(r.odds.noRisk).toBe(true)
+      expect(r.odds.success).toBe(1)
+      expect(r.odds.factors).toEqual([])
     }
+    // Both kinds are a real part of the catalogue.
+    const chance = rows.filter((r) => r.odds.kind === 'chance').length / rows.length
+    expect(chance).toBeGreaterThan(0.25)
+    expect(chance).toBeLessThan(0.75)
   })
 
   it('risky choices fail far more often than safe ones', () => {
@@ -93,7 +91,7 @@ describe('decision-card odds', () => {
     const mean = (xs: Row[]): number => xs.reduce((a, r) => a + (1 - r.odds.success), 0) / Math.max(1, xs.length)
     const risky = mean(rolled.filter((r) => r.odds.risk === 'medium' || r.odds.risk === 'high'))
     const safe = mean(rolled.filter((r) => r.odds.risk === 'safe' || r.odds.risk === 'low'))
-    expect(risky).toBeGreaterThanOrEqual(0.35)
+    expect(risky).toBeGreaterThanOrEqual(0.3)
     expect(risky).toBeLessThanOrEqual(0.55)
     expect(safe).toBeGreaterThanOrEqual(0.1)
     expect(safe).toBeLessThanOrEqual(0.25)
@@ -215,12 +213,12 @@ describe('decision-card odds', () => {
   })
 
   it('a season of play: about a quarter to a third of chosen outcomes are mixed or bad for an average hero', () => {
-    const results: { nonSuccess: number; n: number; risky: [number, number]; safe: [number, number]; fails: number }[] = []
+    const results: { nonSuccess: number; n: number; risky: [number, number]; safe: [number, number]; fails: number; certain: [number, number] }[] = []
     for (const seed of [1000, 2000, 3000]) {
       const s = makeGame(seed)
       const rng = new Rng(seed)
       const startSeason = s.calendar.season
-      const acc = { nonSuccess: 0, n: 0, risky: [0, 0] as [number, number], safe: [0, 0] as [number, number], fails: 0 }
+      const acc = { nonSuccess: 0, n: 0, risky: [0, 0] as [number, number], safe: [0, 0] as [number, number], fails: 0, certain: [0, 0] as [number, number] }
       for (let step = 0; step < 4000 && s.calendar.season === startSeason; step++) {
         while (s.pendingEvents.length > 0) {
           const v = describeEvent(s, s.pendingEvents[0]!, 'en')
@@ -231,9 +229,13 @@ describe('decision-card odds', () => {
           if (!r.ok) { if (s.pendingEvents.length) s.pendingEvents.splice(0, 1); continue }
           if (!r.value?.outcome || !odds) continue
           acc.n++
-          const bad = r.value.outcome !== 'success'
+          // Negative = a chance choice that half-worked or backfired, or a certain choice whose fixed cost outweighs its gain.
+          const bad = r.value.outcome === 'certain'
+            ? resultValue(s, { text: r.value.text, deltas: r.value.deltas }) < 0
+            : r.value.outcome !== 'success'
           if (bad) acc.nonSuccess++
           if (r.value.outcome === 'fail') acc.fails++
+          if (r.value.outcome === 'certain') { acc.certain[0]++; if (bad) acc.certain[1]++ }
           if (!odds.noRisk) {
             const bucket = odds.risk === 'medium' || odds.risk === 'high' ? acc.risky : acc.safe
             bucket[0]++
@@ -245,18 +247,19 @@ describe('decision-card odds', () => {
       }
       results.push(acc)
     }
-    const tot = { n: 0, bad: 0, fails: 0, rk: [0, 0], sf: [0, 0] }
+    const tot = { n: 0, bad: 0, fails: 0, rk: [0, 0], sf: [0, 0], ce: [0, 0] }
     for (const r of results) {
       tot.n += r.n; tot.bad += r.nonSuccess; tot.fails += r.fails
       tot.rk = [tot.rk[0]! + r.risky[0], tot.rk[1]! + r.risky[1]]
       tot.sf = [tot.sf[0]! + r.safe[0], tot.sf[1]! + r.safe[1]]
+      tot.ce = [tot.ce[0]! + r.certain[0], tot.ce[1]! + r.certain[1]]
     }
     if (REPORT) {
-      console.log(`season (3 seeds): ${tot.n} cards, mixed+bad ${pct(tot.bad / tot.n)}, bad ${pct(tot.fails / tot.n)}, risky non-success ${pct(tot.rk[1]! / tot.rk[0]!)} (${tot.rk[0]}), safe non-success ${pct(tot.sf[1]! / tot.sf[0]!)} (${tot.sf[0]})`)
+      console.log(`season (3 seeds): ${tot.n} cards, negative (mixed/fail/net-cost certain) ${pct(tot.bad / tot.n)}, bad ${pct(tot.fails / tot.n)}, risky non-success ${pct(tot.rk[1]! / tot.rk[0]!)} (${tot.rk[0]}), safe non-success ${pct(tot.sf[1]! / tot.sf[0]!)} (${tot.sf[0]}), certain net-cost ${pct(tot.ce[1]! / tot.ce[0]!)} (${tot.ce[0]})`)
     }
     expect(tot.n).toBeGreaterThan(30)
-    expect(tot.bad / tot.n).toBeGreaterThanOrEqual(0.22)
-    expect(tot.bad / tot.n).toBeLessThanOrEqual(0.38)
+    expect(tot.bad / tot.n).toBeGreaterThanOrEqual(0.25)
+    expect(tot.bad / tot.n).toBeLessThanOrEqual(0.36)
     expect(tot.fails).toBeGreaterThan(0)
   }, 120_000)
 

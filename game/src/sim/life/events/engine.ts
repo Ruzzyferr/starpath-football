@@ -37,7 +37,7 @@ import type {
   ResolvedEffect,
 } from './types'
 import { contentFlags } from '../../../core/contentFlags'
-import { choiceOdds, recordOutcome, rollChoice, type ChoiceOdds } from './odds'
+import { answerWeight, choiceOdds, recordAnswer, recordOutcome, rollChoice, type ChoiceOdds } from './odds'
 
 // ───────────────────────── Tunables ─────────────────────────
 
@@ -442,9 +442,39 @@ export function buildVars(state: GameState, rng: Rng, def: EventDef, tags: reado
   return { ...std, ...own, ...(parentVars ?? {}) }
 }
 
+/** Monotonic per-career card counter: every fired card gets its own uid. */
+export const FLAG_SEQ = 'ev:seq'
+/** Keys of the most recently resolved cards (idempotency ledger, newest last). */
+export const FLAG_DONE = 'ev:done'
+const DONE_MEMORY = 40
+
+/** A fresh, unique card uid (`defId#n`). Uses a flag counter, never the rng. */
+export function nextEventUid(state: GameState, defId: string): string {
+  const n = (typeof state.life.flags[FLAG_SEQ] === 'number' ? (state.life.flags[FLAG_SEQ] as number) : 0) + 1
+  state.life.flags[FLAG_SEQ] = n
+  return `${defId}#${n}`
+}
+
+/** Stable key of a pending card: its uid, or (older saves) its id + firing moment. */
+export function pendingKey(p: PendingEvent): string {
+  if (p.uid) return p.uid
+  const f = p.firedAt as PendingEvent['firedAt'] | undefined // very old / hand-made cards may lack it
+  return f ? `${p.defId}@${f.season}.${f.week}.${f.day}` : p.defId
+}
+
+/** True when the card with this key was already resolved (its choice is final). */
+export function isEventResolved(state: GameState, key: string): boolean {
+  return readJson<string[]>(state, FLAG_DONE, []).includes(key)
+}
+
+/** Index of the pending card with this key, or -1. */
+export function findPending(state: GameState, key: string): number {
+  return state.pendingEvents.findIndex((p) => pendingKey(p) === key)
+}
+
 function fire(state: GameState, rng: Rng, def: EventDef, tags: readonly string[], abs: number, parentVars?: EventVars): PendingEvent {
   const vars = buildVars(state, rng, def, tags, parentVars)
-  const pending: PendingEvent = { defId: def.id, vars, firedAt: { ...state.calendar } }
+  const pending: PendingEvent = { defId: def.id, vars, firedAt: { ...state.calendar }, uid: nextEventUid(state, def.id) }
   state.pendingEvents.push(pending)
   state.life.eventHistory[def.id] = abs
   {
@@ -522,6 +552,7 @@ export function rollEvents(state: GameState, rng: Rng, tags: string[], maxCount 
       if (w <= 0) continue
       if (def.triggers?.some((tg) => tg !== 'weekly' && tags.includes(tg))) w *= 2
       w *= categoryAffinity(state, def.category)
+      w *= answerWeight(state, def.id)
       if (state.life.eventHistory[def.id] === undefined) w *= 1.3
       else w *= Math.max(NOVELTY_FLOOR, Math.pow(NOVELTY_DECAY, seenCounts[def.id] ?? 1))
       const seen = recent.filter((c) => c === def.category).length
@@ -586,30 +617,48 @@ function isChoiceAvailable(req: ((ctx: EventCtx) => boolean) | undefined, ctx: E
   }
 }
 
+/** Thrown when a card that was already answered is resolved again (re-tap, stale UI, reload). */
+export class EventAlreadyResolvedError extends Error {
+  readonly key: string
+  constructor(key: string) {
+    super(`Event ${key} was already resolved`)
+    this.key = key
+  }
+}
+
 /**
- * Apply the player's choice for a pending card, remove the card, and return
- * what happened (resolved text + applied deltas for UI chips).
- * @throws if the event id is unknown, the index is out of range or the choice is locked.
+ * Apply the player's choice for a pending card — ONE-SHOT: the card leaves the
+ * queue and its key enters the resolved ledger in the same synchronous step as the
+ * roll, so it can never be answered (or rolled) twice. Returns what happened
+ * (resolved text + applied deltas for UI chips).
+ * @throws EventAlreadyResolvedError if the card is no longer pending / was answered;
+ *   Error if the event id is unknown or the choice is missing or locked.
  */
 export function resolveEvent(state: GameState, rng: Rng, pending: PendingEvent, choiceIndex: number, events: readonly EventDef[] = ALL_EVENTS): ResolvedEffect {
+  const key = pendingKey(pending)
+  let idx = state.pendingEvents.indexOf(pending)
+  if (idx < 0) idx = findPending(state, key)
+  if (idx < 0 || isEventResolved(state, key)) throw new EventAlreadyResolvedError(key)
   const def = getEventDef(pending.defId, events)
   if (!def) throw new Error(`Unknown event ${pending.defId}`)
   const choice = def.choices[choiceIndex]
   if (!choice) throw new Error(`Event ${def.id} has no choice ${choiceIndex}`)
   const ctx: EventCtx = { state, vars: pending.vars, absWeek: absoluteWeek(state.calendar), tags: [] }
   if (!isChoiceAvailable(choice.requires, ctx)) throw new Error(`Choice ${choiceIndex} of ${def.id} is locked`)
-  // Every choice rolls against honest, state-driven odds (sim/life/events/odds).
+  // Chance choices roll against honest, state-driven odds; certain ones apply their fixed consequence.
   const rolled = rollChoice(ctx, def, choiceIndex, rng)
-  const idx = state.pendingEvents.indexOf(pending)
-  if (idx >= 0) state.pendingEvents.splice(idx, 1)
-  else {
-    const j = state.pendingEvents.findIndex((p) => p.defId === pending.defId)
-    if (j >= 0) state.pendingEvents.splice(j, 1)
-  }
-  if (!rolled.odds.noRisk) recordOutcome(state, def, pending.vars, rolled.tier)
+  // Commit the decision before anything else: out of the queue, into the ledger.
+  state.pendingEvents.splice(idx, 1)
+  const done = readJson<string[]>(state, FLAG_DONE, [])
+  done.push(key)
+  state.life.flags[FLAG_DONE] = JSON.stringify(done.slice(-DONE_MEMORY))
+  const certain = rolled.odds.kind === 'certain'
+  if (!certain) recordOutcome(state, def, pending.vars, rolled.tier)
+  const paid = rolled.result.deltas.some((d) => d.kind === 'money' && d.amount < 0)
+  recordAnswer(state, def, choiceIndex, certain ? 'certain' : rolled.tier, certain && paid)
   const res = applyEffectResult(state, rng, def, pending.vars, rolled.result, events, formatBoth(choice.label, pending.vars))
-  if (rolled.odds.noRisk) return { ...res, outcome: rolled.tier }
-  return { ...res, outcome: rolled.tier, chance: rolled.odds.success, mixedChance: rolled.odds.mixed, roll: rolled.roll }
+  if (certain) return { ...res, outcome: 'certain', key }
+  return { ...res, outcome: rolled.tier, chance: rolled.odds.success, mixedChance: rolled.odds.mixed, roll: rolled.roll, key }
 }
 
 /**

@@ -10,7 +10,7 @@
 import type { GameState, LText } from '../../core/types'
 import { lt as render } from '../../i18n'
 import { toast } from '../components/Toast'
-import { gameState, stateVersion } from '../store'
+import { eventResult, gameState, stateVersion } from '../store'
 
 export function current(): GameState | null {
   return gameState.value
@@ -46,6 +46,7 @@ export function commit(s: GameState, opts: { silent?: boolean } = {}): void {
 
 /** Replace the whole state (new game / load / reset). */
 export function replaceState(s: GameState | null): void {
+  eventResult.value = null // a result card belongs to the career it was answered in
   lastCommit = Date.now()
   stateVersion.value++
   gameState.value = s

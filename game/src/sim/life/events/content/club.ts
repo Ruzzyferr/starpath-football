@@ -34,6 +34,7 @@ export const clubEvents: EventDef[] = [
       },
       {
         label: t('Başkanla baş başa konuşmayı kabul et', 'Agree to talk one-on-one'),
+        kind: 'certain',
         risk: 'medium',
         effects: () =>
           fx(

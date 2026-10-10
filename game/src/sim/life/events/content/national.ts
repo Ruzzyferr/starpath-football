@@ -34,6 +34,7 @@ export const nationalEvents: EventDef[] = [
       },
       {
         label: t('Kulübe odaklanmak için reddet', 'Decline to focus on your club'),
+        kind: 'certain',
         hint: t('Nadir bir karar. Unutulmaz.', 'A rare call. It will be remembered.'),
         risk: 'medium',
         effects: () => fx(t('{managerName} şaşırdı ama memnun. Ülkede ise tartışma büyük.', '{managerName} is surprised but pleased. Back home, the debate is fierce.'), trust(8), boss(6), rep(-4), fans(-6), press(-5),

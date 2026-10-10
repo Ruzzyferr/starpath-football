@@ -59,6 +59,7 @@ export const abroadEvents: EventDef[] = [
       },
       {
         label: t('Kursu yoğunlaştır, iki katı çalış', 'Double down on lessons'),
+        kind: 'certain',
         effects: () => fx(t('Bir ay sonra hocayla taktik konuşabiliyorsun. Hâlâ "patates" kelimesinden kaçıyorsun.', 'A month later you can discuss tactics with the gaffer. You still avoid the word "potato".'), attr('vision', 1), trust(3), stress(2), follow(chain('friends.abroad_homesick', 4))),
       },
       {

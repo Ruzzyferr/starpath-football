@@ -14,9 +14,13 @@
  *
  * The probability = base by risk class + Σ factors (attributes, morale, form,
  * fatigue, stress, injury, money, fame, discipline, addiction, the relationship
- * with the NPC the card is about, and the track record of past cards with them).
- * A no-risk choice (explicit `noRisk`, or a deterministic, untagged choice whose
- * upside is small) always resolves as authored and says so ("Risksiz").
+ * with the NPC the card is about, the track record of past cards with them, and
+ * how this very card went last time).
+ *
+ * Two kinds of choice (owner spec, TestFlight build 7), see `classifyChoice`:
+ * a `chance` choice (persuade, bluff, negotiate…, or authored branches / risk tag)
+ * spins the wheel; a `certain` choice (apologise, accept, pay, skip…) never rolls and
+ * applies exactly the fixed consequence its button shows ("Kesin sonuç").
  *
  * Everything is deterministic: describing never touches the game rng (variants
  * are sampled with seeds hashed from the card), resolving draws from the seeded
@@ -26,7 +30,7 @@ import type { AttributeKey, GameState, LText, RelationKind } from '../../../core
 import { Rng, clamp, hashString } from '../../../core/rng'
 import { absWeek } from '../../career/common'
 import { teammateId } from '../relationships'
-import type { ChoiceDef, Delta, EffectResult, EventCategory, EventCtx, EventDef, StatKey } from './types'
+import type { ChoiceDef, ChoiceKind, Delta, EffectResult, EventCategory, EventCtx, EventDef, StatKey } from './types'
 
 export type OutcomeTier = 'success' | 'mixed' | 'fail'
 export type RiskClass = 'safe' | 'low' | 'medium' | 'high'
@@ -39,7 +43,9 @@ export interface OddsFactor {
 }
 
 export interface ChoiceOdds {
-  /** No roll: the choice always resolves as written (small, safe upside). */
+  /** `chance` spins the wheel; `certain` applies its fixed, shown consequence (no roll). */
+  kind: ChoiceKind
+  /** No roll (= `kind === 'certain'`): the choice always resolves exactly as shown. */
   noRisk: boolean
   risk: RiskClass
   /** Success chance 0..1 (1 for no-risk). */
@@ -53,20 +59,20 @@ export interface ChoiceOdds {
 // ───────────────────────── Tunables ─────────────────────────
 
 /** Success chance before factors, per risk class. */
-export const BASE_SUCCESS: Record<RiskClass, number> = { safe: 0.77, low: 0.74, medium: 0.58, high: 0.5 }
+export const BASE_SUCCESS: Record<RiskClass, number> = { safe: 0.77, low: 0.74, medium: 0.66, high: 0.58 }
 /** Share of the non-success mass that lands as `mixed` (rest = `fail`). */
 export const MIXED_SHARE: Record<RiskClass, number> = { safe: 0.5, low: 0.45, medium: 0.38, high: 0.32 }
 /** Risky choices hinge more on who you are. */
 export const FACTOR_GAIN: Record<RiskClass, number> = { safe: 1, low: 1, medium: 1.25, high: 1.4 }
 export const MIN_SUCCESS = 0.06
 export const MAX_SUCCESS = 0.95
-/** A deterministic, untagged choice whose best outcome is worth at most this many points needs no roll. */
-export const NO_RISK_CAP = 1
 /** Valence spread (points) that makes a choice's authored branches a real gamble. */
 export const BRANCH_SPREAD = 4
 /** Seeds sampled per choice when looking for its authored branches. */
 export const VARIANT_SEEDS = 8
 export const FLAG_TRACK = 'ev:track'
+/** Past answers per card (`{ [defId]: { c, o, w, p? } }`): later odds and event weights read it. */
+export const FLAG_ANSWERS = 'ev:ans'
 export const FLAG_TALLY = 'ev:tally'
 /** Track record halves every this many weeks. */
 const TRACK_HALF_LIFE = 26
@@ -294,20 +300,33 @@ export function recordOutcome(s: GameState, def: EventDef, vars: Record<string, 
 
 // ───────────────────────── Odds ─────────────────────────
 
+/**
+ * Verbs that make a choice a gamble by its nature (persuade, bluff, negotiate, dare…),
+ * matched on the English label. Everything a hero simply *does* (pay, accept, refuse,
+ * apologise, skip, rest…) is certain unless the author wrote real branches or a risk tag.
+ */
+export const CHANCE_VERBS = /\b(try to|try and|trying|persuad\w*|convinc\w*|bluff\w*|negotiat\w*|haggl\w*|bet|gambl\w*|dare|challeng\w*|confront\w*|demand\w*|insist\w*|argu\w*|lobby|bargain\w*|attempt\w*|double down|all[- ]in|sneak\w*|fight|prove|flirt\w*|chase|stand up to|call (him|her|them|it) out|charm\w*|win (him|her|them) over|disput\w*|protest\w*|outsmart\w*|hardball|hold out|threaten\w*|plead\w*|beg|tempt\w*|hustl\w*|improvis\w*|wing it|risk it|take the risk)\b/i
+
+/**
+ * Chance or certain, by the choice's nature: an explicit `kind` (or legacy `noRisk`)
+ * wins; a gamble verb, an authored risk tag or authored random branches make it a
+ * chance; a single, fixed authored outcome is certain.
+ */
+export function classifyChoice(choice: ChoiceDef, variants: readonly Variant[]): ChoiceKind {
+  if (choice.kind) return choice.kind
+  if (choice.noRisk !== undefined) return choice.noRisk ? 'certain' : 'chance'
+  if (variants.length === 0) return 'certain'
+  if (CHANCE_VERBS.test(choice.label.en)) return 'chance'
+  if (choice.risk === 'medium' || choice.risk === 'high') return 'chance'
+  return variants.length > 1 ? 'chance' : 'certain'
+}
+
 function riskOf(choice: ChoiceDef, variants: Variant[]): RiskClass {
   const spread = variants.length > 1 ? variants[0]!.v - variants[variants.length - 1]!.v : 0
   if (choice.risk === 'high') return 'high'
   if (choice.risk === 'medium') return 'medium'
   if (spread >= BRANCH_SPREAD) return 'medium'
   return choice.risk === 'low' ? 'low' : 'safe'
-}
-
-function isNoRisk(choice: ChoiceDef, variants: Variant[], risk: RiskClass): boolean {
-  // No sampleable outcome at all: nothing to roll, so never show odds the roll would not use.
-  if (variants.length === 0) return true
-  if (choice.noRisk !== undefined) return choice.noRisk
-  if (risk !== 'safe') return false
-  return variants[0]!.v <= NO_RISK_CAP
 }
 
 /** Every situational factor for a card category, in probability points (unscaled, before the risk gain). */
@@ -357,24 +376,66 @@ export function situationFactors(s: GameState, cat: EventCategory, vars: Record<
 /** Odds of one choice of a card in the current state. Pure (no game rng). */
 export function choiceOdds(s: GameState, def: EventDef, idx: number, vars: Record<string, string | number>): ChoiceOdds {
   const choice = def.choices[idx]
-  if (!choice) return { noRisk: true, risk: 'safe', success: 1, mixed: 0, fail: 0, factors: [] }
+  if (!choice) return { kind: 'certain', noRisk: true, risk: 'safe', success: 1, mixed: 0, fail: 0, factors: [] }
   const ctx: EventCtx = { state: s, vars, absWeek: absWeek(s.calendar), tags: [] }
   const variants = sampleVariants(ctx, choice, cardSeed(def, idx, vars))
   return oddsFrom(s, def, choice, variants, vars)
 }
 
+// ───────────────────────── Past answers ─────────────────────────
+
+interface Answer { c: number; o: OutcomeTier | 'certain'; w: number; p?: 1 }
+
+export function readAnswers(s: GameState): Record<string, Answer> {
+  const raw = s.life.flags[FLAG_ANSWERS]
+  if (typeof raw !== 'string') return {}
+  try {
+    const a = JSON.parse(raw) as unknown
+    return a && typeof a === 'object' ? (a as Record<string, Answer>) : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Remember how a card was answered (every choice, chance or certain): the next time
+ * the same situation comes up the odds remember it, and a card you paid off comes back.
+ */
+export function recordAnswer(s: GameState, def: EventDef, choice: number, outcome: OutcomeTier | 'certain', paid: boolean): void {
+  const a = readAnswers(s)
+  a[def.id] = { c: choice, o: outcome, w: absWeek(s.calendar), ...(paid ? { p: 1 as const } : {}) }
+  const keys = Object.keys(a).sort((x, y) => a[y]!.w - a[x]!.w).slice(0, 60)
+  s.life.flags[FLAG_ANSWERS] = JSON.stringify(Object.fromEntries(keys.map((k) => [k, a[k]])))
+}
+
+/** Same-card memory in probability points: last time it backfired → harder now; it worked → easier. */
+function memoryFactor(s: GameState, def: EventDef): OddsFactor | null {
+  const prev = readAnswers(s)[def.id]
+  if (!prev || prev.o === 'certain') return null
+  const decay = Math.pow(0.5, Math.max(0, absWeek(s.calendar) - prev.w) / TRACK_HALF_LIFE)
+  const p = (prev.o === 'fail' ? -0.06 : prev.o === 'mixed' ? -0.02 : 0.04) * Math.max(0.5, decay)
+  const pts = Math.round(p * 100)
+  return pts ? { key: 'memory', label: { tr: 'Bu durumda geçen sefer', en: 'Last time this came up' }, pts } : null
+}
+
+/** Weight multiplier for a card you answered before: paying someone off makes them come back. */
+export function answerWeight(s: GameState, defId: string): number {
+  return readAnswers(s)[defId]?.p ? 1.6 : 1
+}
+
 function oddsFrom(s: GameState, def: EventDef, choice: ChoiceDef, variants: Variant[], vars: Record<string, unknown>): ChoiceOdds {
   const risk = riskOf(choice, variants)
-  if (isNoRisk(choice, variants, risk)) return { noRisk: true, risk, success: 1, mixed: 0, fail: 0, factors: [] }
+  if (classifyChoice(choice, variants) === 'certain') return { kind: 'certain', noRisk: true, risk, success: 1, mixed: 0, fail: 0, factors: [] }
   const gain = FACTOR_GAIN[risk]
-  const factors = situationFactors(s, def.category, vars)
+  const mem = memoryFactor(s, def)
+  const factors = [...situationFactors(s, def.category, vars), ...(mem ? [mem] : [])]
     .map((f) => ({ ...f, pts: Math.round(f.pts * gain) }))
     .filter((f) => f.pts !== 0)
     .sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts))
   // Whole percentages: what the card shows is exactly what the roll uses (no hidden decimals).
   const S = Math.round(clamp(BASE_SUCCESS[risk] + factors.reduce((a, f) => a + f.pts, 0) / 100, MIN_SUCCESS, MAX_SUCCESS) * 100)
   const M = Math.round((100 - S) * MIXED_SHARE[risk])
-  return { noRisk: false, risk, success: S / 100, mixed: M / 100, fail: (100 - S - M) / 100, factors }
+  return { kind: 'chance', noRisk: false, risk, success: S / 100, mixed: M / 100, fail: (100 - S - M) / 100, factors }
 }
 
 /**
@@ -528,26 +589,43 @@ export interface RolledOutcome {
  * Roll a choice: odds from the state, the tier from the seeded game rng, the
  * concrete outcome from the choice's own authored branches where they exist.
  */
+/**
+ * The fixed consequence of a certain choice: the authored effect evaluated with the
+ * card's own seed, so the chips on the button are exactly what gets applied.
+ */
+export function certainResult(ctx: EventCtx, def: EventDef, idx: number): EffectResult {
+  return def.choices[idx]!.effects(ctx, new Rng(cardSeed(def, idx, ctx.vars)))
+}
+
+/** What a chance choice does when it works (the card previews it, marked as uncertain). */
+export function successResult(ctx: EventCtx, def: EventDef, idx: number): EffectResult | null {
+  return sampleVariants(ctx, def.choices[idx]!, cardSeed(def, idx, ctx.vars))[0]?.r ?? null
+}
+
 export function rollChoice(ctx: EventCtx, def: EventDef, idx: number, rng: Rng): RolledOutcome {
   const choice = def.choices[idx]!
-  const roll = rng.next()
   // The same card-seeded variants the odds on the card were computed from.
   const variants = sampleVariants(ctx, choice, cardSeed(def, idx, ctx.vars))
   const o = oddsFrom(ctx.state, def, choice, variants, ctx.vars)
-  if (variants.length === 0) return { tier: 'success', result: choice.effects(ctx, rng), odds: o, roll }
+  // Certain: no wheel, no draw from the game rng — exactly what the button showed.
+  if (o.kind === 'certain') return { tier: 'success', result: certainResult(ctx, def, idx), odds: o, roll: 0 }
+  const roll = rng.next()
   const best = variants[0]!
-  if (o.noRisk) {
-    // As written (keep the choice's own small randomness).
-    const pickIdx = Math.floor(rng.next() * variants.length)
-    return { tier: 'success', result: variants[pickIdx]!.r, odds: o, roll }
-  }
   const tier = rollTier(o, roll)
   if (tier === 'success') return { tier, result: best.r, odds: o, roll }
   const worst = variants[variants.length - 1]!
   const branchy = best.v - worst.v >= BRANCH_SPREAD
   const pick = (pool: readonly LText[]): LText => pool[Math.floor(rng.next() * pool.length)]!
   if (tier === 'fail') {
-    if (branchy) return { tier, result: worst.r, odds: o, roll }
+    if (branchy) {
+      // The authored worst branch, and the person it was about remembers (a failed persuasion costs trust).
+      const deltas = [...worst.r.deltas]
+      if (!deltas.some((d) => d.kind === 'relation' && d.amount < 0)) {
+        const hit = npcHit(def.category, ctx.vars, -3)
+        if (hit) deltas.push(hit)
+      }
+      return { tier, result: { ...worst.r, deltas }, odds: o, roll }
+    }
     const deltas = backfireDeltas(ctx.state, best.r.deltas)
     if (!deltas.some((d) => d.kind === 'relation' && d.amount < 0)) {
       const hit = npcHit(def.category, ctx.vars, -4)

@@ -117,7 +117,7 @@ export const legalEvents: EventDef[] = [
         risk: 'high',
         effects: (_ctx, rng) =>
           rng.chance(0.4)
-            ? fx(t('Mahalle sahasından bahsettin. Mübaşir gözünü sildi. Bu sayılır mı bilmiyoruz.', 'You talked about the neighbourhood pitch. The court clerk wiped a tear. Not sure that counts.'), { addFlags: { legal_case: 1 } }, follow(chain('legal.verdict', 1)))
+            ? fx(t('Mahalle sahasından bahsettin. Mübaşir gözünü sildi. Bu sayılır mı bilmiyoruz.', 'You talked about the neighbourhood pitch. The court clerk wiped a tear. Not sure that counts.'), fans(3), stress(-2), { addFlags: { legal_case: 1 } }, follow(chain('legal.verdict', 1)))
             : fx(t('Sesin titredi, cümle yarıda kaldı. Gazeteciler bunu çok sevdi.', 'Your voice cracked mid-sentence. The reporters loved it.'), press(3), stress(6), follow(chain('legal.verdict', 1))),
       },
       {

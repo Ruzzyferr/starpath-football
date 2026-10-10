@@ -174,6 +174,7 @@ export const rumourEvents: EventDef[] = [
       },
       {
         label: t('Bir şey söyleme, gizem iyidir', 'Say nothing; mystery sells'),
+        kind: 'certain',
         risk: 'medium',
         effects: (ctx) =>
           hasRel(ctx.state, 'partner')

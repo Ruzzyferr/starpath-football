@@ -312,6 +312,7 @@ export const pressEvents: EventDef[] = [
     choices: [
       {
         label: t('Kabul et', 'Accept'),
+        kind: 'certain',
         risk: 'medium',
         effects: (ctx) => fx(t('İlk yazın "Neden hâlâ sokakta top oynuyorum" oldu. Okurlar sevdi.', 'Your first column: "Why I still play street football." Readers loved it.'), money(num(ctx, 'amount') * 4), press(8), rep(2), flags({ columnist: true })),
       },

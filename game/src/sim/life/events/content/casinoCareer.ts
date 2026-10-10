@@ -45,7 +45,7 @@ export const casinoCareerEvents: EventDef[] = [
     choices: [
       { label: t('Söz ver, kumarhaneden uzak kal (4 hafta)', 'Promise and stay away (4 weeks)'), effects: () => fx(t('{partnerName} sana sarıldı, ama omzundaki eli titriyordu. "Bu kez gerçekten."', '{partnerName} hugged you, though the hand on your shoulder trembled. "This time for real."'), rel('partner', 6), happy(2), stress(-3), addiction(-6), flags({ casino_excluded_weeks: 4 }), follow(chain('casino.recovery_week', 4))) },
       { label: t('Savun: "Kontrol bende"', 'Defend yourself: "I am in control"'), risk: 'high', effects: () => fx(t('Tartışma sabaha kadar sürdü. {partnerName} bavulunu yarı doldurdu, sonra vazgeçti. Soğuk bir ateşkes var.', 'The argument lasted till morning. {partnerName} half-packed a bag, then gave up. A cold ceasefire holds.'), rel('partner', -10), happy(-6), stress(5)) },
-      { label: t('Kapıyı çarp, çık', 'Slam the door and leave'), risk: 'high', effects: () => fx(t('Gece kumarhanede kaldın. Sabah telefonda tek bir mesaj: "Anahtarlar masada."', 'You spent the night at the casino. In the morning a single message: "Keys are on the table."'), rel('partner', -18), happy(-10), stress(7), addiction(4)) },
+      { kind: 'certain', label: t('Kapıyı çarp, çık', 'Slam the door and leave'), risk: 'high', effects: () => fx(t('Gece kumarhanede kaldın. Sabah telefonda tek bir mesaj: "Anahtarlar masada."', 'You spent the night at the casino. In the morning a single message: "Keys are on the table."'), rel('partner', -18), happy(-10), stress(7), addiction(4)) },
     ],
   },
   {
@@ -80,9 +80,9 @@ export const casinoCareerEvents: EventDef[] = [
     text: t('{brandName} avukatları sözleşmeye "itibar ve ahlak maddesi" ekleyip sana gönderdi: kumarhane haberleri sürerse sözleşme feshedilir. Ceza bedeli {fine}.', '{brandName}\'s lawyers sent a contract rider adding a "reputation and morals clause": if casino stories continue, the deal is terminated. The penalty is {fine}.'),
     icon: '📑',
     choices: [
-      { label: t('İmzala, kumarı bırak', 'Sign and quit gambling'), effects: () => fx(t('İmzayı attığın an, birkaç yıldır ilk kez bir şeye söz verdiğini hissettin.', 'The moment you signed you felt, for the first time in years, that you had promised something.'), addiction(-8), trust(2), stress(-2), flags({ casino_excluded_weeks: 6 })) },
+      { kind: 'certain', label: t('İmzala, kumarı bırak', 'Sign and quit gambling'), effects: () => fx(t('İmzayı attığın an, birkaç yıldır ilk kez bir şeye söz verdiğini hissettin.', 'The moment you signed you felt, for the first time in years, that you had promised something.'), addiction(-8), trust(2), stress(-2), flags({ casino_excluded_weeks: 6 })) },
       { label: t('İmzala ama alışkanlığa devam et', 'Sign but carry on'), risk: 'high', effects: () => fx(t('Sözleşme güvende, sen ise değilsin. Sponsor "gözlüyoruz" yazdı.', 'The contract is safe; you are not. The sponsor wrote: "we are watching."'), stress(4), addiction(3)) },
-      { label: t('Reddet, sponsoru kaybet', 'Refuse and lose the sponsor'), risk: 'high', effects: (c) => fx(t('Sponsor çekildi, afiş ertesi hafta indirildi. İtibarın kısa sürede bir kademe düştü.', 'The sponsor pulled out and the billboard came down the next week. Your reputation took a notch in short order.'), money(-num(c, 'fine')), rep(-3), press(-3), fol(-3_000)) },
+      { kind: 'certain', label: t('Reddet, sponsoru kaybet', 'Refuse and lose the sponsor'), risk: 'high', effects: (c) => fx(t('Sponsor çekildi, afiş ertesi hafta indirildi. İtibarın kısa sürede bir kademe düştü.', 'The sponsor pulled out and the billboard came down the next week. Your reputation took a notch in short order.'), money(-num(c, 'fine')), rep(-3), press(-3), fol(-3_000)) },
     ],
   },
   {

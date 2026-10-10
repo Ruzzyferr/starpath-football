@@ -453,17 +453,21 @@ export const realActions: GameActions = {
   advance,
   advanceToMatch,
 
-  resolveEvent(index, choice): EventOutcomeView {
+  resolveEvent(ref, choice): EventOutcomeView {
     const s = get()
-    const res = G.resolveEventChoice(s, index, choice)
+    const res = G.resolveEventChoice(s, ref, choice)
     if (!res.ok || !res.value) {
+      const already = res.error === G.EVENT_ALREADY_RESOLVED
       commit(s)
-      return { text: res.error ?? L('Olmadı.', 'That did not work.'), deltas: [], success: false }
+      return { text: res.error ?? L('Olmadı.', 'That did not work.'), deltas: [], success: false, ...(already ? { already: true } : {}) }
     }
     const tier = res.value.outcome ?? 'success'
-    const out: EventOutcomeView = { text: res.value.text, deltas: eventDeltas(s, res.value.deltas), success: tier === 'success', tier, ...(res.value.chance !== undefined && res.value.chance < 1 ? { pct: Math.round(res.value.chance * 100), mixedPct: Math.round((res.value.mixedChance ?? 0) * 100), ...(res.value.roll !== undefined ? { roll: res.value.roll } : {}) } : {}) }
+    const out: EventOutcomeView = { text: res.value.text, deltas: eventDeltas(s, res.value.deltas), success: tier === 'success' || tier === 'certain', tier, ...(res.value.chance !== undefined && res.value.chance < 1 ? { pct: Math.round(res.value.chance * 100), mixedPct: Math.round((res.value.mixedChance ?? 0) * 100), ...(res.value.roll !== undefined ? { roll: res.value.roll } : {}) } : {}) }
     commit(s)
+    // The decision is final the moment it is made: save now (while the wheel is still spinning),
+    // so closing the app, a reload or an autosave reload can never bring the card back.
     scheduleAutosave()
+    void flushAutosave().catch(() => {})
     return out
   },
 
