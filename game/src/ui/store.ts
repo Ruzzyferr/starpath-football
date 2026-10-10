@@ -120,6 +120,11 @@ export interface EventChoiceView {
   risk: Risk
   requirement?: { text: LText; met: boolean }
   preview: Delta[]
+  /**
+   * Honest odds (sim/life/events/odds): success chance in %, or a no-risk option;
+   * `factors` = what moves it (percentage points, strongest first).
+   */
+  odds?: { pct: number; noRisk: boolean; factors: { key: string; label: LText; pts: number }[] }
 }
 export interface EventView {
   index: number
@@ -135,6 +140,10 @@ export interface EventOutcomeView {
   text: LText
   deltas: Delta[]
   success: boolean
+  /** How the roll went: it worked, half worked, or backfired. */
+  tier?: 'success' | 'mixed' | 'fail'
+  /** The success chance the card showed (%), absent for no-risk options. */
+  pct?: number
 }
 
 // Training / perks ----------------------------------------------------------

@@ -15,8 +15,10 @@ describe('relationship scenes (2.4#11)', () => {
     expect(view.choices).toHaveLength(3)
     expect(view.title).toContain('Ayşe') // the mother's name in the fixture
     const before = state.life.relationships.mother!.value
-    resolveEvent(state, new Rng(1), pending, 0)
-    expect(state.life.relationships.mother!.value).toBeGreaterThan(before)
+    const res = resolveEvent(state, new Rng(1), pending, 0)
+    // The talk is a real roll now (sim/life/events/odds): it lands or it backfires, either way on that person.
+    if (res.outcome === 'fail') expect(state.life.relationships.mother!.value).toBeLessThan(before)
+    else expect(state.life.relationships.mother!.value).toBeGreaterThan(before)
     expect(state.pendingEvents.some((p) => p.defId.startsWith('friends.scene_'))).toBe(false)
   })
 

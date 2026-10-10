@@ -5,7 +5,7 @@ import { lt, t } from '../../i18n'
 import { Avatar, Button, DeltaChip, DeltaList, Modal, RiskBadge } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
-import { actions, activeEvent, data, gameState, settings, type EventCategory, type EventOutcomeView, type EventView } from '../store'
+import { actions, activeEvent, data, gameState, settings, type EventCategory, type EventChoiceView, type EventOutcomeView, type EventView } from '../store'
 
 export const EVENT_ICON: Record<EventCategory, IconName> = {
   team: 'users', family: 'house', love: 'heart', press: 'megaphone', social: 'instagram', fans: 'flag',
@@ -31,6 +31,41 @@ const EVENT_TONE: Record<EventCategory, [string, string]> = {
   rival: ['var(--state-danger-deep)', 'var(--accent-gold-deep)'],
   transfer: ['var(--accent-blue-deep)', 'var(--brand-pitch)'],
   awards: ['var(--accent-gold-deep)', 'var(--accent-gold-hi)'],
+}
+
+const signed = (n: number): string => (n > 0 ? `+${n}` : `−${Math.abs(n)}`)
+
+/**
+ * Honest odds before choosing (tester feedback): "Şans: %64" and the top three
+ * factors that move it, like the starting-XI chance card.
+ */
+function OddsChip({ odds }: { odds: NonNullable<EventChoiceView['odds']> }) {
+  if (odds.noRisk) {
+    return (
+      <span class="evt-odds-row" data-testid="evt-odds">
+        <span class="evt-odds is-norisk" aria-label={t('event.oddsNoRiskAria')}><Icon name="shield-check" size={13} weight={2.4} />{t('event.noRisk')}</span>
+      </span>
+    )
+  }
+  const tier = odds.pct >= 70 ? 'high' : odds.pct >= 45 ? 'mid' : 'low'
+  const top = odds.factors.slice(0, 3)
+  const list = top.map((f) => `${lt(f.label)} ${signed(f.pts)}`).join(', ')
+  const why = top.length ? t('event.oddsWhy', { list }) : ''
+  return (
+    <span class="evt-odds-row" data-testid="evt-odds">
+      <span class={`evt-odds is-${tier}`} title={why || undefined} aria-label={t('event.oddsAria', { n: odds.pct, why })}>
+        <Icon name="target" size={13} weight={2.4} />
+        <b class="num">{t('event.odds', { n: odds.pct })}</b>
+      </span>
+      {top.length > 0 && (
+        <span class="evt-odds-why" aria-hidden="true">
+          {top.map((f) => (
+            <span key={f.key} class={`evt-factor ${f.pts > 0 ? 'is-pos' : 'is-neg'}`}>{lt(f.label)} <b class="num">{signed(f.pts)}</b></span>
+          ))}
+        </span>
+      )}
+    </span>
+  )
 }
 
 function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; onResolved: (o: EventOutcomeView) => void }) {
@@ -84,6 +119,7 @@ function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; on
                     {!c.requirement.met && <span class="sr-only"> — {t('event.unmet')}</span>}
                   </span>
                 )}
+                {c.odds && <OddsChip odds={c.odds} />}
                 {c.preview.length > 0 && <DeltaList deltas={c.preview} compact={settings.value.eventTransparency === 'full'} direction={settings.value.eventTransparency === 'direction'} />}
               </button>
             )
@@ -95,15 +131,16 @@ function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; on
 }
 
 function Outcome({ out, onContinue, more }: { out: EventOutcomeView; onContinue: () => void; more: boolean }) {
+  const tier = out.tier ?? (out.success ? 'success' : 'fail')
   useEffect(() => {
-    haptic(out.success ? 'success' : 'warning')
-  }, [out])
+    haptic(tier === 'success' ? 'success' : 'warning')
+  }, [out, tier])
   return (
-    <div class={`evt-outcome ${out.success ? 'is-success' : 'is-fail'}`}>
+    <div class={`evt-outcome is-${tier === 'success' ? 'success' : tier === 'mixed' ? 'mixed' : 'fail'}`} data-testid="evt-outcome" data-tier={tier}>
       <div class="evt-outcome-burst" aria-hidden="true" />
-      <span class="evt-outcome-icon"><Icon name={out.success ? 'check' : 'warning'} size={34} weight={2.6} /></span>
-      <div class="micro t-mid">{t('event.outcome')}</div>
-      <h2 class="evt-outcome-title" id="evt-title">{out.success ? t('event.success') : t('event.failure')}</h2>
+      <span class="evt-outcome-icon"><Icon name={tier === 'success' ? 'check' : 'warning'} size={34} weight={2.6} /></span>
+      <div class="micro t-mid">{t('event.outcome')}{out.pct !== undefined ? ` · ${t('event.rolled', { n: out.pct })}` : ''}</div>
+      <h2 class="evt-outcome-title" id="evt-title">{tier === 'success' ? t('event.success') : tier === 'mixed' ? t('event.mixed') : t('event.failure')}</h2>
       <p class="evt-body" aria-live="polite">{lt(out.text)}</p>
       {out.deltas.length > 0 ? (
         <div class="evt-outcome-deltas">

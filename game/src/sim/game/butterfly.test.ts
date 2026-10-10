@@ -71,7 +71,7 @@ function evePair(seed: number): [GameState, GameState] {
 
 describe('butterfly chains (one small action vs control, same seed)', () => {
   it('(a) a casino night before a match → tired start, lower start chance, worse match', () => {
-    const [ctrl, bet] = evePair(31)
+    const [ctrl, bet] = evePair(33)
     expect(doActivity(ctrl, 'rest').ok).toBe(true)
     expect(doActivity(bet, 'casino').ok).toBe(true)
     if (bet.calendar.slot >= 2) advanceDay(bet)
@@ -84,6 +84,9 @@ describe('butterfly chains (one small action vs control, same seed)', () => {
     expect(cb.startFatigue).toBeGreaterThan(cc.startFatigue)
     expect(cb.causes.some((c) => c.key === 'night' && /kumarhane/.test(c.label.tr))).toBe(true)
     // The prepared match carries the tired legs, and the post-match screen gets the cause.
+    // (Make sure he is picked: the selection roll itself is luck and not what this chain tests.)
+    bet.hero.contract!.role = 'star'
+    bet.hero.managerTrust = 100
     const prep = prepareHeroMatch(bet)
     expect(prep).not.toBeNull()
     expect(prep!.opts.heroStartFatigue ?? 0).toBeGreaterThan(0)
@@ -92,7 +95,7 @@ describe('butterfly chains (one small action vs control, same seed)', () => {
     const setup = { ...prep!.setup, heroOnBench: false }
     let fresh = 0
     let tired = 0
-    for (let i = 0; i < 24; i++) {
+    for (let i = 0; i < 80; i++) {
       const s = { ...setup, seed: 5000 + i }
       fresh += new MatchSim(s, 'en', { ...prep!.opts, heroStartFatigue: 0 }).simulateToEnd().heroStats.rating
       tired += new MatchSim(s, 'en', { ...prep!.opts, heroStartFatigue: 0.3 }).simulateToEnd().heroStats.rating

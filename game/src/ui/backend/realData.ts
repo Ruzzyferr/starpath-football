@@ -26,6 +26,7 @@ import { activityBlock, activityEnergy, activityMoney, TRAINER_FEES, trainerName
 import { createRace, type RaceCard } from '../../sim/life/casino'
 import { netWorth } from '../../sim/life/economy'
 import { getEventDef, absoluteWeek } from '../../sim/life/events/engine'
+import { choiceOdds } from '../../sim/life/events/odds'
 import type { EventCategory as SimEventCategory } from '../../sim/life/events/types'
 import { teammateId } from '../../sim/life/relationships'
 import { getSponsorOffers, getOffers, nextHeroFixture, activityContext, heroClub, GFLAG, isHeroMatchday, type SeasonDigest } from '../../sim/game'
@@ -35,7 +36,7 @@ import { sortTable } from '../../sim/world/table'
 import { clubFixtures, playerDisplayName, seasonCompetitions, topScorers as worldTopScorers } from '../../sim/world/queries'
 import { gameState } from '../store'
 import type {
-  ActivityCategory, ActivityView, CasinoStatus, DayPlanView, DaySlotView, Delta, EventCategory, EventView, FixtureView, GameData,
+  ActivityCategory, ActivityView, CasinoStatus, DayPlanView, DaySlotView, Delta, EventCategory, EventChoiceView, EventView, FixtureView, GameData,
   HorseView, InterestView, PerkNeeds, PerkView, Risk, ScorerRow, SeasonSummaryView, SocialPostView, SquadMemberView, StatKey, TrainerOffer,
   TrainingSessionView,
 } from '../store'
@@ -209,7 +210,7 @@ function eventView(s: GameState, index: number): EventView | null {
       category: EVENT_CAT[def.category] ?? 'social',
       title: fillVars(def.title, vars),
       body: fillVars(def.text, vars),
-      choices: def.choices.map((c) => {
+      choices: def.choices.map((c, ci) => {
         let met = true
         try { met = c.requires ? c.requires(ctx) : true } catch { met = false }
         // Preview: dry-run the effect function with two seeds (it never mutates); differing deltas are "uncertain".
@@ -222,10 +223,19 @@ function eventView(s: GameState, index: number): EventView | null {
         } catch {
           preview = []
         }
-        const risk: Risk = c.risk ?? 'safe'
+        let odds: EventChoiceView['odds']
+        let risk: Risk = c.risk ?? 'safe'
+        try {
+          const o = choiceOdds(s, def, ci, pe.vars)
+          odds = { pct: Math.round(o.success * 100), noRisk: o.noRisk, factors: o.factors.map((f) => ({ key: f.key, label: f.label, pts: f.pts })) }
+          risk = o.noRisk ? 'safe' : o.risk
+        } catch {
+          odds = undefined
+        }
         return {
           label: fillVars(c.label, vars),
           risk,
+          ...(odds ? { odds } : {}),
           ...(c.requires ? { requirement: { text: c.lockedHint ? fillVars(c.lockedHint, vars) : L('Şart gerekli', 'Requirement'), met } } : {}),
           preview: preview.slice(0, 6),
         }

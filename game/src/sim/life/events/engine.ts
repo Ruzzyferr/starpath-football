@@ -37,6 +37,7 @@ import type {
   ResolvedEffect,
 } from './types'
 import { contentFlags } from '../../../core/contentFlags'
+import { choiceOdds, recordOutcome, rollChoice, type ChoiceOdds } from './odds'
 
 // ───────────────────────── Tunables ─────────────────────────
 
@@ -548,7 +549,7 @@ export interface EventView {
   icon: string
   title: string
   text: string
-  choices: { label: string; hint?: string; risk?: 'low' | 'medium' | 'high'; enabled: boolean; lockedHint?: string }[]
+  choices: { label: string; hint?: string; risk?: 'low' | 'medium' | 'high'; enabled: boolean; lockedHint?: string; odds: ChoiceOdds }[]
 }
 
 /** Render a pending event in one language, with choice availability. */
@@ -562,7 +563,7 @@ export function describeEvent(state: GameState, pending: PendingEvent, lang: Lan
     icon: def.icon,
     title: formatText(def.title, pending.vars, lang),
     text: recallLine(pending.vars, absoluteWeek(state.calendar), lang) + formatText(def.text, pending.vars, lang),
-    choices: def.choices.map((c) => {
+    choices: def.choices.map((c, i) => {
       const enabled = isChoiceAvailable(c.requires, ctx)
       return {
         label: formatText(c.label, pending.vars, lang),
@@ -570,6 +571,7 @@ export function describeEvent(state: GameState, pending: PendingEvent, lang: Lan
         ...(c.risk ? { risk: c.risk } : {}),
         enabled,
         ...(!enabled && c.lockedHint ? { lockedHint: formatText(c.lockedHint, pending.vars, lang) } : {}),
+        odds: choiceOdds(state, def, i, pending.vars),
       }
     }),
   }
@@ -596,14 +598,17 @@ export function resolveEvent(state: GameState, rng: Rng, pending: PendingEvent, 
   if (!choice) throw new Error(`Event ${def.id} has no choice ${choiceIndex}`)
   const ctx: EventCtx = { state, vars: pending.vars, absWeek: absoluteWeek(state.calendar), tags: [] }
   if (!isChoiceAvailable(choice.requires, ctx)) throw new Error(`Choice ${choiceIndex} of ${def.id} is locked`)
-  const result = choice.effects(ctx, rng)
+  // Every choice rolls against honest, state-driven odds (sim/life/events/odds).
+  const rolled = rollChoice(ctx, def, choiceIndex, rng)
   const idx = state.pendingEvents.indexOf(pending)
   if (idx >= 0) state.pendingEvents.splice(idx, 1)
   else {
     const j = state.pendingEvents.findIndex((p) => p.defId === pending.defId)
     if (j >= 0) state.pendingEvents.splice(j, 1)
   }
-  return applyEffectResult(state, rng, def, pending.vars, result, events, formatBoth(choice.label, pending.vars))
+  if (!rolled.odds.noRisk) recordOutcome(state, def, pending.vars, rolled.tier)
+  const res = applyEffectResult(state, rng, def, pending.vars, rolled.result, events, formatBoth(choice.label, pending.vars))
+  return { ...res, outcome: rolled.tier, chance: rolled.odds.success }
 }
 
 /**

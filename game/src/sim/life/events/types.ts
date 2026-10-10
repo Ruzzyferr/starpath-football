@@ -181,12 +181,22 @@ export interface ResolvedEffect {
   deltas: AppliedDelta[]
   followUps: FollowUp[]
   news?: NewsSpec
+  /** How the roll went (no-risk choices always 'success'). */
+  outcome?: 'success' | 'mixed' | 'fail'
+  /** The odds the card showed for this choice (success chance 0..1). */
+  chance?: number
 }
 
 export interface ChoiceDef {
   label: LText
   hint?: LText
   risk?: 'low' | 'medium' | 'high'
+  /**
+   * Explicit no-risk option (no roll, always resolves as written). Leave unset to
+   * let the odds model decide: a deterministic, untagged choice with a small upside
+   * is no-risk, everything else rolls (sim/life/events/odds).
+   */
+  noRisk?: boolean
   /** Gate (money, relationship level…). A locked choice is shown disabled. */
   requires?: (ctx: EventCtx) => boolean
   /** Shown when `requires` fails, e.g. "Not enough money". */
