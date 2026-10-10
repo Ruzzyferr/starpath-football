@@ -11,6 +11,8 @@ import { MatchHints } from '../../tutorial/ControlHint'
 import { MomentsPanel } from './Moments'
 import { DecisionCard } from './DecisionCard'
 import { SoundCaption, captionKeyFor } from '../../a11y/Captions'
+import { pickBallStyle, resolveMatchKits } from '../../../core/kitContrast'
+import { PITCH_COLORS } from '../../../core/pitchColors'
 
 const SPEEDS: { id: 0.5 | 1 | 2 | 4; label: string }[] = [
   { id: 0.5, label: '½×' },
@@ -53,6 +55,9 @@ function Radar({ m }: { m: LiveMatchView }) {
   const bx = 1 + m.ballX * 103
   const by = 1 + m.ballY * 66
   const homePoss = m.possession[0] >= m.possession[1]
+  // Kits as worn (away side changes on a clash) and a ball that reads against both kits and the turf.
+  const kits = resolveMatchKits(m.fixture.home.kit, m.fixture.away.kit, m.fixture.away.altKit)
+  const ball = pickBallStyle([kits.home.primary, kits.away.primary, PITCH_COLORS.clear[0], PITCH_COLORS.clear[1]])
   return (
     <figure class="lm-radar" aria-label={t('match.live.radar')}>
       <svg viewBox="0 0 105 68" class="lm-radar-svg" role="img" aria-label={t('match.live.radar')}>
@@ -70,7 +75,7 @@ function Radar({ m }: { m: LiveMatchView }) {
         <PitchLinesHorizontal />
         <path
           d={homePoss ? 'M44 64h17l-3-2.5M61 64l-3 2.5' : 'M61 64H44l3-2.5M44 64l3 2.5'}
-          stroke={homePoss ? m.fixture.home.kit.primary : m.fixture.away.kit.primary}
+          stroke={homePoss ? kits.home.primary : kits.away.primary}
           stroke-width="1.4"
           fill="none"
           stroke-linecap="round"
@@ -78,7 +83,7 @@ function Radar({ m }: { m: LiveMatchView }) {
         {m.radar && (
           <g class="lm-players" data-testid="radar-players">
             {(['home', 'away'] as const).map((side) => {
-              const kit = m.fixture[side].kit
+              const kit = kits[side]
               return m.radar![side].map((p) => (
                 <g key={`${side}-${p.id}`} class={`lm-dot lm-dot-${side}${p.isHero ? ' is-hero' : ''}`} style={{ transform: `translate(${1 + p.x * 103}px, ${1 + p.y * 66}px)` }}>
                   {p.isHero && <circle class="lm-dot-ring" r="3.6" />}
@@ -88,9 +93,11 @@ function Radar({ m }: { m: LiveMatchView }) {
             })}
           </g>
         )}
-        <g class="lm-ball" style={{ transform: `translate(${bx}px, ${by}px)` }}>
+        <g class="lm-ball" data-testid="radar-ball" data-ball={ball.fill} style={{ transform: `translate(${bx}px, ${by}px)` }}>
           <circle r="7" fill="url(#lm-ballglow)" />
-          <circle r="1.8" fill="#fff" stroke="#0b1220" stroke-width=".5" />
+          {/* A ring the player dots never have: the ball reads by shape too, not colour alone. */}
+          <circle r="3.1" fill="none" stroke={ball.rim} stroke-width=".7" stroke-opacity=".85" />
+          <circle r="1.9" fill={ball.fill} stroke={ball.rim} stroke-width=".6" />
         </g>
       </svg>
     </figure>

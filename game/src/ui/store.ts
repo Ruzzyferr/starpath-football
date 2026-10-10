@@ -58,6 +58,8 @@ export interface TeamView {
   shortName: string
   crest: CrestSpec
   kit: KitColors
+  /** Change kit, worn as the away side on a kit clash (core/kitContrast resolveMatchKits). */
+  altKit?: KitColors
   reputation?: number
 }
 

@@ -16,8 +16,11 @@ import { startClip } from './clipExport'
 import type { InputRecording } from './inputReplay'
 import { headlessOutcome, scriptedRecording } from './reelProbe'
 
-const HERO: KitColors = { primary: '#c8102e', secondary: '#ffffff', pattern: 'stripes' }
-const OPP: KitColors = { primary: '#1d4ed8', secondary: '#0b1b44', pattern: 'hoops' }
+const kitParam = new URLSearchParams(location.search)
+const hexParam = (k: string): string | null => (/^[0-9a-f]{6}$/i.test(kitParam.get(k) ?? '') ? `#${kitParam.get(k)}` : null)
+/** ?home=FFFFFF&opp=FFD100: kit primaries for kit / ball contrast checks. */
+const HERO: KitColors = { primary: hexParam('home') ?? '#c8102e', secondary: hexParam('home2') ?? '#ffffff', pattern: hexParam('home') ? 'plain' : 'stripes' }
+const OPP: KitColors = { primary: hexParam('opp') ?? '#1d4ed8', secondary: hexParam('opp2') ?? '#0b1b44', pattern: hexParam('opp') ? 'plain' : 'hoops' }
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T
 const stage = $<HTMLDivElement>('stage')

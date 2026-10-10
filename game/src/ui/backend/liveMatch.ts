@@ -37,6 +37,7 @@ import { DECISION_SECONDS, decisionDef, pickDecision, resolveDecision, type Deci
 import { DECISION_FLAG, applyPendingDecisions, pendingDecisions, recordDecision } from '../../sim/game/matchDecisions'
 import { markedMan, preMatchCauses, type ReserveMatchMeta } from '../../sim/game/match'
 import { heroOvr } from '../../sim/career/progression'
+import { resolveMatchKits } from '../../core/kitContrast'
 
 /** Live text-feed speeds (2.2#106: 0.5x–4x). */
 export type MatchSpeed = 0.5 | 1 | 2 | 4
@@ -578,6 +579,10 @@ export function playMoment(): void {
   publish()
   const heroTeam = l.heroSide === 'home' ? l.setup.home : l.setup.away
   const oppTeam = l.heroSide === 'home' ? l.setup.away : l.setup.home
+  // Kits as worn: on a clash the away side changes to its change kit (colours only; the sim is untouched).
+  const kits = resolveMatchKits(l.setup.home.colors, l.setup.away.colors, s.world.clubs[l.setup.away.id]?.awayColors)
+  const heroColors = l.heroSide === 'home' ? kits.home : kits.away
+  const oppColors = l.heroSide === 'home' ? kits.away : kits.home
   const names: Record<string, string> = {}
   for (const p of [...heroTeam.lineup, ...heroTeam.bench, ...oppTeam.lineup, ...oppTeam.bench]) names[p.id] = p.name
   const done = (fn: () => void) => {
@@ -587,7 +592,7 @@ export function playMoment(): void {
   }
   l.session = playHighlight(
     {
-      highlight: hl, heroColors: heroTeam.colors, oppColors: oppTeam.colors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
+      highlight: hl, heroColors, oppColors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
       heroName: s.hero.nickname || s.hero.lastName, names, weather: l.setup.weather, importance: l.setup.importance,
       ...momentDifficulty(s), lang: currentLang.value, gender: worldGender(s.world),
       stadium: matchStadium(s, l), celebration: celebrationForMatch(s), matchKey: l.fixtureId,

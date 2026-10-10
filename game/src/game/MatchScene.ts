@@ -15,6 +15,7 @@ import type { Highlight, HighlightOutcome, HighlightResult, Weather } from '../s
 import { GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import {
   adBoardTexture,
+  ballRimTexture,
   ballTexture,
   colorNum,
   crowdTexture,
@@ -33,6 +34,8 @@ import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot
 import { InputController, type FrameIntent } from './input'
 import { effectiveAimAssist, getControlPrefs, TIMING_ASSIST_MULT } from '../input/prefs'
 import { KIT_MIN_DISTANCE, cvdDistance, distinctOpponentKit } from '../core/colorVision'
+import { pickBallStyle, type BallStyle } from '../core/kitContrast'
+import { PITCH_COLORS } from '../core/pitchColors'
 import { audio } from '../audio'
 import { secondLastOpponentDepth } from './offside'
 import { compactFrames, recordMoment, type MomentRecording } from './moments'
@@ -263,6 +266,11 @@ export class MatchScene extends Phaser.Scene {
   private ballImg!: Phaser.GameObjects.Image
   private ballShadow!: Phaser.GameObjects.Image
   private ballShade!: Phaser.GameObjects.Image
+  /** Kit-contrast outline ring (only when the ball had to change colour) and its halo. */
+  private ballRim: Phaser.GameObjects.Image | null = null
+  private ballHalo: Phaser.GameObjects.Image | null = null
+  /** Ball colours picked against both kits and the turf (core/kitContrast). */
+  ballStyle!: BallStyle
   private ballGhosts: Phaser.GameObjects.Image[] = []
   /** The last kick came from the hero's team-mate set (gold trail on hero strikes). */
   private lastKickHero = false
@@ -877,14 +885,24 @@ export class MatchScene extends Phaser.Scene {
   }
 
   private buildBall(): void {
-    const key = ballTexture(this, this.data0.opts.weather)
+    const weather = this.data0.opts.weather
+    // Tester report: a white ball vanished against white/yellow kits. Pick a ball that reads against
+    // both outfield kits and the turf (white when it can, else hi-vis orange / black / magenta);
+    // the keepers' kits steer which hi-vis ball.
+    const turf = PITCH_COLORS[this.night && weather !== 'snow' ? 'night' : weather] ?? PITCH_COLORS.clear
+    this.ballStyle = pickBallStyle([this.kits.hero.primary, this.kits.opp.primary, turf[0], turf[1]], {
+      snow: weather === 'snow',
+      soft: [this.kits.heroGk.primary, this.kits.oppGk.primary],
+    })
+    const paint = this.ballStyle.switched || this.ballStyle.halo ? this.ballStyle : undefined
     this.ballShadow = this.addW(this.add.image(0, 0, 'fx_shadow').setScale((0.5 * PPM) / 64, ((0.5 * PPM) / 32) * TILT * 0.5))
     this.trailG = this.addW(this.add.graphics())
-    const flat = ballTexture(this, this.data0.opts.weather, 64, false)
+    const flat = ballTexture(this, weather, 64, false, paint)
+    if (this.ballStyle.halo) this.ballHalo = this.addW(this.add.image(0, 0, 'fx_glow').setTint(0xffffff).setAlpha(0.45))
     this.ballGhosts = [0, 1, 2].map(() => this.addW(this.add.image(0, 0, flat).setVisible(false)))
     this.ballImg = this.addW(this.add.image(0, 0, flat).setScale(BALL_D / 64))
     this.ballShade = this.addW(this.add.image(0, 0, 'fx_ballshade').setScale(BALL_D / 64))
-    void key
+    if (paint) this.ballRim = this.addW(this.add.image(0, 0, ballRimTexture(this, paint.rim)).setScale(BALL_D / 64))
     this.aimG = this.addW(this.add.graphics().setDepth(5_000_000))
   }
 
@@ -1610,6 +1628,8 @@ export class MatchScene extends Phaser.Scene {
     const depth = z > 2.1 ? 3_000_000 : depthFor(z < 0.6 ? x - 1.1 : x, 0.5)
     this.ballImg.setPosition(b.x, b.y).setScale(scale).setDepth(depth)
     this.ballShade.setPosition(b.x, b.y).setScale(scale).setDepth(depth + 0.001)
+    this.ballRim?.setPosition(b.x, b.y).setScale(scale).setDepth(depth + 0.002)
+    this.ballHalo?.setPosition(b.x, b.y).setScale((scale * 64 * 2.2) / 128).setDepth(depth - 0.003)
     // Motion blur: fading ghosts along the recent path of a fast ball.
     const blur = clampN((speed - 9) / 14, 0, 1)
     this.trail.push({ x: b.x, y: b.y })

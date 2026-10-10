@@ -218,19 +218,29 @@ export function headTexture(scene: Phaser.Scene, idx: number, size = 56, female 
   })
 }
 
-/** Classic black/white ball. */
-export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64, shaded = true): string {
-  const key = `ball_${weather}${shaded ? '' : '_flat'}`
+/** Ball colours: body, panels, outline (core/kitContrast pickBallStyle). */
+export interface BallPaint {
+  fill: string
+  patch: string
+  rim: string
+}
+
+/** Classic black/white ball, or the `paint` picked to stand out from both kits. */
+export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64, shaded = true, paint?: BallPaint): string {
+  const fill = paint?.fill ?? (weather === 'snow' ? '#ff7a1a' : '#fbfbf7')
+  const patchC = paint?.patch ?? (weather === 'snow' ? '#3a1600' : '#1b1b1b')
+  const rim = paint?.rim ?? '#000000'
+  const key = paint ? `ball_${fill}_${patchC}_${rim}${shaded ? '' : '_flat'}` : `ball_${weather}${shaded ? '' : '_flat'}`
   return canvasTexture(scene, key, size, size, (c, w) => {
     const r = w / 2 - 2
     const cx = w / 2
     c.beginPath()
     c.arc(cx, cx, r, 0, Math.PI * 2)
-    c.fillStyle = weather === 'snow' ? '#ff7a1a' : '#fbfbf7'
+    c.fillStyle = fill
     c.fill()
     c.save()
     c.clip()
-    c.fillStyle = weather === 'snow' ? '#3a1600' : '#1b1b1b'
+    c.fillStyle = patchC
     const patch = (x: number, y: number, s: number) => {
       c.beginPath()
       for (let i = 0; i < 5; i++) {
@@ -256,9 +266,21 @@ export function ballTexture(scene: Phaser.Scene, weather: Weather, size = 64, sh
     c.restore()
     if (!shaded) return
     c.lineWidth = 1.5
-    c.strokeStyle = 'rgba(0,0,0,0.6)'
+    c.strokeStyle = paint ? rim : 'rgba(0,0,0,0.6)'
     c.beginPath()
     c.arc(cx, cx, r, 0, Math.PI * 2)
+    c.stroke()
+  })
+}
+
+/** A crisp outline ring for the ball, drawn over the lighting overlay (kit-contrast rim). */
+export function ballRimTexture(scene: Phaser.Scene, rim: string, size = 64): string {
+  return canvasTexture(scene, `fx_ballrim_${rim}`, size, size, (c, w) => {
+    c.lineWidth = w * 0.075
+    c.strokeStyle = rim
+    c.globalAlpha = 0.9
+    c.beginPath()
+    c.arc(w / 2, w / 2, w / 2 - 2 - c.lineWidth / 2 + 1, 0, Math.PI * 2)
     c.stroke()
   })
 }
