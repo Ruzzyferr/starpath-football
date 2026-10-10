@@ -64,20 +64,26 @@ export interface OneOnOneResult {
   xp?: { key: AttributeKey; xp: number }[]
 }
 
-/** Extra 1-on-1 session: relation +4 with the partner, XP in the two weakest role stats; one day slot. */
-export function oneOnOne(state: GameState): OneOnOneResult {
+/**
+ * Extra 1-on-1 session: relation +4 with the partner, XP in the two weakest
+ * role stats; one day slot. `performance` (0..1) is the played pair drill
+ * (game/training passing / keeper drill): 0.6 = the quick session, a perfect
+ * drill gives a third more XP and a closer bond, a poor one half the XP.
+ */
+export function oneOnOne(state: GameState, performance?: number): OneOnOneResult {
   const why = oneOnOneBlock(state)
   if (why) return { ok: false, lines: [why] }
   const { hero, life } = state
   const mate = oneOnOnePartner(state)!
   const name = playerDisplayName(mate, 'short')
-  const factor = clamp(1 + (mate.ovr - heroOvr(hero)) / 20, 0.6, 1.5)
+  const perf = performance === undefined || !Number.isFinite(performance) ? null : clamp(performance, 0, 1)
+  const factor = clamp(1 + (mate.ovr - heroOvr(hero)) / 20, 0.6, 1.5) * (perf === null ? 1 : 0.5 + perf * (5 / 6))
   const areas = developmentAreas(hero).slice(0, 2)
   const bundle: Partial<Record<AttributeKey, number>> = {}
   for (const k of areas) bundle[k] = Math.round(ONE_ON_ONE_XP * factor * 10) / 10
   applyXpBundle(hero, bundle, state.calendar.season)
   const week = absWeek(state.calendar)
-  const rel = changeRelation(life, teammateId(mate.id), 4, { hero, contact: true, week, cause: 'activity', memory: lt('Seninle birebir çalıştı.', 'Worked one-on-one with you.') })
+  const rel = changeRelation(life, teammateId(mate.id), perf === null ? 4 : Math.round(2 + perf * (10 / 3)), { hero, contact: true, week, cause: 'activity', memory: lt('Seninle birebir çalıştı.', 'Worked one-on-one with you.') })
   life.energy = meter(life.energy - ONE_ON_ONE_ENERGY)
   writeJson(life, ONE_ON_ONE_FLAG, { wk: week, n: sessionsThisWeek(state) + 1 })
   state.calendar.slot = Math.min(2, state.calendar.slot + 1)

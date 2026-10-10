@@ -35,6 +35,7 @@ import { selectLineupFromPlayers } from '../world/formations'
 import { squadPlayers } from '../world/queries'
 import { absDayOf, heroClub, isInSeason, readJson, writeJson } from './internal'
 import { daysUntil, nextClubFixture } from './selection'
+import { applyNationalCamp, type SceneId, type SceneOutcome } from './scenes'
 
 export const AGENDA_FLAG = 'c:agenda'
 /** JSON Record<kind, absDay>: last day each mandatory kind was set (cooldowns). */
@@ -75,8 +76,11 @@ export interface AgendaTask {
   why: LText
   /** What the quick resolve does (mandatory) / what completing it gives (prep). */
   reward: LText
-  /** How the task is played for a better outcome: a drill (training type) or a choice. */
-  play?: { drill?: string; choices?: TaskChoice[] }
+  /**
+   * How the task is played for a better outcome: a drill (training type), a
+   * choice, a dialogue scene (sim/game/scenes) or a small DOM mini-game.
+   */
+  play?: { drill?: string; choices?: TaskChoice[]; scene?: SceneId; game?: 'doping' }
   /** Skip consequence (only when skipping is allowed). */
   skip?: LText
   /** Prep: the training type / activity that completes it, and the attribute it buffs. */
@@ -227,7 +231,7 @@ function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTa
           skip: lt('Basın −5, kulüp sözcüsü kızar (disiplin −3)', 'Press −5, the club’s press officer is furious (discipline −3)') })
     case 'dopingTest':
       return T(lt('Doping testi', 'Doping test'), lt('Sürpriz kontrol: numune vermen gerekiyor.', 'A surprise control: you must give a sample.'), lt('Hızlı: test temiz, disiplin +1', 'Quick: clean test, discipline +1'),
-        { skip: lt('Testi reddetmek: disiplin −15, itibar −2, hoca −6', 'Refusing the test: discipline −15, reputation −2, manager −6') })
+        { play: { game: 'doping' }, skip: lt('Testi reddetmek: disiplin −15, itibar −2, hoca −6', 'Refusing the test: discipline −15, reputation −2, manager −6') })
     case 'physio':
       return T(lt('Fizyoterapi seansı', 'Physio session'), s.hero.injury ? lt('Sağlık ekibi tedavini takip ediyor.', 'The medical staff follow your treatment.') : lt('Yorgunluğun çok yüksek; sağlık ekibi seni çağırdı.', 'You are worn out; the medical staff called you in.'),
         lt('Hızlı: yorgunluk −10', 'Quick: fatigue −10'), { play: { choices: [ch('full', lt('Tam program (buz + masaj)', 'Full programme (ice + massage)'), lt('Yorgunluk −16, enerji −8', 'Fatigue −16, energy −8'))] }, skip: lt('Sağlık ekibi kızar: yorgunluk kalır, disiplin −3', 'The staff are annoyed: fatigue stays, discipline −3') })
@@ -241,7 +245,8 @@ function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): AgendaTa
       return T(lt('Başkanla görüşme', 'Meeting with the chairman'), lt('Sözleşmenin son yılı: başkan geleceğini konuşmak istiyor.', 'Final contract year: the chairman wants to talk about your future.'), lt('Hızlı: nazik görüşme, hoca +1', 'Quick: a polite chat, manager +1'),
         { play: { choices: [ch('loyal', lt('Kulübe bağlılığını göster', 'Show your loyalty'), lt('Hoca +3, taraftar +2', 'Manager +3, fans +2')), ch('ambitious', lt('Hedeflerini açıkça söyle', 'Speak your ambition'), lt('Moral +4, hoca −1', 'Morale +4, manager −1'))] } })
     case 'nationalCamp':
-      return T(lt('Milli takım kampı', 'National team camp'), lt('Kampa katılım bildirimi ve sağlık kontrolü.', 'Camp check-in and medical.'), lt('Hızlı: kayıt tamam, moral +2', 'Quick: checked in, morale +2'))
+      return T(lt('Milli takım kampı', 'National team camp'), lt('Kampa katılım bildirimi ve sağlık kontrolü.', 'Camp check-in and medical.'), lt('Hızlı: kayıt tamam, moral +2', 'Quick: checked in, morale +2'),
+        { play: { scene: 'nationalCamp' } })
     case 'dateNight':
       return T(lt('Sevgilinle akşam yemeği', 'Dinner date'), lt('Uzun zamandır söz verdiğin akşam.', 'The evening you promised long ago.'), lt('Hızlı: güzel bir akşam, sevgili +4', 'Quick: a nice evening, partner +4'),
         { play: { choices: [ch('special', lt('Sürpriz hazırla', 'Plan a surprise'), lt('Sevgili +8, mutluluk +4, para −', 'Partner +8, happiness +4, money −'))] }, skip: lt('İptal: sevgili −6, mutluluk −3', 'Cancel: partner −6, happiness −3') })
@@ -408,7 +413,7 @@ const family = (s: GameState, d: number): void => { for (const id of ['mother', 
  * outcome (drill performance or a choice id), `skip` = the explicit decision to
  * skip with its consequences (only where allowed).
  */
-export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: { performance?: number; choice?: string } = {}): { ok: boolean; lines: LText[] } {
+export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: { performance?: number; choice?: string; picks?: readonly string[] } = {}): { ok: boolean; lines: LText[]; outcome?: SceneOutcome } {
   const a = ensureAgenda(s)
   const t = a.tasks.find((x) => x.id === id)
   if (!t) return { ok: false, lines: [lt('Görev bulunamadı.', 'Task not found.')] }
@@ -420,6 +425,7 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
   const life = s.life
   const rng = new Rng(s.meta.seed).fork(`task:${id}`)
   let line: LText = lt('Tamamlandı.', 'Done.')
+  let outcome: SceneOutcome | undefined
   const choice = opts.choice ?? t.play?.choices?.[0]?.id
   switch (t.kind as MandatoryKind) {
     case 'teamTraining':
@@ -457,7 +463,14 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       break
     case 'dopingTest':
       if (mode === 'skip') { life.discipline = meter(life.discipline - 15); h.reputation = clamp(h.reputation - 2, 0, 100); rel(s, MANAGER_REL, -6); line = lt('Testi reddettin. Bu iş büyüyecek.', 'You refused the test. This will grow.') }
-      else { life.discipline = meter(life.discipline + 1); line = lt('Doping testi temiz çıktı.', 'The doping test came back clean.') }
+      else if (mode === 'played') {
+        // The calm mini-game (breathing + forms in order): composure XP, and nerves or calm show in the morale.
+        const perf = clamp(opts.performance ?? 0.6, 0, 1)
+        life.discipline = meter(life.discipline + 1)
+        applyXpBundle(h, { composure: Math.round(2 + perf * 6) }, s.calendar.season)
+        h.morale = meter(h.morale + (perf >= 0.75 ? 2 : perf < 0.35 ? -1 : 1))
+        line = perf >= 0.75 ? lt('Sakin kaldın, formlar eksiksiz: test temiz çıktı.', 'Calm and every form in order: the test came back clean.') : perf < 0.35 ? lt('Gergin anlar yaşadın ama test temiz çıktı.', 'A nervy wait, but the test came back clean.') : lt('Doping testi temiz çıktı.', 'The doping test came back clean.')
+      } else { life.discipline = meter(life.discipline + 1); line = lt('Doping testi temiz çıktı.', 'The doping test came back clean.') }
       break
     case 'physio':
       if (mode === 'skip') { life.discipline = meter(life.discipline - 3); line = lt('Fizyoterapiye gitmedin.', 'You skipped the physio.') }
@@ -477,8 +490,13 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       else { rel(s, MANAGER_REL, 1); line = lt('Başkanla nazik bir görüşme yaptın.', 'A polite chat with the chairman.') }
       break
     case 'nationalCamp':
-      h.morale = meter(h.morale + 2)
-      line = lt('Milli takım kampına katılımını bildirdin.', 'You checked in for the national camp.')
+      if (mode === 'played') {
+        outcome = applyNationalCamp(s, opts.picks ?? [])
+        line = outcome.lines[0] ?? line
+      } else {
+        h.morale = meter(h.morale + 2)
+        line = lt('Milli takım kampına katılımını bildirdin.', 'You checked in for the national camp.')
+      }
       break
     case 'dateNight':
       if (mode === 'skip') { rel(s, 'partner', -6); life.happiness = meter(life.happiness - 3); line = lt('Akşam yemeğini iptal ettin.', 'You cancelled the dinner.') }
@@ -540,7 +558,7 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
   t.done = mode === 'skip' ? 'skipped' : mode
   t.result = line
   save(s, a)
-  return { ok: true, lines: [line] }
+  return { ok: true, lines: [line], ...(outcome ? { outcome } : {}) }
 }
 
 /** Mark a preparation goal done and store its matchup buff for the next club match. */
