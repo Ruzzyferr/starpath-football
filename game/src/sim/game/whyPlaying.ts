@@ -51,26 +51,26 @@ export function whyPlaying(state: GameState): WhyPlaying | null {
   const f: WhyFactor[] = []
   const avg = squadAvgOvr(state)
   const gap = avg === null ? null : Math.round((heroOvr(h) - avg) * 10) / 10
-  if (h.injury) f.push({ key: 'injury', points: -pp(chance), label: lt('SakatsÄ±n, oynayamazsÄ±n.', 'You are injured and cannot play.'), actionable: false })
-  else if (h.suspendedMatches > 0) f.push({ key: 'ban', points: -pp(chance), label: lt('CezalÄ±sÄ±n.', 'You are suspended.'), actionable: false })
+  if (h.injury) f.push({ key: 'injury', points: -pp(chance), label: lt('Sakatsın, oynayamazsın.', 'You are injured and cannot play.'), actionable: false })
+  else if (h.suspendedMatches > 0) f.push({ key: 'ban', points: -pp(chance), label: lt('Cezalısın.', 'You are suspended.'), actionable: false })
   else {
     const base = ROLE_START_BASE[h.contract.role]
-    f.push({ key: 'role', points: pp(base), label: lt('RolÃ¼n temel ÅŸansÄ±', 'Base chance of your role'), actionable: false })
+    f.push({ key: 'role', points: pp(base), label: lt('Rolün temel şansı', 'Base chance of your role'), actionable: false })
     if (gap !== null) {
       const score = roleScore(h, { squadAvgOvr: avg ?? 0, season: state.calendar.season })
       f.push({
         key: 'merit', points: 0, actionable: true,
         label: gap >= 0
-          ? lt(`Genel gÃ¼cÃ¼n ilk 11 ortalamasÄ±nÄ±n ${gap} Ã¼stÃ¼nde (rol puanÄ± ${score.toFixed(1)}).`, `Your overall is ${gap} above the starters' average (role score ${score.toFixed(1)}).`)
-          : lt(`Genel gÃ¼cÃ¼n ilk 11 ortalamasÄ±nÄ±n ${-gap} altÄ±nda. RolÃ¼ bu fark belirliyor.`, `Your overall is ${-gap} below the starters' average. That gap decides your role.`),
+          ? lt(`Genel gücün ilk 11 ortalamasının ${gap} üstünde (rol puanı ${score.toFixed(1)}).`, `Your overall is ${gap} above the starters' average (role score ${score.toFixed(1)}).`)
+          : lt(`Genel gücün ilk 11 ortalamasının ${-gap} altında. Rolü bu fark belirliyor.`, `Your overall is ${-gap} below the starters' average. That gap decides your role.`),
       })
     }
     const form = formTerm(h) + ratingTerm(state.life)
-    if (Math.abs(form) >= 0.01) f.push({ key: 'form', points: pp(form), actionable: true, label: form > 0 ? lt('Ä°yi formdasÄ±n.', 'You are in good form.') : lt('Form dÃ¼ÅŸÃ¼k.', 'Your form is low.') })
+    if (Math.abs(form) >= 0.01) f.push({ key: 'form', points: pp(form), actionable: true, label: form > 0 ? lt('İyi formdasın.', 'You are in good form.') : lt('Form düşük.', 'Your form is low.') })
     const trust = trustTerm(h)
-    if (Math.abs(trust) >= 0.01) f.push({ key: 'trust', points: pp(trust), actionable: true, label: trust > 0 ? lt('Teknik direktÃ¶r sana gÃ¼veniyor.', 'The manager trusts you.') : lt('Teknik direktÃ¶rÃ¼n gÃ¼veni dÃ¼ÅŸÃ¼k.', 'The manager trusts you little.') })
+    if (Math.abs(trust) >= 0.01) f.push({ key: 'trust', points: pp(trust), actionable: true, label: trust > 0 ? lt('Teknik direktör sana güveniyor.', 'The manager trusts you.') : lt('Teknik direktörün güveni düşük.', 'The manager trusts you little.') })
     if (h.fatigue > 60) f.push({ key: 'fatigue', points: -pp(((h.fatigue - 60) / 40) * 0.3), actionable: true, label: lt('Yorgunsun, rotasyona kalabilirsin.', 'You are tired and may be rotated out.') })
-    if (h.sharpness < 40) f.push({ key: 'sharp', points: -10, actionable: true, label: lt('MaÃ§ temposu dÃ¼ÅŸÃ¼k.', 'Match sharpness is low.') })
+    if (h.sharpness < 40) f.push({ key: 'sharp', points: -10, actionable: true, label: lt('Maç temposu düşük.', 'Match sharpness is low.') })
     const night = preMatchNightPenalty(state.life, today)
     if (night > 0) {
       const act = state.life.flags[NIGHTLIFE_ACT_FLAG]
@@ -79,17 +79,17 @@ export function whyPlaying(state: GameState): WhyPlaying | null {
       f.push({
         key: 'night', points: -pp(night), actionable: true,
         label: seen
-          ? { tr: `DÃ¼n geceki ${n.tr} teknik direktÃ¶rÃ¼n kulaÄŸÄ±na gitti.`, en: `The manager heard about last night's ${n.en}.` }
-          : { tr: `DÃ¼n geceki ${n.tr} Ä±sÄ±nmada belli oldu.`, en: `Last night's ${n.en} showed in the warm-up.` },
+          ? { tr: `Dün geceki ${n.tr} teknik direktörün kulağına gitti.`, en: `The manager heard about last night's ${n.en}.` }
+          : { tr: `Dün geceki ${n.tr} ısınmada belli oldu.`, en: `Last night's ${n.en} showed in the warm-up.` },
       })
     }
     const conduct = disciplineSelectionPenalty(state.life)
-    if (conduct >= 0.01) f.push({ key: 'conduct', points: -pp(conduct), actionable: true, label: lt('Disiplin sicilin kÃ¶tÃ¼, teknik direktÃ¶r sana gÃ¼venmiyor.', 'Your discipline record is poor; the manager is wary of you.') })
+    if (conduct >= 0.01) f.push({ key: 'conduct', points: -pp(conduct), actionable: true, label: lt('Disiplin sicilin kötü, teknik direktör sana güvenmiyor.', 'Your discipline record is poor; the manager is wary of you.') })
     for (const c of echoSelection(h, state.life).causes) f.push({ key: c.key, points: 2, actionable: false, label: c.label })
     for (const x of terms) f.push({ key: x.key, points: pp(x.value), actionable: x.key === 'impress' || x.key === 'reserveForm', label: x.label })
-    if (state.life.flags.promised_start === true) f.push({ key: 'promise', points: 15, actionable: false, label: lt('Teknik direktÃ¶r ilk 11 sÃ¶zÃ¼ verdi.', 'The manager promised you a start.') })
-    if (formGuaranteeActive(h, state.life)) f.push({ key: 'formClause', points: 0, actionable: false, label: lt(`Form maddesi: ÅŸans en az %${pp(FORM_GUARANTEE_START)}.`, `Form clause: chance is at least ${pp(FORM_GUARANTEE_START)}%.`) })
-    if (h.contract.minutesGuarantee) f.push({ key: 'minutes', points: 0, actionable: false, label: lt(`SÃ¼re garantin var: ÅŸans en az %${pp(MINUTES_GUARANTEE_START)}.`, `You hold a minutes guarantee: chance is at least ${pp(MINUTES_GUARANTEE_START)}%.`) })
+    if (state.life.flags.promised_start === true) f.push({ key: 'promise', points: 15, actionable: false, label: lt('Teknik direktör ilk 11 sözü verdi.', 'The manager promised you a start.') })
+    if (formGuaranteeActive(h, state.life)) f.push({ key: 'formClause', points: 0, actionable: false, label: lt(`Form maddesi: şans en az %${pp(FORM_GUARANTEE_START)}.`, `Form clause: chance is at least ${pp(FORM_GUARANTEE_START)}%.`) })
+    if (h.contract.minutesGuarantee) f.push({ key: 'minutes', points: 0, actionable: false, label: lt(`Süre garantin var: şans en az %${pp(MINUTES_GUARANTEE_START)}.`, `You hold a minutes guarantee: chance is at least ${pp(MINUTES_GUARANTEE_START)}%.`) })
   }
   const weight = (x: WhyFactor): number => (x.key === 'merit' ? 99 : Math.abs(x.points))
   const top = f.slice().sort((a, b) => weight(b) - weight(a) || Number(b.actionable) - Number(a.actionable)).slice(0, 3)
