@@ -251,3 +251,101 @@ test('pause gate: a moment stays frozen behind its hint card and on background, 
   await expect.poll(async () => (await frozenState(page))?.clock ?? 0, { timeout: 20_000 }).toBeGreaterThan(bg!.clock)
   await shot('pg2-resumed')
 })
+
+// ───────────────────────── Context buttons (TestFlight 6) ─────────────────────────
+
+interface Btn { id: string; hold: boolean; key: string | null; down: boolean; x: number; y: number; r: number }
+interface BtnDbg extends Dbg { heroState: string; heroWorld: Pt; stamina: number; buttons: Btn[]; pendingChoice: string | null; paused: boolean }
+
+const btnDbg = (page: Page) => dbg(page) as Promise<BtnDbg | null>
+
+/** Synthetic pointer on the canvas (works in Chromium and WebKit, touch or mouse). */
+async function pointer(page: Page, type: 'pointerdown' | 'pointerup', x: number, y: number, id: number, touch: boolean) {
+  await page.evaluate(
+    ({ type, x, y, id, touch }) => {
+      const c = document.querySelector('canvas')!
+      c.dispatchEvent(new PointerEvent(type, { pointerId: id, pointerType: touch ? 'touch' : 'mouse', clientX: x, clientY: y, button: 0, bubbles: true, isPrimary: true }))
+    },
+    { type, x, y, id, touch },
+  )
+}
+
+/** Opens one demo moment and waits until it is live with its buttons up. */
+async function openMoment(page: Page, kind: string, seed: number): Promise<BtnDbg> {
+  await page.goto(`/match-demo.html?kind=${kind}&seed=${seed}&assist=half&lang=en`)
+  await page.waitForFunction(() => !!(globalThis as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 30_000 })
+  await dismissControlHint(page, 1500)
+  await expect.poll(async () => {
+    const d = await btnDbg(page)
+    return !!d && d.mode === 'play' && d.phase === 'live' && !d.paused && d.buttons.length > 0
+  }, { timeout: 20_000 }).toBe(true)
+  return (await btnDbg(page))!
+}
+
+const SETS: Record<string, string[]> = {
+  defend: ['tackle', 'slide', 'jockey', 'sprint'],
+  defend_1v1: ['jockey', 'tackle', 'slide', 'sprint'],
+  gk_save: ['dive', 'stay'],
+  gk_claim: ['claim', 'punch', 'dive'],
+  gk_distribution: ['throw', 'kick'],
+  hold_up: ['shield', 'pass', 'skill'],
+}
+
+for (const kind of Object.keys(SETS)) {
+  test(`context buttons: ${kind} shows its own buttons and each one does something sensible`, async ({ page, isMobile }) => {
+    test.setTimeout(240_000)
+    const first = await openMoment(page, kind, 3)
+    // The right buttons for the moment, never SPRINT + SKILL by default.
+    expect(first.buttons.map((b) => b.id)).toEqual(SETS[kind])
+    if (first.heroIsKeeper) expect(first.buttons.map((b) => b.id)).not.toContain('skill')
+    // Inside the canvas, not overlapping.
+    for (const b of first.buttons) {
+      expect(b.x - b.r).toBeGreaterThanOrEqual(first.canvas.left - 1)
+      expect(b.x + b.r).toBeLessThanOrEqual(first.canvas.left + first.canvas.width + 1)
+      expect(b.y + b.r).toBeLessThanOrEqual(first.canvas.top + first.canvas.height + 1)
+      if (!isMobile) expect(b.key, `${b.id} shows its key on desktop`).toBeTruthy()
+    }
+    for (const id of SETS[kind]!) {
+      const d0 = await openMoment(page, kind, 3)
+      const b = d0.buttons.find((q) => q.id === id)!
+      await pointer(page, 'pointerdown', b.x, b.y, 11, isMobile)
+      const states = new Set<string>()
+      let maxJump = 0
+      let prev = d0.heroWorld
+      let wasDown = false
+      // A challenge pressed out of range closes the man down first: watch it longer.
+      const n = id === 'slide' || id === 'tackle' ? 22 : 10
+      for (let i = 0; i < n; i++) {
+        await page.waitForTimeout(90)
+        const d = await btnDbg(page)
+        if (!d || d.mode !== 'play') break
+        states.add(d.heroState)
+        maxJump = Math.max(maxJump, Math.hypot(d.heroWorld.x - prev.x, d.heroWorld.y - prev.y))
+        prev = d.heroWorld
+        if (d.buttons.find((q) => q.id === id)?.down) wasDown = true
+      }
+      await pointer(page, 'pointerup', b.x, b.y, 11, isMobile)
+      const tag = `${kind}/${id}`
+      // The press registered (hold buttons light up while held).
+      if (b.hold) expect(wasDown, tag).toBe(true)
+      // No teleports: under 4 m between ~90 ms samples (≈ 40 m/s).
+      expect(maxJump, tag).toBeLessThan(4)
+      // Nobody throws himself down: only SLIDE slides, only keepers dive.
+      if (id !== 'slide') expect(states.has('slide'), tag).toBe(false)
+      if (!d0.heroIsKeeper) expect(states.has('dive'), tag).toBe(false)
+      if (id === 'sprint' || id === 'jockey' || id === 'shield') expect(states.has('down'), tag).toBe(false)
+      if (id === 'dive') expect(states.has('dive'), tag).toBe(true)
+      if (id === 'slide') expect(states.has('slide') || states.has('down') || Math.hypot(prev.x - d0.heroWorld.x, prev.y - d0.heroWorld.y) > 1, tag).toBe(true)
+    }
+  })
+}
+
+test('context buttons: screenshots of a defensive and a keeper moment (390x844)', async ({ page, isMobile }, testInfo) => {
+  test.skip(!isMobile, 'phone layout')
+  const out = process.env.E2E_SHOTS || testInfo.outputPath('')
+  for (const [kind, seed] of [['defend', 3], ['gk_claim', 3], ['hold_up', 3]] as const) {
+    await openMoment(page, kind, seed)
+    await page.waitForTimeout(250)
+    await page.screenshot({ path: `${out}/buttons-${kind}-${testInfo.project.name}.png` })
+  }
+})
