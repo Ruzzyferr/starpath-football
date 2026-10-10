@@ -183,8 +183,12 @@ export interface ResolvedEffect {
   news?: NewsSpec
   /** How the roll went (no-risk choices always 'success'). */
   outcome?: 'success' | 'mixed' | 'fail'
-  /** The odds the card showed for this choice (success chance 0..1). */
+  /** The odds the card showed for this choice (success chance 0..1); absent for no-risk choices. */
   chance?: number
+  /** The half-worked share the card showed (0..1). */
+  mixedChance?: number
+  /** The draw in [0, 1) that decided the outcome (success below `chance`, mixed below `chance + mixedChance`). */
+  roll?: number
 }
 
 export interface ChoiceDef {

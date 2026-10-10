@@ -122,9 +122,10 @@ export interface EventChoiceView {
   preview: Delta[]
   /**
    * Honest odds (sim/life/events/odds): success chance in %, or a no-risk option;
-   * `factors` = what moves it (percentage points, strongest first).
+   * `factors` = what moves it (percentage points, strongest first). `mixed` / `fail` =
+   * the half-worked and backfire shares (%); pct + mixed + fail = 100 exactly.
    */
-  odds?: { pct: number; noRisk: boolean; factors: { key: string; label: LText; pts: number }[] }
+  odds?: { pct: number; mixed?: number; fail?: number; noRisk: boolean; factors: { key: string; label: LText; pts: number }[] }
 }
 export interface EventView {
   index: number
@@ -144,6 +145,10 @@ export interface EventOutcomeView {
   tier?: 'success' | 'mixed' | 'fail'
   /** The success chance the card showed (%), absent for no-risk options. */
   pct?: number
+  /** The half-worked share the card showed (%). */
+  mixedPct?: number
+  /** The draw in [0, 1) that decided the tier: the odds wheel stops exactly here. */
+  roll?: number
 }
 
 // Training / perks ----------------------------------------------------------

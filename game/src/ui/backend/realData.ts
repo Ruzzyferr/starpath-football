@@ -227,7 +227,7 @@ function eventView(s: GameState, index: number): EventView | null {
         let risk: Risk = c.risk ?? 'safe'
         try {
           const o = choiceOdds(s, def, ci, pe.vars)
-          odds = { pct: Math.round(o.success * 100), noRisk: o.noRisk, factors: o.factors.map((f) => ({ key: f.key, label: f.label, pts: f.pts })) }
+          odds = { pct: Math.round(o.success * 100), mixed: Math.round(o.mixed * 100), fail: Math.round(o.fail * 100), noRisk: o.noRisk, factors: o.factors.map((f) => ({ key: f.key, label: f.label, pts: f.pts })) }
           risk = o.noRisk ? 'safe' : o.risk
         } catch {
           odds = undefined

@@ -5,6 +5,8 @@ import { lt, t } from '../../i18n'
 import { Avatar, Button, DeltaChip, DeltaList, Modal, RiskBadge } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
+import { prefersReducedMotion } from '../hooks/motion'
+import { OddsWheel, RollStrip, bandsOf } from './OddsWheel'
 import { actions, activeEvent, data, gameState, settings, type EventCategory, type EventChoiceView, type EventOutcomeView, type EventView } from '../store'
 
 export const EVENT_ICON: Record<EventCategory, IconName> = {
@@ -51,11 +53,19 @@ function OddsChip({ odds }: { odds: NonNullable<EventChoiceView['odds']> }) {
   const top = odds.factors.slice(0, 3)
   const list = top.map((f) => `${lt(f.label)} ${signed(f.pts)}`).join(', ')
   const why = top.length ? t('event.oddsWhy', { list }) : ''
+  const mixed = odds.mixed ?? 0
+  const fail = odds.fail ?? Math.max(0, 100 - odds.pct - mixed)
+  const split = t('event.oddsSplit', { s: odds.pct, m: mixed, f: fail })
   return (
     <span class="evt-odds-row" data-testid="evt-odds">
-      <span class={`evt-odds is-${tier}`} title={why || undefined} aria-label={t('event.oddsAria', { n: odds.pct, why })}>
+      <span class={`evt-odds is-${tier}`} title={why || undefined} aria-label={`${t('event.oddsAria', { n: odds.pct, why })} ${split}.`}>
         <Icon name="target" size={13} weight={2.4} />
         <b class="num">{t('event.odds', { n: odds.pct })}</b>
+        <span class="evt-split" aria-hidden="true" data-testid="evt-split">
+          <i class="is-success" style={{ flexGrow: odds.pct }} />
+          {mixed > 0 && <i class="is-mixed" style={{ flexGrow: mixed }} />}
+          {fail > 0 && <i class="is-fail" style={{ flexGrow: fail }} />}
+        </span>
       </span>
       {top.length > 0 && (
         <span class="evt-odds-why" aria-hidden="true">
@@ -68,7 +78,7 @@ function OddsChip({ odds }: { odds: NonNullable<EventChoiceView['odds']> }) {
   )
 }
 
-function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; onResolved: (o: EventOutcomeView) => void }) {
+function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; onResolved: (o: EventOutcomeView, label: string) => void }) {
   const [a, b] = EVENT_TONE[ev.category]
   return (
     <div class="evt-card">
@@ -105,7 +115,7 @@ function EventCard({ ev, total, onResolved }: { ev: EventView; total: number; on
                 disabled={blocked}
                 onClick={() => {
                   haptic('select')
-                  onResolved(actions.resolveEvent(ev.index, i))
+                  onResolved(actions.resolveEvent(ev.index, i), lt(c.label))
                 }}
               >
                 <span class="row-between evt-choice-top">
@@ -138,9 +148,10 @@ function Outcome({ out, onContinue, more }: { out: EventOutcomeView; onContinue:
   return (
     <div class={`evt-outcome is-${tier === 'success' ? 'success' : tier === 'mixed' ? 'mixed' : 'fail'}`} data-testid="evt-outcome" data-tier={tier}>
       <div class="evt-outcome-burst" aria-hidden="true" />
-      <span class="evt-outcome-icon"><Icon name={tier === 'success' ? 'check' : 'warning'} size={34} weight={2.6} /></span>
+      <span class="evt-outcome-icon"><Icon name={tier === 'success' ? 'check' : tier === 'mixed' ? 'minus' : 'warning'} size={34} weight={2.6} /></span>
       <div class="micro t-mid">{t('event.outcome')}{out.pct !== undefined ? ` · ${t('event.rolled', { n: out.pct })}` : ''}</div>
       <h2 class="evt-outcome-title" id="evt-title">{tier === 'success' ? t('event.success') : tier === 'mixed' ? t('event.mixed') : t('event.failure')}</h2>
+      <RollStrip out={out} />
       <p class="evt-body" aria-live="polite">{lt(out.text)}</p>
       {out.deltas.length > 0 ? (
         <div class="evt-outcome-deltas">
@@ -163,18 +174,41 @@ function Outcome({ out, onContinue, more }: { out: EventOutcomeView; onContinue:
 export function EventModalHost() {
   const idx = activeEvent.value
   const [outcome, setOutcome] = useState<EventOutcomeView | null>(null)
+  // The roll is already made (seeded game rng); the wheel only animates to it.
+  const [spin, setSpin] = useState<{ out: EventOutcomeView; label: string } | null>(null)
   const total = gameState.value?.pendingEvents.length ?? 0
   if (idx === null) return null
   const ev = outcome ? null : data.eventView(idx)
 
+  const resolved = (o: EventOutcomeView, label: string) => {
+    if (bandsOf(o) && !prefersReducedMotion()) setSpin({ out: o, label })
+    else setOutcome(o)
+  }
+  const spun = () => {
+    if (!spin) return
+    setOutcome(spin.out)
+    setSpin(null)
+  }
   const close = () => {
     setOutcome(null)
+    setSpin(null)
     activeEvent.value = null
   }
   const next = () => {
     const left = gameState.value?.pendingEvents.length ?? 0
     setOutcome(null)
     activeEvent.value = left > 0 ? 0 : null
+  }
+
+  if (spin) {
+    return (
+      <Modal open persistent labelledBy="evt-title" size="md" class="evt-modal" hideClose>
+        <div class="evt-stage" key="spin">
+          <h2 class="sr-only" id="evt-title">{t('event.wheelTitle')}</h2>
+          <OddsWheel out={spin.out} label={spin.label} onDone={spun} />
+        </div>
+      </Modal>
+    )
   }
 
   if (!outcome && !ev) {
@@ -192,7 +226,7 @@ export function EventModalHost() {
         {outcome ? (
           <Outcome out={outcome} onContinue={next} more={total > 0} />
         ) : ev ? (
-          <EventCard ev={ev} total={total} onResolved={setOutcome} />
+          <EventCard ev={ev} total={total} onResolved={resolved} />
         ) : null}
       </div>
       {!outcome && (

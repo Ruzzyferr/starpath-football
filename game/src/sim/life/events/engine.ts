@@ -608,7 +608,8 @@ export function resolveEvent(state: GameState, rng: Rng, pending: PendingEvent, 
   }
   if (!rolled.odds.noRisk) recordOutcome(state, def, pending.vars, rolled.tier)
   const res = applyEffectResult(state, rng, def, pending.vars, rolled.result, events, formatBoth(choice.label, pending.vars))
-  return { ...res, outcome: rolled.tier, chance: rolled.odds.success }
+  if (rolled.odds.noRisk) return { ...res, outcome: rolled.tier }
+  return { ...res, outcome: rolled.tier, chance: rolled.odds.success, mixedChance: rolled.odds.mixed, roll: rolled.roll }
 }
 
 /**

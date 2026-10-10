@@ -461,7 +461,7 @@ export const realActions: GameActions = {
       return { text: res.error ?? L('Olmadı.', 'That did not work.'), deltas: [], success: false }
     }
     const tier = res.value.outcome ?? 'success'
-    const out: EventOutcomeView = { text: res.value.text, deltas: eventDeltas(s, res.value.deltas), success: tier === 'success', tier, ...(res.value.chance !== undefined && res.value.chance < 1 ? { pct: Math.round(res.value.chance * 100) } : {}) }
+    const out: EventOutcomeView = { text: res.value.text, deltas: eventDeltas(s, res.value.deltas), success: tier === 'success', tier, ...(res.value.chance !== undefined && res.value.chance < 1 ? { pct: Math.round(res.value.chance * 100), mixedPct: Math.round((res.value.mixedChance ?? 0) * 100), ...(res.value.roll !== undefined ? { roll: res.value.roll } : {}) } : {}) }
     commit(s)
     scheduleAutosave()
     return out

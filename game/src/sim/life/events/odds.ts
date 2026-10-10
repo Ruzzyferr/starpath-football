@@ -303,8 +303,10 @@ function riskOf(choice: ChoiceDef, variants: Variant[]): RiskClass {
 }
 
 function isNoRisk(choice: ChoiceDef, variants: Variant[], risk: RiskClass): boolean {
+  // No sampleable outcome at all: nothing to roll, so never show odds the roll would not use.
+  if (variants.length === 0) return true
   if (choice.noRisk !== undefined) return choice.noRisk
-  if (risk !== 'safe' || variants.length === 0) return false
+  if (risk !== 'safe') return false
   return variants[0]!.v <= NO_RISK_CAP
 }
 
@@ -369,10 +371,23 @@ function oddsFrom(s: GameState, def: EventDef, choice: ChoiceDef, variants: Vari
     .map((f) => ({ ...f, pts: Math.round(f.pts * gain) }))
     .filter((f) => f.pts !== 0)
     .sort((a, b) => Math.abs(b.pts) - Math.abs(a.pts))
-  const p = clamp(BASE_SUCCESS[risk] + factors.reduce((a, f) => a + f.pts, 0) / 100, MIN_SUCCESS, MAX_SUCCESS)
-  const rest = 1 - p
-  const mixed = rest * MIXED_SHARE[risk]
-  return { noRisk: false, risk, success: p, mixed, fail: rest - mixed, factors }
+  // Whole percentages: what the card shows is exactly what the roll uses (no hidden decimals).
+  const S = Math.round(clamp(BASE_SUCCESS[risk] + factors.reduce((a, f) => a + f.pts, 0) / 100, MIN_SUCCESS, MAX_SUCCESS) * 100)
+  const M = Math.round((100 - S) * MIXED_SHARE[risk])
+  return { noRisk: false, risk, success: S / 100, mixed: M / 100, fail: (100 - S - M) / 100, factors }
+}
+
+/**
+ * The band a roll in [0, 1) lands in: [0, success) works, [success, success + mixed)
+ * half works, the rest backfires. Compared in whole percent so the boundaries are
+ * exactly the numbers on the card (and on the wheel). No streak breaker, no pity
+ * timer: every roll is a fresh, independent draw from the game rng.
+ */
+export function rollTier(o: Pick<ChoiceOdds, 'success' | 'mixed'>, roll: number): OutcomeTier {
+  const x = roll * 100
+  const S = Math.round(o.success * 100)
+  const M = Math.round(o.mixed * 100)
+  return x < S ? 'success' : x < S + M ? 'mixed' : 'fail'
 }
 
 // ───────────────────────── Outcome building ─────────────────────────
@@ -505,6 +520,8 @@ export interface RolledOutcome {
   tier: OutcomeTier
   result: EffectResult
   odds: ChoiceOdds
+  /** The raw draw in [0, 1) that decided the tier (the wheel lands exactly here). */
+  roll: number
 }
 
 /**
@@ -517,20 +534,20 @@ export function rollChoice(ctx: EventCtx, def: EventDef, idx: number, rng: Rng):
   // The same card-seeded variants the odds on the card were computed from.
   const variants = sampleVariants(ctx, choice, cardSeed(def, idx, ctx.vars))
   const o = oddsFrom(ctx.state, def, choice, variants, ctx.vars)
-  if (variants.length === 0) return { tier: 'success', result: choice.effects(ctx, rng), odds: o }
+  if (variants.length === 0) return { tier: 'success', result: choice.effects(ctx, rng), odds: o, roll }
   const best = variants[0]!
   if (o.noRisk) {
     // As written (keep the choice's own small randomness).
     const pickIdx = Math.floor(rng.next() * variants.length)
-    return { tier: 'success', result: variants[pickIdx]!.r, odds: o }
+    return { tier: 'success', result: variants[pickIdx]!.r, odds: o, roll }
   }
-  const tier: OutcomeTier = roll < o.success ? 'success' : roll < o.success + o.mixed ? 'mixed' : 'fail'
-  if (tier === 'success') return { tier, result: best.r, odds: o }
+  const tier = rollTier(o, roll)
+  if (tier === 'success') return { tier, result: best.r, odds: o, roll }
   const worst = variants[variants.length - 1]!
   const branchy = best.v - worst.v >= BRANCH_SPREAD
   const pick = (pool: readonly LText[]): LText => pool[Math.floor(rng.next() * pool.length)]!
   if (tier === 'fail') {
-    if (branchy) return { tier, result: worst.r, odds: o }
+    if (branchy) return { tier, result: worst.r, odds: o, roll }
     const deltas = backfireDeltas(ctx.state, best.r.deltas)
     if (!deltas.some((d) => d.kind === 'relation' && d.amount < 0)) {
       const hit = npcHit(def.category, ctx.vars, -4)
@@ -539,13 +556,13 @@ export function rollChoice(ctx: EventCtx, def: EventDef, idx: number, rng: Rng):
     deltas.push({ kind: 'stat', key: 'morale', amount: -3 }, { kind: 'stat', key: 'stress', amount: 4 })
     const { news, ...rest } = best.r
     const result: EffectResult = { ...rest, text: pick(BACKFIRE[npcGroup(def.category)] ?? BACKFIRE['none']!), deltas, ...(news && news.sentiment < 0 ? { news } : {}) }
-    return { tier, result, odds: o }
+    return { tier, result, odds: o, roll }
   }
   // Mixed: a middle authored branch if there is one, else the success at half strength with a cost.
   const middle = variants.find((x) => x.v < best.v - 1 && x.v > worst.v + 1)
-  if (middle) return { tier, result: middle.r, odds: o }
+  if (middle) return { tier, result: middle.r, odds: o, roll }
   const deltas = mixedDeltas(best.r.deltas)
   deltas.push(rng.next() < 0.5 ? { kind: 'stat', key: 'stress', amount: 3 } : { kind: 'stat', key: 'energy', amount: -6 })
   const tail = pick(MIXED_TAIL)
-  return { tier, result: { ...best.r, text: { tr: best.r.text.tr + tail.tr, en: best.r.text.en + tail.en }, deltas }, odds: o }
+  return { tier, result: { ...best.r, text: { tr: best.r.text.tr + tail.tr, en: best.r.text.en + tail.en }, deltas }, odds: o, roll }
 }
