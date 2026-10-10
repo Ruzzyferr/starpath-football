@@ -1,4 +1,4 @@
-import { test, expect, preferEnglish, assertCleanText, waitForApp, sp } from './fixtures'
+import { test, expect, preferEnglish, assertCleanText, startWithDecisionCard, sp } from './fixtures'
 
 /**
  * Decision cards show honest odds before choosing and can really fail
@@ -9,8 +9,7 @@ test.beforeEach(async ({ page }) => {
 })
 
 test('event odds: the card shows "Chance: N%" with its factors, and a struggling hero sees a choice backfire', async ({ page, shot }) => {
-  await page.goto('/?autostart=1&seed=99&event=1')
-  await waitForApp(page)
+  await startWithDecisionCard(page)
   const modal = page.locator('.modal-root')
   await expect(modal).toBeVisible()
 
@@ -46,6 +45,7 @@ test('event odds: the card shows "Chance: N%" with its factors, and a struggling
   for (let i = 0; i < n; i++) {
     const c = choices.nth(i)
     if (await c.isDisabled()) continue
+    if (!(await c.locator('.evt-odds b').count())) continue // certain choice: no odds to roll
     const txt = await c.locator('.evt-odds b').first().innerText().catch(() => '')
     const p = Number(txt.replace(/\D/g, ''))
     if (txt && p < worstPct) { worstPct = p; worst = i }

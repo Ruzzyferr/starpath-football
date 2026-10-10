@@ -1,4 +1,4 @@
-import { test, expect, assertCleanText, waitForApp } from './fixtures'
+import { test, expect, assertCleanText, startWithDecisionCard } from './fixtures'
 import type { Page } from '@playwright/test'
 
 /**
@@ -23,6 +23,7 @@ async function rolledChoice(page: Page): Promise<{ i: number; pct: number }> {
   for (let i = 0; i < n; i++) {
     const c = choices.nth(i)
     if (await c.isDisabled()) continue
+    if (!(await c.locator('.evt-odds b').count())) continue // certain choice: no wheel
     const txt = await c.locator('.evt-odds b').first().innerText().catch(() => '')
     if (/\d+%|%\d+/.test(txt)) return { i, pct: Number(txt.replace(/\D/g, '')) }
   }
@@ -32,8 +33,7 @@ async function rolledChoice(page: Page): Promise<{ i: number; pct: number }> {
 test('event wheel: spins to the rolled band, then the matching outcome', async ({ page, shot }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await settingsInit(page, { lang: 'en', reducedMotion: false })
-  await page.goto('/?autostart=1&seed=99&event=1')
-  await waitForApp(page)
+  await startWithDecisionCard(page)
   const modal = page.locator('.modal-root')
   await expect(modal).toBeVisible()
   // Each rolled choice shows the three-way split next to its chance.
@@ -67,8 +67,7 @@ test('event wheel: spins to the rolled band, then the matching outcome', async (
 test('event wheel: a tap skips the spin; Turkish labels', async ({ page }) => {
   await page.setViewportSize({ width: 390, height: 844 })
   await settingsInit(page, { lang: 'tr', reducedMotion: false })
-  await page.goto('/?autostart=1&seed=99&event=1')
-  await waitForApp(page)
+  await startWithDecisionCard(page)
   const modal = page.locator('.modal-root')
   const { i } = await rolledChoice(page)
   expect(i).toBeGreaterThanOrEqual(0)
@@ -85,8 +84,7 @@ test('event wheel: a tap skips the spin; Turkish labels', async ({ page }) => {
 
 test('event wheel: reduced motion reveals the outcome instantly with the roll strip', async ({ page }) => {
   await settingsInit(page, { lang: 'en', reducedMotion: true })
-  await page.goto('/?autostart=1&seed=99&event=1')
-  await waitForApp(page)
+  await startWithDecisionCard(page)
   const modal = page.locator('.modal-root')
   const { i } = await rolledChoice(page)
   expect(i).toBeGreaterThanOrEqual(0)

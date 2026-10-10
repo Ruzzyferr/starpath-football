@@ -100,3 +100,23 @@ export async function sp<T>(page: Page, fn: string): Promise<T> {
 export async function waitForApp(page: Page): Promise<void> {
   await page.waitForFunction(() => !!(window as unknown as { __sp?: unknown }).__sp && !!document.querySelector('#main'))
 }
+
+/**
+ * Start a career and put one known decision card on top (the tactics dispute: a chance choice,
+ * "Respectfully pitch an alternative", and two certain ones), so event specs never depend on
+ * which card a seed happens to roll.
+ */
+export async function startWithDecisionCard(page: Page, seed = 99, uid = 'e2e.tactics#1'): Promise<void> {
+  await page.goto(`/?autostart=1&seed=${seed}`)
+  await waitForApp(page)
+  await expect(page.locator('.home-grid')).toBeVisible()
+  await sp(page, 'sp.clearEvents()')
+  if (await page.locator('.modal-root').count()) await page.keyboard.press('Escape')
+  await sp(page, `(() => {
+    const s = sp.state()
+    s.pendingEvents.length = 0
+    s.pendingEvents.push({ defId: 'manager.tactics_dispute', vars: { managerName: 'Coach Demir' }, firedAt: { ...s.calendar }, uid: '${uid}' })
+    sp.touch()
+  })()`)
+  await expect(page.locator('.modal-root .evt-card')).toBeVisible()
+}

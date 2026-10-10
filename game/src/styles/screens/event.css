@@ -246,6 +246,13 @@
 .evt-outcome.is-fail .evt-outcome-burst {
   background: radial-gradient(closest-side, rgba(255, 77, 94, 0.3), transparent);
 }
+.evt-outcome.is-certain .evt-outcome-burst {
+  background: radial-gradient(closest-side, rgba(77, 163, 255, 0.28), transparent);
+}
+.evt-outcome.is-certain .evt-outcome-icon {
+  background: var(--accent-blue);
+  color: var(--text-hi);
+}
 .evt-outcome.is-mixed .evt-outcome-burst {
   background: radial-gradient(closest-side, rgba(255, 210, 63, 0.28), transparent);
 }
