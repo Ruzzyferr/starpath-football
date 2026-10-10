@@ -94,10 +94,18 @@ export const heroAge = (hero: Pick<Hero, 'birthYear'>, season: number): number =
 export const fameGain = (rep: number, amount: number): number =>
   amount > 0 ? amount * Math.max(0, 1 - clamp(rep, 0, 100) / 100) : amount
 
-/** Legal age for gambling, betting and alcohol-themed nightlife (casino, nightclub, their events). */
+/** Legal age for alcohol-themed nightlife (nightclub and its events). Gambling is {@link CASINO_MIN_AGE}. */
 export const ADULT_AGE = 18
-/** True once the hero may gamble / go clubbing. */
+/** True once the hero may go clubbing (alcohol-themed nightlife). */
 export const isAdult = (hero: Pick<Hero, 'birthYear'>, season: number): boolean => heroAge(hero, season) >= ADULT_AGE
+/**
+ * Casino, betting and horse racing open at 21 (the common worldwide limit; tester feedback, build 5).
+ * Computed from the hero's age on every check, so an old save with an under-21 hero who already had
+ * access simply finds the doors closed until the birthday; nothing is stored.
+ */
+export const CASINO_MIN_AGE = 21
+/** True once the hero may gamble. */
+export const canGamble = (hero: Pick<Hero, 'birthYear'>, season: number): boolean => heroAge(hero, season) >= CASINO_MIN_AGE
 
 /**
  * Nominal number of weeks in a season used to convert per-season tuning into

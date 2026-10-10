@@ -8,7 +8,7 @@ import type { AttributeGroup, GameState, Investment, LText, PendingEvent } from 
 import { clamp } from '../../core/rng'
 import type { Rng } from '../../core/rng'
 import { SLOTS_PER_DAY } from '../../core/config'
-import { ADULT_AGE, absWeek, fill, fmtMoney, isAdult, lt } from '../career/common'
+import { CASINO_MIN_AGE, absWeek, canGamble, fill, fmtMoney, lt } from '../career/common'
 import type { ContractTerms, NegotiationState } from '../career/contract'
 import { acceptOffer as acceptNegotiated, applyContract, counterOffer, rejectOffer, roundNice, startNegotiation as startNego } from '../career/contract'
 import { unlockPerk as unlockPerkFn } from '../career/perks'
@@ -170,9 +170,9 @@ function settle(state: GameState, stake: number, payout: number): LText[] {
   return r.lines
 }
 
-/** Gambling is 18+: under-age heroes are turned away at the door. */
-const underAge = (state: GameState): boolean => !isAdult(state.hero, state.calendar.season)
-const underAgeText = (): LText => fill(lt('Kumarhaneye {a} yaşından küçükler giremez.', 'You must be {a} or older to gamble.'), { a: ADULT_AGE })
+/** Gambling is 21+: under-age heroes are turned away at the door. */
+const underAge = (state: GameState): boolean => !canGamble(state.hero, state.calendar.season)
+const underAgeText = (): LText => fill(lt('Kumarhaneye {a} yaşından küçükler giremez.', 'You must be {a} or older to gamble.'), { a: CASINO_MIN_AGE })
 
 function checkBet(state: GameState, stake: number): LText | null {
   if (underAge(state)) return underAgeText()

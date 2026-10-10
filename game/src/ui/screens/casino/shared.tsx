@@ -238,15 +238,15 @@ export function SlotSymbol({ index, size = 56 }: { index: number; size?: number 
   )
 }
 
-/** Friendly locked state for under-18 heroes (lobby and every game screen). */
+/** Friendly locked state for under-21 heroes (lobby and every game screen). */
 export function CasinoAgeLock({ title }: { title?: string }) {
   const lock = data.casinoStatus().ageLock
-  const minAge = lock?.minAge ?? 18
+  const minAge = lock?.minAge ?? 21
   return (
     <Page title={title ?? t('casino.title')} backTo="life">
       <Card class="cas-locked" variant="raised">
         <span class="cas-locked-badge" aria-hidden="true">{minAge}+</span>
-        <h2 class="h3">{t('casino.locked.title')}</h2>
+        <h2 class="h3">{t('casino.locked.title', { age: minAge })}</h2>
         <p>{t('casino.locked.body', { age: minAge, n: lock?.yearsLeft ?? 1 })}</p>
         <p class="t-sm t-mid">{t('casino.locked.hint')}</p>
         <Button variant="primary" icon="arrow-left" onClick={() => navigate('life', undefined, { tab: true })}>{t('casino.locked.back')}</Button>

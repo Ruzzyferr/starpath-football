@@ -211,8 +211,8 @@ export interface EventDef {
   /** Earliest week of the season (calendar.week) at which it may fire. */
   minWeek?: number
   /**
-   * Minimum hero age. Defaults to 18 for the `casino` and `nightlife`
-   * categories (gambling, betting, alcohol) — see `eventMinAge`.
+   * Minimum hero age. Defaults to 21 for `casino` (gambling, betting) and 18 for `nightlife`
+   * (alcohol) — see `eventMinAge`.
    */
   minAge?: number
   conditions: (ctx: EventCtx) => boolean

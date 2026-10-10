@@ -111,6 +111,8 @@ describe('casino & negotiation', () => {
     expect(doActivity(s, 'casino').ok).toBe(false)
     expect(playSlots(s, 10).ok).toBe(false)
     s.hero.birthYear = s.calendar.season - 20
+    expect(doActivity(s, 'casino').ok).toBe(false) // 20: casino is 21+
+    s.hero.birthYear = s.calendar.season - 21
     const v = doActivity(s, 'casino')
     expect(v.ok).toBe(true)
     const m0 = s.life.money
@@ -120,6 +122,21 @@ describe('casino & negotiation', () => {
     expect(playSlots(s, 1e9).ok).toBe(false)
     advanceDay(s)
     expect(playSlots(s, 10).ok).toBe(false) // casino closed next day
+  })
+
+  it('old save: a 20-year-old already inside the casino (18+ era) is turned away, no crash', () => {
+    const s = makeGame(12)
+    s.pendingEvents = []
+    s.life.money = 5000
+    s.calendar.slot = 2
+    s.hero.birthYear = s.calendar.season - 21
+    expect(doActivity(s, 'casino').ok).toBe(true) // visit stored in the save
+    s.hero.birthYear = s.calendar.season - 20 // the same save, loaded under the 21+ rule
+    const m = s.life.money
+    const r = playSlots(s, 10)
+    expect(r.ok).toBe(false)
+    expect(r.error?.en).toMatch(/21 or older/)
+    expect(s.life.money).toBe(m)
   })
 
   it('negotiates and signs an offer', () => {

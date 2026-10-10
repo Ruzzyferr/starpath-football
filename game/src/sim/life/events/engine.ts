@@ -23,7 +23,7 @@ import { checkMoralityClause } from '../sponsors'
 import { startPresetObjective } from '../../game/objectives'
 import { heroGender } from '../../../core/gender'
 import { ALL_EVENTS } from './content'
-import { ADULT_AGE, absWeek, heroAge } from '../../career/common'
+import { ADULT_AGE, CASINO_MIN_AGE, absWeek, heroAge } from '../../career/common'
 import { recordRelationChange, teammateId } from '../relationships'
 import type {
   AppliedDelta,
@@ -403,9 +403,9 @@ function safeCond(def: EventDef, ctx: EventCtx): boolean {
 /** Categories built around gambling, betting or alcohol: adults only. */
 export const ADULT_EVENT_CATEGORIES: readonly EventCategory[] = ['casino', 'nightlife']
 
-/** Minimum hero age for an event (explicit `minAge`, else 18 for adult categories, else 0). */
+/** Minimum hero age for an event (explicit `minAge`, else 21 for casino, 18 for nightlife, else 0). */
 export const eventMinAge = (def: EventDef): number =>
-  def.minAge ?? (ADULT_EVENT_CATEGORIES.includes(def.category) ? ADULT_AGE : 0)
+  def.minAge ?? (def.category === 'casino' ? CASINO_MIN_AGE : ADULT_EVENT_CATEGORIES.includes(def.category) ? ADULT_AGE : 0)
 
 const oldEnough = (state: GameState, def: EventDef): boolean =>
   heroAge(state.hero, state.calendar.season) >= eventMinAge(def)

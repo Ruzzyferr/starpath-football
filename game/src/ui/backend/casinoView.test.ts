@@ -47,10 +47,10 @@ describe('slot view = slot sim', () => {
 })
 
 describe('casino age lock', () => {
-  it('locks under 18 with years left, opens at 18', () => {
-    expect(casinoAgeLock({ birthYear: 2010 }, 2026)).toEqual({ minAge: 18, yearsLeft: 2 })
-    expect(casinoAgeLock({ birthYear: 2009 }, 2026)).toEqual({ minAge: 18, yearsLeft: 1 })
-    expect(casinoAgeLock({ birthYear: 2008 }, 2026)).toBeNull()
+  it('locks under 21 with years left, opens at 21', () => {
+    expect(casinoAgeLock({ birthYear: 2008 }, 2026)).toEqual({ minAge: 21, yearsLeft: 3 })
+    expect(casinoAgeLock({ birthYear: 2006 }, 2026)).toEqual({ minAge: 21, yearsLeft: 1 })
+    expect(casinoAgeLock({ birthYear: 2005 }, 2026)).toBeNull()
     expect(casinoAgeLock(null, 2026)).toBeNull()
   })
 })

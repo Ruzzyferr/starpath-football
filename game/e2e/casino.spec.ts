@@ -111,13 +111,14 @@ test('casino: blackjack, roulette, slots and horse racing keep money consistent'
   await shot('d8-horses-result')
 })
 
-test('casino: under-18 hero sees a friendly 18+ lock, no games', async ({ page, shot }) => {
+test('casino: under-21 hero sees a friendly 21+ lock, no games', async ({ page, shot }) => {
   await preferEnglish(page)
   await page.goto('/?autostart=1&seed=4242')
   await waitForApp(page)
   // The default career hero is 17.
   await sp(page, `sp.navigate('casino')`)
-  await expect(page.locator('.cas-locked')).toContainText('Strictly 18+')
+  await expect(page.locator('.cas-locked')).toContainText('Strictly 21+')
+  await expect(page.locator('.cas-locked')).toContainText('open at 21')
   await expect(page.locator('.cas-tile')).toHaveCount(0)
   await sp(page, `sp.navigate('slots')`)
   await expect(page.locator('.cas-locked')).toBeVisible()

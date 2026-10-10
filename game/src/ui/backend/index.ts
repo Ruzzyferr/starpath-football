@@ -16,7 +16,7 @@ import { installPrefsSync } from './prefsSync'
 import type { NewGameInput, ScreenId } from '../store'
 import { effect } from '@preact/signals'
 import { activeEvent, gameState, installBackend, match, navigate, pendingNav, screen, settings } from '../store'
-import { ADULT_AGE, isAdult } from '../../sim/career/common'
+import { CASINO_MIN_AGE, canGamble } from '../../sim/career/common'
 import { realActions } from './realActions'
 import { realData } from './realData'
 import { MemoryStorage } from '../../state/save'
@@ -67,9 +67,9 @@ function devJump(id: ScreenId): void {
     case 'roulette':
     case 'slots':
     case 'horses': {
-      // The canned hero is 17 and the casino is 18+: age them for this dev shortcut.
+      // The canned hero is 17 and the casino is 21+: age them for this dev shortcut.
       const st = gameState.value
-      if (st && !isAdult(st.hero, st.calendar.season)) st.hero.birthYear = st.calendar.season - ADULT_AGE
+      if (st && !canGamble(st.hero, st.calendar.season)) st.hero.birthYear = st.calendar.season - CASINO_MIN_AGE
       clearEvents()
       for (let i = 0; i < 3 && (gameState.value?.calendar.slot ?? 2) < 2; i++) realActions.advance()
       clearEvents()

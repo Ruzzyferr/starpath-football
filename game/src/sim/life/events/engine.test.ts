@@ -79,6 +79,7 @@ describe('rollEvents', () => {
 
   it('only fires triggered events on matching tags, ambient events only on weekly', () => {
     const s = makeTestState()
+    s.hero.birthYear = s.calendar.season - 21 // casino events are 21+
     const pool = [mk('a.casino', 'casino', { triggers: ['casino'] }), mk('a.ambient', 'weird')]
     const rng = new Rng(3)
     const got = rollEvents(s, rng, ['casino'], 2, { events: pool, fireChance: 1 })
@@ -212,7 +213,7 @@ describe('5-season simulation with real content', () => {
 })
 
 describe('age gate', () => {
-  it('casino and nightlife events (and their follow-ups) wait until the hero is 18', () => {
+  it('nightlife events wait until 18, casino events (and their follow-ups) until 21', () => {
     const s = makeTestState()
     const casino = mk('casino.test', 'casino', { triggers: ['weekly'] })
     const club = mk('nightlife.test', 'nightlife', { triggers: ['weekly'] })
@@ -225,8 +226,12 @@ describe('age gate', () => {
       for (const p of rollEvents(s, new Rng(i), ['weekly'], 3, { events: [casino, club], fireChance: 1 })) throw new Error(`fired ${p.defId}`)
     }
     s.hero.birthYear = s.calendar.season - 18
-    expect(isEligible(s, casino, ['weekly'])).toBe(true)
+    expect(isEligible(s, casino, ['weekly'])).toBe(false)
     expect(isEligible(s, club, ['weekly'])).toBe(true)
+    s.hero.birthYear = s.calendar.season - 20
+    expect(isEligible(s, casino, ['weekly'])).toBe(false)
+    s.hero.birthYear = s.calendar.season - 21
+    expect(isEligible(s, casino, ['weekly'])).toBe(true)
   })
 
   it('every real casino/nightlife event is adults-only', () => {
@@ -235,6 +240,10 @@ describe('age gate', () => {
     const adult = ALL_EVENTS.filter((e) => e.category === 'casino' || e.category === 'nightlife')
     expect(adult.length).toBeGreaterThan(5)
     for (const e of adult) expect(isEligible(s, e, ['weekly', 'casino', 'nightlife', 'big_money'])).toBe(false)
+    // Gambling stays closed to a 20-year-old (casino is 21+).
+    s.hero.birthYear = s.calendar.season - 20
+    const gambling = ALL_EVENTS.filter((e) => e.category === 'casino')
+    for (const e of gambling) expect(isEligible(s, e, ['weekly', 'casino', 'nightlife', 'big_money'])).toBe(false)
   })
 })
 

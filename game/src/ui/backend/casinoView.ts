@@ -1,9 +1,9 @@
 /**
  * Casino view mapping shared by the real and mock backends: slot symbols,
- * the paytable/paylines exactly as the sim evaluates them, and the 18+ lock.
+ * the paytable/paylines exactly as the sim evaluates them, and the 21+ lock.
  */
 import type { Hero } from '../../core/types'
-import { ADULT_AGE, heroAge } from '../../sim/career/common'
+import { CASINO_MIN_AGE, heroAge } from '../../sim/career/common'
 import { SLOT_PAYLINES, SLOT_PAYTABLE, SLOT_TWO_CHERRY, type SlotSpin, type SlotSymbol } from '../../sim/life/casino'
 import type { CasinoStatus, SlotRules, SlotsResult } from '../store'
 
@@ -45,5 +45,5 @@ export function slotSpinView(spin: Pick<SlotSpin, 'window' | 'wins' | 'payout'>,
 export function casinoAgeLock(hero: Pick<Hero, 'birthYear'> | null | undefined, season: number): CasinoStatus['ageLock'] {
   if (!hero) return null
   const age = heroAge(hero, season)
-  return age >= ADULT_AGE ? null : { minAge: ADULT_AGE, yearsLeft: ADULT_AGE - age }
+  return age >= CASINO_MIN_AGE ? null : { minAge: CASINO_MIN_AGE, yearsLeft: CASINO_MIN_AGE - age }
 }

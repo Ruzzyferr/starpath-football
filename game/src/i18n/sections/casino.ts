@@ -43,8 +43,8 @@ export const tr = {
     excludedBody: 'Kendine verdiğin sözün {n} haftası kaldı. Gurur duy.',
   },
   locked: {
-    title: '18 yaş sınırı',
-    body: 'Kumarhane, bahis ve gece kulüpleri {age} yaşından küçüklere kapalı. Kapılar {n} yıl sonra açılacak; o zamana kadar sahada parla.',
+    title: '{age} yaş sınırı',
+    body: 'Kumarhane, bahis ve at yarışı {age} yaşında açılır. Kapılar {n} yıl sonra açılacak; o zamana kadar sahada parla.',
     hint: 'Bu arada antrenman, arkadaşlar ve aile seni bekliyor.',
     back: 'Yaşam’a dön',
   },
@@ -207,8 +207,8 @@ export const en: Shape<typeof tr> = {
     excludedBody: '{n} week(s) left on the promise you made yourself. Be proud.',
   },
   locked: {
-    title: 'Strictly 18+',
-    body: 'The casino, betting and nightclubs are closed to under-{age}s. The doors open in {n} year(s); until then, shine on the pitch.',
+    title: 'Strictly {age}+',
+    body: 'The casino, betting and horse racing open at {age}. The doors open in {n} year(s); until then, shine on the pitch.',
     hint: 'Training, friends and family are waiting for you in the meantime.',
     back: 'Back to Life',
   },

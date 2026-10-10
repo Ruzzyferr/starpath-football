@@ -51,7 +51,7 @@ describe('real backend end to end', () => {
 
   it('plays a career loop: plan → match → events → shop → casino → contract → save/load', async () => {
     // ── New career ──
-    A.newGame({ ...DEFAULT_CAREER, birthYear: 2006, seed: 777 }) // 20: casino is 18+
+    A.newGame({ ...DEFAULT_CAREER, birthYear: 2006, seed: 777 }) // 20: aged to 21 before the casino step
     const s0 = S()
     expect(s0.meta.slot).toBe(1)
     expect(D.heroOvr()).toBeGreaterThan(30)
@@ -142,7 +142,7 @@ describe('real backend end to end', () => {
     expect(D.formHistory().length).toBeGreaterThanOrEqual(post.stats.minutes > 0 ? 1 : 0)
 
     // ── Resolve an event ──
-    for (let i = 0; i < 40 && S().pendingEvents.length === 0; i++) A.advance()
+    for (let i = 0; i < 40 && S().pendingEvents.length === 0; i++) { quickResolveAll(); A.advance() }
     expect(S().pendingEvents.length).toBeGreaterThan(0)
     const ev = D.eventView(0)!
     expect(ev.title.en).not.toMatch(/\{\w+\}/)
@@ -169,6 +169,7 @@ describe('real backend end to end', () => {
     S().life.money = Math.max(S().life.money, 2000)
     const money0 = S().life.money
     S().hero.injury = null // casino is not open to injured heroes; this step tests the games
+    S().hero.birthYear = S().calendar.season - 21 // casino is 21+
     let bj = A.casino.blackjackDeal(100)
     expect(bj.player.length).toBe(2)
     for (let i = 0; i < 10 && bj.phase === 'player'; i++) bj = A.casino.blackjackStand()
@@ -227,7 +228,7 @@ describe('real backend end to end', () => {
   }, 120_000)
 
   it('reaches the end of the season and serves the season review', () => {
-    A.newGame({ ...DEFAULT_CAREER, birthYear: 2006, seed: 4242 }) // 20: casino is 18+
+    A.newGame({ ...DEFAULT_CAREER, birthYear: 2005, seed: 4242 }) // 21: casino is 21+
     pendingNav.value = null
     let matches = 0
     for (let i = 0; i < 600 && pendingNav.value !== 'seasonEnd'; i++) {

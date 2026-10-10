@@ -10,7 +10,7 @@ import { agendaBlock, pendingMandatory } from '../../sim/game/agenda'
 import { agendaSkipPrompt } from './benchPath'
 import type { AttributeGroup, AttributeKey, GameState, LText, RelationKind } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
-import { ADULT_AGE, absWeek, isAdult } from '../../sim/career/common'
+import { CASINO_MIN_AGE, absWeek, canGamble } from '../../sim/career/common'
 import type { ContractTerms, NegotiationState } from '../../sim/career/contract'
 import { extraBonusLimits, renewalOffer } from '../../sim/career/contract'
 import { heroOvr } from '../../sim/career/progression'
@@ -253,8 +253,8 @@ const emptyBj = (): BlackjackView => ({ rejected: true, bet: 0, player: [], deal
 
 /** Games need a casino visit today (the evening activity); visit automatically when possible. */
 function ensureCasino(s: GameState): boolean {
-  if (!isAdult(s.hero, s.calendar.season)) {
-    notify(L(`Kumarhane ${ADULT_AGE} yaş ve üzeri içindir.`, `The casino is strictly ${ADULT_AGE}+.`), 'info')
+  if (!canGamble(s.hero, s.calendar.season)) {
+    notify(L(`Kumarhane ${CASINO_MIN_AGE} yaş ve üzeri içindir.`, `The casino is strictly ${CASINO_MIN_AGE}+.`), 'info')
     return false
   }
   if (s.life.flags[GFLAG.casinoDay] === absDayOf(s)) return true

@@ -14,7 +14,7 @@ function setup(seed = 1): { rng: Rng; hero: Hero; life: Life } {
   const rng = new Rng(seed)
   const hero = createHero(rng, {
     firstName: 'Arda', lastName: 'Yıldız', nickname: 'Arda', nationality: 'TR', position: 'ST', foot: 'R',
-    appearance: APPEAR, role: 'runner', background: 'academy', birthYear: 2007,
+    appearance: APPEAR, role: 'runner', background: 'academy', birthYear: 2005,
   })
   const life = createLife(rng, hero, 'academy')
   life.money = 200000
@@ -121,21 +121,25 @@ describe('activities', () => {
     expect(b.life.energy).toBeGreaterThan(a.life.energy)
   })
 
-  it('casino and nightclub are 18+ (friendly lock, no side effects)', () => {
+  it('nightclub is 18+, casino is 21+ (friendly lock, no side effects)', () => {
     const { rng, hero, life } = setup()
     hero.birthYear = 2009 // 17 in 2026
     const evening = ctx({ calendar: cal(2), inSeason: false })
-    for (const id of ['casino', 'party']) {
+    for (const [id, re] of [['casino', /21\+.*4 year/], ['party', /18\+.*1 year/]] as const) {
       const def = ACTIVITIES.find((a) => a.id === id)!
       const why = activityBlock(hero, life, def, evening)
-      expect(why?.en).toMatch(/18\+.*1 year/)
+      expect(why?.en).toMatch(re)
       const m = life.money
       const r = performActivity(rng, hero, life, id, evening)
       expect(r.ok).toBe(false)
       expect(life.money).toBe(m)
     }
-    hero.birthYear = 2008
-    expect(activityBlock(hero, life, ACTIVITIES.find((a) => a.id === 'casino')!, evening)).toBeNull()
+    const casino = ACTIVITIES.find((a) => a.id === 'casino')!
+    hero.birthYear = 2006 // 20: nightclub yes, casino still closed for a year
+    expect(activityBlock(hero, life, ACTIVITIES.find((a) => a.id === 'party')!, evening)).toBeNull()
+    expect(activityBlock(hero, life, casino, evening)?.en).toMatch(/21\+.*1 year/)
+    hero.birthYear = 2005
+    expect(activityBlock(hero, life, casino, evening)).toBeNull()
   })
 
   it('casino only returns tags', () => {
