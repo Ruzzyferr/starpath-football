@@ -1135,7 +1135,7 @@ export const ROLE_KIND_MULT: Readonly<Record<Role, Partial<Record<HighlightKind,
 export const ROLE_SHOT_SHARE: Readonly<Partial<Record<Role, number>>> = {
   // A runner's chances (1v1s, breaks) convert best, so he gets fewer of them: same goals, different goals.
   runner: 0.83, targetForward: 1.0, pivot: 1.05,
-  touchlineWinger: 1.06, invertedWinger: 0.93, freeWinger: 0.95, dribbler: 1.05,
+  touchlineWinger: 1.06, invertedWinger: 0.91, freeWinger: 0.95, dribbler: 1.05,
   anchor: 0.9, playmaker: 0.86, boxToBox: 1.0,
   attackingFullBack: 1.1, defensiveFullBack: 0.85,
   stopper: 0.95, aerialDefender: 1.25, ballPlayingDefender: 0.95,
