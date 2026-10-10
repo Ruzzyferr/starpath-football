@@ -1359,3 +1359,21 @@ ilk 11 %60 / %64 / %62, süresiz seri medyan 2. Rol dengesi (rol başına 12 kar
 kariyer reytingi ±%2,0 içinde; itibar 22/24 rol ±%5 içinde, Ters Kanat +%5,1 ve Teknik Çalımcı −%5,1 sınırda
 (12 kariyerlik itibar gürültüsü; önceki raporda da Ters Kanat +%5,0). **Golden master bilinçli olarak yenilendi**
 (`UPDATE_GOLDEN=1`, zorunlu görev commit'i): otopilot daha çok görevi hızlı çözüyor.
+
+## Niyet ve özellik eğrileri (Ekim 2026, playtester build 7)
+
+"Tek bir maç mini oyununu kazanamadım": gerçek girdi yollarıyla oynayan "mantıklı insan" botu (`game/src/game/intentHarness.ts`, test `intent.test.ts`; rapor `INTENT_REPORT=1 INTENT_CURVES=1`). Normal zorluk, yarım yardım, takımlar OVR 62, N=150, deterministik seed.
+
+Başlangıç kahramanı (OVR 57), iyi girdi — önce → sonra: 1v1 köşe vuruşu %39 (aut %17) → %74 (aut %3); ŞUT düğmesi %55 → %73; koşarken PAS (çubuk ileri) %29 → %77; pas %97 → %91; ara pas %94 → %81; orta %99 → %83; müdahale (ilk temas) %37 → %57. Önce pas / ara pas / orta özelliklerden bağımsızdı (düz), müdahale 40–60 arasında düzdü.
+
+Özellik eğrisi (ilgili özellikler = X; `game/momentSkill.ts`), iyi / özensiz girdi:
+
+| tür | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| 1v1 şut (Bitiricilik/Soğukkanlılık/Şut/Falso) | 55 / 31 | 65 / 38 | 73 / 43 | 79 / 47 | 83 / 51 | 87 / 51 |
+| pas (Pas/Vizyon/İlk dokunuş) | 83 / 39 | 87 / 39 | 90 / 47 | 92 / 51 | 94 / 57 | 96 / 59 |
+| ara pas (Vizyon/Pas/Uzun pas) | 73 / 47 | 77 / 51 | 82 / 51 | 84 / 47 | 87 / 47 | 90 / 49 |
+| orta (Orta/Falso) | 71 / 31 | 80 / 35 | 85 / 43 | 91 / 49 | 94 / 55 | 96 / 61 |
+| müdahale (Top kapma/Önsezi/Agresiflik/Pozisyon) | 38 / 18 | 52 / 23 | 63 / 28 | 76 / 37 | 78 / 39 | 83 / 37 |
+
+Ayarlar: `HERO_FRAME_SAFE`, `HERO_PLACED_BEAT`, `HERO_FINISH_EDGE`, `HERO_PASS_MISHIT`, `HERO_THROUGH_MISHIT`, `HERO_THROUGH_SPREAD`, `HERO_CHARGE_DOWN`, `HERO_CROSS_BLOCK`, `HERO_TACKLE`, `HERO_LUNGE_TIMING` (runtime.ts); `SHOT_INTENT_*`, `BUTTON_PASS_*`, `heroMisHit` (kick.ts). Arka plan simülasyonu değişmedi (golden aynı; BALANCE=1 1000/2000/3000 geçti). Rol denge spot kontrolü (ST 3 rol + LW 4 rol, 12 kariyer): tüm Δ ±%4 içinde.
