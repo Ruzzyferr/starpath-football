@@ -255,6 +255,13 @@ export interface HighlightResult {
    * delta (and so match XP). Absent = 1 (auto-resolved moments).
    */
   assistMult?: number
+  /**
+   * The hero created a clear chance in a goal-oriented moment (build 9): his cross / corner met by a team-mate,
+   * a team-mate's shot off his delivery, his shot on target, a timed run received onside. Feeds {@link tier}.
+   */
+  chance?: boolean
+  /** Graded success (sim/match/tier momentTier): full / partial / fail. Absent = derived from the outcome. */
+  tier?: 'full' | 'partial' | 'fail'
 }
 
 /** One line of the hero's rating breakdown (sums, with the base, to the final rating before clamping). */
@@ -269,6 +276,8 @@ export interface RatingLogEntry {
   key: string
   kind?: HighlightKind
   outcome?: HighlightOutcome
+  /** Graded success of the moment (build 9). */
+  tier?: 'full' | 'partial' | 'fail'
   delta: number
   /** Moment resolved by the auto-sim (skipped) rather than played. */
   auto?: boolean

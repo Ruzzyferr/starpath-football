@@ -29,6 +29,11 @@ const L = {
   tactical: { tr: 'Taktik', en: 'Tactical' },
 }
 
+/** Graded success (build 9): shown after the outcome of a goal-oriented moment. */
+const TIER: Record<string, { tr: string; en: string }> = {
+  partial: { tr: 'kısmi başarı', en: 'partial success' },
+}
+
 const OUTCOME: Record<string, { tr: string; en: string }> = {
   goal: { tr: 'Gol', en: 'Goal' }, assist: { tr: 'Asist', en: 'Assist' }, saved: { tr: 'Kurtarış', en: 'Saved' }, missed: { tr: 'Aut', en: 'Missed' },
   blocked: { tr: 'Blok', en: 'Blocked' }, woodwork: { tr: 'Direk', en: 'Woodwork' }, pass_complete: { tr: 'İyi oyun', en: 'Good play' },
@@ -38,13 +43,14 @@ const OUTCOME: Record<string, { tr: string; en: string }> = {
 }
 
 function MomentRow({ m, onWatch }: { m: MomentRecording; onWatch: (m: MomentRecording) => void }) {
-  const good = m.outcome === 'goal' || m.outcome === 'assist' || m.outcome === 'defended' || m.outcome === 'woodwork'
+  const good = m.outcome === 'goal' || m.outcome === 'assist' || m.outcome === 'defended' || m.outcome === 'woodwork' || m.tier === 'partial'
   return (
     <li class={`mo-row${good ? ' is-good' : ''}`}>
       <span class="mo-min num">{m.minute}'</span>
       <span class="mo-icon"><Icon name={MOMENT_ICON[m.kind] ?? 'star'} size={16} /></span>
       <span class="mo-text grow">
         <b>{lt(OUTCOME[m.outcome] ?? { tr: m.outcome, en: m.outcome })}</b>
+        {m.tier && TIER[m.tier] && <span class="mo-tier" data-testid="moment-tier"> ({lt(TIER[m.tier]!)})</span>}
         <span class="t-lo"> · {tx(`match.kind.${m.kind}`, undefined, m.kind)}</span>
       </span>
       <Button size="sm" variant="ghost" icon="play" onClick={() => onWatch(m)} data-testid="moment-watch">{lt(L.watch)}</Button>

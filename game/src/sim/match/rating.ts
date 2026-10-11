@@ -7,6 +7,7 @@
  * rougher post-match estimate used to pick the Man of the Match.
  */
 import type { Position } from '../../core/types'
+import { GOAL_KINDS, PARTIAL_SHARE, momentTier } from './tier'
 import type { HighlightKind, HighlightResult } from './types'
 
 /** Baseline rating every player starts the match with. */
@@ -69,6 +70,9 @@ export const ASSIST_REWARD: Readonly<Record<'full' | 'half' | 'manual', number>>
  */
 export function highlightRatingDelta(kind: HighlightKind, r: HighlightResult): number {
   let d = OUTCOME_DELTA[r.outcome] + kindAdjustment(kind, r.outcome)
+  // Graded success (build 9): on target / a save forced / a clear chance created earns half a goal's credit.
+  const tier = r.tier ?? momentTier(kind, r)
+  if (tier === 'partial' && GOAL_KINDS.has(kind)) d = Math.max(d, PARTIAL_SHARE * (OUTCOME_DELTA.goal + kindAdjustment(kind, 'goal')))
   // Offside: a team-mate's mistimed run is mostly not the hero's fault; an
   // opponent flagged offside in a defensive moment is not really a hero stop.
   if (r.offside && r.outcome === 'lost_ball' && !r.offside.byHero) d += 0.15

@@ -42,6 +42,7 @@ import { PITCH_COLORS } from '../core/pitchColors'
 import { audio } from '../audio'
 import { secondLastOpponentDepth } from './offside'
 import { compactFrames, recordMoment, type MomentRecording } from './moments'
+import { GOAL_KINDS } from '../sim/match/tier'
 import {
   CELEBRATION_BY_ID, celebrationJoiners, celebrationPose, celebrationSeconds, dominantAngle, replayAngleWeights, replayRate, resolveCelebration,
   stadiumLook, upper, windReadout, type CelebrationChoice, type CelebrationId, type CelebrationPose, type ReplayAngle, type ReplayAngleChoice, type StadiumLook,
@@ -185,6 +186,8 @@ const T = {
     aim_full: 'FULL AIM', aim_half: 'HALF AIM', aim_manual: 'MANUAL AIM',
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
     grip_slick: 'SLICK', grip_heavy: 'HEAVY',
+    tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
+    tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
@@ -199,6 +202,8 @@ const T = {
     aim_full: 'TAM NİŞAN', aim_half: 'YARI NİŞAN', aim_manual: 'MANUEL NİŞAN',
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
     grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
+    tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
+    tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
   },
 } as const
 type Strings = { [K in keyof (typeof T)['en']]: string }
@@ -1548,6 +1553,7 @@ export class MatchScene extends Phaser.Scene {
         minute: highlight.minute,
         kind: highlight.kind,
         outcome: rt.result?.outcome ?? 'timeout',
+        tier: rt.result?.tier,
         highlight,
         frames: compactFrames(rt.replayFrames()),
         keyTime: rt.goalTime > 0 ? rt.goalTime : this.lastKeyT,
@@ -2844,16 +2850,22 @@ ${attrs}`, open: false, box: null }
 
   private showBanner(r: HighlightResult): void {
     const s = this.s
-    const txt = r.offside ? s.offside : (s[r.outcome as keyof Strings] ?? r.outcome)
+    // Graded success (build 9): a partial success says what it was and that it counted (half the reward).
+    const partial = r.tier === 'partial'
+    const goalKind = GOAL_KINDS.has(this.rt.kind)
+    let txt = r.offside ? s.offside : (s[r.outcome as keyof Strings] ?? r.outcome)
+    if (partial && !r.offside) txt = r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
+    else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
     const good = GOOD.has(r.outcome)
-    this.bannerText.setText(txt).setColor(good ? '#ffc83d' : '#ffffff').setAlpha(1).setScale(0.3)
+    this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(0.3)
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
     let sub = ''
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
+    else if (partial) sub = r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
-    if (!good && r.outcome !== 'woodwork') this.shake(100, 0.002)
+    if (!good && !partial && r.outcome !== 'woodwork') this.shake(100, 0.002)
   }
 
   private holdTick = -1

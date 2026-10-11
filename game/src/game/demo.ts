@@ -117,7 +117,7 @@ function play(): void {
       autopilot: auto,
     },
     (r) => {
-      const stats = `sh ${r.shots}/${r.shotsOnTarget} · pass ${r.passesCompleted}/${r.passes} · drb ${r.dribbles} · tkl ${r.tackles}${r.card ? ' · ' + r.card : ''}`
+      const stats = `sh ${r.shots}/${r.shotsOnTarget} · pass ${r.passesCompleted}/${r.passes} · drb ${r.dribbles} · tkl ${r.tackles}${r.card ? ' · ' + r.card : ''}${r.tier ? ' · tier ' + r.tier : ''}`
       resultEl.textContent = `${current}: ${r.outcome.toUpperCase()} (${stats})`
       // eslint-disable-next-line no-console
       console.info('[highlight]', current, r)

@@ -631,6 +631,8 @@ export interface RatingLineView {
   key: string
   kind?: string // HighlightKind
   outcome?: string // HighlightOutcome
+  /** Graded success of a moment (build 9): only 'partial' is shown. */
+  tier?: 'partial'
   delta: number
   auto?: boolean
 }

@@ -134,6 +134,7 @@ export function ratingLogView(log: readonly RatingLogEntry[] | undefined): Ratin
     .map((e) => ({
       minute: e.minute, source: e.source, key: e.key, delta: Math.round(e.delta * 100) / 100,
       ...(e.kind ? { kind: e.kind } : {}), ...(e.outcome ? { outcome: e.outcome } : {}), ...(e.auto ? { auto: true } : {}),
+      ...(e.tier === 'partial' ? { tier: 'partial' as const } : {}),
     }))
 }
 

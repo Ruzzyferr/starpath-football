@@ -34,6 +34,7 @@ import {
   HIGHLIGHTS_MAX_90,
   type SlotPlayer,
 } from './highlightGen'
+import { momentTier } from './tier'
 import { EARLY_BRAKE_MINUTE, MIN_MOMENT_CHANCE, earlyBrake, momentChance } from './fairness'
 import { backgroundPasses, mergePassNet } from './passNet'
 import { heroDuelMinute, heroTeamLift, workRateFatigueMult } from './heroDuels'
@@ -1416,9 +1417,11 @@ export class MatchSim {
 
   // ───────────────────────── Highlight resolution ─────────────────────────
 
-  private applyHighlight(p: PendingRuntime, r: HighlightResult): void {
+  private applyHighlight(p: PendingRuntime, rIn: HighlightResult): void {
     const h = this.s.hero
     const kind = p.highlight.kind
+    // Graded success (build 9): every consumer reads the same tier (auto-resolved moments derive it from the outcome).
+    const r: HighlightResult = { ...rIn, tier: rIn.tier ?? momentTier(kind, rIn) }
     h.stats.highlightsPlayed++
     h.stats.passes += r.passes
     mergePassNet((h.passNet ??= {}), r.passNet)
@@ -1427,7 +1430,7 @@ export class MatchSim {
     h.stats.shotsOnTarget += Math.min(r.shots, r.shotsOnTarget)
     h.stats.dribbles += r.dribbles
     h.stats.tackles += r.tackles
-    const entry: Omit<RatingLogEntry, 'minute' | 'delta'> = { source: 'moment', key: r.outcome, kind, outcome: r.outcome }
+    const entry: Omit<RatingLogEntry, 'minute' | 'delta'> = { source: 'moment', key: r.outcome, kind, outcome: r.outcome, tier: r.tier }
     if (this.resolvingAuto) entry.auto = true
     this.rate(highlightRatingDelta(kind, r), entry)
     this.recordMomentMap(p, r)

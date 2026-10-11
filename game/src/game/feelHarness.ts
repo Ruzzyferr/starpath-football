@@ -9,6 +9,7 @@ import { generatedHighlight } from './demoHighlights'
 import type { Highlight, HighlightKind, HighlightOutcome } from '../sim/match/types'
 import { createHumanBot, humanBotStep, type BotLevel } from './humanBot'
 import { HighlightRuntime } from './runtime'
+import { isFullSuccess } from '../sim/match/tier'
 
 export const FEEL_KINDS = [
   'one_on_one', 'penalty', 'freekick', 'edge_of_box', 'cross', 'corner', 'defend', 'gk_save',
@@ -26,46 +27,9 @@ const HERO_POS: Record<FeelKind, Position> = {
   long_shot: 'CM', switch_play: 'CM', recovery_run: 'CM', shoulder_duel: 'ST', timed_run: 'ST', press_trap: 'ST', gk_claim: 'GK', gk_distribution: 'GK',
 }
 
-/** What counts as a "success" for the hero in each kind. */
+/** What counts as a (full) "success" for the hero in each kind (sim/match/tier isFullSuccess). */
 export function isSuccess(kind: HighlightKind, o: HighlightOutcome): boolean {
-  switch (kind) {
-    case 'cross':
-    case 'corner':
-    case 'corner_kick':
-    case 'header':
-      return o === 'goal' || o === 'assist'
-    case 'dribble':
-      // Beating the man counts: he got past and the move ended in a shot, a pass or a foul won.
-      return o !== 'lost_ball' && o !== 'foul_committed' && o !== 'timeout'
-    case 'counter_2v1':
-      return o === 'goal' || o === 'assist'
-    case 'long_ball_control':
-    case 'hold_up':
-    case 'shoulder_duel':
-    case 'switch_play':
-      return o === 'goal' || o === 'assist' || o === 'pass_complete' || o === 'foul_won'
-    case 'timed_run':
-      return o === 'goal' || o === 'assist'
-    case 'gk_distribution':
-      return o === 'pass_complete'
-    case 'defend':
-    case 'interception':
-    case 'defend_1v1':
-    case 'block':
-    case 'back_post':
-    case 'recovery_run':
-    case 'press_trap':
-      return o === 'defended' || o === 'foul_won'
-    case 'gk_save':
-    case 'gk_penalty':
-    case 'fk_wall':
-    case 'gk_1v1':
-    case 'gk_sweep':
-    case 'gk_claim':
-      return o !== 'conceded'
-    default:
-      return o === 'goal'
-  }
+  return isFullSuccess(kind, o)
 }
 
 /** A realistic generated highlight (hero and both teams at `ovr`). */

@@ -43,6 +43,7 @@ export const tr = {
     },
     other: 'Diğer',
   },
+  tier: { partial: 'kısmi başarı' },
   outcome: {
     goal: 'Gol',
     assist: 'Asist',
@@ -182,6 +183,7 @@ export const en: Shape<typeof tr> = {
     },
     other: 'Other',
   },
+  tier: { partial: 'partial success' },
   outcome: {
     goal: 'Goal',
     assist: 'Assist',

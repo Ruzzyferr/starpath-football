@@ -49,7 +49,8 @@ function lineLabel(l: RatingLineView): string {
     case 'moment': {
       const kind = l.kind ? tx(`match.kind.${l.kind}`, undefined, l.kind) : t('postmatch.rating.group.moment')
       const out = l.outcome ? tx(`postmatch.outcome.${l.outcome}`, undefined, '') : ''
-      return out ? `${kind} · ${out}` : kind
+      const tier = l.tier === 'partial' ? ` (${t('postmatch.tier.partial')})` : ''
+      return out ? `${kind} · ${out}${tier}` : kind
     }
     case 'team':
       return tx(`postmatch.rating.team.${l.key}`, undefined, t('postmatch.rating.other'))

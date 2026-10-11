@@ -18,6 +18,8 @@ export interface MomentRecording {
   minute: number
   kind: Highlight['kind']
   outcome: HighlightOutcome
+  /** Graded success (build 9): full / partial / fail. */
+  tier?: 'full' | 'partial' | 'fail'
   /** Hero scored / assisted etc. — drives sorting in the "top moments" list. */
   score: number
   highlight: Highlight
