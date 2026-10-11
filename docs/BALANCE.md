@@ -2199,3 +2199,61 @@ S gk_claim | start 82(82) | 40 75(75) 65 83(83) 90 90(90) | sloppy 77(77) (40 75
 S gk_distribution | start 72(72) | 40 70(70) 65 70(70) 90 77(77) | sloppy 63(63) (40 63(63) 90 70(70)) | strong 65(65) weak 73(73) | 40vsStrong 62(62) 90vsWeak 78(78)
 ```
 </details>
+
+## Build 9 (2. tur): her tür dört kontrolden geçiyor (Ekim 2026)
+
+Sahip: gönderimden önce kalan türler de düzelsin; **her tür** dört kontrolü geçsin — (1) başlangıç kahramanı, iyi girdi, orta rakip: ~%55–75 başarı (tam + kısmi); (2) türün kendi statlarıyla (40 → 65 → 90) tekdüze artış; (3) özensiz girdi ≥ 20 puan aşağıda; (4) güçlü rakip → daha düşük.
+
+Ölçüm: `kindMatrix.kindCheck` (insan benzeri bot `good` / `novice`, yarım yardım, normal; N = **200** / hücre, deterministik). Eşikler `KIND_CHECK`: bant 53–77, adım toleransı 4 puan ve 40 → 90 en az 8 puan, fark ≥ 20, güçlü < zayıf − 4. Sabitlenen: `game/src/game/kindChecks.a–d.test.ts` (30 tür, bekleyen yok); kademe kuralları `balance9.test.ts`.
+
+### Son tablo (önce = build 9 ilk tur, iyi girdi; parantez = tam başarı / gol)
+
+| tür | başlangıç önce → sonra | 40 / 65 / 90 | özensiz | güçlü / orta / zayıf | bant | stat | özensiz farkı | rakip |
+|---|---|---|---|---|---|---|---|---|
+| one_on_one | 80 → **67** (62) | 59 / 69 / 79 | 38 (fark 29) | 67 / 67 / 75 | ✅ | ✅ | ✅ | ✅ |
+| penalty | 82 → **73** (73) | 68 / 74 / 81 | 40 (fark 34) | 70 / 73 / 81 | ✅ | ✅ | ✅ | ✅ |
+| freekick | 53 → **61** (25) | 52 / 59 / 67 | 32 (fark 29) | 51 / 61 / 60 | ✅ | ✅ | ✅ | ✅ |
+| edge_of_box | 60 → **74** (49) | 60 / 74 / 83 | 36 (fark 38) | 57 / 74 / 80 | ✅ | ✅ | ✅ | ✅ |
+| cross | 62 → **61** (28) | 48 / 60 / 73 | 39 (fark 22) | 52 / 61 / 65 | ✅ | ✅ | ✅ | ✅ |
+| corner | 45 → **59** (34) | 42 / 59 / 69 | 34 (fark 25) | 45 / 59 / 67 | ✅ | ✅ | ✅ | ✅ |
+| defend | 53 → **62** (61) | 51 / 75 / 83 | 21 (fark 41) | 46 / 62 / 82 | ✅ | ✅ | ✅ | ✅ |
+| gk_save | 75 → **69** (55) | 53 / 69 / 70 | 42 (fark 27) | 61 / 69 / 69 | ✅ | ✅ | ✅ | ✅ |
+| counter_2v1 | 53 → **65** (41) | 57 / 67 / 67 | 38 (fark 27) | 51 / 65 / 71 | ✅ | ✅ | ✅ | ✅ |
+| long_ball_control | 48 → **61** (57) | 56 / 62 / 66 | 38 (fark 23) | 43 / 61 / 73 | ✅ | ✅ | ✅ | ✅ |
+| rebound | 38 → **60** (42) | 59 / 62 / 69 | 38 (fark 22) | 55 / 60 / 64 | ✅ | ✅ | ✅ | ✅ |
+| interception | 63 → **61** (54) | 47 / 60 / 77 | 32 (fark 29) | 50 / 61 / 71 | ✅ | ✅ | ✅ | ✅ |
+| hold_up | 57 → **63** (63) | 61 / 68 / 73 | 23 (fark 40) | 60 / 63 / 69 | ✅ | ✅ | ✅ | ✅ |
+| defend_1v1 | 77 → **77** (76) | 59 / 83 / 90 | 36 (fark 41) | 62 / 77 / 89 | ✅ | ✅ | ✅ | ✅ |
+| block | 60 → **65** (55) | 59 / 65 / 79 | 45 (fark 21) | 62 / 65 / 72 | ✅ | ✅ | ✅ | ✅ |
+| corner_kick | 20 → **55** (37) | 42 / 60 / 73 | 33 (fark 22) | 48 / 55 / 59 | ✅ | ✅ | ✅ | ✅ |
+| fk_wall | 73 → **73** (19) | 65 / 73 / 77 | 50 (fark 22) | 70 / 73 / 75 | ✅ | ✅ | ✅ | ✅ |
+| dribble | 42 → **59** (59) | 38 / 62 / 77 | 36 (fark 23) | 48 / 59 / 78 | ✅ | ✅ | ✅ | ✅ |
+| header | 30 → **66** (56) | 56 / 71 / 84 | 42 (fark 24) | 60 / 66 / 71 | ✅ | ✅ | ✅ | ✅ |
+| gk_1v1 | 47 → **60** (29) | 50 / 57 / 61 | 39 (fark 21) | 44 / 60 / 74 | ✅ | ✅ | ✅ | ✅ |
+| gk_sweep | 67 → **55** (10) | 49 / 59 / 63 | 22 (fark 33) | 42 / 55 / 68 | ✅ | ✅ | ✅ | ✅ |
+| back_post | 38 → **57** (47) | 53 / 63 / 70 | 20 (fark 37) | 56 / 57 / 62 | ✅ | ✅ | ✅ | ✅ |
+| long_shot | 53 → **57** (22) | 55 / 64 / 67 | 29 (fark 28) | 57 / 57 / 64 | ✅ | ✅ | ✅ | ✅ |
+| switch_play | 37 → **62** (61) | 56 / 65 / 70 | 19 (fark 44) | 61 / 62 / 69 | ✅ | ✅ | ✅ | ✅ |
+| recovery_run | 70 → **58** (40) | 40 / 66 / 84 | 21 (fark 37) | 47 / 58 / 72 | ✅ | ✅ | ✅ | ✅ |
+| shoulder_duel | 48 → **75** (75) | 70 / 80 / 82 | 52 (fark 23) | 53 / 75 / 84 | ✅ | ✅ | ✅ | ✅ |
+| timed_run | 23 → **73** (35) | 71 / 80 / 92 | 46 (fark 27) | 69 / 73 / 82 | ✅ | ✅ | ✅ | ✅ |
+| press_trap | 45 → **57** (54) | 43 / 58 / 70 | 36 (fark 22) | 38 / 57 / 57 | ✅ | ✅ | ✅ | ✅ |
+| gk_claim | 82 → **72** (26) | 65 / 73 / 86 | 50 (fark 22) | 62 / 72 / 77 | ✅ | ✅ | ✅ | ✅ |
+| gk_distribution | 72 → **76** (76) | 73 / 76 / 81 | 26 (fark 50) | 67 / 76 / 81 | ✅ | ✅ | ✅ | ✅ |
+
+### Neler değişti (hepsi stata ya da girdiye bağlı)
+
+- **Kademe (`sim/match/tier.ts`):** savunma / kalecilikte kendi müdahalesi tam; görevini yaparken (adamında, şut çizgisinde, doğru yöne dalış, arka direkte adamını tutma) başkası kurtarırsa kısmi; kendi müdahalesinden sonra süre biterse tam; şutu çizgisinde zorladıysa (`SHOT_PRESS_KINDS`) kısmi, gol hiç; uzun top / kanat değiştirme ilk teması kazanınca kısmi (`CONTACT_KINDS`); direkten dönen penaltı kaçmış penaltıdır; dribble adamını geçmeden başarı değil.
+- **Şut kademesi:** menzil türleri (+ 2v1 ceza sahasından, dönen top) kurtarışı ancak **kendi plasesi** (vuruş anında kaleciden ≥ 1,4 m uzağa nişan) ve hız (Şut Gücü; menzil 17 m/s, serbest vuruş 20) varsa kısmi. Dönen topa ilk varan ve isabetli vuran kısmi; savunmacılar kurtarışı izler (Önsezi).
+- **Savunma:** hücum oyuncusu üstüne koşarak gelen savunmacıya çalım atar (Dripling × Çeviklik, `BLOCK_SHIFT`), koşarak yapılan müdahale zamanlamayı kaybeder (`HERO_CHARGE`, Çeviklik); BLOK açılımı Pozisyon / Agresiflik (`HERO_BLOCK_SPREAD`); şutör Soğukkanlılık'la açıyı açar; baskı (PRESS) altında atılan pas okunur (`PRESS_READ`, Önsezi / Pozisyon, gölge çizgisi); kendi kafası kendi müdahalesi; uzun topun altındaki gövde havadaki düelloya girer (İlk Dokunuş / Güç / Denge).
+- **Kaleci:** açısında hazır kaleci (+0,12, `KEEPER_SET_R`), kendi statları (`KEEPER_EDGE`), şutörün kalitesi (`SHOOTER_EDGE`), rakip şut gücü / köşe seçimi Bitiricilik / Şut'a bağlı, penaltıda doğru yönü tahmin eden kaleci (+0,15).
+- **Orta / korner:** ortanın kalitesi (Orta / Falso) koşucuya hava düellosunda ağırlık ve erişim verir (`CROSS_ATTACK`, `CROSS_REACH`, koridorda); kaleci kaliteli, dışa dönen topa çıkmaz (`KEEPER_DOUBT`), içe dönen kornere çıkar; havada asılı korner koşucuya zaman verir; dar açıdan şutta kaleci hazırdır (`TIGHT_ANGLE`).
+- **Son çizgi koşusu:** arkaya atılan top koşucunun düştüğü yerde buluşacağı noktaya ağırlıklandırılır (kaleci önce varmıyorsa); sprinte yardım frenlemez; Pozisyon çizgide eşit sayılmayı (`RUN_ON_LINE`), kör taraftan kaçmayı (`BLIND_SIDE`) ve koşu ivmesini verir. `attrSensitivity` Pozisyon sondası artık "arkaya ofsaytsız sarkma" ölçüyor (aklı başında koşucu her statta nadiren ofsayt).
+- **Bot (ölçüm aracı):** iyi bot jokey tutar, pas çizgisini okur, PRESS'i her taşıyıcıya basar, uzun topu korur, arka direkte adamını tutar, kanat değiştirirken boştaki uzak adamı seçer, penaltı noktası koridoruna orta yapar, korneri arka direğe havadan dışa döner atar, kaleci yakın topa dalmaz; özensiz bot ortayı bakmadan atar (ağırlığı dağınık), kaleciyken 1v1'de çoğunlukla çizgide kalır ve tahminle dalar.
+- **Ekran:** savunma / kaleci kısmi başarısı "GÖREV TAMAM · Görevini yaptın, tehlike önlendi", uzun top / kanat değiştirme "İLK TOP! · İlk teması kazandın" (TR / EN); mobilde doğrulandı.
+
+### Doğrulama
+
+- vitest (tümü), golden güncel, lint 0 hata, build. BALANCE=1 1000 / 2000 / 3000 geçti: 10. sezon OVR medyanı 82 / 82 / 83, itibar 92 / 88 / 89 (önceki rapor 83 / 86).
+- Rol denge kontrolü (ST / LW / CB, 12 kariyer): sim maç reytingi Δ ±%3, oynanan maç reytingi ±%4,9, kariyer OVR ±%1,3, kariyer reytingi ±%1,4; itibar −%5,4 (touchlineWinger) … +%4,7 (invertedWinger) — 12 kariyerde gürültü düzeyinde (build 8: −%7,9 / +%5,9).
+- e2e (desktop / mobile / webkit-iphone): tier, moments, setpieces, matchup, determinism — 34 geçti, 1 atlandı. Değişen türler mobilde (`PW_TIER_KINDS`) görsel olarak kontrol edildi.
