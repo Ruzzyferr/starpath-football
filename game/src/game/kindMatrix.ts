@@ -81,7 +81,7 @@ export const matrixRate = (kind: FeelKind, level: number | null, input: MatrixIn
 /**
  * The four build-9 checks every moment kind must pass (owner): a starting hero with good input succeeds about 55–75 %
  * against average opposition; success rises with the kind's own attributes (40 → 65 → 90); careless input is at
- * least 20 points worse; a stronger opponent means lower success. Tolerances cover sampling noise at n = 100.
+ * least 20 points worse; a stronger opponent means lower success. Tolerances cover sampling noise at n = 200.
  */
 export const KIND_CHECK = { band: [0.53, 0.77], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04 } as const
 
@@ -97,7 +97,7 @@ export interface KindCheck {
   oppOrder: boolean
 }
 
-export function kindCheck(kind: FeelKind, n = 100): KindCheck {
+export function kindCheck(kind: FeelKind, n = 200): KindCheck {
   const C = KIND_CHECK
   const start = matrixRates(kind, null, 'good', 'average', n)
   const levels = [40, 65, 90].map((lv) => matrixRate(kind, lv, 'good', 'average', n)) as [number, number, number]

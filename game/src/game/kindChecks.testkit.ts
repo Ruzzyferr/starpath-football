@@ -1,6 +1,6 @@
 /**
  * Build 9 all-kinds checks (owner: every moment kind, four checks — docs/BALANCE.md "Build 9 — every kind"). The
- * kinds are split over four test files so vitest runs them in parallel (game/kindMatrix KIND_CHECK, n = 100,
+ * kinds are split over four test files so vitest runs them in parallel (game/kindMatrix KIND_CHECK, n = 200,
  * deterministic seeds). A kind listed in KIND_CHECK_PENDING is still being tuned: it shows as a todo, not a pass.
  */
 import { describe, expect, it } from 'vitest'
@@ -8,10 +8,7 @@ import { GOAL_KINDS } from '../sim/match/tier'
 import type { FeelKind } from './feelHarness'
 import { kindCheck, kindCheckLine } from './kindMatrix'
 
-export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>([
-  'freekick', 'edge_of_box', 'cross', 'gk_save', 'counter_2v1', 'rebound', 'corner_kick', 'fk_wall', 'dribble', 'gk_1v1',
-  'back_post', 'long_shot', 'switch_play', 'timed_run', 'gk_claim',
-])
+export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>(['cross', 'corner_kick', 'back_post', 'timed_run'])
 
 /** The four parallel groups (kindChecks.a–d.test.ts); together every FEEL_KIND. */
 export const KIND_CHECK_GROUPS: readonly (readonly FeelKind[])[] = [

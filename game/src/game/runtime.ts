@@ -94,7 +94,7 @@ import {
 import { offsideSnapshot } from './offside'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
-import { GOAL_KINDS, momentTier } from '../sim/match/tier'
+import { CONTACT_KINDS, GOAL_KINDS, momentTier } from '../sim/match/tier'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, takeOnChance } from './tactics'
 import { arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import { leadershipBoost } from '../sim/match/heroDuels'
@@ -280,7 +280,7 @@ const PRESS_READ_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['pr
 /** An AI shooter's scatter follows his own Finishing (Set Pieces for a free kick): ×1.12 at 47, ×1 at 62, ×0.88 at 77. */
 export const aiFinishNoise = (finishing: number): number => clampN(1.5 - 0.8 * a01(finishing), 0.7, 1.3)
 /** Take-on timing bonus / penalty (build 9): right as the man steps in, or not. */
-export const SKILL_TIMING = 0.16
+export const SKILL_TIMING = 0.3
 /** Opposition free-kick taker's spread (build 9: 1.3 → 1.15, a free kick against was kept out 80 % of the time). */
 export const FK_AGAINST_NOISE = 1.15
 /** AI carrier's share of the hero's carrying pace (build 9: was ×0.80–0.83 of a sprint, the hero ×0.97–0.99). */
@@ -290,13 +290,25 @@ export const PARTIAL_SAVE_STRETCH = 0.35
 /** …or from at least this far out (m): forcing a save from range is the good outcome of a long shot / free kick. */
 export const PARTIAL_SAVE_RANGE = 18
 /** Moments about striking from range (the range save rule applies there only). */
-const RANGE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['long_shot', 'edge_of_box', 'freekick'])
+const RANGE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['long_shot', 'edge_of_box', 'freekick', 'counter_2v1', 'rebound'])
 /** Stretch a save from range needs to count (he had to dive for it). */
 export const PARTIAL_SAVE_STRETCH_RANGE = 0.2
 /** …or placed at least this far (m) from his body (a range shot struck at the keeper does not count). */
 export const PARTIAL_SAVE_OFF_BODY = 0.6
-/** …or struck at least this hard (m/s at the keeper). */
-export const PARTIAL_RANGE_PACE = 24
+/** Hero keeper set on his angle: within this distance (m) of his textbook spot as the shot is struck. */
+export const KEEPER_SET_R = 1.2
+/** Penalty: save chance added when the keeper guessed the right way. */
+export const PENALTY_READ_SAVE = 0.15
+/** Hero keeper's save chance: + edge × (his Reflexes / Diving / GK Positioning / Handling average − 0.6). */
+export const KEEPER_EDGE = 0.8
+/** Hero keeper's save chance: − edge × (striker's shot moment skill − 0.55). */
+export const SHOOTER_EDGE = 0.6
+/** rebound: seconds their defenders stand ball-watching the save (× 1.3 − Anticipation). */
+export const REBOUND_WATCH = 0.6
+/** A shot aimed (before execution noise) at least this far (m) across from the keeper is a deliberate placement. */
+export const PLACED_AIM = 1.4
+/** …and from range it must still have this much pace (m/s) when it reaches the keeper (a free kick dips over the wall). */
+export const PARTIAL_RANGE_PACE: Partial<Record<HighlightKind, number>> = { long_shot: 17, edge_of_box: 17, freekick: 20, rebound: 17 }
 /** Longest lead (m) of a ground pass to a named team-mate. */
 export const PASS_LEAD_MAX = 3
 /** How much of the receiving help a pass carries, from its quality (kick.planKick: the passer's execution): ×0.32 at 0.4, ×0.68 at 0.6, ×1.22 at 0.9. */
@@ -458,6 +470,10 @@ interface ShotTrack {
   assistBy: string | null
   /** Distance (m) to the goal the shot was struck from. */
   range?: number
+  /** Aimed (before noise) away from where the keeper stood as it was struck: a deliberate placement. */
+  placedAim?: boolean
+  /** The hero keeper was set on his angle as it was struck. */
+  keeperSet?: boolean
 }
 
 interface KeeperAlert {
@@ -588,6 +604,12 @@ export class HighlightRuntime {
   private blockWindUp: number
   /** block: the shooter has already answered a charge (one shift per moment). */
   private blockShifted = false
+  /** Penalty: the AI keeper guessed the right way. */
+  private penaltyRead = false
+  /** The hero keeper dived the right way for a shot on target. */
+  private keeperRightWay = false
+  /** rebound: the hero was first to the parried ball. */
+  private reboundFirst = false
   /** The carrier the hero's PRESS arrived on (his next pass is hurried). */
   private hurried: { id: string; until: number } | null = null
   private blockWindUpSet = false
@@ -1065,7 +1087,7 @@ export class HighlightRuntime {
   /** Builds the HighlightResult for an outcome with current micro-stats. */
   buildResult(outcome: HighlightOutcome, extra: Partial<HighlightResult> = {}): HighlightResult {
     const r: HighlightResult = { outcome, ...this.stats, ...extra }
-    if (GOAL_KINDS.has(this.kind)) r.chance = this.chance
+    if (GOAL_KINDS.has(this.kind) || CONTACT_KINDS.has(this.kind)) r.chance = this.chance
     if (Object.keys(this.passNet).length) r.passNet = Object.fromEntries(Object.entries(this.passNet).map(([k, v]) => [k, { ...v }]))
     r.assistMult = ASSIST_REWARD[this.assist]
     if (this.track.length) r.track = this.track.map((p) => ({ ...p }))
@@ -1297,7 +1319,9 @@ export class HighlightRuntime {
     if (this.kind === 'rebound') {
       this.startBullet(0.45, 0.45 + a01(this.hero.attrs.composure) * 0.3)
       // First to it: a reader (Anticipation) is off the mark before the defenders.
-      this.readBurstUntil = this.time + 0.9
+      this.readBurstUntil = this.time + 0.3 + 1.2 * a01(this.hero.attrs.anticipation ?? 50)
+      // ...while their defenders are ball-watching the save (their own Anticipation gets them going).
+      for (const o of this.agents) if (o.team === 'opp' && !o.isKeeper) o.think = Math.max(o.think, REBOUND_WATCH * (1.3 - a01(o.attrs.anticipation ?? 50)))
     }
     if (this.kind === 'long_ball_control') this.longBall()
     // gk_sweep: a keeper who reads the ball over the top (GK Positioning) is off the mark first.
@@ -1652,6 +1676,10 @@ export class HighlightRuntime {
         if (dot(ideal, dir) > 0.2) dir = norm(add(scale(dir, this.assist === 'full' ? 0.25 : 0.6), scale(ideal, this.assist === 'full' ? 0.75 : 0.4)))
       }
     }
+    // Graded keeping: he went the right way for a shot on target (doing his job, even if beaten or it was kept out
+    // by someone else).
+    const sv = this.defending ? planSave(hero, this.aiWorld(), 0) : null
+    if (sv?.onTarget && (Math.abs(sv.point.y - hero.pos.y) < 0.5 || Math.sign(sv.point.y - hero.pos.y) === Math.sign(dir.y))) this.keeperRightWay = true
     this.startDive(hero, dir)
   }
 
@@ -2316,6 +2344,10 @@ export class HighlightRuntime {
     if (SHOT_KINDS.has(kind)) {
       if (by.team === 'opp') this.oppShotTaken = true
       this.shot = { by, kind, t: this.time, woodwork: false, blocked: false, parried: false, beaten: new Set(), assistBy: !by.isHero && this.assistChain === by.id ? this.hero.id : null, range: Math.hypot(attackGoalX(by.team) - this.ball.x, GOAL_CENTER_Y - this.ball.y) }
+      const gk = this.agents.find((q) => q.isKeeper && q.team !== by.team)
+      if (gk) this.shot.placedAim = Math.abs(plan.aim.y - gk.pos.y) >= PLACED_AIM
+      // The hero in goal: set on his angle as it was struck (his textbook spot), or caught off it.
+      if (gk?.isHero) this.shot.keeperSet = dist(gk.pos, keeperTarget(gk, this.aiWorld()).pos) < KEEPER_SET_R
       const defTeam = other(by.team)
       const keeper = this.agents.find((a) => a.team === defTeam && a.isKeeper)
       if (keeper) {
@@ -2451,7 +2483,7 @@ export class HighlightRuntime {
     // A keeper did his job if he held his textbook spot or went for the ball (sweeping, coming for it).
     // (gk_sweep: the job is coming off the line for it — staying home is not doing it.)
     if (h.isKeeper && this.kind === 'gk_sweep') return dist(h.pos, b) < 6 || Math.abs(h.pos.x - ownGoalX(h.team)) > 9
-    if (h.isKeeper) return dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5 || dist(h.pos, b) < 6
+    if (h.isKeeper) return this.keeperRightWay || dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5 || dist(h.pos, b) < 6
     const goal = { x: ownGoalX(h.team), y: GOAL_CENTER_Y }
     // (recovery_run: getting back into the play is the job — within 12 m and level or goal-side.)
     if (this.kind === 'recovery_run') return dist(h.pos, b) < 12 && dist(h.pos, goal) < dist(b, goal) + 4
@@ -2982,7 +3014,7 @@ export class HighlightRuntime {
     let dec = carrierDecision(a, w, this.rng, { heldFor })
     if ((this.kind === 'gk_save' || (blockShooter && heldFor > this.blockWindUp)) && a.team === 'opp' && heldFor > 0.9 && dec.kind !== 'shoot') {
       // A better finisher picks his corner (build 9: the opposition's own Finishing — the save follows it).
-      dec = { kind: 'shoot', target: { x: -0.2, y: GOAL_CENTER_Y + (this.rng.chance(0.5) ? 1 : -1) * this.rng.range(0.3 + 2.2 * a01(a.attrs.finishing), 3.2) } }
+      dec = { kind: 'shoot', target: { x: -0.2, y: GOAL_CENTER_Y + (this.rng.chance(0.5) ? 1 : -1) * this.rng.range(Math.min(3.0, 0.3 + 2.8 * a01(a.attrs.finishing)), 3.2) } }
     } else if (blockShooter && heldFor <= this.blockWindUp) {
       // Setting himself: a short touch to open the angle, then the strike.
       const dir = norm({ x: -0.8, y: a.pos.y > GOAL_CENTER_Y ? -0.35 : 0.35 })
@@ -2995,7 +3027,9 @@ export class HighlightRuntime {
     switch (dec.kind) {
       case 'shoot': {
         if (heldFor < minHold) break
-        const power = this.rng.range(0.72, 0.95)
+        // (A forced strike — gk_save / block — is hit as hard as his Shot Power allows.)
+        const forced = this.kind === 'gk_save' || blockShooter
+        const power = forced ? this.rng.range(0.62 + 0.3 * a01(a.attrs.shooting), 0.8 + 0.18 * a01(a.attrs.shooting)) : this.rng.range(0.72, 0.95)
         const plan = planKick({ ...base, kind: 'shot', target: dec.target, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
         this.kickBall(a, plan, 'shot', power, null)
         return
@@ -3048,11 +3082,13 @@ export class HighlightRuntime {
         // Only pull the trigger on a real chance (or when time is up / swamped).
         const late = this.time > this.timeLimit - 2.5 || (this.kind === 'gk_save' && heldFor > 1.4)
         if (heldFor < minHold || (dec.value < 0.13 && !late && heldFor < 2.6)) break
-        const power = this.rng.range(0.72, 0.95)
+        // (In a keeper moment the strike is as hard as his Shot Power allows.)
+        const sp = a01(a.attrs.shooting)
+        const power = isKeeperKind(this.kind) && a.team === 'opp' ? this.rng.range(0.62 + 0.3 * sp, 0.8 + 0.18 * sp) : this.rng.range(0.72, 0.95)
         // A better finisher picks his corner (build 9: the shot follows his own Finishing).
         const gy = GOAL_CENTER_Y
         const off = dec.target.y - gy
-        const tgt = { x: dec.target.x, y: gy + (Math.sign(off) || 1) * clampN(Math.max(Math.abs(off), 0.3 + 2.2 * a01(a.attrs.finishing)), 0, 3.2) }
+        const tgt = { x: dec.target.x, y: gy + (Math.sign(off) || 1) * clampN(Math.max(Math.abs(off), Math.min(3.0, 0.3 + 2.8 * a01(a.attrs.finishing))), 0, 3.2) }
         const plan = planKick({ ...base, kind: 'shot', target: tgt, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
         this.kickBall(a, plan, 'shot', power, null)
         return true
@@ -3535,7 +3571,12 @@ export class HighlightRuntime {
     const pool = new Set<Agent>(heads)
     for (const a of this.agents) {
       if (pool.has(a) || a.noTouch > 0 || a.state === 'down' || a.isKeeper) continue
-      if (a.isHero && a.state !== 'jump') continue
+      // (Build 9: the hero standing right under it is in the way of the man jumping over him — he contests it with his
+      // body even without a leap.)
+      if (a.isHero && a.state !== 'jump') {
+        if (b.z < 2.4 && dist(a.pos, bp) < 0.8) pool.add(a)
+        continue
+      }
       const jumpTop = 1.72 + jumpHeight(a.attrs.jumping) + 0.28
       if (b.z < 1.15 || b.z > jumpTop) continue
       if (dist(a.pos, bp) < 1.15) pool.add(a)
@@ -3557,7 +3598,7 @@ export class HighlightRuntime {
       let w = Math.exp(4 * (air - 0.65)) * Math.max(0.05, 1.2 - d / 1.15)
       if (a.isHero && a.state !== 'jump') {
         // Chest control: positioning under the ball and first touch / strength to hold off the marker.
-        w = (0.4 + a01(a.attrs.firstTouch) * 0.35 + a01(a.attrs.strength) * 0.18 + a01(a.attrs.balance ?? a.attrs.strength) * 0.12) * Math.max(0.05, 1.25 - d / 0.8)
+        w = (0.15 + a01(a.attrs.firstTouch) * 0.65 + a01(a.attrs.strength) * 0.5 + a01(a.attrs.balance ?? a.attrs.strength) * 0.2) * Math.max(0.05, 1.25 - d / 0.8)
       } else if (a.isHero) {
         // The timing of his jump is the header (build 9: a mistimed leap loses most duels).
         const timing = a.stateT > 0.12 && a.stateT < 0.44 ? 1 : 0.3
@@ -3697,8 +3738,13 @@ export class HighlightRuntime {
       return
     }
     if (this.offsideCheck(a)) return
-    // rebound: first to the ball the keeper parried — the reaction the moment is about (graded success).
-    if (a.isHero && this.kind === 'rebound' && (!this.lastTouch || this.lastTouch.team === 'opp')) this.chance = true
+    // rebound: first to the ball the keeper parried — the reaction the moment is about (graded success once his
+    // follow-up is on target, keeperContact).
+    if (a.isHero && this.kind === 'rebound' && (!this.lastTouch || this.lastTouch.team === 'opp')) this.reboundFirst = true
+    // long_ball_control: first to the long ball (clean or not) — he won the contact the moment is about (graded success).
+    if (a.isHero && this.kind === 'long_ball_control' && this.lastTouch?.team === 'hero' && !this.lastTouch.isHero) this.chance = true
+    // switch_play: the switch reached a team-mate across the pitch (first touch his, clean or not).
+    if (!a.isHero && a.team === 'hero' && this.kind === 'switch_play' && this.lastTouch?.isHero && Math.abs(a.pos.y - this.heroKickY) >= 18) this.chance = true
     // timed_run: the hero onside on the end of the ball over the top (clean or not) — the run worked (graded success).
     if (a.isHero && this.kind === 'timed_run' && this.lastTouch?.team === 'hero' && !this.lastTouch.isHero) this.chance = true
     if (rel < limit) {
@@ -3726,10 +3772,14 @@ export class HighlightRuntime {
     // From range a save he made the keeper dive for counts; a follow-up from close in, any save.
     const sh = this.shot
     // (The range rule is for the range moments: a careless shot from distance in a 1v1 / 2v1 earns nothing.)
-    const far = (sh?.range ?? 0) >= PARTIAL_SAVE_RANGE && RANGE_KINDS.has(this.kind)
-    // (From range a strike with real pace on target — Shot Power — is a save forced too.)
-    const placed = stretch >= (far ? PARTIAL_SAVE_STRETCH_RANGE : PARTIAL_SAVE_STRETCH) || (far && (dist(bp, k.pos) >= PARTIAL_SAVE_OFF_BODY || speed >= PARTIAL_RANGE_PACE))
-    if (sh?.by.isHero && !k.isHero && placed) this.chance = true
+    // (Build 9: in the range moments the rule holds wherever he shoots from — stepping in closer is not punished.)
+    // (A 2-on-1 is about working the chance: a placed save counts from inside the box, not a pot-shot from distance.)
+    const far = RANGE_KINDS.has(this.kind) && (this.kind !== 'counter_2v1' || (sh?.range ?? 0) < PARTIAL_SAVE_RANGE)
+    // (From range: a save from a shot he placed away from the keeper — his aim, not the keeper's dive — with real pace
+    // on it — Shot Power: a tame one is an easy catch wherever it goes — counts.)
+    const placed = stretch >= (far ? PARTIAL_SAVE_STRETCH_RANGE : PARTIAL_SAVE_STRETCH) || (far && sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17))
+    // (rebound: first to the parried ball and the follow-up on target — the moment done.)
+    if (sh?.by.isHero && !k.isHero && (placed || this.reboundFirst)) this.chance = true
     let p = saveChance(k, stretch, speed, this.difficulty)
     if (this.shot && this.shot.by.isHero && !k.isHero) {
       // Generous but fair: a hero finish placed away from the keeper (full-stretch fingertips) mostly
@@ -3742,7 +3792,17 @@ export class HighlightRuntime {
       p -= HERO_FINISH_EDGE * (sk - 0.5) * (far ? 0.65 + 0.35 * clamp01(stretch) : 0.3 + 0.7 * clamp01(stretch))
     } else if (this.shot && this.shot.by.team !== k.team) p += KEEPER_SAVE_BONUS
     if (speed < 11) p = 1
-    if (k.isHero) p = clamp01(p + 0.12)
+    // A penalty keeper who guessed right is set for it at full stretch.
+    if (this.penaltyRead && this.shot?.kind === 'penalty' && !k.isHero) p = clamp01(p + PENALTY_READ_SAVE)
+    // (Build 9: the hero keeper's edge is being set on his angle — one caught off it, drifting, has none.)
+    if (k.isHero) p = clamp01(p + (this.shot?.keeperSet === false ? 0 : 0.12))
+    // The hero in goal: the striker's own quality (Finishing / Shot Power — disguise, the last bit of placement and pace).
+    if (k.isHero && this.shot && !this.shot.by.isHero) p = clamp01(p - SHOOTER_EDGE * (momentSkill('shot', this.shot.by.attrs) - 0.55))
+    // ...against his own (Reflexes / Diving / GK Positioning / Handling): the shot-stopper the moment is about.
+    if (k.isHero) {
+      const ka = k.attrs
+      p = clamp01(p + KEEPER_EDGE * ((ka.reflexes + ka.diving + ka.gkPositioning + ka.handling) / 400 - 0.6))
+    }
     if (!this.rng.chance(p)) {
       // Fingertips — slight deflection, keeper beaten.
       if (this.shot) this.shot.beaten.add(k.id)
@@ -4076,6 +4136,7 @@ export class HighlightRuntime {
       if (g.centre) return
       const actualSide = Math.sign(plan.point.y - k.pos.y) || 1
       const side = g.read ? actualSide : -actualSide
+      this.penaltyRead = g.read
       const target = g.read ? plan.point : { x: k.pos.x, y: GOAL_CENTER_Y + side * 2.6 }
       this.startDive(k, norm(sub(target, k.pos)))
       return

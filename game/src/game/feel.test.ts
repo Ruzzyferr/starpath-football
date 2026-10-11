@@ -27,8 +27,9 @@ const BANDS: Record<FeelKind, [number, number]> = {
   defend: [0.48, 0.88],
   gk_save: [0.5, 0.85],
   counter_2v1: [0.12, 0.6],
-  long_ball_control: [0.15, 0.6],
-  rebound: [0.06, 0.4],
+  // Build 9 (body under the long ball contests it; the parried ball is his to pounce on; a timed take-on): re-based.
+  long_ball_control: [0.15, 0.72],
+  rebound: [0.06, 0.55],
   interception: [0.42, 0.8],
   // WP-14 kinds (measured N=120 average: hold-up ~0.62, 1v1 ~0.70, block ~0.45).
   hold_up: [0.45, 0.8],
@@ -40,7 +41,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   fk_wall: [0.58, 0.88],
   // S21 kinds (measured N=120 average, normal): take-on got past and ended in a shot/pass ~0.43,
   // open-play header scored ~0.28, keeper 1v1 kept out ~0.58, sweeping ~0.77, back post ~0.43.
-  dribble: [0.28, 0.6],
+  dribble: [0.28, 0.72],
   header: [0.14, 0.68],
   gk_1v1: [0.3, 0.75],
   gk_sweep: [0.6, 0.92],

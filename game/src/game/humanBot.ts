@@ -49,7 +49,7 @@ export interface BotSkill {
 
 export const BOT_SKILL: Readonly<Record<BotLevel, BotSkill>> = {
   // Build 9: a genuinely careless player (the owner's "sloppy input"): late, loose aim, mistimed, reads nothing.
-  novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.42, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.65, slide: 0.4, anticipate: 0.05 },
+  novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.5, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.65, slide: 0.4, anticipate: 0.05 },
   average: { aimSd: 1.1, powerMean: 0.86, powerSd: 0.1, reaction: 0.32, wrongSide: 0.18, timingSd: 0.15, shootFrom: [12, 20], read: 0.5, rush: 0.22, slide: 0.18, anticipate: 0.45 },
   good: { aimSd: 0.75, powerMean: 0.84, powerSd: 0.07, reaction: 0.25, wrongSide: 0.1, timingSd: 0.1, shootFrom: [11, 18], read: 0.72, rush: 0.1, slide: 0.08, anticipate: 0.7 },
   expert: { aimSd: 0.45, powerMean: 0.84, powerSd: 0.05, reaction: 0.2, wrongSide: 0.05, timingSd: 0.06, shootFrom: [10, 16], read: 0.88, rush: 0.04, slide: 0.04, anticipate: 0.85 },
@@ -99,6 +99,8 @@ export interface HumanBotState {
   waitSince: number
   /** Id of the opponent carrier the current engagement is against. */
   engaged: string
+  /** press_trap: the carrier he last pressed (PRESS again on the next one). */
+  pressed: string
   /** Real time the ball last became loose (−1 = someone has it). */
   looseSince: number
   /** block: how far off the shooting line this player ends up (m, drawn once; NaN = not yet). */
@@ -133,7 +135,7 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     slider: rng.chance(skill.slide),
     // Build 9 (sloppy = sloppy): a poor keeper stands off the angle and comes out too early (or not at all).
     gkDrift: clamp01((1 - skill.read) * rng.range(0.6, 1.1)),
-    rushAt: rng.chance(skill.read * 0.5 + 0.45) ? (skill.read >= 0.5 ? 5.5 : 15) + rng.normal(0, skill.timingSd * 8) : -1,
+    rushAt: rng.chance(skill.read >= 0.5 ? skill.read * 0.5 + 0.45 : 0.2) ? (skill.read >= 0.5 ? 7 : 15) + rng.normal(0, skill.timingSd * 8) : -1,
     blocked: false,
     rushReal: -1,
     jumpErr: rng.normal(0, skill.timingSd),
@@ -144,6 +146,7 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     anticipator: rng.chance(skill.anticipate),
     waitSince: -1,
     engaged: '',
+    pressed: '',
     looseSince: -1,
     blockErr: Number.NaN,
     choiceAt: -1,
@@ -213,9 +216,9 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
 
   // (Pressing, a sensible one: curve the run so he stands in the line to the passer's nearest option — the cover shadow.)
   if (rt.kind === 'press_trap' && st.skill.read >= 0.5 && d < 14) {
-    // PRESS (the moment's button): flat out at him, hurrying his pass.
-    if (!st.blocked) {
-      st.blocked = true
+    // PRESS (the moment's button): flat out at him, hurrying his pass — and again on the next man it goes to.
+    if (st.pressed !== owner.id) {
+      st.pressed = owner.id
       act({ kind: 'btn', id: 'press' })
     }
     const opt = rt.agents
@@ -228,7 +231,9 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   }
   // (Recovery run, a sensible one: the fastest line to him, flat out; a clean challenge in reach, never a lunge from behind.)
   if (rt.kind === 'recovery_run' && st.skill.read >= 0.5) {
-    moveTo({ x: owner.pos.x + toGoal.x * 0.8, y: owner.pos.y + toGoal.y * 0.8 }, true)
+    // Far off: cut across to the line between him and goal (ahead of him), then step in.
+    const ahead = d > 4 ? Math.min(6, d * 0.6) : 0.8
+    moveTo({ x: owner.pos.x + toGoal.x * ahead, y: owner.pos.y + toGoal.y * ahead }, true)
     if (d < 1.8 && !isBehind(owner, hero)) act({ kind: 'action' })
     return
   }
@@ -377,7 +382,7 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       if (plan && plan.onTarget) {
         let dy = plan.point.y - hero.pos.y + st.rng.normal(0, st.skill.aimSd * 0.5)
         if (st.rng.chance(st.skill.wrongSide)) dy = -dy
-        if (Math.abs(dy) > 0.5) act({ kind: 'dive', dir: norm({ x: 0.15, y: dy }) })
+        if (Math.abs(dy) > (st.skill.read >= 0.5 ? 0.8 : 0.5)) act({ kind: 'dive', dir: norm({ x: 0.15, y: dy }) })
         st.dove = true
       }
     }
@@ -459,7 +464,11 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       const space = (a: Agent) => Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, a.pos)), 30)
       const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
       const far = st.skill.read >= 0.5
-        ? mates.sort((p, q) => Math.abs(q.pos.y - hero.pos.y) + Math.min(space(q), 6) * 2 - (Math.abs(p.pos.y - hero.pos.y) + Math.min(space(p), 6) * 2))[0]
+        ? (() => {
+            // The far side first (a real switch, ≥ 18 m across), then the man with the most room around him.
+            const v = (a: Agent) => (Math.abs(a.pos.y - hero.pos.y) >= 20 ? 40 : Math.abs(a.pos.y - hero.pos.y)) + Math.min(space(a), 10) * 3
+            return mates.sort((p, q) => v(q) - v(p))[0]
+          })()
         : mates.sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
       const wait = st.skill.read >= 0.5 ? 0.35 + st.skill.reaction : 1.4 + st.skill.reaction
       // A good one first takes a touch away from the man pressing him (a ball lobbed into his face is blocked).
@@ -578,8 +587,8 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       moveTo({ x: rt.ball.x + rt.ball.vx * t * 0.7, y: rt.ball.y + rt.ball.vy * t * 0.7 }, true)
       return
     }
-    // A sensible defender reading a pass goes where he can meet it, not where it is.
-    if (rt.defending && st.skill.read >= 0.5 && Math.hypot(rt.ball.vx, rt.ball.vy) > 4) {
+    // A sensible player goes where he can meet a moving ball (a pass to cut out, a parry to pounce on), not where it is.
+    if ((rt.defending || rt.kind === 'rebound') && st.skill.read >= 0.5 && Math.hypot(rt.ball.vx, rt.ball.vy) > 2) {
       const ip = interceptPoint(hero, rt.aiWorld(), 2.5)
       if (ip.reachable) {
         moveTo(ip.point, true)
