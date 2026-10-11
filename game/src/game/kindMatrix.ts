@@ -78,4 +78,45 @@ export function matrixRates(kind: FeelKind, level: number | null, input: MatrixI
 
 export const matrixRate = (kind: FeelKind, level: number | null, input: MatrixInput, opp: OppStrength, n: number): number => matrixRates(kind, level, input, opp, n).success
 
+/**
+ * The four build-9 checks every moment kind must pass (owner): a starting hero with good input succeeds about 55–75 %
+ * against average opposition; success rises with the kind's own attributes (40 → 65 → 90); careless input is at
+ * least 20 points worse; a stronger opponent means lower success. Tolerances cover sampling noise at n = 100.
+ */
+export const KIND_CHECK = { band: [0.53, 0.77], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04 } as const
+
+export interface KindCheck {
+  kind: FeelKind
+  start: MatrixRates
+  levels: [number, number, number]
+  sloppy: number
+  opp: { strong: number; average: number; weak: number }
+  band: boolean
+  rising: boolean
+  gap: boolean
+  oppOrder: boolean
+}
+
+export function kindCheck(kind: FeelKind, n = 100): KindCheck {
+  const C = KIND_CHECK
+  const start = matrixRates(kind, null, 'good', 'average', n)
+  const levels = [40, 65, 90].map((lv) => matrixRate(kind, lv, 'good', 'average', n)) as [number, number, number]
+  const sloppy = matrixRate(kind, null, 'sloppy', 'average', n)
+  const opp = { strong: matrixRate(kind, null, 'good', 'strong', n), average: start.success, weak: matrixRate(kind, null, 'good', 'weak', n) }
+  return {
+    kind, start, levels, sloppy, opp,
+    band: start.success >= C.band[0] && start.success <= C.band[1],
+    rising: levels[1] >= levels[0] - C.stepTol && levels[2] >= levels[1] - C.stepTol && levels[2] - levels[0] >= C.spread,
+    gap: start.success - sloppy >= C.gap,
+    oppOrder: opp.strong < opp.average + C.oppTol && opp.average < opp.weak + C.oppTol && opp.strong < opp.weak - C.oppSpread,
+  }
+}
+
+/** One line per kind (scripts, docs/BALANCE.md). */
+export const kindCheckLine = (c: KindCheck): string => {
+  const p = (x: number) => Math.round(x * 100)
+  const ok = (b: boolean) => (b ? 'OK' : 'NO')
+  return `CHK ${c.kind} | start ${p(c.start.success)}(${p(c.start.full)}) ${ok(c.band)} | 40/65/90 ${c.levels.map(p).join('/')} ${ok(c.rising)} | sloppy ${p(c.sloppy)} gap ${p(c.start.success - c.sloppy)} ${ok(c.gap)} | strong/avg/weak ${p(c.opp.strong)}/${p(c.opp.average)}/${p(c.opp.weak)} ${ok(c.oppOrder)}`
+}
+
 export { FEEL_KINDS as MATRIX_KINDS }
