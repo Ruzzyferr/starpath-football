@@ -92,13 +92,19 @@ describe('dialogue scenes', () => {
     expect(nervy.morale).toBeLessThan(0)
   })
 
-  it('manager talk: a fitting answer earns more trust; the start chance meter is reported; once a week', () => {
+  it('manager talk: fitting answers and social stats earn trust; the start chance meter is reported; once a week', () => {
     const base = inSeason(75)
     expect(talkBlock(base)).toBeNull()
     const sc = managerTalkScene(base)!
     expect(sc.steps).toHaveLength(2)
     const s = clone(base)
-    const r = applyManagerTalk(s, ['ask', 'detail'])
+    // The answers his style asks for (the hint under the portrait).
+    const style = sc.cast[0]!.style
+    const fitting = style === 'demanding' ? ['offer', 'promise'] : style === 'fatherly' ? ['ask', 'thanks'] : ['ask', 'detail']
+    s.hero.attrs.composure = 70
+    s.hero.attrs.leadership = 70
+    const r = applyManagerTalk(s, fitting)
+    expect(r.rapport!.fit).toBeGreaterThanOrEqual(0.65)
     expect(r.ok).toBe(true)
     expect(r.meter).toBeDefined()
     expect(s.hero.managerTrust).toBeGreaterThan(base.hero.managerTrust)

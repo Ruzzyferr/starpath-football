@@ -164,7 +164,8 @@ export function DialogueScene({ scene, onFinish, onQuick, onClose }: {
           </figure>
         ))}
       </div>
-      {scene.cast[0]?.style && !outcome && <p class="t-xs scn-style-hint">{t(`bench.scene.styleHint.${scene.cast[0].style}` as never)}</p>}
+      {scene.cast[0]?.style && !outcome && <p class="t-xs scn-style-hint" data-testid="scene-hint">{t(`bench.scene.styleHint.${scene.cast[0].style}` as never)}</p>}
+      {scene.id === 'teamDinner' && !outcome && <p class="t-xs scn-style-hint" data-testid="scene-hint">{t('bench.scene.dinnerHint')}</p>}
 
       <ol class="scn-log" ref={logRef} aria-live="polite" aria-relevant="additions">
         {log.map((l, i) => (
@@ -220,6 +221,11 @@ export function DialogueScene({ scene, onFinish, onQuick, onClose }: {
           {outcome.ok ? (
             <>
               <p class="scn-result-line">{outcome.lines.map((l) => lt(l)).join(' ')}</p>
+              {outcome.rapport && (
+                <p class={`t-xs scn-rapport ${outcome.rapport.good ? 't-pos' : 't-mid'}`} data-testid="scene-rapport">
+                  {t('bench.scene.rapport', { r: Math.round(outcome.rapport.score * 100), f: Math.round(outcome.rapport.fit * 100), s: outcome.rapport.stat })}
+                </p>
+              )}
               {outcome.meter && outcome.meter.before !== outcome.meter.after && <MeterShift meter={outcome.meter} />}
               <EffectChips effects={outcome.effects} />
             </>

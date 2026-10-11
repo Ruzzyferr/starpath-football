@@ -84,6 +84,8 @@ export interface SceneOutcome {
   effects: SceneEffect[]
   /** The meter the scene moves (call-up meter / start chance), before and after. */
   meter?: { label: LText; before: number; after: number }
+  /** How the conversation went (fit × social stats), shown on the result card. */
+  rapport?: Rapport
 }
 
 // ───────────────────────── Helpers ─────────────────────────
@@ -113,6 +115,52 @@ function teammateFx(s: GameState, d: number, why: LText): number {
 }
 
 const E = (key: SceneEffectKey, label: LText, value: number): SceneEffect => ({ key, label, value: Math.round(value * 10) / 10 })
+
+// ───────────────────────── Rapport (stats × reading the speaker) ─────────────────────────
+
+/**
+ * How well a conversation went, 0..1 (balance study 2026-10: the scenes were
+ * pure answer tables, the hero's stats did nothing and a fitting set of
+ * answers always won). Now the outcome follows both:
+ *  - FIT: how well each answer suits the speaker (style chip + hint for staff,
+ *    personality for teammates), averaged over the steps;
+ *  - STAT: the hero's social stats (Composure + Leadership: how the words come
+ *    across), plus a little of the current relation with the speaker;
+ *  - a seeded spread (the scene's own RNG fork: same save, same answers, same result).
+ * A good read lands about 2 times in 3 for a starting hero (social stats ~40)
+ * and almost always at 90; random answers rarely do. Every effect scales with it.
+ */
+export interface Rapport {
+  /** 0..1: the outcome. */
+  score: number
+  /** 0..1: how well the answers fit the speaker. */
+  fit: number
+  /** The social stat used (Composure + Leadership, 0..100). */
+  stat: number
+  good: boolean
+}
+/** Rapport at or above this is a good conversation (the result line, the "took note" outcomes). */
+export const RAPPORT_GOOD = 0.6
+const RAPPORT_FIT = 0.64
+const RAPPORT_STAT = 0.26
+const RAPPORT_REL = 0.06
+const RAPPORT_SPREAD = 0.1
+/** 0..1 from an attribute: 30 → 0, 90 → 1. */
+export const stat01 = (v: number): number => clamp((v - 30) / 60, 0, 1)
+/** The social stat a conversation reads: Composure and Leadership. */
+export const socialStat = (s: GameState): number => (s.hero.attrs.composure + s.hero.attrs.leadership) / 2
+
+function rapportOf(s: GameState, id: SceneId, fits: readonly number[], relValue: number): Rapport {
+  const fit = fits.length ? fits.reduce((a, x) => a + x, 0) / fits.length : 0
+  const stat = socialStat(s)
+  const spread = sceneRng(s, id).fork('rapport').normal(0, RAPPORT_SPREAD)
+  const score = clamp(RAPPORT_FIT * fit + RAPPORT_STAT * stat01(stat) + RAPPORT_REL * clamp(relValue / 50, -1, 1) + spread, 0, 1)
+  return { score: Math.round(score * 1000) / 1000, fit: Math.round(fit * 1000) / 1000, stat: Math.round(stat), good: score >= RAPPORT_GOOD }
+}
+
+/** How well an answer suits a staff style (1 = what he wants to hear, 0 = the opposite). */
+type FitTable = Record<string, Record<SceneStyle, number>>
+const fitRow = (demanding: number, fatherly: number, tactician: number): Record<SceneStyle, number> => ({ demanding, fatherly, tactician })
 
 // ───────────────────────── National camp check-in ─────────────────────────
 
@@ -151,38 +199,46 @@ export function nationalCampScene(s: GameState): Scene {
   }
 }
 
-/** Coach relation per answer: [fits his style, does not]. */
-const NT_FIT: Record<string, { fit: SceneStyle[]; yes: number; no: number }> = {
-  ready: { fit: ['demanding'], yes: 4, no: 2 },
-  honest: { fit: ['fatherly', 'tactician'], yes: 4, no: 1 },
-  proud: { fit: ['fatherly'], yes: 4, no: 2 },
-  starter: { fit: ['demanding'], yes: 4, no: -2 },
-  team: { fit: ['fatherly', 'tactician'], yes: 4, no: 2 },
-  earn: { fit: ['demanding', 'tactician'], yes: 3, no: 2 },
-  yes: { fit: ['demanding'], yes: 3, no: 1 },
-  learn: { fit: ['tactician', 'fatherly'], yes: 4, no: 2 },
-  own: { fit: [], yes: 0, no: -4 },
+/**
+ * How each camp answer suits the coach's style. The style hints name the
+ * tones (shown under every answer): demanding = eager, ambitious, confident,
+ * bold; fatherly = honest, proud, team player, eager to learn; tactician =
+ * honest, humble, analytical, eager to learn. Every step has a full fit for
+ * every style.
+ */
+export const NT_FIT: FitTable = {
+  ready: fitRow(1, 0.5, 0.5),
+  honest: fitRow(0.5, 1, 1),
+  proud: fitRow(0.5, 1, 0.3),
+  starter: fitRow(1, 0, 0),
+  team: fitRow(0.5, 1, 0.5),
+  earn: fitRow(0.5, 0.5, 1),
+  yes: fitRow(1, 0.3, 0.3),
+  learn: fitRow(0.5, 1, 1),
+  own: fitRow(0, 0, 0),
+}
+
+/** The camp check-in's rapport for a set of answers (no state change). */
+export function nationalCampRapport(s: GameState, picks: readonly string[]): Rapport {
+  const c = coachOf(s)
+  const ids = picked(nationalCampScene(s), picks)
+  return rapportOf(s, 'nationalCamp', ids.map((id) => NT_FIT[id]?.[c.style] ?? 0), s.life.relationships[NT_COACH_REL]?.value ?? 0)
 }
 
 /**
  * Apply the camp check-in played as a scene (agenda resolveTask 'played').
  * Coach relation (the call-up meter's coach part), morale, a little load
- * management and tactical XP.
+ * management and tactical XP, all scaled by the rapport.
  */
 export function applyNationalCamp(s: GameState, picks: readonly string[]): SceneOutcome {
   const sc = nationalCampScene(s)
   const c = coachOf(s)
   const ids = picked(sc, picks)
-  const rng = sceneRng(s, 'nationalCamp')
+  const rp = nationalCampRapport(s, picks)
   const before = heroCallup(s)?.meter ?? 0
-  let rel = 0
-  let morale = 2
-  for (const id of ids) {
-    const f = NT_FIT[id]!
-    rel += f.fit.includes(c.style) ? f.yes : f.no
-  }
-  // A good day for the coach: one extra point now and then (seeded).
-  if (rel > 0 && rng.chance(0.25)) rel += 1
+  // −4 (a bad first impression) .. +12 (he will build around you).
+  const rel = Math.round(-4 + 16 * rp.score)
+  let morale = 1 + Math.round(3 * rp.score)
   if (ids[1] === 'starter') morale += 2
   if (ids[2] === 'own') morale += 1
   const week = absWeek(s.calendar)
@@ -195,15 +251,15 @@ export function applyNationalCamp(s: GameState, picks: readonly string[]): Scene
     effects.push(E('fatigue', lt('Yorgunluk', 'Fatigue'), -4))
   }
   if (ids[2] === 'learn') {
-    applyXpBundle(h, { positioning: 3, anticipation: 2 }, s.calendar.season)
-    effects.push({ ...E('xp', lt('Özellik XP', 'Attribute XP'), 3), attr: 'positioning' })
+    const xp = Math.round(1 + 3 * rp.score)
+    applyXpBundle(h, { positioning: xp, anticipation: Math.max(1, xp - 1) }, s.calendar.season)
+    effects.push({ ...E('xp', lt('Özellik XP', 'Attribute XP'), xp), attr: 'positioning' })
   }
   const after = heroCallup(s)?.meter ?? before
-  const good = applied >= 6
   return {
-    ok: true, effects,
+    ok: true, effects, rapport: rp,
     meter: { label: lt('Milli takım şansı', 'Call-up meter'), before, after },
-    lines: [good
+    lines: [rp.good
       ? fill(lt('{n} seni kampın ilk gününde not etti.', '{n} took note of you on day one of the camp.'), { n: c.name })
       : applied < 0
         ? fill(lt('{n} cevaplarından pek hoşlanmadı.', '{n} did not much like your answers.'), { n: c.name })
@@ -262,7 +318,7 @@ export function managerTalkScene(s: GameState): Scene | null {
       say(managerTip(s), [
         opt('promise', lt('"Bu hafta antrenmanda göreceksiniz."', '"You will see it in training this week."'), lt('Söz ver', 'Promise'), lt('"Sözünü tut."', '"Keep your word."')),
         opt('detail', lt('"Tam olarak neyi eksik yapıyorum?"', '"What exactly am I missing?"'), lt('Analitik', 'Analytical'), lt('"Gel, videoda göstereyim."', '"Come, I will show you on video."')),
-        opt('thanks', lt('"Teşekkürler hocam."', '"Thanks, boss."'), lt('Kısa', 'Brief'), lt('"Kapım açık."', '"My door is open."')),
+        opt('thanks', lt('"Teşekkürler hocam."', '"Thanks, boss."'), lt('Nazik', 'Polite'), lt('"Kapım açık."', '"My door is open."')),
       ]),
     ],
   }
@@ -276,33 +332,50 @@ const startChance = (s: GameState): number => Math.round((selectionOutlook(s, re
  * morale, and attribute XP when the hero asks for the details. Once a week
  * (shares the flag with talkToManager).
  */
+/**
+ * How each answer in the office suits the manager's style (same tone families
+ * as the camp: demanding = bold, promises; fatherly = honest, team player,
+ * polite; tactician = honest, analytical). Demanding a start needs the form
+ * to back it (60+): without it even a demanding manager only half buys it.
+ */
+function managerFit(id: string, style: SceneStyle, form: number): number {
+  const inForm = form >= 60
+  switch (id) {
+    case 'ask': return fitRow(0.3, 1, 1)[style]
+    case 'demand': return style === 'demanding' ? (inForm ? 1 : 0.6) : inForm ? 0.3 : 0
+    case 'offer': return fitRow(0.3, 1, 0.3)[style]
+    case 'promise': return fitRow(1, 0.3, 0.3)[style]
+    case 'detail': return fitRow(0.3, 0.3, 1)[style]
+    case 'thanks': return fitRow(0, 1, 0)[style]
+    default: return 0
+  }
+}
+
+/** The office talk's rapport for a set of answers (null: no talk possible now). */
+export function managerTalkRapport(s: GameState, picks: readonly string[]): Rapport | null {
+  const sc = managerTalkScene(s)
+  if (!sc) return null
+  const m = managerOf(s)
+  const ids = picked(sc, picks)
+  return rapportOf(s, 'managerTalk', ids.map((id) => managerFit(id, m.style, s.hero.form)), m.rel)
+}
+
 export function applyManagerTalk(s: GameState, picks: readonly string[]): SceneOutcome {
   const sc = managerTalkScene(s)
   if (!sc) return { ok: false, lines: [talkBlock(s) ?? lt('Şu an konuşamazsın.', 'You cannot talk now.')], effects: [] }
   const m = managerOf(s)
   const ids = picked(sc, picks)
-  const rng = sceneRng(s, 'managerTalk')
+  const rp = managerTalkRapport(s, picks)!
   const h = s.hero
   const before = startChance(s)
   const cold = m.rel < -20
-  let trust = 0
-  let rel = 0
+  // Trust 0..+5 (the quick word gives TALK_TRUST = 2.5), relation −4..+6.
+  let trust = 5 * rp.score
+  const rel = Math.round(-4 + 10 * rp.score)
   let morale = 0
-  switch (ids[0]) {
-    case 'ask': trust += TALK_TRUST; rel += 2; break
-    case 'demand':
-      if (h.form >= 60 && (m.style === 'demanding' || rng.chance(0.4))) { trust += 3.5; rel += 1; morale += 3 }
-      else { trust += 0.5; rel -= 3; morale -= 1 }
-      break
-    default: trust += m.style === 'fatherly' ? 2.5 : 2; rel += 3
-  }
-  switch (ids[1]) {
-    case 'promise': trust += m.style === 'demanding' ? 1 : 0.5; break
-    case 'detail': trust += m.style === 'tactician' ? 1 : 0.4; break
-    default: rel += m.style === 'fatherly' ? 2 : 1
-  }
+  if (ids[0] === 'demand') morale = rp.good ? 3 : -1
   if (cold) trust = Math.min(trust, 0.5)
-  const appliedTrust = changeTrust(h, trust)
+  const appliedTrust = changeTrust(h, Math.round(trust * 10) / 10)
   const week = absWeek(s.calendar)
   const appliedRel = changeRelation(s.life, MANAGER_REL, rel, { cause: 'social', week, memory: lt('Forma için ne yapman gerektiğini sordun.', 'You asked what it takes to play.') })
   if (morale) h.morale = meter(h.morale + morale)
@@ -312,15 +385,16 @@ export function applyManagerTalk(s: GameState, picks: readonly string[]): SceneO
   if (ids[1] === 'detail') {
     const area = developmentAreas(h)[0]
     if (area) {
-      applyXpBundle(h, { [area]: 3 } as Partial<Record<AttributeKey, number>>, s.calendar.season)
-      effects.push({ key: 'xp', label: lt('Özellik XP', 'Attribute XP'), value: 3, attr: area })
+      const xp = Math.round(1 + 3 * rp.score)
+      applyXpBundle(h, { [area]: xp } as Partial<Record<AttributeKey, number>>, s.calendar.season)
+      effects.push({ key: 'xp', label: lt('Özellik XP', 'Attribute XP'), value: xp, attr: area })
     }
   }
   const after = startChance(s)
   return {
-    ok: true, effects,
+    ok: true, effects, rapport: rp,
     meter: { label: lt('İlk 11 şansı', 'Start chance'), before, after },
-    lines: [appliedTrust >= 3
+    lines: [rp.good && !cold
       ? fill(lt('{n} seni ciddiye aldı.', '{n} took you seriously.'), { n: m.name })
       : appliedRel < 0
         ? fill(lt('{n} bu konuşmadan hoşlanmadı.', '{n} did not enjoy that talk.'), { n: m.name })
@@ -391,31 +465,46 @@ export function teamDinnerScene(s: GameState): Scene | null {
  * energy, money, the base teammate boost): the seat-mate bond (personality
  * fit with the topic), the whole dressing room, happiness and the bill.
  */
+/** How each dinner answer suits tonight's seat-mates (their personalities, shown under the portraits). */
+function dinnerFits(mates: readonly NpcPlayer[], ids: readonly string[]): number[] {
+  const likes = (p: NpcPlayer | undefined): boolean => !!p && (TOPIC_FIT[ids[1] ?? '']?.includes(p.personality) ?? false)
+  const seat = ids[0] === 'sitA' ? mates[0] : ids[0] === 'sitB' ? mates[1] : undefined
+  const hits = mates.filter((p) => likes(p)).length
+  // Seat + topic: next to someone who loves the topic, or the middle when the topic suits the whole table.
+  const talk = seat ? (likes(seat) ? 1 : 0.2) : [0.1, 0.6, 1][Math.min(2, hits)]!
+  const bill = ids[2] === 'pay' ? 1 : ids[2] === 'split' ? 0.7 : 0.3
+  return [seat ? talk : 0.75, talk, bill]
+}
+
+/** The dinner's rapport for a set of answers (null: no dinner scene now). */
+export function teamDinnerRapport(s: GameState, picks: readonly string[]): Rapport | null {
+  const sc = teamDinnerScene(s)
+  if (!sc) return null
+  const mates = dinnerMates(s)
+  const rel = mates.reduce((a, p) => a + (s.life.relationships[teammateId(p.id)]?.value ?? 0), 0) / Math.max(1, mates.length)
+  return rapportOf(s, 'teamDinner', dinnerFits(mates, picked(sc, picks)), rel)
+}
+
 export function applyTeamDinner(s: GameState, picks: readonly string[]): SceneOutcome {
   const sc = teamDinnerScene(s)
   if (!sc) return { ok: false, lines: [], effects: [] }
   const mates = dinnerMates(s)
   const ids = picked(sc, picks)
+  const rp = teamDinnerRapport(s, picks)!
   const week = absWeek(s.calendar)
   const why = lt('Takım yemeğinde birlikteydiniz.', 'You were together at the team dinner.')
   const effects: SceneEffect[] = []
   const seat = ids[0] === 'sitA' ? mates[0] : ids[0] === 'sitB' ? mates[1] : undefined
-  const fits = (p: NpcPlayer | undefined): boolean => !!p && TOPIC_FIT[ids[1]!]!.includes(p.personality)
-  let group = ids[0] === 'middle' ? 1.5 : 0.5
+  // The whole room −0.5..+2.5, the bill and the middle seat on top.
+  let group = -0.5 + 3 * rp.score + (ids[0] === 'middle' ? 0.5 : 0)
   if (seat) {
-    const d = (fits(seat) ? 6 : 2) + 2
-    const applied = changeRelation(s.life, teammateId(seat.id), d, { hero: s.hero, cause: 'social', week, contact: true, memory: why })
+    const applied = changeRelation(s.life, teammateId(seat.id), Math.round(1 + 9 * rp.score), { hero: s.hero, cause: 'social', week, contact: true, memory: why })
     effects.push(E('mate', fill(lt('{n} ile ilişki', 'Relation with {n}'), { n: playerDisplayName(seat, 'short') }), applied))
-  } else {
-    // The middle of the table: the topic lands with whoever it fits.
-    const hits = mates.filter((p) => fits(p)).length
-    group += hits * 0.5
   }
-  if (ids[1] === 'jokes') group += 0.5
-  let happiness = ids[1] === 'jokes' ? 3 : ids[1] === 'listen' ? 2 : 1
+  let happiness = 1 + Math.round(3 * rp.score)
   if (ids[2] === 'pay') {
     s.life.money -= DINNER_BILL
-    group += 1.5
+    group += 1
     happiness += 1
     effects.push(E('money', lt('Hesap', 'The bill'), -DINNER_BILL))
   } else if (ids[2] === 'early') {
@@ -423,16 +512,19 @@ export function applyTeamDinner(s: GameState, picks: readonly string[]): SceneOu
     s.hero.fatigue = meter(s.hero.fatigue - 3)
     effects.push(E('fatigue', lt('Yorgunluk', 'Fatigue'), -3))
   }
-  if (ids[1] === 'football') applyXpBundle(s.hero, { vision: 2, positioning: 1 }, s.calendar.season)
+  const visionXp = Math.round(1 + 2 * rp.score)
+  if (ids[1] === 'football') applyXpBundle(s.hero, { vision: visionXp, positioning: 1 }, s.calendar.season)
   const avg = teammateFx(s, clamp(group, -1, 4), why)
   effects.unshift(E('teammates', lt('Takım arkadaşları (ort.)', 'Teammates (avg)'), avg))
   s.life.happiness = meter(s.life.happiness + happiness)
   effects.push(E('happiness', lt('Mutluluk', 'Happiness'), happiness))
-  if (ids[1] === 'football') effects.push({ ...E('xp', lt('Özellik XP', 'Attribute XP'), 2), attr: 'vision' })
+  if (ids[1] === 'football') effects.push({ ...E('xp', lt('Özellik XP', 'Attribute XP'), visionXp), attr: 'vision' })
   return {
-    ok: true, effects,
-    lines: [seat && fits(seat)
+    ok: true, effects, rapport: rp,
+    lines: [rp.good && seat
       ? fill(lt('{n} ile bu akşam gerçekten kaynaştınız.', 'You and {n} really clicked tonight.'), { n: playerDisplayName(seat, 'short') })
-      : lt('Takım yemeği güzel geçti.', 'The team dinner went well.')],
+      : rp.good
+        ? lt('Bütün masa seninleydi; soyunma odası kaynaştı.', 'The whole table was with you; the dressing room came together.')
+        : lt('Takım yemeği güzel geçti.', 'The team dinner went well.')],
   }
 }

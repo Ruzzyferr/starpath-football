@@ -113,7 +113,7 @@ const DIALOGUE: HowTo = {
   groups: [],
   controls: { touch: { tr: 'Bir cevaba dokun. Hızlı çözüm: tek dokunuşla eski sonuç.', en: 'Tap a reply. Quick resolve: the one-tap outcome.' }, pc: { tr: '1/2/3 ya da tıkla: cevap. Esc: kapat.', en: '1/2/3 or click: reply. Esc: close.' } },
   attr: 'leadership',
-  tip: { tr: 'Karşındakinin tarzına uygun cevap ver; Liderlik ve Soğukkanlılık güven kazandırır.', en: 'Match the speaker’s style; Leadership and Composure win trust.' },
+  tip: { tr: 'Portrenin altındaki ipucuna uyan cevabı seç; Soğukkanlılık ve Liderlik sözlerinin karşılık bulma şansını artırır.', en: 'Pick the answers the hint under the portrait asks for; Composure and Leadership make your words land.' },
 }
 
 /** Keys (the variant wins when it has its own rules, as in DrillOverlay). */
