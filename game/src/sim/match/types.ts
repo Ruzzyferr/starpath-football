@@ -260,6 +260,12 @@ export interface HighlightResult {
    * a team-mate's shot off his delivery, his shot on target, a timed run received onside. Feeds {@link tier}.
    */
   chance?: boolean
+  /** dribble (build 9): he got past his man (a skill that worked, or carried it beyond him). Absent = unknown (auto). */
+  beat?: boolean
+  /** Defensive / keeper moments (build 9): the hero himself won it, blocked, saved or claimed. Absent = unknown (auto). */
+  heroStop?: boolean
+  /** …and when he did not: he was doing his job (goal-side and close / on his spot as keeper). */
+  duty?: boolean
   /** Graded success (sim/match/tier momentTier): full / partial / fail. Absent = derived from the outcome. */
   tier?: 'full' | 'partial' | 'fail'
 }

@@ -73,6 +73,9 @@ export function highlightRatingDelta(kind: HighlightKind, r: HighlightResult): n
   // Graded success (build 9): on target / a save forced / a clear chance created earns half a goal's credit.
   const tier = r.tier ?? momentTier(kind, r)
   if (tier === 'partial' && GOAL_KINDS.has(kind)) d = Math.max(d, PARTIAL_SHARE * (OUTCOME_DELTA.goal + kindAdjustment(kind, 'goal')))
+  // Defending (build 9): kept out by others while he did his job earns half; while he was out of it, nothing.
+  else if (tier === 'partial' && d > 0) d *= PARTIAL_SHARE
+  else if (tier === 'fail' && d > 0) d = 0
   // Offside: a team-mate's mistimed run is mostly not the hero's fault; an
   // opponent flagged offside in a defensive moment is not really a hero stop.
   if (r.offside && r.outcome === 'lost_ball' && !r.offside.byHero) d += 0.15

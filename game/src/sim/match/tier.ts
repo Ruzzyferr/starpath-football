@@ -7,7 +7,7 @@
  *
  * Pure and shared: the runtime stamps it on the result, the match engine / rating consume it, the UI shows it.
  */
-import type { HighlightKind, HighlightOutcome, HighlightResult } from './types'
+import { DEFENSIVE_KINDS, type HighlightKind, type HighlightOutcome, type HighlightResult } from './types'
 
 export type MomentTier = 'full' | 'partial' | 'fail'
 
@@ -31,8 +31,9 @@ export function isFullSuccess(kind: HighlightKind, o: HighlightOutcome): boolean
     case 'timed_run':
       return o === 'goal' || o === 'assist'
     case 'dribble':
-      // Beating the man counts: he got past and the move ended in a shot, a pass or a foul won.
-      return o !== 'lost_ball' && o !== 'foul_committed' && o !== 'timeout'
+      // Beating the man counts: he got past and the move ended in a shot on target, a pass or a foul won
+      // (build 9: a wild shot off target / into a defender is not beating him).
+      return o !== 'lost_ball' && o !== 'foul_committed' && o !== 'timeout' && o !== 'missed' && o !== 'blocked'
     case 'long_ball_control':
     case 'hold_up':
     case 'shoulder_duel':
@@ -61,8 +62,15 @@ export function isFullSuccess(kind: HighlightKind, o: HighlightOutcome): boolean
 }
 
 /** The tier of a resolved moment. */
-export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcome' | 'chance' | 'offside'>): MomentTier {
-  if (isFullSuccess(kind, r.outcome)) return 'full'
+export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcome' | 'chance' | 'offside' | 'heroStop' | 'duty' | 'beat'>): MomentTier {
+  // dribble: the take-on is the moment — without beating his man, a shot or a pass is not it.
+  if (kind === 'dribble' && r.beat === false) return 'fail'
+  if (isFullSuccess(kind, r.outcome)) {
+    // Defensive / keeper moments: the hero's own stop is full; kept out by others while he did his job (goal-side,
+    // close / on his spot) is partial; kept out while he was out of it (rushed in and beaten, off his line) is a fail.
+    if (DEFENSIVE_KINDS.has(kind) && r.heroStop === false) return r.duty ? 'partial' : 'fail'
+    return 'full'
+  }
   if (!GOAL_KINDS.has(kind) || r.offside) return 'fail'
   if (r.outcome === 'woodwork') return 'partial'
   // A saved penalty is a missed penalty (only the woodwork is unlucky).
