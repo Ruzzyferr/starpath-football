@@ -74,6 +74,8 @@ export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcom
     if (DEFENSIVE_KINDS.has(kind) && r.heroStop === false) return r.duty ? 'partial' : 'fail'
     return 'full'
   }
+  // Defending: the clock ran out with the danger dealt with by him (full) or while he did his job (partial).
+  if (DEFENSIVE_KINDS.has(kind) && r.outcome === 'timeout' && r.heroStop) return 'full'
   // Outfield defending: the shot got away but he was on the shooter, in its line — forced, not clean (partial); a goal
   // never is.
   if (SHOT_PRESS_KINDS.has(kind) && r.outcome === 'shot_conceded' && r.duty) return 'partial'
