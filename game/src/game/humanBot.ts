@@ -15,7 +15,7 @@
  */
 import { Rng } from '../core/rng'
 import { PITCH_LENGTH } from '../sim/match/types'
-import { isBehind, keeperTarget, planSave } from './ai'
+import { interceptPoint, isBehind, keeperTarget, planSave } from './ai'
 import { clamp01, dist, norm, sub, type Agent, type Vec2 } from './model'
 import { GOAL_CENTER_Y, POST_Y_HIGH, POST_Y_LOW, predictTrajectory } from './physics'
 import type { HighlightRuntime } from './runtime'
@@ -48,7 +48,8 @@ export interface BotSkill {
 }
 
 export const BOT_SKILL: Readonly<Record<BotLevel, BotSkill>> = {
-  novice: { aimSd: 1.6, powerMean: 0.9, powerSd: 0.14, reaction: 0.42, wrongSide: 0.3, timingSd: 0.22, shootFrom: [16, 24], read: 0.2, rush: 0.5, slide: 0.35, anticipate: 0.15 },
+  // Build 9: a genuinely careless player (the owner's "sloppy input"): late, loose aim, mistimed, reads nothing.
+  novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.42, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.65, slide: 0.4, anticipate: 0.05 },
   average: { aimSd: 1.1, powerMean: 0.86, powerSd: 0.1, reaction: 0.32, wrongSide: 0.18, timingSd: 0.15, shootFrom: [12, 20], read: 0.5, rush: 0.22, slide: 0.18, anticipate: 0.45 },
   good: { aimSd: 0.75, powerMean: 0.84, powerSd: 0.07, reaction: 0.25, wrongSide: 0.1, timingSd: 0.1, shootFrom: [11, 18], read: 0.72, rush: 0.1, slide: 0.08, anticipate: 0.7 },
   expert: { aimSd: 0.45, powerMean: 0.84, powerSd: 0.05, reaction: 0.2, wrongSide: 0.05, timingSd: 0.06, shootFrom: [10, 16], read: 0.88, rush: 0.04, slide: 0.04, anticipate: 0.85 },
@@ -76,10 +77,12 @@ export interface HumanBotState {
   slider: boolean
   /** Keeper: how far toward the middle of his line he drifts off the ideal spot (0 = textbook, drawn once). */
   gkDrift: number
-  /** gk_1v1: the distance (m) at which he comes off his line (Infinity = never; drawn once). */
+  /** gk_1v1: the distance (m) at which he comes off his line (−1 = never; drawn once). */
   rushAt: number
   /** block: pressed BLOCK for this shot. */
   blocked: boolean
+  /** gk_1v1: real time he pressed RUSH (−1 = not yet). */
+  rushReal: number
   /** Real-time offset of the jump/press (timing error). */
   jumpErr: number
   /** Real time at which a pending action fires. */
@@ -130,8 +133,9 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     slider: rng.chance(skill.slide),
     // Build 9 (sloppy = sloppy): a poor keeper stands off the angle and comes out too early (or not at all).
     gkDrift: clamp01((1 - skill.read) * rng.range(0.6, 1.1)),
-    rushAt: rng.chance(skill.read * 0.5 + 0.45) ? (skill.read > 0.5 ? 9 : 15) + rng.normal(0, skill.timingSd * 15) : Infinity,
+    rushAt: rng.chance(skill.read * 0.5 + 0.45) ? (skill.read >= 0.5 ? 5.5 : 15) + rng.normal(0, skill.timingSd * 8) : -1,
     blocked: false,
+    rushReal: -1,
     jumpErr: rng.normal(0, skill.timingSd),
     pendingAt: -1,
     crosser: rng.chance(0.6),
@@ -206,8 +210,30 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     }
   }
 
+  // (Pressing, a sensible one: curve the run so he stands in the line to the passer's nearest option — the cover shadow.)
+  if (rt.kind === 'press_trap' && st.skill.read >= 0.5 && d < 14) {
+    // PRESS (the moment's button): flat out at him, hurrying his pass.
+    if (!st.blocked) {
+      st.blocked = true
+      act({ kind: 'btn', id: 'press' })
+    }
+    const opt = rt.agents
+      .filter((a) => a.team === 'opp' && a !== owner && !a.isKeeper)
+      .sort((p, q) => dist(p.pos, owner.pos) - dist(q.pos, owner.pos))[0]
+    const lane = opt ? norm(sub(opt.pos, owner.pos)) : toGoal
+    moveTo({ x: owner.pos.x + lane.x * 1.5, y: owner.pos.y + lane.y * 1.5 }, true)
+    if (d < 1.8 && owner.touch < 0.35) act({ kind: 'action' })
+    return
+  }
+  // (Recovery run, a sensible one: the fastest line to him, flat out; a clean challenge in reach, never a lunge from behind.)
+  if (rt.kind === 'recovery_run' && st.skill.read >= 0.5) {
+    moveTo({ x: owner.pos.x + toGoal.x * 0.8, y: owner.pos.y + toGoal.y * 0.8 }, true)
+    if (d < 1.8 && !isBehind(owner, hero)) act({ kind: 'action' })
+    return
+  }
   if (st.rusher) {
-    moveTo(owner.pos, true)
+    // (A careless recovery: jogs back and only sprints once he is close.)
+    moveTo(owner.pos, rt.kind !== 'recovery_run' || st.skill.read >= 0.5 || d < 4)
   } else {
     // Goal-side jockey: sprint to get there, then shadow at ~1.8 m.
     const stand = d > 4 || urgent ? 1.2 : 1.8
@@ -254,6 +280,8 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
 /** Goal-line target the bot "swipes" at: a corner choice plus human scatter. */
 function aimPoint(st: HumanBotState, inside: number): Vec2 {
   const post = st.side > 0 ? POST_Y_HIGH : POST_Y_LOW
+  // A careless shooter (no read of the keeper) often just hits it "somewhere in the goal" — at the keeper.
+  if (st.rng.chance(0.55 * (1 - st.skill.read) - 0.05)) return { x: PITCH_LENGTH, y: GOAL_CENTER_Y + st.rng.normal(0, 1.2) }
   const y = post - st.side * inside + st.rng.normal(0, st.skill.aimSd)
   return { x: PITCH_LENGTH, y }
 }
@@ -291,16 +319,19 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     rt.queueAction(a)
     st.lastAct = st.real
   }
-  const moveTo = (p: Vec2, sprint = false): void => {
+  const moveTo = (p: Vec2, sprintIn = false): void => {
     const d = sub(p, hero.pos)
     const l = Math.hypot(d.x, d.y)
+    // A careless player does not work back hard: in a recovery run he jogs until he is right on it.
+    const sprint = sprintIn && !(rt.kind === 'recovery_run' && st.skill.read < 0.5 && dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) > 4)
     rt.setControl({ move: l > 0.3 ? norm(d) : { x: 0, y: 0 }, sprint })
   }
 
   // ── Keeper ──
   // Sweeping (2.1#85): a ball over the top: come off the line once it is read.
   if (rt.heroIsKeeper && rt.kind === 'gk_sweep' && !rt.owner && st.real > st.skill.reaction + 0.15) {
-    moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+    // A reader attacks where it will be; a ball-watcher chases where it is.
+    moveTo(st.skill.read >= 0.5 ? interceptPoint(hero, rt.aiWorld(), 2.5).point : { x: rt.ball.x, y: rt.ball.y }, true)
     return
   }
   // Holding the ball in his hands: look up, then roll it out to the freest team-mate (six-second rule).
@@ -308,10 +339,14 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     if (st.heldSinceReal < 0) st.heldSinceReal = st.real
     if (st.real - st.heldSinceReal > st.skill.reaction + 0.6) {
       const space = (a: Agent) => Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, a.pos)), 30)
+      // A sensible keeper rolls it to the freest man close by; a careless one, rushed, hoofs it long.
+      if (st.skill.read < 0.5 && st.rng.chance(0.7)) {
+        act({ kind: 'btn', id: 'kick' })
+        return
+      }
       const mate = rt.agents
         .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && dist(a.pos, hero.pos) < 40)
-        // A person sees the obvious free man; worse players misjudge who is free.
-        .map((a) => ({ a, v: space(a) + st.rng.normal(0, st.skill.aimSd * 2) - dist(a.pos, hero.pos) * 0.05 }))
+        .map((a) => ({ a, v: space(a) * 4 - dist(a.pos, hero.pos) * 0.3 + st.rng.normal(0, st.skill.aimSd * 2) }))
         .sort((p, q) => q.v - p.v)[0]?.a
       if (mate) act({ kind: 'pass', target: { x: mate.pos.x + st.rng.normal(0, st.skill.aimSd), y: mate.pos.y + st.rng.normal(0, st.skill.aimSd) } })
       else act({ kind: 'pass', dir: { x: 1, y: st.rng.range(-0.4, 0.4) } })
@@ -323,7 +358,12 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     if (st.crossSeen < 0) st.crossSeen = st.real
     if (st.real - st.crossSeen > st.skill.reaction) {
       st.claimed = true
-      if (!st.rng.chance(st.skill.wrongSide * 0.6)) act({ kind: 'action' })
+      // A sensible keeper only comes for one he can get to (lands in his zone, in time); a careless one comes for
+      // anything — and is left stranded by the one he could never reach.
+      const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
+      const land = pts.find((p, i) => i > 0 && p.z < 2.4 && p.z <= pts[i - 1]!.z) ?? pts[pts.length - 1]!
+      const reach = land.x < 12 && Math.abs(land.y - GOAL_CENTER_Y) < 10
+      if (st.skill.read >= 0.5 ? reach : st.rng.chance(0.3)) act({ kind: 'action' })
     }
   }
   if (rt.heroIsKeeper) {
@@ -343,7 +383,13 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     const att = rt.owner && rt.owner.team === 'opp' && !rt.owner.isKeeper ? rt.owner : null
     if (rt.kind === 'gk_1v1' && att && !st.blocked && dist(att.pos, hero.pos) < st.rushAt) {
       st.blocked = true
+      st.rushReal = st.real
       act({ kind: 'btn', id: 'rush' })
+    }
+    // Committed to the rush: hands off the stick while it runs (pulling back would call it off).
+    if (st.rushReal >= 0 && st.real - st.rushReal < 1.2) {
+      rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+      return
     }
     const ideal = keeperTarget(hero, rt.aiWorld()).pos
     // Off the angle: drifts toward the middle of his line.
@@ -360,6 +406,16 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     const heldGame = rt.time - st.heldSinceGame
     const sp = rt.setPiece
     const goal = { x: PITCH_LENGTH, y: GOAL_CENTER_Y }
+    // Under a tight marker (shoulder duel, long ball brought down): a sensible player SHIELDs it — body
+    // between man and ball, easing away (Strength / Balance) — until the team comes; a careless one runs into him.
+    if ((rt.kind === 'shoulder_duel' || rt.kind === 'long_ball_control') && st.skill.read >= 0.5) {
+      const mk = rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      if (mk && dist(mk.pos, hero.pos) < 2.5) {
+        const away = norm(sub(hero.pos, mk.pos))
+        rt.setControl({ move: { x: away.x * 0.4, y: away.y * 0.4 }, sprint: false, hold: 'shield' })
+        return
+      }
+    }
     if (sp && sp.kind === 'penalty') {
       if (held > 0.8) act({ kind: 'shoot', target: aimPoint(st, 0.9), power: power(st, 0.04), curl: 0, chip: false })
       return
@@ -397,10 +453,23 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     }
     if (rt.kind === 'switch_play') {
       // Look up and hit the far side.
-      const far = rt.agents
-        .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
-        .sort((p, q) => Math.abs(q.pos.y - hero.pos.y) - Math.abs(p.pos.y - hero.pos.y))[0]
-      if (far && held > 0.35 + st.skill.reaction) act({ kind: 'pass', target: { x: far.pos.x + 2 + st.rng.normal(0, st.skill.aimSd), y: far.pos.y + st.rng.normal(0, st.skill.aimSd) }, lofted: true })
+      // A good one finds the free man on the far side; a careless one plays it to whoever is near, late.
+      const space = (a: Agent) => Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, a.pos)), 30)
+      const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
+      const far = st.skill.read >= 0.5
+        ? mates.sort((p, q) => Math.abs(q.pos.y - hero.pos.y) + Math.min(space(q), 6) * 2 - (Math.abs(p.pos.y - hero.pos.y) + Math.min(space(p), 6) * 2))[0]
+        : mates.sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      const wait = st.skill.read >= 0.5 ? 0.35 + st.skill.reaction : 1.4 + st.skill.reaction
+      // A good one first takes a touch away from the man pressing him (a ball lobbed into his face is blocked).
+      // (A man within 6 m in the line of the switch blocks the lob at head height: make the angle first.)
+      const presser = rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      const inLine = presser && far ? Math.sign(presser.pos.y - hero.pos.y) === Math.sign(far.pos.y - hero.pos.y) : true
+      if (st.skill.read >= 0.5 && presser && dist(presser.pos, hero.pos) < 6 && inLine && held < 1.8) {
+        moveTo({ x: hero.pos.x - 2 * Math.sign(presser.pos.x - hero.pos.x || 1), y: hero.pos.y - 3 * Math.sign(presser.pos.y - hero.pos.y || 1) })
+        return
+      }
+      // Aimed a few metres infield of a winger on the line (an overhit switch goes out).
+      if (far && held > wait) act({ kind: 'pass', target: { x: far.pos.x + 2 + st.rng.normal(0, st.skill.aimSd), y: Math.max(5, Math.min(63, far.pos.y + (st.skill.read >= 0.5 ? (far.pos.y < 34 ? 2 : -2) : 0) + st.rng.normal(0, st.skill.aimSd))) }, lofted: dist(far.pos, hero.pos) > 22 })
       rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
       return
     }
@@ -448,7 +517,9 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     // Take-on (2.1#36): a skill move when the defender steps in.
     if (rt.kind === 'dribble') {
       const man = rt.agents.filter((a) => a.team === 'opp' && !a.isKeeper && a.pos.x > hero.pos.x - 0.5).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
-      if (man && dist(man.pos, hero.pos) < 2.6 && st.rng.chance(0.5)) act({ kind: 'skill' })
+      // A good dribbler goes as the man steps in (1.8–2.6 m); a careless one goes far too early, or runs into him.
+      const d = man ? dist(man.pos, hero.pos) : 99
+      if (st.skill.read >= 0.5 ? d < 2.6 && d > 1.8 : st.reader && d < 5 && d > 2.6) act({ kind: 'skill' })
     }
     // On a break there is space to run into: no panic shot from distance.
     const patience = rt.kind === 'counter_2v1' || rt.kind === 'counter' ? 7 : 2.4
@@ -510,11 +581,21 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   }
   // timed_run: creep along the line, then go — call for it just after setting off (human timing error).
   if (rt.kind === 'timed_run' && owner.team === 'hero') {
+    const xs0 = rt.agents.filter((a) => a.team === 'opp').map((a) => a.pos.x).sort((a, b) => b - a)
+    const line0 = xs0[1] ?? PITCH_LENGTH
     if (st.real < st.runAt) {
-      moveTo({ x: hero.pos.x + 1.5, y: hero.pos.y }, false)
+      // A sensible runner holds 2–3 m behind their line to set off at pace; a careless one drifts up to it.
+      moveTo({ x: st.skill.read >= 0.5 ? line0 - 2.5 : hero.pos.x + 1.5, y: hero.pos.y }, false)
       return
     }
     moveTo({ x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + st.side * 2 }, true)
+    // On the move: the sensible call goes as he reaches the line at speed.
+    if (st.skill.read >= 0.5 && !st.called && hero.vel.x > 4 && hero.pos.x + hero.vel.x * 0.35 >= line0 - 0.4 + (st.lineErr ?? 0) * 0.3) {
+      st.called = true
+      rt.queueAction({ kind: 'call', at: { x: hero.pos.x + 10, y: hero.pos.y } })
+      return
+    }
+    if (st.skill.read >= 0.5) return
     // Call it as he reaches their line (build 9: a sensible runner times the call on the line, not on a clock); the
     // timing error is the human's (≈ ±0.8 m good, ±1.8 m novice), so a sloppy one still strays offside.
     const xs = rt.agents.filter((a) => a.team === 'opp').map((a) => a.pos.x).sort((a, b) => b - a)

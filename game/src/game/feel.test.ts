@@ -21,7 +21,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // Build 8: measured 0.35 at N=120 already at build 7 (the 0.25 cap only held on seeds 1–60); ~0.33–0.39 now.
   edge_of_box: [0.2, 0.68],
   cross: [0.1, 0.4],
-  corner: [0.15, 0.38],
+  // Build 9 (the hero's timed leap attacks the ball; the header feed is the setup): re-based on measured rates.
+  corner: [0.15, 0.48],
   // Hero standing tackle now a smooth curve in the tackle moment skill (game/momentSkill): ~0.78.
   defend: [0.48, 0.88],
   gk_save: [0.5, 0.85],
@@ -40,7 +41,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // S21 kinds (measured N=120 average, normal): take-on got past and ended in a shot/pass ~0.43,
   // open-play header scored ~0.28, keeper 1v1 kept out ~0.58, sweeping ~0.77, back post ~0.43.
   dribble: [0.28, 0.6],
-  header: [0.14, 0.42],
+  header: [0.14, 0.68],
   gk_1v1: [0.3, 0.75],
   gk_sweep: [0.6, 0.92],
   back_post: [0.25, 0.6],
@@ -50,10 +51,11 @@ const BANDS: Record<FeelKind, [number, number]> = {
   long_shot: [0.06, 0.38],
   switch_play: [0.3, 0.62],
   recovery_run: [0.45, 0.78],
-  shoulder_duel: [0.22, 0.75],
+  shoulder_duel: [0.22, 0.85],
   timed_run: [0.05, 0.38],
   press_trap: [0.25, 0.66],
-  gk_claim: [0.8, 0.98],
+  // Build 9: graded keeper credit (his own claim / on his spot) and team-mates leave the cross to him.
+  gk_claim: [0.6, 0.98],
   gk_distribution: [0.5, 0.8],
 }
 

@@ -309,11 +309,15 @@ function offsideLine(w: AiWorld, team: Team): number {
  */
 export function takeOnChance(carrier: Agent, defender: Agent, difficulty = 1): number {
   const c = a01(carrier.attrs.dribbling) * 0.6 + a01(carrier.attrs.agility) * 0.3 + a01(carrier.attrs.pace) * 0.1
-  const d = a01(defender.attrs.tackling) * 0.45 + a01(defender.attrs.positioning) * 0.35 + a01(defender.attrs.agility) * 0.2
+  // A keeper is judged on his keeping (build 9: he was judged on outfield Tackling and was rounded every time).
+  const d = defender.isKeeper
+    ? a01(defender.attrs.gkPositioning) * 0.4 + a01(defender.attrs.handling) * 0.3 + a01(defender.attrs.agility) * 0.3
+    : a01(defender.attrs.tackling) * 0.45 + a01(defender.attrs.positioning) * 0.35 + a01(defender.attrs.agility) * 0.2
   const toCarrier = norm(sub(carrier.pos, defender.pos))
   const closing = defender.vel.x * toCarrier.x + defender.vel.y * toCarrier.y
   // Rushing in at > 3 m/s commits the defender; standing off (≤ 1 m/s) is solid.
-  const rush = clamp01((closing - 1) / 4)
+  // (A keeper coming off his line comes at pace by design: it commits him far less.)
+  const rush = clamp01((closing - 1) / 4) * (defender.isKeeper ? 0.3 : 1)
   const goalSide = goalSideness(defender, carrier)
   let p = 0.36 + (c - d) * 0.8 + rush * 0.45 - goalSide * 0.25
   if (carrier.team === 'opp') p += (difficulty - 1) * 0.3

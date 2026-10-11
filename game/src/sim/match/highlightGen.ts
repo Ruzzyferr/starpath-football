@@ -976,7 +976,8 @@ const placeGkDistribution: Placer = (l) => {
     const marker = p ? nearest(l, l.opps, p, 1, skip)[0] : undefined
     if (!p || !marker) return
     skip.add(marker.player.id)
-    const gap = i === free ? rng.range(4.5, 6.5) : rng.range(1.2, 2.2)
+    // (Build 9: the free man is a little free — 2.8–4.2 m — so the throw's pace and line, Distribution, decide it.)
+    const gap = i === free ? rng.range(2.8, 4.2) : rng.range(1.2, 2.2)
     set(l, marker.player.id, { x: p.x + (i === free ? gap * 0.6 : 0.8), y: p.y + (p.y > 34 ? -1 : 1) * (i === free ? gap * 0.8 : 0.6) })
   })
   // A presser on the keeper himself.

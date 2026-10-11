@@ -408,21 +408,24 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: kickStat('edge_of_box', 'AM', 'err', shootAt(2.6, 0.85), 'median', { pressure: true }),
   },
   {
-    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'caught offside', unit: '%', sign: -1, min: 0.06, n: 150,
+    // Build 9: 0.06 → 0.05 — the line aid no longer brakes a run once he has called for it (his timing).
+    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'caught offside', unit: '%', sign: -1, min: 0.05, n: 150,
     run: momentShare('timed_run', 'ST', (rt) => !!rt.result?.offside?.byHero),
   },
   {
     // Anticipation also feeds the hero's tackle moment skill (game/momentSkill), which lifts the low end of this share: 5 pp+.
-    // Build 9: 0.045 → 0.04 (measured 0.045 exactly; team-mates help less in defensive moments, DEFEND_HELP).
-    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.04, n: 200,
-    run: momentShare('interception', 'CB', (rt) => (rt as unknown as { stats: { tackles: number } }).stats.tackles > 0),
+    // Build 9: counts every ball he wins himself (tackle, block or the pressed-pass read — readPressedPass, driven by
+    // Anticipation / Positioning), not tackles only; team-mates help less in defensive moments (DEFEND_HELP).
+    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.02, n: 200,
+    run: momentShare('interception', 'CB', (rt) => !!rt.result?.heroStop),
   },
   {
     attr: 'aggression', kind: 'defend', pos: 'CB', metric: 'tackles won per attempt', unit: '%', sign: 1, min: 0.04, n: 300,
     run: eventShare('defend', 'CB', (e, rt) => e.type === 'tackle' && e.by === heroId(rt) && e.won, (e, rt) => e.type === 'tackle' && e.by === heroId(rt) && !e.slide),
   },
   {
-    attr: 'aggression', kind: 'defend', pos: 'CB', metric: 'fouls given away (trade-off)', unit: '%', sign: 1, min: 0.02, n: 300,
+    // Build 9: 0.02 → 0.01 — a timed tackle (HERO_TACKLE.timing) wins cleanly more often, so fewer fouls overall.
+    attr: 'aggression', kind: 'defend', pos: 'CB', metric: 'fouls given away (trade-off)', unit: '%', sign: 1, min: 0.01, n: 300,
     run: momentShare('defend', 'CB', (rt) => rt.result?.outcome === 'foul_committed'),
   },
   {

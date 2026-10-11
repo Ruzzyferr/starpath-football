@@ -73,7 +73,8 @@ const DISTRIBUTE: readonly Pair[] = [['gkDistribution', 'anticipation'], ['compo
 const KIND_PAIRS: Record<HighlightKind, { role: MatchupRole; pairs: readonly Pair[] }> = {
   one_on_one: { role: 'keeper', pairs: FINISH },
   counter_2v1: { role: 'keeper', pairs: FINISH },
-  rebound: { role: 'keeper', pairs: FINISH },
+  // First to the loose ball (Anticipation / Acceleration), then the finish (Finishing / Composure).
+  rebound: { role: 'keeper', pairs: [['anticipation', 'reflexes'], ['acceleration', 'gkPositioning'], ['finishing', 'diving'], ['composure', 'handling']] },
   timed_run: { role: 'marker', pairs: RUN },
   edge_of_box: { role: 'keeper', pairs: LONG_RANGE },
   long_shot: { role: 'keeper', pairs: LONG_RANGE },
