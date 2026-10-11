@@ -17,6 +17,9 @@ export const GOAL_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>([
   'cross', 'corner', 'corner_kick', 'header', 'timed_run',
 ])
 
+/** Non-goal kinds graded by their first contact (long ball won, switch reached the man). */
+export const CONTACT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['long_ball_control', 'switch_play'])
+
 /** Share of a goal's reward a partial success earns (rating, and through it form / XP / trust). */
 export const PARTIAL_SHARE = 0.5
 
@@ -74,6 +77,8 @@ export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcom
   // Outfield defending: the shot got away but he was on the shooter, in its line — forced, not clean (partial); a goal
   // never is.
   if (SHOT_PRESS_KINDS.has(kind) && r.outcome === 'shot_conceded' && r.duty) return 'partial'
+  // Contest moments: won the first contact / found the man across the pitch, then lost it (partial).
+  if (CONTACT_KINDS.has(kind) && r.chance) return 'partial'
   if (!GOAL_KINDS.has(kind) || r.offside) return 'fail'
   // A penalty is scored or missed: saved or off the post, it is a missed penalty.
   if (kind === 'penalty') return 'fail'
