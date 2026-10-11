@@ -15,7 +15,7 @@ import { Rng } from '../core/rng'
 import { roleAiStyle, type RoleAiStyle } from '../core/roles'
 import type { Difficulty } from '../core/types'
 import type { Highlight, HighlightKind, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { GOAL_HEIGHT, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { GOAL_HEIGHT, PITCH_LENGTH, PITCH_WIDTH, SHOT_PRESS_KINDS } from '../sim/match/types'
 import {
   DIVE_PEAK,
   DIVE_TIME,
@@ -200,8 +200,16 @@ export const HERO_CROSS_BLOCK = 1.3
 /** A pass played with an opponent this close (m) and within ~60° of its line can be charged down. */
 export const HERO_CHARGE_DOWN = { range: 2.2, cos: 0.5, chance: 0.75 } as const
 
+/** block: the shooter's set-up time scale (× base + composure × Composure). */
+export const BLOCK_WINDUP = { base: 0.6, composure: 0.8 } as const
+/** block: chance a set shooter sells the shift to a charging / diving defender (Dribbling vs his Agility). */
+export const BLOCK_SHIFT = { base: 0.6, drib: 0.5, agility: 0.45, calm: -0.3, calmDrib: 1.1, read: 0.45 } as const
+/** block: a shot passing within base + pos × Positioning (m) of him, close in, was forced (graded partial). */
+export const BLOCK_FORCED = { base: 0.3, pos: 0.9 } as const
+/** A standing tackle made while closing faster than `from` m/s loses up to `timing` (reached at from + span). */
+export const HERO_CHARGE = { from: 4.2, span: 2.0, timing: 0.45 } as const
 /** Hero standing tackle, on the logit scale: base (level skill vs carrier, average timing) and the slopes; `lunge` multiplies the final chance. */
-export const HERO_TACKLE = { base: 2.25, skill: 4.6, timing: 1.6, timingCap: 0.6, exposed: 0, behind: 1.0, lunge: 0.28, difficulty: 1.2 } as const
+export const HERO_TACKLE = { base: 2.4, skill: 4.6, timing: 1.6, timingCap: 0.6, exposed: 0, behind: 1.0, lunge: 0.25, difficulty: 1.2 } as const
 
 /** How well a carrier rides a challenge (0..1): Dribbling, Agility, Balance, Strength. */
 export function carrierHold(c: Pick<Agent, 'attrs'>): number {
@@ -267,8 +275,8 @@ export const DEFEND_HELP = 0.15
 /** …and in a keeper's moment (the keeper's job; build 9: team-mates were winning most of them). */
 export const KEEPER_MOMENT_HELP = 0.08
 /** Pressing reads (see readPressedPass): range (m), base, factor in the pass's line / off it. */
-export const PRESS_READ = { range: 8, base: 1.1, shadow: 1.4, open: 0.55 } as const
-const PRESS_READ_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['press_trap', 'interception'])
+export const PRESS_READ = { range: 11, base: 2.0, shadow: 1.5, open: 0.3, hurried: 1.9 } as const
+const PRESS_READ_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['press_trap'])
 /** An AI shooter's scatter follows his own Finishing (Set Pieces for a free kick): ×1.12 at 47, ×1 at 62, ×0.88 at 77. */
 export const aiFinishNoise = (finishing: number): number => clampN(1.5 - 0.8 * a01(finishing), 0.7, 1.3)
 /** Take-on timing bonus / penalty (build 9): right as the man steps in, or not. */
@@ -312,6 +320,8 @@ export const BEHIND_CHALLENGE = { win: 0.6 } as const
 /** Running with the ball costs a little pace: ×0.966 at Dribbling 40, ×0.986 at 90 (it was ×0.90 / ×0.95). */
 export const dribblePace = (dribbling: number): number => 0.95 + 0.04 * a01(dribbling)
 export const HERO_BLOCK_R = 0.62
+/** BLOCK held: spread radius scale (× 0.4 + Positioning 0.65 + Aggression 0.4; build 9: 0.66 m at 40 → 1.08 m at 90). */
+export const HERO_BLOCK_SPREAD = 0.7
 export const HERO_BLOCK_SLIDE_R = 0.9
 
 export interface RuntimeOptions {
@@ -575,7 +585,14 @@ export class HighlightRuntime {
   private readonly passNet: Record<string, { to: number; from: number }> = {}
   private readonly stats = { passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 }
   private card: 'yellow' | 'red' | undefined
-  private readonly blockWindUp: number
+  private blockWindUp: number
+  /** block: the shooter has already answered a charge (one shift per moment). */
+  private blockShifted = false
+  /** The carrier the hero's PRESS arrived on (his next pass is hurried). */
+  private hurried: { id: string; until: number } | null = null
+  private blockWindUpSet = false
+  /** block: the hero was in the shooting line when it was struck (null = no shot yet). */
+  private blockLine: boolean | null = null
   private redReason: HighlightResult['redReason']
   /** Referee strictness (1..5) / advantage tendency for this moment (WP-14). */
   readonly refStrictness: number | undefined
@@ -633,7 +650,9 @@ export class HighlightRuntime {
     const tight = clamp01((PRESS_READ.range - d) / 4)
     const passDir = norm({ x: plan.aim.x - by.pos.x, y: plan.aim.y - by.pos.y })
     const shadow = dot(norm(sub(h.pos, by.pos)), passDir) > Math.cos(0.5) ? PRESS_READ.shadow : PRESS_READ.open
-    if (!this.rng.chance(clampN(PRESS_READ.base * read * tight * shadow, 0, 0.85))) return false
+    // A pass he is being hurried into (PRESS on, or just arrived on him) is the one a presser reads.
+    const hurry = this.dash?.why === 'press' || (this.hurried && this.hurried.id === by.id && this.time < this.hurried.until) ? PRESS_READ.hurried : 1
+    if (!this.rng.chance(clampN(PRESS_READ.base * read * tight * shadow * hurry, 0, 0.85))) return false
     // Off him: the ball drops loose at his feet.
     const back = norm(sub(h.pos, by.pos))
     this.ball.vx = back.x * 3 + h.vel.x * 0.3
@@ -644,6 +663,13 @@ export class HighlightRuntime {
     this.heroStop = true
     this.events.push({ type: 'touch', by: h.id, hero: true, x: h.pos.x, y: h.pos.y })
     return true
+  }
+
+  /** block: the hero charging (sprinting in, or sliding) at the shooter from close. */
+  private blockCharge(a: Agent): boolean {
+    const h = this.hero
+    if (dist(h.pos, a.pos) >= 3.2) return false
+    return h.state === 'slide' || (this.control.sprint && dot(h.vel, norm(sub(a.pos, h.pos))) > HERO_CHARGE.from)
   }
 
   /** Where (y) the hero struck his last pass (switch_play: did it cross the pitch). */
@@ -1057,6 +1083,8 @@ export class HighlightRuntime {
       this.noteHeroStops()
       r.heroStop = this.heroStop
       r.duty = this.dutySnap ?? this.onDuty()
+      // In the line when it was struck — he forced the shot (it got past him but not cleanly in).
+      if (SHOT_PRESS_KINDS.has(this.kind) && (outcome === 'shot_conceded' || this.blockLine === true)) r.duty = this.blockLine === true || (outcome !== 'shot_conceded' && r.duty)
     }
     r.tier = momentTier(this.kind, r)
     return r
@@ -1874,7 +1902,11 @@ export class HighlightRuntime {
     // Anticipation: reading the carrier's touch times the challenge better.
     // A patient jockey (JOCKEY held first) waits for the touch: better timed, more so with Anticipation.
     const patience = Math.min(0.18, this.jockeyT * 0.12) * (0.5 + a01(hero.attrs.anticipation ?? 50))
-    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9 + patience - (this.lunge ? HERO_LUNGE_TIMING : 0))
+    // Charging in flat out (build 9): a set carrier sells him the shift — the faster he arrives, the worse his timing
+    // (Agility: stopping and adjusting at pace).
+    const closing = dot(hero.vel, norm(sub(carrier.pos, hero.pos)))
+    const charge = clamp01((closing - HERO_CHARGE.from) / HERO_CHARGE.span) * HERO_CHARGE.timing * (1.2 - a01(hero.attrs.agility) * 0.6)
+    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9 + patience - (this.lunge ? HERO_LUNGE_TIMING : 0) - charge)
     const behind = isBehind(carrier, hero)
     const odds = tackleOdds(hero, carrier, timing, behind, false, this.difficulty)
     const gap = this.ballGap(carrier)
@@ -2175,6 +2207,18 @@ export class HighlightRuntime {
     const spd = Math.hypot(plan.vx, plan.vy, plan.vz)
     this.events.push({ type: 'kick', by: by.id, hero: by.isHero, kick: kind, power, speed: spd, x: this.ball.x, y: this.ball.y })
     if (this.readPressedPass(by, kind, plan)) return
+    // recovery_run: his job is judged when they get the shot away (was he back in the play by then?).
+    if (this.kind === 'recovery_run' && by.team === 'opp' && SHOT_KINDS.has(kind) && this.dutySnap === null) this.dutySnap = this.onDuty()
+    // Graded defending: was he in the shooting line, on his feet and close, as it was struck?
+    if (SHOT_PRESS_KINDS.has(this.kind) && by.team === 'opp' && kind === 'shot' && this.blockLine === null) {
+      // Close to the strike's path (he narrowed it: Positioning) — a shot that went wide of him clean is not forced.
+      const h = this.hero
+      const dir = norm(sub(plan.aim, by.pos))
+      const rel = sub(h.pos, by.pos)
+      const along = dot(rel, dir)
+      const lateral = Math.abs(rel.x * dir.y - rel.y * dir.x)
+      this.blockLine = h.state !== 'down' && this.time >= this.stumbleUntil && along > 0.3 && along < 4 && lateral < BLOCK_FORCED.base + BLOCK_FORCED.pos * a01(h.attrs.positioning)
+    }
     if (kind === 'header') this.events.push({ type: 'header', by: by.id })
 
     const wasSetPiece = this.setPiece
@@ -2409,8 +2453,8 @@ export class HighlightRuntime {
     if (h.isKeeper && this.kind === 'gk_sweep') return dist(h.pos, b) < 6 || Math.abs(h.pos.x - ownGoalX(h.team)) > 9
     if (h.isKeeper) return dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5 || dist(h.pos, b) < 6
     const goal = { x: ownGoalX(h.team), y: GOAL_CENTER_Y }
-    // (recovery_run: getting back into the play is the job — within 10 m and level or goal-side.)
-    if (this.kind === 'recovery_run') return dist(h.pos, b) < 10 && dist(h.pos, goal) < dist(b, goal) + 3
+    // (recovery_run: getting back into the play is the job — within 12 m and level or goal-side.)
+    if (this.kind === 'recovery_run') return dist(h.pos, b) < 12 && dist(h.pos, goal) < dist(b, goal) + 4
     return dist(h.pos, b) < 8 && dist(h.pos, goal) < dist(b, goal) + 0.5
   }
 
@@ -2517,6 +2561,7 @@ export class HighlightRuntime {
         // PRESS arriving: the carrier is hurried into his next decision (Aggression closes him down harder).
         if (this.dash?.why === 'press' && o && o.team === 'opp' && dist(o.pos, hero.pos) < 1.8) {
           o.think = Math.min(o.think, 0.04 + (1 - a01(hero.attrs.aggression ?? 50)) * 0.12)
+          this.hurried = { id: o.id, until: this.time + 1.0 }
           this.dash = null
         }
       }
@@ -2637,6 +2682,8 @@ export class HighlightRuntime {
     // Scripted set-piece takers are driven by setPieceAI().
     if (this.setPiece && this.setPiece.takerId === a.id) return
 
+    // block: a set shooter sees a charge coming and answers it at once (the shift, decide()).
+    if (this.kind === 'block' && this.owner === a && a.team === 'opp' && !this.blockShifted && this.blockCharge(a)) a.think = 0
     a.think -= DT
     if (a.think <= 0) {
       const vis = a01(a.attrs.vision)
@@ -2898,6 +2945,11 @@ export class HighlightRuntime {
     // Shooting wait for drama in keeper moments; in gk_save the attacker always pulls the trigger.
     // block: the shooter on the edge of the box shapes, then always pulls the trigger.
     const blockShooter = this.kind === 'block' && a.team === 'opp'
+    // block: a composed shooter takes the extra touch to open the angle; a nervous one snatches at it (Composure).
+    if (blockShooter && !this.blockWindUpSet) {
+      this.blockWindUpSet = true
+      this.blockWindUp *= BLOCK_WINDUP.base + BLOCK_WINDUP.composure * a01(a.attrs.composure)
+    }
     const minHold = this.kind === 'gk_save' || blockShooter ? 0.7 : 0.3
     // Tactical carrier: opponents everywhere (except the scripted gk moments), team-mates in the
     // final third away from the flanks (wide areas keep the crossing logic).
@@ -2905,6 +2957,28 @@ export class HighlightRuntime {
     const wide = a.pos.y < 14 || a.pos.y > PITCH_WIDTH - 14
     const smart = blockShooter ? false : a.team === 'opp' ? true : toGoal < 30 && !wide
     if (smart && this.smartCarrier(a, heldFor, minHold)) return
+    // block (build 9): a defender who charges or dives in at a set shooter gets sold the shift — he drags it inside
+    // and strikes past him (the shooter's Dribbling against the defender's Agility). One who stays on his feet in the
+    // line is not.
+    if (blockShooter && !this.blockShifted && !this.hero.isKeeper) {
+      const h = this.hero
+      const charging = this.blockCharge(a)
+      // (A set blocker in the line is shifted less often: he reads the touch — Anticipation.)
+      const set = !charging && heldFor > 0.5 && dist(h.pos, a.pos) < 2.6
+      if (dist(h.pos, a.pos) < 3.2 && (charging || set)) {
+        this.blockShifted = true
+        const p = charging
+          ? BLOCK_SHIFT.base + BLOCK_SHIFT.drib * a01(a.attrs.dribbling) - BLOCK_SHIFT.agility * a01(h.attrs.agility)
+          : BLOCK_SHIFT.calm + BLOCK_SHIFT.calmDrib * a01(a.attrs.dribbling) - BLOCK_SHIFT.read * a01(h.attrs.anticipation ?? 50)
+        if (this.rng.chance(clampN(p + (this.difficulty - 1) * 0.5, 0.05, 0.85))) {
+          const side = a.pos.y >= h.pos.y ? 1 : -1
+          a.intent = { kind: 'run', to: inField(add(a.pos, { x: -0.4, y: side * 1.8 }), 1), until: this.time + 0.35 }
+          h.noTouch = Math.max(h.noTouch, charging ? 0.75 : 0.35)
+          this.blockWindUp = Math.min(this.blockWindUp, heldFor + 0.35)
+          return
+        }
+      }
+    }
     let dec = carrierDecision(a, w, this.rng, { heldFor })
     if ((this.kind === 'gk_save' || (blockShooter && heldFor > this.blockWindUp)) && a.team === 'opp' && heldFor > 0.9 && dec.kind !== 'shoot') {
       // A better finisher picks his corner (build 9: the opposition's own Finishing — the save follows it).
@@ -3391,7 +3465,7 @@ export class HighlightRuntime {
       // Shot blocks by opponents of the shooter (bodies in the way, incl. jumping wall).
       // BLOCK button: spread in the line, wider with Positioning and Aggression (committing the body).
       // Build 9: the spread follows Positioning / Aggression properly (0.52 m at 40 → 0.88 m at 90; 0.66 at 62).
-      const spread = a.isHero && this.time < this.blockUntil ? HERO_BLOCK_R * (0.4 + a01(a.attrs.positioning) * 0.65 + a01(a.attrs.aggression ?? 50) * 0.4) : 0
+      const spread = a.isHero && this.time < this.blockUntil ? HERO_BLOCK_SPREAD * (0.4 + a01(a.attrs.positioning) * 0.65 + a01(a.attrs.aggression ?? 50) * 0.4) : 0
       // Spread (BLOCK held) is his own body shape: it replaces the default, it is not a floor on it.
       const blockR = a.isHero && this.kind === 'block' ? (a.state === 'slide' ? HERO_BLOCK_SLIDE_R : spread || HERO_BLOCK_R) : spread || 0.46
       if (this.shot && this.shot.by.team !== a.team && speed > 12 && d < blockR && b.z < 1.8 + a.z) {

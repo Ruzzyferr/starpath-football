@@ -163,7 +163,7 @@ type Act = (a: Parameters<HighlightRuntime['queueAction']>[0]) => void
  * turned or gives away fouls). Away from the ball, a reader steps into the
  * passing lane to the most dangerous runner.
  */
-function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: Act, moveTo: (p: Vec2, sprint?: boolean) => void): void {
+function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: Act, moveTo: (p: Vec2, sprint?: boolean, hold?: 'jockey' | null) => void): void {
   const hero = rt.hero
   const d = dist(hero.pos, owner.pos)
   if (st.engaged !== owner.id) {
@@ -182,7 +182,8 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   if (rt.kind === 'block' && !st.rusher) {
     if (Number.isNaN(st.blockErr)) st.blockErr = st.rng.normal(0, st.skill.aimSd * 0.45)
     const spot = { x: owner.pos.x + toGoal.x * 1.7 - toGoal.y * st.blockErr, y: owner.pos.y + toGoal.y * 1.7 + toGoal.x * st.blockErr }
-    moveTo(spot, dist(hero.pos, spot) > 0.3)
+    // Sprint to get there, then ease in (never charging at a set shooter).
+    moveTo(spot, dist(hero.pos, spot) > 4 && dist(hero.pos, owner.pos) > 5)
     // In the line: spread himself (BLOCK) as the shooter sets — a reader on time, others late or never.
     // (Held while he stays in the line: the spread lasts ~1 s, so he renews it until the shot comes.)
     if (dist(hero.pos, spot) < 1 && st.reader && st.real > st.skill.reaction + 0.5 && st.real - st.lastAct > 0.9) {
@@ -197,7 +198,7 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   const urgent = dist(owner.pos, ownGoal) < 24
   const interception = rt.kind === 'interception'
   const mateOnHim = interception || rt.agents.some((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.state === 'run' && dist(a.pos, owner.pos) < Math.min(d - 1, 4))
-  if (d > 7 && st.anticipator && mateOnHim && !urgent) {
+  if (d > 7 && (st.anticipator || (interception && st.skill.read >= 0.5)) && mateOnHim && !urgent) {
     const runner = rt.agents
       .filter((a) => a.team === 'opp' && a !== owner && !a.isKeeper)
       .sort((p, q) => p.pos.x - q.pos.x)[0]
@@ -239,7 +240,8 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     const stand = d > 4 || urgent ? 1.2 : 1.8
     const spot = { x: owner.pos.x + toGoal.x * stand, y: owner.pos.y + toGoal.y * stand }
     // Match the carrier's pace: anyone sprints when the gap opens.
-    moveTo(spot, d > stand + 0.6 || Math.hypot(owner.vel.x, owner.vel.y) > 5.5)
+    // (A sensible defender holds JOCKEY once he is on his man: set, side-on, not sold by a feint.)
+    moveTo(spot, d > stand + 0.6 || Math.hypot(owner.vel.x, owner.vel.y) > 5.5, st.skill.read >= 0.5 && d < 3.2 ? 'jockey' : null)
   }
 
   if (st.slider && d < 4.5 && d > 2) {
@@ -319,12 +321,12 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     rt.queueAction(a)
     st.lastAct = st.real
   }
-  const moveTo = (p: Vec2, sprintIn = false): void => {
+  const moveTo = (p: Vec2, sprintIn = false, hold: 'jockey' | null = null): void => {
     const d = sub(p, hero.pos)
     const l = Math.hypot(d.x, d.y)
     // A careless player does not work back hard: in a recovery run he jogs until he is right on it.
     const sprint = sprintIn && !(rt.kind === 'recovery_run' && st.skill.read < 0.5 && dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) > 4)
-    rt.setControl({ move: l > 0.3 ? norm(d) : { x: 0, y: 0 }, sprint })
+    rt.setControl({ move: l > 0.3 ? norm(d) : { x: 0, y: 0 }, sprint, ...(hold ? { hold } : {}) })
   }
 
   // ── Keeper ──
@@ -575,6 +577,14 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       const t = Math.min(2, dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / 8)
       moveTo({ x: rt.ball.x + rt.ball.vx * t * 0.7, y: rt.ball.y + rt.ball.vy * t * 0.7 }, true)
       return
+    }
+    // A sensible defender reading a pass goes where he can meet it, not where it is.
+    if (rt.defending && st.skill.read >= 0.5 && Math.hypot(rt.ball.vx, rt.ball.vy) > 4) {
+      const ip = interceptPoint(hero, rt.aiWorld(), 2.5)
+      if (ip.reachable) {
+        moveTo(ip.point, true)
+        return
+      }
     }
     moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
     return

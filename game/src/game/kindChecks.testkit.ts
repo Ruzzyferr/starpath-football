@@ -9,9 +9,8 @@ import type { FeelKind } from './feelHarness'
 import { kindCheck, kindCheckLine } from './kindMatrix'
 
 export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>([
-  'penalty', 'freekick', 'edge_of_box', 'cross', 'defend', 'gk_save', 'counter_2v1', 'long_ball_control', 'rebound',
-  'interception', 'block', 'corner_kick', 'fk_wall', 'dribble', 'gk_1v1', 'back_post', 'long_shot', 'switch_play',
-  'recovery_run', 'shoulder_duel', 'timed_run', 'press_trap', 'gk_claim',
+  'freekick', 'edge_of_box', 'cross', 'gk_save', 'counter_2v1', 'rebound', 'corner_kick', 'fk_wall', 'dribble', 'gk_1v1',
+  'back_post', 'long_shot', 'switch_play', 'timed_run', 'gk_claim',
 ])
 
 /** The four parallel groups (kindChecks.a–d.test.ts); together every FEEL_KIND. */

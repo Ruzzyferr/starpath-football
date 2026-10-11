@@ -834,7 +834,7 @@ const placeRecoveryRun: Placer = (l) => {
   const ap = { x: rng.range(50, 58), y: rng.range(18, 50) }
   set(l, att?.player.id, ap)
   // The hero is caught upfield: goal-wrong side of the carrier.
-  set(l, l.input.heroId, { x: ap.x + rng.range(6, 9), y: ap.y + rng.range(-3, 3) })
+  set(l, l.input.heroId, { x: ap.x + rng.range(5, 7.5), y: ap.y + rng.range(-3, 3) })
   const support = l.opps.filter((o) => o !== att && ATTACKERS.has(roleOf(o)))[0]
   set(l, support?.player.id, { x: ap.x - rng.range(2, 5), y: ap.y > 34 ? ap.y - rng.range(10, 14) : ap.y + rng.range(10, 14) })
   const keeper = mateKeeper(l)
