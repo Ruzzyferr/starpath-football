@@ -63,14 +63,31 @@ const steer = (from: Vec2, to: Vec2): Vec2 => {
   const dx = to.x - from.x
   const dy = to.y - from.y
   const l = Math.hypot(dx, dy)
-  return l > 0.1 ? { x: (dx / l) * Math.min(1, l * 2), y: (dy / l) * Math.min(1, l * 2) } : { x: 0, y: 0 }
+  return l > 0.1 ? { x: (dx / l) * Math.min(1, l * 0.9), y: (dy / l) * Math.min(1, l * 0.9) } : { x: 0, y: 0 }
 }
 
-/** Reading the game: good = steps into the lane on the tell; meh = chases the ball once it is played. */
-export const readingBot = (good: boolean): Bot => (d) => {
+/**
+ * Reading the game: good = steps into the lane on the tell (stick, or a tap on the lane spot for the
+ * human profile: `tap`); meh = chases the ball once it is played.
+ */
+export const readingBot = (good: boolean, tap = false): Bot => (d, s) => {
   const r = d as InterceptionDrill
   const st = r.state
   const h = r.hero.pos
+  if (good && tap) {
+    // A phone player taps back to the middle, then the lane once the tell shows, then the ball's line if it is played elsewhere.
+    if (st.cycle === 'reset') {
+      s.mem.tapped = 0
+      return idle
+    }
+    const key = st.cycle === 'flight' ? 3 : st.target ? 2 : 1
+    // A completed pass starts the next hold straight from the flight.
+    if (key < (s.mem.tapped ?? 0) && key === 1) s.mem.tapped = 0
+    if ((s.mem.tapped ?? 0) >= key) return { ...idle, sprint: key > 1 }
+    s.mem.tapped = key
+    const spot = key === 1 ? { x: 60, y: 34 } : nearestOn(h, key === 3 ? st.ball : st.holder, st.target!)
+    return { ...idle, sprint: key > 1, actions: [{ kind: 'tapAt', at: spot }] }
+  }
   if (good) {
     if (st.target) return { ...idle, move: steer(h, nearestOn(h, st.cycle === 'flight' ? st.ball : st.holder, st.target)), sprint: true }
     return { ...idle, move: steer(h, { x: 60, y: 34 }) }

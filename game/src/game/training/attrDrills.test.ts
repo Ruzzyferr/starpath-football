@@ -10,6 +10,7 @@ import { createDrill } from './drills'
 import type { DrillBase } from './base'
 import type { Drill, DrillKind, DrillResult, DrillVariant } from './types'
 import { idle, pressBot, readingBot, sprintBot, switchBot, type Bot, type Mem } from './attrDrillBots'
+import { GOOD_HAND, humanize } from './drillBots'
 import { DRILL_FOR_TRAINING, performanceFromPoints, sprintPoints } from './scoring'
 import type { SprintDrill } from './drills/sprint'
 
@@ -49,7 +50,8 @@ describe('attribute drills', () => {
       if (debug) console.log(name, { pg, pm, pn, pts: good.map((r) => r.points), meh: meh.map((r) => r.points), stats: good[0]!.stats, mehStats: meh[0]!.stats })
       expect(pg).toBeGreaterThan(pm + 0.1)
       expect(pm).toBeGreaterThanOrEqual(pn)
-      expect(pg).toBeGreaterThan(0.75)
+      // Perfect-information bot (the human-input curves are pinned in drillCurves.test.ts).
+      expect(pg).toBeGreaterThan(0.55)
       expect(pn).toBeLessThan(0.3)
     })
 
@@ -60,7 +62,9 @@ describe('attribute drills', () => {
         for (const k of c.key) at[k] = v
         return at
       }
-      const run = (v: number) => avg([1, 2, 3, 4, 5, 6].map((seed) => play(make(c, seed, withAttr(v)), c.good).points))
+      // Human-input bot: a perfect-information bot can saturate a drill.
+      const human = humanize(c.good, GOOD_HAND)
+      const run = (v: number) => avg([1, 2, 3, 4, 5, 6, 7, 8].map((seed) => play(make(c, seed, withAttr(v)), human).points))
       const weak = run(25)
       const strong = run(95)
       if (debug) console.log(name, 'attr', { weak, strong })

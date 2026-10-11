@@ -56,10 +56,20 @@ export class InterceptionDrill extends DrillBase {
     const spots: Vec2[] = this.press
       ? [{ x: CX + 12, y: CY + 12 }, { x: CX + 12, y: CY - 12 }, { x: CX - 12, y: CY - 12 }, { x: CX - 12, y: CY + 12 }]
       : [{ x: CX + 12.7, y: CY }, { x: CX - 6.35, y: CY + 11 }, { x: CX - 6.35, y: CY - 11 }]
-    this.passers = spots.map((p, i) => makeActor(`p${i}`, 'opp', 'CM', p, flatAttrs(70), { number: 4 + i * 3 }))
+    this.passers = spots.map((p, i) => makeActor(`p${i}`, 'opp', 'CM', p, flatAttrs(this.oppLevel), { number: 4 + i * 3 }))
     this.hero = makeActor('hero', 'hero', 'DM', { x: CX, y: CY }, this.attrs, { hero: true, number: 6 })
     this.hero.stamina = 1
     this.newHold(this.rng.int(0, this.passers.length - 1))
+  }
+
+  /** The passers' attributes (their level is {@link oppLevel}). */
+  get oppAttrs(): Agent['attrs'] {
+    return this.passers[0]!.attrs
+  }
+
+  /** Hold-time factor: composure and passing let a passer move the ball on quicker. */
+  private get oppHold(): number {
+    return 1.2 - a01(this.oppAttrs.composure * 0.5 + this.oppAttrs.passing * 0.5) * 0.4
   }
 
   get press(): boolean {
@@ -72,7 +82,7 @@ export class InterceptionDrill extends DrillBase {
   }
   /** Pressing: Work Rate is the will to keep sprinting at the man (a faster, longer press). */
   get sprintSpeed(): number {
-    return this.jogSpeed + (this.press ? 0.9 + a01(this.attrs.workRate) * 1.8 : 1.8)
+    return this.jogSpeed + (this.press ? a01(this.attrs.workRate) * 3.4 : 1.8)
   }
 
   private newHold(holder: number): void {
@@ -84,14 +94,15 @@ export class InterceptionDrill extends DrillBase {
       // Round the square to an adjacent corner (never through the presser in the middle).
       const adj = others.filter((i) => (i + 2) % 4 !== holder)
       this.target = this.rng.pick(adj)
-      this.hold = this.rng.range(1.7, 2.3) / this.difficulty
+      this.hold = this.rng.range(1.7, 2.3) * this.oppHold
     } else {
-      // A thinking passer plays the lane the defender is further from.
+      // A thinking passer plays the lane the defender is further from (Vision: how often he sees it).
       const far = [...others].sort((a, b) => this.laneDist(holder, b) - this.laneDist(holder, a))
-      this.target = this.rng.chance(0.7) ? far[0]! : this.rng.pick(others)
-      this.hold = this.rng.range(1.1, 1.9) / this.difficulty
+      this.target = this.rng.chance(0.35 + a01(this.oppAttrs.vision) * 0.6) ? far[0]! : this.rng.pick(others)
+      this.hold = this.rng.range(1.1, 1.9) * this.oppHold
     }
-    this.passSpeed = this.rng.range(this.press ? 12 : 14, this.press ? 15 : 18) * (0.95 + (this.difficulty - 1) * 0.3)
+    // Passing: a crisper pass gives the defender less time.
+    this.passSpeed = this.rng.range(this.press ? 12 : 14, this.press ? 15 : 18) * (0.88 + a01(this.oppAttrs.passing) * 0.22)
     const h = this.passers[holder]!
     Object.assign(this.ball, { x: h.pos.x + 0.6, y: h.pos.y, z: 0, vx: 0, vy: 0 })
     this.pressedThis = false
@@ -103,7 +114,8 @@ export class InterceptionDrill extends DrillBase {
 
   /** The passer's intention is visible (tell). */
   get telling(): boolean {
-    return this.cycle === 'hold' && this.hold - this.cycleT <= readTell(this.attrs.anticipation)
+    // Anticipation reads the tell earlier; a passer's Vision disguises it a little.
+    return this.cycle === 'hold' && this.hold - this.cycleT <= readTell(this.attrs.anticipation) * (1.15 - a01(this.oppAttrs.vision) * 0.3)
   }
 
   private release(): void {

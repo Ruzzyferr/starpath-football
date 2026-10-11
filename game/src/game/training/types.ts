@@ -49,6 +49,12 @@ export interface DrillConfig {
   aimAssist?: AimAssist
   /** Opposition sharpness multiplier 0.8..1.3 (keeper/shooter quality). Default 1. */
   difficulty?: number
+  /**
+   * Opposition level (attribute rating 25..99) of the drill's opponents: keeper, dribbler, defenders,
+   * passers, shooter. Their behaviour follows their own attributes. Default: {@link DEFAULT_OPP_LEVEL}
+   * moved by the difficulty (±40 per 1.0).
+   */
+  opponent?: number
   weather?: Weather
   variant?: DrillVariant
 }

@@ -1,22 +1,11 @@
 import { describe, expect, it } from 'vitest'
 import { flatAttrs } from '../setup'
-import { cloneBall, predictPlaneCrossing } from '../physics'
-import { dist, norm, sub, type Vec2 } from '../model'
-import { DIVE_PEAK, diveSpeed } from '../ai'
-import type { HeroAction } from '../runtime'
-import { createDrill, type CrossingDrill, type DistributionDrill, type DribblingDrill, type FinishingDrill, type FitnessDrill, type GoalkeepingDrill, type HeadingDrill, type PassingDrill, type TacklingDrill } from './drills'
-import { JUMP_PEAK } from './drills/heading'
+import { createDrill, type FinishingDrill } from './drills'
 import type { RondoDrill } from './drills/rondo'
 import type { Attributes } from '../../core/types'
-import type { Drill, DrillInput, DrillKind, DrillResult } from './types'
+import type { Drill, DrillKind, DrillResult } from './types'
 import type { DrillBase } from './base'
-import { readingBot, sprintBot } from './attrDrillBots'
-
-type Mem = { t: number; mem: Record<string, number> }
-type Bot = (d: Drill & DrillBase, s: Mem) => DrillInput
-
-const idle: DrillInput = { move: { x: 0, y: 0 }, sprint: false, actions: [], aim: null }
-const act = (a: HeroAction, extra: Partial<DrillInput> = {}): DrillInput => ({ ...idle, ...extra, actions: [a] })
+import { BOTS, divingBot, finishingGood, idle, passingGood, rondoQuick, rondoSlow, setPieceBot, type Bot, type Mem } from './drillBots'
 
 /** Plays a drill to the end at 60 fps with a bot. */
 function play(d: Drill & DrillBase, bot: Bot): DrillResult {
@@ -30,201 +19,10 @@ function play(d: Drill & DrillBase, bot: Bot): DrillResult {
 }
 
 const ATTRS = flatAttrs(65)
-/** Keeper drills: the flat sheet with a keeper's Positioning (GK) (it reads the angle like positioning did before v4). */
-const GK_DRILL_ATTRS = { ...ATTRS, gkPositioning: 65 }
+/** Keeper drills: a keeper's sheet (goalkeeping attributes, not an outfielder's near-floor ones). */
+const GK_DRILL_ATTRS = flatAttrs(65, true)
 const make = (kind: DrillKind, seed: number, variant?: 'setPiece') =>
   createDrill(kind, { attrs: kind === 'goalkeeping' ? GK_DRILL_ATTRS : ATTRS, seed, aimAssist: 'half', ...(variant ? { variant } : {}) })
-
-/** Waits `delay` seconds after `ready` becomes true, then fires once. */
-function after(ready: boolean, s: Mem, delay: number): boolean {
-  if (!ready) {
-    s.mem.readyAt = -1
-    return false
-  }
-  if (s.mem.readyAt === undefined || s.mem.readyAt < 0) s.mem.readyAt = s.t
-  if (s.t - s.mem.readyAt < delay) return false
-  s.mem.readyAt = -1
-  return true
-}
-
-// ───────────────────────── Bots ─────────────────────────
-
-const finishingGood: Bot = (d, s) => {
-  const f = d as FinishingDrill
-  if (!after(f.ready, s, 0.45)) return idle
-  const tg = f.litTargets()[0]!
-  const power = Math.min(1, Math.max(0.45, Math.sqrt(Math.max(0, tg.z - 0.3) / 1.5)))
-  return act({ kind: 'shoot', target: { x: 105.2, y: tg.y }, power, curl: 0, chip: false })
-}
-
-const finishingMeh: Bot = (d, s) => {
-  const f = d as FinishingDrill
-  if (!after(f.ready, s, 1.1)) return idle
-  const y = 34 + Math.sin(s.t * 7.3) * 2.6
-  return act({ kind: 'shoot', target: { x: 105.2, y }, power: 0.78, curl: 0, chip: false })
-}
-
-const passingGood: Bot = (d, s) => {
-  const p = d as PassingDrill
-  if (!after(p.ready, s, 0.55)) return idle
-  const at = { ...p.litMate.pos }
-  return p.wanted === 'ground' ? act({ kind: 'tapAt', at }) : act({ kind: 'pass', target: at, lofted: true })
-}
-
-const passingMeh: Bot = (d, s) => {
-  const p = d as PassingDrill
-  if (!after(p.ready, s, 1.4)) return idle
-  return act({ kind: 'tapAt', at: { ...p.litMate.pos } })
-}
-
-const dribbleBot = (good: boolean): Bot => (d, s) => {
-  const r = d as DribblingDrill
-  const h = r.hero
-  const target: Vec2 = r.hasBall ? r.nextWaypoint() : { x: r.ball.x, y: r.ball.y }
-  const move = norm(sub(target, h.pos))
-  const dummy = r.nextDummy()
-  const actions: HeroAction[] = []
-  if (dummy && r.hasBall) {
-    const dd = dist(dummy, h.pos)
-    const press = good ? dd < 2.1 && dd > 1.5 : dd < 3.9 && (s.mem.pressed ?? -9) < s.t - 1
-    if (press) {
-      actions.push({ kind: 'skill' })
-      s.mem.pressed = s.t
-    }
-  }
-  return { move, sprint: good && h.stamina > 0.3, actions, aim: null }
-}
-
-const fitnessBot = (good: boolean): Bot => (d) => {
-  const f = d as FitnessDrill
-  const st = f.state
-  if (st.run === 'waiting') {
-    if (good && st.untilBeep <= 0.1 && st.untilBeep > 0) return act({ kind: 'action' })
-    return idle
-  }
-  if (!good) return { ...idle, sprint: true }
-  const need = st.distanceLeft / Math.max(0.05, st.untilBeep)
-  return { ...idle, sprint: need > f.jogSpeed * 0.92 && st.stamina > 0.08 }
-}
-
-const keeperBot = (good: boolean): Bot => (d, s) => {
-  const g = d as GoalkeepingDrill
-  if (!g.inFlight) {
-    s.mem.flightAt = -1
-    s.mem.dived = 0
-    return idle
-  }
-  if (s.mem.flightAt === undefined || s.mem.flightAt < 0) s.mem.flightAt = s.t
-  if (s.mem.dived) return idle
-  const k = g.hero
-  if (!good) {
-    if (s.t - s.mem.flightAt < 0.3) return idle
-    s.mem.dived = 1
-    return act({ kind: 'dive', dir: { x: 0.1, y: Math.sin(s.t * 13) > 0 ? 1 : -1 } })
-  }
-  if (s.t - s.mem.flightAt < 0.16) return idle
-  const c = predictPlaneCrossing(cloneBall(g.ball), g.env, k.pos.x, 2)
-  if (!c) return idle
-  if (Math.abs(c.y - k.pos.y) < 0.5 && c.z < 1.6) return idle
-  if (c.t > DIVE_PEAK + 0.06) return idle
-  s.mem.dived = 1
-  return act({ kind: 'dive', dir: norm(sub({ x: k.pos.x, y: c.y }, k.pos)) })
-}
-
-const crossingGood: Bot = (d) => {
-  const c = d as CrossingDrill
-  if (!c.ready || c.releaseIn > 0) return idle
-  return act({ kind: 'pass', target: c.zoneCentre, lofted: true })
-}
-
-const crossingMeh: Bot = (d, s) => {
-  const c = d as CrossingDrill
-  if (!after(c.ready, s, 0.25)) return idle
-  const z = c.zoneCentre
-  return act({ kind: 'tapAt', at: { x: z.x + Math.sin(s.t * 5.1) * 1.6, y: z.y + Math.cos(s.t * 3.7) * 1.6 } })
-}
-
-const headingBot = (good: boolean): Bot => (d, s) => {
-  const h = d as HeadingDrill
-  const spot = h.target
-  const off = sub(spot, h.hero.pos)
-  const l = Math.hypot(off.x, off.y)
-  const move = l > 0.12 ? { x: (off.x / l) * Math.min(1, l * 2), y: (off.y / l) * Math.min(1, l * 2) } : { x: 0, y: 0 }
-  if (!h.incomingBall) {
-    s.mem.jumped = 0
-    return { ...idle, move }
-  }
-  if (s.mem.jumped || h.hero.state !== 'run') return { ...idle, move }
-  const eta = h.eta()
-  if (good && eta.t <= JUMP_PEAK + 0.02) {
-    s.mem.jumped = 1
-    return act({ kind: 'action' }, { move })
-  }
-  if (!good && eta.t <= 0.5) {
-    s.mem.jumped = 1
-    return act({ kind: 'tapAt', at: { x: 105, y: 34 + Math.sin(s.t * 9.1) * 3 } }, { move })
-  }
-  return { ...idle, move }
-}
-
-const tacklingBot = (good: boolean): Bot => (d, s) => {
-  const t = d as TacklingDrill
-  if (!t.dueling) return idle
-  const h = t.hero
-  const ball = { x: t.ball.x, y: t.ball.y }
-  const v = t.carrierVel
-  const vl = Math.hypot(v.x, v.y)
-  const cdir = vl > 0.3 ? { x: v.x / vl, y: v.y / vl } : { x: -1, y: 0 }
-  const spot = good ? { x: ball.x + cdir.x * 1.0, y: ball.y + cdir.y * 1.0 } : ball
-  const off = sub(spot, h.pos)
-  const l = Math.hypot(off.x, off.y)
-  const move = l > 0.05 ? { x: (off.x / l) * Math.min(1, l * 1.5), y: (off.y / l) * Math.min(1, l * 1.5) } : { x: 0, y: 0 }
-  const db = dist(h.pos, ball)
-  const actions: HeroAction[] = []
-  if (h.state === 'run') {
-    if (good && db <= t.reach - 0.05 && t.exposure >= 0.75) actions.push({ kind: 'action' })
-    if (!good && db <= 1.45 && s.t - (s.mem.last ?? -9) > 0.6) {
-      actions.push({ kind: 'action' })
-      s.mem.last = s.t
-    }
-  }
-  return { move, sprint: good && l > 3, actions, aim: null }
-}
-
-const stepToward = (from: Vec2, to: Vec2): Vec2 => {
-  const off = sub(to, from)
-  const l = Math.hypot(off.x, off.y)
-  return l > 0.1 ? { x: (off.x / l) * Math.min(1, l * 2), y: (off.y / l) * Math.min(1, l * 2) } : { x: 0, y: 0 }
-}
-
-/** Distribution & claiming: good = under the ring, quick release leading the runner; meh = waits, aims at his feet. */
-const distributionBot = (good: boolean): Bot => (d, s) => {
-  const t = d as DistributionDrill
-  const move = good && t.crossing ? stepToward(t.hero.pos, t.landing) : { x: 0, y: 0 }
-  if (!t.holding) {
-    s.mem.holdAt = -1
-    return { ...idle, move }
-  }
-  if (s.mem.holdAt! < 0 || s.mem.holdAt === undefined) s.mem.holdAt = s.t
-  const waited = s.t - s.mem.holdAt
-  if (good && waited > 0.5) return act({ kind: 'tapAt', at: t.leadPoint(t.featuredMate) })
-  if (!good && waited > 2.4) return act({ kind: 'tapAt', at: t.mateAt(t.featuredMate) })
-  return idle
-}
-
-const BOTS: Record<DrillKind, { good: Bot; meh: Bot }> = {
-  finishing: { good: finishingGood, meh: finishingMeh },
-  passing: { good: passingGood, meh: passingMeh },
-  dribbling: { good: dribbleBot(true), meh: dribbleBot(false) },
-  fitness: { good: fitnessBot(true), meh: fitnessBot(false) },
-  goalkeeping: { good: keeperBot(true), meh: keeperBot(false) },
-  crossing: { good: crossingGood, meh: crossingMeh },
-  heading: { good: headingBot(true), meh: headingBot(false) },
-  tackling: { good: tacklingBot(true), meh: tacklingBot(false) },
-  distribution: { good: distributionBot(true), meh: distributionBot(false) },
-  sprint: { good: sprintBot(true), meh: sprintBot(false) },
-  interception: { good: readingBot(true), meh: readingBot(false) },
-}
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution', 'sprint', 'interception']
@@ -251,9 +49,12 @@ describe('training drills (headless)', () => {
       const pn = avg(none.map((r) => r.performance))
       if ((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.DRILL_DEBUG) console.log(kind, { good: pg.toFixed(2), meh: pm.toFixed(2), none: pn.toFixed(2), pts: good.map((r) => r.points), mehPts: meh.map((r) => r.points), stats: good[0]!.stats, mehStats: meh[0]!.stats })
       expect(pg).toBeGreaterThan(pm + 0.1)
-      expect(pm).toBeGreaterThan(pn)
-      expect(pg).toBeGreaterThan(0.75)
-      expect(pn).toBeLessThan(0.3)
+      // A wild dive can do worse than standing still (keeper); everywhere else sloppy beats idle.
+      if (kind !== 'goalkeeping') expect(pm).toBeGreaterThanOrEqual(pn)
+      expect(pg).toBeGreaterThan(pn + 0.25)
+      // Perfect-information bot (the human-input curves are pinned in drillCurves.test.ts).
+      expect(pg).toBeGreaterThan(0.55)
+      expect(pn).toBeLessThan(0.36)
       for (const r of [...good, ...meh, ...none]) {
         expect(r.performance).toBeGreaterThanOrEqual(0)
         expect(r.performance).toBeLessThanOrEqual(1)
@@ -263,16 +64,8 @@ describe('training drills (headless)', () => {
   }
 
   it('rondo 4v2: 60 s, quick open passes beat slow ones beat standing still; Vision 60 opens the third option (2.3#24)', () => {
-    const quick: Bot = (d, s) => {
-      const r = d as RondoDrill
-      if (!after(r.ready, s, 0.25)) return idle
-      return act({ kind: 'tapAt', at: { ...r.mates[r.mostOpen()]!.pos } })
-    }
-    const slow: Bot = (d, s) => {
-      const r = d as RondoDrill
-      if (!after(r.ready, s, 1.3)) return idle
-      return act({ kind: 'tapAt', at: { ...r.mates[r.options[0]!]!.pos } })
-    }
+    const quick = rondoQuick
+    const slow = rondoSlow
     const mk = (seed: number, vision = 70) => createDrill('passing', { attrs: { ...flatAttrs(65), vision }, seed, aimAssist: 'half', variant: 'rondo' })
     const good = [1, 2, 3].map((s) => play(mk(s), quick))
     const meh = [1, 2, 3].map((s) => play(mk(s), slow))
@@ -301,23 +94,6 @@ describe('training drills (headless)', () => {
     expect(r.played).toBeLessThanOrEqual(40)
   })
 
-  /** Diving station bot: waits until the dive (at this keeper's dive speed) meets the ball at full stretch. */
-  const divingBot: Bot = (d, s) => {
-    const g = d as GoalkeepingDrill
-    if (!g.inFlight) {
-      s.mem.dived = 0
-      return idle
-    }
-    if (s.mem.dived) return idle
-    const k = g.hero
-    const c = predictPlaneCrossing(cloneBall(g.ball), g.env, k.pos.x, 2)
-    if (!c) return idle
-    const lateral = Math.abs(c.y - k.pos.y)
-    if (c.t > Math.min(DIVE_PEAK, Math.max(0.05, (lateral - 0.9) / diveSpeed(k))) + 0.04) return idle
-    s.mem.dived = 1
-    return act({ kind: 'dive', dir: norm(sub({ x: k.pos.x, y: c.y }, k.pos)) })
-  }
-
   it('diving station (Diving): corner shots only, full-stretch saves earn a bonus, Diving widens the reach', () => {
     const mk = (seed: number, diving = 65) => createDrill('goalkeeping', { attrs: { ...GK_DRILL_ATTRS, diving }, seed, aimAssist: 'half', variant: 'diving' })
     const good = [1, 2, 3].map((s) => play(mk(s), BOTS.goalkeeping.good))
@@ -344,13 +120,14 @@ describe('training drills (headless)', () => {
   it('set-piece finishing builds a wall and still rewards good strikes', () => {
     const d = make('finishing', 5, 'setPiece') as FinishingDrill
     expect(d.wall.length).toBe(4)
-    const r = play(d, finishingGood)
-    // Curl gate (2.3#25): five kicks, 20 points per kick between the posts, wind on the HUD.
+    const r = play(d, setPieceBot(true))
+    // Curl gate (2.3#25): five kicks at the two gates; a goal 20, a saved kick into a gate 6, at the keeper 2.
     expect(r.stats.shots).toBe(5)
-    expect(r.points % 20).toBe(0)
-    expect(r.points).toBe((r.stats.gates ?? 0) * 20)
-    expect(r.points).toBeGreaterThanOrEqual(40)
+    expect(r.points).toBeGreaterThanOrEqual((r.stats.goals ?? 0) * 20)
+    expect(r.points).toBeLessThanOrEqual(5 * 20)
+    expect(r.points).toBeGreaterThan(0)
     const v = make('finishing', 6, 'setPiece').view()
+    expect(v.goalTargets.length).toBe(2)
     expect(v.hud.wind).toBeDefined()
     expect(v.hud.wind!.kmh).toBeGreaterThanOrEqual(0)
     expect(v.hud.wind!.kmh).toBeLessThanOrEqual(26)

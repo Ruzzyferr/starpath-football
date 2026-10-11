@@ -12,13 +12,13 @@
  * narrower gates. Kicks use the match kick model (skill-based error).
  */
 import { PITCH_LENGTH, PITCH_WIDTH } from '../../../sim/match/types'
-import { leadPosition, planKick, type KickKind } from '../../kick'
+import { kickSkill, leadPosition, planKick, type KickKind } from '../../kick'
 import { createTracker, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { a01, add, angleDiff, clampN, dist, dot, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { controllable, passPoints } from '../scoring'
+import { controllable, drillNoise, PASS_ACCURACY_M, passPoints } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, GateView, RingView } from '../types'
 
 type RoundState = 'ready' | 'flight' | 'resolved'
@@ -39,6 +39,8 @@ interface Lane {
 }
 
 const HERO_SPOT: Vec2 = { x: 40, y: PITCH_WIDTH / 2 }
+/** Drill kick spread: tight gates and a receiver who wants it on his foot make the passing skill show. */
+const PASS_NOISE = 2
 
 /** Segment–segment intersection: returns params (t on p→q, u on a→b) or null. */
 export function segIntersect(p: Vec2, q: Vec2, a: Vec2, b: Vec2): { t: number; u: number } | null {
@@ -65,7 +67,7 @@ export class PassingDrill extends DrillBase {
   private state: RoundState = 'ready'
   private stateT = 0
   private readyAt = 0
-  private kickInfo: { lofted: boolean; release: number; gateCleared: boolean; gateMissed: boolean; prev: Vec2 } | null = null
+  private kickInfo: { lofted: boolean; release: number; gateCleared: boolean; gateMissed: boolean; prev: Vec2; aim: Vec2 } | null = null
   private flash: { at: number; tone: 'green' | 'red' } | null = null
 
   constructor(cfg: DrillConfig) {
@@ -190,8 +192,9 @@ export class PassingDrill extends DrillBase {
       // Long-ball weight from the gesture: soft (<0.55) drops short, hard (>1) runs long.
       const weight = p.lofted ? 1 + (p.power - 0.75) * 0.35 : 1
       const aim = p.to && p.lofted ? add(from, scale(sub(target, from), clampN(weight, 0.85, 1.12))) : target
+      const noise = PASS_NOISE * drillNoise(kickSkill(kind, this.attrs, dist(from, aim)))
       const plan = planKick(
-        { kind, from, fromZ: 0, target: aim, power: p.power, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: 0.9 },
+        { kind, from, fromZ: 0, target: aim, power: p.power, curl: 0, attrs: this.attrs, pressure: 0, assist: this.assist, env: this.env, noiseScale: noise },
         this.rng,
       )
       this.ball.vx = plan.vx
@@ -205,7 +208,7 @@ export class PassingDrill extends DrillBase {
       this.stateT = 0
       this.stat('passes')
       if (p.lofted) this.stat('lofted')
-      this.kickInfo = { lofted: p.lofted, release: this.clock - this.readyAt, gateCleared: false, gateMissed: false, prev: from }
+      this.kickInfo = { lofted: p.lofted, release: this.clock - this.readyAt, gateCleared: false, gateMissed: false, prev: from, aim: target }
       this.events.push({ type: 'kick', power: p.power, hero: true, x: from.x, y: from.y })
       return
     }
@@ -217,7 +220,9 @@ export class PassingDrill extends DrillBase {
     this.stateT = 0
     const k = this.kickInfo
     if (ok && by) {
-      const pts = passPoints({ received: true, wanted: this.lane.wanted, lofted: k.lofted, gateCleared: k.gateCleared, release: k.release, combo: this.combo })
+      // Accuracy: how far the receiver had to come off the spot the pass was meant for.
+      const accuracy = Math.max(0, 1 - dist(at, k.aim) / PASS_ACCURACY_M)
+      const pts = passPoints({ received: true, wanted: this.lane.wanted, lofted: k.lofted, gateCleared: k.gateCleared, release: k.release, combo: this.combo, accuracy })
       const right = this.lane.wanted === 'loft' ? k.lofted : !k.lofted && k.gateCleared
       this.stat('completed')
       if (right) this.stat('perfect')

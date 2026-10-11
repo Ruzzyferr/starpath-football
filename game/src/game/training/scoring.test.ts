@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { qualityFactor, TRAINING_TYPES } from '../../sim/career/training'
 import {
-  DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
+  DRILL_CURVE, DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
   gkReactionWindow, gridShotPoints, passPoints, slalomLayout, CONE_PENALTY, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
   BEATEN_PENALTY, CROSS_ZONE_R, FOUL_PENALTY, crossPoints, crossTiming, headerPoints, jumpTiming, tacklePoints,
 } from './scoring'
@@ -14,11 +14,14 @@ describe('drill scoring', () => {
       expect(performanceFromPoints(k, -50)).toBe(0)
       expect(performanceFromPoints(k, DRILL_PAR[k])).toBe(1)
       expect(performanceFromPoints(k, DRILL_PAR[k] * 3)).toBe(1)
-      const half = performanceFromPoints(k, DRILL_PAR[k] / 2)
-      expect(half).toBeGreaterThan(0.5) // concave: half par is better than half marks
-      expect(half).toBeLessThan(0.6)
-      expect(performanceFromPoints(k, DRILL_PAR[k] * 0.55)).toBeCloseTo(0.6, 1)
+      // The curve exponent (DRILL_CURVE, default 0.85) maps half par to 0.5^g.
+      const g = DRILL_CURVE[k] ?? 0.85
+      expect(performanceFromPoints(k, DRILL_PAR[k] / 2)).toBeCloseTo(Math.pow(0.5, g), 2)
+      // Monotonic in the points.
+      expect(performanceFromPoints(k, DRILL_PAR[k] * 0.6)).toBeGreaterThan(performanceFromPoints(k, DRILL_PAR[k] * 0.5))
     }
+    // Default curve: concave, half par is better than half marks.
+    expect(performanceFromPoints('finishing', DRILL_PAR.finishing / 2)).toBeGreaterThan(0.5)
   })
 
   it('grades performances', () => {

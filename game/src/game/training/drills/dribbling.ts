@@ -15,7 +15,7 @@ import { createTracker, stepBall, type BallState, type BallTracker, type Physics
 import { flatAttrs } from '../../setup'
 import { a01, accel, add, angleDiff, clampN, dist, fromAngle, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming, slalomLayout } from '../scoring'
+import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming, skillWindow, slalomLayout } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, GateView, LineView } from '../types'
 
 const START: Vec2 = { x: 45, y: 34 }
@@ -26,6 +26,8 @@ const GATE_HALF = 1.3
 const CONE_R = 0.2
 /** Par lap time (s) for the time bonus. */
 export const LAP_PAR = 9
+/** Length of the skill-move burst (s). */
+const SKILL_TIME = 0.32
 
 interface Gate {
   x: number
@@ -59,7 +61,8 @@ export class DribblingDrill extends DrillBase {
   constructor(cfg: DrillConfig) {
     super('dribbling', cfg)
     this.hero = makeActor('hero', 'hero', 'LW', START, this.attrs, { hero: true, number: 11 })
-    this.dummies = [0, 1].map((i) => ({ agent: makeActor(`d${i}`, 'opp', 'CB', { x: 60, y: 34 }, flatAttrs(60), { number: 0 }), beaten: false }))
+    // The mannequins stand in for defenders at the drill's opposition level: a sharper one narrows the skill window.
+    this.dummies = [0, 1].map((i) => ({ agent: makeActor(`d${i}`, 'opp', 'CB', { x: 60, y: 34 }, flatAttrs(this.oppLevel), { number: 0 }), beaten: false }))
     this.ball = { x: START.x + 0.5, y: START.y, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.newLap()
   }
@@ -71,7 +74,7 @@ export class DribblingDrill extends DrillBase {
     const layout = slalomLayout(this.difficulty)
     for (let i = 0; i < GATE_COUNT; i++) {
       const side = (i % 2 === 0 ? -1 : 1) * this.mirror
-      const off = layout === 'straight' ? 0 : layout === 'zigzag' ? side * 3.1 + this.rng.range(-0.4, 0.4) : this.rng.range(-3.6, 3.6)
+      const off = layout === 'straight' ? 0 : layout === 'zigzag' ? side * 2.2 + this.rng.range(-0.3, 0.3) : this.rng.range(-2.6, 2.6)
       this.gates.push({ x: 51 + i * GATE_SPACING, y: 34 + off, state: 'pending', knocked: [false, false] })
     }
     // Mannequins between gates 0–1 and 2–3, in the running lane.
@@ -89,6 +92,12 @@ export class DribblingDrill extends DrillBase {
     Object.assign(this.ball, { x: START.x + 0.5, y: START.y, z: 0, vx: 0, vy: 0, vz: 0 })
     this.owned = true
     this.lapStart = this.clock
+  }
+
+  /** Skill-move window scale (Dribbling vs the defenders' Tackling and Anticipation). */
+  get window(): number {
+    const d = this.dummies[0]!.agent.attrs
+    return skillWindow(this.attrs.dribbling, (d.tackling + d.anticipation) / 2)
   }
 
   // ───────────────────────── Step ─────────────────────────
@@ -139,7 +148,7 @@ export class DribblingDrill extends DrillBase {
       }
     } else if (h.state === 'skill') {
       h.vel = scale(h.actionDir, topSpeed({ ...h, sprint: true }) + 0.8)
-      if (h.stateT > 0.42) {
+      if (h.stateT > SKILL_TIME) {
         h.state = 'run'
         h.stateT = 0
       }
@@ -147,14 +156,22 @@ export class DribblingDrill extends DrillBase {
       h.sprint = input.sprint
       let max = topSpeed(h)
       if (this.owned) max *= 0.86 + a01(h.attrs.dribbling) * 0.1
-      const desired = scale(input.move, max)
+      let desired = scale(input.move, max)
+      // Close control threads the ball through the next gate: Dribbling pulls the carry onto the gate's line.
+      const g = this.gates[this.next]
+      if (this.owned && g && len(input.move) > 0.3 && g.x - h.pos.x > 0 && g.x - h.pos.x < 3.5) {
+        const pull = (0.1 + Math.pow(a01(h.attrs.dribbling), 1.5) * 0.9) * (this.assist === 'full' ? 1.3 : this.assist === 'half' ? 1 : 0.6)
+        desired = { x: desired.x, y: desired.y + clampN((g.y - h.pos.y) * pull * 2.2, -2.5, 2.5) }
+      }
       const dv = sub(desired, h.vel)
       const a = accel(h) * (len(desired) < len(h.vel) ? 1.6 : 1) * dt
       h.vel = len(dv) <= a ? desired : add(h.vel, scale(norm(dv), a))
       if (h.sprint && len(input.move) > 0.3) h.stamina = Math.max(0, h.stamina - dt * 0.2 * (1.2 - a01(h.attrs.stamina) * 0.4))
       else h.stamina = Math.min(1, h.stamina + dt * 0.12)
       const sp = len(h.vel)
-      if (sp > 0.5) h.facing += clampN(angleDiff(Math.atan2(h.vel.y, h.vel.x), h.facing), -14 * dt, 14 * dt)
+      // Agility turns the body (and the ball in front of it) quicker.
+      const turn = 9 + a01(h.attrs.agility) * 9
+      if (sp > 0.5) h.facing += clampN(angleDiff(Math.atan2(h.vel.y, h.vel.x), h.facing), -turn * dt, turn * dt)
     }
     h.pos = { x: clampN(h.pos.x + h.vel.x * dt, START.x - 4, FINISH_X + 6), y: clampN(h.pos.y + h.vel.y * dt, 20, 48) }
   }
@@ -175,7 +192,9 @@ export class DribblingDrill extends DrillBase {
       }
       // Sprinting pushes the ball further ahead (harder to steer through gates).
       const push = h.sprint ? 1.25 - a01(h.attrs.dribbling) * 0.25 : 1
-      const ahead = 0.42 + (moving ? (1 - h.touch) * 0.55 * clampN(sp / 6, 0, 1.2) * push : 0)
+      // Close control: a good dribbler keeps the ball nearer his feet between touches.
+      const reach = 0.55 * (1.3 - a01(h.attrs.dribbling) * 0.6)
+      const ahead = 0.42 + (moving ? (1 - h.touch) * reach * clampN(sp / 6, 0, 1.2) * push : 0)
       const f = fromAngle(h.facing)
       b.x = h.pos.x + f.x * ahead
       b.y = h.pos.y + f.y * ahead
@@ -236,7 +255,7 @@ export class DribblingDrill extends DrillBase {
       .filter((d) => !d.beaten && d.agent.pos.x - h.pos.x > -0.3)
       .sort((p, q) => dist(p.agent.pos, h.pos) - dist(q.agent.pos, h.pos))[0]
     const d = target ? dist(target.agent.pos, h.pos) : 99
-    const timing = skillTiming(d)
+    const timing = skillTiming(d, this.window)
     this.stat('skills')
     if (!target || timing === 'early' || timing === 'late') {
       this.events.push({ type: 'skill', ok: false })
@@ -246,10 +265,15 @@ export class DribblingDrill extends DrillBase {
     target.beaten = true
     target.agent.state = 'down'
     target.agent.stateT = 0
-    const side = h.pos.y >= target.agent.pos.y ? 1 : -1
+    // Go past him on the side of the next gate (it used to take the side you were on, steering
+    // the burst away from the zigzag's next gate: half the gates were missed after every skill).
+    const gate = this.gates[this.next]
+    const toward = gate && gate.x > target.agent.pos.x ? gate.y - target.agent.pos.y : h.pos.y - target.agent.pos.y
+    const side = Math.abs(toward) > 0.2 ? Math.sign(toward) : h.pos.y >= target.agent.pos.y ? 1 : -1
     h.state = 'skill'
     h.stateT = 0
-    h.actionDir = norm({ x: 1, y: side * 0.5 })
+    // A burst past him, angled only slightly so the next gate is still on (it was 27° for 0.42 s: half the gates missed).
+    h.actionDir = norm({ x: 1, y: side * 0.3 })
     h.facing = Math.atan2(h.actionDir.y, h.actionDir.x)
     this.stat(timing === 'perfect' ? 'perfectSkills' : 'goodSkills')
     this.events.push({ type: 'skill', ok: true })
@@ -266,7 +290,8 @@ export class DribblingDrill extends DrillBase {
         d.beaten = true
         continue
       }
-      if (this.owned && dist(a.pos, this.ball) < 0.6) {
+      // A sharper defender (tackling) gets a foot to a ball carried too close to him.
+      if (this.owned && dist(a.pos, this.ball) < 0.4 + a01(a.attrs.tackling) * 0.4) {
         d.beaten = true
         a.state = 'down'
         a.stateT = 0
@@ -351,7 +376,8 @@ export class DribblingDrill extends DrillBase {
     ]
     const h = this.hero
     const near = this.nextDummy()
-    const skillWindow = !!near && this.owned && dist(near, h.pos) < 3.4 && dist(near, h.pos) > 0.9
+    const win = this.window
+    const skillWindow = !!near && this.owned && skillTiming(dist(near, h.pos), win) !== 'early' && skillTiming(dist(near, h.pos), win) !== 'late'
     return {
       focus: { x: clampN(h.pos.x + 7, 56, 84), y: 34 },
       span: 24,
@@ -362,7 +388,7 @@ export class DribblingDrill extends DrillBase {
       cones,
       gates,
       goalTargets: [],
-      rings: near && !this.dummies.every((d) => d.beaten) ? [{ x: near.x, y: near.y, r: 2.0, tone: skillWindow && skillTiming(dist(near, h.pos)) === 'perfect' ? 'green' : 'white', pulse: skillWindow }] : [],
+      rings: near && !this.dummies.every((d) => d.beaten) ? [{ x: near.x, y: near.y, r: 2.0, tone: skillWindow && skillTiming(dist(near, h.pos), this.window) === 'perfect' ? 'green' : 'white', pulse: skillWindow }] : [],
       lines,
       preview: null,
       hud: {

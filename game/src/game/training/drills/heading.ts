@@ -18,7 +18,7 @@ import { flatAttrs } from '../../setup'
 import { a01, accel, add, clampN, dist, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { aiKeeperReact, integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave } from '../keeper'
+import { aiKeeperReact, drillKeeperSpot, integrateKeeper, keeperReach, keeperWorld, resolveSave } from '../keeper'
 import { headerPoints, inTarget, jumpTiming } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, GoalTargetView } from '../types'
 
@@ -82,8 +82,8 @@ export class HeadingDrill extends DrillBase {
   constructor(cfg: DrillConfig) {
     super('heading', cfg)
     this.hero = makeActor('hero', 'hero', 'ST', this.spot, this.attrs, { hero: true, number: 9 })
-    const kq = 40 + (this.difficulty - 1) * 40
-    this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(kq, true), { number: 1 })
+    // A headed ball is slower than a shot: the keeper is the drill's opposition, 16 points below it.
+    this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(this.oppLevel - 16, true), { number: 1 })
     this.keeperHome = { ...this.keeper.pos }
     this.machine = makeActor('machine', 'opp', 'CB', { x: PITCH_LENGTH - 17, y: GOAL_CENTER_Y + 24 }, flatAttrs(60), { number: 0 })
     this.machine.state = 'wall'
@@ -119,7 +119,7 @@ export class HeadingDrill extends DrillBase {
       this.keeper.state = 'run'
       this.keeper.z = 0
     }
-    this.keeperHome = keeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], { ...this.ball, x: this.spot.x, y: this.spot.y }, this.env, this.time, this.difficulty, 'corner'))
+    this.keeperHome = drillKeeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], { ...this.ball, x: this.spot.x, y: this.spot.y }, this.env, this.time, this.oppSharpness, 'corner'))
     this.react = null
     this.touched = null
     this.woodwork = false
@@ -241,7 +241,7 @@ export class HeadingDrill extends DrillBase {
     this.stat('headers')
     if (timing >= 0.75) this.stat('perfectJumps')
     this.events.push({ type: 'kick', power: 0.6 + timing * 0.4, hero: true, x: b.x, y: b.y })
-    this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty, 'corner'), this.difficulty)
+    this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.oppSharpness, 'corner'), this.oppSharpness)
   }
 
   private resolve(kind: 'goal' | 'saved' | 'miss' | 'woodwork' | 'early' | 'late' | 'whiff', y = this.ball.y, z = this.ball.z): void {
@@ -369,7 +369,7 @@ export class HeadingDrill extends DrillBase {
     }
     const touch = keeperReach(this.keeper, b)
     if (touch) {
-      const res = resolveSave(this.rng, this.keeper, b, touch, this.difficulty)
+      const res = resolveSave(this.rng, this.keeper, b, touch, this.oppSharpness)
       if (res !== 'beaten') {
         this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
         this.touched = res

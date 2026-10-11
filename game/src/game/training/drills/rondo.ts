@@ -11,19 +11,25 @@
  * mates are highlighted and playable; at 60+ the third option, straight
  * through the middle, opens up too.
  */
-import { leadPosition, planKick } from '../../kick'
+import { kickSkill, leadPosition, planKick } from '../../kick'
 import { createTracker, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { a01, add, angleDiff, clampN, dist, dot, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { controllable, rondoPassPoints, RONDO_VISION_THIRD } from '../scoring'
+import { controllable, drillNoise, rondoPassPoints, RONDO_VISION_THIRD } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
 
 /** Release within this long after getting the ball back = one-touch pass. */
 export const ONE_TOUCH_S = 0.8
+/** One-touch window (s) from First Touch: a clean first touch sets the next pass up sooner. */
+export const oneTouchWindow = (firstTouch: number): number => 0.5 + Math.max(0, Math.min(100, firstTouch)) * 0.005
+/** Rondo kick spread: short passes through a crowd must be on the foot. */
+const RONDO_NOISE = 2
 /** Pressed off the ball after this long with a defender within 1 m. */
-const PRESS_LOSE_S = 0.9
+const PRESS_LOSE_S = 1.1
+/** How tight the presser gets to the ball (m): close enough to hurry you, not to stand on the ball; aggression goes tighter. */
+const pressGap = (aggression: number): number => 1.6 - Math.max(0, Math.min(100, aggression)) * 0.006
 
 const C: Vec2 = { x: 52, y: 34 }
 const R = 7
@@ -62,8 +68,8 @@ export class RondoDrill extends DrillBase {
     super('passing', cfg)
     this.hero = makeActor('hero', 'hero', 'CM', HERO_SPOT, this.attrs, { hero: true, number: 8 })
     this.mates = MATE_SPOTS.map((p, i) => makeActor(`m${i}`, 'hero', 'CM', p, flatAttrs(68), { number: [7, 9, 11][i] }))
-    const dq = 55 + (this.difficulty - 1) * 40
-    this.defenders = [0, 1].map((i) => makeActor(`d${i}`, 'opp', 'CB', { x: C.x + (i ? 1.2 : -1.2), y: C.y }, flatAttrs(dq), { number: 4 + i }))
+    // The two in the middle are the drill's opposition: their pace and anticipation decide how hard they press and cut.
+    this.defenders = [0, 1].map((i) => makeActor(`d${i}`, 'opp', 'CB', { x: C.x + (i ? 1.2 : -1.2), y: C.y }, flatAttrs(this.oppLevel), { number: 4 + i }))
     this.ball = { x: HERO_SPOT.x + 0.6, y: HERO_SPOT.y, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.seesThird = this.attrs.vision >= RONDO_VISION_THIRD
     this.restart()
@@ -145,6 +151,16 @@ export class RondoDrill extends DrillBase {
     return best!
   }
 
+  /** Pressure on the passer (0..1): how close the nearest defender is, and how hard he goes in (aggression, work rate). */
+  private pressure(): number {
+    let p = 0
+    for (const d of this.defenders) {
+      const near = clampN((3 - dist(d.pos, this.ball)) / 1.7, 0, 1)
+      p = Math.max(p, near * (0.4 + a01((d.attrs.aggression + d.attrs.workRate) / 2) * 0.8))
+    }
+    return clampN(p, 0, 1)
+  }
+
   private pass(input: DrillInput): void {
     for (const act of input.actions) {
       const i = this.pick(act)
@@ -153,7 +169,7 @@ export class RondoDrill extends DrillBase {
       const from = { x: this.ball.x, y: this.ball.y }
       const target = leadPosition(from, { id: m.id, pos: m.pos, vel: m.vel }, 13, 4)
       const plan = planKick(
-        { kind: 'pass', from, fromZ: 0, target, power: 0.6, curl: 0, attrs: this.attrs, pressure: this.pressT > 0 ? 0.4 : 0, assist: this.assist, env: this.env, noiseScale: 0.9 },
+        { kind: 'pass', from, fromZ: 0, target, power: 0.6, curl: 0, attrs: this.attrs, pressure: this.pressure(), assist: this.assist, env: this.env, noiseScale: RONDO_NOISE * drillNoise(kickSkill('pass', this.attrs, dist(from, target))) },
         this.rng,
       )
       Object.assign(this.ball, { vx: plan.vx, vy: plan.vy, vz: plan.vz })
@@ -201,7 +217,7 @@ export class RondoDrill extends DrillBase {
     else if (this.state === 'lost' && this.stateT > 0.9 && (live || this.phase === 'countdown')) this.restart()
     else if (this.state === 'ready' && live) {
       // Pressing: a defender within 1 m for too long wins the ball.
-      const close = this.defenders.some((d) => dist(d.pos, this.ball) < 1)
+      const close = this.defenders.some((d) => dist(d.pos, this.ball) < pressGap(d.attrs.aggression) + 0.25)
       this.pressT = close ? this.pressT + dt : Math.max(0, this.pressT - dt)
       if (this.pressT > PRESS_LOSE_S) this.lose('tackled', this.ball)
     }
@@ -209,7 +225,9 @@ export class RondoDrill extends DrillBase {
 
   private moveDefenders(dt: number, live: boolean): void {
     const [presser, cutter] = this.defenders
-    const speed = 3.0 + (this.difficulty - 1) * 2
+    const da = this.defenders[0]!.attrs
+    // Pace closes the man down, anticipation reads the lane.
+    const speed = 1.8 + a01(da.pace) * 2.4 + a01(da.anticipation) * 0.6
     const go = (d: Agent, to: Vec2, sp: number) => {
       const v = sub(to, d.pos)
       const l = len(v)
@@ -223,14 +241,27 @@ export class RondoDrill extends DrillBase {
       return
     }
     if (this.state === 'flight') {
-      // Both chase the ball's line.
-      for (const d of this.defenders) go(d, { x: this.ball.x, y: this.ball.y }, speed * 1.1)
+      // Both read the pass and attack its line ahead of the ball (anticipation: how far ahead).
+      const b = this.ball
+      const to = this.target >= 0 ? this.mates[this.target]!.pos : { x: b.x, y: b.y }
+      for (const d of this.defenders) {
+        // Reaction to the pass: anticipation reads it sooner (0.3 s at 0, 0.1 s at 100).
+        if (this.stateT < 0.3 - a01(d.attrs.anticipation) * 0.2) {
+          go(d, d.pos, 0)
+          continue
+        }
+        const ahead = add({ x: b.x, y: b.y }, scale(sub(to, b), 0.25 + a01(d.attrs.anticipation) * 0.5))
+        const ab = sub(ahead, b)
+        const l2 = dot(ab, ab)
+        const t = l2 > 1e-9 ? clampN(dot(sub(d.pos, b), ab) / l2, 0, 1) : 0
+        go(d, add({ x: b.x, y: b.y }, scale(ab, t)), speed * 1.15)
+      }
       return
     }
-    // Presser closes the ball down; cutter shadows the lane to the most open option.
-    const ball = { x: this.ball.x, y: this.ball.y }
+    // Presser closes the ball down (on the lay-off he already heads for the passer); cutter shadows the lane to the most open option.
+    const ball = this.state === 'return' ? { x: HERO_SPOT.x + 0.6, y: HERO_SPOT.y } : { x: this.ball.x, y: this.ball.y }
     const toBall = sub(ball, presser!.pos)
-    const stop = len(toBall) > 0.8 ? add(presser!.pos, scale(norm(toBall), len(toBall) - 0.8)) : presser!.pos
+    const stop = len(toBall) > pressGap(da.aggression) ? add(presser!.pos, scale(norm(toBall), len(toBall) - pressGap(da.aggression))) : presser!.pos
     go(presser!, stop, speed)
     const open = this.mates[this.mostOpen()]!.pos
     go(cutter!, add(ball, scale(sub(open, ball), 0.45)), speed * 0.9)
@@ -242,7 +273,8 @@ export class RondoDrill extends DrillBase {
     stepBall(b, this.env, this.tracker, this.phys)
     const at = { x: b.x, y: b.y }
     for (const d of this.defenders) {
-      if (dist(d.pos, b) < 0.6 && b.z < 1.2) {
+      // A ball played past the presser's side is never blocked at the passer's own feet.
+      if (dist(b, HERO_SPOT) > 1.6 && dist(d.pos, b) < 0.25 + a01(d.attrs.anticipation) * 0.6 && b.z < 1.2) {
         this.events.push({ type: 'touch', x: b.x, y: b.y })
         Object.assign(b, { vx: 0, vy: 0, vz: 0, z: 0 })
         return this.lose('blocked', at)
@@ -253,12 +285,16 @@ export class RondoDrill extends DrillBase {
         const rel = Math.hypot(b.vx, b.vy, b.vz)
         this.events.push({ type: 'touch', x: b.x, y: b.y })
         if (!controllable(rel, a01(m.attrs.firstTouch))) return this.lose('overhit', at)
+        // On the foot: how far off the ball's line the mate stood (not how soon it reached him).
+        const sp = Math.hypot(b.vx, b.vy) || 1
+        const off = Math.abs((b.vx * (m.pos.y - b.y) - b.vy * (m.pos.x - b.x)) / sp)
+        const accuracy = 1 - off / 0.9
         Object.assign(b, { vx: 0, vy: 0, vz: 0, z: 0 })
-        const oneTouch = this.release <= ONE_TOUCH_S
+        const oneTouch = this.release <= oneTouchWindow(this.attrs.firstTouch)
         this.stat('completed')
         if (oneTouch) this.stat('oneTouch')
         this.flash = { at: this.time, tone: 'green' }
-        this.award(rondoPassPoints(true, oneTouch), true, { label: oneTouch ? 'quick' : 'pass', x: b.x, y: b.y })
+        this.award(rondoPassPoints(true, oneTouch, accuracy), true, { label: oneTouch ? 'quick' : 'pass', x: b.x, y: b.y })
         m.state = 'skill'
         m.stateT = 0
         this.target = i

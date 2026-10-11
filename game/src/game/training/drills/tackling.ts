@@ -14,7 +14,6 @@
  * a foul or getting beaten costs points. Every duel the dribbler is a bit
  * different (lane, feint distance, cut side).
  */
-import { tackleOdds } from '../../ai'
 import { createTracker, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { a01, accel, add, clampN, dist, dot, fromAngle, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
@@ -31,9 +30,29 @@ export const END_X = 26
 const HERO_HOME: Vec2 = { x: 40, y: 34 }
 const START_X = 53
 const SETUP_TIME = 0.6
+
+/**
+ * Training duel odds: the match duel's ingredients (ai.ts tackleOdds: tackling/strength/positioning/
+ * aggression vs dribbling/agility/balance/strength, timing, from behind, slide) with a gentler
+ * attribute slope, so a well-timed tackle is a fair fight between a starter and a training partner.
+ */
+export function drillTackleOdds(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean): { win: number; foul: number } {
+  const ta = tackler.attrs
+  const ca = carrier.attrs
+  const t = a01(ta.tackling) * 0.62 + a01(ta.strength) * 0.12 + a01(ta.positioning) * 0.08 + a01(ta.aggression ?? 50) * 0.18
+  const c = a01(ca.dribbling) * 0.5 + a01(ca.agility) * 0.17 + a01(ca.balance ?? ca.strength) * 0.15 + a01(ca.strength) * 0.18
+  let win = 0.52 + (t - c) * 0.85 + (timing - 0.55) * 1.1 + (slide ? 0.06 : 0) - (fromBehind ? 0.22 : 0)
+  win = clampN(win, 0.06, 0.95)
+  const foul = clampN((slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2 + (a01(ta.aggression ?? 50) - 0.5) * 0.6, 0.02, 0.92)
+  return { win, foul }
+}
 /** Touch cycle of the dribbler (s): the ball is exposed right after each touch. */
 const TOUCH_PERIOD = 0.5
 const SLIDE_TIME = 0.6
+/** Share of the touch cycle the ball counts as (partly) exposed: wide enough for a human thumb to hit the green ring. */
+const EXPOSED_SPAN = 0.85
+/** The dribbler plants his foot this long at the start of a cut (the ball is knocked aside: tackle now). */
+const PLANT_TIME = 0.25
 const SLIDE_SPEED = 7.5
 
 export class TacklingDrill extends DrillBase {
@@ -59,8 +78,7 @@ export class TacklingDrill extends DrillBase {
   constructor(cfg: DrillConfig) {
     super('tackling', cfg)
     this.hero = makeActor('hero', 'hero', 'CB', HERO_HOME, this.attrs, { hero: true, number: 4, facing: 0 })
-    const q = 56 + (this.difficulty - 1) * 40
-    this.carrier = makeActor('drib', 'opp', 'LW', { x: START_X, y: 34 }, flatAttrs(q), { number: 11 })
+    this.carrier = makeActor('drib', 'opp', 'LW', { x: START_X, y: 34 }, flatAttrs(this.oppLevel), { number: 11 })
     this.ball = { x: START_X - 0.5, y: 34, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.newDuel()
   }
@@ -70,7 +88,8 @@ export class TacklingDrill extends DrillBase {
   private newDuel(): void {
     this.duel++
     this.lane = 34 + this.rng.range(-7, 7)
-    this.cutAt = this.rng.range(1.9, 2.8)
+    // He commits to his cut just outside the defender's reach: a ball he knocks past you is there to be won.
+    this.cutAt = this.reach + this.rng.range(0.5, 1.2)
     this.cutSide = this.rng.chance(0.5) ? 1 : -1
     place(this.hero, { x: HERO_HOME.x, y: 34 + (this.lane - 34) * 0.4 }, 0)
     this.hero.cd = 0
@@ -89,7 +108,7 @@ export class TacklingDrill extends DrillBase {
 
   /** How exposed the ball is right now (0 = at his feet, 1 = just pushed ahead). */
   get exposure(): number {
-    return this.owned ? clampN(1 - this.touchPhase / 0.7, 0, 1) : 0
+    return this.owned ? clampN(1 - this.touchPhase / EXPOSED_SPAN, 0, 1) : 0
   }
 
   /** Standing tackle reach (m) from the hero's tackling. */
@@ -163,7 +182,7 @@ export class TacklingDrill extends DrillBase {
     const timing = 0.15 + this.exposure * 0.85
     const cdir = len(c.vel) > 0.3 ? norm(c.vel) : fromAngle(c.facing)
     const fromBehind = dot(cdir, norm(sub(h.pos, c.pos))) < -0.35
-    const odds = tackleOdds(h, c, timing, fromBehind, slide, this.difficulty)
+    const odds = drillTackleOdds(h, c, timing, fromBehind, slide)
     const at = { x: this.ball.x, y: this.ball.y }
     if (this.rng.chance(odds.win)) {
       this.stat('won')
@@ -218,6 +237,8 @@ export class TacklingDrill extends DrillBase {
     this.cutSide = Math.abs(dy) > 0.4 ? Math.sign(dy) : this.cutSide
     this.mode = 'cut'
     this.modeT = 0
+    // The cut is a touch: the ball is knocked aside and exposed while he plants.
+    this.touchPhase = 0
     this.events.push({ type: 'skill', ok: true })
   }
 
@@ -328,15 +349,16 @@ export class TacklingDrill extends DrillBase {
     }
     if (this.mode === 'cut') {
       target = add(c.pos, { x: -1, y: this.cutSide * 1.2 })
-      speed = 4.8 + pace * 1.0
-      if (this.modeT > 0.6) {
+      speed = this.modeT < PLANT_TIME ? 3 : 4.6 + pace * 1.2
+      if (this.modeT > 0.6 + PLANT_TIME) {
         this.mode = 'escape'
         this.modeT = 0
       }
     }
     if (this.mode === 'escape') {
       target = { x: END_X - 2, y: c.pos.y + this.cutSide * 0.2 }
-      speed = 6 + pace * 1.1
+      // Never quicker than a recovering defender's sprint: his pace decides how much he gains.
+      speed = 5.4 + pace * 1.6
     }
     const dir = norm(sub(target, c.pos))
     const want = scale(dir, speed)

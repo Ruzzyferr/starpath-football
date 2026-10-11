@@ -65,8 +65,9 @@ export class DistributionDrill extends DrillBase {
   constructor(cfg: DrillConfig) {
     super('distribution', cfg)
     this.hero = makeActor('hero', 'hero', 'GK', { x: 3, y: GOAL_CENTER_Y }, this.attrs, { hero: true, number: 1 })
-    this.winger = makeActor('wing', 'opp', 'RW', { x: 16, y: 10 }, flatAttrs(70), { number: 7 })
-    this.striker = makeActor('st', 'opp', 'ST', { x: 12, y: GOAL_CENTER_Y }, flatAttrs(60), { number: 9 })
+    // The winger and the striker attacking the cross are the drill's opposition.
+    this.winger = makeActor('wing', 'opp', 'RW', { x: 16, y: 10 }, flatAttrs(this.oppLevel), { number: 7 })
+    this.striker = makeActor('st', 'opp', 'ST', { x: 12, y: GOAL_CENTER_Y }, flatAttrs(this.oppLevel), { number: 9 })
     this.mates = [0, 1, 2].map((i) => ({ agent: makeActor(`m${i}`, 'hero', (['LB', 'CM', 'RB'] as const)[i]!, { x: 22, y: 20 + i * 14 }, flatAttrs(65), { number: 2 + i }), start: { x: 22, y: 20 + i * 14 }, vel: { x: 3, y: 0 } }))
     this.ball = { x: 16, y: 10, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.newRound()
@@ -96,7 +97,9 @@ export class DistributionDrill extends DrillBase {
       place(m.agent, m.start, 0)
     })
     this.featured = this.rng.int(0, 2)
-    this.contested = this.rng.chance(clampN(0.35 * this.difficulty, 0.1, 0.6))
+    // A striker who jumps and goes in hard contests more crosses.
+    const st = this.striker.attrs
+    this.contested = this.rng.chance(clampN(0.05 + a01((st.jumping + st.aggression) / 2) * 0.6, 0.1, 0.7))
     this.claimed = false
     this.holdT = 0
     this.landingAt = zone
@@ -113,7 +116,8 @@ export class DistributionDrill extends DrillBase {
 
   private deliverCross(): void {
     const plan = planKick(
-      { kind: 'cross', from: { x: this.ball.x, y: this.ball.y }, fromZ: 0, target: this.landingAt, power: 0.78, curl: 0, attrs: this.winger.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 1.1 * this.difficulty },
+      // A better crosser whips it in quicker (less time to come for it).
+      { kind: 'cross', from: { x: this.ball.x, y: this.ball.y }, fromZ: 0, target: this.landingAt, power: 0.68 + a01(this.winger.attrs.crossing) * 0.2, curl: 0, attrs: this.winger.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 1.1 },
       this.rng,
     )
     this.ball.vx = plan.vx
@@ -141,6 +145,12 @@ export class DistributionDrill extends DrillBase {
     this.cycleT = 0
   }
 
+  /** A team-mate's receiving room (m): the striker's anticipation and work rate get tight on the outlet. */
+  private get receiveR(): number {
+    const st = this.striker.attrs
+    return DIST_RECEIVE_R * clampN(1.3 - a01((st.anticipation + st.workRate) / 2) * 0.6, 0.8, 1.2)
+  }
+
   private reach(): number {
     // Command of area: Positioning (GK) has him set where the cross drops, so it lands within reach more often.
     return 0.8 + a01(this.attrs.handling) * 0.45 + a01(this.attrs.gkPositioning) * 0.15 + a01(this.attrs.jumping) * 0.2
@@ -152,7 +162,7 @@ export class DistributionDrill extends DrillBase {
     if (!this.claimed && b.vz < 0 && b.z <= CLAIM_Z && d <= this.reach()) {
       this.claimed = true
       const stretched = d > this.reach() * 0.7
-      const ok = this.rng.chance(claimChance(this.attrs.handling, this.contested, stretched, this.difficulty))
+      const ok = this.rng.chance(claimChance(this.attrs.handling, this.contested, stretched, this.oppSharpness))
       if (ok) {
         this.stat('claims')
         this.cycle = 'hold'
@@ -313,14 +323,14 @@ export class DistributionDrill extends DrillBase {
     for (const m of this.mates) {
       const p = m.agent.pos
       const d = Math.hypot(b.x - p.x, b.y - p.y)
-      if (d <= DIST_RECEIVE_R && b.z <= 1.7) return this.received(m, d)
+      if (d <= this.receiveR && b.z <= 1.7) return this.received(m, d)
     }
     for (const e of this.phys) if (e.type === 'out' || e.type === 'goal') return this.lost('miss')
     if (this.cycleT > 4.5 || (Math.hypot(b.vx, b.vy) < 0.6 && b.z < 0.05 && this.cycleT > 0.5)) this.lost('miss')
   }
 
   private received(m: Mate, d: number): void {
-    const accuracy = 1 - d / DIST_RECEIVE_R
+    const accuracy = 1 - d / this.receiveR
     this.stat('found')
     if (this.releaseQuick) this.stat('quick')
     this.flash = { at: this.time, tone: 'green' }

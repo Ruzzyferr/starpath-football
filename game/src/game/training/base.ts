@@ -21,6 +21,12 @@ const GRACE = 2.5
 /** Pause after the final whistle before the drill reports done (s). */
 const POST = 1.2
 
+/** Opposition level of a drill at difficulty 1 when none is given. */
+export const DEFAULT_OPP_LEVEL = 56
+/** Opposition level from the config (explicit, else the default moved by the difficulty). */
+export const oppLevelFor = (cfg: { opponent?: number; difficulty?: number }): number =>
+  Math.round(clampN(cfg.opponent ?? DEFAULT_OPP_LEVEL + (clampN(cfg.difficulty ?? 1, 0.7, 1.4) - 1) * 40, 25, 99))
+
 export type DrillPhase = 'countdown' | 'live' | 'grace' | 'post' | 'done'
 
 /** A body on the drill pitch (re-uses the highlight Agent shape so AI/keeper helpers apply). */
@@ -87,6 +93,10 @@ export abstract class DrillBase implements Drill {
   readonly attrs: Attributes
   readonly assist: AimAssist
   readonly difficulty: number
+  /** The drill's seed (bots and replays). */
+  readonly seed: number | string
+  /** Opposition attribute level (see {@link DrillConfig.opponent}). */
+  readonly oppLevel: number
   readonly env: PhysicsEnv
   protected readonly rng: Rng
 
@@ -116,8 +126,18 @@ export abstract class DrillBase implements Drill {
     this.attrs = { ...cfg.attrs }
     this.assist = cfg.aimAssist ?? 'half'
     this.difficulty = clampN(cfg.difficulty ?? 1, 0.7, 1.4)
+    this.oppLevel = oppLevelFor(cfg)
+    this.seed = cfg.seed
     this.rng = new Rng(typeof cfg.seed === 'number' ? cfg.seed : `drill:${kind}:${cfg.seed}`)
     this.env = envForWeather(cfg.weather ?? 'clear', { x: 0.2, y: 1 })
+  }
+
+  /**
+   * The opposition's sharpness for the shared keeper/AI helpers that take a difficulty factor
+   * (reaction, scenario pace, catch odds): 1 at the default level, ±1 per 40 attribute points.
+   */
+  get oppSharpness(): number {
+    return clampN(1 + (this.oppLevel - DEFAULT_OPP_LEVEL) / 40, 0.6, 1.6)
   }
 
   get finished(): boolean {

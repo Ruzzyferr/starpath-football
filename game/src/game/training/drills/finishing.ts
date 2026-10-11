@@ -7,9 +7,10 @@
  * joins from shot 3 (moving keeper). Shots use the match kick model
  * (swipe / hold-release / pad) and the AI keeper reacts like in a highlight.
  *
- * Set-piece variant = curl gate (2.3#25): 5 free kicks; each one that clears
- * the wall and is struck between the two posts (on target, saved or not)
- * scores 20. Every kick gets its own wind, shown in km/h with an arrow.
+ * Set-piece variant = curl gate (2.3#25): 5 free kicks; the two gates are the
+ * outer thirds of the goal. A goal scores 20; a kick over the wall into a gate
+ * that the keeper saves 4, one at his middle third 2. Every kick gets its own
+ * wind, shown in km/h with an arrow.
  */
 import { Rng } from '../../../core/rng'
 import { PITCH_LENGTH } from '../../../sim/match/types'
@@ -18,9 +19,10 @@ import { createTracker, GOAL_CENTER_Y, isOnTarget, predictPlaneCrossing, stepBal
 import { flatAttrs } from '../../setup'
 import { add, dist, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { aiKeeperReact, integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave } from '../keeper'
-import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_POINTS, GRID_CENTRE_R, GRID_KEEPER_FROM, GRID_SHOTS, GRID_ZONE_R, gridShotPoints, msToKmh } from '../scoring'
-import { planIntent, previewPath, shotIntent } from '../shooting'
+import { aiKeeperReact, drillKeeperSpot, integrateKeeper, keeperReach, keeperWorld, resolveSave } from '../keeper'
+import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_INNER, CURL_GATE_MIDDLE_POINTS, CURL_GATE_POINTS, CURL_GATE_SAVED_POINTS, drillNoise, GRID_CENTRE_R, GRID_KEEPER_FROM, GRID_SHOTS, GRID_ZONE_R, gridShotPoints, msToKmh } from '../scoring'
+import { distanceToGoal, planIntent, previewPath, shotIntent } from '../shooting'
+import { kickSkill } from '../../kick'
 import type { DrillConfig, DrillInput, DrillView, GoalTargetView } from '../types'
 
 type AttemptState = 'ready' | 'flight' | 'resolved'
@@ -43,6 +45,14 @@ const TARGET_R = 0.78
 /** 3×3 goal grid zone centres (y, z), row by row from the bottom. */
 const GRID: readonly [number, number][] = [0.45, 1.22, 1.99].flatMap((z) => [-2.44, 0, 2.44].map((dy): [number, number] => [GOAL_CENTER_Y + dy, z]))
 const WALL_GAP = 9.15
+/** Curl gate: the two gates drawn in the goal mouth (outer thirds). */
+const CURL_GATES: readonly [number, number][] = [[GOAL_CENTER_Y - 2.55, 1.2], [GOAL_CENTER_Y + 2.55, 1.2]]
+/** A training keeper reads the strike a beat later than a match keeper (s): placement beats him, a shot at him does not. */
+const KEEPER_LATE = 0.15
+/** The wall screens the keeper on a free kick: he picks the ball up later (s). */
+const WALL_SCREEN = 0.06
+/** Free kicks from 19–27 m: the curl gate leans on the set-piece skill (aim spread at the drill's noise). */
+const SET_PIECE_NOISE = 1.8
 
 export class FinishingDrill extends DrillBase {
   readonly hero: Agent
@@ -62,6 +72,8 @@ export class FinishingDrill extends DrillBase {
   private attempt = 0
   /** Curl gate: the kick was struck between the posts (predicted at the strike). */
   private onTarget = false
+  /** Curl gate: the predicted crossing is in one of the two gates (the outer thirds of the goal). */
+  private inGate = false
   /** Shuffled 3×3 zone sequence (standard variant). */
   private readonly sequence: number[] = []
   private aim: DrillInput['aim'] = null
@@ -75,8 +87,8 @@ export class FinishingDrill extends DrillBase {
     super('finishing', cfg)
     this.gkRng = new Rng(`finishing-gk:${String(cfg.seed ?? 0)}:${this.variant}`)
     this.hero = makeActor('hero', 'hero', 'ST', { x: 80, y: GOAL_CENTER_Y }, this.attrs, { hero: true, number: 9 })
-    const kq = 56 + (this.difficulty - 1) * 40
-    this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(kq, true), { number: 1 })
+    // The keeper is the opposition: his reflexes, diving and handling decide the saves.
+    this.keeper = makeActor('gk', 'opp', 'GK', { x: PITCH_LENGTH - 1.2, y: GOAL_CENTER_Y }, flatAttrs(this.oppLevel, true), { number: 1 })
     this.keeperHome = { ...this.keeper.pos }
     this.ball = { x: 80, y: GOAL_CENTER_Y, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.targets = (this.variant === 'setPiece' ? CORNERS : GRID).map(([y, z], i) => ({ baseY: y, baseZ: z, phase: i * 1.7, lit: false, hitT: -9 }))
@@ -121,15 +133,18 @@ export class FinishingDrill extends DrillBase {
       this.targets.forEach((t) => { t.lit = false })
     }
     this.onTarget = false
+    this.inGate = false
     this.keeper.noTouch = 0
     place(this.keeper, this.keeperLive ? this.keeper.pos : { x: PITCH_LENGTH - 0.4, y: GOAL_CENTER_Y + 5.2 }, Math.PI)
-    this.keeperHome = keeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty))
+    this.keeperHome = drillKeeperSpot(this.keeper, keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.oppSharpness))
+    // Free kick: the wall takes the near post, the keeper stands just off the middle toward the far post.
+    if (sp) this.keeperHome = { x: PITCH_LENGTH - 0.7, y: GOAL_CENTER_Y + (this.spot.y < GOAL_CENTER_Y ? 0.8 : -0.8) }
     // Moving keeper (grid attempts with a keeper): start him in a seeded motion scenario.
     this.scn = null
     this.scnT = 0
     if (this.keeperLive && this.variant !== 'setPiece') {
       const kind = pickScenarioKind(this.gkRng, DRILL_SCENARIO_WEIGHTS)
-      const sc = buildKeeperScenario(kind, this.gkRng, this.keeper, { goalX: PITCH_LENGTH, inward: -1, home: this.keeperHome, ball: this.spot, difficulty: this.difficulty, holdScale: 1.6 })
+      const sc = buildKeeperScenario(kind, this.gkRng, this.keeper, { goalX: PITCH_LENGTH, inward: -1, home: this.keeperHome, ball: this.spot, difficulty: 1, holdScale: 1.6 })
       if (sc.kind !== 'set') {
         this.keeper.state = 'run'
         this.keeper.stateT = 0
@@ -163,7 +178,8 @@ export class FinishingDrill extends DrillBase {
       const intent = shotIntent(act, this.spot)
       if (!intent) continue
       if (this.variant === 'setPiece' && intent.kind === 'shot') intent.kind = 'freekick'
-      const plan = planIntent(intent, { from: this.spot, attrs: this.attrs, assist: this.assist, env: this.env, noise: 0.9 }, this.rng)
+      const skill = kickSkill(intent.kind, this.attrs, distanceToGoal(this.spot))
+      const plan = planIntent(intent, { from: this.spot, attrs: this.attrs, assist: this.assist, env: this.env, noise: (this.variant === 'setPiece' ? SET_PIECE_NOISE : 0.9) * drillNoise(skill) }, this.rng)
       this.ball.vx = plan.vx
       this.ball.vy = plan.vy
       this.ball.vz = plan.vz
@@ -173,6 +189,7 @@ export class FinishingDrill extends DrillBase {
       if (this.variant === 'setPiece') {
         const c = predictPlaneCrossing(this.ball, this.env, PITCH_LENGTH, 3)
         this.onTarget = !!c && isOnTarget(c.y, c.z)
+        this.inGate = this.onTarget && !!c && Math.abs(c.y - GOAL_CENTER_Y) >= CURL_GATE_INNER
       }
       this.stat('shots')
       this.events.push({ type: 'kick', power: intent.power, hero: true, x: this.spot.x, y: this.spot.y })
@@ -184,7 +201,7 @@ export class FinishingDrill extends DrillBase {
         w.state = 'jump'
         w.stateT = 0
       }
-      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.difficulty), this.difficulty, momentumDelay(this.keeper, plan.aim.y))
+      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.oppSharpness), 1, KEEPER_LATE + (this.wall.length ? WALL_SCREEN : 0) + momentumDelay(this.keeper, plan.aim.y))
       return
     }
   }
@@ -195,10 +212,13 @@ export class FinishingDrill extends DrillBase {
     this.stateT = 0
     const at = { x: Math.min(this.ball.x, PITCH_LENGTH), y, z }
     if (this.variant === 'setPiece') {
+      // A gate is an outer third of the goal, over the wall: 20 for a goal, 4 when the keeper saves it;
+      // a kick at the keeper's middle third that he saves earns 2.
       const through = kind === 'goal' || (kind === 'saved' && this.onTarget)
-      if (through) this.stat('gates')
+      if (through && (kind === 'goal' || this.inGate)) this.stat('gates')
       if (kind === 'goal') this.stat('goals')
-      this.award(through ? CURL_GATE_POINTS : 0, through, { label: through ? 'gate' : kind === 'blocked' ? 'blocked' : 'gateMissed', ...at })
+      const pts = kind === 'goal' ? CURL_GATE_POINTS : through ? (this.inGate ? CURL_GATE_SAVED_POINTS : CURL_GATE_MIDDLE_POINTS) : 0
+      this.award(pts, through && (kind === 'goal' || this.inGate), { label: kind === 'goal' ? 'goal' : through ? (this.inGate ? 'gate' : 'saved') : kind === 'blocked' ? 'blocked' : 'gateMissed', ...at })
       return
     }
     const zone = this.targets.find((t) => t.lit)
@@ -335,7 +355,7 @@ export class FinishingDrill extends DrillBase {
     // Keeper.
     const touch = keeperReach(this.keeper, b)
     if (touch) {
-      const res = resolveSave(this.rng, this.keeper, b, touch, this.difficulty)
+      const res = resolveSave(this.rng, this.keeper, b, touch, this.oppSharpness)
       if (res !== 'beaten') {
         this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
         this.touched = res
@@ -372,7 +392,7 @@ export class FinishingDrill extends DrillBase {
   }
 
   view(): DrillView {
-    const goalTargets: GoalTargetView[] = this.variant === 'setPiece' ? [] : this.targets.map((t) => {
+    const goalTargets: GoalTargetView[] = this.variant === 'setPiece' ? CURL_GATES.map(([y, z]) => ({ end: 'east', y, z, r: 1.05, tone: 'gold' })) : this.targets.map((t) => {
       const p = this.targetPos(t)
       return { end: 'east', y: p.y, z: p.z, r: p.r, tone: this.time - t.hitT < 0.8 ? 'green' : t.lit ? 'gold' : 'dim' }
     })

@@ -18,7 +18,7 @@ import { a01, add, clampN, dist, dot, len, norm, scale, sub, type Agent, type Ve
 import { arriveTo } from '../vec'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave, startDive } from '../keeper'
-import { GK_SHOTS, gkReactionWindow, savePoints } from '../scoring'
+import { GK_SHOTS, GK_WIDE_POINTS, gkReactionWindow, savePoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView } from '../types'
 import type { HeroAction } from '../../runtime'
 
@@ -42,7 +42,8 @@ export class GoalkeepingDrill extends DrillBase {
   constructor(cfg: DrillConfig) {
     super('goalkeeping', cfg)
     this.hero = makeActor('hero', 'hero', 'GK', { x: 1.0, y: GOAL_CENTER_Y }, this.attrs, { hero: true, number: 1 })
-    this.shooter = makeActor('sh', 'opp', 'ST', { x: 18, y: GOAL_CENTER_Y }, flatAttrs(58 + (this.difficulty - 1) * 45), { number: 9 })
+    // The shooter is the drill's opposition: his shooting sets the pace, his finishing the placement.
+    this.shooter = makeActor('sh', 'opp', 'ST', { x: 18, y: GOAL_CENTER_Y }, flatAttrs(this.oppLevel), { number: 9 })
     this.ball = { x: 16, y: GOAL_CENTER_Y, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
     this.setup()
   }
@@ -74,18 +75,19 @@ export class GoalkeepingDrill extends DrillBase {
   private strike(): void {
     // Strikers pick the side away from the keeper most of the time.
     const away = this.hero.pos.y >= GOAL_CENTER_Y ? -1 : 1
+    const sa = this.shooter.attrs
     // Diving station (Diving): every shot is placed towards a corner, so each save is at full stretch.
     const corner = this.variant === 'diving'
       ? (this.rng.chance(0.75) ? away : -away) * this.rng.range(2.4, 3.4)
-      : this.rng.chance(0.1) ? 0 : (this.rng.chance(0.72) ? away : -away) * this.rng.range(1.4, 3.35)
+      : this.rng.chance(0.1) ? 0 : (this.rng.chance(0.72) ? away : -away) * this.rng.range(0.6 + a01(sa.finishing) * 1.6, 3.35)
     const high = this.rng.chance(0.4)
     const target = { x: -0.2, y: GOAL_CENTER_Y + corner }
-    const power = this.rng.range(0.55, 0.8) * (0.95 + (this.difficulty - 1) * 0.3)
+    const power = this.rng.range(0.55, 0.8) * (0.78 + a01(sa.shooting) * 0.42)
     const plan = planKick(
       {
         kind: 'shot', from: this.spot, fromZ: 0, target, targetZ: high ? this.rng.range(1.5, 2.1) : this.rng.range(0.2, 0.8),
         power, curl: this.rng.range(-0.3, 0.3), attrs: this.shooter.attrs, pressure: 0, assist: 'manual', env: this.env,
-        noiseScale: 1.05 / this.difficulty,
+        noiseScale: 1.05,
       },
       this.rng,
     )
@@ -207,8 +209,10 @@ export class GoalkeepingDrill extends DrillBase {
     this.cycleT = 0
     const at = { x: this.ball.x, y: this.ball.y, z: this.ball.z }
     if (label === 'wide') {
+      // Angle covered: a shooter forced wide is half a save (a weaker shooter must never make the keeper's score smaller).
       this.stat('wide')
-      this.events.push({ type: 'score', points: 0, label: 'wide', good: true, ...at })
+      this.points += GK_WIDE_POINTS
+      this.events.push({ type: 'score', points: GK_WIDE_POINTS, label: 'wide', good: true, ...at })
       return
     }
     if (saved) {
