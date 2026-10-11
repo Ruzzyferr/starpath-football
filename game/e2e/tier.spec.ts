@@ -5,7 +5,8 @@ import { test, expect } from './fixtures'
  * (TR / EN). Plays the match demo on autopilot; screenshots go to PW_SHOT_DIR when set (owner review).
  */
 const ENV = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
-const KINDS = ['long_shot', 'edge_of_box', 'freekick', 'cross'] as const
+// PW_TIER_KINDS=block,timed_run,… checks other kinds (owner review of the build 9 all-kinds pass).
+const KINDS = ENV.PW_TIER_KINDS ? ENV.PW_TIER_KINDS.split(',') : ['long_shot', 'edge_of_box', 'freekick', 'cross']
 
 for (const kind of KINDS) {
   test(`graded success is reported: ${kind}`, async ({ page }, info) => {
