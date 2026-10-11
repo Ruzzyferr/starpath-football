@@ -37,7 +37,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   block: [0.3, 0.65],
   // Set-piece choices (2.1#95 / #97). Hero corner: assist or goal (measured N=200 ~0.13);
   // free kick against with the hero in goal: kept out (measured N=60 ~0.72).
-  corner_kick: [0.06, 0.25],
+  // Build 9: the delivery's quality (Crossing / Curve) wins the aerial and keeps the keeper home.
+  corner_kick: [0.06, 0.6],
   fk_wall: [0.58, 0.88],
   // S21 kinds (measured N=120 average, normal): take-on got past and ended in a shot/pass ~0.43,
   // open-play header scored ~0.28, keeper 1v1 kept out ~0.58, sweeping ~0.77, back post ~0.43.

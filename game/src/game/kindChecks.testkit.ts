@@ -8,7 +8,7 @@ import { GOAL_KINDS } from '../sim/match/tier'
 import type { FeelKind } from './feelHarness'
 import { kindCheck, kindCheckLine } from './kindMatrix'
 
-export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>(['cross', 'corner_kick', 'back_post', 'timed_run'])
+export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>(['back_post', 'timed_run'])
 
 /** The four parallel groups (kindChecks.a–d.test.ts); together every FEEL_KIND. */
 export const KIND_CHECK_GROUPS: readonly (readonly FeelKind[])[] = [

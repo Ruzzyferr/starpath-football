@@ -15,7 +15,7 @@ import { Rng } from '../core/rng'
 import { roleAiStyle, type RoleAiStyle } from '../core/roles'
 import type { Difficulty } from '../core/types'
 import type { Highlight, HighlightKind, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { GOAL_HEIGHT, PITCH_LENGTH, PITCH_WIDTH, SHOT_PRESS_KINDS } from '../sim/match/types'
+import { GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH, SHOT_PRESS_KINDS } from '../sim/match/types'
 import {
   DIVE_PEAK,
   DIVE_TIME,
@@ -297,6 +297,19 @@ export const PARTIAL_SAVE_STRETCH_RANGE = 0.2
 export const PARTIAL_SAVE_OFF_BODY = 0.6
 /** Hero keeper set on his angle: within this distance (m) of his textbook spot as the shot is struck. */
 export const KEEPER_SET_R = 1.2
+/** Chance (× the hero's cross moment skill) that the keeper stays on his line for the hero's delivery. */
+export const KEEPER_DOUBT = 1.6
+/** Extra reach (m) of a team-mate attacking the hero's cross / corner, × the hero's cross moment skill. */
+export const CROSS_REACH = 3
+/** The corridor a quality cross is put into (m from the goal line; half-width from the centre). */
+export const CROSS_CORRIDOR = { near: 5, far: 13, half: 7 } as const
+/** A cross landing within this distance (m) of where his run takes him is attacked at once. */
+export const CROSS_ON_RUN = 3
+/** Aerial duel weight of a team-mate attacking the hero's cross: × base + skill × his cross moment skill. */
+export const CROSS_ATTACK = { base: 0.6, skill: 11 } as const
+/** Hero shot from a tight angle: the goal mouth seen under this angle (rad) or less gets the keeper up to + save. */
+export const TIGHT_ANGLE = 0.42
+export const TIGHT_ANGLE_SAVE = 0.45
 /** Penalty: save chance added when the keeper guessed the right way. */
 export const PENALTY_READ_SAVE = 0.15
 /** Hero keeper's save chance: + edge × (his Reflexes / Diving / GK Positioning / Handling average − 0.6). */
@@ -474,6 +487,8 @@ interface ShotTrack {
   placedAim?: boolean
   /** The hero keeper was set on his angle as it was struck. */
   keeperSet?: boolean
+  /** Angle (rad) of the goal mouth seen from where it was struck. */
+  mouth?: number
 }
 
 interface KeeperAlert {
@@ -717,6 +732,10 @@ export class HighlightRuntime {
   private oppShotFree = false
   /** Game time of the hero's last delivery (pass/cross); −1 once a team-mate took possession otherwise. */
   private heroDeliveryAt = -1
+  /** Quality (cross moment skill) of the hero's last ball into the box (0 = not a cross). */
+  private heroCrossQ = 0
+  /** The opposition keeper stays on his line for the hero's delivery. */
+  private keeperStays = false
   /** The hero has had the ball under control this moment. */
   private heroControlled = false
   /** Hero positions sampled twice a second (heat map). */
@@ -2276,13 +2295,26 @@ export class HighlightRuntime {
         const runner = this.spaceRunner()
         if (runner) {
           this.heroPassTo = { id: runner.agent.id, t: this.time }
-          runner.agent.think = 0
-          runner.agent.intent = { kind: 'run', to: runner.point, until: this.time + 0.6, chase: true }
+          // A ball into the box onto his run is attacked at once; one he has to check back or turn for (≥ 3 m off
+          // where his run takes him) costs him a reaction — the delivery's accuracy (build 9, cross).
+          const r = runner.agent
+          const onRun = (kind !== 'cross' && kind !== 'lofted') || dist(plan.aim, add(r.pos, scale(r.vel, 0.6))) < CROSS_ON_RUN
+          if (onRun) {
+            r.think = 0
+            r.intent = { kind: 'run', to: runner.point, until: this.time + 0.6, chase: true }
+          } else r.think = Math.max(r.think, reactionTime(r, 1))
         }
       }
       if (this.heroPassTo && this.heroPassTo.id !== '*' && !SHOT_KINDS.has(kind)) (this.passNet[this.heroPassTo.id] ??= { to: 0, from: 0 }).to++
       this.oneTwo = passTo && (kind === 'pass' || kind === 'lofted') ? { id: passTo, t: this.time, armed: false, armedAt: -1 } : null
       this.heroDeliveryAt = SHOT_KINDS.has(kind) ? -1 : this.time
+      // A ball into the box from the hero (cross / lofted / corner): its quality is his Crossing / Curve.
+      this.heroCrossQ = kind === 'cross' || kind === 'lofted' ? momentSkill('cross', by.attrs) : 0
+      // A quality ball away from the keeper makes him think twice about coming for it (his Crossing / Curve).
+      // (A corner: an out-swinger curls away from him — he stays; an in-swinger curls onto him — he comes. Open play: a
+      // ball to the penalty spot is no keeper's ball; one into the six-yard box is.)
+      const swing = wasSetPiece?.kind === 'corner' && this.cornerChoice ? (this.cornerChoice.curl === 'out' ? (this.cornerChoice.zone === 'far' ? 1 : 0.4) : 0) : Math.abs(plan.aim.x - attackGoalX('hero')) >= 10.5 ? 1 : 0.2
+      this.keeperStays = this.heroCrossQ > 0 && this.rng.chance(KEEPER_DOUBT * this.heroCrossQ * swing)
       this.heroPassQuality = plan.quality
       this.heroLastKick = kind
       // Open play only: a corner is aimed at the zone from the flag, it needs a team-mate to win it.
@@ -2296,7 +2328,9 @@ export class HighlightRuntime {
     // The man the hero's pass is for expects it: he reacts on his own Anticipation, not the generic read.
     if (by.isHero && passTo && PASS_KINDS.has(kind)) {
       const r = this.agents.find((q) => q.id === passTo)
-      if (r && !r.isHero) r.think = receiveReact(r.attrs.anticipation ?? r.attrs.positioning)
+      // (A cross he has to check back or turn for — ≥ 3 m off where his run takes him — costs him a full reaction.)
+      const offRun = r && (kind === 'cross' || kind === 'lofted') && dist(plan.aim, add(r.pos, scale(r.vel, 0.6))) >= CROSS_ON_RUN
+      if (r && !r.isHero) r.think = offRun ? Math.max(r.think, reactionTime(r, 1)) : receiveReact(r.attrs.anticipation ?? r.attrs.positioning)
     }
     // Anticipation: a team-mate's ball toward the hero — he reads it and is away first.
     if (!by.isHero && by.team === 'hero' && PASS_KINDS.has(kind) && !this.hero.isKeeper) {
@@ -2344,6 +2378,12 @@ export class HighlightRuntime {
     if (SHOT_KINDS.has(kind)) {
       if (by.team === 'opp') this.oppShotTaken = true
       this.shot = { by, kind, t: this.time, woodwork: false, blocked: false, parried: false, beaten: new Set(), assistBy: !by.isHero && this.assistChain === by.id ? this.hero.id : null, range: Math.hypot(attackGoalX(by.team) - this.ball.x, GOAL_CENTER_Y - this.ball.y) }
+      {
+        const gx = attackGoalX(by.team)
+        const a1 = Math.atan2(GOAL_CENTER_Y - GOAL_WIDTH / 2 - this.ball.y, gx - this.ball.x)
+        const a2 = Math.atan2(GOAL_CENTER_Y + GOAL_WIDTH / 2 - this.ball.y, gx - this.ball.x)
+        this.shot.mouth = Math.abs(angleDiff(a1, a2))
+      }
       const gk = this.agents.find((q) => q.isKeeper && q.team !== by.team)
       if (gk) this.shot.placedAim = Math.abs(plan.aim.y - gk.pos.y) >= PLACED_AIM
       // The hero in goal: set on his angle as it was struck (his textbook spot), or caught off it.
@@ -2359,6 +2399,8 @@ export class HighlightRuntime {
         } else {
           const isPen = wasSetPiece?.kind === 'penalty'
           let reaction = isPen ? 0.06 : keeperReaction(keeper, this.difficulty)
+          // From a tight angle there is only so much goal to cover: he is set for it and quicker to it.
+          if (!isPen && this.shot?.mouth !== undefined && this.shot.mouth < TIGHT_ANGLE) reaction *= 0.3 + 0.7 * (this.shot.mouth / TIGHT_ANGLE)
           // Moving the wrong way (shuffling across, still backpedalling): he has to stop first.
           if (!isPen) reaction += momentumDelay(keeper, plan.aim.y)
           if (wasSetPiece?.kind === 'freekick' && by.team === 'opp') reaction += Math.max(0, wasSetPiece.wall.length - 2) * 0.06
@@ -2411,6 +2453,8 @@ export class HighlightRuntime {
     // His cross / corner / ball into the box met by a team-mate there, or a timed run received onside: a clear chance.
     if (this.heroPassTo && passCompletedBy(a) && (this.heroLastKick === 'cross' || this.heroLastKick === 'lofted') && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
     if (a.isHero && this.kind === 'timed_run' && this.phase === 'live' && prevOwner === null && this.lastTouchBefore?.team === 'hero' && !this.lastTouchBefore.isHero) this.chance = true
+    // (The hero's cross / corner controlled by a team-mate in the box — feetContact covers the loose touches.)
+    if (!a.isHero && a.team === 'hero' && prevOwner === null && this.lastTouchBefore?.isHero && this.heroCrossQ > 0 && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
     if (this.heroPassTo && passCompletedBy(a)) {
       this.stats.passesCompleted++
       this.assistChain = a.id
@@ -2806,7 +2850,9 @@ export class HighlightRuntime {
       // Claim crosses.
       if (!this.owner && this.ball.z > 1 && this.ball.vz < 2) {
         const land = this.landingPoint()
-        if (land && shouldClaimCross(a, land.p, land.t)) {
+        // (An in-swinging corner curls onto him: he comes for anything he can get to.)
+        const inswing = this.kind === 'corner_kick' && this.cornerChoice?.curl === 'in' && a.team === 'opp' && this.lastTouch?.isHero
+        if (land && (shouldClaimCross(a, land.p, land.t) || (inswing && dist(a.pos, land.p) < 10)) && !(this.keeperStays && a.team === 'opp' && this.lastTouch?.isHero)) {
           a.intent = { kind: 'run', to: land.p, until: this.time + 1 }
           return
         }
@@ -3568,6 +3614,8 @@ export class HighlightRuntime {
    */
   private headerContest(heads: Agent[], bp: Vec2): Agent {
     const b = this.ball
+    const gx = attackGoalX('hero')
+    const inCorridor = Math.abs(bp.x - gx) >= CROSS_CORRIDOR.near && Math.abs(bp.x - gx) <= CROSS_CORRIDOR.far && Math.abs(bp.y - GOAL_CENTER_Y) <= CROSS_CORRIDOR.half
     const pool = new Set<Agent>(heads)
     for (const a of this.agents) {
       if (pool.has(a) || a.noTouch > 0 || a.state === 'down' || a.isKeeper) continue
@@ -3579,7 +3627,12 @@ export class HighlightRuntime {
       }
       const jumpTop = 1.72 + jumpHeight(a.attrs.jumping) + 0.28
       if (b.z < 1.15 || b.z > jumpTop) continue
-      if (dist(a.pos, bp) < 1.15) pool.add(a)
+      // A runner attacking the hero's delivery meets it: the better the ball (his Crossing / Curve), the further
+      // the runner can get to it.
+      // (A floated corner hangs for the runner; a driven one is on him before he can adjust.)
+      const hang = this.cornerChoice && this.kind === 'corner_kick' ? (this.cornerChoice.height === 'floated' ? 1.4 : 0) : 1
+      const meet = a.team === 'hero' && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && inCorridor ? CROSS_REACH * this.heroCrossQ * hang : 0
+      if (dist(a.pos, bp) < 1.15 + meet) pool.add(a)
     }
     const list = [...pool]
     if (list.length === 1) return list[0]!
@@ -3604,6 +3657,10 @@ export class HighlightRuntime {
         const timing = a.stateT > 0.12 && a.stateT < 0.44 ? 1 : 0.3
         w *= 0.4 + timing * 1.6
       } else if (a.team === 'opp') w *= this.difficulty
+      // The hero's delivery (Crossing / Curve): a quality ball is attacked by the runner, the defender has to turn.
+      // (Only a ball into the corridor — between the six-yard box and the penalty spot, inside the posts' width plus a
+      // few metres — is a quality ball; one that drifts out of it is anybody's.)
+      else if (a.team === 'hero' && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && this.heroCrossQ > 0 && inCorridor) w *= CROSS_ATTACK.base + CROSS_ATTACK.skill * this.heroCrossQ
       // A keeper's moment (a cross into his box): his defenders leave it to him.
       else if (this.hero.isKeeper && !a.isKeeper) w *= KEEPER_MOMENT_HELP * 4
       return w * lead
@@ -3741,6 +3798,9 @@ export class HighlightRuntime {
     // rebound: first to the ball the keeper parried — the reaction the moment is about (graded success once his
     // follow-up is on target, keeperContact).
     if (a.isHero && this.kind === 'rebound' && (!this.lastTouch || this.lastTouch.team === 'opp')) this.reboundFirst = true
+    // The hero's ball into the box (cross / corner) reaching a team-mate in the box (first touch his, clean or not):
+    // a chance created (graded success).
+    if (!a.isHero && a.team === 'hero' && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && this.heroCrossQ > 0 && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
     // long_ball_control: first to the long ball (clean or not) — he won the contact the moment is about (graded success).
     if (a.isHero && this.kind === 'long_ball_control' && this.lastTouch?.team === 'hero' && !this.lastTouch.isHero) this.chance = true
     // switch_play: the switch reached a team-mate across the pitch (first touch his, clean or not).
@@ -3790,6 +3850,8 @@ export class HighlightRuntime {
       const far = (this.shot.range ?? 0) >= PARTIAL_SAVE_RANGE
       const sk = far ? kickSkill('shot', this.shot.by.attrs, this.shot.range ?? 25) * 0.7 + momentSkill('shot', this.shot.by.attrs) * 0.3 : momentSkill('shot', this.shot.by.attrs)
       p -= HERO_FINISH_EDGE * (sk - 0.5) * (far ? 0.65 + 0.35 * clamp01(stretch) : 0.3 + 0.7 * clamp01(stretch))
+      // From a tight angle the keeper only has his near post to cover (the goal mouth he shows is small).
+      p += TIGHT_ANGLE_SAVE * clamp01((TIGHT_ANGLE - (this.shot.mouth ?? 1)) / TIGHT_ANGLE)
     } else if (this.shot && this.shot.by.team !== k.team) p += KEEPER_SAVE_BONUS
     if (speed < 11) p = 1
     // A penalty keeper who guessed right is set for it at full stretch.

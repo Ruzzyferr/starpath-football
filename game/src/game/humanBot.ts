@@ -312,6 +312,12 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     if (st.choiceAt < 0) st.choiceAt = st.real + st.rng.range(0.8, 2.2)
     if (st.real < st.choiceAt) return
     if (rt.pendingChoice === 'corner') {
+      // A sensible taker floats it to the far post, curling away from the keeper (where his big men attack it);
+      // a careless one picks anything.
+      if (st.skill.read >= 0.5) {
+        rt.queueAction({ kind: 'corner', zone: 'far', height: 'floated', curl: 'out' })
+        return
+      }
       const zone = st.rng.weighted(['near', 'far', 'spot', 'short'] as const, (z) => ({ near: 0.3, far: 0.35, spot: 0.25, short: 0.1 })[z])
       rt.queueAction({ kind: 'corner', zone, height: st.rng.chance(0.5) ? 'driven' : 'floated', curl: st.rng.chance(0.6) ? 'in' : 'out' })
     } else {
@@ -438,16 +444,43 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       if (held > 0.8) act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0.3, chip: false, isTap: false } })
       return
     }
-    if (rt.kind === 'cross' && st.crosser && (hero.pos.y > 52 || hero.pos.y < 16)) {
-      // Wide: cross toward the best-placed runner in the box (with scatter).
-      if (held > 0.5) {
+    if (rt.kind === 'cross' && (hero.pos.y > 52 || hero.pos.y < 16)) {
+      // Wide: cross toward the best-placed runner in the box (with scatter). A sensible crosser waits for his
+      // runners to arrive in the box; a careless one hits it as soon as he has it.
+      const arrived = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 16 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12).length
+      if (held > 0.5 && (st.skill.read < 0.5 || arrived >= 2 || held > 2.4)) {
         const box = rt.agents
           .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 18 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12)
           .sort((p, q) => Math.abs(p.pos.y - GOAL_CENTER_Y) - Math.abs(q.pos.y - GOAL_CENTER_Y))[0]
-        const aim = box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
-        const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2) }
+        // A sensible crosser picks the space in the box a team-mate can attack and no defender holds; a careless one
+        // just hits it at the nearest body.
+        const space = (): Vec2 => {
+          let best = { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+          let bestV = -Infinity
+          for (let x = PITCH_LENGTH - 12; x <= PITCH_LENGTH - 5; x += 1.5) {
+            for (let y = GOAL_CENTER_Y - 7; y <= GOAL_CENTER_Y + 7; y += 1.5) {
+              const p = { x, y }
+              const dOpp = Math.min(...rt.agents.filter((o) => o.team === 'opp').map((o) => dist(o.pos, p)))
+              const dMate = Math.min(...rt.agents.filter((o) => o.team === 'hero' && !o.isHero && !o.isKeeper).map((o) => dist(o.pos, p)))
+              const v = Math.min(dOpp, 4) - 0.6 * dMate
+              if (v > bestV) {
+                bestV = v
+                best = p
+              }
+            }
+          }
+          return best
+        }
+        // (Into the corridor at the penalty spot, where the runners arrive, rather than onto a marked man.)
+        void space
+        // (A careless one does not look up: he hits it at the box in general.)
+        const aim = st.skill.read >= 0.5 ? { x: PITCH_LENGTH - 12, y: GOAL_CENTER_Y } : st.skill.read > 0.3 && box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+        // (Across 30 m a careless swipe is metres out: the scatter grows with the carelessness.)
+        const sc = st.skill.read >= 0.5 ? 1 : 1.5
+        const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6 * sc), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2 * sc) }
         const dir = norm(sub(tgt, hero.pos))
-        act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0, chip: false, isTap: false } })
+        // (Struck firmly enough to reach the far side of the box: the careless one often leaves it short.)
+        act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: st.skill.read >= 0.5 ? power(st, -0.11) : Math.max(0.45, Math.min(1.12, st.rng.normal(st.skill.powerMean - 0.15, st.skill.powerSd * sc))), curl: 0, chip: false, isTap: false } })
       }
       moveTo({ x: PITCH_LENGTH - 6, y: hero.pos.y }, true)
       return
