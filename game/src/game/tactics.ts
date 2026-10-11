@@ -114,7 +114,8 @@ export function shotQuality(p: Vec2, team: Team, w: AiWorld, pressure = 0): numb
 
 /** Reaction time (s) of an AI agent to a new ball event (pass / shot / loss). */
 export function reactionTime(a: Agent, difficulty = 1): number {
-  const read = a01(a.attrs.positioning) * 0.6 + a01(a.attrs.vision) * 0.4
+  // Reading the play (build 8: interceptions follow the defender's own Anticipation): Anticipation leads, Positioning and Vision help.
+  const read = a01(a.attrs.anticipation ?? a.attrs.positioning) * 0.5 + a01(a.attrs.positioning) * 0.3 + a01(a.attrs.vision) * 0.2
   const base = 0.34 - read * 0.2
   return a.team === 'opp' ? clampN(base / Math.max(0.7, difficulty), 0.1, 0.4) : clampN(base, 0.12, 0.4)
 }

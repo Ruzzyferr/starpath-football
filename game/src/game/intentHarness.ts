@@ -36,20 +36,20 @@ export const LEVELS = [40, 50, 60, 70, 80, 90] as const
 /** Base sheet OVR for curve levels. */
 const CURVE_BASE_OVR = 57
 
-export type IntentKind = 'shot' | 'shotBtn' | 'pass' | 'passRun' | 'through' | 'cross' | 'tackle'
-export const INTENT_KINDS: readonly IntentKind[] = ['shot', 'shotBtn', 'pass', 'passRun', 'through', 'cross', 'tackle']
+export type IntentKind = 'shot' | 'shotBtn' | 'pass' | 'shortPass' | 'passRun' | 'through' | 'cross' | 'tackle'
+export const INTENT_KINDS: readonly IntentKind[] = ['shot', 'shotBtn', 'pass', 'shortPass', 'passRun', 'through', 'cross', 'tackle']
 /** Kinds with an input-skill dimension (curve tables, monotonicity tests). */
 export const CURVE_KINDS: readonly IntentKind[] = ['shot', 'pass', 'through', 'cross', 'tackle']
 /** `atKeeper` (shots only): a bad input, struck straight at the keeper. */
 export type InputSkill = 'good' | 'sloppy' | 'atKeeper'
 
 const MOMENT: Record<IntentKind, HighlightKind> = {
-  shot: 'one_on_one', shotBtn: 'one_on_one', pass: 'build_up', passRun: 'build_up', through: 'counter', cross: 'cross', tackle: 'defend',
+  shot: 'one_on_one', shotBtn: 'one_on_one', pass: 'build_up', shortPass: 'build_up', passRun: 'build_up', through: 'counter', cross: 'cross', tackle: 'defend',
 }
 
 /** The attributes each intent kind is about (game/momentSkill). */
 export const KIND_ATTRS: Record<IntentKind, readonly AttributeKey[]> = {
-  shot: MOMENT_ATTRS.shot, shotBtn: MOMENT_ATTRS.shot, pass: MOMENT_ATTRS.pass, passRun: MOMENT_ATTRS.pass,
+  shot: MOMENT_ATTRS.shot, shotBtn: MOMENT_ATTRS.shot, pass: MOMENT_ATTRS.pass, shortPass: MOMENT_ATTRS.pass, passRun: MOMENT_ATTRS.pass,
   through: MOMENT_ATTRS.through, cross: MOMENT_ATTRS.cross, tackle: MOMENT_ATTRS.tackle,
 }
 
@@ -94,6 +94,11 @@ export interface TrialLog {
   hitY?: number
   hitZ?: number
   offTarget?: boolean
+  /** Passes: why it failed (`intercepted` = an opponent's first touch, `heavy` = the receiver's heavy touch, `out`, `timeout`). */
+  why?: string
+  /** Passes: the team-mate the human meant (id) and the one the ball was played to. */
+  meant?: string
+  playedTo?: string
 }
 
 const rnd = (rng: Rng, m: number, sd: number) => rng.normal(m, sd)
@@ -154,12 +159,16 @@ interface BotState {
 const mates = (rt: HighlightRuntime) => rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
 const opps = (rt: HighlightRuntime) => rt.agents.filter((a) => a.team === 'opp')
 
-/** The obvious open team-mate a person would pick (closest well-open one 8–28 m away, slightly preferring forward). */
-function obviousMate(rt: HighlightRuntime, from: Vec2): Agent | null {
+/** Clean short pass (playtester build 8): an unmarked team-mate 5–18 m away with a clear lane. */
+export const SHORT_PASS = { minD: 5, maxD: 18, open: 0.75, free: 5 } as const
+
+/** The obvious open team-mate a person would pick (closest well-open one 8–28 m away, slightly preferring forward; `short`: the clean short ball). */
+function obviousMate(rt: HighlightRuntime, from: Vec2, short = false): Agent | null {
   const o = opps(rt).map((a) => a.pos)
+  const [minD, maxD, minOpen, minFree] = short ? [SHORT_PASS.minD, SHORT_PASS.maxD, SHORT_PASS.open, SHORT_PASS.free] : [8, 28, 0.55, 3.5]
   const c = mates(rt)
     .map((m) => ({ m, d: dist(m.pos, from), open: laneOpenness(from, m.pos, o), free: Math.min(...o.map((p) => dist(p, m.pos))) }))
-    .filter((c) => c.d > 8 && c.d < 28 && c.open > 0.55 && c.free > 3.5)
+    .filter((c) => c.d > minD && c.d < maxD && c.open > minOpen && c.free > minFree)
     .sort((p, q) => p.d - (p.m.pos.x - from.x) * 0.3 - (q.d - (q.m.pos.x - from.x) * 0.3))[0]
   return c?.m ?? null
 }
@@ -288,10 +297,11 @@ function step(rt: HighlightRuntime, k: IntentKind, st: BotState, dt: number): vo
       rt.queueAction({ kind: 'btn', id: 'pass', dir: run })
       return
     }
-    case 'pass': {
+    case 'pass':
+    case 'shortPass': {
       rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
       if (st.acted) return
-      if (!st.intent) st.intent = obviousMate(rt, ball)
+      if (!st.intent) st.intent = obviousMate(rt, ball, k === 'shortPass')
       if (!st.intent) {
         // No obvious pass: a sensible player waits a little for one to open up.
         if (held > 3) st.done = true
@@ -302,7 +312,9 @@ function step(rt: HighlightRuntime, k: IntentKind, st: BotState, dt: number): vo
       if (st.input === 'sloppy' && dwell(rt, st, held)) return
       st.acted = true
       // Joystick toward the man (human error), then PASS.
-      const dir = rot(norm(sub(st.intent.pos, ball)), rnd(st.rng, 0, h.stickSd))
+      let dir = rot(norm(sub(st.intent.pos, ball)), rnd(st.rng, 0, h.stickSd))
+      // Clean short ball, good input: he looks at the target ring (MatchScene preview) and corrects the stick if it is on someone else.
+      for (let i = 0; k === 'shortPass' && st.input === 'good' && i < 3 && rt.passButtonTarget(dir) !== st.intent.id; i++) dir = rot(norm(sub(st.intent.pos, ball)), rnd(st.rng, 0, h.stickSd))
       rt.setControl({ move: dir, sprint: false })
       rt.queueAction({ kind: 'btn', id: 'pass', dir })
       return
@@ -355,13 +367,33 @@ function step(rt: HighlightRuntime, k: IntentKind, st: BotState, dt: number): vo
 /** A hero level: an OVR profile, or a number = the moment's own attributes set to it (curve tables). */
 export type Level = Profile | number
 
-function highlightFor(k: IntentKind, seed: number, level: Level) {
-  if (typeof level === 'string') return generatedHighlight(MOMENT[k], seed, { ovr: TEAM_OVR, heroOvr: PROFILES[level] })
-  const hl = generatedHighlight(MOMENT[k], seed, { ovr: TEAM_OVR, heroOvr: CURVE_BASE_OVR })
-  const hero = hl.scenario.players.find((p) => p.isHero)
-  if (hero) {
-    hero.attrs = { ...hero.attrs }
-    for (const a of KIND_ATTRS[k]) hero.attrs[a] = level
+/** Optional sheet overrides for the players around the hero (attribute → value). */
+export interface TrialSetup {
+  /** Applied to every outfield team-mate (e.g. the receivers' First Touch / Anticipation). */
+  mates?: Partial<Record<AttributeKey, number>>
+  /** Applied to every outfield opponent (pace, tackling, …). */
+  opps?: Partial<Record<AttributeKey, number>>
+  /** Applied to the hero on top of the level (e.g. Pace, Dribbling for a breakaway). */
+  hero?: Partial<Record<AttributeKey, number>>
+  /** Applied to the opposition keeper. */
+  keeper?: Partial<Record<AttributeKey, number>>
+}
+
+/** The overrides that apply to scenario player `p` (hero side `side`). */
+const overFor = (setup: TrialSetup, p: { isHero: boolean; role: string; side: string }, side: string) =>
+  p.isHero ? setup.hero : p.role === 'GK' ? (p.side === side ? undefined : setup.keeper) : p.side === side ? setup.mates : setup.opps
+
+function highlightFor(k: IntentKind, seed: number, level: Level, setup: TrialSetup = {}, kind: HighlightKind = MOMENT[k]) {
+  const hl = typeof level === 'string'
+    ? generatedHighlight(kind, seed, { ovr: TEAM_OVR, heroOvr: PROFILES[level] })
+    : generatedHighlight(kind, seed, { ovr: TEAM_OVR, heroOvr: CURVE_BASE_OVR })
+  for (const p of hl.scenario.players) {
+    const over = overFor(setup, p, hl.side)
+    if (p.isHero && typeof level === 'number') {
+      p.attrs = { ...p.attrs }
+      for (const a of KIND_ATTRS[k]) p.attrs[a] = level
+    }
+    if (over) p.attrs = { ...p.attrs, ...over }
   }
   return hl
 }
@@ -374,13 +406,14 @@ export function playIntent(
   input: InputSkill = 'good',
   difficulty: Difficulty = 'normal',
   assist: 'full' | 'half' | 'manual' = 'half',
+  setup: TrialSetup = {},
 ): TrialLog {
-  const rt = new HighlightRuntime(highlightFor(k, seed, level), { aimAssist: assist, slowMoAim: true, difficulty, seed: seed * 7919 + 101 })
+  const rt = new HighlightRuntime(highlightFor(k, seed, level, setup), { aimAssist: assist, slowMoAim: true, difficulty, seed: seed * 7919 + 101 })
   const st: BotState = {
     rng: new Rng(`intent:${k}:${seed}`), h: HUMAN[input], input, real: 0, heldSince: -1, heldSinceGame: -1, pressedAt: -1, actAt: -1, acted: false, intent: null, zone: null, kicked: false, done: false,
     log: { outcome: 'timeout', success: false },
   }
-  const passLike = k === 'pass' || k === 'passRun' || k === 'through' || k === 'cross'
+  const passLike = k === 'pass' || k === 'shortPass' || k === 'passRun' || k === 'through' || k === 'cross'
   const dt = 1 / 60
   let kickT = -1
   let resolved: boolean | null = null
@@ -392,13 +425,24 @@ export function playIntent(
       if (e.type === 'kick' && e.hero && kickT < 0) {
         kickT = st.real
         st.kicked = true
+        st.log.meant = st.intent?.id
+        st.log.playedTo = rt.passTargetId ?? undefined
       }
       // Tackle: the hero's first challenge decides it (won the ball, or lost / fouled).
       if (k === 'tackle' && resolved === null && 'by' in e && e.by === rt.hero.id && (e.type === 'tackle' || e.type === 'foul')) {
         resolved = e.type === 'tackle' && e.won
       }
       if (kickT < 0 || resolved !== null || !passLike) continue
-      if (e.type === 'out') resolved = false
+      if (e.type === 'out') {
+        resolved = false
+        st.log.why = 'out'
+      }
+      // First touch on the pass: a team-mate's heavy touch, or an opponent getting a foot to it.
+      if (e.type === 'touch' && !e.hero && !st.log.why) {
+        const a = rt.agents.find((x) => x.id === e.by)
+        if (a && rt.owner !== a) st.log.why = a.team === 'hero' ? 'heavy' : 'intercepted'
+        else if (a && a.team === 'opp') st.log.why = 'intercepted'
+      }
       // Cross: a team-mate getting his head (or a foot) to it first counts; an opponent's touch ends it.
       if (k === 'cross' && (e.type === 'header' || e.type === 'aerial' || e.type === 'touch' || e.type === 'save')) {
         const a = rt.agents.find((x) => x.id === e.by)
@@ -406,11 +450,14 @@ export function playIntent(
       }
     }
     // Pass / through ball: the next player to bring it under control (not a heavy touch) decides it, within 4 s.
-    if ((k === 'pass' || k === 'passRun' || k === 'through') && kickT >= 0 && resolved === null) {
+    if ((k === 'pass' || k === 'shortPass' || k === 'passRun' || k === 'through') && kickT >= 0 && resolved === null) {
       const o = rt.owner
       // A through ball is for the runner it was meant for; a pass for any team-mate.
       if (o && !o.isHero) resolved = o.team === 'hero' && (k !== 'through' || o === st.intent)
-      else if (st.real - kickT > 4) resolved = false
+      else if (st.real - kickT > 4) {
+        resolved = false
+        st.log.why ??= 'timeout'
+      }
     }
     // Shots: where the ball crosses the goal line.
     if ((k === 'shot' || k === 'shotBtn') && kickT >= 0 && !crossed && rt.ball.x >= PITCH_LENGTH) {
@@ -452,13 +499,14 @@ export function intentRate(
   input: InputSkill = 'good',
   difficulty: Difficulty = 'normal',
   assist: 'full' | 'half' | 'manual' = 'half',
+  setup: TrialSetup = {},
 ): IntentRate {
   let ok = 0
   let off = 0
   let used = 0
   let skipped = 0
   for (let s = 1; s <= n; s++) {
-    const r = playIntent(k, s, level, input, difficulty, assist)
+    const r = playIntent(k, s, level, input, difficulty, assist, setup)
     if (r.outcome === 'no_kick' || (k === 'tackle' && r.outcome === 'no_challenge')) {
       skipped++
       continue
@@ -468,4 +516,322 @@ export function intentRate(
     if (r.offTarget) off++
   }
   return { rate: used ? ok / used : 0, offTarget: used ? off / used : 0, skipped, n: used }
+}
+
+export interface ReceptionRate {
+  /** Share of clean short passes played to the man meant that a team-mate brought under control. */
+  rate: number
+  /** Share of presses that went to a different team-mate than the one meant. */
+  wrongTarget: number
+  n: number
+}
+
+/**
+ * Clean-short-pass reception (playtester build 8): an unmarked team-mate 5–18 m away with an open lane, the
+ * hero's pass played to him. `level` = the hero's pass attributes, `setup.mates` e.g. the receivers' First Touch.
+ */
+export function shortPassReception(level: Level, n: number, input: InputSkill = 'good', setup: TrialSetup = {}): ReceptionRate {
+  let ok = 0
+  let used = 0
+  let wrong = 0
+  let kicked = 0
+  for (let s = 1; s <= n; s++) {
+    const r = playIntent('shortPass', s, level, input, 'normal', 'half', setup)
+    if (r.outcome === 'no_kick') continue
+    kicked++
+    if (r.meant !== r.playedTo) {
+      wrong++
+      continue
+    }
+    used++
+    if (r.success) ok++
+  }
+  return { rate: used ? ok / used : 0, wrongTarget: kicked ? wrong / kicked : 0, n: used }
+}
+
+// ───────────────────────── Pressure on the ball (playtester build 8) ─────────────────────────
+
+/** Moments that start with the hero on the ball in open play. */
+export const ON_BALL_KINDS: readonly HighlightKind[] = ['build_up', 'counter', 'one_on_one', 'cross', 'edge_of_box', 'counter_2v1', 'hold_up', 'dribble', 'long_shot', 'switch_play']
+
+export interface PressureLog {
+  /** Game seconds from the hero's first control to an opponent winning it (−1 = kept it). */
+  lostAt: number
+  /** The winner came from behind the hero. */
+  behind: boolean
+  /** Distance (m) of the nearest outfield opponent when the hero got the ball. */
+  nearest0: number
+  /** The winner started behind the hero (a chaser), not in front of him. */
+  chaser: boolean
+}
+
+/**
+ * The hero holds the ball (`idle`: stands on it, `run`: carries it toward goal, sprinting) and does nothing else;
+ * logs when (and from where) an opponent takes it. Used for the start-of-moment grace window and breakaway chases.
+ */
+export function pressureTrial(kind: HighlightKind, seed: number, mode: 'idle' | 'run', setup: TrialSetup = {}, heroOvr: number = PROFILES.start, maxT = 6): PressureLog {
+  const hl = generatedHighlight(kind, seed, { ovr: TEAM_OVR, heroOvr })
+  for (const p of hl.scenario.players) {
+    const over = overFor(setup, p, hl.side)
+    if (over) p.attrs = { ...p.attrs, ...over }
+  }
+  const rt = new HighlightRuntime(hl, { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 101 })
+  const goal = { x: PITCH_LENGTH, y: GOAL_CENTER_Y }
+  let t0 = -1
+  let nearest0 = Infinity
+  const startX = new Map<string, number>()
+  let heroX0 = 0
+  for (let f = 0; f < 60 * 30 && !rt.finished; f++) {
+    const hero = rt.hero
+    if (rt.phase === 'live' && rt.owner === hero) {
+      if (t0 < 0) {
+        t0 = rt.time
+        for (const a of opps(rt)) if (!a.isKeeper) nearest0 = Math.min(nearest0, dist(a.pos, hero.pos))
+        for (const a of rt.agents) startX.set(a.id, a.pos.x)
+        heroX0 = hero.pos.x
+      }
+      if (mode === 'run') {
+        const d = sub(goal, hero.pos)
+        rt.setControl({ move: norm(d), sprint: true })
+      } else rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+    } else rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+    const facing = hero.facing
+    const hp = { ...hero.pos }
+    const had = rt.owner === hero
+    rt.update(1 / 60)
+    rt.drainEvents()
+    if (t0 >= 0 && had && rt.owner !== hero) {
+      const o = rt.owner
+      // A loose ball after a challenge / shoulder: whoever takes it next decides (the ball is gone either way).
+      let winner = o
+      for (let g = 0; g < 90 && !winner && !rt.finished; g++) {
+        rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+        rt.update(1 / 60)
+        rt.drainEvents()
+        winner = rt.owner
+      }
+      if (winner && winner.team === 'opp') {
+        const fwd = { x: Math.cos(facing), y: Math.sin(facing) }
+        const to = norm(sub(winner.pos, hp))
+        return { lostAt: rt.time - t0, behind: to.x * fwd.x + to.y * fwd.y < -0.45, nearest0, chaser: (startX.get(winner.id) ?? 0) < heroX0 - 1 }
+      }
+      return { lostAt: -1, behind: false, nearest0, chaser: false }
+    }
+    if (t0 >= 0 && rt.time - t0 > maxT) break
+    if (mode === 'run' && hero.pos.x > PITCH_LENGTH - 14) break
+  }
+  return { lostAt: -1, behind: false, nearest0, chaser: false }
+}
+
+export interface PressureRate {
+  /** Share of trials lost within `within` s of the first control. */
+  lostEarly: number
+  /** Share lost at all (within the trial). */
+  lost: number
+  /** Share lost to a man coming from behind. */
+  behind: number
+  /** Share lost to a man who started behind the hero (caught from behind on a breakaway). */
+  caught: number
+  n: number
+}
+
+export function pressureRate(kinds: readonly HighlightKind[], n: number, mode: 'idle' | 'run', within = 1.5, setup: TrialSetup = {}, heroOvr: number = PROFILES.start, maxT = 6): PressureRate {
+  let early = 0
+  let lost = 0
+  let behind = 0
+  let caught = 0
+  let used = 0
+  for (const k of kinds) {
+    for (let s = 1; s <= n; s++) {
+      const r = pressureTrial(k, s, mode, setup, heroOvr, maxT)
+      if (!Number.isFinite(r.nearest0)) continue
+      used++
+      if (r.lostAt >= 0) {
+        lost++
+        if (r.lostAt <= within) early++
+        if (r.behind) behind++
+        if (r.chaser) caught++
+      }
+    }
+  }
+  return { lostEarly: used ? early / used : 0, lost: used ? lost / used : 0, behind: used ? behind / used : 0, caught: used ? caught / used : 0, n: used }
+}
+
+/**
+ * Pure breakaway (playtester build 8: "when I run, the man behind me catches up and takes it"): a 1v1 with one
+ * chaser `gap` m behind the hero (the other outfield opponents far behind), the hero carries it at goal at full
+ * sprint. True = the chaser (or anyone) won the ball before the hero reached the edge of the box.
+ */
+export function breakawayCaught(seed: number, setup: TrialSetup, gap = 3): boolean {
+  const hl = generatedHighlight('one_on_one', seed, { ovr: TEAM_OVR, heroOvr: PROFILES.start })
+  const hero = hl.scenario.players.find((p) => p.isHero)!
+  // From the halfway line: a 35 m run to the edge of the box.
+  hero.pos = { x: PITCH_LENGTH / 2, y: hero.pos.y }
+  let first = true
+  for (const p of hl.scenario.players) {
+    const over = overFor(setup, p, hl.side)
+    if (over) p.attrs = { ...p.attrs, ...over }
+    if (p.side !== hl.side && p.role !== 'GK') {
+      // One chaser on his shoulder-blade, the rest out of it.
+      p.pos = first ? { x: hero.pos.x - gap, y: hero.pos.y + 0.8 } : { x: hero.pos.x - 25, y: p.pos.y }
+      first = false
+    }
+  }
+  hl.scenario.ball.pos = { ...hero.pos }
+  hl.scenario.ball.ownerId = hero.id
+  const rt = new HighlightRuntime(hl, { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 101 })
+  for (let f = 0; f < 60 * 20 && !rt.finished; f++) {
+    const h = rt.hero
+    rt.setControl(rt.owner === h ? { move: norm(sub({ x: PITCH_LENGTH, y: GOAL_CENTER_Y }, h.pos)), sprint: true } : { move: { x: 0, y: 0 }, sprint: false })
+    rt.update(1 / 60)
+    rt.drainEvents()
+    if (rt.owner && rt.owner.team === 'opp' && !rt.owner.isKeeper) {
+      if (BREAKAWAY_DEBUG) console.log(`caught seed=${seed} t=${rt.time.toFixed(2)} by=${rt.owner.id} at x=${rt.owner.pos.x.toFixed(1)} heroX=${h.pos.x.toFixed(1)}`)
+      return true
+    }
+    if (rt.phase === 'live' && rt.owner !== h && rt.owner?.team !== 'hero' && !rt.owner) {
+      // Knocked loose: whoever is next on it.
+      continue
+    }
+    if (h.pos.x > PITCH_LENGTH - 18) return false
+  }
+  return false
+}
+
+export let BREAKAWAY_DEBUG = false
+export function setBreakawayDebug(v: boolean): void {
+  BREAKAWAY_DEBUG = v
+}
+
+/** Share of breakaways caught over seeds 1..n. */
+export function breakawayRate(n: number, setup: TrialSetup, gap = 3): number {
+  let c = 0
+  for (let s = 1; s <= n; s++) if (breakawayCaught(s, setup, gap)) c++
+  return c / n
+}
+
+// ───────────────────────── Setup phase & support (playtester build 8) ─────────────────────────
+
+/** Attacking moments whose opening is scripted for an AI team-mate on the ball (the feed to the hero). */
+export const SETUP_KINDS: readonly HighlightKind[] = ['long_ball_control', 'header', 'shoulder_duel', 'timed_run']
+
+/**
+ * Setup-phase possession loss: the moment opens with a team-mate on the ball (the hero idle — the worst case: the
+ * feed waits longest); true = an opponent had the ball before the team-mate released it.
+ */
+export function setupLost(kind: HighlightKind, seed: number): boolean | null {
+  const rt = new HighlightRuntime(generatedHighlight(kind, seed, { ovr: TEAM_OVR, heroOvr: PROFILES.start }), { aimAssist: 'half', difficulty: 'normal', seed: seed * 7919 + 101 })
+  const o0 = rt.owner
+  if (!o0 || o0.isHero || o0.team !== 'hero') return null
+  for (let f = 0; f < 60 * 12 && !rt.finished; f++) {
+    rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+    rt.update(1 / 60)
+    for (const e of rt.drainEvents()) if (e.type === 'kick' && e.by === o0.id) return false
+    if (rt.owner?.isHero) return false
+    if ((rt.owner && rt.owner.team === 'opp') || rt.result) return true
+  }
+  return false
+}
+
+export function setupLossRate(kinds: readonly HighlightKind[], n: number): { rate: number; n: number } {
+  let lost = 0
+  let used = 0
+  for (const k of kinds) {
+    for (let s = 1; s <= n; s++) {
+      const r = setupLost(k, s)
+      if (r === null) continue
+      used++
+      if (r) lost++
+    }
+  }
+  return { rate: used ? lost / used : 0, n: used }
+}
+
+export interface SupportLog {
+  /** Samples (every 0.5 s on the ball) with at least one viable pass option. */
+  withOption: number
+  samples: number
+  /** Mean viable options per sample. */
+  mean: number
+  /** Samples with an option ahead / to the left / to the right of the hero (pitch frame). */
+  ahead: number
+  left: number
+  right: number
+}
+
+/** A viable pass option: an onside team-mate 6–30 m away, the lane open, nobody within 3 m of him. */
+export function viableOptions(rt: HighlightRuntime): Agent[] {
+  const from = { x: rt.ball.x, y: rt.ball.y }
+  const o = opps(rt).filter((a) => !a.isKeeper).map((a) => a.pos)
+  const off = rt.offsideMates()
+  return mates(rt).filter((m) => {
+    const d = dist(m.pos, from)
+    return d >= 6 && d <= 30 && !off.has(m.id) && laneOpenness(from, m.pos, o) > 0.45 && Math.min(...o.map((p) => dist(p, m.pos))) > 3
+  })
+}
+
+/** Carries the ball toward goal (`run`, at a jog) for up to 4 s and samples the pass options twice a second. */
+export function supportTrial(kind: HighlightKind, seed: number, setup: TrialSetup = {}): SupportLog {
+  const hl = generatedHighlight(kind, seed, { ovr: TEAM_OVR, heroOvr: PROFILES.start })
+  for (const p of hl.scenario.players) {
+    const over = overFor(setup, p, hl.side)
+    if (over) p.attrs = { ...p.attrs, ...over }
+  }
+  const rt = new HighlightRuntime(hl, { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 101 })
+  const log: SupportLog = { withOption: 0, samples: 0, mean: 0, ahead: 0, left: 0, right: 0 }
+  let t0 = -1
+  let next = 0
+  for (let f = 0; f < 60 * 20 && !rt.finished; f++) {
+    const h = rt.hero
+    const on = rt.phase === 'live' && rt.owner === h
+    rt.setControl(on ? { move: norm(sub({ x: PITCH_LENGTH, y: GOAL_CENTER_Y }, h.pos)), sprint: false } : { move: { x: 0, y: 0 }, sprint: false })
+    rt.update(1 / 60)
+    rt.drainEvents()
+    if (!on) {
+      if (t0 >= 0) break
+      continue
+    }
+    if (t0 < 0) {
+      t0 = rt.time
+      next = t0 + 0.5
+    }
+    if (rt.time >= next) {
+      next += 0.5
+      const v = viableOptions(rt)
+      log.samples++
+      log.mean += v.length
+      if (v.length) log.withOption++
+      if (v.some((m) => m.pos.x > h.pos.x + 3)) log.ahead++
+      if (v.some((m) => m.pos.y < h.pos.y - 4)) log.left++
+      if (v.some((m) => m.pos.y > h.pos.y + 4)) log.right++
+    }
+    if (rt.time - t0 > 4) break
+  }
+  if (log.samples) log.mean /= log.samples
+  return log
+}
+
+export function supportRate(kinds: readonly HighlightKind[], n: number, setup: TrialSetup = {}): { withOption: number; mean: number; ahead: number; sides: number; samples: number; moments: number } {
+  let mo = 0
+  let tr = 0
+  let w = 0
+  let m = 0
+  let ah = 0
+  let sides = 0
+  let s = 0
+  for (const k of kinds) {
+    for (let i = 1; i <= n; i++) {
+      const r = supportTrial(k, i, setup)
+      if (r.samples) {
+        tr++
+        if (r.withOption) mo++
+      }
+      w += r.withOption
+      m += r.mean * r.samples
+      ah += r.ahead
+      sides += Math.min(r.left, r.right)
+      s += r.samples
+    }
+  }
+  return { withOption: s ? w / s : 0, mean: s ? m / s : 0, ahead: s ? ah / s : 0, sides: s ? sides / s : 0, samples: s, moments: tr ? mo / tr : 0 }
 }

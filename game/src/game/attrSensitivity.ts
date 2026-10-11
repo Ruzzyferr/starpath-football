@@ -275,7 +275,8 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
           if (turnAt < 0 && r.time > 0.8) turnAt = t
           r.setControl({ move: { x: turnAt < 0 ? 1 : -1, y: 0 }, sprint: false })
           if (turnAt >= 0 && back < 0 && r.hero.vel.x < -3) back = t - turnAt
-        }), undefined, 3.5)
+          // 6 s: a heavy-legged turner carrying it at pace (build 8 dribble pace) needs longer than 3.5 s to come back.
+        }), undefined, 6)
         if (back > 0) ts.push(back)
       }
       return mean(ts)

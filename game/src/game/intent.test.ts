@@ -17,13 +17,15 @@ import { CURVE_KINDS, INTENT_KINDS, LEVELS, PROFILE_KEYS, intentRate, playIntent
 const ENV = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
 
 /** Starting hero (OVR 57), good input: the playtester targets. */
-const START_MIN: Partial<Record<IntentKind, number>> = { shot: 0.65, shotBtn: 0.65, pass: 0.85, passRun: 0.7, through: 0.65, cross: 0.6, tackle: 0.55 }
+const START_MIN: Partial<Record<IntentKind, number>> = { shot: 0.65, shotBtn: 0.65, pass: 0.85, shortPass: 0.9, passRun: 0.7, through: 0.65, cross: 0.6, tackle: 0.55 }
 
 /** 1v1 to a corner by Finishing-group level (owner: ~55–65 % at 50, ~75 % at 70, ~88 % at 90). */
 const SHOT_BANDS: Record<number, [number, number]> = { 50: [0.55, 0.7], 70: [0.7, 0.84], 90: [0.82, 0.95] }
 
 const N = 150
-const curve = (k: IntentKind, input: InputSkill) => LEVELS.map((lv) => intentRate(k, lv, N, input).rate)
+/** Through balls: a ~10 % harness ceiling (the bot's runner vs the button's) needs the bigger sample for a stable curve. */
+const curveN = (k: IntentKind) => (k === 'through' ? 300 : N)
+const curve = (k: IntentKind, input: InputSkill) => LEVELS.map((lv) => intentRate(k, lv, curveN(k), input).rate)
 
 describe('intent: a starting hero with sensible input succeeds', () => {
   for (const k of INTENT_KINDS) {
@@ -47,7 +49,8 @@ describe('intent: success follows the moment attributes, input skill always matt
       const sloppy = curve(k, 'sloppy')
       for (let i = 1; i < good.length; i++) expect(good[i]!).toBeGreaterThanOrEqual(good[i - 1]! - 0.005)
       // A real spread from attribute 40 to 90 (no plateau), and never pinned at 100 %.
-      expect(good[good.length - 1]! - good[0]!).toBeGreaterThanOrEqual(0.12)
+      // Build 8: reception (receiver meets the ball, First Touch / pass quality) lifts a weak passer — pass 88 → 98.
+      expect(good[good.length - 1]! - good[0]!).toBeGreaterThanOrEqual(k === 'pass' ? 0.095 : 0.12)
       expect(good[good.length - 1]!).toBeLessThan(0.99)
       for (let i = 0; i < good.length; i++) expect(good[i]! - sloppy[i]!).toBeGreaterThanOrEqual(0.2)
     }, 300_000)

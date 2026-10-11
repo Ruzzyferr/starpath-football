@@ -116,7 +116,7 @@ export interface Agent {
 
 /** What an AI agent is currently trying to do. */
 export type AgentIntent =
-  | { kind: 'run'; to: Vec2; until: number; chase?: boolean }
+  | { kind: 'run'; to: Vec2; until: number; chase?: boolean; support?: boolean }
   | { kind: 'press'; target: string }
   | { kind: 'mark'; target: string }
   | { kind: 'hold' }

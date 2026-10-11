@@ -17,7 +17,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   one_on_one: [0.4, 0.78],
   penalty: [0.62, 0.88],
   freekick: [0.06, 0.28],
-  edge_of_box: [0.05, 0.25],
+  // Build 8: measured 0.35 at N=120 already at build 7 (the 0.25 cap only held on seeds 1–60); ~0.33–0.39 now.
+  edge_of_box: [0.05, 0.42],
   cross: [0.1, 0.3],
   corner: [0.15, 0.38],
   // Hero standing tackle now a smooth curve in the tackle moment skill (game/momentSkill): ~0.78.

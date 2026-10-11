@@ -143,6 +143,36 @@ export function supportTarget(a: Agent, w: AiWorld, ballX0: number, rng: Rng): V
   return best
 }
 
+/**
+ * Showing for the hero on the ball (playtester build 8: "no pass on left or right"): a team-mate offers on his
+ * `side` (−1 = toward y 0, +1 = toward y max), level with him or a little ahead, 8–14 m off, onside and in an
+ * open lane. Positioning picks the spot (a poor one takes the first that looks fine, a good one the freest).
+ */
+export function heroSupportSpot(a: Agent, w: AiWorld, hero: Agent, side: -1 | 1, rng: Rng): Vec2 {
+  const dir = attackDir(a.team)
+  const opp = teamOf(w, other(a.team)).filter((o) => !o.isKeeper).map((o) => o.pos)
+  const line = offsideLineX(w, a.team)
+  const pos = a01(a.attrs.positioning)
+  let best: Vec2 | null = null
+  let bestS = -Infinity
+  // Where the hero will be in a second: a supporting run arrives with him, not where he was.
+  const h = { x: hero.pos.x + hero.vel.x * 0.9, y: hero.pos.y + hero.vel.y * 0.9 }
+  for (const [ahead, off] of [[0, 9], [5, 9], [9, 8], [3, 13], [12, 5], [-3, 11]] as const) {
+    let p = inField({ x: h.x + dir * ahead, y: h.y + side * off }, 3)
+    if (p.x * dir > line * dir - 0.8) p = { x: line - dir * 0.8, y: p.y }
+    // A spot that has drifted to the hero's other side is not this man's.
+    if ((p.y - h.y) * side < 4) continue
+    const open = laneOpenness(h, p, opp)
+    const space = clamp01(nearestDist(p, opp) / 7)
+    const s = open * 1.3 + space * 0.9 + (ahead * dir > 0 ? 0.15 : 0) - dist(p, a.pos) * 0.015 + rng.range(-0.5, 0.5) * (1 - pos)
+    if (s > bestS) {
+      bestS = s
+      best = p
+    }
+  }
+  return best ?? inField({ x: h.x, y: h.y + side * 10 }, 3)
+}
+
 const nearestDist = (p: Vec2, others: readonly Vec2[]) => {
   let m = Infinity
   for (const o of others) m = Math.min(m, dist(p, o))
