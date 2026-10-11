@@ -2092,3 +2092,110 @@ Değişen sabitler (`runtime.ts`): `RECEIVE`, `receiveReact`, `receiveWeight`, `
 | özensiz / güçlü | 60 | 55 | 57 | 60 | 60 | 63 | 60 |
 
 </details>
+
+## Build 9: kademeli başarı, düz türler, kolay türler, gerçekten özensiz bot (Ekim 2026)
+
+Sahip (build 9, gönderim öncesi son iş): gol anları "ya gol ya hiç" olmasın; düz kalan türler statla yükselsin; çok kolay türler adil olsun; "özensiz" bot gerçekten özensiz oynasın; antrenman serbest vuruşunda iyi / özensiz farkı ≥ 20 puan.
+
+Ölçüm: `game/src/game/kindMatrix.ts` (insan benzeri bot `good` / `novice`, yarım yardım, normal; takımlar OVR 62, başlangıç kahramanı OVR 57; türün kahraman statları 40 / 65 / 90; rakip zayıf / orta / güçlü = tüm statlar −15 / 0 / +15; N=60, deterministik). Sabitlenen: `game/src/game/balance9.test.ts`. "Önce" = build 8 matrisi (eski başarı tanımı: gol türlerinde sadece gol).
+
+### 1. Kademeli başarı (`sim/match/tier.ts`)
+
+- **Tam (full):** gol / asist (gol türleri); diğer türlerde eski kural (savundu, top kaldı, pas buldu…).
+- **Kısmi (partial), ödülün yarısı:** kalecinin uzanmak zorunda kaldığı plase şut (≥ %35 uzanma), menzilden (≥ 18 m) kaleciyi gövdesinden ≥ 0,6 m uzağa ya da dalışa zorlayan şut, direk, kahramanın kazandığı ve kaleye yönelttiği kafa vuruşu, yakın mesafe dönen top kurtarışı, ortasının / kornerinin takım arkadaşı tarafından havada kazanılması, ortasının dokunulmadan tehlike bölgesine (6 pas–penaltı noktası arası, direkler ± 2 m) ulaşması (açık oyun), takım arkadaşının ondan gelen topla şut çekmesi, son çizgi koşusunda pasın ofsaytsız atıldığı an koşuda olmak. Ofsayt bayrağı hep başarısız; kurtarılan penaltı kaçmış penaltıdır (sadece direk kısmi).
+- **Tüketiciler (`graphify affected HighlightResult`):** runtime sonucu damgalar (`chance`, `tier`); maç motoru (`engine.applyHighlight`) atlanan anlarda da kademeyi çıkarır; reyting (`highlightRatingDelta`): kısmi = o türün gol deltasının **yarısı** (form, XP ve güven reytingden okunur); reyting kaydı ve maç sonu kırılımı "kısmi başarı" yazar; an sonu yazısı TR/EN: "GOL!" / "İSABETLİ!" + "Kaleci kurtardı · kısmi başarı" (ya da "FIRSAT!" + "Net fırsat yarattın · kısmi başarı", "DİREK!") / "KAÇTI"; Anlar listesi "(kısmi başarı)". Golden güncellendi (reyting değişti); BALANCE=1 1000/2000/3000 geçti (kariyer OVR ±1, itibar +1…+4 puan).
+
+### Önce → sonra, tür bazında (%, iyi girdi; gol türlerinde parantez = gol)
+
+| tür | başlangıç iyi/orta: önce → sonra | 40 → 90 önce | 40 → 90 sonra | özensiz başlangıç: önce → sonra | güçlü / zayıf rakip (sonra) |
+|---|---|---|---|---|---|
+| one_on_one | 43 → **80 (68)** | 55 → 65 | 60 (55) → 88 (83) | 45 → 60 | 77 / 82 |
+| penalty | 75 → **82 (80)** | 73 → 75 | 78 (75) → 93 (90) | 48 → 47 | 78 / 92 |
+| freekick | 20 → **53 (27)** | 18 → 28 | 57 (20) → 50 (35) | 15 → 48 | 42 / 57 |
+| edge_of_box | 38 → **60 (53)** | 33 → 33 | 47 (38) → 85 (82) | 35 → 43 | 47 / 63 |
+| long_shot | 23 → **53 (28)** | 33 → 20 | 53 (22) → 68 (48) | 25 → 50 | 48 / 62 |
+| cross | 23 → **62 (22)** | 30 → 23 | 62 (25) → 67 (23) | 13 → 63 | 57 / 70 |
+| corner | 28 → **45 (30)** | 18 → 55 | 32 (15) → 65 (48) | 30 → 40 | 33 / 55 |
+| header | 23 → **30 (23)** | 10 → 43 | 18 (12) → 50 (48) | 15 → 32 | 30 / 32 |
+| corner_kick | 3 → **20 (7)** | 3 → 8 | 30 (13) → 18 (10) | 0 → 20 | 12 / 30 |
+| rebound | 10 → **38 (27)** | 10 → 23 | 38 (22) → 38 (33) | 25 → 32 | 37 / 42 |
+| counter_2v1 | 38 → **53 (47)** | 43 → 50 | 38 (35) → 50 (48) | 35 → 53 | 42 / 53 |
+| timed_run | 8 → **23 (8)** | 5 → 20 | 23 (8) → 30 (17) | 13 → 25 | 15 / 20 |
+| defend | 85 → **53** | 70 → 93 | 43 → 83 | 57 → 48 | 32 / 75 |
+| defend_1v1 | 85 → **77** | 68 → 93 | 62 → 87 | 68 → 60 | 47 / 85 |
+| recovery_run | 80 → **70** | 68 → 83 | 68 → 88 | 78 → 68 | 50 / 77 |
+| interception | 65 → **63** | 60 → 90 | 50 → 77 | 70 → 72 | 48 / 82 |
+| block | 53 → **60** | 55 → 45 | 52 → 62 | 63 → 50 | 50 / 52 |
+| back_post | 35 → **38** | 35 → 38 | 32 → 33 | 43 → 40 | 28 / 38 |
+| press_trap | 53 → **45** | 38 → 63 | 43 → 30 | 57 → 35 | 27 / 45 |
+| gk_save | 68 → **75** | 65 → 78 | 60 → 78 | 57 → 63 | 73 / 80 |
+| gk_1v1 | 70 → **47** | 63 → 73 | 45 → 48 | 70 → 37 | 30 / 67 |
+| gk_sweep | 80 → **67** | 75 → 78 | 62 → 67 | 73 → 62 | 48 / 80 |
+| gk_claim | 95 → **82** | 80 → 95 | 75 → 90 | 83 → 77 | 70 / 88 |
+| fk_wall | 85 → **73** | 75 → 83 | 67 → 78 | 78 → 67 | 68 / 73 |
+| gk_distribution | 70 → **72** | 70 → 70 | 70 → 77 | 63 → 63 | 65 / 73 |
+| hold_up | 65 → **57** | 60 → 83 | 60 → 68 | 45 → 37 | 55 / 63 |
+| long_ball_control | 50 → **48** | 40 → 63 | 48 → 63 | 38 → 40 | 25 / 63 |
+| shoulder_duel | 50 → **48** | 33 → 68 | 32 → 77 | 35 → 33 | 10 / 72 |
+| dribble | 57 → **42** | 40 → 65 | 22 → 70 | 53 → 43 | 30 / 38 |
+| switch_play | 38 → **37** | 25 → 40 | 27 → 40 | 38 → 30 | 33 / 40 |
+
+### Neler değişti (hepsi stata bağlı)
+
+- **Taşıyan AI simetrisi:** AI topla koşarken kahramanla aynı kural (`dribblePace` × `AI_CARRY_PACE` 0,96); eskiden sprintinin %80'iyle koşuyordu, kaçırılan taşıyan hemen yeniden yakalanıyordu (defend 85 → 53, defend_1v1 85 → 77, recovery_run 80 → 70; eğriler 43 → 83 / 62 → 87 / 68 → 88).
+- **Takım arkadaşı savunma yardımı** `DEFEND_HELP` 0,35 (savunma anı kahramanın işi).
+- **Şut gücü** Şut Gücü'ne bağlı (`shotSpeed`: 40 → 27, 62 → 29,7 (aynı), 90 → 33 m/s; serbest vuruş eski eğim), menzilden bitirici avantajı Şut Gücü / Falso ağırlıklı (long_shot gol 22 → 48).
+- **Blok:** BLOK açıklığı Pozisyon / Agresiflik'e (0,52 → 0,88 m) ve artık taban değil, kendi gövdesi (block 52 → 62).
+- **Kafa düellosu:** Kafa vuruşu 0,25 → 0,40, Sıçrama 0,55 → 0,42 ağırlık.
+- **Dağıtım:** kalecinin elinden çıkan top Dağıtım'la sertleşir (×0,89 → ×1,14); rakibin kahraman pasını kesme şansı pas kalitesine bağlı (×1,06 → ×0,76).
+- **Rakip serbest vuruşçu** gürültüsü 1,3 → 1,15 (fk_wall 85 → 73); kahraman kaleci Refleks'le daha uzun el.
+- **Satılmak:** atak AI'nın çalımı Çeviklik'e göre daha hızlı yaklaşan savunmacıyı satar, İvme'yle daha çabuk toparlanır.
+- **Bot (sadece ölçüm aracı, `humanBot.ts`):** sabır gerçek saniye değil maç saati (Soğukkanlılık'ın ağır çekimi botun kendi kararını değiştiriyordu: edge_of_box Soğukkanlılık'la düşüyordu); son çizgi koşusunda çağrıyı çizgiye göre zamanlar; acemi 3,5 m'den dalar (aceleci müdahale), iyi olan BLOK'a basılı tutar; acemi kaleci açıdan kayar ve 1v1'de erken çıkar (ya da hiç çıkmaz).
+
+### Antrenman serbest vuruşu (`game/training/**`)
+
+İyi / özensiz (40 / 50 / 60 / 70 / 80 / 90): önce 54/40, 60/44, 65/46, 86/53, 89/39, 91/42 (fark 14, 16, 19…) → sonra 58/37, 60/36, 66/38, 80/33, 86/33, 89/28 (fark **21, 24, 28, 47, 53, 61**). Kök neden: yayılım (1,8 × gürültü) özensiz atışları da kapılara sokuyordu; ortadan gol tam puandı. Değişen: kapı içi gol 20 puan, ortadan gol 10'dan başlayıp kapıya doğru artar (`curlGoalPoints`), `SET_PIECE_NOISE` 1,8 → 1,4, seans 5 → 8 vuruş, ortaya kurtarılan 0 puan.
+
+### Açık konular (dürüst liste)
+
+- Hâlâ bandın altında (iyi, başlangıç): header 30, corner 45, corner_kick 20, rebound 38, timed_run 23, switch_play 37, back_post 38, press_trap 45, dribble 42, gk_1v1 47, hold_up/long_ball_control ~48–57. Gol oranları gerçekçi kaldı; bu türlerde başarı tanımı ya da bot davranışı ayrıca ele alınmalı.
+- Statla düz / ters kalanlar: back_post (32 → 33), corner_kick, cross başarısı (62 → 67; gol düz), rebound, switch_play (27 → 40 hafif), press_trap (43 → 30, ters: kahramanın statları neredeyse hiç devrede değil; pas okuma mekaniği gerekiyor), gk_1v1 ve gk_sweep (düz).
+- Özensiz bot farkı (insan benzeri bot): cross / freekick / long_shot kısmi başarı yüzünden 3–5 puana indi (gol oranında fark sürüyor); interception'da özensiz hâlâ iyiden iyi (72 / 63). Niyet harness'ının 5 eğrisinde fark ≥ 20 puan (testle sabit).
+- edge_of_box gol oranı ortalama botla %56'ya çıktı (bot artık menzilden panik şutu çekmiyor, ceza sahasına giriyor); feel bantları ölçüme göre yeniden ayarlandı (freekick, edge_of_box, cross, gk_1v1, long_shot, timed_run, shoulder_duel, press_trap).
+- Rol denge kontrolü (ST / LW / CB, 12 kariyer): tüm Δ ±%4 içinde (oynanan an reyting Δ, kariyer OVR, itibar, kariyer reytingi); CB itibar farkı −%3,6 / +%3,7 (build 8: −%7,9 / +%5,9).
+
+<details><summary>Build 9 tür matrisi (özet: başlangıç / 40 / 65 / 90 / özensiz / güçlü / zayıf)</summary>
+
+```
+S one_on_one | start 80(68) | 40 60(55) 65 80(75) 90 88(83) | sloppy 60(43) (40 63(28) 90 50(32)) | strong 77(68) weak 82(78) | 40vsStrong 68(53) 90vsWeak 92(90)
+S penalty | start 82(80) | 40 78(75) 65 90(88) 90 93(90) | sloppy 47(45) (40 48(43) 90 55(42)) | strong 78(77) weak 92(90) | 40vsStrong 73(70) 90vsWeak 95(92)
+S freekick | start 53(27) | 40 57(20) 65 58(18) 90 50(35) | sloppy 48(22) (40 48(20) 90 35(15)) | strong 42(17) weak 57(30) | 40vsStrong 47(18) 90vsWeak 65(52)
+S edge_of_box | start 60(53) | 40 47(38) 65 68(60) 90 85(82) | sloppy 43(27) (40 40(18) 90 57(43)) | strong 47(45) weak 63(58) | 40vsStrong 40(32) 90vsWeak 82(80)
+S cross | start 62(22) | 40 62(25) 65 70(28) 90 67(23) | sloppy 63(23) (40 57(18) 90 70(20)) | strong 57(20) weak 70(33) | 40vsStrong 48(13) 90vsWeak 80(32)
+S corner | start 45(30) | 40 32(15) 65 45(33) 90 65(48) | sloppy 40(28) (40 28(22) 90 55(40)) | strong 33(17) weak 55(40) | 40vsStrong 22(10) 90vsWeak 68(58)
+S defend | start 53(53) | 40 43(43) 65 60(60) 90 83(83) | sloppy 48(48) (40 42(42) 90 63(63)) | strong 32(32) weak 75(75) | 40vsStrong 27(27) 90vsWeak 87(87)
+S gk_save | start 75(75) | 40 60(60) 65 82(82) 90 78(78) | sloppy 63(63) (40 55(55) 90 68(68)) | strong 73(73) weak 80(80) | 40vsStrong 60(60) 90vsWeak 75(75)
+S counter_2v1 | start 53(47) | 40 38(35) 65 45(43) 90 50(48) | sloppy 53(38) (40 55(30) 90 52(40)) | strong 42(30) weak 53(50) | 40vsStrong 23(20) 90vsWeak 63(58)
+S long_ball_control | start 48(48) | 40 48(48) 65 57(57) 90 63(63) | sloppy 40(40) (40 37(37) 90 55(55)) | strong 25(25) weak 63(63) | 40vsStrong 25(25) 90vsWeak 68(68)
+S rebound | start 38(27) | 40 38(22) 65 37(27) 90 38(33) | sloppy 32(20) (40 32(15) 90 32(13)) | strong 37(25) weak 42(32) | 40vsStrong 37(18) 90vsWeak 42(33)
+S interception | start 63(63) | 40 50(50) 65 65(65) 90 77(77) | sloppy 72(72) (40 50(50) 90 65(65)) | strong 48(48) weak 82(82) | 40vsStrong 58(58) 90vsWeak 83(83)
+S hold_up | start 57(57) | 40 60(60) 65 62(62) 90 68(68) | sloppy 37(37) (40 38(38) 90 45(45)) | strong 55(55) weak 63(63) | 40vsStrong 55(55) 90vsWeak 72(72)
+S defend_1v1 | start 77(77) | 40 62(62) 65 80(80) 90 87(87) | sloppy 60(60) (40 50(50) 90 62(62)) | strong 47(47) weak 85(85) | 40vsStrong 33(33) 90vsWeak 95(95)
+S block | start 60(60) | 40 52(52) 65 60(60) 90 62(62) | sloppy 50(50) (40 48(48) 90 52(52)) | strong 50(50) weak 52(52) | 40vsStrong 45(45) 90vsWeak 58(58)
+S corner_kick | start 20(7) | 40 30(13) 65 27(18) 90 18(10) | sloppy 20(5) (40 17(7) 90 22(13)) | strong 12(7) weak 30(17) | 40vsStrong 13(0) 90vsWeak 30(17)
+S fk_wall | start 73(73) | 40 67(67) 65 73(73) 90 78(78) | sloppy 67(67) (40 65(65) 90 70(70)) | strong 68(68) weak 73(73) | 40vsStrong 65(65) 90vsWeak 70(70)
+S dribble | start 42(42) | 40 22(22) 65 48(48) 90 70(70) | sloppy 43(43) (40 23(23) 90 63(63)) | strong 30(30) weak 38(38) | 40vsStrong 13(13) 90vsWeak 83(83)
+S header | start 30(23) | 40 18(12) 65 42(32) 90 50(48) | sloppy 32(22) (40 22(10) 90 43(40)) | strong 30(22) weak 32(27) | 40vsStrong 18(12) 90vsWeak 52(50)
+S gk_1v1 | start 47(47) | 40 45(45) 65 40(40) 90 48(48) | sloppy 37(37) (40 33(33) 90 42(42)) | strong 30(30) weak 67(67) | 40vsStrong 32(32) 90vsWeak 68(68)
+S gk_sweep | start 67(67) | 40 62(62) 65 63(63) 90 67(67) | sloppy 62(62) (40 70(70) 90 68(68)) | strong 48(48) weak 80(80) | 40vsStrong 33(33) 90vsWeak 77(77)
+S back_post | start 38(38) | 40 32(32) 65 33(33) 90 33(33) | sloppy 40(40) (40 45(45) 90 42(42)) | strong 28(28) weak 38(38) | 40vsStrong 27(27) 90vsWeak 47(47)
+S long_shot | start 53(28) | 40 53(22) 65 58(30) 90 68(48) | sloppy 50(27) (40 57(20) 90 52(30)) | strong 48(23) weak 62(32) | 40vsStrong 58(15) 90vsWeak 72(52)
+S switch_play | start 37(37) | 40 27(27) 65 38(38) 90 40(40) | sloppy 30(30) (40 25(25) 90 33(33)) | strong 33(33) weak 40(40) | 40vsStrong 25(25) 90vsWeak 43(43)
+S recovery_run | start 70(70) | 40 68(68) 65 78(78) 90 88(88) | sloppy 68(68) (40 63(63) 90 83(83)) | strong 50(50) weak 77(77) | 40vsStrong 50(50) 90vsWeak 87(87)
+S shoulder_duel | start 48(48) | 40 32(32) 65 62(62) 90 77(77) | sloppy 33(33) (40 28(28) 90 52(52)) | strong 10(10) weak 72(72) | 40vsStrong 8(8) 90vsWeak 82(82)
+S timed_run | start 23(8) | 40 23(8) 65 30(15) 90 30(17) | sloppy 25(8) (40 22(3) 90 35(17)) | strong 15(8) weak 20(12) | 40vsStrong 20(5) 90vsWeak 37(23)
+S press_trap | start 45(45) | 40 43(43) 65 40(40) 90 30(30) | sloppy 35(35) (40 38(38) 90 35(35)) | strong 27(27) weak 45(45) | 40vsStrong 23(23) 90vsWeak 60(60)
+S gk_claim | start 82(82) | 40 75(75) 65 83(83) 90 90(90) | sloppy 77(77) (40 75(75) 90 82(82)) | strong 70(70) weak 88(88) | 40vsStrong 55(55) 90vsWeak 93(93)
+S gk_distribution | start 72(72) | 40 70(70) 65 70(70) 90 77(77) | sloppy 63(63) (40 63(63) 90 70(70)) | strong 65(65) weak 73(73) | 40vsStrong 62(62) 90vsWeak 78(78)
+```
+</details>
