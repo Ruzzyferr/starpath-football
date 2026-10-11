@@ -15,7 +15,7 @@ import { Button, Chip, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { gameState, settings } from '../../store'
-import { finishScouting, scoutReport, scoutingOpen, type ScoutOutcome } from '../../backend/scouting'
+import { finishScouting, scoutPacing, scoutReport, scoutingOpen, type ScoutOutcome } from '../../backend/scouting'
 import { GameTutorial, GateBeat } from '../../tutorial/ControlHint'
 
 type Phase = 'intro' | 'loading' | 'playing' | 'result' | 'error'
@@ -43,6 +43,8 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
   const handle = useRef<{ stop(): void } | null>(null)
   const report = useRef(scoutReport())
   const rep = report.current
+  // The hero's reading of the game: clip slow-mo and the takeaway (sim/game/oppScouting).
+  const pace = useRef(scoutPacing()).current
   const club = rep?.short ?? ''
 
   useEffect(() => {
@@ -113,7 +115,14 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
       const el = host.current
       if (!el) return
       const cal = s.calendar
-      const game = new rules.ScoutingGame({ report: rep, seed: hashString(`${s.meta.seed}|${cal.season}|${cal.week}|${cal.day}|scout|${rep.fixtureId}`) })
+      // A sharp reader sees the clips in slow motion: the game clock runs at 1/slowMo of real time.
+      const slowMo = pace.slowMo
+      class PacedScouting extends rules.ScoutingGame {
+        override update(dt: number): void {
+          super.update(dt / slowMo)
+        }
+      }
+      const game = new PacedScouting({ report: rep, seed: hashString(`${s.meta.seed}|${cal.season}|${cal.week}|${cal.day}|scout|${rep.fixtureId}`) })
       sg.current = game
       setFrame(game.frame())
       setPhase('playing')
@@ -176,7 +185,7 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
         <div class={`scout-panel${answered ? ' is-answered' : ''}`} ref={panel} data-testid="scout-panel">
           <div class="scout-panel-head">
             <span class="micro scout-q">{frame?.phase === 'title' ? t('training.scout.clip', { i: (frame?.index ?? 0) + 1, n: total }) : answered ? fbText : t('training.scout.question')}</span>
-            {!answered && frame?.phase === 'clip' && <span class="t-xs num scout-left" aria-hidden="true">{t('training.scout.timeLeft', { n: Math.ceil(left) })}</span>}
+            {!answered && frame?.phase === 'clip' && <span class="t-xs num scout-left" aria-hidden="true">{t('training.scout.timeLeft', { n: Math.ceil(left * pace.slowMo) })}</span>}
           </div>
           {!answered && frame?.phase === 'clip' && (
             <div class="scout-timer" aria-hidden="true"><span style={{ transform: `scaleX(${Math.max(0, left / 8)})` }} /></div>
@@ -232,6 +241,7 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
               <p class="t-sm">{t('training.scout.pc')}</p>
             </div>
           </div>
+          <p class="t-xs t-mid" data-testid="scout-reading">{t('bench.scout.reading', { r: pace.reading, s: pace.slowMo.toFixed(2), k: pace.takeaway.toFixed(2) })}</p>
           <p class="t-xs t-mid">{t('training.scout.reward', { c: rep.short })}</p>
           <div class="row trn-drill-actions scout-actions">
             <Button variant="ghost" onClick={quick} title={t('training.scout.quickHint')} data-testid="scout-quick">{t('training.scout.quick')}</Button>
@@ -248,19 +258,23 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
           </div>
         </div>
       )}
-      {phase === 'result' && result && (
+      {phase === 'result' && result && (() => {
+        const grade = outcome?.grade ?? result.grade
+        const perf = outcome?.effective ?? result.performance
+        return (
         <div class="trn-drill-card trn-drill-result stack" aria-live="polite" data-testid="scout-result">
           <div class="micro t-lo">{t('training.scout.resultTitle')} · {club}</div>
           <div class="trn-result-top">
-            <div class={`trn-grade trn-grade-${result.grade}`} aria-label={`${t('training.result.grade')} ${result.grade}`}>{result.grade}</div>
+            <div class={`trn-grade trn-grade-${grade}`} aria-label={`${t('training.result.grade')} ${grade}`} data-testid="scout-grade">{grade}</div>
             <div class="stack trn-result-nums">
               <div class="trn-perf">
                 <span class="micro t-lo">{t('training.result.performance')}</span>
-                <div class="trn-perf-bar" role="meter" aria-label={t('training.result.performance')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(result.performance * 100)}>
-                  <span style={{ width: `${Math.round(result.performance * 100)}%` }} />
+                <div class="trn-perf-bar" role="meter" aria-label={t('training.result.performance')} aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(perf * 100)}>
+                  <span style={{ width: `${Math.round(perf * 100)}%` }} />
                 </div>
-                <span class="num t-sm">{Math.round(result.performance * 100)}%</span>
+                <span class="num t-sm">{Math.round(perf * 100)}%</span>
               </div>
+              {outcome?.effective !== undefined && <span class="t-xs t-mid">{t('bench.scout.takeaway', { p: Math.round(result.performance * 100), k: pace.takeaway.toFixed(2) })}</span>}
             </div>
           </div>
           {outcome && outcome.ok ? (
@@ -283,7 +297,8 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
           )}
           <Button variant="primary" block onClick={onClose} autoFocus data-testid="scout-done">{t('training.scout.done')}</Button>
         </div>
-      )}
+        )
+      })()}
     </div>,
     document.body,
   )

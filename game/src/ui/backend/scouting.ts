@@ -7,7 +7,7 @@
  */
 import { signal } from '@preact/signals'
 import type { AttributeKey, LText } from '../../core/types'
-import { applyScouting, patternText, scoutAttrs, scoutBuff, scoutingReport, type PatternId, type ScoutReport } from '../../sim/game/oppScouting'
+import { applyScouting, patternText, scoutAttrs, scoutBuff, scoutReading, scoutSlowMo, scoutTakeaway, scoutingReport, type PatternId, type ScoutReport } from '../../sim/game/oppScouting'
 import { commit, current, get } from './session'
 import { realActions } from './realActions'
 import type { Delta } from '../store'
@@ -19,6 +19,13 @@ export const scoutingOpen = signal(false)
 export function scoutReport(): ScoutReport | null {
   const s = current()
   return s ? scoutingReport(s) : null
+}
+
+/** The hero's reading of the game for the session: the stat, the clip slow-mo and the takeaway multiplier. */
+export function scoutPacing(): { reading: number; slowMo: number; takeaway: number } {
+  const s = current()
+  const reading = s ? scoutReading(s.hero) : 50
+  return { reading, slowMo: scoutSlowMo(reading), takeaway: scoutTakeaway(reading) }
 }
 
 /** Open the mini-game, or run the plain video activity when there is nothing to scout. */
@@ -33,6 +40,9 @@ export interface ScoutOutcome {
   lines: LText[]
   xp: { key: AttributeKey; xp: number }[]
   bonus: number
+  /** The final grade (played score × the hero's reading), when a session was applied. */
+  grade?: string
+  effective?: number
 }
 
 /**
@@ -47,7 +57,7 @@ export function finishScouting(performance: number | null, spotted: PatternId[] 
   const r = applyScouting(s, performance, spotted)
   if (!r) return { ok: true, deltas, lines: [], xp: [], bonus: 0 }
   commit(s)
-  return { ok: true, deltas, lines: r.lines, xp: r.xp, bonus: r.buff.bonus }
+  return { ok: true, deltas, lines: r.lines, xp: r.xp, bonus: r.buff.bonus, grade: r.grade, effective: r.effective }
 }
 
 export interface ScoutCardView {

@@ -12,7 +12,7 @@
  * and stable hashes, so the autopilot and the balance harness are unaffected
  * (they never play the mini-game; the plain 'video' activity is unchanged).
  */
-import type { AttributeKey, GameState, KitColors, LText, NpcPlayer, Position, TacticStyle } from '../../core/types'
+import type { AttributeKey, GameState, Hero, KitColors, LText, NpcPlayer, Position, TacticStyle } from '../../core/types'
 import { hashString } from '../../core/rng'
 import { applyXpBundle } from '../career/progression'
 import { clamp, fill, lt } from '../career/common'
@@ -61,6 +61,28 @@ export interface ScoutBuff {
 
 /** Attribute points per grade (D: nothing learned). */
 export const SCOUT_BONUS: Record<string, number> = { S: 4, A: 3, B: 2, C: 1, D: 0 }
+
+/**
+ * Reading the game (balance study 2026-10: the video was the same test for
+ * every hero, so Anticipation and Vision did nothing). The hero's reading
+ * stat — Anticipation, Vision, Positioning (a keeper: GK Positioning) — does
+ * two things:
+ *  - SLOW-MO: a sharp reader sees the clips slower (1× at 30 .. 1.5× at 90):
+ *    more time to answer and a longer full-credit window;
+ *  - TAKEAWAY: what he turns the answers into (×0.9 at 30 .. ×1.1 at 90).
+ * The played score (right answers, spotted early) × the takeaway = the grade.
+ */
+export function scoutReading(h: Pick<Hero, 'attrs' | 'position'>): number {
+  const a = h.attrs
+  return Math.round(h.position === 'GK' ? (a.anticipation + a.gkPositioning + a.vision) / 3 : (a.anticipation + a.vision + a.positioning) / 3)
+}
+const read01 = (reading: number): number => clamp((reading - 30) / 60, 0, 1)
+/** Clip playback slow-down for a reading stat (≥ 1). */
+export const scoutSlowMo = (reading: number): number => Math.round((1 + 0.5 * read01(reading)) * 100) / 100
+/** Takeaway multiplier for a reading stat. */
+export const scoutTakeaway = (reading: number): number => Math.round((0.9 + 0.2 * read01(reading)) * 100) / 100
+/** The session's final score: the played score × the takeaway (0..1). */
+export const scoutEffective = (performance: number, reading: number): number => Math.round(clamp(clamp(performance, 0, 1) * scoutTakeaway(reading), 0, 1) * 1000) / 1000
 
 const avg = (ps: NpcPlayer[], k: AttributeKey): number => (ps.length ? ps.reduce((a, p) => a + (deriveAttributes(p)[k] ?? 50), 0) / ps.length : 50)
 const attr = (p: NpcPlayer | undefined, k: AttributeKey): number => (p ? deriveAttributes(p)[k] ?? 50 : 50)
@@ -147,10 +169,12 @@ export function scoutGrade(p: number): 'S' | 'A' | 'B' | 'C' | 'D' {
  * Store the scouting result for the next match and give the XP. The caller
  * has already run the 'video' activity (time, energy, preparation goal).
  */
-export function applyScouting(s: GameState, performance: number, spotted: PatternId[]): { buff: ScoutBuff; xp: { key: AttributeKey; xp: number }[]; lines: LText[] } | null {
+export function applyScouting(s: GameState, performance: number, spotted: PatternId[]): { buff: ScoutBuff; xp: { key: AttributeKey; xp: number }[]; lines: LText[]; grade: string; effective: number; reading: number } | null {
   const rep = scoutingReport(s)
   if (!rep) return null
-  const perf = clamp(performance, 0, 1)
+  const reading = scoutReading(s.hero)
+  // The grade and everything after it follow the played score × the hero's reading.
+  const perf = scoutEffective(performance, reading)
   const grade = scoutGrade(perf)
   const prev = readJson<ScoutBuff | null>(s.life, SCOUT_FLAG, null)
   const keep = prev && prev.fixtureId === rep.fixtureId && prev.performance > perf ? prev : null
@@ -161,7 +185,7 @@ export function applyScouting(s: GameState, performance: number, spotted: Patter
   const lines: LText[] = [buff.bonus > 0
     ? fill(lt('Rakip analizi: {c} maçında önsezi ve pozisyon alma +{b}.', 'Opponent analysis: anticipation and positioning +{b} against {c}.'), { c: rep.short, b: buff.bonus })
     : lt('Videodan pek bir şey çıkaramadın.', 'You did not get much out of the video.')]
-  return { buff, xp: [{ key: 'anticipation', xp: xp.anticipation }, { key: 'vision', xp: xp.vision }], lines }
+  return { buff, xp: [{ key: 'anticipation', xp: xp.anticipation }, { key: 'vision', xp: xp.vision }], lines, grade, effective: perf, reading }
 }
 
 /** The scouting buff for a fixture (null: none). */

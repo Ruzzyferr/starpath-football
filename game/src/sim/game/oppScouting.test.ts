@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { GameState } from '../../core/types'
 import { advanceDay, isHeroMatchday } from './calendar'
 import { autoPlayHeroMatch, prepareHeroMatch } from './match'
-import { SCOUT_BONUS, applyScouting, scoutAttrs, scoutBuff, scoutingReport } from './oppScouting'
+import { SCOUT_BONUS, applyScouting, scoutAttrs, scoutBuff, scoutReading, scoutingReport } from './oppScouting'
 import { nextClubFixture } from './selection'
 import { makeGame } from './testHelpers'
 
@@ -54,6 +54,25 @@ describe('opponent video scouting (sim)', () => {
     const hp = [...team.lineup, ...team.bench].find((p) => p.isHero)
     if (!hp) return
     for (const k of keys) expect(hp.attrs[k]).toBeGreaterThanOrEqual(Math.min(99, (before[k] ?? 0) + 3))
+  })
+
+  it('the same answers count for more with a sharper reading of the game (Anticipation, Vision, Positioning)', () => {
+    const base = makeGame(614)
+    run(base, 40, (x) => x.calendar.week >= 3 && !!scoutingReport(x))
+    const at = (lv: number) => {
+      const s = JSON.parse(JSON.stringify(base)) as GameState
+      s.hero.attrs.anticipation = lv
+      s.hero.attrs.vision = lv
+      s.hero.attrs.positioning = lv
+      s.hero.attrs.gkPositioning = lv
+      expect(scoutReading(s.hero)).toBe(lv)
+      return applyScouting(s, 0.75, ['fbLeft'])!
+    }
+    const lo = at(40)
+    const hi = at(90)
+    expect(hi.effective).toBeGreaterThan(lo.effective)
+    expect(hi.buff.bonus).toBeGreaterThan(lo.buff.bonus)
+    expect(hi.xp[0]!.xp).toBeGreaterThan(lo.xp[0]!.xp)
   })
 
   it('a D grade gives no match bonus', () => {
