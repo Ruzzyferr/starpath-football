@@ -53,6 +53,10 @@ export const tr = {
     meterAria: '{l}: {a} → {b}',
     money: 'Para',
   },
+  scout: {
+    reading: 'Oyun okuman (Önsezi, Vizyon, Pozisyon alma) {r}: klipler ×{s} ağır çekim, çıkarım ×{k}.',
+    takeaway: 'Oynanan skor %{p} × oyun okuma ×{k}',
+  },
   doping: {
     title: 'Doping testi',
     kicker: 'Sürpriz kontrol',
@@ -60,6 +64,7 @@ export const tr = {
     start: 'Başla',
     breathTitle: 'Nefesini düzenle',
     breathHint: 'Basılı tut: nefes al. Bırak: nefes ver. İbreyi yeşil bantta tut.',
+    statLine: 'Soğukkanlılık {c}: yeşil bandın genişliği ve elinin titremesi buna bağlı. Formlar için tam puan süresi {s} sn.',
     hold: 'Nefes al',
     holdAria: 'Nefes al: basılı tut',
     meterAria: 'Nefes ritmi',
@@ -174,6 +179,10 @@ export const en: Shape<typeof tr> = {
     meterAria: '{l}: {a} → {b}',
     money: 'Money',
   },
+  scout: {
+    reading: 'Your reading of the game (Anticipation, Vision, Positioning) {r}: clips in ×{s} slow motion, takeaway ×{k}.',
+    takeaway: 'Played score {p}% × reading ×{k}',
+  },
   doping: {
     title: 'Doping test',
     kicker: 'Surprise control',
@@ -181,6 +190,7 @@ export const en: Shape<typeof tr> = {
     start: 'Start',
     breathTitle: 'Steady your breathing',
     breathHint: 'Hold: breathe in. Release: breathe out. Keep the needle in the green band.',
+    statLine: 'Composure {c}: it sets how wide the green band is and how steady your hand stays. Full marks for the forms within {s} s.',
     hold: 'Breathe in',
     holdAria: 'Breathe in: press and hold',
     meterAria: 'Breathing rhythm',

@@ -35,7 +35,7 @@ import { selectLineupFromPlayers } from '../world/formations'
 import { squadPlayers } from '../world/queries'
 import { absDayOf, heroClub, isInSeason, readJson, writeJson } from './internal'
 import { daysUntil, nextClubFixture } from './selection'
-import { applyNationalCamp, type SceneId, type SceneOutcome } from './scenes'
+import { applyNationalCamp, stat01, type SceneId, type SceneOutcome } from './scenes'
 
 export const AGENDA_FLAG = 'c:agenda'
 /** JSON Record<kind, absDay>: last day each mandatory kind was set (cooldowns). */
@@ -135,6 +135,12 @@ const ATTR_NAME: Partial<Record<AttributeKey, LText>> = {
 }
 const nameOf = (k: AttributeKey): LText => ATTR_NAME[k] ?? { tr: k, en: k }
 
+/** Appeal against a ban: Composure in front of the committee and the club's view of your conduct. */
+export const appealChance = (s: GameState): number => Math.round(clamp(0.15 + 0.4 * stat01(s.hero.attrs.composure) + 0.15 * (s.life.discipline - 50) / 50, 0.1, 0.65) * 100) / 100
+/** How strongly the press-conference answers land: 0.7 at Composure 40 .. 1.4 at 90. */
+export const pressFactor = (s: GameState): number => Math.round((0.6 + 0.8 * stat01(s.hero.attrs.composure)) * 100) / 100
+const pressN = (s: GameState, base: number): number => Math.max(1, Math.round(base * pressFactor(s)))
+
 const avg = (ps: NpcPlayer[], k: AttributeKey): number => (ps.length ? ps.reduce((a, p) => a + (deriveAttributes(p)[k] ?? 50), 0) / ps.length : 50)
 const isPos = (set: readonly Position[]) => (p: NpcPlayer): boolean => set.includes(p.position)
 const FWD: readonly Position[] = ['ST', 'LW', 'RW', 'AM']
@@ -229,10 +235,14 @@ export function mandatoryTask(s: GameState, kind: MandatoryKind, day: number): A
         { play: { drill: 'tactical' }, skip: lt('Disiplin −6, güven −3, ilk 11 şansı −%8', 'Discipline −6, trust −3, start chance −8%') })
     case 'disciplinary':
       return T(lt('Disiplin kurulu', 'Disciplinary hearing'), lt('Cezan için kurulun önüne çıkıyorsun.', 'You face the committee over your ban.'), lt('Hızlı: özür dile, disiplin +3', 'Quick: apologise, discipline +3'),
-        { play: { choices: [ch('apologise', lt('Özür dile', 'Apologise'), lt('Disiplin +5, hoca +2', 'Discipline +5, manager +2')), ch('contest', lt('İtiraz et', 'Contest it'), lt('%35 ceza 1 maç azalır; yoksa disiplin −4', '35%: ban cut by a match; else discipline −4'))] } })
+        { play: { choices: [ch('apologise', lt('Özür dile', 'Apologise'), lt('Disiplin +5, hoca +2', 'Discipline +5, manager +2')), ch('contest', lt('İtiraz et', 'Contest it'), fill(lt('%{p} ceza 1 maç azalır (Soğukkanlılık, disiplin); yoksa disiplin −4', '{p}%: ban cut by a match (Composure, discipline); else discipline −4'), { p: Math.round(appealChance(s) * 100) }))] } })
     case 'pressConference':
       return T(lt('Basın toplantısı', 'Press conference'), fill(lt('{o} maçı öncesi mikrofonlar senin için.', 'The microphones are yours before {o}.'), { o: opp }), lt('Hızlı: kalıp cevaplar, basın +1', 'Quick: stock answers, press +1'),
-        { play: { choices: [ch('humble', lt('Alçakgönüllü', 'Humble'), lt('Basın +3, hoca +2', 'Press +3, manager +2')), ch('confident', lt('Kendinden emin', 'Confident'), lt('Taraftar +4, moral +3', 'Fans +4, morale +3')), ch('bold', lt('İddialı manşet', 'Bold headline'), lt('Taraftar +6, basın −2, hoca −2', 'Fans +6, press −2, manager −2'))] },
+        { play: { choices: [
+          ch('humble', lt('Alçakgönüllü', 'Humble'), fill(lt('Basın +{a}, hoca +{b} (Soğukkanlılık)', 'Press +{a}, manager +{b} (Composure)'), { a: pressN(s, 3), b: pressN(s, 2) })),
+          ch('confident', lt('Kendinden emin', 'Confident'), fill(lt('Taraftar +{a}, moral +{b} (Soğukkanlılık)', 'Fans +{a}, morale +{b} (Composure)'), { a: pressN(s, 4), b: pressN(s, 3) })),
+          ch('bold', lt('İddialı manşet', 'Bold headline'), fill(lt('Taraftar +{a}, basın −2, hoca −2 (Soğukkanlılık)', 'Fans +{a}, press −2, manager −2 (Composure)'), { a: pressN(s, 6) })),
+        ] },
           skip: lt('Basın −5, kulüp sözcüsü kızar (disiplin −3)', 'Press −5, the club’s press officer is furious (discipline −3)') })
     case 'dopingTest':
       return T(lt('Doping testi', 'Doping test'), lt('Sürpriz kontrol: numune vermen gerekiyor.', 'A surprise control: you must give a sample.'), lt('Hızlı: test temiz, disiplin +1', 'Quick: clean test, discipline +1'),
@@ -455,7 +465,7 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
       break
     case 'disciplinary':
       if (mode === 'played' && choice === 'contest') {
-        if (rng.chance(0.35) && h.suspendedMatches > 1) { h.suspendedMatches--; line = lt('İtirazın kabul edildi: ceza 1 maç azaldı.', 'Appeal upheld: the ban is cut by a match.') }
+        if (rng.chance(appealChance(s)) && h.suspendedMatches > 1) { h.suspendedMatches--; line = lt('İtirazın kabul edildi: ceza 1 maç azaldı.', 'Appeal upheld: the ban is cut by a match.') }
         else { life.discipline = meter(life.discipline - 4); line = lt('İtirazın reddedildi.', 'Appeal rejected.') }
       } else {
         life.discipline = meter(life.discipline + (mode === 'played' ? 5 : 3))
@@ -466,16 +476,16 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
     case 'pressConference':
       if (mode === 'skip') { rel(s, 'press', -5); life.discipline = meter(life.discipline - 3); line = lt('Basın toplantısına çıkmadın.', 'You skipped the press conference.') }
       else if (mode === 'quick') { rel(s, 'press', 1); line = lt('Kalıp cevaplar verdin.', 'You gave stock answers.') }
-      else if (choice === 'humble') { rel(s, 'press', 3); rel(s, MANAGER_REL, 2); line = lt('Alçakgönüllü cevapların beğenildi.', 'Your humble answers went down well.') }
-      else if (choice === 'confident') { rel(s, 'fans', 4); h.morale = meter(h.morale + 3); line = lt('Kendinden emin konuştun; taraftar coştu.', 'You spoke with confidence; the fans loved it.') }
-      else { rel(s, 'fans', 6); rel(s, 'press', -2); rel(s, MANAGER_REL, -2); line = lt('İddialı manşetler attırdın.', 'You made bold headlines.') }
+      else if (choice === 'humble') { rel(s, 'press', pressN(s, 3)); rel(s, MANAGER_REL, pressN(s, 2)); line = lt('Alçakgönüllü cevapların beğenildi.', 'Your humble answers went down well.') }
+      else if (choice === 'confident') { rel(s, 'fans', pressN(s, 4)); h.morale = meter(h.morale + pressN(s, 3)); line = lt('Kendinden emin konuştun; taraftar coştu.', 'You spoke with confidence; the fans loved it.') }
+      else { rel(s, 'fans', pressN(s, 6)); rel(s, 'press', -2); rel(s, MANAGER_REL, -2); line = lt('İddialı manşetler attırdın.', 'You made bold headlines.') }
       break
     case 'dopingTest':
       if (mode === 'skip') { life.discipline = meter(life.discipline - 15); h.reputation = clamp(h.reputation - 2, 0, 100); rel(s, MANAGER_REL, -6); line = lt('Testi reddettin. Bu iş büyüyecek.', 'You refused the test. This will grow.') }
       else if (mode === 'played') {
-        // The calm mini-game (breathing + forms in order): composure XP, and nerves or calm show in the morale.
+        // The calm mini-game (breathing + forms in order): composure XP, and nerves or calm show in the morale and the club's view.
         const perf = clamp(opts.performance ?? 0.6, 0, 1)
-        life.discipline = meter(life.discipline + 1)
+        life.discipline = meter(life.discipline + (perf >= 0.6 ? 2 : perf < 0.35 ? 0 : 1))
         applyXpBundle(h, { composure: Math.round(2 + perf * 6) }, s.calendar.season)
         h.morale = meter(h.morale + (perf >= 0.75 ? 2 : perf < 0.35 ? -1 : 1))
         line = perf >= 0.75 ? lt('Sakin kaldın, formlar eksiksiz: test temiz çıktı.', 'Calm and every form in order: the test came back clean.') : perf < 0.35 ? lt('Gergin anlar yaşadın ama test temiz çıktı.', 'A nervy wait, but the test came back clean.') : lt('Doping testi temiz çıktı.', 'The doping test came back clean.')
@@ -543,7 +553,8 @@ export function resolveTask(s: GameState, id: string, mode: ResolveMode, opts: {
     case 'fitnessTest':
       if (mode === 'played') {
         const perf = clamp(opts.performance ?? 0.6, 0, 1)
-        if (perf >= 0.75) changeTrust(h, 0.8)
+        // Trust scales with the drill: nothing below a C, +1 for a perfect test.
+        if (perf > 0.4) changeTrust(h, Math.round(((perf - 0.4) / 0.6) * 10) / 10)
         line = perf >= 0.75 ? lt('Testte takımın en iyileri arasındaydın.', 'You were among the best in the squad in the test.') : lt('Kondisyon testini geçtin.', 'You passed the fitness test.')
       } else { life.energy = meter(life.energy - 5); line = lt('Kondisyon testini geçtin.', 'You passed the fitness test.') }
       break

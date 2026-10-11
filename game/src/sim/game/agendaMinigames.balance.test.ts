@@ -20,6 +20,7 @@ import { ensureRelation } from '../life/relationships'
 import { advanceDay, isHeroMatchday } from './calendar'
 import { autoPlayHeroMatch } from './match'
 import { NT_COACH_REL } from './national'
+import { AGENDA_FLAG, appealChance, ensureAgenda, pressFactor, resolveTask, type AgendaTask, type MandatoryKind } from './agenda'
 import {
   RAPPORT_GOOD, applyManagerTalk, applyNationalCamp, applyTeamDinner, managerTalkRapport, managerTalkScene,
   nationalCampRapport, nationalCampScene, teamDinnerRapport, teamDinnerScene, type Rapport, type Scene,
@@ -153,5 +154,51 @@ describe('agenda mini-games: dialogue scenes follow the stats and the read of th
       return applyTeamDinner(s, ['sitA', 'football', 'split']).effects.find((e) => e.key === 'mate')!.value
     }
     expect(dinner(90)).toBeGreaterThan(dinner(40))
+  })
+
+  it('agenda tasks: played rewards reach the sim and scale with the stats and the performance', () => {
+    const task = (s: GameState, kind: MandatoryKind, play: AgendaTask['play']): string => {
+      const a = ensureAgenda(s)
+      const t: AgendaTask = { id: `m:${kind}:${a.day}`, mandatory: true, kind, title: { tr: 'x', en: 'x' }, why: { tr: '', en: '' }, reward: { tr: '', en: '' }, play }
+      a.tasks = [t]
+      s.life.flags[AGENDA_FLAG] = JSON.stringify(a)
+      return t.id
+    }
+    const at = (lv: number): GameState => {
+      const s = clone(base)
+      s.hero.attrs.composure = lv
+      return s
+    }
+    // Appeal and press conference: Composure.
+    expect(appealChance(at(90))).toBeGreaterThan(appealChance(at(40)))
+    expect(pressFactor(at(90))).toBeGreaterThan(pressFactor(at(40)))
+    const fans = (lv: number): number => {
+      const s = at(lv)
+      const f0 = s.life.relationships.fans?.value ?? 0
+      resolveTask(s, task(s, 'pressConference', { choices: [] }), 'played', { choice: 'confident' })
+      return (s.life.relationships.fans?.value ?? 0) - f0
+    }
+    expect(fans(90)).toBeGreaterThan(fans(40))
+    // Doping test: discipline and Composure XP follow the played score.
+    const doping = (perf: number) => {
+      const s = clone(base)
+      const d0 = s.life.discipline
+      const x0 = s.hero.attrs.composure * 1000 + (s.hero.attrXp.composure ?? 0)
+      resolveTask(s, task(s, 'dopingTest', { game: 'doping' }), 'played', { performance: perf })
+      return { disc: s.life.discipline - d0, xp: s.hero.attrs.composure * 1000 + (s.hero.attrXp.composure ?? 0) - x0 }
+    }
+    const hi = doping(0.9)
+    const lo = doping(0.2)
+    expect(hi.disc).toBeGreaterThan(lo.disc)
+    expect(hi.xp).toBeGreaterThan(lo.xp)
+    // Fitness test: trust grows with the drill score.
+    const fit = (perf: number): number => {
+      const s = clone(base)
+      const t0 = s.hero.managerTrust
+      resolveTask(s, task(s, 'fitnessTest', { drill: 'physical' }), 'played', { performance: perf })
+      return s.hero.managerTrust - t0
+    }
+    expect(fit(0.95)).toBeGreaterThan(fit(0.6))
+    expect(fit(0.6)).toBeGreaterThan(fit(0.3))
   })
 })

@@ -1,9 +1,11 @@
 /**
  * Doping test as a short calm/timing moment (~20 s): steady your breathing
  * (hold to breathe in, release to breathe out, keep the needle in the moving
- * green band), then sign the three forms in the right order. The score
- * (0..1) is the played resolve of the agenda task: composure XP and a little
- * morale (sim/game/agenda). "Quick resolve" keeps the old one-tap outcome.
+ * green band), then sign the three forms in the right order. The rules live in
+ * dopingRules (Composure sets the band and the hand tremor, Composure +
+ * discipline the forms clock). The score (0..1) is the played resolve of the
+ * agenda task: composure XP, morale and discipline scaled by it
+ * (sim/game/agenda). "Quick resolve" keeps the old one-tap outcome.
  * Keys: Space hold, 1/2/3 forms, Esc closes without resolving.
  */
 import '../../../styles/screens/training.css'
@@ -15,23 +17,22 @@ import { lt, t } from '../../../i18n'
 import { Button } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
-import { settings } from '../../store'
+import { gameState, settings } from '../../store'
 import type { DopingOutcome } from '../../backend/scenes'
 import { EffectChips } from './DialogueScene'
 import { TutorialCard, tutorialVisible } from '../../tutorial/ControlHint'
+import {
+  BREATH_SECONDS, DOPING_PASS, FORMS_SECONDS, bandCenter, breathStep, calmScore, dopingGrade, dopingParams, dopingPerformance, formsScore, inBand, needleAt,
+} from './dopingRules'
 
 type Phase = 'intro' | 'breath' | 'forms' | 'result'
 const FORMS = ['consent', 'seal', 'declare'] as const
 type Form = (typeof FORMS)[number]
 
-export const BREATH_SECONDS = 12
-const FORMS_SECONDS = 15
-const BAND = 0.13
-
 const isTouch = (): boolean =>
   typeof window !== 'undefined' && (('ontouchstart' in window) || window.matchMedia?.('(pointer: coarse)').matches === true)
 
-const gradeOf = (p: number): string => (p >= 0.9 ? 'S' : p >= 0.78 ? 'A' : p >= 0.6 ? 'B' : p >= 0.4 ? 'C' : 'D')
+const gradeOf = dopingGrade
 
 /** Seeded order of the three forms on the table (the UI only; the sim gets the score). */
 function tableOrder(seed: string): Form[] {
@@ -62,7 +63,12 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
   const formsStart = useRef(0)
   const order = useRef(tableOrder(taskId)).current
   const phaseSeed = (hashString(`${taskId}:breath`) % 628) / 100
+  const tremorSeed = (hashString(`${taskId}:hand`) % 628) / 100
   const reduced = settings.value.reducedMotion
+  // The hero's Composure (and discipline) set the difficulty, once when the test opens.
+  const hero = useRef({ composure: gameState.value?.hero.attrs.composure ?? 50, discipline: gameState.value?.life.discipline ?? 70 }).current
+  const params = useRef(dopingParams(hero.composure, hero.discipline)).current
+  const BAND = params.band
 
   useEffect(() => {
     document.documentElement.classList.add('trn-drill-open')
@@ -81,14 +87,15 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
       const dt = Math.min(0.1, (now - st.last) / 1000)
       st.last = now
       st.t = (now - start) / 1000
-      st.v = Math.max(0, Math.min(1, st.v + (hold.current ? 0.62 : -0.5) * dt))
-      const c = 0.5 + 0.24 * Math.sin((2 * Math.PI * st.t) / 5.2 + phaseSeed)
-      if (Math.abs(st.v - c) <= BAND) st.inBand += dt
-      setV(st.v)
+      st.v = breathStep(st.v, hold.current, dt)
+      const c = bandCenter(st.t, phaseSeed)
+      const needle = needleAt(st.v, st.t, params, tremorSeed)
+      if (inBand(needle, c, params)) st.inBand += dt
+      setV(needle)
       setCenter(c)
       setLeft(Math.max(0, BREATH_SECONDS - st.t))
       if (st.t >= BREATH_SECONDS) {
-        setCalm(Math.max(0, Math.min(1, (st.inBand / BREATH_SECONDS - 0.15) / 0.7)))
+        setCalm(calmScore(st.inBand))
         hold.current = false
         formsStart.current = now
         setPhase('forms')
@@ -99,7 +106,7 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
     }
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [phase, phaseSeed])
+  }, [phase, phaseSeed, tremorSeed, params])
 
   // Forms clock (a soft limit: slow signing costs a little, never blocks).
   useEffect(() => {
@@ -115,13 +122,12 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
   function finish(done: Form[], miss: number) {
     if (outcome) return
     const el = (performance.now() - formsStart.current) / 1000
-    const speed = el <= 8 ? 1 : Math.max(0.5, 1 - (el - 8) / 14)
-    const forms = Math.max(0, 1 - 0.3 * miss) * speed * (done.length / 3)
-    const perf = Math.round((0.65 * calm + 0.35 * forms) * 100) / 100
+    const forms = formsScore(el, miss, done.length, params)
+    const perf = dopingPerformance(calm, forms)
     const r = onFinish(perf)
     setOutcome({ perf, calm, forms, r })
     setPhase('result')
-    haptic(r.ok && perf >= 0.6 ? 'success' : 'select')
+    haptic(r.ok && perf >= DOPING_PASS ? 'success' : 'select')
   }
 
   const sign = (f: Form) => {
@@ -170,7 +176,7 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
     }
   })
 
-  const inZone = Math.abs(v - center) <= BAND
+  const inZone = inBand(v, center, params)
   const status = inZone ? t('bench.doping.inZone') : v > center ? t('bench.doping.tooHigh') : t('bench.doping.tooLow')
   const touch = isTouch()
   const press = (on: boolean) => (e: Event) => {
@@ -201,6 +207,7 @@ export function DopingTest({ taskId, onFinish, onQuick, onClose }: {
           </div>
           <p class="t-mid">{t('bench.doping.goal')}</p>
           <p class="t-sm dop-ctrl"><Icon name={touch ? 'phone' : 'keyboard'} size={14} /> {touch ? t('bench.doping.touch') : t('bench.doping.pc')}</p>
+          <p class="t-xs t-mid dop-stat" data-testid="doping-stat">{t('bench.doping.statLine', { c: hero.composure, s: Math.round(params.formsFull) })}</p>
           <div class="row dop-actions">
             <Button variant="ghost" icon="fast-forward" onClick={onQuick} data-testid="doping-quick">{t('bench.scene.quick')}</Button>
             <Button variant="primary" icon="play" onClick={() => (tutorialVisible('doping') ? setHowTo(true) : setPhase('breath'))} autoFocus data-testid="doping-start">{t('bench.doping.start')}</Button>

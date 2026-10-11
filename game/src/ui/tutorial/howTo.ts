@@ -95,7 +95,7 @@ const SCOUT: HowTo = {
   groups: [],
   controls: { touch: 'training.scout.touch', pc: 'training.scout.pc' },
   attr: 'vision',
-  tip: { tr: 'Klip bitmeden cevap ver; Vizyon ve Önsezi XP kazanır.', en: 'Answer before the clip ends; Vision and Anticipation gain XP.' },
+  tip: { tr: 'Alışkanlık görünür görünmez cevap ver; Önsezi, Vizyon ve Pozisyon alma klipleri yavaşlatır ve bonusu büyütür.', en: 'Answer as soon as the habit shows; Anticipation, Vision and Positioning slow the clips down and grow the bonus.' },
 }
 
 const DOPING: HowTo = {
@@ -104,7 +104,7 @@ const DOPING: HowTo = {
   groups: [],
   controls: { touch: 'bench.doping.touch', pc: 'bench.doping.pc' },
   attr: 'composure',
-  tip: { tr: 'İğneyi yeşil bantta tut; sakin nefes Soğukkanlılık XP’si verir.', en: 'Keep the needle in the green band; calm breathing earns Composure XP.' },
+  tip: { tr: 'İğneyi yeşil bantta tut; Soğukkanlılık bandı genişletir ve elini sabitler, sakin nefes Soğukkanlılık XP’si verir.', en: 'Keep the needle in the green band; Composure widens the band and steadies your hand, calm breathing earns Composure XP.' },
 }
 
 const DIALOGUE: HowTo = {
