@@ -1671,3 +1671,424 @@ Oyun testçisi (gerçek bir futbolcu) hiçbir drilde başarılı olamadı: rakip
 Önce (iyi, 50): 90 → şimdi 67. Rakip 40 / 56 / 72 (kahraman 50, iyi): 71 / 67 / 63.
 
 Notlar: serbest vuruşta 5 vuruşluk rastgelelik yüzünden iyi/özensiz farkı 40–50'de ~14–16 puan (diğer tüm seviyelerde ve drillerde ≥ 20). Özensiz kaleci rastgele dalışla hiç kıpırdamayandan kötü olabilir (gerçekçi). Simülasyon değişmedi (drill puanı yalnız oynanan seansın performansı): golden master aynı.
+
+## Playtester build 8: adil maç anları, her şey stata bağlı (Ekim 2026)
+
+Dört şikâyet (TestFlight build 8): (1) "yanımdaki adama temiz pas atıyorum, kontrol edemiyor, rakip alıyor"; (2) "rakip çok hızlı kapanıp topu hemen alıyor"; (3) "son çizgi koşusu: takım arkadaşım bana pas vermeden top kaptırdı, an oynamadan bitti"; (4) "koşarken arkamdaki rakip hemen yetişiyor, sağda solda pas seçeneği yok". Sahip: her düzeltme bir stat eğrisi olsun, düz bonus değil; oyuncu rakibin statlarını görsün.
+
+Ölçüm: `game/src/game/intentHarness.ts` (gerçek girdi yolları; yeni metrikler `shortPassReception`, `pressureRate`, `setupLossRate`, `breakawayRate`, `supportRate`; `TrialSetup` ile takım arkadaşı / rakip / kaleci statları), tüm türler için `game/src/game/kindMatrix.ts` (insan benzeri bot, `KIND_MATRIX=1`). Sabitlenen eğriler: `game/src/game/balance8.test.ts`. Normal zorluk, yarım yardım, takımlar OVR 62, başlangıç kahramanı OVR 57, deterministik seed. "Önce" = build 8 (HEAD) runtime.
+
+### Kök nedenler
+
+1. **Pas alma:** (a) alıcı topu karşılamıyordu: topun çizgisine 0,7 m toleransla yavaşlayarak gidip topun önünde 1 m geri geri kaçıyordu; (b) top kendisine atılan adam da herkes gibi genel AI tepki süresini bekliyordu; (c) pas çizgisindeki başka bir arkadaş topa sert dokunup bozuyordu; (d) koşan adama pas 9 m önüne atılıyordu (kısa pas ara pasa dönüyordu). Pas hızı ve rakip kesme yarıçapı sorun değildi (kesilme %1–3).
+2. **Anında top kaptırma:** başlangıçta hiçbir koruma yoktu (kaleci dahil); AI'ın sprint deposu sonsuzdu (kahramanınki bitiyordu); topla koşmak %5–10 yavaşlatıyordu; arkadan gelen müdahale adamın gövdesine 1,2 m yetince topa yetmiş sayılıyordu.
+3. **Kurgu fazı:** açılışta topu taşıyan AI arkadaşına (timed_run'da 4 s bekleyen pasör) normal müdahaleler uygulanıyordu: %15 kayıp. Tüm türler tarandı: sadece long_ball_control / header / shoulder_duel / timed_run AI arkadaşla açılıyor; hepsi artık pasını atana kadar korunuyor (senaryo kuralı, stat değil).
+4. **Kovalayan rakip ve pas seçeneği:** (2)'deki depo + top-yavaşlığı + arkadan müdahale; destek koşusu yoktu (arkadaşlar sadece formasyon çapasına göre yer alıyordu).
+
+### Önce / sonra (başlık metrikleri)
+
+| metrik | önce | sonra |
+|---|---|---|
+| temiz kısa pas alındı (5–18 m, boş adam, iyi girdi), pas statları 40 / 65 / 90 | %87.7 / %94.2 / %96.4 | **%90.5 / %97.8 / %99.3** |
+| aynı, özensiz girdi 40 / 65 / 90 | %69 / %83 / %85 | %56 / %71 / %84 (iyi − özensiz ≥ 20 puan) |
+| topla ilerlerken ilk 1,5 s'de kaptırma (hold_up hariç) | %12.4 | **%1.1** |
+| hiç kıpırdamadan ilk 1,0 s'de kaptırma | %2.7 | **%0** |
+| kurgu fazında top kaybı (4 tür; timed_run) | %3.8 (timed_run %15) | **%0 (%0)** |
+| eşit hızda kovalayanın yakalaması (Hız/İvme 40 / 65 / 90) | %40 / %27.5 / %17.5 | **%0 / %0 / %0** |
+| destek: topla en az bir pas seçeneği olan an (7 kurulum türü) | %98.4 | %100 |
+
+### Stat eğrileri (40 → 90)
+
+Kısa pas, pasörün pas statları (Pas / Vizyon / İlk dokunuş):
+
+| | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi, önce | 88 | 90 | 92 | 94 | 94 | 96 |
+| iyi, sonra | 91 | 95 | 97 | 98 | 99 | 99 |
+| özensiz, sonra | 56 | 58 | 71 | 71 | 77 | 84 |
+| alıcının İlk dokunuş / Önsezi'si, sonra | 94 | 95 | 97 | 97 | 96 | 96 |
+
+Alıcı etkisi boş adama kısa pasta küçüktür (yakında rakip yoksa sert ilk dokunuş geri toplanıyor); baskı altında büyür. Alıcının yardımı (`RECEIVE`, `receiveReact`, `receiveWeight`): tepki Önsezi'ye (0,18 s → 0,04 s), uzanma ve yastık İlk dokunuş'a, hepsi pas kalitesine (pasörün icrası) bağlı; ara pasta yardım sadece iyi ağırlıklı topta (`throughWeight`).
+
+Niyet eğrileri (sonra; önce parantezde 40 / 90):
+
+| tür | girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| pas | iyi | 88 | 90 | 95 | 96 | 97 | 98 (83 / 96) |
+| pas | özensiz | 46 | 47 | 54 | 57 | 61 | 65 |
+| ara pas | iyi | 75 | 81 | 87 | 91 | 89 | 88 (73 / 90; N=300'de monoton) |
+| ara pas | özensiz | 43 | 45 | 47 | 47 | 48 | 47 |
+| müdahale | iyi | 36 | 47 | 56 | 68 | 71 | 77 (37 / 82) |
+| müdahale | özensiz | 16 | 21 | 25 | 28 | 32 | 34 |
+| 1v1 şut | iyi | 54 | 60 | 71 | 81 | 84 | 88 (55 / 87) |
+| 1v1 şut | özensiz | 33 | 36 | 41 | 47 | 49 | 52 |
+
+Topla koşarken 6 s içinde top kaybı %: kahramanın Dribbling / Güç / Denge / Çeviklik'i (satır) × rakibin Top kapma / Agresiflik'i (sütun), önce → sonra:
+
+| kahraman \ rakip | 40 | 65 | 90 |
+|---|---|---|---|
+| 40 | 75 → 47 | 87 → 55 | 91 → 59 |
+| 65 | 56 → 27 | 75 → 36 | 82 → 45 |
+| 90 | 24 → 9 | 40 → 18 | 59 → 30 |
+
+Zayıf kahraman güçlü rakibe karşı hâlâ çoğunlukla topu kaybediyor (%59), güçlü kahraman zayıf rakibe karşı neredeyse hiç (%9).
+
+Saf kaçış (orta sahadan 35 m, bir kovalayan 3 m arkada): yakalanma %, kahramanın Hız/İvme'si (satır) × kovalayanınki (sütun), önce → sonra:
+
+| kahraman \ kovalayan | 40 | 65 | 90 |
+|---|---|---|---|
+| 40 | 40 → 0 | 57 → 21 | 61 → 19 |
+| 50 | 15 → 0 | 50 → 3 | 59 → 21 |
+| 60 | 0 → 0 | 41 → 0 | 43 → 9 |
+| 70 | 0 → 0 | 19 → 0 | 55 → 4 |
+| 80 | 0 → 0 | 3 → 0 | 39 → 0 |
+| 90 | 0 → 0 | 0 → 0 | 18 → 0 |
+
+Eşit hızda kimse yetişmiyor; açıkça daha hızlı kovalayan hâlâ gerçek tehdit (40'a karşı 65/90: ~%20). Arkadan gelen müdahale sadece topa yetişirse ve ×0,6 kazanma şansıyla.
+
+Rakip kendi statlarıyla oynar (aynı an, sadece ilgili rakibin statları değişiyor):
+
+| | rakip 40 | 65 | 90 |
+|---|---|---|---|
+| 1v1 şut gol %, kalecinin Refleks / Atlayış / Pozisyon / Top tutma'sı (önce 77 / 74 / 61) | 79 | 77 | 53 |
+| müdahale kazanma %, taşıyanın Dribbling / Çeviklik / Denge / Güç'ü (önce 68 / 57 / 38) | 67 | 57 | 34 |
+
+### Baskı ve destek, tür bazında (önce → sonra, %)
+
+| tür | ilk 1,5 s kaptırma (koşarak) | 6 s içinde kayıp (koşarak) | en az bir seçenekli an | örneklerin seçenekli payı | iki yanda seçenek |
+|---|---|---|---|---|---|
+| build_up | 20 → 0 | 77 → 33 | 100 → 100 | 91 → 94 | 62 → 72 |
+| counter | 0 → 3 | 83 → 63 | 100 → 100 | 80 → 75 | 38 → 37 |
+| edge_of_box | 20 → 0 | 23 → 0 | 100 → 100 | 79 → 82 | 48 → 42 |
+| hold_up (yanlış girdi: adama koşmak) | 90 → 37 | 100 → 87 | 71 → 100 | 71 → 98 | 43 → 63 |
+| dribble | 13 → 0 | 47 → 17 | 100 → 100 | 81 → 79 | 41 → 47 |
+| long_shot | 23 → 3 | 33 → 7 | 100 → 100 | 81 → 77 | 55 → 53 |
+| switch_play | 33 → 3 | 80 → 50 | 97 → 100 | 88 → 93 | 53 → 55 |
+
+Destek koşusu (`SUPPORT_KINDS`, `heroSupportSpot`): kahramanın iki yanındaki en yakın arkadaş, onun 0,9 s sonraki yerine göre 8–14 m açıkta, ofsayt çizgisinin gerisinde, açık pas çizgisinde gösterir; yer seçimini Pozisyon, koşu hızını Çalışkanlık belirler; iyi yer hâlâ geçerliyse orada durur. 1v1 / 2v1 (senaryonun kendisi) ve orta türlerinde (koşucular ceza sahasında) yok; kahramandan 6 m önde koşan forvet ara pas koşusunu bozmaz.
+
+### Adil eşleşme
+
+Gerçek maç simülasyonundan 1.364 an (takım OVR 55–78, kahraman ±5, 6 mevki): anahtar rakip %100 karşı takımın sahadaki kadrosundan; OVR'si kendi takımının ortalamasına göre ortalama **+0,0** (p10 −5,5, p90 +5,4), yani şişirilmiş rakip yok. Kahraman − rakip OVR farkı: ortalama +0,2, p10 −10, p50 0, p90 +11; dağılım: −15 altı %1,8 · −15..−8 %13,6 · −8..−3 %16,6 · ±3 %30,0 · 3..8 %18,8 · 8..15 %15,8 · 15 üstü %3,4. An kartı (`game/matchup.ts`, `MatchupCard.tsx`) bu rakibi ve türün runtime'da gerçekten kullandığı 3–4 stat çiftini gösterir; anda rakibin üstünde dokunulabilir "İsim · OVR" etiketi var.
+
+Sabit sayılar yerine stat: rakip kalecinin uzanması Atlayış'a (0,68 → 0,83 m; 62'de değişmedi), geç bırakılan pası bloklamak baskı yapanın Top kapma / Önsezi'sine, AI'ın pası okuma süresi Önsezi'ye (yeni) bağlandı; herkesin sprint deposu kendi Dayanıklılık / Çalışkanlık'ıyla; kahraman kalecinin elleri Refleks'e daha güçlü bağlı (`HERO_KEEPER_HANDS`).
+
+### Tüm türler (insan benzeri bot: `good` = iyi, `novice` = özensiz; N=40 / hücre, ±8 puan gürültü)
+
+Sütunlar: türün kahraman statları (`kindHeroAttrs`) 40…90; "başlangıç" = OVR 57 kahramanın kendi kâğıdı; rakip zayıf / orta / güçlü = tüm rakip statları −15 / 0 / +15. Başarı = `feelHarness.isSuccess` (gol türlerinde gol).
+
+| tür | başlangıç (iyi/orta) | 40 → 90 (iyi/orta) | zayıf kahraman 40 vs güçlü rakip | güçlü kahraman 90 vs zayıf rakip | özensiz başlangıç (orta) | durum |
+|---|---|---|---|---|---|---|
+| one_on_one | 43 | 55 → 65 | 43 | 78 | 45 | düşük, özellik ↑, girdi zayıf |
+| penalty | 75 | 73 → 75 | 68 | 85 | 48 | hedefte, özellik düz, girdi önemli |
+| freekick | 20 | 18 → 28 | 18 | 40 | 15 | düşük, özellik ↑, girdi zayıf |
+| edge_of_box | 38 | 33 → 33 | 23 | 45 | 35 | düşük, özellik düz, girdi zayıf |
+| cross | 23 | 30 → 23 | 23 | 33 | 13 | düşük, özellik düz, girdi önemli |
+| corner | 28 | 18 → 55 | 5 | 55 | 30 | düşük, özellik ↑, girdi zayıf |
+| defend | 85 | 70 → 93 | 45 | 93 | 57 | kolay, özellik ↑, girdi önemli |
+| gk_save | 68 | 65 → 78 | 55 | 68 | 57 | hedefte, özellik ↑, girdi önemli |
+| counter_2v1 | 38 | 43 → 50 | 15 | 65 | 35 | düşük, özellik düz, girdi zayıf |
+| long_ball_control | 50 | 40 → 63 | 25 | 73 | 38 | düşük, özellik ↑, girdi önemli |
+| rebound | 10 | 10 → 23 | 13 | 25 | 25 | düşük, özellik ↑, girdi zayıf |
+| interception | 65 | 60 → 90 | 63 | 95 | 70 | hedefte, özellik ↑, girdi zayıf |
+| hold_up | 65 | 60 → 83 | 55 | 80 | 45 | hedefte, özellik ↑, girdi önemli |
+| defend_1v1 | 85 | 68 → 93 | 40 | 100 | 68 | kolay, özellik ↑, girdi önemli |
+| block | 53 | 55 → 45 | 35 | 45 | 63 | düşük, özellik ters, girdi zayıf |
+| corner_kick | 3 | 3 → 8 | 3 | 13 | 0 | düşük, özellik düz, girdi zayıf |
+| fk_wall | 85 | 75 → 83 | 63 | 90 | 78 | kolay, özellik ↑, girdi zayıf |
+| dribble | 57 | 40 → 65 | 30 | 73 | 53 | hedefte, özellik ↑, girdi zayıf |
+| header | 23 | 10 → 43 | 8 | 45 | 15 | düşük, özellik ↑, girdi zayıf |
+| gk_1v1 | 70 | 63 → 73 | 40 | 80 | 70 | hedefte, özellik ↑, girdi zayıf |
+| gk_sweep | 80 | 75 → 78 | 57 | 83 | 73 | kolay, özellik düz, girdi zayıf |
+| back_post | 35 | 35 → 38 | 28 | 45 | 43 | düşük, özellik düz, girdi zayıf |
+| long_shot | 23 | 33 → 20 | 33 | 23 | 25 | düşük, özellik ters, girdi zayıf |
+| switch_play | 38 | 25 → 40 | 25 | 45 | 38 | düşük, özellik ↑, girdi zayıf |
+| recovery_run | 80 | 68 → 83 | 55 | 98 | 78 | kolay, özellik ↑, girdi zayıf |
+| shoulder_duel | 50 | 33 → 68 | 10 | 75 | 35 | düşük, özellik ↑, girdi önemli |
+| timed_run | 8 | 5 → 20 | 5 | 35 | 13 | düşük, özellik ↑, girdi zayıf |
+| press_trap | 53 | 38 → 63 | 43 | 80 | 57 | düşük, özellik ↑, girdi zayıf |
+| gk_claim | 95 | 80 → 95 | 57 | 100 | 83 | kolay, özellik ↑, girdi önemli |
+| gk_distribution | 70 | 70 → 70 | 63 | 73 | 63 | hedefte, özellik düz, girdi zayıf |
+
+Açık konular (sahip kararı):
+- Gol türlerinde (serbest vuruş, uzaktan şut, orta, korner, rebound, kafa, timed_run, korner kullanma) başarı = gol: başlangıç kahramanı iyi girdiyle %3–43. Eski hedef bantları gerçek futbol oranlarıydı (serbest vuruş %6–28, orta %10–30). %55–75 hedefi bu türlerde istenirse başarı tanımı "isabetli şut / net fırsat" olarak değişmeli; bu bir tasarım kararı.
+- Statla düz kalan türler: edge_of_box, long_shot, block, back_post, cross, corner_kick, gk_distribution, gk_sweep, penalty (hafif: N=200'de 79 → 89). Bot gürültüsü stat etkisini örtüyor ya da stat runtime'da zayıf; sonraki turda tek tek.
+- Özensiz girdi farkı bazı türlerde zayıf (bot sınırı): gk_1v1'de bot iki seviyede aynı oynuyor; savunma / kaleci türlerinde `novice` botu yeterince özensiz değil. Niyet harness'ının 5 eğrisinde fark ≥ 20 puan (testle sabit).
+- Kolay kalanlar (iyi girdi, orta rakip > %75): defend, defend_1v1, fk_wall, gk_sweep, recovery_run, gk_claim.
+
+Değişen sabitler (`runtime.ts`): `RECEIVE`, `receiveReact`, `receiveWeight`, `throughWeight`, `PASS_LEAD_MAX` (3 m), `PASS_RANGE_NOISE`, `START_GRACE` / `startGrace` (Soğukkanlılık: 1,02 → 1,42 s, kaleci dahil), `BEHIND_CHALLENGE` (×0,6, topa yetişmeli), `dribblePace` (×0,966 → ×0,986), `SUPPORT_KINDS`, `HERO_THROUGH_SPREAD` (10 / 6), `HERO_TACKLE.lunge` (0,37), `HERO_KEEPER_HANDS` (1,7); `ai.ts` `heroSupportSpot`; `tactics.ts` `reactionTime` (Önsezi). Arka plan simülasyonu değişmedi (golden aynı); BALANCE=1 1000 / 2000 / 3000 geçti. feel.test edge_of_box bandı 0,25 → 0,42 (build 7'de N=120 zaten %35'ti). Rol denge kontrolü (ST 3 rol + LW 4 rol + CB 3 rol, 12 kariyer × 8 sezon, oynanan an botla): oynanan maç reytingi Δ ±%2,8, kariyer OVR Δ ±%1,2, kariyer reytingi Δ ±%2,3 içinde; itibar farkı CB'de −%7,9 / +%5,9 (önceki ölçüm −%3,9 / +%7,6, aynı desen).
+
+<details><summary>Tür matrisleri (iyi / özensiz × zayıf / orta / güçlü rakip)</summary>
+
+##### one_on_one
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 55 | 53 | 70 | 55 | 63 | 75 | 78 |
+| iyi / orta | 43 | 55 | 65 | 48 | 45 | 50 | 65 |
+| iyi / güçlü | 30 | 43 | 45 | 38 | 30 | 35 | 35 |
+| özensiz / zayıf | 48 | 48 | 48 | 43 | 48 | 45 | 40 |
+| özensiz / orta | 45 | 30 | 38 | 45 | 48 | 48 | 43 |
+| özensiz / güçlü | 43 | 30 | 43 | 48 | 48 | 45 | 45 |
+##### penalty
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 80 | 75 | 80 | 78 | 80 | 85 | 85 |
+| iyi / orta | 75 | 73 | 80 | 73 | 73 | 80 | 75 |
+| iyi / güçlü | 73 | 68 | 70 | 70 | 70 | 75 | 75 |
+| özensiz / zayıf | 50 | 48 | 50 | 48 | 50 | 57 | 50 |
+| özensiz / orta | 48 | 53 | 50 | 48 | 48 | 53 | 45 |
+| özensiz / güçlü | 50 | 50 | 55 | 45 | 45 | 50 | 43 |
+##### freekick
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 48 | 25 | 40 | 55 | 38 | 48 | 40 |
+| iyi / orta | 20 | 18 | 18 | 20 | 20 | 30 | 28 |
+| iyi / güçlü | 13 | 18 | 20 | 20 | 23 | 25 | 20 |
+| özensiz / zayıf | 18 | 18 | 23 | 28 | 18 | 23 | 23 |
+| özensiz / orta | 15 | 30 | 28 | 23 | 18 | 15 | 20 |
+| özensiz / güçlü | 20 | 23 | 20 | 20 | 20 | 23 | 18 |
+##### edge_of_box
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 40 | 38 | 53 | 40 | 30 | 43 | 45 |
+| iyi / orta | 38 | 33 | 28 | 15 | 25 | 40 | 33 |
+| iyi / güçlü | 30 | 23 | 33 | 18 | 13 | 15 | 18 |
+| özensiz / zayıf | 33 | 15 | 28 | 13 | 15 | 35 | 40 |
+| özensiz / orta | 35 | 18 | 23 | 15 | 15 | 28 | 33 |
+| özensiz / güçlü | 25 | 23 | 30 | 8 | 8 | 18 | 23 |
+##### cross
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 30 | 28 | 23 | 28 | 30 | 40 | 33 |
+| iyi / orta | 23 | 30 | 18 | 25 | 20 | 20 | 23 |
+| iyi / güçlü | 30 | 23 | 20 | 28 | 23 | 20 | 18 |
+| özensiz / zayıf | 33 | 25 | 20 | 30 | 28 | 30 | 38 |
+| özensiz / orta | 13 | 20 | 18 | 15 | 30 | 33 | 30 |
+| özensiz / güçlü | 23 | 23 | 15 | 25 | 18 | 20 | 20 |
+##### corner
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 38 | 23 | 23 | 28 | 43 | 45 | 55 |
+| iyi / orta | 28 | 18 | 18 | 18 | 40 | 50 | 55 |
+| iyi / güçlü | 18 | 5 | 13 | 15 | 23 | 30 | 38 |
+| özensiz / zayıf | 28 | 15 | 18 | 30 | 40 | 38 | 43 |
+| özensiz / orta | 30 | 18 | 23 | 30 | 33 | 40 | 40 |
+| özensiz / güçlü | 13 | 8 | 5 | 13 | 15 | 23 | 28 |
+##### defend
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 95 | 83 | 93 | 93 | 90 | 100 | 93 |
+| iyi / orta | 85 | 70 | 73 | 78 | 80 | 85 | 93 |
+| iyi / güçlü | 57 | 45 | 53 | 63 | 55 | 68 | 78 |
+| özensiz / zayıf | 80 | 83 | 85 | 85 | 93 | 98 | 93 |
+| özensiz / orta | 57 | 50 | 50 | 60 | 75 | 90 | 90 |
+| özensiz / güçlü | 45 | 33 | 43 | 40 | 57 | 75 | 73 |
+##### gk_save
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 70 | 73 | 68 | 70 | 73 | 63 | 68 |
+| iyi / orta | 68 | 65 | 70 | 63 | 70 | 63 | 78 |
+| iyi / güçlü | 78 | 55 | 68 | 78 | 78 | 73 | 70 |
+| özensiz / zayıf | 60 | 65 | 68 | 60 | 60 | 50 | 63 |
+| özensiz / orta | 57 | 50 | 60 | 53 | 55 | 53 | 65 |
+| özensiz / güçlü | 57 | 33 | 43 | 55 | 55 | 57 | 63 |
+##### counter_2v1
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 50 | 38 | 48 | 45 | 43 | 50 | 65 |
+| iyi / orta | 38 | 43 | 40 | 45 | 43 | 45 | 50 |
+| iyi / güçlü | 28 | 15 | 23 | 20 | 25 | 30 | 30 |
+| özensiz / zayıf | 35 | 33 | 38 | 30 | 38 | 43 | 48 |
+| özensiz / orta | 35 | 40 | 38 | 40 | 28 | 40 | 40 |
+| özensiz / güçlü | 15 | 23 | 20 | 23 | 25 | 30 | 35 |
+##### long_ball_control
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 70 | 48 | 68 | 70 | 70 | 73 | 73 |
+| iyi / orta | 50 | 40 | 50 | 53 | 57 | 60 | 63 |
+| iyi / güçlü | 25 | 25 | 23 | 25 | 30 | 33 | 38 |
+| özensiz / zayıf | 48 | 40 | 45 | 48 | 55 | 55 | 55 |
+| özensiz / orta | 38 | 38 | 35 | 40 | 50 | 50 | 50 |
+| özensiz / güçlü | 15 | 10 | 15 | 20 | 23 | 23 | 25 |
+##### rebound
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 30 | 20 | 20 | 25 | 30 | 28 | 25 |
+| iyi / orta | 10 | 10 | 10 | 10 | 18 | 20 | 23 |
+| iyi / güçlü | 15 | 13 | 13 | 15 | 15 | 13 | 13 |
+| özensiz / zayıf | 20 | 20 | 20 | 20 | 23 | 23 | 25 |
+| özensiz / orta | 25 | 18 | 20 | 23 | 25 | 20 | 18 |
+| özensiz / güçlü | 10 | 10 | 10 | 10 | 13 | 18 | 18 |
+##### interception
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 93 | 75 | 88 | 88 | 85 | 85 | 95 |
+| iyi / orta | 65 | 60 | 57 | 73 | 90 | 80 | 90 |
+| iyi / güçlü | 53 | 63 | 55 | 55 | 63 | 73 | 75 |
+| özensiz / zayıf | 88 | 78 | 90 | 95 | 88 | 88 | 93 |
+| özensiz / orta | 70 | 50 | 60 | 75 | 83 | 78 | 80 |
+| özensiz / güçlü | 53 | 48 | 50 | 55 | 65 | 60 | 63 |
+##### hold_up
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 75 | 70 | 70 | 75 | 75 | 80 | 80 |
+| iyi / orta | 65 | 60 | 60 | 73 | 75 | 75 | 83 |
+| iyi / güçlü | 60 | 55 | 55 | 68 | 73 | 75 | 78 |
+| özensiz / zayıf | 43 | 43 | 43 | 48 | 43 | 38 | 50 |
+| özensiz / orta | 45 | 43 | 43 | 50 | 50 | 48 | 45 |
+| özensiz / güçlü | 38 | 33 | 38 | 43 | 40 | 38 | 43 |
+##### defend_1v1
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 88 | 88 | 83 | 95 | 98 | 98 | 100 |
+| iyi / orta | 85 | 68 | 70 | 80 | 95 | 93 | 93 |
+| iyi / güçlü | 68 | 40 | 65 | 73 | 73 | 83 | 85 |
+| özensiz / zayıf | 90 | 75 | 80 | 88 | 100 | 95 | 95 |
+| özensiz / orta | 68 | 60 | 73 | 73 | 85 | 90 | 93 |
+| özensiz / güçlü | 60 | 38 | 38 | 55 | 65 | 73 | 78 |
+##### block
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 50 | 53 | 55 | 48 | 50 | 48 | 45 |
+| iyi / orta | 53 | 55 | 53 | 45 | 43 | 43 | 45 |
+| iyi / güçlü | 50 | 35 | 50 | 60 | 50 | 48 | 53 |
+| özensiz / zayıf | 57 | 53 | 57 | 55 | 53 | 60 | 53 |
+| özensiz / orta | 63 | 60 | 63 | 60 | 65 | 70 | 57 |
+| özensiz / güçlü | 53 | 48 | 50 | 55 | 50 | 53 | 60 |
+##### corner_kick
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 8 | 10 | 8 | 5 | 13 | 10 | 13 |
+| iyi / orta | 3 | 3 | 5 | 5 | 8 | 8 | 8 |
+| iyi / güçlü | 3 | 3 | 0 | 0 | 0 | 3 | 3 |
+| özensiz / zayıf | 3 | 10 | 3 | 5 | 3 | 8 | 5 |
+| özensiz / orta | 0 | 3 | 0 | 5 | 5 | 5 | 8 |
+| özensiz / güçlü | 3 | 0 | 0 | 0 | 3 | 0 | 0 |
+##### fk_wall
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 78 | 68 | 68 | 78 | 83 | 85 | 90 |
+| iyi / orta | 85 | 75 | 80 | 80 | 85 | 83 | 83 |
+| iyi / güçlü | 75 | 63 | 70 | 75 | 78 | 80 | 80 |
+| özensiz / zayıf | 78 | 65 | 70 | 80 | 80 | 78 | 80 |
+| özensiz / orta | 78 | 70 | 80 | 75 | 80 | 78 | 78 |
+| özensiz / güçlü | 68 | 60 | 63 | 70 | 70 | 70 | 65 |
+##### dribble
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 50 | 35 | 48 | 53 | 68 | 73 | 73 |
+| iyi / orta | 57 | 40 | 38 | 48 | 55 | 63 | 65 |
+| iyi / güçlü | 45 | 30 | 33 | 55 | 48 | 60 | 65 |
+| özensiz / zayıf | 55 | 40 | 57 | 57 | 55 | 73 | 78 |
+| özensiz / orta | 53 | 40 | 48 | 50 | 60 | 65 | 60 |
+| özensiz / güçlü | 53 | 30 | 40 | 48 | 53 | 55 | 60 |
+##### header
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 30 | 20 | 28 | 33 | 33 | 40 | 45 |
+| iyi / orta | 23 | 10 | 18 | 23 | 33 | 30 | 43 |
+| iyi / güçlü | 18 | 8 | 13 | 15 | 23 | 23 | 33 |
+| özensiz / zayıf | 20 | 18 | 23 | 20 | 23 | 35 | 40 |
+| özensiz / orta | 15 | 5 | 10 | 13 | 25 | 33 | 35 |
+| özensiz / güçlü | 13 | 5 | 5 | 10 | 23 | 28 | 33 |
+##### gk_1v1
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 80 | 93 | 80 | 83 | 70 | 85 | 80 |
+| iyi / orta | 70 | 63 | 57 | 65 | 63 | 60 | 73 |
+| iyi / güçlü | 33 | 40 | 43 | 28 | 40 | 35 | 43 |
+| özensiz / zayıf | 80 | 93 | 80 | 83 | 70 | 85 | 80 |
+| özensiz / orta | 70 | 63 | 57 | 65 | 63 | 60 | 73 |
+| özensiz / güçlü | 33 | 40 | 43 | 28 | 40 | 35 | 43 |
+##### gk_sweep
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 90 | 88 | 93 | 88 | 83 | 93 | 83 |
+| iyi / orta | 80 | 75 | 73 | 80 | 80 | 83 | 78 |
+| iyi / güçlü | 65 | 57 | 57 | 60 | 57 | 57 | 53 |
+| özensiz / zayıf | 93 | 88 | 90 | 93 | 90 | 93 | 90 |
+| özensiz / orta | 73 | 78 | 78 | 78 | 85 | 78 | 75 |
+| özensiz / güçlü | 55 | 60 | 55 | 60 | 55 | 55 | 63 |
+##### back_post
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 38 | 45 | 48 | 50 | 45 | 48 | 45 |
+| iyi / orta | 35 | 35 | 35 | 35 | 35 | 35 | 38 |
+| iyi / güçlü | 25 | 28 | 33 | 25 | 28 | 33 | 33 |
+| özensiz / zayıf | 48 | 43 | 48 | 50 | 48 | 43 | 45 |
+| özensiz / orta | 43 | 43 | 40 | 40 | 35 | 35 | 40 |
+| özensiz / güçlü | 28 | 25 | 30 | 25 | 30 | 28 | 28 |
+##### long_shot
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 30 | 38 | 25 | 30 | 43 | 38 | 23 |
+| iyi / orta | 23 | 33 | 25 | 23 | 25 | 30 | 20 |
+| iyi / güçlü | 20 | 33 | 28 | 20 | 23 | 25 | 25 |
+| özensiz / zayıf | 28 | 18 | 20 | 20 | 20 | 28 | 38 |
+| özensiz / orta | 25 | 20 | 25 | 23 | 23 | 28 | 30 |
+| özensiz / güçlü | 28 | 25 | 28 | 28 | 28 | 30 | 28 |
+##### switch_play
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 40 | 25 | 30 | 40 | 40 | 43 | 45 |
+| iyi / orta | 38 | 25 | 33 | 38 | 38 | 40 | 40 |
+| iyi / güçlü | 35 | 25 | 30 | 35 | 38 | 35 | 40 |
+| özensiz / zayıf | 40 | 33 | 28 | 43 | 45 | 53 | 48 |
+| özensiz / orta | 38 | 20 | 23 | 40 | 43 | 40 | 43 |
+| özensiz / güçlü | 28 | 20 | 20 | 30 | 35 | 33 | 30 |
+##### recovery_run
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 88 | 83 | 85 | 85 | 88 | 90 | 98 |
+| iyi / orta | 80 | 68 | 73 | 78 | 80 | 83 | 83 |
+| iyi / güçlü | 45 | 55 | 53 | 55 | 60 | 65 | 75 |
+| özensiz / zayıf | 78 | 78 | 83 | 80 | 85 | 90 | 90 |
+| özensiz / orta | 78 | 65 | 78 | 78 | 75 | 75 | 90 |
+| özensiz / güçlü | 45 | 50 | 50 | 50 | 57 | 55 | 65 |
+##### shoulder_duel
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 63 | 60 | 63 | 73 | 75 | 73 | 75 |
+| iyi / orta | 50 | 33 | 43 | 63 | 65 | 65 | 68 |
+| iyi / güçlü | 5 | 10 | 10 | 18 | 35 | 50 | 55 |
+| özensiz / zayıf | 48 | 50 | 43 | 53 | 60 | 38 | 43 |
+| özensiz / orta | 35 | 25 | 18 | 43 | 40 | 45 | 45 |
+| özensiz / güçlü | 10 | 5 | 10 | 13 | 33 | 35 | 43 |
+##### timed_run
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 10 | 10 | 13 | 18 | 18 | 28 | 35 |
+| iyi / orta | 8 | 5 | 3 | 23 | 20 | 23 | 20 |
+| iyi / güçlü | 5 | 5 | 3 | 8 | 5 | 5 | 15 |
+| özensiz / zayıf | 13 | 8 | 8 | 23 | 18 | 18 | 20 |
+| özensiz / orta | 13 | 3 | 10 | 13 | 8 | 8 | 5 |
+| özensiz / güçlü | 5 | 0 | 3 | 3 | 8 | 10 | 8 |
+##### press_trap
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 60 | 57 | 63 | 60 | 65 | 70 | 80 |
+| iyi / orta | 53 | 38 | 50 | 50 | 55 | 55 | 63 |
+| iyi / güçlü | 45 | 43 | 43 | 40 | 40 | 48 | 50 |
+| özensiz / zayıf | 68 | 60 | 63 | 68 | 75 | 70 | 75 |
+| özensiz / orta | 57 | 53 | 55 | 60 | 60 | 63 | 57 |
+| özensiz / güçlü | 40 | 40 | 43 | 38 | 35 | 40 | 40 |
+##### gk_claim
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 98 | 85 | 95 | 98 | 98 | 100 | 100 |
+| iyi / orta | 95 | 80 | 75 | 95 | 95 | 90 | 95 |
+| iyi / güçlü | 90 | 57 | 68 | 80 | 93 | 93 | 90 |
+| özensiz / zayıf | 93 | 88 | 93 | 90 | 90 | 88 | 93 |
+| özensiz / orta | 83 | 73 | 80 | 83 | 85 | 78 | 78 |
+| özensiz / güçlü | 70 | 65 | 70 | 73 | 80 | 80 | 73 |
+##### gk_distribution
+| girdi / rakip | başlangıç | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|---|
+| iyi / zayıf | 73 | 73 | 73 | 73 | 75 | 73 | 73 |
+| iyi / orta | 70 | 70 | 70 | 70 | 70 | 68 | 70 |
+| iyi / güçlü | 65 | 63 | 65 | 63 | 60 | 60 | 63 |
+| özensiz / zayıf | 68 | 63 | 65 | 65 | 65 | 68 | 68 |
+| özensiz / orta | 63 | 60 | 57 | 60 | 60 | 65 | 63 |
+| özensiz / güçlü | 60 | 55 | 57 | 60 | 60 | 63 | 60 |
+
+</details>
