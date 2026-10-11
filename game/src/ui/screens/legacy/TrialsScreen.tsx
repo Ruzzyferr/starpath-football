@@ -13,6 +13,9 @@ import { startTourIfDue } from '../../tutorial/tour'
 import { HowToTip } from '../../tutorial/ControlHint'
 import { drillTutorialKey } from '../../tutorial/howTo'
 import { DrillDiagram } from '../training/DrillDiagram'
+import { DrillMatchupCard } from '../training/DrillMatchupCard'
+import { drillOpponentFor } from '../training/drillOpponent'
+import { drillMatchup } from '../../../game/training/matchup'
 import type { TrialInvite } from '../../../sim/game/trials'
 
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
@@ -46,7 +49,8 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
       try {
         const [mod, { createDrill }] = await Promise.all([import('../../../game/training/TrainingScene'), import('../../../game/training/drills')])
         if (cancelled || !s || !host.current) return
-        const d = createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1 })
+        // The trial's opposition: the inviting club's players.
+        const d = createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1, opponent: drillOpponentFor(s, invite.clubId) })
         setLoading(false)
         handle.current = mod.startDrill(host.current, d, {
           lang: settings.value.lang,
@@ -70,6 +74,8 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
   }, [invite.id, phase])
   const touch = isTouch()
   const kind = invite.drill
+  const gs = gameState.value
+  const mu = gs ? drillMatchup(kind, 'standard', gs.hero.attrs, drillOpponentFor(gs, invite.clubId)) : null
   return createPortal(
     <div class={`trn-drill is-${phase === 'intro' ? 'intro' : 'playing'}`} role="dialog" aria-modal="true" aria-label={invite.clubName} data-testid="trial-drill">
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
@@ -86,6 +92,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           <div class="micro t-lo">{invite.clubName} · {t(`meta.trials.kind.${invite.kind}`)}</div>
           <h2 class="h2">{tx(`training.drill.${kind}`, undefined, kind)}</h2>
           <p class="t-mid">{tx(`training.drill.goal.${kind}`)}</p>
+          {mu && <DrillMatchupCard mu={mu} />}
           <div class="trn-drill-controls">
             <div class={touch ? 'is-primary' : ''}>
               <div class="micro t-lo"><Icon name="phone" size={14} /> {t('training.drill.touch')}</div>

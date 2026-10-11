@@ -9,13 +9,15 @@
 import { createPortal } from 'preact/compat'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { hashString } from '../../../core/rng'
-import type { Difficulty } from '../../../core/types'
 import type { DrillResult } from '../../../game/training/types'
 import { lt, t, tx } from '../../../i18n'
 import { Button, Chip, DeltaList, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
 import { DrillDiagram } from './DrillDiagram'
+import { DrillMatchupCard } from './DrillMatchupCard'
+import { drillMatchup } from '../../../game/training/matchup'
+import { DRILL_DIFFICULTY, drillOpponentFor } from './drillOpponent'
 import { formatNumber } from '../../format'
 import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
 import { drillFinished } from '../../backend/meta'
@@ -24,7 +26,6 @@ import '../../../styles/screens/bench.css'
 import { DrillHints } from '../../tutorial/ControlHint'
 import { emitHintEvent } from '../../tutorial/hints'
 
-const DIFFICULTY: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
 
 type Phase = 'intro' | 'loading' | 'playing' | 'result' | 'error'
@@ -77,7 +78,8 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
         attrs: s.hero.attrs,
         seed,
         aimAssist: settings.value.aimAssist,
-        difficulty: DIFFICULTY[s.meta.difficulty] ?? 1,
+        difficulty: DRILL_DIFFICULTY[s.meta.difficulty] ?? 1,
+        opponent: drillOpponentFor(s, s.hero.contract?.clubId),
         variant: drill.variant,
       })
       // Observe drill events for the first-run control hint (read-only tap).
@@ -139,6 +141,8 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
   }
 
   const touch = isTouch()
+  const gs = gameState.value
+  const mu = gs && drill ? drillMatchup(drill.kind, drill.variant, gs.hero.attrs, drillOpponentFor(gs, gs.hero.contract?.clubId)) : null
   const delta = outcome && outcome.ok ? Math.round(outcome.xp - session.xp) : 0
 
   return createPortal(
@@ -163,6 +167,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
           <div class="micro t-lo">{lt(session.name)}</div>
           <h2 class="h2">{title}</h2>
           <p class="t-mid">{tx(`training.drill.goal.${key}`)}</p>
+          {mu && <DrillMatchupCard mu={mu} />}
           {challenge && (
             <div class="chal-banner" data-testid="drill-challenge">
               <Icon name="target" size={18} class="t-gold" />
