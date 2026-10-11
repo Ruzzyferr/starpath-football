@@ -360,7 +360,9 @@ export function curlBulge(from: Vec2, z0: number, l: { vx: number; vy: number; v
 /** Shot speed (m/s) at power 1 for a kicker. */
 export function shotSpeed(power: number, at: Attributes, kind: KickKind = 'shot'): number {
   const p = clampN(power, 0, 1.15)
-  const strength = 26 + a01(at.shooting) * 6 + a01(at.strength) * 3
+  // Shot Power (build 9: from range the strike itself decides it): 40 → 27, 62 → 29.7 (unchanged), 90 → 33 m/s top.
+  // A free kick is technique (Set Pieces / Curve): its pace keeps the gentle slope (a flatter, harder ball only hits the wall).
+  const strength = kind === 'freekick' ? 26 + a01(at.shooting) * 6 + a01(at.strength) * 3 : 22.3 + a01(at.shooting) * 12 + a01(at.strength) * 3
   if (kind === 'header') return 9 + p * (6 + a01(at.heading) * 6)
   return 11 + (strength - 11) * Math.pow(p, 0.85)
 }

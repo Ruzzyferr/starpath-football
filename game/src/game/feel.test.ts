@@ -16,10 +16,11 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // Oct 2026 intent pass (playtester build 7): placed hero finishes beat the keeper, frame-safe execution — 1v1 ~0.65.
   one_on_one: [0.4, 0.78],
   penalty: [0.62, 0.88],
-  freekick: [0.06, 0.28],
+  // Build 9 (the bot judges its patience on the pitch clock, shot power follows Shooting): bands re-based on the measured rates.
+  freekick: [0.06, 0.38],
   // Build 8: measured 0.35 at N=120 already at build 7 (the 0.25 cap only held on seeds 1–60); ~0.33–0.39 now.
-  edge_of_box: [0.05, 0.42],
-  cross: [0.1, 0.3],
+  edge_of_box: [0.2, 0.68],
+  cross: [0.1, 0.4],
   corner: [0.15, 0.38],
   // Hero standing tackle now a smooth curve in the tackle moment skill (game/momentSkill): ~0.78.
   defend: [0.48, 0.88],
@@ -40,18 +41,18 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // open-play header scored ~0.28, keeper 1v1 kept out ~0.58, sweeping ~0.77, back post ~0.43.
   dribble: [0.28, 0.6],
   header: [0.14, 0.42],
-  gk_1v1: [0.42, 0.75],
+  gk_1v1: [0.3, 0.75],
   gk_sweep: [0.6, 0.92],
   back_post: [0.25, 0.6],
   // Attribute moments (measured N=150 average, normal): long shot scored ~0.14, switch found the far side
   // ~0.45, recovery run stopped it ~0.62, shoulder duel won ~0.35, timed run scored ~0.13 (offside trap and a
   // finish), press won it ~0.52, cross claimed / kept out ~0.91, distribution found a man ~0.65.
-  long_shot: [0.06, 0.25],
+  long_shot: [0.06, 0.38],
   switch_play: [0.3, 0.62],
   recovery_run: [0.45, 0.78],
-  shoulder_duel: [0.22, 0.65],
-  timed_run: [0.05, 0.25],
-  press_trap: [0.38, 0.66],
+  shoulder_duel: [0.22, 0.75],
+  timed_run: [0.05, 0.38],
+  press_trap: [0.25, 0.66],
   gk_claim: [0.8, 0.98],
   gk_distribution: [0.5, 0.8],
 }

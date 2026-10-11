@@ -101,7 +101,8 @@ describe('kick planning', () => {
     const cross = (target: { x: number; y: number }, assist: 'full' | 'half' | 'manual', assistPull?: number) =>
       predictPlaneCrossing(landing(planKick(shotReq({ target, assist, assistPull })), shotReq().from), DEFAULT_ENV, PITCH_LENGTH)!
     // Just wide: pulled back on target with full assist, still wide manually.
-    const slightly = { x: PITCH_LENGTH, y: POST_Y_HIGH + 0.4 }
+    // (0.3 m: build 9's Shot Power slope makes a 70 strike a touch faster; +0.4 m sat right on the assist's edge.)
+    const slightly = { x: PITCH_LENGTH, y: POST_Y_HIGH + 0.3 }
     expect(isOnTarget(cross(slightly, 'full').y, cross(slightly, 'full').z)).toBe(true)
     expect(isOnTarget(cross(slightly, 'manual').y, cross(slightly, 'manual').z)).toBe(false)
     // Well wide: full assist cuts the error but a wild aim still misses (skill matters)…

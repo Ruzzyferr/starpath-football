@@ -97,7 +97,8 @@ const KIND_PAIRS: Record<HighlightKind, { role: MatchupRole; pairs: readonly Pai
   defend_1v1: { role: 'carrier', pairs: [['tackling', 'dribbling'], ['positioning', 'agility'], ['pace', 'pace'], ['anticipation', 'acceleration']] },
   interception: { role: 'carrier', pairs: READ },
   press_trap: { role: 'carrier', pairs: [['anticipation', 'passing'], ['workRate', 'composure'], ['aggression', 'firstTouch'], ['acceleration', 'pace']] },
-  block: { role: 'carrier', pairs: [['positioning', 'shooting'], ['aggression', 'composure'], ['anticipation', 'finishing'], ['acceleration', 'curve']] },
+  // The BLOCK spread (Positioning / Aggression), reading the strike (Anticipation), the body in the way (Strength).
+  block: { role: 'carrier', pairs: [['positioning', 'shooting'], ['aggression', 'composure'], ['anticipation', 'finishing'], ['strength', 'curve']] },
   recovery_run: { role: 'carrier', pairs: RECOVER },
   back_post: { role: 'attacker', pairs: AERIAL },
   fk_wall: { role: 'attacker', pairs: [['gkPositioning', 'setPieces'], ['reflexes', 'curve'], ['diving', 'shooting'], ['handling', 'composure']] },

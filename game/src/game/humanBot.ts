@@ -16,7 +16,7 @@
 import { Rng } from '../core/rng'
 import { PITCH_LENGTH } from '../sim/match/types'
 import { isBehind, keeperTarget, planSave } from './ai'
-import { dist, norm, sub, type Agent, type Vec2 } from './model'
+import { clamp01, dist, norm, sub, type Agent, type Vec2 } from './model'
 import { GOAL_CENTER_Y, POST_Y_HIGH, POST_Y_LOW, predictTrajectory } from './physics'
 import type { HighlightRuntime } from './runtime'
 
@@ -66,12 +66,20 @@ export interface HumanBotState {
   shootAt: number
   /** Real time the hero first had the ball (−1 = not on ball). */
   heldSinceReal: number
+  /** Game time the hero got the ball (−1 = not on it): patience is judged on the pitch clock, not the slow-motion one. */
+  heldSinceGame: number
   /** Intended side of goal (+1 / −1). */
   side: number
   /** Planned tackle distance for this moment. */
   tackleAt: number
   /** Will try a slide rather than wait for a standing tackle. */
   slider: boolean
+  /** Keeper: how far toward the middle of his line he drifts off the ideal spot (0 = textbook, drawn once). */
+  gkDrift: number
+  /** gk_1v1: the distance (m) at which he comes off his line (Infinity = never; drawn once). */
+  rushAt: number
+  /** block: pressed BLOCK for this shot. */
+  blocked: boolean
   /** Real-time offset of the jump/press (timing error). */
   jumpErr: number
   /** Real time at which a pending action fires. */
@@ -94,6 +102,8 @@ export interface HumanBotState {
   blockErr: number
   /** Real time the set-piece choice will be made (−1 = not yet planned). */
   choiceAt: number
+  /** timed_run: the runner's error (m) in timing his call against their line (drawn once). */
+  lineErr?: number
   /** timed_run: real time the run starts, and whether the call went in. */
   runAt: number
   called: boolean
@@ -114,9 +124,14 @@ export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
     dove: false,
     shootAt: rng.range(skill.shootFrom[0], skill.shootFrom[1]),
     heldSinceReal: -1,
+    heldSinceGame: -1,
     side: rng.chance(0.5) ? 1 : -1,
     tackleAt: Math.max(0.9, rng.normal(1.45, skill.timingSd * 3)),
     slider: rng.chance(skill.slide),
+    // Build 9 (sloppy = sloppy): a poor keeper stands off the angle and comes out too early (or not at all).
+    gkDrift: clamp01((1 - skill.read) * rng.range(0.6, 1.1)),
+    rushAt: rng.chance(skill.read * 0.5 + 0.45) ? (skill.read > 0.5 ? 9 : 15) + rng.normal(0, skill.timingSd * 15) : Infinity,
+    blocked: false,
     jumpErr: rng.normal(0, skill.timingSd),
     pendingAt: -1,
     crosser: rng.chance(0.6),
@@ -164,6 +179,12 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     if (Number.isNaN(st.blockErr)) st.blockErr = st.rng.normal(0, st.skill.aimSd * 0.45)
     const spot = { x: owner.pos.x + toGoal.x * 1.7 - toGoal.y * st.blockErr, y: owner.pos.y + toGoal.y * 1.7 + toGoal.x * st.blockErr }
     moveTo(spot, dist(hero.pos, spot) > 0.3)
+    // In the line: spread himself (BLOCK) as the shooter sets — a reader on time, others late or never.
+    // (Held while he stays in the line: the spread lasts ~1 s, so he renews it until the shot comes.)
+    if (dist(hero.pos, spot) < 1 && st.reader && st.real > st.skill.reaction + 0.5 && st.real - st.lastAct > 0.9) {
+      st.blocked = true
+      act({ kind: 'btn', id: 'block' })
+    }
     return
   }
 
@@ -200,7 +221,8 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     st.slider = false
     return
   }
-  if (d > (st.rusher ? 1.75 : 1.85)) {
+  // A rash defender stabs from too far out (build 9: from ~3.5 m for a novice — the lunge is the sloppy input).
+  if (d > (st.rusher ? 1.75 + st.skill.timingSd * 8 : 1.85)) {
     st.waitSince = -1
     return
   }
@@ -219,6 +241,11 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   }
   // A patient defender only presses when the man is in reach; a rash one stabs anyway (and slides in).
   if (d > 1.72 && !st.rusher) return
+  if (st.rusher && d > 1.75) {
+    act({ kind: 'btn', id: 'tackle', dir: norm(sub(owner.pos, hero.pos)) })
+    st.pendingAt = -1
+    return
+  }
   act({ kind: 'action' })
   st.pendingAt = -1
   st.waitSince = -1
@@ -312,14 +339,25 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
         st.dove = true
       }
     }
-    moveTo(keeperTarget(hero, rt.aiWorld()).pos)
+    // gk_1v1: come off the line to smother at the right moment (a sloppy keeper goes too early, or never).
+    const att = rt.owner && rt.owner.team === 'opp' && !rt.owner.isKeeper ? rt.owner : null
+    if (rt.kind === 'gk_1v1' && att && !st.blocked && dist(att.pos, hero.pos) < st.rushAt) {
+      st.blocked = true
+      act({ kind: 'btn', id: 'rush' })
+    }
+    const ideal = keeperTarget(hero, rt.aiWorld()).pos
+    // Off the angle: drifts toward the middle of his line.
+    const line = { x: 0.6, y: GOAL_CENTER_Y }
+    moveTo({ x: ideal.x + (line.x - ideal.x) * st.gkDrift * 0.7, y: ideal.y + (line.y - ideal.y) * st.gkDrift })
     return
   }
 
   // ── On the ball / set-piece taker ──
   if (rt.heroOnBall) {
     if (st.heldSinceReal < 0) st.heldSinceReal = st.real
+    if (st.heldSinceGame < 0) st.heldSinceGame = rt.time
     const held = st.real - st.heldSinceReal
+    const heldGame = rt.time - st.heldSinceGame
     const sp = rt.setPiece
     const goal = { x: PITCH_LENGTH, y: GOAL_CENTER_Y }
     if (sp && sp.kind === 'penalty') {
@@ -414,13 +452,16 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
     }
     // On a break there is space to run into: no panic shot from distance.
     const patience = rt.kind === 'counter_2v1' || rt.kind === 'counter' ? 7 : 2.4
-    if (dGoal < st.shootAt || (held > patience && dGoal < 30)) {
+    // Patience on the pitch clock (build 9): in real seconds the Composure slow-motion window changed the bot's own
+    // decision (a composed hero was made to dribble on into the defence).
+    if (dGoal < st.shootAt || (heldGame > patience && dGoal < 30)) {
       act({ kind: 'shoot', target: aimPoint(st, 0.9), power: power(st), curl: -0.25 * st.side * st.rng.range(0, 1), chip: false })
     }
     moveTo(goal, true)
     return
   }
   st.heldSinceReal = -1
+  st.heldSinceGame = -1
 
   // ── Defending ──
   const owner = rt.owner
@@ -474,7 +515,12 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       return
     }
     moveTo({ x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + st.side * 2 }, true)
-    if (!st.called && st.real > st.runAt + Math.max(0, st.rng.normal(0.2, st.skill.timingSd))) {
+    // Call it as he reaches their line (build 9: a sensible runner times the call on the line, not on a clock); the
+    // timing error is the human's (≈ ±0.8 m good, ±1.8 m novice), so a sloppy one still strays offside.
+    const xs = rt.agents.filter((a) => a.team === 'opp').map((a) => a.pos.x).sort((a, b) => b - a)
+    const line = xs[1] ?? PITCH_LENGTH
+    if (st.lineErr === undefined) st.lineErr = st.rng.normal(0, st.skill.timingSd * 8)
+    if (!st.called && st.real > st.runAt && hero.pos.x + hero.vel.x * 0.25 >= line - 2.5 + st.lineErr) {
       st.called = true
       rt.queueAction({ kind: 'call', at: { x: hero.pos.x + 10, y: hero.pos.y } })
     }

@@ -413,7 +413,8 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
   },
   {
     // Anticipation also feeds the hero's tackle moment skill (game/momentSkill), which lifts the low end of this share: 5 pp+.
-    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.045, n: 200,
+    // Build 9: 0.045 → 0.04 (measured 0.045 exactly; team-mates help less in defensive moments, DEFEND_HELP).
+    attr: 'anticipation', kind: 'interception', pos: 'CB', metric: 'read the pass and cut it out himself', unit: '%', sign: 1, min: 0.04, n: 200,
     run: momentShare('interception', 'CB', (rt) => (rt as unknown as { stats: { tackles: number } }).stats.tackles > 0),
   },
   {

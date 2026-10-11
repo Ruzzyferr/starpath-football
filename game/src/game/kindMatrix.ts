@@ -6,7 +6,8 @@
  */
 import type { Attributes, AttributeKey } from '../core/types'
 import type { Highlight, HighlightKind } from '../sim/match/types'
-import { FEEL_KINDS, feelHighlight, isSuccess, type FeelKind } from './feelHarness'
+import { FEEL_KINDS, feelHighlight, type FeelKind } from './feelHarness'
+import { momentTier, tierSuccess, type MomentTier } from '../sim/match/tier'
 import { createHumanBot, humanBotStep, type BotLevel } from './humanBot'
 import { kindHeroAttrs } from './matchup'
 import { HighlightRuntime } from './runtime'
@@ -40,7 +41,8 @@ export function matrixHighlight(kind: FeelKind, seed: number, level: number | nu
   return hl
 }
 
-export function matrixTrial(kind: FeelKind, seed: number, level: number | null, input: MatrixInput, opp: OppStrength): boolean {
+/** One trial's graded result (sim/match/tier). */
+export function matrixTier(kind: FeelKind, seed: number, level: number | null, input: MatrixInput, opp: OppStrength): MomentTier {
   const rt = new HighlightRuntime(matrixHighlight(kind, seed, level, opp), { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 13 })
   const bot = createHumanBot(BOT[input], seed)
   const dt = 1 / 60
@@ -49,13 +51,31 @@ export function matrixTrial(kind: FeelKind, seed: number, level: number | null, 
     rt.update(dt)
     rt.drainEvents()
   }
-  return isSuccess(kind as HighlightKind, rt.result?.outcome ?? 'timeout')
+  return rt.result?.tier ?? momentTier(kind as HighlightKind, rt.result ?? { outcome: 'timeout' })
 }
 
-export function matrixRate(kind: FeelKind, level: number | null, input: MatrixInput, opp: OppStrength, n: number): number {
-  let ok = 0
-  for (let s = 1; s <= n; s++) if (matrixTrial(kind, s, level, input, opp)) ok++
-  return ok / n
+/** Success (full or partial) of one trial. */
+export const matrixTrial = (kind: FeelKind, seed: number, level: number | null, input: MatrixInput, opp: OppStrength): boolean =>
+  tierSuccess(matrixTier(kind, seed, level, input, opp))
+
+export interface MatrixRates {
+  /** Full + partial. */
+  success: number
+  /** Full only (a goal in the goal-oriented kinds). */
+  full: number
 }
+
+export function matrixRates(kind: FeelKind, level: number | null, input: MatrixInput, opp: OppStrength, n: number): MatrixRates {
+  let ok = 0
+  let full = 0
+  for (let s = 1; s <= n; s++) {
+    const t = matrixTier(kind, s, level, input, opp)
+    if (t !== 'fail') ok++
+    if (t === 'full') full++
+  }
+  return { success: ok / n, full: full / n }
+}
+
+export const matrixRate = (kind: FeelKind, level: number | null, input: MatrixInput, opp: OppStrength, n: number): number => matrixRates(kind, level, input, opp, n).success
 
 export { FEEL_KINDS as MATRIX_KINDS }
