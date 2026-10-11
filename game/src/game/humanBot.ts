@@ -179,6 +179,19 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   }
   const ownGoal = { x: 0, y: GOAL_CENTER_Y }
   const toGoal = norm(sub(ownGoal, owner.pos))
+  // Back post: a sensible defender picks up the runner at the far post (goal-side, a yard off him, ball side) instead
+  // of going to the crosser; a careless one watches the ball.
+  if (rt.kind === 'back_post' && st.skill.read >= 0.5) {
+    const runner = rt.agents
+      .filter((a) => a.team === 'opp' && a !== owner && !a.isKeeper && a.pos.x < 20)
+      .sort((p, q) => Math.abs(q.pos.y - owner.pos.y) - Math.abs(p.pos.y - owner.pos.y))[0]
+    if (runner) {
+      const g = norm(sub(ownGoal, runner.pos))
+      const side = norm(sub(owner.pos, runner.pos))
+      moveTo({ x: runner.pos.x + g.x * 0.9 + side.x * 0.4, y: runner.pos.y + g.y * 0.9 + side.y * 0.4 }, dist(hero.pos, runner.pos) > 2)
+      return
+    }
+  }
 
   // Shot block: a composed defender gets his body into the shooting line ~1.7 m off the ball
   // and stays on his feet; how exactly he finds the line depends on skill. A rash one dives in.
@@ -445,41 +458,19 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       return
     }
     if (rt.kind === 'cross' && (hero.pos.y > 52 || hero.pos.y < 16)) {
-      // Wide: cross toward the best-placed runner in the box (with scatter). A sensible crosser waits for his
-      // runners to arrive in the box; a careless one hits it as soon as he has it.
+      // Wide: everyone crosses (the moment's intent). A sensible crosser waits for his runners in the box and plays it
+      // into the corridor at the penalty spot; a careless one hits it at the box without looking.
       const arrived = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 16 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12).length
       if (held > 0.5 && (st.skill.read < 0.5 || arrived >= 2 || held > 2.4)) {
         const box = rt.agents
           .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 18 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12)
           .sort((p, q) => Math.abs(p.pos.y - GOAL_CENTER_Y) - Math.abs(q.pos.y - GOAL_CENTER_Y))[0]
-        // A sensible crosser picks the space in the box a team-mate can attack and no defender holds; a careless one
-        // just hits it at the nearest body.
-        const space = (): Vec2 => {
-          let best = { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
-          let bestV = -Infinity
-          for (let x = PITCH_LENGTH - 12; x <= PITCH_LENGTH - 5; x += 1.5) {
-            for (let y = GOAL_CENTER_Y - 7; y <= GOAL_CENTER_Y + 7; y += 1.5) {
-              const p = { x, y }
-              const dOpp = Math.min(...rt.agents.filter((o) => o.team === 'opp').map((o) => dist(o.pos, p)))
-              const dMate = Math.min(...rt.agents.filter((o) => o.team === 'hero' && !o.isHero && !o.isKeeper).map((o) => dist(o.pos, p)))
-              const v = Math.min(dOpp, 4) - 0.6 * dMate
-              if (v > bestV) {
-                bestV = v
-                best = p
-              }
-            }
-          }
-          return best
-        }
-        // (Into the corridor at the penalty spot, where the runners arrive, rather than onto a marked man.)
-        void space
-        // (A careless one does not look up: he hits it at the box in general.)
         const aim = st.skill.read >= 0.5 ? { x: PITCH_LENGTH - 12, y: GOAL_CENTER_Y } : st.skill.read > 0.3 && box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
         // (Across 30 m a careless swipe is metres out: the scatter grows with the carelessness.)
         const sc = st.skill.read >= 0.5 ? 1 : 1.5
         const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6 * sc), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2 * sc) }
         const dir = norm(sub(tgt, hero.pos))
-        // (Struck firmly enough to reach the far side of the box: the careless one often leaves it short.)
+        // (A careless swipe's weight is all over the place: short of the runners or over everyone.)
         act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: st.skill.read >= 0.5 ? power(st, -0.11) : Math.max(0.45, Math.min(1.12, st.rng.normal(st.skill.powerMean - 0.15, st.skill.powerSd * sc))), curl: 0, chip: false, isTap: false } })
       }
       moveTo({ x: PITCH_LENGTH - 6, y: hero.pos.y }, true)
@@ -602,7 +593,9 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
   if (!owner) {
     if (rt.ball.z > 0.8) {
       const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
-      const drop = (pts.find((p, i) => i > 0 && p.z < 2.2 && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
+      // (A ball over the top he runs onto where it comes down, not where it passes head height.)
+      const ground = rt.kind === 'timed_run' || rt.kind === 'shoulder_duel'
+      const drop = (pts.find((p, i) => i > 0 && p.z < (ground ? 0.6 : 2.2) && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
       moveTo({ x: drop.x, y: drop.y }, true)
       // A ball over the top far from goal: run onto it and bring it down, don't head it.
       if ((rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') && hero.pos.x < PITCH_LENGTH - 16) return

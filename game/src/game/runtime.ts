@@ -310,6 +310,16 @@ export const CROSS_ATTACK = { base: 0.6, skill: 11 } as const
 /** Hero shot from a tight angle: the goal mouth seen under this angle (rad) or less gets the keeper up to + save. */
 export const TIGHT_ANGLE = 0.42
 export const TIGHT_ANGLE_SAVE = 0.45
+/** timed_run: extra turn (s) of their back line against a runner off their blind side, × his Positioning. */
+export const BLIND_SIDE = 0.35
+/** A forward this far (m) past the line at full Positioning (× Positioning) as the pass is played is still level. */
+export const RUN_ON_LINE = 0.9
+/** timed_run: the ball over the top is aimed no deeper than this far (m) from the goal line (it carries on after it). */
+export const TIMED_RUN_DEPTH = 21
+/** timed_run: average speed (m/s) of the ball over the top, for weighting it onto the runner. */
+export const TIMED_RUN_BALL_SPEED = 15
+/** …and he arrives this long (s) after it has come down, onto it in his stride. */
+export const TIMED_RUN_SETTLE = 0.4
 /** Penalty: save chance added when the keeper guessed the right way. */
 export const PENALTY_READ_SAVE = 0.15
 /** Hero keeper's save chance: + edge × (his Reflexes / Diving / GK Positioning / Handling average − 0.6). */
@@ -619,6 +629,8 @@ export class HighlightRuntime {
   private blockWindUp: number
   /** block: the shooter has already answered a charge (one shift per moment). */
   private blockShifted = false
+  /** The hero was in an aerial duel for the ball this moment. */
+  private heroContested = false
   /** Penalty: the AI keeper guessed the right way. */
   private penaltyRead = false
   /** The hero keeper dived the right way for a shot on target. */
@@ -1160,7 +1172,7 @@ export class HighlightRuntime {
     for (let i = Math.min(this.stepEv0, this.events.length); i < this.events.length; i++) {
       const e = this.events[i]!
       if (!('by' in e) || e.by !== id) continue
-      if (e.type === 'block' || e.type === 'save' || e.type === 'touch' || (e.type === 'tackle' && e.won) || (e.type === 'aerial' && e.hero)) this.heroStop = true
+      if (e.type === 'block' || e.type === 'save' || e.type === 'touch' || e.type === 'header' || (e.type === 'tackle' && e.won) || (e.type === 'aerial' && e.hero)) this.heroStop = true
     }
   }
 
@@ -1839,9 +1851,28 @@ export class HighlightRuntime {
   private runInBehind(): Vec2 {
     const hero = this.hero
     const line = this.offsideLineX() ?? hero.pos.x
-    // Over the line into the space before the keeper's box: whoever is off the mark first gets there.
-    const ahead = Math.max(hero.pos.x, line) + 7.5
-    return inField({ x: Math.min(PITCH_LENGTH - 17.5, ahead), y: hero.pos.y + (GOAL_CENTER_Y - hero.pos.y) * 0.4 }, 2)
+    // Over the line into the space before the keeper's box, weighted for the runner: as far ahead of him as he gets
+    // to before the keeper can come off his line for it (his Pace / Acceleration decide how far that is).
+    const y = hero.pos.y + (GOAL_CENTER_Y - hero.pos.y) * 0.4
+    const gk = this.agents.find((q) => q.isKeeper && q.team === 'opp')
+    const heroV = topSpeed({ ...hero, sprint: true })
+    // (Where he meets it as it comes down — his sprint against the ball's flight — and never where the keeper is first.)
+    const from = { x: this.ball.x, y: this.ball.y }
+    let best = line + 2
+    let bestScore = Infinity
+    for (let x = line + 2; x <= PITCH_LENGTH - TIMED_RUN_DEPTH; x += 0.5) {
+      const p = { x, y }
+      const tHero = dist(hero.pos, p) / heroV
+      const tBall = dist(from, p) / TIMED_RUN_BALL_SPEED
+      const tGk = gk ? dist(gk.pos, p) / topSpeed({ ...gk, sprint: true }) + 0.45 : 99
+      if (tHero + 0.35 >= tGk) break
+      const score = Math.abs(tHero - (tBall + TIMED_RUN_SETTLE))
+      if (score < bestScore) {
+        bestScore = score
+        best = x
+      }
+    }
+    return inField({ x: best, y }, 2)
   }
 
   /** timed_run: the ball over the top of the line into the runner's path. */
@@ -1858,7 +1889,8 @@ export class HighlightRuntime {
     const quick = (a: Agent): number => a01(a.attrs.pace) * 0.5 + a01(a.attrs.acceleration ?? a.attrs.pace) * 0.5
     for (const o of this.agents) {
       if (o.team !== 'opp' || o.isKeeper || o.pos.x < this.hero.pos.x - 8) continue
-      const turn = inBehindTurn(quick(this.hero) - quick(o))
+      // (…and one who ran off their blind side — Positioning — makes them look for him first.)
+      const turn = inBehindTurn(quick(this.hero) - quick(o)) + BLIND_SIDE * a01(this.hero.attrs.positioning)
       o.think = Math.max(o.think, turn)
       o.vel = { x: -1.5, y: o.vel.y * 0.3 }
       o.intent = { kind: 'run', to: { x: o.pos.x - 0.5, y: o.pos.y }, until: this.time + turn }
@@ -2254,8 +2286,8 @@ export class HighlightRuntime {
     const spd = Math.hypot(plan.vx, plan.vy, plan.vz)
     this.events.push({ type: 'kick', by: by.id, hero: by.isHero, kick: kind, power, speed: spd, x: this.ball.x, y: this.ball.y })
     if (this.readPressedPass(by, kind, plan)) return
-    // recovery_run: his job is judged when they get the shot away (was he back in the play by then?).
-    if (this.kind === 'recovery_run' && by.team === 'opp' && SHOT_KINDS.has(kind) && this.dutySnap === null) this.dutySnap = this.onDuty()
+    // recovery_run / back_post: his job is judged when they get the shot (or header) away — back in the play, on his man.
+    if ((this.kind === 'recovery_run' || this.kind === 'back_post') && by.team === 'opp' && SHOT_KINDS.has(kind) && this.dutySnap === null) this.dutySnap = this.onDuty()
     // Graded defending: was he in the shooting line, on his feet and close, as it was struck?
     if (SHOT_PRESS_KINDS.has(this.kind) && by.team === 'opp' && kind === 'shot' && this.blockLine === null) {
       // Close to the strike's path (he narrowed it: Positioning) — a shot that went wide of him clean is not forced.
@@ -2335,7 +2367,8 @@ export class HighlightRuntime {
     // Anticipation: a team-mate's ball toward the hero — he reads it and is away first.
     if (!by.isHero && by.team === 'hero' && PASS_KINDS.has(kind) && !this.hero.isKeeper) {
       const aim = { x: plan.aim.x, y: plan.aim.y }
-      if (dist(aim, this.hero.pos) < 14) this.readBurstUntil = this.time + 0.7
+      // (timed_run: a runner who timed his run on the line — Positioning — is in full stride as it is played.)
+      if (dist(aim, this.hero.pos) < 14 || this.kind === 'timed_run') this.readBurstUntil = this.time + (this.kind === 'timed_run' ? 0.2 + 1.2 * a01(this.hero.attrs.positioning) : 0.7)
     }
     // ...and an opponent's pass he can cut out: the moment slows for a reader (bullet time scales with Anticipation).
     if (by.team === 'opp' && this.defending && PASS_KINDS.has(kind) && !this.hero.isKeeper && this.phase === 'live') {
@@ -2354,6 +2387,10 @@ export class HighlightRuntime {
     this.offsideSnap = null
     if (PASS_KINDS.has(kind) && wasSetPiece?.kind !== 'corner' && (by.team === 'hero' || this.defending)) {
       const ids = offsideSnapshot(this.agents, this.ball.x, by)
+      // A forward timing his run on the line (Positioning) is level as it is played: within his read of it he is
+      // given onside (the clever runner bends his run along the line).
+      const line = by.team === 'hero' ? this.offsideLineX() : null
+      if (line !== null && ids.has(this.hero.id) && this.hero.pos.x - line < RUN_ON_LINE * a01(this.hero.attrs.positioning)) ids.delete(this.hero.id)
       if (ids.size) this.offsideSnap = { team: by.team, ids }
     }
 
@@ -2529,6 +2566,8 @@ export class HighlightRuntime {
     if (h.isKeeper && this.kind === 'gk_sweep') return dist(h.pos, b) < 6 || Math.abs(h.pos.x - ownGoalX(h.team)) > 9
     if (h.isKeeper) return this.keeperRightWay || dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5 || dist(h.pos, b) < 6
     const goal = { x: ownGoalX(h.team), y: GOAL_CENTER_Y }
+    // (back_post: the job is his man at the far post — tight on him, or up contesting the header.)
+    if (this.kind === 'back_post') return this.heroContested || this.agents.some((o) => o.team === 'opp' && !o.isKeeper && dist(o.pos, h.pos) < 2.5 && dist(o.pos, b) < 10)
     // (recovery_run: getting back into the play is the job — within 12 m and level or goal-side.)
     if (this.kind === 'recovery_run') return dist(h.pos, b) < 12 && dist(h.pos, goal) < dist(b, goal) + 4
     return dist(h.pos, b) < 8 && dist(h.pos, goal) < dist(b, goal) + 0.5
@@ -2699,9 +2738,8 @@ export class HighlightRuntime {
   private holdTheLine(mv: Vec2): Vec2 {
     const hero = this.hero
     const o = this.owner
-    // (Build 9: once he has called for it, his sprinted run is his own timing — the aid holds a drifting forward, it does
-    // not brake a timed run.)
-    if (!o || o.team !== 'hero' || o.isHero || this.defending || hero.isKeeper || (this.control.sprint && this.heroRequest)) return mv
+    // (Build 9: a sprinted run is his own timing — the aid holds a drifting forward, it does not brake a timed run.)
+    if (!o || o.team !== 'hero' || o.isHero || this.defending || hero.isKeeper || this.control.sprint) return mv
     const line = this.offsideLineX()
     if (line === null) return mv
     // How far past the line he drifts before he checks his run: about 2 m at Positioning 0, level from 70 up.
@@ -3668,6 +3706,7 @@ export class HighlightRuntime {
     const winner = this.rng.weighted(list, weight)
     // The hero's cross / corner won in the air by a team-mate: a chance created (graded success).
     if (winner.team === 'hero' && !winner.isHero && this.lastTouch?.isHero && this.heroDeliveryAt >= 0) this.chance = true
+    if (list.some((a) => a.isHero)) this.heroContested = true
     this.events.push({ type: 'aerial', by: winner.id, n: list.length - 1, hero: winner.isHero, heroIn: list.some((a) => a.isHero && a.state === 'jump') })
     for (const a of list) {
       if (a === winner) continue

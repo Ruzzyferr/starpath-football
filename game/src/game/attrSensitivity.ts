@@ -408,9 +408,11 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: kickStat('edge_of_box', 'AM', 'err', shootAt(2.6, 0.85), 'median', { pressure: true }),
   },
   {
-    // Build 9: 0.06 → 0.05 — the line aid no longer brakes a run once he has called for it (his timing).
-    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'caught offside', unit: '%', sign: -1, min: 0.05, n: 150,
-    run: momentShare('timed_run', 'ST', (rt) => !!rt.result?.offside?.byHero),
+    // Build 9: a sprinted, timed run is the player's own (the line aid only holds a drifting forward), so a sensible
+    // runner is rarely offside at any Positioning; Positioning now shows in getting in behind onside — level on the line
+    // as it is played (RUN_ON_LINE) and off their blind side (BLIND_SIDE).
+    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'in behind onside on the ball over the top', unit: '%', sign: 1, min: 0.05, n: 150,
+    run: momentShare('timed_run', 'ST', (rt) => !!rt.result?.chance && !rt.result?.offside),
   },
   {
     // Anticipation also feeds the hero's tackle moment skill (game/momentSkill), which lifts the low end of this share: 5 pp+.

@@ -46,7 +46,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   header: [0.14, 0.68],
   gk_1v1: [0.3, 0.75],
   gk_sweep: [0.6, 0.92],
-  back_post: [0.25, 0.6],
+  // Build 9: his own header / clearance counts, and marking his man is the job.
+  back_post: [0.25, 0.85],
   // Attribute moments (measured N=150 average, normal): long shot scored ~0.14, switch found the far side
   // ~0.45, recovery run stopped it ~0.62, shoulder duel won ~0.35, timed run scored ~0.13 (offside trap and a
   // finish), press won it ~0.52, cross claimed / kept out ~0.91, distribution found a man ~0.65.
@@ -54,7 +55,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   switch_play: [0.3, 0.62],
   recovery_run: [0.45, 0.78],
   shoulder_duel: [0.22, 0.85],
-  timed_run: [0.05, 0.38],
+  // Build 9: the ball over the top is weighted onto his run (he meets it as it comes down).
+  timed_run: [0.05, 0.6],
   press_trap: [0.25, 0.66],
   // Build 9: graded keeper credit (his own claim / on his spot) and team-mates leave the cross to him.
   gk_claim: [0.6, 0.98],
