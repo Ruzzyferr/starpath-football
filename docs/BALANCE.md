@@ -1473,3 +1473,201 @@ Rakip videosu (oyun okuma; iyi: alışkanlık görününce ~1,7 sn sonra, %85 do
 | 1'e 1 (değişmedi) | XP, takım arkadaşı | zaten skorla ölçekli (×0,5..×1,33; ilişki 2..+5) |
 
 Hızlı çözüm yolları ve otopilot değişmedi: golden master aynı kaldı.
+
+
+## Antrenman drilleri (Training drills, Ekim 2026, oyuncu-test build 8)
+
+Oyun testçisi (gerçek bir futbolcu) hiçbir drilde başarılı olamadı: rakipler çok hızlı yakaladı, pas seçeneği yoktu, paslar alınmadı. Tüm driller (antrenman + deneme drilleri) gerçek girdi yolundan oynayan botlarla ölçüldü.
+
+### Ölçüm (`game/src/game/training/drillCurves.test.ts`)
+- Botlar `drillBots.ts`: karar botu + **insan girdi profili** (`humanize`): iyi = 0,10 sn gecikme, ±0,05 sn zamanlama, ±0,5 m nişan, ±0,05 güç, çubuk sapması 0,12 rad; özensiz = 0,22 sn, ±0,12 sn, ±1,5 m, ±0,14, 0,32 rad. Eski botlar kusursuz bilgiyle oynuyordu (çoğu drilde her seviyede %95–100): insan için ayar yanlış ölçülmüştü.
+- Kahraman seviyesi v: tüm özellikler v. Rakip seviyesi varsayılan 56 (`DrillConfig.opponent`); oyunda `trainingOpponentLevel` = 56 + 0,4·(kadro − 56) + zorluk.
+- `DRILL_CURVES=1 DRILL_OUT=dosya npx vitest run src/game/training/drillCurves.test.ts` tabloları yazar; sabitlenmiş test her drilde: 50'de %55–80, monoton, 90 ≥ 50 + 15, özensiz geride, güçlü rakip daha düşük.
+- Puan → performans: her drilin parı insan botuyla yeniden ölçüldü (iyi girdi, seviye 50 ≈ 0,67 = B); tekrar sayısı sabit olan drillerde eğri üssü (`DRILL_CURVE` / `VARIANT_CURVE`) dikleştirildi ki not özelliği izlesin.
+
+### Kök nedenler ve düzeltmeler
+- **Top kapma**: kesme hamlesi menzilin dışında başlıyordu (1,9–2,8 m > 1,33 m menzil), açık top penceresi ~0,14 sn. Artık topçu menzil + 0,5–1,2 m'de keser, keserken topu açar (0,25 sn basma), pencere geniş; kaçış hızı topçunun hızına bağlı. Düello oranı antrenman eğimiyle (`drillTackleOdds`). Önce iyi girdi 50'de %10.
+- **Bitiricilik / kafa / serbest vuruş kalecisi**: hızlı kaleci dalışta topun yanından geçip gidiyordu (güçlü kaleci daha çok gol yiyordu). Dalış mesafesi topa göre, gövde de bloklar, standart derinlik; kurtarış oranı kaleci kalitesiyle (`drillSaveChance`). Antrenman kalecisi şutu 0,15 sn geç okur, baraj 0,06 sn perdeler.
+- **Serbest vuruş**: ortaya vuran özensiz oyuncu iyi oyuncudan çok puan alıyordu. Kapılar artık kalenin dış üçte birleri: gol 20, kapıya giden kurtarılan vuruş 4, kalecinin ortası 2. Kaleci uzak direğe 0,8 m kayık.
+- **Pas**: her seviyede %98 (özellik etkisiz). Pas hatası beceriye göre (`drillNoise`) ve alıcının ayağına isabet bonusu.
+- **Rondo**: presçi topun 0,8 m önünde duruyordu, kenar paslar hep kesiliyordu (seçenek yok); rakipler özelliksizdi. Artık presçi saldırganlığa göre 1,1–1,6 m'de, ayağın dibinde blok yok, savunmacılar pası tepki süresiyle okur, baskı pas hatasını artırır, ilk dokunuş tek dokunuş penceresini açar.
+- **Slalom**: beceri hamlesi oyuncuyu bir sonraki kapının ters tarafına atıyordu (kusursuz bot bile kapıların yarısını kaçırıyordu). Artık kapının tarafına; zigzag ±2,2 m; top kontrolü, dönüş ve kapıya hizalama Top Sürme / Çeviklik ile; mankenlerin özellikleri beceri penceresini daraltır.
+- **Oyun okuma / pres**: pasörler sabit 70'ti, davranış zorluktan geliyordu (güçlü rakip daha kolaydı). Artık tutma, pas hızı, ipucu gizleme pasörlerin özelliklerinden; Önsezi menzil ve ipucunu, İş Gücü pres hızını büyütür.
+- **Kaleci**: rakip şutörün gücü/yerleşimi kendi özelliklerinden; kahraman kalecinin kol boyu Plonjon, ayakta menzil Refleks ile; dışarı giden şut (açı kapatıldı) 2 puan, ki zayıf şutör kaleci puanını düşürmesin.
+- **Çıkış**: kanat ve forvet rakip seviyesinde; forvet itişmeye ve pas alanını daraltmaya özellikleriyle girer.
+- **Mekik**: 70 üstü herkes tavana vuruyordu; bip hızı seviye başı 0,45 → 0,6 m/sn.
+- **Sprint / temas**: süre bonusu 3,6 sn altı her 0,1 sn için 10 (eskiden 7, 70'te tavan).
+
+### Eğriler (başarı %, 16–64 tohum ortalaması)
+
+#### finishing (finishing, shooting, composure)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 55 | 68 | 76 | 84 | 84 | 89 |
+| özensiz | 35 | 35 | 35 | 37 | 39 | 44 |
+| iyi, yalnız ilgili özellik | 63 | 68 | 76 | 77 | 86 | 89 |
+
+Önce (iyi, 50): 59 → şimdi 68. Rakip 40 / 56 / 72 (kahraman 50, iyi): 77 / 68 / 60.
+
+#### setPiece (setPieces, curve)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 54 | 60 | 65 | 86 | 89 | 91 |
+| özensiz | 40 | 44 | 46 | 53 | 39 | 42 |
+| iyi, yalnız ilgili özellik | 59 | 60 | 75 | 78 | 83 | 87 |
+
+Önce (iyi, 50): 62 → şimdi 60. Rakip 40 / 56 / 72 (kahraman 50, iyi): 80 / 60 / 55.
+
+#### passing (passing, vision, firstTouch)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 58 | 68 | 73 | 82 | 86 | 89 |
+| özensiz | 14 | 14 | 17 | 17 | 17 | 18 |
+| iyi, yalnız ilgili özellik | 64 | 68 | 71 | 71 | 74 | 78 |
+
+Önce (iyi, 50): 98 → şimdi 68.
+
+#### rondo (passing, vision, firstTouch)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 57 | 67 | 81 | 96 | 100 | 100 |
+| özensiz | 20 | 24 | 23 | 27 | 27 | 26 |
+| iyi, yalnız ilgili özellik | 56 | 67 | 77 | 92 | 99 | 100 |
+
+Önce (iyi, 50): 100 → şimdi 67. Rakip 40 / 56 / 72 (kahraman 50, iyi): 75 / 67 / 64.
+
+#### dribbling (dribbling, agility, firstTouch)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 57 | 67 | 76 | 79 | 83 | 93 |
+| özensiz | 16 | 17 | 20 | 22 | 27 | 28 |
+| iyi, yalnız ilgili özellik | 63 | 67 | 71 | 74 | 77 | 80 |
+
+Önce (iyi, 50): 62 → şimdi 67. Rakip 40 / 56 / 72 (kahraman 50, iyi): 68 / 67 / 62.
+
+#### fitness (stamina, pace)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 56 | 67 | 67 | 78 | 89 | 100 |
+| özensiz | 20 | 20 | 29 | 37 | 46 | 55 |
+| iyi, yalnız ilgili özellik | 56 | 67 | 67 | 78 | 89 | 100 |
+
+Önce (iyi, 50): 77 → şimdi 67.
+
+#### goalkeeping (reflexes, handling, gkPositioning, diving)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 64 | 64 | 71 | 78 | 83 | 87 |
+| özensiz | 28 | 34 | 36 | 37 | 40 | 40 |
+| iyi, yalnız ilgili özellik | 62 | 64 | 71 | 77 | 84 | 84 |
+
+Önce (iyi, 50): 86 → şimdi 64. Rakip 40 / 56 / 72 (kahraman 50, iyi): 69 / 64 / 59.
+
+#### diving (diving)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 55 | 61 | 71 | 75 | 85 | 90 |
+| özensiz | 34 | 35 | 36 | 40 | 39 | 43 |
+| iyi, yalnız ilgili özellik | 57 | 61 | 63 | 68 | 71 | 77 |
+
+Önce (iyi, 50): 39 → şimdi 61. Rakip 40 / 56 / 72 (kahraman 50, iyi): 63 / 61 / 58.
+
+#### crossing (crossing, curve)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 61 | 67 | 79 | 92 | 94 | 98 |
+| özensiz | 36 | 34 | 43 | 46 | 51 | 51 |
+| iyi, yalnız ilgili özellik | 63 | 67 | 79 | 86 | 93 | 96 |
+
+Önce (iyi, 50): 67 → şimdi 67.
+
+#### switch (longPassing)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 57 | 67 | 75 | 83 | 88 | 92 |
+| özensiz | 31 | 31 | 31 | 35 | 36 | 42 |
+| iyi, yalnız ilgili özellik | 62 | 67 | 74 | 77 | 83 | 87 |
+
+Önce (iyi, 50): 76 → şimdi 67.
+
+#### heading (heading, jumping)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 54 | 66 | 73 | 85 | 90 | 93 |
+| özensiz | 26 | 29 | 29 | 26 | 33 | 38 |
+| iyi, yalnız ilgili özellik | 60 | 66 | 74 | 83 | 92 | 96 |
+
+Önce (iyi, 50): 56 → şimdi 66. Rakip 40 / 56 / 72 (kahraman 50, iyi): 82 / 66 / 35.
+
+#### tackling (tackling, positioning)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 50 | 65 | 71 | 84 | 96 | 100 |
+| özensiz | 4 | 8 | 12 | 12 | 19 | 17 |
+| iyi, yalnız ilgili özellik | 55 | 65 | 68 | 72 | 82 | 90 |
+
+Önce (iyi, 50): 10 → şimdi 65. Rakip 40 / 56 / 72 (kahraman 50, iyi): 73 / 65 / 43.
+
+#### distribution (gkDistribution, handling)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 60 | 66 | 71 | 80 | 88 | 89 |
+| özensiz | 15 | 14 | 17 | 21 | 21 | 25 |
+| iyi, yalnız ilgili özellik | 59 | 66 | 72 | 76 | 84 | 86 |
+
+Önce (iyi, 50): 86 → şimdi 66. Rakip 40 / 56 / 72 (kahraman 50, iyi): 70 / 66 / 62.
+
+#### sprint (acceleration)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 64 | 67 | 74 | 80 | 84 | 90 |
+| özensiz | 8 | 7 | 7 | 6 | 6 | 7 |
+| iyi, yalnız ilgili özellik | 67 | 67 | 71 | 74 | 77 | 81 |
+
+Önce (iyi, 50): 82 → şimdi 67.
+
+#### contact (balance)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 61 | 67 | 75 | 80 | 85 | 91 |
+| özensiz | 5 | 6 | 9 | 10 | 10 | 10 |
+| iyi, yalnız ilgili özellik | 64 | 67 | 69 | 70 | 72 | 74 |
+
+Önce (iyi, 50): 99 → şimdi 67.
+
+#### reading (anticipation)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 44 | 67 | 77 | 88 | 93 | 98 |
+| özensiz | 4 | 5 | 5 | 8 | 7 | 8 |
+| iyi, yalnız ilgili özellik | 60 | 67 | 72 | 79 | 82 | 88 |
+
+Önce (iyi, 50): 64 → şimdi 67. Rakip 40 / 56 / 72 (kahraman 50, iyi): 79 / 67 / 48.
+
+#### pressing (workRate)
+
+| girdi | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 62 | 67 | 73 | 80 | 83 | 87 |
+| özensiz | 6 | 6 | 8 | 9 | 10 | 14 |
+| iyi, yalnız ilgili özellik | 62 | 67 | 69 | 69 | 72 | 73 |
+
+Önce (iyi, 50): 90 → şimdi 67. Rakip 40 / 56 / 72 (kahraman 50, iyi): 71 / 67 / 63.
+
+Notlar: serbest vuruşta 5 vuruşluk rastgelelik yüzünden iyi/özensiz farkı 40–50'de ~14–16 puan (diğer tüm seviyelerde ve drillerde ≥ 20). Özensiz kaleci rastgele dalışla hiç kıpırdamayandan kötü olabilir (gerçekçi). Simülasyon değişmedi (drill puanı yalnız oynanan seansın performansı): golden master aynı.
