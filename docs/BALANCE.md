@@ -1377,3 +1377,99 @@ Başlangıç kahramanı (OVR 57), iyi girdi — önce → sonra: 1v1 köşe vuru
 | müdahale (Top kapma/Önsezi/Agresiflik/Pozisyon) | 38 / 18 | 52 / 23 | 63 / 28 | 76 / 37 | 78 / 39 | 83 / 37 |
 
 Ayarlar: `HERO_FRAME_SAFE`, `HERO_PLACED_BEAT`, `HERO_FINISH_EDGE`, `HERO_PASS_MISHIT`, `HERO_THROUGH_MISHIT`, `HERO_THROUGH_SPREAD`, `HERO_CHARGE_DOWN`, `HERO_CROSS_BLOCK`, `HERO_TACKLE`, `HERO_LUNGE_TIMING` (runtime.ts); `SHOT_INTENT_*`, `BUTTON_PASS_*`, `heroMisHit` (kick.ts). Arka plan simülasyonu değişmedi (golden aynı; BALANCE=1 1000/2000/3000 geçti). Rol denge spot kontrolü (ST 3 rol + LW 4 rol, 12 kariyer): tüm Δ ±%4 içinde.
+
+## Agenda minigames (Ekim 2026, ajanda / kulübe mini oyunları denge çalışması)
+
+Sahip: "her şey statlara uysun, her mini oyun başarılabilir olsun". Kapsam: diyalog sahneleri
+(milli kamp, TD odası, takım yemeği), doping testi, rakip videosu, ajanda görevlerinin oynanan
+ödülleri. Ölçüm: simüle edilmiş İYİ ve ÖZENSİZ oyuncu, stat 40..90, seviye başına 300–400 deneme,
+seeded `Rng`. Başarı = geçer not (diyalog: uyum ≥ 0,60; doping/video: B ve üstü, skor ≥ 0,60).
+Başlangıç kahramanı: Soğukkanlılık/Liderlik ~31–41, oyun okuma ~37–45 (kaleci Soğukkanlılık ~67).
+
+Testler: `sim/game/agendaMinigames.balance.test.ts` (diyalog + ajanda ödülleri),
+`ui/screens/bench/dopingRules.test.ts`, `sim/game/oppScoutingBalance.test.ts`, `sim/game/oppScouting.test.ts`.
+
+### Kök nedenler (önce)
+
+- **Diyalog sahneleri**: sabit cevap tabloları; stat hiçbir şey yapmıyordu. Uygun cevaplar her zaman
+  kazanıyordu (iyi %100, her statta aynı). How-to kartı "Liderlik ve Soğukkanlılık güven kazandırır" diyordu
+  ama kodda karşılığı yoktu. İpucu metinleri hangi cevabın uyduğunu tam söylemiyordu.
+- **Doping testi**: herkese aynı bant (±0,13) ve aynı form süresi (8 sn); Soğukkanlılık etkisizdi.
+- **Rakip videosu**: herkese aynı klip hızı ve puan; Önsezi/Vizyon etkisizdi.
+- **Ajanda seçimleri**: itiraz şansı sabit %35, basın toplantısı sabit değerler, kondisyon testi tek eşik (0,75).
+
+### Yeni model
+
+- **Diyalog uyumu** = 0,64 × cevap uyumu + 0,26 × stat01((Soğukkanlılık+Liderlik)/2) + 0,06 × ilişki + N(0; 0,10)
+  (sahnenin kendi RNG çatalı: aynı kayıt + aynı cevap = aynı sonuç). Tüm etkiler uyuma göre ölçeklenir:
+  hoca ilişkisi −4..+12, TD güveni 0..+5 (hızlı konuşma 2,5), ilişki −4..+6, yemek arkadaşı +1..+10,
+  soyunma odası −0,5..+2,5. İpuçları artık uyan tonları sayıyor; yemek için kişilik → konu rehberi;
+  sonuç kartında "Uyum %X · cevap uyumu %Y · Soğukkanlılık + Liderlik Z".
+- **Doping** (`dopingRules.ts`): bant ±(0,06 + 0,09·c), el titremesi 0,10·(1−c), tam puan form süresi
+  3,8 + 5·d sn (c = stat01(Soğukkanlılık), d = stat01((Soğukkanlılık+disiplin)/2)). Giriş kartı statı gösterir.
+- **Video**: oyun okuma = ort(Önsezi, Vizyon, Pozisyon alma) (kaleci: Kaleci Pozisyonu). Klipler ×1..×1,5
+  ağır çekim (daha uzun cevap/tam puan penceresi), çıkarım ×0,9..×1,1; not, bonus ve XP nihai skora göre.
+  Oyun kuralları (`game/training/scouting.ts`) değişmedi; overlay saati yavaşlatır.
+
+### Eğriler (başarı %)
+
+Milli kamp (Soğukkanlılık = Liderlik):
+
+| oyuncu | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 70 | 81 | 90 | 93 | 97 | 98 |
+| özensiz | 13 | 21 | 28 | 37 | 45 | 56 |
+| önce (iyi / özensiz, her statta) | 100 / 54 | | | | | |
+
+TD odası:
+
+| oyuncu | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 66 | 76 | 86 | 91 | 95 | 96 |
+| özensiz | 16 | 22 | 29 | 35 | 42 | 49 |
+| önce (iyi / özensiz) | 100 / 34 | | | | | |
+
+Takım yemeği:
+
+| oyuncu | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi | 71 | 79 | 85 | 90 | 92 | 94 |
+| özensiz | 15 | 23 | 28 | 35 | 43 | 52 |
+| önce (iyi / özensiz) | 100 / ~22 | | | | | |
+
+Doping testi (Soğukkanlılık = disiplin; iyi: 0,28 sn tepki, özensiz: 0,42 sn + dalgınlık + yanlış sıra):
+
+| oyuncu | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi geçer | 75 | 96 | 99 | 99 | 100 | 100 |
+| iyi ort. skor | 0,64 | 0,74 | 0,81 | 0,87 | 0,92 | 0,96 |
+| özensiz geçer | 0 | 5 | 10 | 18 | 21 | 33 |
+| önce (iyi / özensiz, her statta) | 100 / ~20 (ort. 0,91 / 0,45) | | | | | |
+
+Rakip videosu (oyun okuma; iyi: alışkanlık görününce ~1,7 sn sonra, %85 doğru; özensiz: 0,8–4 sn rastgele, %40 doğru):
+
+| oyuncu | 40 | 50 | 60 | 70 | 80 | 90 |
+|---|---|---|---|---|---|---|
+| iyi geçer | 60 | 74 | 85 | 88 | 88 | 88 |
+| iyi ort. skor | 0,65 | 0,69 | 0,72 | 0,75 | 0,79 | 0,82 |
+| özensiz geçer | 20 | 20 | 20 | 20 | 20 | 20 |
+| özensiz ort. skor | 0,36 | 0,38 | 0,39 | 0,40 | 0,42 | 0,43 |
+| önce (iyi / özensiz, her statta) | 73 / 20 | | | | | |
+
+İyi oyuncunun videoda %88 tavanı: 4 klipten 2'sini yanlış okuyan oturum (≈%11) geçemez; bu kasıtlı.
+
+### Ödüller sime ulaşıyor ve performansla ölçekleniyor
+
+| mini oyun | etki | ölçek |
+|---|---|---|
+| Milli kamp | hoca ilişkisi (çağrı metresi), moral, yorgunluk, Pozisyon XP | ilişki −4 + 16·uyum; moral 1 + 3·uyum; XP 1 + 3·uyum |
+| TD odası | güven (ilk 11 şansı), ilişki, moral, gelişim XP | güven 5·uyum; ilişki −4 + 10·uyum; XP 1 + 3·uyum |
+| Takım yemeği | yemek arkadaşı, tüm takım, mutluluk, Vizyon XP, hesap | bağ 1 + 9·uyum; takım −0,5 + 3·uyum; mutluluk 1 + 3·uyum |
+| Doping | Soğukkanlılık XP, moral, disiplin | XP 2 + 6·skor; disiplin 0/+1/+2 (<0,35 / orta / ≥0,6); moral −1/+1/+2 |
+| Video | maç bonusu (Önsezi/Pozisyon), Önsezi/Vizyon XP | bonus S4 A3 B2 C1 D0 nihai skora göre; XP 1,5 + 3·skor |
+| İtiraz | ceza −1 maç şansı | 0,15 + 0,4·stat01(Soğukkanlılık) + disiplin terimi (%10–65) |
+| Basın toplantısı | basın/taraftar/hoca/moral | taban × (0,6 + 0,8·stat01(Soğukkanlılık)) |
+| Kondisyon testi | güven | 0 (≤0,4) .. +1 (1,0), sürekli |
+| 1'e 1 (değişmedi) | XP, takım arkadaşı | zaten skorla ölçekli (×0,5..×1,33; ilişki 2..+5) |
+
+Hızlı çözüm yolları ve otopilot değişmedi: golden master aynı kaldı.
