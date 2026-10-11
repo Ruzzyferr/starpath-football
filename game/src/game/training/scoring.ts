@@ -68,7 +68,7 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
 }
 
 /** Variants with their own scoring scale (curl gate: 5 × 20 points). */
-export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 24, rondo: 48, switch: 1865, diving: 59, contact: 2260, press: 1180 }
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 32, rondo: 48, switch: 1865, diving: 59, contact: 2260, press: 1180 }
 /** Variants with their own length (rondo: 60 s, 2.3#24). */
 export const VARIANT_DURATION: Readonly<Partial<Record<DrillVariant, number>>> = { rondo: 60 }
 
@@ -82,12 +82,14 @@ export const rondoPassPoints = (completed: boolean, oneTouch: boolean, accuracy 
 export const RONDO_VISION_THIRD = 60
 
 /** Curl gate (2.3#25): 5 free kicks over the wall; a goal 20, a saved kick into a gate 4, at the keeper 2. */
-export const CURL_GATE_ATTEMPTS = 5
+export const CURL_GATE_ATTEMPTS = 8
 export const CURL_GATE_POINTS = 20
 /** A curl-gate kick over the wall into a gate (outer third) that the keeper saves. */
-export const CURL_GATE_SAVED_POINTS = 4
+export const CURL_GATE_SAVED_POINTS = 2
 /** A kick over the wall at the keeper's middle third that he saves. */
-export const CURL_GATE_MIDDLE_POINTS = 2
+export const CURL_GATE_MIDDLE_POINTS = 0
+/** A goal through the keeper's middle third (not a placed gate): blasting at the middle earns far less than placing it. */
+export const CURL_GATE_MIDDLE_GOAL_POINTS = 10
 /** Distance (m) from the goal centre where the gates (outer thirds) begin. */
 export const CURL_GATE_INNER = 1.22
 /** Wind for a curl-gate attempt: up to 7 m/s (≈ 25 km/h). */
@@ -107,7 +109,7 @@ export const drillNoise = (skill01: number): number => 0.35 + 1.3 * (1 - clamp01
  * stats: calibrated with the human-input bots in drillCurves.test.ts (BALANCE.md "Training drills").
  */
 export const DRILL_CURVE: Readonly<Partial<Record<DrillKind, number>>> = { passing: 1.4, dribbling: 1.17, goalkeeping: 0.87, sprint: 1.45 }
-export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 1.5, rondo: 0.85, switch: 1.05, contact: 1.3, press: 1.07, diving: 0.85 }
+export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 2, rondo: 0.85, switch: 1.05, contact: 1.3, press: 1.07, diving: 0.85 }
 
 /** Raw points → 0..1 performance. */
 export function performanceFromPoints(kind: DrillKind, points: number, variant: DrillVariant = 'standard'): number {
@@ -487,3 +489,10 @@ export const pressDrain = (workRate: number, stamina: number): number =>
  */
 export const xpQuality = (performance: number): number =>
   Math.max(0.15, (1.02 / Math.pow(0.6, 1.2)) * Math.pow(clamp01(performance), 1.2))
+
+/**
+ * Curl-gate goal: placement pays. A goal through the middle of the mouth earns CURL_GATE_MIDDLE_GOAL_POINTS,
+ * one into the gate (outer third, 2.55 m off centre) the full CURL_GATE_POINTS, linear in between.
+ */
+export const curlGoalPoints = (offCentre: number): number =>
+  Math.round(CURL_GATE_MIDDLE_GOAL_POINTS + (CURL_GATE_POINTS - CURL_GATE_MIDDLE_GOAL_POINTS) * clamp01((offCentre - 0.4) / 2.15))

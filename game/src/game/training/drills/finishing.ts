@@ -20,7 +20,7 @@ import { flatAttrs } from '../../setup'
 import { add, dist, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { aiKeeperReact, drillKeeperSpot, integrateKeeper, keeperReach, keeperWorld, resolveSave } from '../keeper'
-import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_INNER, CURL_GATE_MIDDLE_POINTS, CURL_GATE_POINTS, CURL_GATE_SAVED_POINTS, drillNoise, GRID_CENTRE_R, GRID_KEEPER_FROM, GRID_SHOTS, GRID_ZONE_R, gridShotPoints, msToKmh } from '../scoring'
+import { CURL_GATE_ATTEMPTS, CURL_GATE_MAX_WIND, CURL_GATE_INNER, CURL_GATE_MIDDLE_POINTS, CURL_GATE_SAVED_POINTS, curlGoalPoints, drillNoise, GRID_CENTRE_R, GRID_KEEPER_FROM, GRID_SHOTS, GRID_ZONE_R, gridShotPoints, msToKmh } from '../scoring'
 import { distanceToGoal, planIntent, previewPath, shotIntent } from '../shooting'
 import { kickSkill } from '../../kick'
 import type { DrillConfig, DrillInput, DrillView, GoalTargetView } from '../types'
@@ -52,7 +52,7 @@ const KEEPER_LATE = 0.15
 /** The wall screens the keeper on a free kick: he picks the ball up later (s). */
 const WALL_SCREEN = 0.06
 /** Free kicks from 19–27 m: the curl gate leans on the set-piece skill (aim spread at the drill's noise). */
-const SET_PIECE_NOISE = 1.8
+const SET_PIECE_NOISE = 1.4
 
 export class FinishingDrill extends DrillBase {
   readonly hero: Agent
@@ -217,7 +217,7 @@ export class FinishingDrill extends DrillBase {
       const through = kind === 'goal' || (kind === 'saved' && this.onTarget)
       if (through && (kind === 'goal' || this.inGate)) this.stat('gates')
       if (kind === 'goal') this.stat('goals')
-      const pts = kind === 'goal' ? CURL_GATE_POINTS : through ? (this.inGate ? CURL_GATE_SAVED_POINTS : CURL_GATE_MIDDLE_POINTS) : 0
+      const pts = kind === 'goal' ? curlGoalPoints(Math.abs(y - GOAL_CENTER_Y)) : through ? (this.inGate ? CURL_GATE_SAVED_POINTS : CURL_GATE_MIDDLE_POINTS) : 0
       this.award(pts, through && (kind === 'goal' || this.inGate), { label: kind === 'goal' ? 'goal' : through ? (this.inGate ? 'gate' : 'saved') : kind === 'blocked' ? 'blocked' : 'gateMissed', ...at })
       return
     }

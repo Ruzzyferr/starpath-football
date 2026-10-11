@@ -6,6 +6,7 @@ import type { Attributes } from '../../core/types'
 import type { Drill, DrillKind, DrillResult } from './types'
 import type { DrillBase } from './base'
 import { BOTS, divingBot, finishingGood, idle, passingGood, rondoQuick, rondoSlow, setPieceBot, type Bot, type Mem } from './drillBots'
+import { CURL_GATE_ATTEMPTS } from './scoring'
 
 /** Plays a drill to the end at 60 fps with a bot. */
 function play(d: Drill & DrillBase, bot: Bot): DrillResult {
@@ -121,10 +122,10 @@ describe('training drills (headless)', () => {
     const d = make('finishing', 5, 'setPiece') as FinishingDrill
     expect(d.wall.length).toBe(4)
     const r = play(d, setPieceBot(true))
-    // Curl gate (2.3#25): five kicks at the two gates; a goal 20, a saved kick into a gate 6, at the keeper 2.
-    expect(r.stats.shots).toBe(5)
-    expect(r.points).toBeGreaterThanOrEqual((r.stats.goals ?? 0) * 20)
-    expect(r.points).toBeLessThanOrEqual(5 * 20)
+    // Curl gate (2.3#25, build 9): eight kicks; a goal 10 (middle) to 20 (gate), a saved kick into a gate 2, at the keeper 0.
+    expect(r.stats.shots).toBe(CURL_GATE_ATTEMPTS)
+    expect(r.points).toBeGreaterThanOrEqual((r.stats.goals ?? 0) * 10)
+    expect(r.points).toBeLessThanOrEqual(CURL_GATE_ATTEMPTS * 20)
     expect(r.points).toBeGreaterThan(0)
     const v = make('finishing', 6, 'setPiece').view()
     expect(v.goalTargets.length).toBe(2)

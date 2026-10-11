@@ -13,7 +13,7 @@ import type { DrillKind, DrillVariant } from './types'
 export interface CurveCase { id: string; kind: DrillKind; variant: DrillVariant; good: Bot; /** Decision bot for the human profile (default: good). */ human?: Bot; meh: Bot; key: AttributeKey[]; opp: boolean; /** Seeds per point (short drills need more). */ seeds?: number }
 export const CURVE_CASES: CurveCase[] = [
   { id: 'finishing', kind: 'finishing', variant: 'standard', good: finishingGood, meh: finishingMeh, key: ['finishing', 'shooting', 'composure'], opp: true, seeds: 24 },
-  { id: 'setPiece', kind: 'finishing', variant: 'setPiece', good: setPieceBot(true), meh: setPieceBot(false), key: ['setPieces', 'curve'], opp: true, seeds: 40 },
+  { id: 'setPiece', kind: 'finishing', variant: 'setPiece', good: setPieceBot(true), meh: setPieceBot(false), key: ['setPieces', 'curve'], opp: true, seeds: 100 },
   { id: 'passing', kind: 'passing', variant: 'standard', good: BOTS.passing.good, meh: BOTS.passing.meh, key: ['passing', 'vision', 'firstTouch'], opp: false },
   { id: 'rondo', kind: 'passing', variant: 'rondo', good: rondoQuick, meh: rondoSlow, key: ['passing', 'vision', 'firstTouch'], opp: true },
   { id: 'dribbling', kind: 'dribbling', variant: 'standard', good: BOTS.dribbling.good, meh: BOTS.dribbling.meh, key: ['dribbling', 'agility', 'firstTouch'], opp: true, seeds: 64 },
@@ -113,4 +113,17 @@ describe.skipIf(env.DRILL_CURVES)('drill curves (pinned)', () => {
       }
     }, 300_000)
   }
+})
+
+/** Build 9: the free-kick (curl gate) drill separates good from sloppy input by >= 20 points at every level. */
+describe.skipIf(env.DRILL_CURVES)('set-piece drill: good vs sloppy gap', () => {
+  it('good input beats sloppy by at least 20 points at every level 40..90, both monotonic', () => {
+    const c = CURVE_CASES.find((x) => x.id === 'setPiece')!
+    const hg = humanize(c.human ?? c.good, GOOD_HAND)
+    const hm = humanize(c.meh, SLOPPY_HAND)
+    const good = LEVELS.map((v) => perf(c, levelAttrs(v), hg))
+    const sloppy = LEVELS.map((v) => perf(c, levelAttrs(v), hm))
+    LEVELS.forEach((v, i) => expect(good[i]! - sloppy[i]!, `gap at ${v}`).toBeGreaterThanOrEqual(20))
+    for (let i = 1; i < good.length; i++) expect(good[i]!, `good ${LEVELS[i]}`).toBeGreaterThanOrEqual(good[i - 1]! - 2)
+  }, 300_000)
 })
