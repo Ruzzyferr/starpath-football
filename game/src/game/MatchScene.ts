@@ -12,7 +12,7 @@
 import Phaser from 'phaser'
 import type { Difficulty, KitColors, Lang } from '../core/types'
 import type { Highlight, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { DEFENSIVE_KINDS, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import {
   adBoardTexture,
   ballRimTexture,
@@ -42,7 +42,7 @@ import { PITCH_COLORS } from '../core/pitchColors'
 import { audio } from '../audio'
 import { secondLastOpponentDepth } from './offside'
 import { compactFrames, recordMoment, type MomentRecording } from './moments'
-import { GOAL_KINDS } from '../sim/match/tier'
+import { CONTACT_KINDS, GOAL_KINDS } from '../sim/match/tier'
 import {
   CELEBRATION_BY_ID, celebrationJoiners, celebrationPose, celebrationSeconds, dominantAngle, replayAngleWeights, replayRate, resolveCelebration,
   stadiumLook, upper, windReadout, type CelebrationChoice, type CelebrationId, type CelebrationPose, type ReplayAngle, type ReplayAngleChoice, type StadiumLook,
@@ -188,6 +188,8 @@ const T = {
     grip_slick: 'SLICK', grip_heavy: 'HEAVY',
     tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
+    tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
+    tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
   tr: {
     goal: 'GOL!', assist: 'ASİST!', saved: 'KURTARDI', missed: 'AUT', blocked: 'BLOKE', woodwork: 'DİREKTEN DÖNDÜ!',
@@ -204,6 +206,8 @@ const T = {
     grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
     tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
+    tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
+    tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
 } as const
 type Strings = { [K in keyof (typeof T)['en']]: string }
@@ -2854,7 +2858,10 @@ ${attrs}`, open: false, box: null }
     const partial = r.tier === 'partial'
     const goalKind = GOAL_KINDS.has(this.rt.kind)
     let txt = r.offside ? s.offside : (s[r.outcome as keyof Strings] ?? r.outcome)
-    if (partial && !r.offside) txt = r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
+    // (Defending / keeping: kept out while he did his job; long ball / switch: the first contact won.)
+    const dutyKind = DEFENSIVE_KINDS.has(this.rt.kind)
+    const contactKind = CONTACT_KINDS.has(this.rt.kind)
+    if (partial && !r.offside) txt = dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
     else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
     const good = GOOD.has(r.outcome)
     this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(0.3)
@@ -2863,7 +2870,7 @@ ${attrs}`, open: false, box: null }
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
-    else if (partial) sub = r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
+    else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && !partial && r.outcome !== 'woodwork') this.shake(100, 0.002)
   }

@@ -31,6 +31,23 @@ describe('build 9: graded success', () => {
     expect(isFullSuccess('dribble', 'pass_complete')).toBe(true)
   })
 
+  it('graded defending and contact kinds (build 9, all kinds)', () => {
+    // His own stop is full; kept out by others while on his job is partial; off his job, a fail.
+    expect(momentTier('defend', res({ outcome: 'defended', heroStop: true }))).toBe('full')
+    expect(momentTier('defend', res({ outcome: 'defended', heroStop: false, duty: true }))).toBe('partial')
+    expect(momentTier('defend', res({ outcome: 'defended', heroStop: false, duty: false }))).toBe('fail')
+    // A shot that got away but was forced (he was on the shooter, in its line) is partial; a goal never is.
+    expect(momentTier('block', res({ outcome: 'shot_conceded', duty: true }))).toBe('partial')
+    expect(momentTier('block', res({ outcome: 'conceded', duty: true }))).toBe('fail')
+    // The clock running out after his own stop is the job done.
+    expect(momentTier('back_post', res({ outcome: 'timeout', heroStop: true }))).toBe('full')
+    // Long ball / switch: the first contact won (or the man found across the pitch), then lost: partial.
+    expect(momentTier('long_ball_control', res({ outcome: 'lost_ball', chance: true }))).toBe('partial')
+    expect(momentTier('switch_play', res({ outcome: 'lost_ball', chance: false }))).toBe('fail')
+    // dribble: no take-on, no success.
+    expect(momentTier('dribble', res({ outcome: 'goal', beat: false }))).toBe('fail')
+  })
+
   it('a partial success earns half a goal’s rating (and through it form / XP / trust)', () => {
     for (const k of GOAL_KINDS) {
       const goal = highlightRatingDelta(k, res({ outcome: 'goal', tier: 'full' }))
