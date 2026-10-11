@@ -22,6 +22,7 @@ describe('build 9: graded success', () => {
     // An offside flag kills it; a saved penalty is a missed penalty.
     expect(momentTier('timed_run', res({ outcome: 'lost_ball', chance: true, offside: { playerId: 'h', byHero: true } }))).toBe('fail')
     expect(momentTier('penalty', res({ outcome: 'saved', chance: true }))).toBe('fail')
+    expect(momentTier('penalty', res({ outcome: 'woodwork', chance: true }))).toBe('fail')
     // Skipped (auto-resolved) moments carry no chance detail: their save is on target.
     expect(momentTier('edge_of_box', res({ outcome: 'saved' }))).toBe('partial')
     // Kinds that are not about a goal keep their own rule.

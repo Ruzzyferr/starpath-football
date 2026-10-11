@@ -7,7 +7,7 @@
  *
  * Pure and shared: the runtime stamps it on the result, the match engine / rating consume it, the UI shows it.
  */
-import { DEFENSIVE_KINDS, type HighlightKind, type HighlightOutcome, type HighlightResult } from './types'
+import { DEFENSIVE_KINDS, SHOT_PRESS_KINDS, type HighlightKind, type HighlightOutcome, type HighlightResult } from './types'
 
 export type MomentTier = 'full' | 'partial' | 'fail'
 
@@ -71,10 +71,13 @@ export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcom
     if (DEFENSIVE_KINDS.has(kind) && r.heroStop === false) return r.duty ? 'partial' : 'fail'
     return 'full'
   }
+  // Outfield defending: the shot got away but he was on the shooter, in its line — forced, not clean (partial); a goal
+  // never is.
+  if (SHOT_PRESS_KINDS.has(kind) && r.outcome === 'shot_conceded' && r.duty) return 'partial'
   if (!GOAL_KINDS.has(kind) || r.offside) return 'fail'
-  if (r.outcome === 'woodwork') return 'partial'
-  // A saved penalty is a missed penalty (only the woodwork is unlucky).
+  // A penalty is scored or missed: saved or off the post, it is a missed penalty.
   if (kind === 'penalty') return 'fail'
+  if (r.outcome === 'woodwork') return 'partial'
   // Played moments say whether the keeper was made to work (a placed shot) or a chance was created; an auto-resolved
   // (skipped) moment has no such detail, its save counts as on target.
   if (r.chance === undefined) return r.outcome === 'saved' ? 'partial' : 'fail'

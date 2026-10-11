@@ -148,6 +148,11 @@ export const KEEPER_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>([
 
 /** Kinds where the hero's team is defending (WP-14 adds defend_1v1 and block). */
 export const DEFENSIVE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'gk_save', 'gk_penalty', 'interception', 'defend_1v1', 'block', 'fk_wall', 'gk_1v1', 'gk_sweep', 'back_post', 'recovery_run', 'press_trap', 'gk_claim'])
+/**
+ * Outfield defending moments where a shot that got away but not in counts as partial when the hero was right on the
+ * shooter, in its line, as it was struck (he forced it) — build 9 graded defending.
+ */
+export const SHOT_PRESS_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['defend', 'defend_1v1', 'interception', 'block', 'recovery_run'])
 
 export interface Vec2 {
   x: number
