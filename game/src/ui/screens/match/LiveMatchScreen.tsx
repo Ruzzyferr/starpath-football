@@ -10,6 +10,7 @@ import { CompareBar, EVENT_ICON, MOMENT_ICON, PitchLinesHorizontal } from './sha
 import { MatchHints } from '../../tutorial/ControlHint'
 import { MomentsPanel } from './Moments'
 import { DecisionCard } from './DecisionCard'
+import { MatchupCard } from './MatchupCard'
 import { SoundCaption, captionKeyFor } from '../../a11y/Captions'
 import { pickBallStyle, resolveMatchKits } from '../../../core/kitContrast'
 import { PITCH_COLORS } from '../../../core/pitchColors'
@@ -284,6 +285,7 @@ export function LiveMatchScreen() {
               </div>
             </div>
             <p class="lm-moment-prompt" id="lm-moment-prompt">{moment.prompt}</p>
+            {moment.matchup && <MatchupCard mu={moment.matchup} />}
             <div class="lm-moment-actions">
               <Button variant="primary" size="lg" icon="play" haptic="heavy" onClick={() => actions.playMoment()} autoFocus>
                 {t('match.live.playMoment')}

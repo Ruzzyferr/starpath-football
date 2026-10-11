@@ -18,7 +18,7 @@ import { defineConfig, devices } from '@playwright/test'
  * iOS / WKWebView regressions (blank textures, dead buttons) surface on every
  * run. Needs `npx playwright install webkit` once.
  */
-const WEBKIT_SPECS = /(?:^|[\\/])(?:demo|match|kitcontrast|training|onboarding|smoke|ios|saves|autosave|eventOdds|eventWheel|eventOneShot|tutorials)\.spec\.ts$/
+const WEBKIT_SPECS = /(?:^|[\\/])(?:demo|match|matchup|kitcontrast|training|onboarding|smoke|ios|saves|autosave|eventOdds|eventWheel|eventOneShot|tutorials)\.spec\.ts$/
 
 const PORT = Number(process.env.PW_PORT ?? 5287)
 

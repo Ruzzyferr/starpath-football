@@ -1,6 +1,9 @@
 /** Mock live-match engine: minute ticker, events, hero moments. Replaced by sim/match later. */
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { Club, Formation, GameState, Lang, Position } from '../../core/types'
+import { generatedHighlight } from '../../game/demoHighlights'
+import type { HighlightKind } from '../../sim/match/types'
+import { matchupViewOf } from '../backend/matchupView'
 import { match, settings } from '../store'
 import type {
   FixtureView, HeroMatchStatsView, InterviewOption, LineupPlayer, LiveMatchView, MatchEventType, MatchEventView,
@@ -274,7 +277,9 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
       const kinds = ['one_on_one', 'edge_of_box', 'cross', 'counter', 'build_up', rng.chance(0.15) ? 'penalty' : 'freekick']
       const kind = rng.pick(kinds)
       const pr = MOMENT_PROMPTS[kind]!
-      v.pendingMoment = { id: `m${v.minute}`, minute: v.minute, kind, prompt: L() === 'tr' ? pr[0] : pr[1] }
+      let matchup
+      try { matchup = matchupViewOf(generatedHighlight(kind as HighlightKind, v.minute, { lang: L() }), {}, heroName()) } catch { matchup = undefined }
+      v.pendingMoment = { id: `m${v.minute}`, minute: v.minute, kind, prompt: L() === 'tr' ? pr[0] : pr[1], matchup }
       push('highlight', v.heroSide, v.pendingMoment.prompt, true)
       r.nextMoment = v.minute + rng.int(15, 25)
     }

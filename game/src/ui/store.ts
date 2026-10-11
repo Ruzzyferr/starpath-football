@@ -502,11 +502,31 @@ export interface HeroMatchStatsView {
   saves: number
   rating: number
 }
+/** One attribute row of the moment matchup card (hero attribute vs the opponent's counter-attribute). */
+export interface MatchupRowView {
+  /** AttributeKey of the hero side / the opponent side (i18n `data.attr.<key>`). */
+  heroKey: AttributeKey
+  oppKey: AttributeKey
+  heroV: number
+  oppV: number
+  /** +1 hero ahead, -1 opponent ahead, 0 level. */
+  edge: -1 | 0 | 1
+}
+/** Hero vs the key opponent of a moment (engine: game/matchup.ts), plain and serialisable. */
+export interface MatchupView {
+  role: 'keeper' | 'marker' | 'carrier' | 'attacker' | 'aerial'
+  hero: { name: string; ovr: number; number: number }
+  opp: { name: string; ovr: number; number: number }
+  rows: MatchupRowView[]
+  edge: -1 | 0 | 1
+}
 export interface MomentView {
   id: string
   minute: number
   kind: string // HighlightKind
   prompt: string
+  /** The matchup shown before the moment (absent when the scenario has no key opponent). */
+  matchup?: MatchupView
 }
 export interface DecisionOptionView {
   id: string

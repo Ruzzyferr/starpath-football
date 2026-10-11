@@ -50,6 +50,8 @@ import {
 import type { AimAssist } from './kick'
 import { shotSpeed } from './kick'
 import { clampN, dist, type Agent, type Vec2 } from './model'
+import { momentMatchup, type Matchup } from './matchup'
+import { t as tr } from '../i18n'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder, type InputRecording } from './inputReplay'
@@ -350,6 +352,9 @@ export class MatchScene extends Phaser.Scene {
   /** Player name labels (created lazily; toggled with N, always on in replays/celebrations). */
   private labels: Phaser.GameObjects.Text[] | null = null
   private labelsOn = false
+  /** Key-opponent tag (name · OVR), tap to expand with the two attributes that decide the moment. */
+  private oppTag: { text: Phaser.GameObjects.Text; view: PlayerView; compact: string; expanded: string; open: boolean; box: { x0: number; y0: number; x1: number; y1: number } | null } | null = null
+  private oppTagHandler: ((e: PointerEvent) => void) | null = null
   private onKey: ((e: KeyboardEvent) => void) | null = null
   /** Offside line flash: pitch x of the line, and the flagged player's x. */
   private offsideFx: { lineX: number; playerX: number; t: number } | null = null
@@ -531,6 +536,7 @@ export class MatchScene extends Phaser.Scene {
       if (e.code === 'KeyN' && !e.repeat && !(e.target instanceof HTMLInputElement)) this.labelsOn = !this.labelsOn
     }
     window.addEventListener('keydown', this.onKey)
+    this.buildOppTag(names)
     if (replayOnly) this.startReplay(replayOnly.frames, replayOnly.keyTime, false)
     // One shared pause source (game/pauseGate): a control hint, the app in the background / a system
     // sheet or the pause key freezes the whole moment; it resumes after a 3-2-1 beat.
@@ -615,6 +621,7 @@ export class MatchScene extends Phaser.Scene {
     for (const e of this.baked) if (this.textures.exists(e.key)) this.textures.remove(e.key)
     this.baked = []
     if (this.onKey) window.removeEventListener('keydown', this.onKey)
+    if (this.oppTagHandler) this.game.canvas?.removeEventListener('pointerdown', this.oppTagHandler)
     this.onKey = null
     this.input0?.dispose()
     this.sfx?.dispose()
@@ -2501,6 +2508,53 @@ export class MatchScene extends Phaser.Scene {
     }
     this.drawPickerPreview(g)
     this.drawLabels()
+    this.drawOppTag()
+  }
+
+  /** The key opponent's tag, from the same matchup the moment card showed. */
+  private buildOppTag(names: Record<string, string>): void {
+    let mu: Matchup | null = null
+    try { mu = momentMatchup(this.data0.highlight, names) } catch { mu = null }
+    if (!mu || this.data0.replayOnly) return
+    const view = this.views.find((v) => v.agent.id === mu!.opp.id)
+    if (!view) return
+    const attrs = mu.rows.slice(0, 2).map((r) => `${tr(`data.attrShort.${r.opp}`)} ${r.oppV}`).join('  ')
+    const text = this.text(11, '#ffe9e9', '800').setDepth(8_000_000)
+    const compact = `${mu.opp.name} · ${mu.opp.ovr}`
+    this.oppTag = { text, view, compact, expanded: `${compact}
+${attrs}`, open: false, box: null }
+    text.setText(compact).setVisible(false)
+    const canvas = this.game.canvas
+    this.oppTagHandler = (e: PointerEvent) => {
+      const tag = this.oppTag
+      if (!tag?.box || !tag.text.visible) return
+      const r = canvas.getBoundingClientRect()
+      const x = (e.clientX - r.left) * (this.scale.width / Math.max(1, r.width))
+      const y = (e.clientY - r.top) * (this.scale.height / Math.max(1, r.height))
+      const pad = 10 * this.ui
+      const b = tag.box
+      if (x >= b.x0 - pad && x <= b.x1 + pad && y >= b.y0 - pad && y <= b.y1 + pad) {
+        tag.open = !tag.open
+        tag.text.setText(tag.open ? tag.expanded : tag.compact)
+      }
+    }
+    canvas.addEventListener('pointerdown', this.oppTagHandler)
+  }
+
+  private drawOppTag(): void {
+    const tag = this.oppTag
+    if (!tag) return
+    if (this.mode !== 'play' || this.labelsOn) {
+      tag.text.setVisible(false)
+      tag.box = null
+      return
+    }
+    const v = tag.view
+    const sp = this.worldToScreen(v.c.x, v.c.y - zpx(HEAD_Z + 0.9))
+    const tt = tag.text
+    const on = sp.y > this.hudTop + 14 && sp.y < this.scale.height - 40
+    tt.setVisible(on).setPosition(sp.x, sp.y).setAlpha(tag.open ? 1 : 0.88)
+    tag.box = on ? { x0: sp.x - tt.width / 2, y0: sp.y - tt.height / 2, x1: sp.x + tt.width / 2, y1: sp.y + tt.height / 2 } : null
   }
 
   /** Name labels above every player: on demand (N) during play, always in replays and celebrations. */

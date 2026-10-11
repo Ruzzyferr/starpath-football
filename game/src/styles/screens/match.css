@@ -954,6 +954,132 @@
   gap: var(--sp-2);
 }
 
+/* Moment matchup: hero vs the key opponent. */
+.lm-moment-card:has(.lm-mu) .lm-moment-prompt {
+  margin-bottom: var(--sp-2);
+}
+.lm-mu {
+  margin: 0 0 var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 12px);
+  background: var(--surface-1);
+  border: 1px solid var(--border, rgba(255, 255, 255, 0.12));
+  font-size: 0.8125rem;
+  font-variant-numeric: tabular-nums;
+}
+.lm-mu-sides {
+  display: grid;
+  grid-template-columns: minmax(0, 5fr) auto minmax(0, 6fr);
+  align-items: center;
+  gap: var(--sp-2);
+}
+.lm-mu-side {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  grid-template-areas: 'role ovr' 'name ovr';
+  align-items: center;
+  column-gap: var(--sp-2);
+  min-width: 0;
+}
+.lm-mu-opp {
+  text-align: right;
+  grid-template-columns: auto 1fr;
+  grid-template-areas: 'ovr role' 'ovr name';
+}
+.lm-mu-role {
+  grid-area: role;
+  letter-spacing: 0;
+  font-size: 0.75rem;
+  color: var(--text-low, var(--text-mid));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lm-mu-name {
+  grid-area: name;
+  font-weight: 700;
+  color: var(--text-hi, inherit);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lm-mu-ovr {
+  grid-area: ovr;
+  display: grid;
+  place-items: center;
+  min-width: 2.25rem;
+  height: 2.25rem;
+  padding: 0 var(--sp-1);
+  border-radius: 8px;
+  font-size: 1.125rem;
+  font-weight: 900;
+  background: var(--brand-pitch);
+  color: var(--text-on-pitch);
+}
+.lm-mu-opp .lm-mu-ovr {
+  background: var(--surface-3, rgba(255, 255, 255, 0.14));
+  color: var(--text-hi, inherit);
+}
+.lm-mu-vs {
+  color: var(--text-low, var(--text-mid));
+}
+.lm-mu-rows {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  display: grid;
+  gap: 2px;
+}
+.lm-mu-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 2rem 1rem 2rem minmax(0, 1fr);
+  align-items: center;
+  gap: 2px;
+  line-height: 1.5;
+}
+.lm-mu-attr {
+  color: var(--text-mid);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.lm-mu-attr-opp {
+  text-align: right;
+}
+.lm-mu-val {
+  text-align: center;
+  color: var(--text-mid);
+}
+.lm-mu-val.is-lead {
+  color: var(--brand-pitch);
+  font-weight: 900;
+}
+.lm-mu-mark {
+  text-align: center;
+  font-size: 0.75rem;
+  color: var(--text-low, var(--text-mid));
+}
+.lm-mu-edge {
+  margin-top: var(--sp-2);
+  text-align: center;
+  font-weight: 800;
+  text-transform: uppercase;
+  font-size: 0.75rem;
+  letter-spacing: 0.04em;
+  color: var(--text-mid);
+}
+.lm-mu-edge[data-edge='1'] {
+  color: var(--brand-pitch);
+}
+.lm-mu-edge[data-edge='-1'] {
+  color: var(--accent-gold, var(--text-hi));
+}
+@media (max-height: 700px) {
+  .lm-mu-row:nth-child(n + 4) {
+    display: none;
+  }
+}
+
 /* GOL! banner */
 .lm-goal-banner {
   position: fixed;

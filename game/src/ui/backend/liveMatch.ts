@@ -27,6 +27,7 @@ import type {
 } from '../store'
 import { RELATION_LABEL, diffSnapshots, fixtureView, snapshot } from './mapping'
 import { playHighlight, type HighlightSession } from './highlightBridge'
+import { matchupViewOf } from './matchupView'
 import { celebrationForMatch } from './celebration'
 import { isEveningFixture } from '../../game/presentation'
 import { matchExpectations } from '../../sim/game/objectives'
@@ -158,6 +159,19 @@ function radarSlots(setup: MatchSetup): { home: RadarSlot[]; away: RadarSlot[] }
   return v
 }
 
+/** Display names by player id for both squads (lineups and benches). */
+function playerNames(l: Live): Record<string, string> {
+  const names: Record<string, string> = {}
+  for (const p of [...l.setup.home.lineup, ...l.setup.home.bench, ...l.setup.away.lineup, ...l.setup.away.bench]) names[p.id] = p.name
+  return names
+}
+
+/** How the hero is named on the pitch and on the matchup card. */
+function heroDisplayName(): string {
+  const h = get().hero
+  return h.nickname || h.lastName
+}
+
 function liveView(l: Live): LiveMatchView {
   const snap = l.sim.snapshot()
   const hl = snap.pendingHighlight
@@ -186,7 +200,7 @@ function liveView(l: Live): LiveMatchView {
     heroOnPitch: snap.heroOnPitch,
     heroSide: l.heroSide,
     heroStats: heroStatsView(snap),
-    pendingMoment: hl ? { id: hl.id, minute: hl.minute, kind: hl.kind, prompt: HIGHLIGHT_PROMPTS[hl.kind]?.[lang] ?? hl.scenario.prompt } : null,
+    pendingMoment: hl ? { id: hl.id, minute: hl.minute, kind: hl.kind, prompt: HIGHLIGHT_PROMPTS[hl.kind]?.[lang] ?? hl.scenario.prompt, matchup: matchupViewOf(hl, playerNames(l), heroDisplayName()) } : null,
     momentActive: l.momentActive,
     decision: l.decision
       ? {
@@ -583,8 +597,7 @@ export function playMoment(): void {
   const kits = resolveMatchKits(l.setup.home.colors, l.setup.away.colors, s.world.clubs[l.setup.away.id]?.awayColors)
   const heroColors = l.heroSide === 'home' ? kits.home : kits.away
   const oppColors = l.heroSide === 'home' ? kits.away : kits.home
-  const names: Record<string, string> = {}
-  for (const p of [...heroTeam.lineup, ...heroTeam.bench, ...oppTeam.lineup, ...oppTeam.bench]) names[p.id] = p.name
+  const names = playerNames(l)
   const done = (fn: () => void) => {
     if (live !== l || !l.momentActive) return
     fn()
@@ -593,7 +606,7 @@ export function playMoment(): void {
   l.session = playHighlight(
     {
       highlight: hl, heroColors, oppColors, heroTeamShort: heroTeam.shortName, oppTeamShort: oppTeam.shortName,
-      heroName: s.hero.nickname || s.hero.lastName, names, weather: l.setup.weather, importance: l.setup.importance,
+      heroName: heroDisplayName(), names, weather: l.setup.weather, importance: l.setup.importance,
       ...momentDifficulty(s), lang: currentLang.value, gender: worldGender(s.world),
       stadium: matchStadium(s, l), celebration: celebrationForMatch(s), matchKey: l.fixtureId,
     },
