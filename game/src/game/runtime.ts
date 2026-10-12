@@ -283,6 +283,8 @@ export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 
 export const DELIVERY_EDGE = 80
 /** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
 export const HEAD_ADJUST = 0.35
+/** gk_sweep: how far (m) off his line the hero keeper goes to sweep a ball over the top (outside the box: his feet). */
+export const SWEEP_RANGE = 30
 /** A defender this close (m) in front of an AI shooter is in his line: going round him is the shooter's chance event. */
 export const BODY_IN_LINE = 6
 /** PRESS: run through the cover shadow, PRESS_SHADOW m off the man toward his nearest pass, until PRESS_SHADOW_IN m from him. */
@@ -2865,11 +2867,12 @@ export class HighlightRuntime {
     if (hero.sprint && len(mv) > 0.3) hero.stamina = Math.max(0, hero.stamina - DT * sprintDrain(hero.attrs.stamina, hero.attrs.workRate))
     else hero.stamina = Math.min(1, hero.stamina + DT * sprintRecover(hero.attrs.stamina, hero.attrs.workRate))
     if (hero.isKeeper) {
-      // Stay in the box.
+      // Stay in the box (sweeping a ball over the top he goes out to meet it, on his feet — no hands out there).
       const gx = ownGoalX(hero.team)
       const inward = attackDir(hero.team)
       const nx = hero.pos.x + hero.vel.x * DT
-      if ((nx - gx) * inward > 16.5 || (nx - gx) * inward < -0.2) hero.vel.x = 0
+      const limit = this.kind === 'gk_sweep' ? SWEEP_RANGE : 16.5
+      if ((nx - gx) * inward > limit || (nx - gx) * inward < -0.2) hero.vel.x = 0
     }
   }
 
