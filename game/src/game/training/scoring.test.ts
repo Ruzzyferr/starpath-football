@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest'
 import { qualityFactor, TRAINING_TYPES } from '../../sim/career/training'
 import {
-  DRILL_CURVE, DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, controllable, gradeFor, inTarget, lapPoints, levelSpeed,
+  DRILL_CURVE, DRILL_DURATION, DRILL_FOR_TRAINING, DRILL_PAR, beepInterval, comboMultiplier, gradeFor, inTarget, lapPoints, levelSpeed,
   gkReactionWindow, gridShotPoints, passPoints, slalomLayout, CONE_PENALTY, performanceFromPoints, savePoints, shotPoints, shuttlePoints, skillTiming, sprintDrain, staminaRecovery, startTiming, xpQuality,
   BEATEN_PENALTY, CROSS_ZONE_R, FOUL_PENALTY, crossPoints, crossTiming, headerPoints, jumpTiming, tacklePoints,
 } from './scoring'
@@ -74,8 +74,6 @@ describe('drill scoring', () => {
     expect(passPoints({ ...base, gateCleared: false })).toBe(60)
     expect(passPoints({ ...base, wanted: 'loft', lofted: true, gateCleared: false })).toBe(130)
     expect(passPoints({ ...base, wanted: 'loft', lofted: false })).toBe(60)
-    expect(controllable(10, 0.7)).toBe(true)
-    expect(controllable(20, 0.7)).toBe(false)
   })
 
   it('grades skill-move timing by distance to the defender', () => {

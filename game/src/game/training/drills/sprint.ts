@@ -11,14 +11,17 @@
  *
  * Contact variant: half-way down the lane a team-mate comes in with a
  * shoulder charge. A ring closes on the hero; tap while it is green to brace
- * (+40, speed kept). Balance (and a little Strength) widens the window; miss
- * it and you stumble, keeping only part of your speed (more with Balance).
+ * (+40, speed kept) — whether you stay on your feet is Balance vs the
+ * charger's Strength (+1 % a point, +25 for the timed, set body). Balance (and
+ * a little Strength) widens the window; miss it and you stumble, keeping only
+ * part of your speed (more with Balance).
  */
+import { CHANCE_MOD, eventChance } from '../../chanceEvents'
 import { flatAttrs } from '../../setup'
-import { a01, clampN, type Agent } from '../../model'
+import { a01, accel, clampN, topSpeed, type Agent } from '../../model'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import {
-  FALSE_START_PENALTY, SPRINT_DIP_M, SPRINT_DISTANCE, braceWindow, reactionGrade, sprintAccel, sprintPoints, sprintTopSpeed, stumbleKeep,
+  FALSE_START_PENALTY, SPRINT_DIP_M, SPRINT_DISTANCE, braceWindow, reactionGrade, sprintPoints, stumbleKeep,
   type ReactionGrade,
 } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
@@ -153,17 +156,22 @@ export class SprintDrill extends DrillBase {
     }
     // Running.
     const drive = input.sprint
-    const accel = sprintAccel(this.attrs.acceleration) * (drive ? 1 : 0.6)
-    const top = sprintTopSpeed(this.attrs.pace) * (drive ? 1 : 0.85)
-    this.speed = Math.min(top, this.speed + accel * dt * (1 - this.speed / (top * 1.6)))
+    // The match's running model: model.accel (Acceleration, a little Agility) up to model.topSpeed (Pace), sprinting
+    // while SPRINT is held; a held-back run builds speed at 60 % of the drive.
+    const top = this.topSpeed(drive)
+    this.speed = Math.min(top, this.speed + accel(h) * (drive ? 1 : 0.6) * dt)
     h.sprint = drive
     const left = FINISH_X - h.pos.x
     if (tap && this.charge && this.charge.braced === null && this.inBraceWindow()) {
-      this.charge.braced = true
-      this.stat('braced')
-      // Even a braced charge costs a little speed: Balance keeps more of it.
-      this.speed *= 0.55 + a01(this.attrs.balance) * 0.45
-      this.events.push({ type: 'score', points: 0, label: 'braced', good: true, x: h.pos.x, y: h.pos.y })
+      // Braced in time: staying on his feet is the match rule (chanceEvents 'keepFeet': his Balance vs the
+      // charger's Strength, +1 % a point), the timed, set body worth CHANCE_MOD.timing + CHANCE_MOD.shield.
+      if (this.rng.chance(eventChance('keepFeet', h, this.bumper, CHANCE_MOD.timing + CHANCE_MOD.shield))) {
+        this.charge.braced = true
+        this.stat('braced')
+        // Even a braced charge costs a little speed: Balance keeps more of it.
+        this.speed *= 0.55 + a01(this.attrs.balance) * 0.45
+        this.events.push({ type: 'score', points: 0, label: 'braced', good: true, x: h.pos.x, y: h.pos.y })
+      } else this.stumble()
     } else if (tap && this.charge && this.charge.braced === null && this.braceApproaching()) {
       // Bracing too early: a short lock-out, so mashing the button does not find the window.
       if (this.clock >= this.lockUntil) this.lockUntil = this.clock + 0.25
@@ -172,21 +180,30 @@ export class SprintDrill extends DrillBase {
       this.stat('dips')
     }
     // The charge lands.
-    if (this.charge && this.charge.braced !== true && h.pos.x >= START_X + CONTACT_AT && this.charge.braced === null) {
-      this.charge.braced = false
-      this.stat('stumbles')
-      this.speed *= stumbleKeep(this.attrs.balance)
-      h.state = 'down'
-      h.stateT = 0
-      this.flash = { at: this.time, tone: 'red' }
-      this.events.push({ type: 'score', points: 0, label: 'stumble', good: false, x: h.pos.x, y: h.pos.y })
-    }
+    if (this.charge && this.charge.braced !== true && h.pos.x >= START_X + CONTACT_AT && this.charge.braced === null) this.stumble()
     if (h.state === 'down' && h.stateT > 0.35) h.state = 'run'
     h.vel = { x: this.speed, y: 0 }
     h.pos = { x: h.pos.x + this.speed * dt, y: LANE_Y }
     h.facing = 0
     this.moveBumper(dt)
     if (h.pos.x >= FINISH_X) this.finish()
+  }
+
+  /** The charge put him off his stride (not braced, or braced and knocked off his feet anyway). */
+  private stumble(): void {
+    const h = this.hero
+    this.charge!.braced = false
+    this.stat('stumbles')
+    this.speed *= stumbleKeep(this.attrs.balance)
+    h.state = 'down'
+    h.stateT = 0
+    this.flash = { at: this.time, tone: 'red' }
+    this.events.push({ type: 'score', points: 0, label: 'stumble', good: false, x: h.pos.x, y: h.pos.y })
+  }
+
+  /** His top speed (m/s) for this run: the match's model.topSpeed, sprinting (driving) or not. */
+  private topSpeed(drive: boolean): number {
+    return topSpeed({ ...this.hero, sprint: drive, stamina: 1 })
   }
 
   /** Seconds until the hero reaches the contact point at the current speed. */
@@ -275,7 +292,7 @@ export class SprintDrill extends DrillBase {
         duration: this.duration,
         prompt,
         meters: [
-          { kind: 'power', value: clampN(this.speed / sprintTopSpeed(this.attrs.pace), 0, 1), tone: this.rep === 'run' ? 'gold' : 'dim' },
+          { kind: 'power', value: clampN(this.speed / this.topSpeed(true), 0, 1), tone: this.rep === 'run' ? 'gold' : 'dim' },
           { kind: 'timing', value: timing, tone: braceOpen ? 'green' : 'white' },
         ],
         level: this.reps + 1,

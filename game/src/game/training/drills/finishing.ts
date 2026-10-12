@@ -355,12 +355,11 @@ export class FinishingDrill extends DrillBase {
     // Keeper.
     const touch = keeperReach(this.keeper, b)
     if (touch) {
-      const res = resolveSave(this.rng, this.keeper, b, touch, this.oppSharpness)
-      if (res !== 'beaten') {
-        this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
-        this.touched = res
-        if (res === 'held') return this.resolve('saved')
-      }
+      const res = resolveSave(this.rng, this.keeper, b, touch)
+      // A hand on the ball is a save (no save roll, as in the match).
+      this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
+      this.touched = res
+      if (res === 'held') return this.resolve('saved')
     }
     const slow = Math.hypot(b.vx, b.vy) < 0.8 && b.z < 0.05
     if (slow || this.stateT > 3.5) this.resolve(this.touched === 'parried' ? 'saved' : this.touched === 'blocked' ? 'blocked' : this.woodwork ? 'woodwork' : 'miss')

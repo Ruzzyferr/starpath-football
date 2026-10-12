@@ -6,25 +6,36 @@
  * the defender in the middle. Before every pass the passer gives his
  * intention away (he turns to his target, who lights up): Anticipation shows
  * that tell earlier (0.3 s + up to 0.65 s). Move with the stick, or tap a spot
- * to run there, and get into the lane: a ball that comes within reach is
- * intercepted (100), +50 when you were already standing in the lane as it was
- * played ("read it"). A completed pass breaks the streak.
+ * to run there, and get into the lane: a ball that comes within foot reach is
+ * read on the match rule (Anticipation vs the passer's Passing, +1 % a point,
+ * +10 standing in the lane) and intercepted (100), +50 when you were already
+ * standing in the lane as it was played ("read it"). A completed pass breaks the streak.
  *
  * Press: four players on the corners of a square. Whoever receives the ball
  * is your man: close him down to within 2.2 m before he plays it on (80 + 30
  * per second to spare). SPRINT is faster but drains your tank; Work Rate makes
  * the running cheaper, Stamina refills it. Intercepting a pass also counts.
  */
-import { a01, clampN, dist, type Agent, type Vec2 } from '../../model'
+import { eventChance } from '../../chanceEvents'
+import { a01, accel, clampN, dist, topSpeed, type Agent, type Vec2 } from '../../model'
+import { createTracker, groundSpeed, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
 import { arriveTo } from '../vec'
 import { DrillBase, actorView, makeActor, snapPrev } from '../base'
-import { PRESS_RADIUS, interceptPoints, interceptReach, pressDrain, pressPoints, readTell } from '../scoring'
+import { PRESS_RADIUS, interceptPoints, pressDrain, pressPoints, readTell } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
 
 const CX = 60
 const CY = 34
 type Cycle = 'hold' | 'flight' | 'reset'
+
+/**
+ * Foot reach (m): a ball passing this close to him is one he can get a foot to (geometry, the same for everybody);
+ * whether he reads it is the match rule, eventChance('read') — his Anticipation vs the passer's Passing.
+ */
+export const FOOT_REACH = 1.1
+/** Read bonus (points) for standing in the lane as the ball was played: the match's cover-shadow +10. */
+const IN_LANE_MOD = 10
 
 /** Distance from point p to segment ab. */
 export function distToSegment(p: Vec2, a: Vec2, b: Vec2): number {
@@ -38,7 +49,11 @@ export function distToSegment(p: Vec2, a: Vec2, b: Vec2): number {
 export class InterceptionDrill extends DrillBase {
   readonly hero: Agent
   readonly passers: Agent[]
-  readonly ball = { x: CX, y: CY, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
+  readonly ball: BallState = { x: CX, y: CY, z: 0, vx: 0, vy: 0, vz: 0, spin: { side: 0, top: 0 } }
+  private tracker: BallTracker = createTracker()
+  private readonly phys: PhysicsEvent[] = []
+  /** He already had his go at this pass (one read per pass). */
+  private readTried = false
   private cycle: Cycle = 'hold'
   private cycleT = 0
   private holder = 0
@@ -67,22 +82,25 @@ export class InterceptionDrill extends DrillBase {
     return this.passers[0]!.attrs
   }
 
-  /** Hold-time factor: composure and passing let a passer move the ball on quicker. */
+  /**
+   * Hold-time factor: composure and passing let a passer move the ball on quicker. Steeper in the press variant:
+   * the presser runs at the match's topSpeed (Pace) now, so the passers' quickness carries the opposition's level.
+   */
   private get oppHold(): number {
-    return 1.2 - a01(this.oppAttrs.composure * 0.5 + this.oppAttrs.passing * 0.5) * 0.4
+    const q = a01(this.oppAttrs.composure * 0.5 + this.oppAttrs.passing * 0.5)
+    return this.press ? 1.4 - q * 0.8 : 1.2 - q * 0.4
   }
 
   get press(): boolean {
     return this.variant === 'press'
   }
 
-  /** Jog / sprint speeds (m/s): pace and acceleration. */
+  /** Jog / sprint speeds (m/s): the match's model.topSpeed (Pace). Work Rate makes the pressing sprint cheaper (pressDrain). */
   get jogSpeed(): number {
-    return 4.6 + a01(this.attrs.pace) * 1.4 + a01(this.attrs.acceleration) * 0.4
+    return topSpeed({ ...this.hero, sprint: false })
   }
-  /** Pressing: Work Rate is the will to keep sprinting at the man (a faster, longer press). */
   get sprintSpeed(): number {
-    return this.jogSpeed + (this.press ? a01(this.attrs.workRate) * 3.4 : 1.8)
+    return topSpeed({ ...this.hero, sprint: true, stamina: 1 })
   }
 
   private newHold(holder: number): void {
@@ -124,8 +142,14 @@ export class InterceptionDrill extends DrillBase {
     const d = dist(from, to)
     this.ball.x = from.x
     this.ball.y = from.y
+    // A ground pass struck at the passer's pace; the ball then runs on the physics (rolling drag).
+    this.ball.z = 0
+    this.ball.vz = 0
+    this.ball.spin = { side: 0, top: 0 }
     this.ball.vx = ((to.x - from.x) / d) * this.passSpeed
     this.ball.vy = ((to.y - from.y) / d) * this.passSpeed
+    this.tracker = createTracker()
+    this.readTried = false
     this.readAtRelease = distToSegment(this.hero.pos, from, to) <= 1.6
     this.cycle = 'flight'
     this.cycleT = 0
@@ -165,7 +189,7 @@ export class InterceptionDrill extends DrillBase {
       p.facing = Math.atan2(look.y - p.pos.y, look.x - p.pos.x)
     }
     if (!live) {
-      if (this.cycle === 'flight') this.flight(dt, false)
+      if (this.cycle === 'flight') this.flight(false)
       return
     }
     if (this.cycle === 'hold') {
@@ -181,7 +205,7 @@ export class InterceptionDrill extends DrillBase {
         return
       }
       if (this.cycleT >= this.hold) this.release()
-    } else if (this.cycle === 'flight') this.flight(dt, true)
+    } else if (this.cycle === 'flight') this.flight(true)
     else if (this.cycle === 'reset' && this.cycleT >= (this.press ? 0.6 : 0.8)) {
       const options = this.passers.map((_, i) => i).filter((i) => i !== this.holder)
       // Never restart right at the hero's feet.
@@ -190,13 +214,17 @@ export class InterceptionDrill extends DrillBase {
     }
   }
 
-  private flight(dt: number, live: boolean): void {
+  private flight(live: boolean): void {
     const b = this.ball
-    b.x += b.vx * dt
-    b.y += b.vy * dt
-    if (live && dist(this.hero.pos, b) <= interceptReach(this.attrs.anticipation)) return this.intercepted()
+    this.phys.length = 0
+    stepBall(b, this.env, this.tracker, this.phys)
+    if (live && !this.readTried && dist(this.hero.pos, b) <= FOOT_REACH && b.z < 1) {
+      // In reach: one read per pass — his Anticipation vs the passer's Passing (+1 % a point), +10 in the lane.
+      this.readTried = true
+      if (this.rng.chance(eventChance('read', this.hero, this.passers[this.holder]!, this.readAtRelease ? IN_LANE_MOD : 0))) return this.intercepted()
+    }
     const to = this.passers[this.target]!
-    if (dist(b, to.pos) < 0.7 || this.cycleT > 4) {
+    if (dist(b, to.pos) < 0.7 || groundSpeed(b) < 0.3 || this.cycleT > 4) {
       if (live) {
         this.stat('completed')
         this.flash = { at: this.time, tone: 'red' }
@@ -236,7 +264,7 @@ export class InterceptionDrill extends DrillBase {
       want = arriveTo(h.pos, this.dest, top, 1.2)
       if (dist(h.pos, this.dest) < 0.15) this.dest = null
     }
-    const acc = (10 + a01(this.attrs.acceleration) * 8 + a01(this.attrs.agility) * 4) * dt
+    const acc = accel(h) * dt
     const dvx = want.x - h.vel.x
     const dvy = want.y - h.vel.y
     const dl = Math.hypot(dvx, dvy)
@@ -271,7 +299,7 @@ export class InterceptionDrill extends DrillBase {
     const rings: RingView[] = []
     if (this.press && this.cycle === 'hold') rings.push({ x: holderP.pos.x, y: holderP.pos.y, r: PRESS_RADIUS, tone: flash ?? 'gold', pulse: true })
     if (this.dest) rings.push({ x: this.dest.x, y: this.dest.y, r: 0.4, tone: 'white' })
-    rings.push({ x: this.hero.pos.x, y: this.hero.pos.y, r: interceptReach(this.attrs.anticipation), tone: flash ?? 'dim' })
+    rings.push({ x: this.hero.pos.x, y: this.hero.pos.y, r: FOOT_REACH, tone: flash ?? 'dim' })
     const inLane = this.cycle === 'hold' && this.telling && distToSegment(this.hero.pos, holderP.pos, targetP.pos) <= 1.6
     const prompt =
       this.phase === 'countdown' ? 'ready'

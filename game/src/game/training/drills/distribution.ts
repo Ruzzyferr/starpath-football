@@ -25,13 +25,17 @@ import { GOAL_CENTER_Y, cloneBall, createTracker, stepBall, type BallState, type
 import { flatAttrs } from '../../setup'
 import { KEEPER_HOLD_SECONDS, type HeroAction } from '../../runtime'
 import { a01, add, angleDiff, clampN, dist, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
+import { eventChanceOf } from '../../chanceEvents'
+import { claimHoldChance, keeperBurst } from '../../keeperPhysics'
 import { arriveTo } from '../vec'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { DIST_CLAIM_POINTS, DIST_PUNCH_POINTS, DIST_QUICK_S, DIST_RECEIVE_R, DIST_THROW_RANGE, claimChance, distributionPoints } from '../scoring'
+import { DIST_CLAIM_POINTS, DIST_PUNCH_POINTS, DIST_QUICK_S, DIST_RECEIVE_R, DIST_THROW_RANGE, distributionPoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
 
 type Cycle = 'setup' | 'cross' | 'hold' | 'release' | 'resolved'
 
+/** Points off the striker's contest roll (Jumping vs the keeper's Handling): 56 vs 50 → 36 %. */
+const CONTEST_MOD = -20
 /** The ball counts as "in reach" below this height while it is dropping. */
 const CLAIM_Z = 2.4
 
@@ -97,9 +101,9 @@ export class DistributionDrill extends DrillBase {
       place(m.agent, m.start, 0)
     })
     this.featured = this.rng.int(0, 2)
-    // A striker who jumps and goes in hard contests more crosses.
-    const st = this.striker.attrs
-    this.contested = this.rng.chance(clampN(0.05 + a01((st.jumping + st.aggression) / 2) * 0.6, 0.1, 0.7))
+    // Whether the striker gets in on the cross: his Jumping against the keeper's command of it (Handling), the one
+    // chance rule (eventChanceOf, +1 % a point) with CONTEST_MOD points off (a cross is the keeper's ball by default).
+    this.contested = this.rng.chance(eventChanceOf(this.striker.attrs.jumping, this.attrs.handling, CONTEST_MOD))
     this.claimed = false
     this.holdT = 0
     this.landingAt = zone
@@ -161,8 +165,9 @@ export class DistributionDrill extends DrillBase {
     const d = dist(this.hero.pos, { x: b.x, y: b.y })
     if (!this.claimed && b.vz < 0 && b.z <= CLAIM_Z && d <= this.reach()) {
       this.claimed = true
-      const stretched = d > this.reach() * 0.7
-      const ok = this.rng.chance(claimChance(this.attrs.handling, this.contested, stretched, this.oppSharpness))
+      // Caught or punched: the match's claimHoldChance (Handling, a striker in on him counts as the runtime's
+      // one-man crowd 0.5, the height he takes it at and the pace of the cross).
+      const ok = this.rng.chance(claimHoldChance(this.hero, b.z, this.contested ? 0.5 : 0, Math.hypot(b.vx, b.vy, b.vz)))
       if (ok) {
         this.stat('claims')
         this.cycle = 'hold'
@@ -364,7 +369,8 @@ export class DistributionDrill extends DrillBase {
       const v = arriveTo(h.pos, this.landingAt, (this.assist === 'full' ? 0.75 : 0.45) * 5.5, 1.2)
       mv = scale(v, 1 / 5.5)
     }
-    const speed = (4.6 + a01(h.attrs.agility) * 1.4) * (this.cycle === 'hold' ? 0.6 : 1)
+    // The match keeper's burst (keeperPhysics.keeperBurst: Pace), slower with the ball in his hands.
+    const speed = keeperBurst(h) * (this.cycle === 'hold' ? 0.6 : 1)
     const m = len(mv) > 1 ? norm(mv) : mv
     h.vel = scale(m, speed)
     h.pos = { x: clampN(h.pos.x + h.vel.x * dt, 0.6, 14), y: clampN(h.pos.y + h.vel.y * dt, GOAL_CENTER_Y - 14, GOAL_CENTER_Y + 14) }

@@ -16,8 +16,9 @@ import { createTracker, stepBall, type BallState, type BallTracker, type Physics
 import { flatAttrs } from '../../setup'
 import { a01, add, angleDiff, clampN, dist, dot, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
+import { eventChance, firstTouchChance } from '../../chanceEvents'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { controllable, drillNoise, rondoPassPoints, RONDO_VISION_THIRD } from '../scoring'
+import { drillNoise, rondoPassPoints, RONDO_VISION_THIRD } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
 
 /** Release within this long after getting the ball back = one-touch pass. */
@@ -30,6 +31,14 @@ const RONDO_NOISE = 2
 const PRESS_LOSE_S = 1.1
 /** How tight the presser gets to the ball (m): close enough to hurry you, not to stand on the ball; aggression goes tighter. */
 const pressGap = (aggression: number): number => 1.6 - Math.max(0, Math.min(100, aggression)) * 0.006
+
+/**
+ * A defender's foot reach (m) for a pass going by him: geometry, the same for everybody. Whether he reads it is
+ * eventChance('read') (his Anticipation vs the hero's Passing), so the opposition's quality shows in the read.
+ */
+const RONDO_FOOT_REACH = 1.2
+/** A lost ball: the drill restarts after this long (s). The time lost is what a stronger pair of defenders costs. */
+const LOST_RESTART_S = 1.5
 
 const C: Vec2 = { x: 52, y: 34 }
 const R = 7
@@ -61,6 +70,8 @@ export class RondoDrill extends DrillBase {
   private target = -1
   private release = 0
   private flash: { at: number; tone: 'green' | 'red' } | null = null
+  /** Defenders who already got a foot in this pass's way (one read each per pass). */
+  private readonly readTried = new Set<Agent>()
   /** Vision ≥ 60 sees the third option through the middle. */
   readonly seesThird: boolean
 
@@ -181,6 +192,7 @@ export class RondoDrill extends DrillBase {
       this.release = this.clock - this.readyAt
       this.state = 'flight'
       this.stateT = 0
+      this.readTried.clear()
       this.stat('passes')
       this.events.push({ type: 'kick', power: 0.6, hero: true, x: from.x, y: from.y })
       return
@@ -214,7 +226,7 @@ export class RondoDrill extends DrillBase {
     this.moveDefenders(dt, live)
     if (this.state === 'flight') this.flight()
     else if (this.state === 'return') this.returnFlight()
-    else if (this.state === 'lost' && this.stateT > 0.9 && (live || this.phase === 'countdown')) this.restart()
+    else if (this.state === 'lost' && this.stateT > LOST_RESTART_S && (live || this.phase === 'countdown')) this.restart()
     else if (this.state === 'ready' && live) {
       // Pressing: a defender within 1 m for too long wins the ball.
       const close = this.defenders.some((d) => dist(d.pos, this.ball) < pressGap(d.attrs.aggression) + 0.25)
@@ -274,7 +286,12 @@ export class RondoDrill extends DrillBase {
     const at = { x: b.x, y: b.y }
     for (const d of this.defenders) {
       // A ball played past the presser's side is never blocked at the passer's own feet.
-      if (dist(b, HERO_SPOT) > 1.6 && dist(d.pos, b) < 0.25 + a01(d.attrs.anticipation) * 0.6 && b.z < 1.2) {
+      // In foot reach (geometry), the read is the match rule: his Anticipation vs the hero's Passing (+1 % a point),
+      // one try per defender per pass.
+      if (this.readTried.has(d)) continue
+      if (dist(b, HERO_SPOT) > 1.6 && dist(d.pos, b) < RONDO_FOOT_REACH && b.z < 1.2) {
+        this.readTried.add(d)
+        if (!this.rng.chance(eventChance('read', d, this.hero))) continue
         this.events.push({ type: 'touch', x: b.x, y: b.y })
         Object.assign(b, { vx: 0, vy: 0, vz: 0, z: 0 })
         return this.lose('blocked', at)
@@ -284,7 +301,8 @@ export class RondoDrill extends DrillBase {
       if (dist(m.pos, b) < 1.1 && b.z < 1.7) {
         const rel = Math.hypot(b.vx, b.vy, b.vz)
         this.events.push({ type: 'touch', x: b.x, y: b.y })
-        if (!controllable(rel, a01(m.attrs.firstTouch))) return this.lose('overhit', at)
+        // First touch, the match rule: a soft ball is his, a harder one is First Touch (+1 % a point).
+        if (!this.rng.chance(firstTouchChance(m, rel))) return this.lose('overhit', at)
         // On the foot: how far off the ball's line the mate stood (not how soon it reached him).
         const sp = Math.hypot(b.vx, b.vy) || 1
         const off = Math.abs((b.vx * (m.pos.y - b.y) - b.vy * (m.pos.x - b.x)) / sp)

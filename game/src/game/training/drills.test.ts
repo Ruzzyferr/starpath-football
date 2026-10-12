@@ -20,10 +20,11 @@ function play(d: Drill & DrillBase, bot: Bot): DrillResult {
 }
 
 const ATTRS = flatAttrs(65)
-/** Keeper drills: a keeper's sheet (goalkeeping attributes, not an outfielder's near-floor ones). */
+/** Keeper drills: a keeper's sheet (goalkeeping attributes, not an outfielder's near-floor ones). Distribution too:
+ * its claim is the match's claimHoldChance (Handling, +1 % a point), hopeless on an outfielder's Handling 25. */
 const GK_DRILL_ATTRS = flatAttrs(65, true)
 const make = (kind: DrillKind, seed: number, variant?: 'setPiece') =>
-  createDrill(kind, { attrs: kind === 'goalkeeping' ? GK_DRILL_ATTRS : ATTRS, seed, aimAssist: 'half', ...(variant ? { variant } : {}) })
+  createDrill(kind, { attrs: kind === 'goalkeeping' || kind === 'distribution' ? GK_DRILL_ATTRS : ATTRS, seed, aimAssist: 'half', ...(variant ? { variant } : {}) })
 
 const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
 const KINDS: DrillKind[] = ['finishing', 'passing', 'dribbling', 'fitness', 'goalkeeping', 'crossing', 'heading', 'tackling', 'distribution', 'sprint', 'interception']

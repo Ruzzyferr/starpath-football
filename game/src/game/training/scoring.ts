@@ -30,17 +30,17 @@ export const DRILL_DURATION: Readonly<Record<DrillKind, number>> = {
 
 /** Points that count as a top session (performance ≈ 1). Calibrated with the human-input bots (drillCurves.test.ts): a level-50 hero with good input lands near 0.67. */
 export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
-  finishing: 30,
-  passing: 2500,
-  dribbling: 280,
+  finishing: 22,
+  passing: 2130,
+  dribbling: 202,
   fitness: 1470,
-  goalkeeping: 65,
+  goalkeeping: 72,
   crossing: 1890,
   heading: 1540,
-  tackling: 920,
-  distribution: 1045,
-  sprint: 1890,
-  interception: 1570,
+  tackling: 575,
+  distribution: 690,
+  sprint: 1990,
+  interception: 416,
 }
 
 /** Which drill a training session plays (null = no mini-game, auto only). */
@@ -68,7 +68,7 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
 }
 
 /** Variants with their own scoring scale (curl gate: 5 × 20 points). */
-export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 32, rondo: 48, switch: 1865, diving: 59, contact: 2260, press: 1180 }
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 14, rondo: 41, switch: 1865, diving: 79, contact: 2020, press: 1180 }
 /** Variants with their own length (rondo: 60 s, 2.3#24). */
 export const VARIANT_DURATION: Readonly<Partial<Record<DrillVariant, number>>> = { rondo: 60 }
 
@@ -108,8 +108,8 @@ export const drillNoise = (skill01: number): number => 0.35 + 1.3 * (1 - clamp01
  * attributes (a fixed number of reps in a fixed time) get a steeper curve, so the grade follows the
  * stats: calibrated with the human-input bots in drillCurves.test.ts (BALANCE.md "Training drills").
  */
-export const DRILL_CURVE: Readonly<Partial<Record<DrillKind, number>>> = { passing: 1.4, dribbling: 1.17, goalkeeping: 0.87, sprint: 1.45 }
-export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 2, rondo: 0.85, switch: 1.05, contact: 1.3, press: 1.07, diving: 0.85 }
+export const DRILL_CURVE: Readonly<Partial<Record<DrillKind, number>>> = { passing: 1.4, dribbling: 0.85, goalkeeping: 1.01, sprint: 1.91 }
+export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 1.2, rondo: 0.85, switch: 1.05, contact: 1.09, press: 1.07, diving: 0.85 }
 
 /** Raw points → 0..1 performance. */
 export function performanceFromPoints(kind: DrillKind, points: number, variant: DrillVariant = 'standard'): number {
@@ -198,17 +198,14 @@ export function passPoints(i: PassScoreInput): number {
   return Math.round(p * (rightType ? comboMultiplier(i.combo) : 1))
 }
 
-/** Can a receiver control a ball arriving at `relSpeed` (m/s relative to him)? */
-export const controllable = (relSpeed: number, firstTouch01: number): boolean => relSpeed < 9.5 + firstTouch01 * 9
-
 // ───────────────────────── Dribbling ─────────────────────────
 
 export type SkillTiming = 'perfect' | 'good' | 'early' | 'late'
 
 /**
  * Skill-move timing from the distance to the defender (m). `window` scales the bands around their
- * centres (1 = the standard 1.4–2.5 m perfect / 0.9–3.4 m good): the hero's Dribbling widens them,
- * a sharper defender narrows them.
+ * centres (1 = the standard 1.4–2.5 m perfect / 0.9–3.4 m good). The drill uses the standard bands: the
+ * stats set the take-on odds (chanceEvents 'takeOn'), the window only the ±timing points.
  */
 export function skillTiming(distance: number, window = 1): SkillTiming {
   const w = Math.max(0.3, window)
@@ -217,10 +214,6 @@ export function skillTiming(distance: number, window = 1): SkillTiming {
   if (Math.abs(distance - 1.95) <= 0.55 * w) return 'perfect'
   return 'good'
 }
-
-/** Skill window scale from the carrier's Dribbling and the defender's Tackling/Anticipation (1 at 60 vs 60). */
-export const skillWindow = (dribbling: number, defender: number): number =>
-  Math.max(0.5, Math.min(1.5, 1 + (clamp01(dribbling / 100) - 0.6) * 0.9 - (clamp01(defender / 100) - 0.6) * 2.2))
 
 // Cone slalom (2.3#22): 8 cones, 20 s, −8 per cone touch, +1 per 0.1 s under par.
 export const SKILL_POINTS: Readonly<Record<SkillTiming, number>> = { perfect: 12, good: 6, early: 0, late: 0 }
@@ -405,12 +398,6 @@ export function distributionPoints(i: DistributionScoreInput): number {
   return Math.round(base * comboMultiplier(i.combo))
 }
 
-/** Chance that the keeper's hands hold a cross he got to (handling 0..100). */
-export function claimChance(handling: number, contested: boolean, stretched: boolean, difficulty: number): number {
-  const p = 0.4 + clamp01(handling / 100) * 0.55 - (contested ? 0.18 : 0) - (stretched ? 0.08 : 0) - (difficulty - 1) * 0.15
-  return Math.max(0.1, Math.min(0.97, p))
-}
-
 // ───────────────────────── Sprint starts (Acceleration) & contact (Balance) ─────────────────────────
 
 /** Length of one sprint rep (m): the first yards, where acceleration (not top speed) wins. */
@@ -426,10 +413,6 @@ export function reactionGrade(reaction: number): ReactionGrade {
   return 'slow'
 }
 
-/** Sprint speed model: acceleration sets the drive (m/s²), pace the top speed (m/s). */
-export const sprintAccel = (acceleration: number): number => 4 + clamp01(acceleration / 100) * 5
-export const sprintTopSpeed = (pace: number): number => 6.5 + clamp01(pace / 100) * 2.5
-
 export interface SprintScoreInput {
   reaction: ReactionGrade
   /** Rep time from the light to the line (s), reaction included. */
@@ -440,11 +423,18 @@ export interface SprintScoreInput {
   combo: number
 }
 
-/** Points for a sprint rep: reaction + time under 3.6 s + dip (+ brace in the contact variant). */
+/**
+ * Rep time (s, reaction included) from which the run earns points. 3.0 s since the drill runs on the match's
+ * model.accel / model.topSpeed (a level-50 runner covers the 15 m in ≈ 2.4 s, 2.1 s at 90): at the old 3.6 s every
+ * decent run hit the 110 cap and Acceleration / Balance stopped showing.
+ */
+export const SPRINT_PAR_TIME = 3.0
+
+/** Points for a sprint rep: reaction + time under SPRINT_PAR_TIME + dip (+ brace in the contact variant). */
 export function sprintPoints(i: SprintScoreInput): number {
   const react = i.reaction === 'perfect' ? 60 : i.reaction === 'good' ? 35 : 10
-  // The run itself (Acceleration, Pace, Balance through a charge): every 0.1 s under 3.6 s is worth 10.
-  const time = Math.round(Math.max(0, Math.min(110, (3.6 - i.time) * 100)))
+  // The run itself (Acceleration, Pace, Balance through a charge): every 0.1 s under SPRINT_PAR_TIME is worth 10.
+  const time = Math.round(Math.max(0, Math.min(110, (SPRINT_PAR_TIME - i.time) * 100)))
   const brace = i.braced === true ? 40 : 0
   const base = 30 + react + time + (i.dip ? 15 : 0) + brace
   return Math.round(base * (i.reaction !== 'slow' && i.braced !== false ? comboMultiplier(i.combo) : 1))
@@ -461,8 +451,6 @@ export const stumbleKeep = (balance: number): number => 0.3 + clamp01(balance / 
 
 /** How early the passer's intention shows (s before the release): anticipation reads it sooner. */
 export const readTell = (anticipation: number): number => 0.25 + clamp01(anticipation / 100) * 0.8
-/** Interception reach (m) around the defender. */
-export const interceptReach = (anticipation: number): number => 0.6 + clamp01(anticipation / 100) * 0.9
 
 export interface InterceptScoreInput {
   /** Stood in the lane before the ball left the passer's foot. */
@@ -477,9 +465,13 @@ export const PRESS_RADIUS = 2.2
 /** Points for a successful press: 50 + 60 per second still left on the receiver's clock (up to 1.5 s). */
 export const pressPoints = (spare: number, combo: number): number =>
   Math.round((50 + Math.max(0, Math.min(1.5, spare)) * 60) * comboMultiplier(combo))
-/** Stamina drain per second of sprinting while pressing: work rate makes the running cheaper. */
+/**
+ * Stamina drain per second of sprinting while pressing: work rate makes the running cheaper. Steeper in Work Rate
+ * since the presser runs at the match's topSpeed (Pace): the will to keep going is now how long he can sprint, not
+ * how fast (0.29/s at Work Rate 25 … 0.13/s at 95, Stamina 60).
+ */
 export const pressDrain = (workRate: number, stamina: number): number =>
-  0.2 * (1.35 - clamp01(workRate / 100) * 0.45 - clamp01(stamina / 100) * 0.2)
+  0.25 * (1.5 - clamp01(workRate / 100) * 0.9 - clamp01(stamina / 100) * 0.2)
 
 // ───────────────────────── XP preview ─────────────────────────
 

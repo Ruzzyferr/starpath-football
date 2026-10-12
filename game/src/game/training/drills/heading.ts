@@ -15,7 +15,7 @@ import { PITCH_LENGTH } from '../../../sim/match/types'
 import { planKick, shotTargetFromDir } from '../../kick'
 import { GOAL_CENTER_Y, POST_Y_HIGH, POST_Y_LOW, cloneBall, createTracker, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
-import { a01, accel, add, clampN, dist, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
+import { a01, accel, add, clampN, dist, jumpHeight, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { aiKeeperReact, drillKeeperSpot, integrateKeeper, keeperReach, keeperWorld, resolveSave } from '../keeper'
@@ -212,9 +212,9 @@ export class HeadingDrill extends DrillBase {
     }
   }
 
-  /** Jump height (m) at the top: 0.3 + jumping. */
+  /** Jump height (m) at the top: the match's model.jumpHeight (Jumping: 0.45 m at 40 … 0.80 m at 85). */
   get jumpHeight(): number {
-    return 0.3 + a01(this.attrs.jumping) * 0.5
+    return jumpHeight(this.attrs.jumping)
   }
 
   private header(): void {
@@ -369,12 +369,11 @@ export class HeadingDrill extends DrillBase {
     }
     const touch = keeperReach(this.keeper, b)
     if (touch) {
-      const res = resolveSave(this.rng, this.keeper, b, touch, this.oppSharpness)
-      if (res !== 'beaten') {
-        this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
-        this.touched = res
-        if (res === 'held') return this.resolve('saved')
-      }
+      const res = resolveSave(this.rng, this.keeper, b, touch)
+      // A hand on the ball is a save (no save roll, as in the match).
+      this.events.push({ type: 'save', hero: false, held: res === 'held', x: b.x, y: b.y, z: b.z })
+      this.touched = res
+      if (res === 'held') return this.resolve('saved')
     }
     const slow = Math.hypot(b.vx, b.vy) < 0.8 && b.z < 0.05
     if (slow || this.stateT > 3) this.resolve(this.touched === 'parried' ? 'saved' : this.woodwork ? 'woodwork' : 'miss')

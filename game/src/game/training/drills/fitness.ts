@@ -8,7 +8,7 @@
  * recover while waiting for the beep. Empty the tank and you are "gassed"
  * (slow until you recover). Two late arrivals in a row end the test.
  */
-import { a01, add, clampN, scale, type Agent } from '../../model'
+import { a01, accel, add, clampN, scale, topSpeed, type Agent } from '../../model'
 import { DrillBase, actorView, makeActor, snapPrev } from '../base'
 import {
   SHUTTLES_PER_LEVEL, SHUTTLE_LENGTH, beepInterval, shuttlePoints, sprintDrain, staminaRecovery, startTiming, type StartTiming,
@@ -20,6 +20,9 @@ const LINE_B = LINE_A + SHUTTLE_LENGTH
 const LANE_Y = 34
 
 type RunState = 'waiting' | 'running'
+/** Shuttle jog / sprint as a share of the match top speeds (see FitnessDrill.jogSpeed). */
+const SHUTTLE_JOG = 0.76
+const SHUTTLE_SPRINT = 0.87
 
 export class FitnessDrill extends DrillBase {
   readonly hero: Agent
@@ -50,11 +53,17 @@ export class FitnessDrill extends DrillBase {
     this.hero.stamina = 1
   }
 
+  /**
+   * Shuttle speeds from the match's model.topSpeed (Pace). The beep test is paced running with a turn every 20 m, so
+   * a jog is SHUTTLE_JOG of his running top speed and a sprint SHUTTLE_SPRINT of his sprint top speed: at the full
+   * match speeds a level-60 runner would jog through every level the 40 s reach (6.2 m/s against 6.4 at the last)
+   * and Stamina, what the drill trains, would never come into it.
+   */
   get jogSpeed(): number {
-    return 3.9 + a01(this.attrs.pace) * 1.3
+    return topSpeed({ ...this.hero, sprint: false }) * SHUTTLE_JOG
   }
   get sprintSpeed(): number {
-    return 6.0 + a01(this.attrs.pace) * 2.0
+    return topSpeed({ ...this.hero, sprint: true, stamina: 1 }) * SHUTTLE_SPRINT
   }
 
   protected onStart(): void {
@@ -162,7 +171,7 @@ export class FitnessDrill extends DrillBase {
     const want = !running ? 0 : this.gassed ? this.jogSpeed * 0.72 : sprinting ? this.sprintSpeed : this.jogSpeed
     const dir = this.targetX > h.pos.x ? 1 : -1
     const cur = h.vel.x * dir
-    const acc = (9 + a01(this.attrs.agility) * 4 + a01(this.attrs.pace) * 3) * dt
+    const acc = accel(h) * dt
     const next = cur < want ? Math.min(want, cur + acc) : Math.max(want, cur - acc * 1.6)
     h.vel = { x: next * dir, y: 0 }
     h.sprint = sprinting

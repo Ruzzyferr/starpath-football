@@ -7,15 +7,17 @@
  * Every cone touch costs 8; each 0.1 s under the lap par earns 1.
  * Close control matters: the ball is pushed ahead on every touch (further when
  * sprinting, less with good dribbling), and clipping a cone costs points and
- * knocks the ball loose. Beat a mannequin with a skill move timed when it is
- * 1.4–2.5 m away (perfect) or 0.9–3.4 m (good); run into it and you are
- * "tackled". Laps are scored with a time bonus; the course mirrors each lap.
+ * knocks the ball loose. Beat a mannequin with a skill move: the take-on is
+ * Dribbling vs the mannequin's Tackling (+1 % a point), +15 when it is timed
+ * 1.4–2.5 m (perfect) or 0.9–3.4 m (good) away, −15 otherwise; run into it
+ * and you are "tackled". Laps are scored with a time bonus; the course mirrors each lap.
  */
 import { createTracker, stepBall, type BallState, type BallTracker, type PhysicsEvent } from '../../physics'
 import { flatAttrs } from '../../setup'
-import { a01, accel, add, angleDiff, clampN, dist, fromAngle, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
+import { CHANCE_MOD, eventChance } from '../../chanceEvents'
+import { a01, accel, add, angleDiff, clampN, dist, fromAngle, heroTurnRate, len, norm, scale, sub, topSpeed, turnAccelMult, type Agent, type Vec2 } from '../../model'
 import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming, skillWindow, slalomLayout } from '../scoring'
+import { CONE_PENALTY, GATE_MISS_PENALTY, GATE_POINTS, SKILL_POINTS, TACKLED_PENALTY, comboMultiplier, lapPoints, skillTiming, slalomLayout } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, GateView, LineView } from '../types'
 
 const START: Vec2 = { x: 45, y: 34 }
@@ -94,10 +96,13 @@ export class DribblingDrill extends DrillBase {
     this.lapStart = this.clock
   }
 
-  /** Skill-move window scale (Dribbling vs the defenders' Tackling and Anticipation). */
+  /**
+   * Skill-move window scale: the standard bands (perfect 1.4–2.5 m, good 0.9–3.4 m, around the match's 1.6–2.8 m).
+   * The stats no longer stretch it: Dribbling vs Tackling sets the take-on odds (eventChance 'takeOn'), the window
+   * only the ±CHANCE_MOD.timing input points.
+   */
   get window(): number {
-    const d = this.dummies[0]!.agent.attrs
-    return skillWindow(this.attrs.dribbling, (d.tackling + d.anticipation) / 2)
+    return 1
   }
 
   // ───────────────────────── Step ─────────────────────────
@@ -164,13 +169,13 @@ export class DribblingDrill extends DrillBase {
         desired = { x: desired.x, y: desired.y + clampN((g.y - h.pos.y) * pull * 2.2, -2.5, 2.5) }
       }
       const dv = sub(desired, h.vel)
-      const a = accel(h) * (len(desired) < len(h.vel) ? 1.6 : 1) * dt
+      const a = accel(h) * turnAccelMult(h, desired) * (len(desired) < len(h.vel) ? 1.6 : 1) * dt
       h.vel = len(dv) <= a ? desired : add(h.vel, scale(norm(dv), a))
       if (h.sprint && len(input.move) > 0.3) h.stamina = Math.max(0, h.stamina - dt * 0.2 * (1.2 - a01(h.attrs.stamina) * 0.4))
       else h.stamina = Math.min(1, h.stamina + dt * 0.12)
       const sp = len(h.vel)
       // Agility turns the body (and the ball in front of it) quicker.
-      const turn = 9 + a01(h.attrs.agility) * 9
+      const turn = heroTurnRate(h.attrs.agility)
       if (sp > 0.5) h.facing += clampN(angleDiff(Math.atan2(h.vel.y, h.vel.x), h.facing), -turn * dt, turn * dt)
     }
     h.pos = { x: clampN(h.pos.x + h.vel.x * dt, START.x - 4, FINISH_X + 6), y: clampN(h.pos.y + h.vel.y * dt, 20, 48) }
@@ -257,9 +262,17 @@ export class DribblingDrill extends DrillBase {
     const d = target ? dist(target.agent.pos, h.pos) : 99
     const timing = skillTiming(d, this.window)
     this.stat('skills')
-    if (!target || timing === 'early' || timing === 'late') {
+    if (!target) {
       this.events.push({ type: 'skill', ok: false })
-      this.award(0, false, { label: target ? timing : 'early', x: h.pos.x, y: h.pos.y })
+      this.award(0, false, { label: 'early', x: h.pos.x, y: h.pos.y })
+      return
+    }
+    // The take-on is the match rule (chanceEvents 'takeOn'): his Dribbling vs the mannequin's Tackling, +1 % a point;
+    // going as the man steps in (the perfect / good band) is +CHANCE_MOD.timing, too early or too late −timing.
+    const inWindow = timing === 'perfect' || timing === 'good'
+    if (!this.rng.chance(eventChance('takeOn', h, target.agent, inWindow ? CHANCE_MOD.timing : -CHANCE_MOD.timing))) {
+      this.events.push({ type: 'skill', ok: false })
+      this.award(0, false, { label: inWindow ? 'whiff' : timing, x: h.pos.x, y: h.pos.y })
       return
     }
     target.beaten = true
@@ -275,9 +288,11 @@ export class DribblingDrill extends DrillBase {
     // A burst past him, angled only slightly so the next gate is still on (it was 27° for 0.42 s: half the gates missed).
     h.actionDir = norm({ x: 1, y: side * 0.3 })
     h.facing = Math.atan2(h.actionDir.y, h.actionDir.x)
-    this.stat(timing === 'perfect' ? 'perfectSkills' : 'goodSkills')
+    // A take-on that comes off out of the window still beats him, worth the 'good' points.
+    const grade = timing === 'perfect' ? 'perfect' : 'good'
+    this.stat(grade === 'perfect' ? 'perfectSkills' : 'goodSkills')
     this.events.push({ type: 'skill', ok: true })
-    this.award(Math.round(SKILL_POINTS[timing] * comboMultiplier(this.combo)), true, { label: timing, x: h.pos.x, y: h.pos.y })
+    this.award(Math.round(SKILL_POINTS[grade] * comboMultiplier(this.combo)), true, { label: grade, x: h.pos.x, y: h.pos.y })
   }
 
   private checkDummies(): void {

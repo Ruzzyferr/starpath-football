@@ -9,8 +9,8 @@
  *    more foul risk, a bonus when it comes off).
  * Timing is the ball: right after the dribbler pushes it ahead it is exposed
  * (ring turns green) — tackle then for the best odds. The odds are the match
- * duel maths (ai.ts `tackleOdds`: tackling/strength/positioning vs dribbling/
- * agility, timing, from behind, slide). A lost tackle leaves you on the floor;
+ * rule (chanceEvents.ts 'tackle': Tackling vs Dribbling, +1 % a point, timing
+ * ±15, from behind −20, slide −5; a miss stays clean on 'clean'). A lost tackle leaves you on the floor;
  * a foul or getting beaten costs points. Every duel the dribbler is a bit
  * different (lane, feint distance, cut side).
  */
@@ -18,6 +18,7 @@ import { createTracker, stepBall, type BallState, type BallTracker, type Physics
 import { flatAttrs } from '../../setup'
 import { a01, accel, add, clampN, dist, dot, fromAngle, len, norm, scale, sub, topSpeed, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
+import { CHANCE_MOD, eventChance } from '../../chanceEvents'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { BEATEN_PENALTY, FOUL_PENALTY, tacklePoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
@@ -32,18 +33,16 @@ const START_X = 53
 const SETUP_TIME = 0.6
 
 /**
- * Training duel odds: the match duel's ingredients (ai.ts tackleOdds: tackling/strength/positioning/
- * aggression vs dribbling/agility/balance/strength, timing, from behind, slide) with a gentler
- * attribute slope, so a well-timed tackle is a fair fight between a starter and a training partner.
+ * Duel odds (owner, build 9: the match rule, chanceEvents.ts): the win is eventChance('tackle') — Tackling vs the
+ * carrier's Dribbling, +1 % a point — moved by the input: timing ±CHANCE_MOD.timing (the ball just pushed ahead =
+ * +15, at his feet = −15), from behind CHANCE_MOD.behind, a slide CHANCE_MOD.slide. A challenge that does not win
+ * it stays clean on eventChance('clean') (Tackling + CHANCE_MOD.cleanStanding / cleanSlide, from behind −20), else
+ * it is a foul. `timing` is 0..1 (0.45 = neutral).
  */
-export function drillTackleOdds(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean): { win: number; foul: number } {
-  const ta = tackler.attrs
-  const ca = carrier.attrs
-  const t = a01(ta.tackling) * 0.62 + a01(ta.strength) * 0.12 + a01(ta.positioning) * 0.08 + a01(ta.aggression ?? 50) * 0.18
-  const c = a01(ca.dribbling) * 0.5 + a01(ca.agility) * 0.17 + a01(ca.balance ?? ca.strength) * 0.15 + a01(ca.strength) * 0.18
-  let win = 0.52 + (t - c) * 0.85 + (timing - 0.55) * 1.1 + (slide ? 0.06 : 0) - (fromBehind ? 0.22 : 0)
-  win = clampN(win, 0.06, 0.95)
-  const foul = clampN((slide ? 0.3 : 0.12) + (1 - timing) * 0.35 + (fromBehind ? 0.35 : 0) - t * 0.2 + (a01(ta.aggression ?? 50) - 0.5) * 0.6, 0.02, 0.92)
+export function drillTackleChances(tackler: Agent, carrier: Agent, timing: number, fromBehind: boolean, slide: boolean): { win: number; foul: number } {
+  const mod = clampN((timing - 0.45) / 0.45, -1, 1) * CHANCE_MOD.timing + (fromBehind ? CHANCE_MOD.behind : 0) + (slide ? CHANCE_MOD.slide : 0)
+  const win = eventChance('tackle', tackler, carrier, mod)
+  const foul = 1 - eventChance('clean', tackler, undefined, (slide ? CHANCE_MOD.cleanSlide : CHANCE_MOD.cleanStanding) + (fromBehind ? CHANCE_MOD.behind : 0))
   return { win, foul }
 }
 /** Touch cycle of the dribbler (s): the ball is exposed right after each touch. */
@@ -182,7 +181,7 @@ export class TacklingDrill extends DrillBase {
     const timing = 0.15 + this.exposure * 0.85
     const cdir = len(c.vel) > 0.3 ? norm(c.vel) : fromAngle(c.facing)
     const fromBehind = dot(cdir, norm(sub(h.pos, c.pos))) < -0.35
-    const odds = drillTackleOdds(h, c, timing, fromBehind, slide)
+    const odds = drillTackleChances(h, c, timing, fromBehind, slide)
     const at = { x: this.ball.x, y: this.ball.y }
     if (this.rng.chance(odds.win)) {
       this.stat('won')

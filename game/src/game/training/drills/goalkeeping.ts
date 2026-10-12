@@ -17,6 +17,7 @@ import { planSave } from '../../ai'
 import { a01, add, clampN, dist, dot, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import { arriveTo } from '../vec'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
+import { keeperBurst } from '../../keeperPhysics'
 import { integrateKeeper, keeperReach, keeperSpot, keeperWorld, resolveSave, startDive } from '../keeper'
 import { GK_SHOTS, GK_WIDE_POINTS, gkReactionWindow, savePoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView } from '../types'
@@ -151,7 +152,8 @@ export class GoalkeepingDrill extends DrillBase {
         const v = arriveTo(k.pos, tgt, (this.assist === 'full' ? 0.7 : 0.4) * 5.5, 1.5)
         mv = scale(v, 1 / 5.5)
       }
-      const speed = 4.6 + a01(k.attrs.agility) * 1.4
+      // The match keeper's burst across his goal (keeperPhysics.keeperBurst: his sprint top speed, Pace).
+      const speed = keeperBurst(k)
       const target = add(k.pos, scale(mv, speed * 0.25))
       integrateKeeper(k, dt, len(mv) > 0.05 ? target : null, speed * Math.min(1, len(mv)))
     }
@@ -238,12 +240,11 @@ export class GoalkeepingDrill extends DrillBase {
     const touch = keeperReach(this.hero, b)
     if (touch) {
       const speed = Math.hypot(b.vx, b.vy, b.vz)
-      const res = resolveSave(this.rng, this.hero, b, touch, this.difficulty)
-      if (res !== 'beaten') {
-        this.touched = true
-        this.events.push({ type: 'save', hero: true, held: res === 'held', x: b.x, y: b.y, z: b.z })
-        return this.resolve(true, res === 'held' ? 'held' : 'save', { held: res === 'held', stretch: touch.stretch, speed })
-      }
+      const res = resolveSave(this.rng, this.hero, b, touch)
+      // A hand on the ball is a save (no save roll, as in the match).
+      this.touched = true
+      this.events.push({ type: 'save', hero: true, held: res === 'held', x: b.x, y: b.y, z: b.z })
+      return this.resolve(true, res === 'held' ? 'held' : 'save', { held: res === 'held', stretch: touch.stretch, speed })
     }
     this.phys.length = 0
     stepBall(b, this.env, this.tracker, this.phys)

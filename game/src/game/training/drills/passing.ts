@@ -17,8 +17,9 @@ import { createTracker, stepBall, type BallState, type BallTracker, type Physics
 import { flatAttrs } from '../../setup'
 import { a01, add, angleDiff, clampN, dist, dot, len, norm, scale, sub, type Agent, type Vec2 } from '../../model'
 import type { HeroAction } from '../../runtime'
+import { firstTouchChance } from '../../chanceEvents'
 import { DrillBase, actorView, makeActor, place, snapPrev } from '../base'
-import { controllable, drillNoise, PASS_ACCURACY_M, passPoints } from '../scoring'
+import { drillNoise, PASS_ACCURACY_M, passPoints } from '../scoring'
 import type { ConeView, DrillConfig, DrillInput, DrillView, GateView, RingView } from '../types'
 
 type RoundState = 'ready' | 'flight' | 'resolved'
@@ -334,7 +335,8 @@ export class PassingDrill extends DrillBase {
       const m = st.mate
       if (dist(m.pos, b) < 1.1 && b.z < 1.7) {
         const rel = Math.hypot(b.vx - m.vel.x, b.vy - m.vel.y, b.vz)
-        if (!controllable(rel, a01(m.attrs.firstTouch))) {
+        // First touch, the match rule: a soft ball is his, a harder one is First Touch (+1 % a point).
+        if (!this.rng.chance(firstTouchChance(m, rel))) {
           b.vx *= 0.35
           b.vy *= 0.35
           b.vz = Math.min(3, rel * 0.08)
