@@ -14,7 +14,7 @@ import { features } from '../../tutorial/unlocks'
 
 type Cat = AssetCategory | 'all'
 
-function effectLabel(a: AssetDef): string | null {
+export function effectLabel(a: AssetDef): string | null {
   if (!a.effect) return null
   const name = tx(`life.assets.effect.${a.effect.key}`, undefined, t('life.assets.effect.generic'))
   const v = a.effect.value

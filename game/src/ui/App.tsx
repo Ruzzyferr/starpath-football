@@ -54,6 +54,7 @@ import { DocumentaryScreen } from './screens/legacy/DocumentaryScreen'
 import { TrialsScreen } from './screens/legacy/TrialsScreen'
 import { useCareerGates } from './screens/legacy/gates'
 import { GlossaryScreen } from './screens/help/GlossaryScreen'
+import { MeScreen } from './screens/me/MeScreen'
 import { CoachTour } from './tutorial/CoachTour'
 import { ScoutingHost } from './screens/training/ScoutingOverlay'
 import { BenchSceneHost } from './screens/bench/BenchSceneHost'
@@ -94,6 +95,7 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   cupDraw: CupDrawScreen,
   awards: AwardsScreen,
   glossary: GlossaryScreen,
+  me: MeScreen,
   achievements: AchievementsScreen,
   hallOfFame: HallOfFameScreen,
   board: BoardScreen,
