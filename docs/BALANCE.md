@@ -2438,3 +2438,82 @@ Sahibin yeni modeli 55–75 bandını kaldırdı (tek şans olayında başlangı
 - `attrSensitivity`: Saldırganlık / GK Pozisyon / Zıplama / Refleks probları statın şimdi etki ettiği yere taşındı. Bulgu: Zıplama hava topunda ters çalışıyordu (40 → 85 kazanma 91 → 64/300) — `HEAD_ADJUST` 0,35 m ile düzeltildi (header 90'da %35 → 53). Kart DEFEND çiftinden Saldırganlık çıktı (artık müdahaleye etkisi yok).
 - `KIND_CHECK_PENDING`: yukarıdaki ❌'li 18 an todo olarak listeli (gizlenmedi).
 - Kariyer: `BALANCE=1` seed 1000 / 2000 / 3000 geçti (10. sezon OVR 82 / 82 / 83). Rol dengesi (ST / LW / CB, 12 kariyer × 8 sezon): sim reytingi, kariyer OVR'si ve reytingi her rolde mevki ortalamasının ±%3'ü içinde.
+
+
+## Build 9 (5. tur): 30 türün hepsi ✅ — 1v1 kararı, açık kalan 18 tür (Ekim 2026)
+
+Koordinatör kararı (sahibin kuralı): her tür her kontrolden geçer; `KIND_CHECK_PENDING` (todo listesi) kaldırıldı. Kontroller değişmedi (bant %30–85, stat 40 → 65 → 90 puanlı artış ≥ 8, özensiz ≥ 20 puan aşağıda, rakip sırası, taban ≥ %30 @40), N = 200, telefon yolu, deterministik tohumlar.
+
+### 1v1 bitiriş kararı (fizikle, kurtarış zarı yok)
+
+Hedef: yerleşik şut, orta kaleciye (~62–65) karşı Bitiricilik 50 → %45–55, 70 → %62–70, 90 → %78–85; kaleci bir puan iyi ≈ %1 az gol.
+
+| sabit | önce | sonra (62–65'te aynı) |
+|---|---|---|
+| kaleci tepkisi | 0,34 − 0,22·Refleks | **0,42 − 0,34·Refleks** (40: 0,28 s, 90: 0,11 s) |
+| dalış hızı (Uzanma eğimi) | 1,5 m/s | **3 m/s** |
+| kol erimi | 0,4 + 0,75·Uzanma | **0,89 + 1,2·(Uzanma − 0,65)** |
+| el erimi | 0,3 + 0,6·Refleks | **0,672 + 0,9·(Refleks − 0,62)** |
+| vuruş yön hatası tabanı | 1,3 − beceri | **1,25 − beceri** |
+
+Ölçüm (şut başına gol, n 150–200): **%47 / %66 / %82** (50/70/90). 13 m, 65'lik şutçu, kaleci 40 / 65 / 90: %67 → %51 → %19. Sabitleyen testler: `intent.test.ts` (şut başına, `intentFinishRate`; şuttan önce kaybedilen top bitiriş değildir), `longShot.test.ts` (kaleci 40 → 90 ≥ 35 puan).
+
+### Ne değişti (fizik ve gerçekçi girdi; tür özel hile yok)
+
+- **Gövde, kalkan, tutuş:** KORU'lu oyuncuya müdahale (Güç + Denge) / 2 ↔ Müdahale − 15 (zamanlama / arkadan iki kez sayılmaz); hold_up'ta açılış koruması yok (marker sırtında). Her sert top (> 12 m/s) gövde yüksekliğinde rakipten seker (yalnız şut değil). Kendi takımının topu tek inen oyuncu 1,95 m altı göğsüyle indirir; uzun topa tek giden rakip onu okumuş olmalı (Önsezi ↔ Uzun Pas).
+- **Vuruş:** Şut Gücü eğimi 12 → 18 (25,8 … 34,8 m/s), serbest vuruş 6 → 20 (25,3 … 35,3); serbest vuruş barajın üstünden kaldırılır, düşüş Duran Top'tan, falso Curve'den (yan dönüş eğimi 130 → 170); hakem 9,15 m'yi korur (baraja 4 m'den vuruluyordu); kaleci topu baraj aşınca görür (× (1,3 − GK Pozisyon)). Uzun pas sürüklenmesi 0,08 → 0,5, havadan uzun top uzunluk hatası 0,9 → 2,6 m/s. Orta: sürüşün bölgeye uzaklığı topun kalitesi (+0,25 … −0,4); rakibin ortası da kendi koşucusuna avantaj.
+- **Kaleci:** çeldiği topun yönü Tutuş'tan (iyi eller dışarı, zayıf eller ceza sahasına); süpürmede ceza sahasından 30 m'ye çıkar (ayakla). gk_1v1'de görev: doğru yöne gitmek, zamanında çıkmak (adam 10 m içinde) ya da açısını tutmak; fk_wall'da: vuruş anında yerinde olmak.
+- **Savunma / baskı:** yapay zekâ çalımında koşarak gelen savunmacıya +20 yok (satılıp tökezlemek tek bedel; kalecide var); yapay zekâ yalnız önündeki adamı çalımlar; BASKI koşusu pas gölgesinden (1,5 m) geçer, son 3 m düz; şutör önündeki kahramanı Bitiricilik ↔ Pozisyon ile dolanır; soğukkanlı blok şutörü açı açılınca vurur (eskiden uzun hazırlanıp blokçuya zaman veriyordu).
+- **Puanlama:** dribble — adamını geçip sonra kaybetmek kısmi, kalecinin çeldiği isabetli şut tam; 2'ye 1'de ceza sahası dışından şut kurtarışı kısmi değil (kuralın kendi yorumu böyleydi); ortadan şans: takım arkadaşı topu tehlike bölgesinde (13 m, ±9 m) karşılarsa.
+- **Bot (iyi = doğru oyun, özensiz = gerçekçi dikkatsiz):** iyi — kalkanla 2 s tutup bırakır, boş koşucuya ve boşluk bulunca orta, ortasına göre korner seçimi, nadiren dalar / arkadan girmez, 1v1'de 7 m'de çıkar, ders kitabı baraj; özensiz — yeni topa geç tepki, uçuşu değil topu izler, baskıda koşmaz, rastgele baraj ve köşe hilesi, 14 m'de erken çıkar, orta sürüşü dağınık.
+
+### Son tablo (telefon yolu, N = 200)
+
+| tür | başlangıç (tam) | bant | stat 40/65/90 (puanlı) | özensiz farkı | rakip güçlü/orta/zayıf (puanlı) | taban (40) | uzak şut | fizik |
+|---|---|---|---|---|---|---|---|---|
+| back_post | 68 (52) | ✅ | 61/70/76 (53/62/67) ✅ | 47 ✅ | 51/60/61 ✅ | 61 ✅ | – | ✅ |
+| block | 79 (53) | ✅ | 62/79/86 (50/67/77) ✅ | 57 ✅ | 51/66/67 ✅ | 62 ✅ | – | ✅ |
+| corner | 47 (23) | ✅ | 36/47/52 (24/35/42) ✅ | 47 ✅ | 28/35/44 ✅ | 36 ✅ | – | ✅ |
+| corner_kick | 45 (26) | ✅ | 33/46/56 (28/37/47) ✅ | 22 ✅ | 28/35/35 ✅ | 33 ✅ | – | ✅ |
+| counter_2v1 | 59 (24) | ✅ | 54/60/61 (36/44/47) ✅ | 33 ✅ | 28/41/59 ✅ | 54 ✅ | ✅ | ✅ |
+| cross | 39 (18) | ✅ | 35/39/47 (25/30/34) ✅ | 23 ✅ | 18/28/37 ✅ | 35 ✅ | ✅ | ✅ |
+| defend | 60 (57) | ✅ | 39/69/87 (37/67/87) ✅ | 45 ✅ | 35/59/72 ✅ | 39 ✅ | – | ✅ |
+| defend_1v1 | 82 (82) | ✅ | 54/87/97 (54/87/97) ✅ | 53 ✅ | 68/82/93 ✅ | 54 ✅ | – | ✅ |
+| dribble | 84 (37) | ✅ | 75/85/88 (50/61/67) ✅ | 62 ✅ | 51/60/63 ✅ | 75 ✅ | ✅ | ✅ |
+| edge_of_box | 55 (21) | ✅ | 50/56/60 (35/40/48) ✅ | 40 ✅ | 25/38/54 ✅ | 50 ✅ | ✅ | ✅ |
+| fk_wall | 69 (28) | ✅ | 66/71/73 (46/51/54) ✅ | 31 ✅ | 43/49/55 ✅ | 66 ✅ | – | ✅ |
+| freekick | 55 (3) | ✅ | 49/55/65 (26/29/36) ✅ | 36 ✅ | 20/29/33 ✅ | 49 ✅ | – | ✅ |
+| gk_1v1 | 67 (30) | ✅ | 59/70/73 (41/52/56) ✅ | 21 ✅ | 41/48/60 ✅ | 59 ✅ | – | ✅ |
+| gk_claim | 84 (38) | ✅ | 77/83/87 (52/61/67) ✅ | 22 ✅ | 49/61/64 ✅ | 77 ✅ | – | ✅ |
+| gk_distribution | 82 (82) | ✅ | 77/82/87 (77/82/87) ✅ | 24 ✅ | 70/82/88 ✅ | 77 ✅ | – | ✅ |
+| gk_save | 78 (64) | ✅ | 66/76/79 (56/70/73) ✅ | 25 ✅ | 69/71/74 ✅ | 66 ✅ | – | ✅ |
+| gk_sweep | 56 (14) | ✅ | 51/57/63 (31/36/40) ✅ | 33 ✅ | 25/35/45 ✅ | 51 ✅ | – | ✅ |
+| header | 42 (32) | ✅ | 34/47/52 (27/42/50) ✅ | 38 ✅ | 34/37/45 ✅ | 34 ✅ | – | ✅ |
+| hold_up | 55 (55) | ✅ | 46/63/76 (46/63/76) ✅ | 49 ✅ | 32/55/65 ✅ | 46 ✅ | ✅ | ✅ |
+| interception | 70 (61) | ✅ | 45/70/83 (41/66/78) ✅ | 35 ✅ | 51/65/69 ✅ | 45 ✅ | – | ✅ |
+| long_ball_control | 52 (42) | ✅ | 50/57/65 (44/54/63) ✅ | 27 ✅ | 40/47/66 ✅ | 50 ✅ | ✅ | ✅ |
+| long_shot | 43 (4) | ✅ | 40/48/59 (23/27/33) ✅ | 28 ✅ | 16/24/32 ✅ | 40 ✅ | ✅ | ✅ |
+| one_on_one | 69 (48) | ✅ | 66/70/74 (52/59/66) ✅ | 34 ✅ | 46/58/73 ✅ | 66 ✅ | ✅ | ✅ |
+| penalty | 59 (59) | ✅ | 34/61/80 (34/61/80) ✅ | 26 ✅ | 34/59/77 ✅ | 34 ✅ | – | ✅ |
+| press_trap | 46 (45) | ✅ | 41/53/65 (41/52/65) ✅ | 22 ✅ | 27/46/56 ✅ | 41 ✅ | – | ✅ |
+| rebound | 64 (57) | ✅ | 60/66/71 (56/63/67) ✅ | 35 ✅ | 46/61/66 ✅ | 60 ✅ | – | ✅ |
+| recovery_run | 55 (21) | ✅ | 42/63/76 (28/45/65) ✅ | 40 ✅ | 25/38/52 ✅ | 42 ✅ | – | ✅ |
+| shoulder_duel | 61 (61) | ✅ | 54/71/79 (54/71/79) ✅ | 50 ✅ | 40/61/80 ✅ | 54 ✅ | ✅ | ✅ |
+| switch_play | 80 (79) | ✅ | 79/83/88 (79/83/88) ✅ | 61 ✅ | 80/80/89 ✅ | 79 ✅ | ✅ | ✅ |
+| timed_run | 78 (18) | ✅ | 73/79/91 (43/51/60) ✅ | 63 ✅ | 42/48/62 ✅ | 73 ✅ | – | ✅ |
+
+"–" uzak şut: o anda uzaktan şut yolu yok. Fizik sütunu: `physicsInvariants.test.ts` ortak modül için yeşil.
+
+**Önce → sonra (açık kalan 18 tür):** back_post rakip 53/54/54 → 51/60/61; block rakip 64/63/64 → 51/66/67; corner_kick fark 17 → 22; counter_2v1 fark 17 → 33; cross fark 14 → 23, taban 30 → 35; defend taban 28 → 39; dribble taban 21 → 75; fk_wall stat 48/52/55 → 46/51/54 ve rakip 50/51/53 → 43/49/55; freekick stat 22/25/28 → 26/29/36; gk_1v1 fark 15 → 21; gk_save stat 63/68/67 → 56/70/73; header fark 20 → 38; hold_up stat 72/73/74 → 46/63/76; long_ball_control fark 14 → 27; long_shot stat 22/23/27 → 23/27/33; press_trap fark 8 → 22; shoulder_duel fark 17 → 50; switch_play stat 63/68/65 → 79/83/88.
+
+**Dürüst not:** koordinatörün "düz" türlerde istediği 25–45 puanlık yükseliş (başarı, 40 → 90): hold_up +30, long_shot +19, freekick +16, gk_save +13, switch_play +9, fk_wall +7. Kontrol (puanlı ≥ 8) geçiyor; fk_wall / switch_play / gk_save'de yükseliş hâlâ dar — kalecinin ve uzun pasın statları fizikte büyük, ama sonuç büyük ölçüde rakibin vuruşuna / pasın zaten tutulmasına bağlı.
+
+### Bilinçli değişen sabitlemeler (bu tur)
+
+- `intent`: 1v1 bantları şut başına %42–57 / %60–73 / %76–88; müdahale gürültüsü 0,02 → 0,03, ortalama fark 0,15 → 0,14.
+- `feel`: gk_save üst 0,85 → 0,93, hold_up alt 0,45 → 0,35, dribble alt 0,28 → 0,20, switch_play üst 0,72 → 0,90, recovery_run üst 0,78 → 0,88, freekick alt 0,06 → 0,04.
+- `balance8`: hold_up açılış koruması yok (tasarım).
+- `attrSensitivity`: Kafa isabeti 0,1 → 0,06 (tavanda), BASKI acelesi 0,03 → 0,015 s, GK Pozisyon 3 → 1,5 pp; Saldırganlık BLOK yayılımı 0,4 → 0,55, BASKI acelesi 0,12 → 0,2.
+- Drill: pas 1900 → 1563 (eğri 0,85), kalecilik 60 → 50 (eğri 1,9), switch 1865 → 1100, serbest vuruş 14 → 16 (eğri 1,15).
+- Kariyer: `BALANCE=1` seed 1000 / 2000 / 3000 geçti (10. sezon OVR 82 / 82 / 83); rol dengesi (ST / LW / CB, 12 kariyer × 8 sezon) her rolde mevki ortalamasının ±%3'ü içinde. Golden ve tam vitest yeşil (246 dosya, 2190 test, 0 todo).
+
