@@ -3,10 +3,10 @@
  * ball's real trajectory and time-to-arrive; long shots give the keeper more time"). Shared by the match moments and
  * the training drills. No dice: whether a keeper gets to a ball is geometry and time.
  *
- *   reaction        keeperReaction (ai.ts): 0.34 − 0.22·Reflexes s (opposition sharpened by difficulty)
+ *   reaction        keeperReaction (ai.ts): 0.42 − 0.34·Reflexes s (opposition sharpened by difficulty)
  *   dive            diveSpeed (ai.ts: Diving, Agility, Jumping) for DIVE_PEAK s, then the arm: armReach
  *   shuffle         from a set stance at 6 + 4·Agility m/s² up to 2.4 + 1.6·Agility + 0.6·Pace m/s
- *   arm reach       0.4 + 0.75·Diving m at full stretch (0.70 at 40 … 1.08 at 90)
+ *   arm reach       0.89 + 1.2·(Diving − 0.65) m at full stretch (0.59 at 40 … 1.19 at 90)
  *   hands (set)     0.3 + 0.6·Reflexes m round his body when he is on his feet (0.54 … 0.84)
  *   catch height    2.3 + 0.3·Jumping m (+ the height of a dive / jump)
  *
@@ -18,8 +18,8 @@ import { statChance } from './statChance'
 import { DIVE_PEAK, diveSpeed } from './ai'
 import { GOAL_CENTER_Y, cloneBall, createTracker, stepBall, type BallState, type PhysicsEnv } from './physics'
 
-/** Full-stretch arm reach of a dive (m) from Diving. */
-export const armReach = (k: Pick<Agent, 'attrs'>): number => 0.4 + 0.75 * a01(k.attrs.diving ?? 62)
+/** Full-stretch arm reach of a dive (m) from Diving (build 9 finishing pass: slope 0.75 → 1.2, unchanged at 65). */
+export const armReach = (k: Pick<Agent, 'attrs'>): number => 0.89 + 1.2 * (a01(k.attrs.diving ?? 62) - 0.65)
 /** Hand reach round the body of a keeper on his feet (m) from Reflexes. */
 export const handsReach = (k: Pick<Agent, 'attrs'>): number => 0.3 + 0.6 * a01(k.attrs.reflexes ?? 62)
 /** Highest ball (m) he takes standing, from Jumping. */

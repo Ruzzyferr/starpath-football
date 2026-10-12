@@ -506,7 +506,8 @@ export function keeperTarget(gk: Agent, w: AiWorld): { pos: Vec2; rushing: boole
 
 /** Reaction delay (s) before a keeper starts moving for a shot. */
 export function keeperReaction(gk: Agent, difficulty: number): number {
-  const base = 0.34 - a01(gk.attrs.reflexes) * 0.22
+  // Build 9 finishing pass (owner: a keeper 1 point better ≈ 1 % fewer goals): 40 → 0.28 s, 65 → 0.20 s, 90 → 0.11 s.
+  const base = 0.42 - a01(gk.attrs.reflexes) * 0.34
   // Difficulty sharpens the opponents' keeper only (never the hero's own team-mate).
   return gk.isHero || gk.team === 'hero' ? clampN(base, 0.08, 0.4) : clampN(base / Math.max(0.6, difficulty), 0.08, 0.4)
 }
@@ -515,7 +516,8 @@ export function keeperReaction(gk: Agent, difficulty: number): number {
 export function diveSpeed(gk: Agent): number {
   // A gifted diver (above 65) covers ground faster still.
   const dv = a01(gk.attrs.diving ?? gk.attrs.agility)
-  return 3.6 + dv * 1.5 + Math.max(0, dv - 0.65) * 1.5 + a01(gk.attrs.agility) * 0.4 + a01(gk.attrs.jumping) * 0.4
+  // (Build 9 finishing pass: the Diving slope 1.5 → 3 m/s, unchanged at 65.)
+  return 2.625 + dv * 3 + Math.max(0, dv - 0.65) * 1.5 + a01(gk.attrs.agility) * 0.4 + a01(gk.attrs.jumping) * 0.4
 }
 
 /** Arm reach from body centre when diving/standing (m). */

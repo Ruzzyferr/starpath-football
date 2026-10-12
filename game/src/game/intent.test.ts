@@ -11,7 +11,7 @@
  *   INTENT_LOG=shot INTENT_PROF=start for per-trial intended vs actual goal-line points.
  */
 import { describe, expect, it } from 'vitest'
-import { CURVE_KINDS, INTENT_KINDS, LEVELS, PROFILE_KEYS, intentRate, playIntent, type InputSkill, type IntentKind, type Profile } from './intentHarness'
+import { CURVE_KINDS, INTENT_KINDS, LEVELS, PROFILE_KEYS, intentFinishRate, intentRate, playIntent, type InputSkill, type IntentKind, type Profile } from './intentHarness'
 
 /** Env access without Node typings (the app tsconfig has no @types/node). */
 const ENV = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
@@ -24,11 +24,12 @@ const ENV = (globalThis as { process?: { env: Record<string, string | undefined>
 const START_MIN: Partial<Record<IntentKind, number>> = { shot: 0.38, shotBtn: 0.2, pass: 0.85, shortPass: 0.9, passRun: 0.7, through: 0.65, cross: 0.6, tackle: 0.25 }
 
 /**
- * 1v1 to a corner by Finishing-group level. Build 9 physics pass: the keeper reaches what he can reach — the owner's
- * build 8 bands (55–70 / 70–84 / 82–95 %) are out of reach of the physics keeper (measured 34 / 47 / 63 %); these are
- * the physics values ±, an owner decision point (docs/BALANCE.md).
+ * Goals per placed 1v1 finish by Finishing-group level against the generated (~62) keeper. Owner (build 9 finishing
+ * decision): the finish follows the stat about 1:1 — 50 → 45–55 %, 70 → 62–70 %, 90 → 78–85 % — reached physically
+ * (keeper reaction / dive / reach from his stats, the strike's direction error from the shooter's), no save roll.
+ * Bands = the targets ± sampling noise at n = 200 (~110 shots).
  */
-const SHOT_BANDS: Record<number, [number, number]> = { 50: [0.27, 0.45], 70: [0.38, 0.58], 90: [0.53, 0.75] }
+const SHOT_BANDS: Record<number, [number, number]> = { 50: [0.42, 0.57], 70: [0.6, 0.73], 90: [0.76, 0.88] }
 /** Kinds whose good input meets a clean ball physics delivers (passes, crosses): near-certain, no spread to show. */
 const CEILING: ReadonlySet<IntentKind> = new Set<IntentKind>(['pass', 'through', 'cross'])
 
@@ -72,13 +73,14 @@ describe('intent: success follows the moment attributes, input skill always matt
     }, 300_000)
   }
 
-  it('1v1 corner finish lands in the owner bands (Finishing / Composure / Shooting / Curve 50 · 70 · 90)', () => {
+  it('1v1 placed finish follows the stat ~1:1 (Finishing / Composure / Shooting / Curve 50 · 70 · 90)', () => {
     for (const lv of [50, 70, 90]) {
-      const r = intentRate('shot', lv, 200).rate
-      expect(r).toBeGreaterThanOrEqual(SHOT_BANDS[lv]![0])
-      expect(r).toBeLessThanOrEqual(SHOT_BANDS[lv]![1])
+      const r = intentFinishRate(lv, 200)
+      const line = `${lv}: ${Math.round(r.rate * 100)} % of ${r.shots} shots`
+      expect(r.rate, line).toBeGreaterThanOrEqual(SHOT_BANDS[lv]![0])
+      expect(r.rate, line).toBeLessThanOrEqual(SHOT_BANDS[lv]![1])
     }
-  }, 300_000)
+  }, 600_000)
 
   it('is deterministic', () => {
     expect(playIntent('shot', 4, 'start')).toEqual(playIntent('shot', 4, 'start'))

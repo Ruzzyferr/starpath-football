@@ -542,7 +542,8 @@ export function headingNoise(req: KickRequest, skill: number): number {
   // From range a strike (beyond 20 m) drifts more for a weak kicker; a long pass (beyond 25 m) drifts more for a poor passer, less for a good one.
   const d = dist(req.from, req.target)
   const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.6, 1 + Math.max(0, d - 25) * 0.08 * (0.65 - skill)) : 1
-  const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
+  // (Build 9 finishing pass: 1.3 → 1.25 — a placed finish lands where the owner's 1v1 rule puts it, Finishing 50 ≈ 50 %.)
+  const deg = baseDeg[req.kind] * (1.25 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
 }
 

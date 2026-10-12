@@ -518,6 +518,25 @@ export function intentRate(
   return { rate: used ? ok / used : 0, offTarget: used ? off / used : 0, skipped, n: used }
 }
 
+/** Outcomes of a 1v1 trial where the hero got his shot away (a ball lost before the strike is not a finish). */
+const SHOT_TAKEN = new Set(['goal', 'saved', 'missed', 'woodwork', 'blocked'])
+
+/**
+ * Goals per placed 1v1 finish (owner, build 9: "a finish follows the stat roughly 1:1 — Finishing 50 ≈ 50 %, 70 ≈ 66 %,
+ * 90 ≈ 80 % against an average keeper"): good input, trials where he lost the ball before shooting left out.
+ */
+export function intentFinishRate(level: Level, n: number): { rate: number; shots: number } {
+  let g = 0
+  let shots = 0
+  for (let s = 1; s <= n; s++) {
+    const r = playIntent('shot', s, level)
+    if (!SHOT_TAKEN.has(r.outcome)) continue
+    shots++
+    if (r.outcome === 'goal') g++
+  }
+  return { rate: shots ? g / shots : 0, shots }
+}
+
 export interface ReceptionRate {
   /** Share of clean short passes played to the man meant that a team-mate brought under control. */
   rate: number

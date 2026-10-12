@@ -38,6 +38,13 @@ describe('long-range sanity (pinned; physics + direction error only)', () => {
     expect(longShotRate(20, 'aimed', 65, 65, N)).toBeLessThan(longShotRate(13, 'aimed', 65, 65, N))
   }, 900_000)
 
+  it('the keeper matters about 1 % a point: 13 m, keeper 40 → 90 costs a 65 finisher ≥ 35 points (reaction, dive, reach)', () => {
+    const byGk = [40, 65, 90].map((g) => longShotRate(13, 'aimed', 65, g, 150))
+    const line = `gk 40/65/90 ${byGk.map((x) => Math.round(x * 100))}`
+    expect(byGk[0]! - byGk[2]!, line).toBeGreaterThanOrEqual(0.35)
+    expect(byGk[0]! - byGk[2]!, line).toBeLessThanOrEqual(0.65)
+  }, 900_000)
+
   it('in every moment he starts on the ball, SHOOT tapped the instant he has it from 35 m+ scores ≤ 2 %', () => {
     const kinds: HighlightKind[] = ['build_up', 'counter', 'switch_play', 'hold_up', 'long_ball_control', 'counter_2v1', 'dribble', 'edge_of_box', 'long_shot', 'shoulder_duel', 'cross']
     let n = 0
