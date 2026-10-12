@@ -495,13 +495,19 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
       // Wide: everyone crosses (the moment's intent). A sensible crosser waits for his runners in the box and plays it
       // into the corridor at the penalty spot; a careless one hits it at the box without looking.
       const arrived = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 16 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12).length
-      if (held > 0.5 && (st.skill.read < 0.5 || arrived >= 2 || held > 2.4)) {
+      // (…and picks the moment a runner in the corridor is free of his marker.)
+      const space = (a: Agent) => Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, a.pos)), 30)
+      const free = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 14 && a.pos.x < PITCH_LENGTH - 4 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 8 && space(a) > 2.5).sort((p, q) => space(q) - space(p))[0]
+      const freeRunner = !!free
+      // (…with a yard of space himself — not with the full-back's leg in the way.)
+      const marker = Math.min(...rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).map((o) => dist(o.pos, hero.pos)), 30)
+      if (held > 0.5 && (st.skill.read < 0.5 || (arrived >= 2 && freeRunner && marker > 2.5) || held > 2.4)) {
         const box = rt.agents
           .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && a.pos.x > PITCH_LENGTH - 18 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 12)
           .sort((p, q) => Math.abs(p.pos.y - GOAL_CENTER_Y) - Math.abs(q.pos.y - GOAL_CENTER_Y))[0]
-        const aim = st.skill.read >= 0.5 ? { x: PITCH_LENGTH - 12, y: GOAL_CENTER_Y } : st.skill.read > 0.3 && box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+        const aim = st.skill.read >= 0.5 ? (free ? { x: free.pos.x + 1.5, y: free.pos.y } : { x: PITCH_LENGTH - 12, y: GOAL_CENTER_Y }) : st.skill.read > 0.3 && box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
         // (Across 30 m a careless swipe is metres out: the scatter grows with the carelessness.)
-        const sc = st.skill.read >= 0.5 ? 1 : 1.5
+        const sc = st.skill.read >= 0.5 ? 1 : 2.4
         const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6 * sc), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2 * sc) }
         const dir = norm(sub(tgt, hero.pos))
         // (A careless swipe's weight is all over the place: short of the runners or over everyone.)
