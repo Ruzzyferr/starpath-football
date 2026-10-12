@@ -2257,3 +2257,89 @@ Sahip: gönderimden önce kalan türler de düzelsin; **her tür** dört kontrol
 - vitest (tümü), golden güncel, lint 0 hata, build. BALANCE=1 1000 / 2000 / 3000 geçti: 10. sezon OVR medyanı 82 / 82 / 83, itibar 92 / 88 / 89 (önceki rapor 83 / 86).
 - Rol denge kontrolü (ST / LW / CB, 12 kariyer): sim maç reytingi Δ ±%3, oynanan maç reytingi ±%4,9, kariyer OVR ±%1,3, kariyer reytingi ±%1,4; itibar −%5,4 (touchlineWinger) … +%4,7 (invertedWinger) — 12 kariyerde gürültü düzeyinde (build 8: −%7,9 / +%5,9).
 - e2e (desktop / mobile / webkit-iphone): tier, moments, setpieces, matchup, determinism — 34 geçti, 1 atlandı. Değişen türler mobilde (`PW_TIER_KINDS`) görsel olarak kontrol edildi.
+
+
+## Build 9 (3. tur): telefonda baskı — oyuncu adamın içinden geçiyordu (Ekim 2026)
+
+Playtester (TestFlight build 9, gerçek iPhone, 6 maç): rakip toptayken BASKI'ya basıp adama düz koşunca kahraman **adamın ve topun içinden geçiyor**, 5–6 kez üst üste. Bot ölçüm aracı bu türleri geçiyordu, çünkü insanın kullandığı yolu hiç sürmüyordu.
+
+### Kök neden (yeniden üretildi, sonra düzeltildi)
+
+1. **BASKI hiç müdahale etmiyordu.** Varınca (< 1,8 m) yalnızca taşıyıcıyı acele ettirip koşuyu bitiriyordu; joystick adama doğru kaldığı için kahraman koşmaya devam edip içinden geçiyordu. Telefon yolunda press_trap'te müdahale: **0 / 100** deneme.
+2. **BASKI koşusu 1,3 s'de bitiyordu.** 10 m+ uzaktan basılan BASKI adama hiç varmıyordu (bot: 261 basışta 14 varış).
+3. **Gövde yoktu.** Kahraman ile rakipler (ve rakibin ayağındaki top) arasında hiçbir ayrım / çarpışma yoktu: kaçan müdahaleden ya da acele ettirmeden sonra kahraman adamın içinden geçiyordu (blok: denemelerin %57–69'unda gövde gövdeye < 0,6 m).
+4. **Koşarken basılan MÜDAHALE her zaman tam "lunge"** (×0,25): erişimin 0,5 m dışında basmak bile en kötü cezayı alıyordu.
+5. **Ölçüm aracı başka yol kullanıyordu:** bot masaüstü ACTION tuşuyla (`{kind:'action'}`) müdahale ediyordu (dokunmatik bunu hiç göndermez), ekranda olmayan JOCKEY'yi tutuyor, SPRINT düğmesi olmayan anlarda depar atıyordu.
+
+### Düzeltme
+
+- **Gövdeler (`runtime.heroBodyContact`):** kahraman ↔ her rakip `BODY_GAP` 0,7 m, rakibin ayağındaki top `BALL_CONTACT` 0,45 m; kontrol adım boyunca **süpürülür** (iki hareketli noktanın en yakın yaklaşımı) → 120 m/s'de bile atlanmaz. Ayrılma Güç / Denge ağırlığıyla paylaşılır (KORU basılıyken kahraman ×3 sağlam); yalnızca kapanma hızı alınır (birbirinin yanından kayarlar); boş topta hız korunur. Rakip AI kahramanın gövdesinin içinden değil omzundan gelir.
+- **Gerçek mücadele:** savunma düğmesine son `CONTEST_INTENT` (1,2 s) içinde basmışken taşıyıcıya ya da topuna değmek = ayakta müdahale (Top Kapma / zamanlama vs taşıyıcının Dripling / Çeviklik / Denge / Güç; faul riski). Depar hızında çarpmak kapanma hızına göre lunge sayılır; satılmış (`noTouch`) savunmacı müdahale edemez; blok şutörüne kayarak girmek `BLOCK_SHIFT` zarını o anda atar.
+- **BASKI:** varana kadar koşar (`PRESS_RUN` 3 s), varınca taşıyıcıya yapışır ve top ayağından çıkınca ya da `PRESS_GO_AFTER` 0,5 s sonra müdahale eder; yapışık beklemek sabır (zamanlama) sayılır; acele ettirilen pas okuması `PRESS_READ.hurried` 1,9 → 3,0.
+- **MÜDAHALE lunge'u kademeli:** erişimin ne kadar dışında basıldığına göre (`LUNGE_SPAN` 1,5 m): 0,5 m erken ×0,75, 3,3 m+ tam lunge.
+- **Telefon düğmeleri:** edge_of_box topla SPRINT, interception JOCKEY (artık 30 m'den kapatır). Yardım metni (TR / EN): BASKI varınca topa girer; uzaktan basılan MÜDAHALE daha kötü zamanlanır.
+- **Diğer:** omuz omuza yeniden karar 0,3 → 0,6 s (gövdeler katı, yan yana kalıyorlar); recovery_run görev yarıçapı 12 → 14 m; çalım zamanlaması 0,3 → 0,4.
+
+### Ölçüm aracı artık telefon yolunda
+
+`game/phoneInput.phoneRuntime`: bot runtime'a yalnızca dokunmatiğin gönderebildiğini verir — ekrandaki bağlam düğmeleri (joystick yönüyle), joystick, ekrandaysa SPRINT / JOCKEY / SHIELD, dokunma / kaydırma. ACTION tuşu o anın kendi düğmesi olur (MÜDAHALE, BASKI, BLOK…), ekranda olmayan MÜDAHALE adama dokunma olur. `kindMatrix` varsayılanı (`KIND_PATH=keys` eski yol). **Beşinci kontrol (taban):** iyi girdi, türün statları 40, güçlü rakip ≥ %30. Oran karşılaştırmaları 1e-9 toleranslı (0,74 − 0,66 < 0,08 kayan noktada — tam 8 puanlık fark yanlışlıkla düşüyordu).
+
+### Oyuncunun girdisiyle (joystick adama, kırmızı düğme 0,3 s'de bir; 100 deneme; `pressRepro.test.ts`)
+
+| tür | gövde içinden geçme önce → sonra | erişimde mücadele önce → sonra |
+|---|---|---|
+| press_trap (BASKI) | %6 / %3 → **0** | **0** → 21/25 (başlangıç), 16/19 (40 vs güçlü) |
+| block | %57 / %69 → **0** | blok olayı %24 → %70+ |
+| defend_1v1 | %5 / %3 → **0** | 81 → 82 / 100 |
+| interception | %2 → **0** | 55 → 53 / 100 |
+| shoulder_duel | %1–2 → **0** | — |
+| defend, recovery_run | 0 → 0 | — |
+
+e2e `press.spec.ts` (mobil Chromium + WebKit iPhone, gerçek dokunma olayları): örtüşme 0, video + ekran görüntüsü dizisi.
+
+### Pas alma (telefon PAS düğmesiyle, `intentHarness`)
+
+Boştaki arkadaşa iyi oynanmış kısa pas, statlar 40: **%89–90** alınıyor (başlangıç %97, 90'da %99); 8–28 m pas %86. Hedef ≥ %85 tutuyor; `pressRepro.test` sabitliyor. Düzeltme gerekmedi. (Joystick ileri bakarken PAS'a basmak (passRun) %73: joystick adama bakmıyor, iyi oynanmış pas değil.)
+
+### 30 tür, beş kontrol (telefon yolu, N = 200; önce = HEAD runtime + telefon yolu; parantez = tam başarı)
+
+| tür | başlangıç önce → sonra | 40 / 65 / 90 | özensiz (fark) | güçlü / orta / zayıf | 40 vs güçlü önce → sonra | bant | stat | fark | rakip | taban |
+|---|---|---|---|---|---|---|---|---|---|---|
+| one_on_one | 67 → **67** (63) | 59 / 69 / 78 | 38 (29) | 66 / 67 / 72 | 62 → **61** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| penalty | 73 → **74** (74) | 68 / 75 / 81 | 40 (34) | 69 / 74 / 82 | 57 → **59** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| freekick | 61 → **61** (26) | 50 / 57 / 61 | 32 (29) | 50 / 61 / 59 | 46 → **46** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| edge_of_box | 34 → **70** (49) | 63 / 69 / 75 | 26 (43) | 59 / 70 / 78 | 19 → **51** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| cross | 61 → **61** (28) | 48 / 60 / 73 | 39 (22) | 52 / 61 / 65 | 40 → **40** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| corner | 59 → **60** (36) | 41 / 60 / 71 | 33 (27) | 47 / 60 / 67 | 30 → **31** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| defend | 62 → **60** (59) | 49 / 73 / 83 | 24 (36) | 45 / 60 / 81 | 36 → **34** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gk_save | 69 → **69** (54) | 53 / 70 / 71 | 42 (27) | 60 / 69 / 69 | 48 → **48** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| counter_2v1 | 65 → **65** (42) | 56 / 66 / 66 | 38 (27) | 50 / 65 / 72 | 47 → **46** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| long_ball_control | 61 → **70** (66) | 66 / 71 / 74 | 43 (26) | 53 / 70 / 78 | 40 → **50** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| rebound | 60 → **66** (62) | 63 / 72 / 74 | 39 (28) | 59 / 66 / 74 | 51 → **57** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| interception | 47 → **67** (59) | 47 / 61 / 77 | 39 (28) | 50 / 67 / 70 | 27 → **36** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| hold_up | 65 → **63** (63) | 57 / 66 / 75 | 22 (42) | 56 / 63 / 68 | 55 → **54** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| defend_1v1 | 77 → **76** (75) | 61 / 82 / 92 | 44 (32) | 64 / 76 / 89 | 39 → **39** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| block | 65 → **68** (59) | 63 / 68 / 80 | 47 (21) | 62 / 68 / 72 | 59 → **61** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| corner_kick | 55 → **55** (36) | 42 / 60 / 73 | 33 (22) | 48 / 55 / 59 | 31 → **31** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| fk_wall | 73 → **73** (19) | 65 / 73 / 78 | 50 (22) | 71 / 73 / 76 | 61 → **61** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| dribble | 59 → **64** (64) | 45 / 67 / 76 | 14 (51) | 54 / 64 / 76 | 27 → **36** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| header | 66 → **64** (54) | 55 / 70 / 80 | 41 (24) | 57 / 64 / 70 | 49 → **48** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gk_1v1 | 60 → **59** (29) | 52 / 57 / 62 | 37 (22) | 44 / 59 / 74 | 39 → **38** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gk_sweep | 55 → **57** (10) | 56 / 62 / 64 | 22 (36) | 42 / 57 / 73 | 29 → **35** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| back_post | 59 → **60** (52) | 59 / 65 / 74 | 19 (41) | 52 / 60 / 60 | 49 → **48** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| long_shot | 57 → **58** (21) | 57 / 63 / 67 | 28 (30) | 56 / 58 / 62 | 54 → **52** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| switch_play | 62 → **62** (60) | 57 / 64 / 70 | 20 (42) | 62 / 62 / 72 | 52 → **53** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| recovery_run | 58 → **56** (35) | 44 / 66 / 80 | 26 (30) | 47 / 56 / 73 | 28 → **31** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| shoulder_duel | 75 → **75** (75) | 68 / 81 / 83 | 55 (20) | 55 / 75 / 85 | 52 → **53** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| timed_run | 73 → **72** (31) | 69 / 78 / 92 | 46 (26) | 67 / 72 / 81 | 69 → **65** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| press_trap | 57 → **59** (57) | 50 / 62 / 74 | 35 (25) | 46 / 59 / 70 | 30 → **43** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gk_claim | 72 → **72** (26) | 64 / 73 / 87 | 50 (22) | 62 / 72 / 76 | 54 → **54** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| gk_distribution | 76 → **76** (76) | 73 / 76 / 81 | 26 (50) | 67 / 76 / 81 | 63 → **63** | ✅ | ✅ | ✅ | ✅ | ✅ |
+
+Önce (HEAD, telefon yolu) 8 tür en az bir kontrolden kalıyordu (back_post, block, dribble, edge_of_box, freekick, gk_sweep, interception, recovery_run); şimdi **30 / 30**. Sabitlenen: `kindChecks.a–d.test.ts` (taban dahil).
+
+### Bilinçli değişen sabitlemeler
+
+- `balance8` "topla devam: 1,5 s içinde kaptırma" ≤ %5 → ≤ %12 (ölçülen %9): gövdeler katı, ilk vuruşta (grace) kapanan adam grace bitince hâlâ omzunda (eskiden içinden geçip arkada bırakılıyordu). Grace içinde kaptırma hâlâ **0**.
+- `feel` switch_play üst sınırı 0,62 → 0,66 (ölçülen 0,633; 30 denemede bir deneme).
+- `actionSet` JOCKEY etkisi: "4 m içinde bitir" ya da "en az 1 m kapat" (interception'da uzaktan başlıyor).
