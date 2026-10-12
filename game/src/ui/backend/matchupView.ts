@@ -14,5 +14,6 @@ export function matchupViewOf(hl: Highlight, names: Record<string, string>, hero
     opp: { name: m.opp.name, ovr: m.opp.ovr, number: m.opp.number },
     rows: m.rows.map((r) => ({ heroKey: r.hero, oppKey: r.opp, heroV: r.heroV, oppV: r.oppV, edge: r.edge })),
     edge: m.edge,
+    ...(m.chance ? { chance: { ...m.chance } } : {}),
   }
 }

@@ -48,6 +48,13 @@ export function MatchupCard({ mu }: { mu: MatchupView }) {
           )
         })}
       </ul>
+      {mu.chance && (
+        <div class="lm-mu-chance" data-testid="mu-chance">
+          {mu.chance.oppKey
+            ? t('match.live.matchup.chance', { e: t(`match.live.matchup.events.${mu.chance.event}`), p: mu.chance.pct, a: t(`data.attr.${mu.chance.heroKey}`), c: mu.chance.heroV, b: t(`data.attr.${mu.chance.oppKey}`), d: mu.chance.oppV ?? 0 })
+            : t('match.live.matchup.chanceSolo', { e: t(`match.live.matchup.events.${mu.chance.event}`), p: mu.chance.pct, a: t(`data.attr.${mu.chance.heroKey}`), c: mu.chance.heroV })}
+        </div>
+      )}
       <div class="lm-mu-edge" data-testid="mu-edge" data-edge={mu.edge}>{t(EDGE_KEY[mu.edge])}</div>
     </div>
   )

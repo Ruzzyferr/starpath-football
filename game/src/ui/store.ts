@@ -12,6 +12,7 @@
  *  - Query functions in `data` should read `gameState.value` so they are
  *    reactive when called during render.
  */
+import type { ChanceEventId } from '../game/chanceEvents'
 import { DEFAULT_AUDIO_SETTINGS, type AudioSettingsFields } from '../audio/settings'
 import { signal, computed, effect } from '@preact/signals'
 import type {
@@ -519,6 +520,8 @@ export interface MatchupView {
   opp: { name: string; ovr: number; number: number }
   rows: MatchupRowView[]
   edge: -1 | 0 | 1
+  /** The chance the moment turns on, as the game rolls it (stat +1 = +1 %). */
+  chance?: { event: ChanceEventId; pct: number; heroKey: AttributeKey; heroV: number; oppKey?: AttributeKey; oppV?: number }
 }
 export interface MomentView {
   id: string

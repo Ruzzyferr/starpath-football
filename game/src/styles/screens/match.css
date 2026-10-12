@@ -1059,6 +1059,14 @@
   font-size: 0.75rem;
   color: var(--text-low, var(--text-mid));
 }
+.lm-mu-chance {
+  margin-top: var(--sp-2);
+  text-align: center;
+  font-weight: 700;
+  font-size: 0.8rem;
+  color: var(--text-hi);
+  font-variant-numeric: tabular-nums;
+}
 .lm-mu-edge {
   margin-top: var(--sp-2);
   text-align: center;

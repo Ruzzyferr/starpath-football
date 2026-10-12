@@ -7,6 +7,8 @@
  * decide that moment kind, hero vs opponent, side by side. Pure: the UI (moment card, in-moment label) and the
  * tests read the same thing the runtime plays with.
  */
+import { CHANCE_EVENTS, type ChanceEventId } from './chanceEvents'
+import { statChancePct } from './statChance'
 import type { AttributeKey, Attributes, Position } from '../core/types'
 import { ovrFor } from '../sim/career/progression'
 import { KEEPER_KINDS, type Highlight, type HighlightKind, type ScenarioPlayer } from '../sim/match/types'
@@ -32,15 +34,37 @@ export interface MatchupRow {
   edge: -1 | 0 | 1
 }
 
+/** The moment's deciding chance event, as the runtime rolls it (game/chanceEvents, statChance: +1 point = +1 %). */
+export interface MatchupChance {
+  event: ChanceEventId
+  /** Whole percent. */
+  pct: number
+  heroKey: AttributeKey
+  heroV: number
+  oppKey?: AttributeKey
+  oppV?: number
+}
+
 export interface Matchup {
   kind: HighlightKind
   role: MatchupRole
   hero: MatchupSide
   opp: MatchupSide
   rows: MatchupRow[]
+  /** The chance the moment turns on (absent where it is physics and aim: shots, saves, runs). */
+  chance?: MatchupChance
   /** Mean (hero − opponent) over the rows: who has the edge overall. */
   diff: number
   edge: -1 | 0 | 1
+}
+
+/** The chance event each kind turns on (owner, build 9: show the player the real odds, 1 point = 1 %). */
+export const KIND_CHANCE: Partial<Record<HighlightKind, ChanceEventId>> = {
+  defend: 'tackle', defend_1v1: 'tackle', recovery_run: 'tackle', press_trap: 'tackle',
+  interception: 'read', dribble: 'takeOn',
+  shoulder_duel: 'shoulder', hold_up: 'shoulder', long_ball_control: 'shoulder',
+  header: 'aerial', corner: 'aerial', corner_kick: 'aerial', back_post: 'aerial', cross: 'aerial',
+  gk_claim: 'hold', gk_1v1: 'smother', gk_penalty: 'penaltyRead',
 }
 
 /** Attribute gap (points) that counts as an edge. */
@@ -161,7 +185,15 @@ export function momentMatchup(hl: Highlight, names: Record<string, string> = {})
     return { hero: h, opp: o, heroV, oppV, edge: d >= EDGE_MARGIN ? 1 : d <= -EDGE_MARGIN ? -1 : 0 }
   })
   const diff = rows.reduce((s, r) => s + r.heroV - r.oppV, 0) / Math.max(1, rows.length)
-  return { kind, role: spec.role, hero: side(hero), opp: side(opp), rows, diff, edge: diff >= EDGE_MARGIN ? 1 : diff <= -EDGE_MARGIN ? -1 : 0 }
+  const ev = KIND_CHANCE[kind]
+  let chance: MatchupChance | undefined
+  if (ev) {
+    const def = CHANCE_EVENTS[ev]
+    const heroV = v(hero.attrs, def.stat)
+    const oppV = def.opp ? v(opp.attrs, def.opp) : undefined
+    chance = { event: ev, pct: statChancePct(heroV, oppV), heroKey: def.stat, heroV, ...(def.opp ? { oppKey: def.opp, oppV } : {}) }
+  }
+  return { kind, role: spec.role, hero: side(hero), opp: side(opp), rows, diff, edge: diff >= EDGE_MARGIN ? 1 : diff <= -EDGE_MARGIN ? -1 : 0, ...(chance ? { chance } : {}) }
 }
 
 /** The hero's attributes that decide a moment kind (the matchup rows' hero side). */
