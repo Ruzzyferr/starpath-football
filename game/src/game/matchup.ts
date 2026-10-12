@@ -86,7 +86,8 @@ const CROSSING: readonly Pair[] = [['crossing', 'tackling'], ['pace', 'pace'], [
 const RUN: readonly Pair[] = [['positioning', 'positioning'], ['anticipation', 'anticipation'], ['pace', 'pace'], ['finishing', 'reflexes']]
 /** Stopping a carrier. */
 /** The standing tackle (momentSkill tackle: Tackling, Anticipation, Aggression…) against the carrier's ride (ai.tackleOdds). */
-const DEFEND: readonly Pair[] = [['tackling', 'dribbling'], ['anticipation', 'agility'], ['aggression', 'balance'], ['pace', 'pace']]
+// (Build 9: Agility — back into it after a miss — replaces Aggression, which no longer moves the hero's challenge.)
+const DEFEND: readonly Pair[] = [['tackling', 'dribbling'], ['anticipation', 'agility'], ['agility', 'balance'], ['pace', 'pace']]
 const READ: readonly Pair[] = [['anticipation', 'passing'], ['positioning', 'vision'], ['acceleration', 'pace'], ['tackling', 'firstTouch']]
 const RECOVER: readonly Pair[] = [['pace', 'pace'], ['acceleration', 'acceleration'], ['tackling', 'dribbling'], ['stamina', 'stamina']]
 /** In goal against the striker. */

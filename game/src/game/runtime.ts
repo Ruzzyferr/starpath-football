@@ -280,6 +280,10 @@ export const HOLD_UP_SECONDS = 2.6
 export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 0.5, cushion: -2, cushionSkill: 7 } as const
 /** The hero's delivery into the corridor in his runner's aerial duel: points per unit of delivery quality over 0.5. */
 export const DELIVERY_EDGE = 80
+/** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
+export const HEAD_ADJUST = 0.35
+/** A marker this much beyond body contact (m) behind a shielding hero still reaches round him for the ball. */
+export const REACH_ROUND = 0.6
 /** Team-mates helping in the hero's defending moment: points off their interception read (the moment is his). */
 export const HELPER_MOD = -40
 /** Extra scatter of a long ground pass (15 → 30 m) per unit of missing pass skill. */
@@ -3728,7 +3732,8 @@ export class HighlightRuntime {
       // Headers: ball centre between shoulders and just over the top of the head.
       const headZ = 1.72 + a.z
       const headR = 0.55 + a01(a.attrs.heading) * 0.2 + (a.state === 'jump' ? 0.15 : 0)
-      if (b.z > 1.15 && b.z > headZ - 0.42 && b.z < headZ + 0.28 && d < headR) {
+      // (In the air he meets it as he rises or falls — a higher leap reaches higher, it does not leave him over the ball.)
+      if (b.z > 1.15 && b.z > headZ - 0.42 - (a.state === 'jump' ? HEAD_ADJUST : 0) && b.z < headZ + 0.28 && d < headR) {
         // A fast shot hitting an opponent's head is a block, not a controlled header.
         if (this.shot && this.shot.by.team !== a.team && speed > 15) {
           if (d < bestD) {
@@ -4144,7 +4149,7 @@ export class HighlightRuntime {
       // From behind, the body is in the way: only the ball itself counts.
       const dBall = Math.hypot(a.pos.x - this.ball.x, a.pos.y - this.ball.y)
       // (Leaning on the hero's back while he shields it: he reaches round him — the shield contest, see aiChallenge.)
-      const reachRound = o.isHero && this.shielding() && dist(a.pos, o.pos) < BODY_GAP + 0.25
+      const reachRound = o.isHero && this.shielding() && dist(a.pos, o.pos) < BODY_GAP + REACH_ROUND
       const d = reachRound ? 0 : isBehind(o, a) ? dBall : Math.min(dist(a.pos, o.pos), dBall)
       if (d > TACKLE_RANGE) continue
       // Aggressive players go into more challenges (and foul more, see tackleOdds).
