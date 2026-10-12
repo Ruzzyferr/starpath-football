@@ -317,3 +317,33 @@ Her test aynı tohumla iki kopya kurar ve tek eylemi değiştirir:
 - **Sponsor "Neden?" paneli:** ödüller ve disiplin satırları.
 - **İlişki defteri:** lüks alım kaynaklı değişimler "{ürün} kıskançlığı" / "{ürün} satın aldın" gerekçesiyle.
 - **Haberler:** lüks alım manşetleri (4 haftada en fazla bir), ahlak maddesi fesihleri.
+
+## 6. Maç anları: fizik ve şans kuralı (build 9, Ekim 2026)
+
+Sahibin ilkesi: "Şans değil; statlara, oyuncuya ve rakibin statlarına bağlı." Anların ve antrenman drill'lerinin hepsi aynı iki ayağa basar: **deterministik fizik** ve **tek bir şans kuralı**. Başka zar yok.
+
+### 6.1 Şans kuralı (`game/statChance.ts`, `game/chanceEvents.ts`)
+
+- **Tek oyuncu:** `p = S %` (stat 62 → %62).
+- **Çekişme:** `p = (S − (O − 50)) %` — rakibin 50 üstündeki her puanı düşer: 50'ye 50 → %50, 70'e 62 → %58. Her iki tarafta **1 puan = %1**.
+- **Girdi:** `+ mod` puan (zamanlama ±20, arkadan −20, uzaktan / koşarak dalma en çok −40, kayarak −5, KORU +15, sert top m/s başına −3). Girdi olayın olup olmamasını belirler (fizik: erişim, zamanında varmak) ve oranı biraz oynatır; oranı stat belirler.
+- **Sınır:** %5 … **%85** (tavan sahibin %80–85'i içinde).
+- Olaylar (oyuncunun statı ↔ karşısındakinin statı): top kapma Müdahale ↔ Dripling (KORU'da Güç), temiz müdahale (kaçan / kayarak / arkadan dalan müdahale faul olmaz) Müdahale, adam geçme Dripling ↔ Müdahale (kaleciye GK Pozisyon), omuz Güç ↔ Güç, ayakta kalma Denge ↔ Güç, hava topu Kafa ↔ Kafa (göğüsle: İlk Dokunuş −10), araya girme Önsezi ↔ Pas (uzun topta Uzun Pas), ilk dokunuş İlk Dokunuş (8 m/s'ye kadar yumuşak top kontrol edilir; üstü +50 − 3/m/s), topu tutma / yumruk Tutuş, ayağa yatma Tutuş ↔ Dripling, penaltı okuma GK Pozisyon ↔ Soğukkanlılık, şutörün çalımı Dripling ↔ Çeviklik, pas isteme Vizyon.
+- Karşılaşma kartı anın asıl şansını gösterir: "Top kapma şansı: %58 (Müdahale 70 vs Dripling 62)" (`matchup.KIND_CHANCE`).
+
+### 6.2 Fizik (`game/physics.ts`, `game/kick.ts`, `game/keeperPhysics.ts`, `game/model.ts`)
+
+- **Top:** kuadratik sürtünme `a = −0,0135·|v|·v` (sıcakta 0,0125), yerçekimi 9,81, Magnus 0,0055 (falso: Falso / Teknik), dönüş sönmesi 0,35/s; zıplama geri tepme 0,58 (yağmur 0,48, kar 0,4), sekmede kayma tutuşu 0,8; yerde yuvarlanma `1,25 + 0,16·v` m/s²; kale direği yakınında alt adım (40 m/s'lik şut direği atlamaz). Uzun şut yavaşlar, kaleciye zaman kalır.
+- **Vuruş:** fırlatma hızı Şut Gücü × güç (`shotSpeed`: 40 → 27, 90 → 33 m/s tepe); **tek rastgelelik yön hatası** (yatay açı + dikey), yayılımı stat (bitiricilik / şut / teknik), baskı altında soğukkanlılık ve mesafe ile büyür; hız, falso ve uçuş fiziktir (yanlış vuruş zarı, çerçeve kurtarma zarı ve hız titremesi kaldırıldı).
+- **Oyuncu:** tepe hız Hız'dan (depar + yorgunluk), ivme Hızlanma / Çeviklik'ten, dönüş Çeviklik'ten; durma ivmesi kalkışın 1,6 katı (koşan oyuncu bir anda duramaz); topla koşmak Dripling'e göre biraz yavaşlatır.
+- **Gövdeler:** kahraman ile rakip merkezleri 0,7 m'den yakın olamaz, rakibin ayağındaki top 0,45 m; adım boyunca süpürülür (hiçbir hız temas karesini atlamaz); itme Güç / Denge ağırlığıyla paylaşılır, yalnızca kapanma hızı alınır; boş topta kimse yavaşlamaz.
+- **Kaleci:** tepki 0,34 − 0,22·Refleks s; yan adım 6 + 4·Çeviklik m/s² ile 2,4 + 1,6·Çeviklik + 0,6·Hız m/s'ye; dalış hızı Uzanma (ai.diveSpeed); kol erimi 0,4 + 0,75·Uzanma m, eller 0,3 + 0,6·Refleks m, tutma yüksekliği 2,3 + 0,3·Zıplama m. Topun **gerçek yörüngesinde** zamanında yetişebileceği en güvenli noktaya gider (önce ayakta / zıplayarak, gerekmedikçe dalmaz, topa doğru dalar, ötesine değil). **Topa yetişirse kurtarır** — kurtarış zarı yok; tutmak / çelmek Tutuş şansı, çelinen top fiziktir.
+
+### 6.3 Rastgele olan yalnızca
+
+1. Vuruş yön hatası (şut, pas, orta, kafa), statla küçülür.
+2. Şans olayları (6.1), hepsi aynı formül.
+3. Yapay zekâ kararları (hangi pas, hangi köşe) ve sahne kurulumu.
+4. Hakem özellikleri (kart, avantaj) ve faulde %3 sakatlık.
+
+Testler: `statChance.test.ts` (+1 puan = +%1, tavan / taban), `physicsInvariants.test.ts` (top hep yavaşlar, hızlı top daha uzağa, sekme enerji kaybeder, şut direği atlamaz, fırlatma hızı Şut Gücü ve güçle artar, durma mesafesi hızla artar), `intentAim.test.ts` (vuruşta yalnızca yön şans), `longShot.test.ts` (uzaktan şut, `LONG_REPORT=1`), `pressRepro.test.ts` (gövde içinden geçmez), `training/chanceRules.test.ts` (drill'ler aynı kurallar).
