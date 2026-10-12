@@ -68,6 +68,10 @@ export function isFullSuccess(kind: HighlightKind, o: HighlightOutcome): boolean
 export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcome' | 'chance' | 'offside' | 'heroStop' | 'duty' | 'beat'>): MomentTier {
   // dribble: the take-on is the moment — without beating his man, a shot or a pass is not it.
   if (kind === 'dribble' && r.beat === false) return 'fail'
+  // (…and a shot on target the keeper pushed away counts like one he held.)
+  if (kind === 'dribble' && r.chance) return 'full'
+  // (Past his man — the duel the moment is about — then lost it: partial, like a contest moment's first contact.)
+  if (kind === 'dribble' && r.beat === true && !isFullSuccess(kind, r.outcome)) return 'partial'
   if (isFullSuccess(kind, r.outcome)) {
     // Defensive / keeper moments: the hero's own stop is full; kept out by others while he did his job (goal-side,
     // close / on his spot) is partial; kept out while he was out of it (rushed in and beaten, off his line) is a fail.

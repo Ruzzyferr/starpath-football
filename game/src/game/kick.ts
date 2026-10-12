@@ -341,9 +341,9 @@ export function curlBulge(from: Vec2, z0: number, l: { vx: number; vy: number; v
 /** Shot speed (m/s) at power 1 for a kicker. */
 export function shotSpeed(power: number, at: Attributes, kind: KickKind = 'shot'): number {
   const p = clampN(power, 0, 1.15)
-  // Shot Power (build 9: from range the strike itself decides it): 40 → 27, 62 → 29.7 (unchanged), 90 → 33 m/s top.
-  // A free kick is technique (Set Pieces / Curve): its pace keeps the gentle slope (a flatter, harder ball only hits the wall).
-  const strength = kind === 'freekick' ? 26 + a01(at.shooting) * 6 + a01(at.strength) * 3 : 22.3 + a01(at.shooting) * 12 + a01(at.strength) * 3
+  // (Build 9 range pass: Shot Power carries the strike — 25.8 m/s at 40 … 34.8 at 90, unchanged at 62; a free kick's
+  // pace 27.5 … 32.5.)
+  const strength = kind === 'freekick' ? 29.72 + (a01(at.shooting) - 0.62) * 10 + a01(at.strength) * 3 : 29.74 + (a01(at.shooting) - 0.62) * 18 + a01(at.strength) * 3
   if (kind === 'header') return 9 + p * (6 + a01(at.heading) * 6)
   return 11 + (strength - 11) * Math.pow(p, 0.85)
 }
@@ -461,7 +461,8 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   // Pre-aim against the expected Magnus drift (≈ ½·k·ω·d/v); the loop below refines it.
   heading -= (0.5 * env.magnus * spinSide * d) / Math.max(6, vh)
   // Free kicks get heavy topspin so they can rise over the wall and dip under the bar.
-  const topspin = kind === 'freekick' ? 30 + a01(req.attrs.setPieces) * 14 : kind === 'chip' ? -18 : kind === 'shot' ? 6 : 0
+  // (Build 9: the dip is the taker's — Set Pieces and Curve — 32 rad/s at 40 … 49 at 90, 39 at 62 as before.)
+  const topspin = kind === 'freekick' ? 18 + a01((req.attrs.setPieces + curveOf(req.attrs)) / 2) * 34 : kind === 'chip' ? -18 : kind === 'shot' ? 6 : 0
   const spin: Spin = { side: spinSide, top: topspin }
   for (let it = 0; it < 6; it++) {
     const dir = fromAngle(heading)
@@ -482,9 +483,37 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
       vz += (aimZ - pr.z) / Math.max(0.15, pr.t)
     }
   }
+  // A free kick from range goes over the wall (FK_WALL_D out, FK_WALL_CLEAR high): the taker lifts it as much as that
+  // needs — whether it then dips back under the bar is his topspin (Set Pieces / Curve), physics.
+  // (If that lift would carry it over the bar, he takes pace off — more time for the dip: the more topspin he has, the
+  // more pace he keeps.)
+  if (kind === 'freekick' && d > FK_WALL_D + 5) {
+    const wallAt = { x: from.x + axis.x * FK_WALL_D, y: from.y + axis.y * FK_WALL_D }
+    for (let pass = 0; pass < 8; pass++) {
+      for (let it = 0; it < 4; it++) {
+        const dir0 = fromAngle(heading)
+        const pw = probe({ x: from.x, y: from.y, z: z0, vx: dir0.x * vh, vy: dir0.y * vh, vz, spin: { ...spin } }, env, wallAt, axis, 2)
+        if (!pw.reached || pw.z >= FK_WALL_CLEAR) break
+        vz += (FK_WALL_CLEAR + 0.05 - pw.z) / Math.max(0.15, pw.t)
+      }
+      const dir1 = fromAngle(heading)
+      const pg = probe({ x: from.x, y: from.y, z: z0, vx: dir1.x * vh, vy: dir1.y * vh, vz, spin: { ...spin } }, env, req.target, axis, 4)
+      if (!pg.reached || pg.z <= FK_UNDER_BAR || vh <= FK_MIN_PACE) break
+      vh = Math.max(FK_MIN_PACE, vh * 0.94)
+      const T = d / vh
+      vz = (aimZ - z0 + 0.5 * GRAVITY * T * T) / T
+    }
+  }
   const dir = fromAngle(heading)
   return { vx: dir.x * vh, vy: dir.y * vh, vz: Math.max(0, vz), spin, aimZ }
 }
+
+/** The wall (m from the ball) and the height (m) a free kick from range is lifted to clear it (a jumping wall's heads). */
+export const FK_WALL_D = 9.15
+export const FK_WALL_CLEAR = 2.4
+/** …and kept under the bar (m at the goal line), never slower than FK_MIN_PACE (m/s). */
+export const FK_UNDER_BAR = 2.25
+export const FK_MIN_PACE = 17
 
 /** Shot height at the goal line as a function of power (overhit → skied). */
 export function shotHeightForPower(power: number, kind: KickKind = 'shot'): number {

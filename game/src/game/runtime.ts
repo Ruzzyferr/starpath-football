@@ -51,6 +51,7 @@ import {
 } from './ai'
 import {
   applyKick,
+  FK_WALL_D,
   crossZones,
   buttonPassTarget,
   intentShotTarget,
@@ -91,7 +92,7 @@ import { ASSIST_REWARD } from '../sim/match/rating'
 import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
 import { CONTACT_KINDS, GOAL_KINDS, momentTier } from '../sim/match/tier'
 import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, goalSideness } from './tactics'
-import { arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
+import { SET_PIECE_DISTANCE, arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import { leadershipBoost } from '../sim/match/heroDuels'
 import { KEEPER_GETUP, KEEPER_SCENARIO_WEIGHTS, applyKeeperScenario, buildKeeperScenario, momentumDelay, pickScenarioKind, type KeeperScenario, type KeeperScenarioKind } from './keeperScenario'
 import {
@@ -1235,6 +1236,16 @@ export class HighlightRuntime {
     this.moveHero()
     for (const a of this.agents) if (!a.isHero) this.thinkAndSteer(a)
     for (const a of this.agents) this.integrateAgent(a)
+    // The referee's 9.15 m: until the set piece is taken nobody but the taker's side stands closer to the ball.
+    const sp = this.setPiece
+    if (sp) {
+      const taker = this.agents.find((q) => q.id === sp.takerId)
+      for (const a of this.agents) {
+        if (a.isKeeper || !taker || a.team === taker.team) continue
+        const d = dist(a.pos, sp.spot)
+        if (d < SET_PIECE_DISTANCE && d > 1e-3) a.pos = add(sp.spot, scale(sub(a.pos, sp.spot), SET_PIECE_DISTANCE / d))
+      }
+    }
     if (this.phase === 'live' || this.phase === 'post') this.heroBodyContact()
 
     this.updateBall()
@@ -2516,7 +2527,9 @@ export class HighlightRuntime {
           if (!isPen && this.shot?.mouth !== undefined && this.shot.mouth < TIGHT_ANGLE) reaction *= 0.3 + 0.7 * (this.shot.mouth / TIGHT_ANGLE)
           // Moving the wrong way (shuffling across, still backpedalling): he has to stop first.
           if (!isPen) reaction += momentumDelay(keeper, plan.aim.y)
-          if (wasSetPiece?.kind === 'freekick' && by.team === 'opp') reaction += Math.max(0, wasSetPiece.wall.length - 2) * 0.06
+          // A free kick over the wall: he picks the ball up only as it clears the heads — the time it takes to get there
+          // (FK_WALL_D at its pace), the more of it the bigger the wall.
+          if (wasSetPiece?.kind === 'freekick' && wasSetPiece.wall.length >= 2) reaction += (FK_WALL_D / Math.max(10, Math.hypot(plan.vx, plan.vy))) * clamp01((wasSetPiece.wall.length - 1) / 4)
           // A keeper who knows the hero's favourite corner is quicker to it (open play).
           const shotHabit = by.isHero && !isPen ? bookHabit(this.highlight.keeperBook, false) : null
           if (shotHabit && goalZoneOf(plan.aim.y, GOAL_CENTER_Y) === shotHabit.zone) reaction *= 0.8
@@ -4022,6 +4035,8 @@ export class HighlightRuntime {
     const placed = far ? stretch >= PARTIAL_SAVE_STRETCH_RANGE || (sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17)) : stretch >= PARTIAL_SAVE_STRETCH && sh?.placedAim === true
     // (rebound: first to the parried ball and the follow-up on target — the moment done.)
     if (sh?.by.isHero && !k.isHero && (placed || this.reboundFirst)) this.chance = true
+    // (dribble: past his man, the move ended in a shot the keeper had to stop — held or pushed out, the same thing.)
+    if (sh?.by.isHero && !k.isHero && this.kind === 'dribble') this.chance = true
     // Owner, build 9: a keeper who gets to the ball stops it — physics (his reach and the ball's path) decided that,
     // there is no save roll. Holding it or pushing it away is the chance (Handling, less for a hard / stretched one).
     // High ball (cross / corner): catch it, or punch it clear under pressure (WP-14).

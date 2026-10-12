@@ -52,7 +52,8 @@ export const BOT_SKILL: Readonly<Record<BotLevel, BotSkill>> = {
   // Build 9: a genuinely careless player (the owner's "sloppy input"): late, loose aim, mistimed, reads nothing.
   novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.5, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.85, slide: 0.4, anticipate: 0.05 },
   average: { aimSd: 1.1, powerMean: 0.86, powerSd: 0.1, reaction: 0.32, wrongSide: 0.18, timingSd: 0.15, shootFrom: [12, 20], read: 0.5, rush: 0.22, slide: 0.18, anticipate: 0.45 },
-  good: { aimSd: 0.75, powerMean: 0.84, powerSd: 0.07, reaction: 0.25, wrongSide: 0.1, timingSd: 0.1, shootFrom: [11, 18], read: 0.72, rush: 0.1, slide: 0.08, anticipate: 0.7 },
+  // (Build 9 all-✅ pass: the good player is the owner's "correct play" — he rarely charges or slides in blind.)
+  good: { aimSd: 0.75, powerMean: 0.84, powerSd: 0.07, reaction: 0.25, wrongSide: 0.1, timingSd: 0.1, shootFrom: [11, 18], read: 0.72, rush: 0.04, slide: 0.03, anticipate: 0.7 },
   expert: { aimSd: 0.45, powerMean: 0.84, powerSd: 0.05, reaction: 0.2, wrongSide: 0.05, timingSd: 0.06, shootFrom: [10, 16], read: 0.88, rush: 0.04, slide: 0.04, anticipate: 0.85 },
 }
 
@@ -301,7 +302,8 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     const behind = isBehind(owner, hero)
     // Contain rather than dive in; only force it when he is about to get a shot away.
     const danger = dist(owner.pos, ownGoal) < 18
-    if (behind && !danger) return
+    // (Never through the back of him — in the box that is a penalty: a sensible defender gets round first.)
+    if (behind && (!danger || st.skill.read >= 0.5)) return
     if (!exposed && (!danger || st.real - st.waitSince < 0.5)) return
   }
   // A patient defender only presses when the man is in reach; a rash one stabs anyway (and slides in).
@@ -354,7 +356,12 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
       const zone = st.rng.weighted(['near', 'far', 'spot', 'short'] as const, (z) => ({ near: 0.3, far: 0.35, spot: 0.25, short: 0.1 })[z])
       rt.queueAction({ kind: 'corner', zone, height: st.rng.chance(0.5) ? 'driven' : 'floated', curl: st.rng.chance(0.6) ? 'in' : 'out' })
     } else {
-      rt.queueAction({ kind: 'wall', count: st.rng.weighted([3, 4, 5], (n) => (n === 4 ? 2 : 1)), nudge: st.rng.pick([-0.5, 0, 0, 0.5]) })
+      // A sensible keeper lines up the textbook wall (four men, five from close in, covering the near post) and takes the
+      // far side himself; a careless one guesses — too few men, or the wall pushed off the near post.
+      const sp = rt.setPiece
+      const close = sp ? Math.hypot(sp.spot.x, GOAL_CENTER_Y - sp.spot.y) < 21 : false
+      if (st.skill.read >= 0.5) rt.queueAction({ kind: 'wall', count: close ? 5 : 4, nudge: 0 })
+      else rt.queueAction({ kind: 'wall', count: st.rng.pick([2, 3, 3, 4, 5]), nudge: st.rng.pick([-1.5, -1, -0.5, 0, 0.5, 1, 1.5]) })
     }
     return
   }
@@ -441,7 +448,9 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
     const ideal = keeperTarget(hero, rt.aiWorld()).pos
     // Off the angle: drifts toward the middle of his line.
     const line = { x: 0.6, y: GOAL_CENTER_Y }
-    moveTo({ x: ideal.x + (line.x - ideal.x) * st.gkDrift * 0.7, y: ideal.y + (line.y - ideal.y) * st.gkDrift })
+    // (Facing a free kick a careless keeper guesses: he cheats a step and a half toward one post before it is struck.)
+    const cheat = rt.kind === 'fk_wall' && rt.setPiece && st.skill.read < 0.5 ? st.side * 1.5 : 0
+    moveTo({ x: ideal.x + (line.x - ideal.x) * st.gkDrift * 0.7, y: ideal.y + (line.y - ideal.y) * st.gkDrift + cheat })
     return
   }
 
