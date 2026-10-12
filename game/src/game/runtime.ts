@@ -778,6 +778,8 @@ export class HighlightRuntime {
   private heroDeliveryAt = -1
   /** Quality (cross moment skill) of the hero's last ball into the box (0 = not a cross). */
   private heroCrossQ = 0
+  /** Quality of the opposition's last cross (0 = the last kick was not one). */
+  private oppCrossQ = 0
   /** The opposition keeper stays on his line for the hero's delivery. */
   private keeperStays = false
   /** The hero has had the ball under control this moment. */
@@ -2370,6 +2372,8 @@ export class HighlightRuntime {
     if (this.owner !== by && this.offsideCheck(by)) return
     // A long ball (lofted, crossed, cleared, or aimed beyond 25 m) is read against the passer's Long Passing.
     this.lastKickLong = kind === 'lofted' || kind === 'cross' || kind === 'clear' || Math.hypot(plan.aim.x - this.ball.x, plan.aim.y - this.ball.y) > 25
+    // (Their cross into our box: its quality is the crosser's, as the hero's is his.)
+    this.oppCrossQ = by.team === 'opp' && kind === 'cross' ? clamp01(plan.quality) : 0
     // First-time finish/flick by a team-mate straight from the hero's delivery completes the pass.
     if (!by.isHero && by.team === 'hero' && this.owner !== by && this.lastTouch?.isHero && this.heroPassTo) {
       this.stats.passesCompleted++
@@ -3930,6 +3934,8 @@ export class HighlightRuntime {
       if (!h.isHero && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && this.heroCrossQ > 0 && inCorridor) mod += (this.heroCrossQ - 0.5) * DELIVERY_EDGE
       // (The hero's long ball to a team-mate the same: a well-weighted one drops onto his man, not between him and his marker.)
       else if (!h.isHero && this.lastTouch?.isHero && this.heroLastKick === 'lofted' && this.heroPassTo?.id === h.id) mod += (this.heroPassQuality - 0.5) * DELIVERY_EDGE
+      // (Their cross: the crosser's delivery is his runner's edge the same way.)
+      if (this.oppCrossQ > 0 && this.lastTouch?.team === 'opp') mod -= (this.oppCrossQ - 0.5) * DELIVERY_EDGE
       if (this.hero.isKeeper && !h.isHero) mod -= 20
       mod -= (this.difficulty - 1) * 20
       winner = this.rng.chance(eventChanceOf(stat, o.attrs.heading, mod)) ? h : o
