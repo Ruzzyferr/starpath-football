@@ -620,6 +620,8 @@ export class MatchScene extends Phaser.Scene {
       heroWorld: { x: rt.hero.pos.x, y: rt.hero.pos.y },
       heroState: rt.hero.state,
       stamina: rt.hero.stamina,
+      /** Who has the ball (team, pitch and CSS position): the press e2e steers the stick at him. */
+      carrier: rt.owner ? { team: rt.owner.team, keeper: rt.owner.isKeeper, world: { x: rt.owner.pos.x, y: rt.owner.pos.y }, screen: css(project(rt.owner.pos.x, rt.owner.pos.y)) } : null,
       /** Context buttons on screen (CSS px), see game/actionSet. */
       buttons: this.input0.touchUi().buttons.map((b) => ({ id: b.id, hold: b.hold, key: b.key, down: b.down, x: r.left + b.x * kx, y: r.top + b.y * ky, r: b.r * kx })),
     }
