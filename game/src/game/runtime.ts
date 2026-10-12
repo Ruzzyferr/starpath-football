@@ -3760,6 +3760,16 @@ export class HighlightRuntime {
         }
         continue
       }
+      // (Any hard ball — a cross, a driven pass — struck into an opponent's body at torso height comes off him: below
+      // it his feet meet it, above it his head; it never passes through him.)
+      if (!this.shot && this.lastTouch && this.lastTouch.team !== a.team && !a.isKeeper && speed > 12 && d < 0.46 && b.z >= 1.1 && b.z < 1.8 + a.z && a.state !== 'jump') {
+        if (d < bestD) {
+          best = a
+          bestD = d
+          mode = 'body'
+        }
+        continue
+      }
       // Headers: ball centre between shoulders and just over the top of the head.
       const headZ = 1.72 + a.z
       const headR = 0.55 + a01(a.attrs.heading) * 0.2 + (a.state === 'jump' ? 0.15 : 0)
@@ -3846,7 +3856,9 @@ export class HighlightRuntime {
       // the runner can get to it.
       // (A floated corner hangs for the runner; a driven one is on him before he can adjust.)
       const hang = this.cornerChoice && this.kind === 'corner_kick' ? (this.cornerChoice.height === 'floated' ? 1.4 : 0) : 1
-      const meet = a.team === 'hero' && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && inCorridor ? CROSS_REACH * this.heroCrossQ * hang : 0
+      // (The delivery's quality is counted once — in the duel below; the runner's reach is his run onto a ball in the
+      // corridor.)
+      const meet = a.team === 'hero' && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && inCorridor ? CROSS_REACH * 0.6 * hang : 0
       if (dist(a.pos, bp) < 1.15 + meet) pool.add(a)
     }
     const list = [...pool]
@@ -3925,7 +3937,7 @@ export class HighlightRuntime {
     if (this.shot) this.shot.blocked = true
     this.events.push({ type: 'block', by: a.id, x: b.x, y: b.y })
     // block: the hero got his body in the way: that is the moment won.
-    if (a.isHero && this.kind === 'block') this.finish('defended', 'shot blocked')
+    if (a.isHero && this.kind === 'block' && this.shot) this.finish('defended', 'shot blocked')
   }
 
   private headerContact(a: Agent): void {

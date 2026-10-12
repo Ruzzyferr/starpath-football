@@ -645,7 +645,7 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
       const ground = rt.kind === 'timed_run' || rt.kind === 'shoulder_duel'
       const drop = (pts.find((p, i) => i > 0 && p.z < (ground ? 0.6 : 2.2) && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
       // (A careless player watches the ball, not its flight: he runs under where it is and arrives behind it.)
-      if (st.skill.read < 0.5 && !ground) moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+      if (st.skill.read < 0.5) moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
       else moveTo({ x: drop.x, y: drop.y }, true)
       // A ball over the top far from goal: run onto it and bring it down, don't head it.
       if ((rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') && hero.pos.x < PITCH_LENGTH - 16) return
@@ -659,6 +659,11 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
     }
     // A ball played into space (timed_run / shoulder_duel): run onto it, where it will be, not where it is.
     if (rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') {
+      // (A careless one chases where it is.)
+      if (st.skill.read < 0.5) {
+        moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+        return
+      }
       const t = Math.min(2, dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / 8)
       moveTo({ x: rt.ball.x + rt.ball.vx * t * 0.7, y: rt.ball.y + rt.ball.vy * t * 0.7 }, true)
       return
