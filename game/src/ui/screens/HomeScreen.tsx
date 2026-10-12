@@ -1,5 +1,6 @@
 import '../../styles/screens/home.css'
 import { ObjectivesCard } from './objectives/ObjectivesCard'
+import { FameChip } from './me/MeScreen'
 import { NationalCard } from './national/NationalCard'
 import { AddictionMeter } from './casino/AddictionMeter'
 import { ComebackCard } from './legacy/ComebackCard'
@@ -181,6 +182,7 @@ export function HomeScreen() {
             )}
           </article>
 
+          <FameChip />
           <SkipSummary />
           <AgendaCard />
           <AgendaSkipConfirm />

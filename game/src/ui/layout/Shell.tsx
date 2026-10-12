@@ -15,6 +15,7 @@ import { seasonLabel } from '../format'
 import { requestAdvance } from '../tutorial/MatchdayConfirm'
 import { NewTag } from '../tutorial/UnlockGate'
 import { SaveIndicator } from '../components/SaveIndicator'
+import { AVATAR_BG, fameLevel } from '../screens/me/hubData'
 
 export type TabId = 'home' | 'career' | 'life' | 'world' | 'menu'
 
@@ -28,7 +29,7 @@ export const TABS: { id: TabId; icon: IconName; screen: ScreenId; key: string }[
 
 const TAB_OF: Partial<Record<ScreenId, TabId>> = {
   home: 'home', activities: 'home', inbox: 'home', careerLog: 'home', objectives: 'home',
-  profile: 'career', training: 'career', club: 'career', contract: 'career', trophies: 'career',
+  profile: 'career', me: 'career', training: 'career', club: 'career', contract: 'career', trophies: 'career',
   life: 'life', casino: 'life', blackjack: 'life', roulette: 'life', slots: 'life', horses: 'life',
   world: 'world',
   menu: 'menu', settings: 'menu', saves: 'menu', credits: 'menu', glossary: 'menu',
@@ -68,10 +69,22 @@ export function TopBar() {
   const s = gameState.value
   if (!s) return null
   const { calendar: c, life } = s
+  const club = heroClub.value
+  const fame = fameLevel(s.hero.reputation)
   const pending = s.pendingEvents.length
   const dateText = `${t('common.weekShort', { n: c.week + 1 })} · ${tx(`data.dayShort.${c.day}`)} · ${tx(`data.slot.${c.slot}`)}`
   return (
     <header class="topbar" aria-label={t('nav.statusBar')}>
+      <button
+        type="button"
+        class={`topbar-me${screen.value.id === 'me' ? ' is-active' : ''}`}
+        data-testid="topbar-me"
+        aria-label={`${t('hub.open')}: ${t('hub.fame.title')} ${t('hub.fame.level', { n: fame.level })}`}
+        onClick={() => go('me')}
+      >
+        <Avatar appearance={s.hero.appearance} size={34} background={club?.colors.primary ?? AVATAR_BG} shirt={club?.colors.primary} shirtTrim={club?.colors.secondary} />
+        <span class={`topbar-me-lvl me-lvl-${fame.level}`} aria-hidden="true"><Icon name="star-fill" size={9} />{fame.level}</span>
+      </button>
       <div class="topbar-brand"><Logo size="sm" sub={false} /></div>
       <div class="topbar-stats" data-tour="status">
         <div class="tstat tstat-money" title={t('ui.topbar.money')}>
@@ -141,7 +154,7 @@ export function Sidebar() {
     <nav class="sidebar" aria-label={t('nav.mainNav')}>
       <div class="sidebar-logo"><Logo size="sm" /></div>
       {h && (
-        <button type="button" class="sidebar-hero" onClick={() => go('profile')}>
+        <button type="button" class="sidebar-hero" data-testid="sidebar-me" aria-label={t('hub.open')} onClick={() => go('me')}>
           <Avatar appearance={h.appearance} size={40} background={club?.colors.primary ?? '#24345a'} shirt={club?.colors.primary} shirtTrim={club?.colors.secondary} />
           <span class="sidebar-hero-text">
             <span class="sidebar-hero-name truncate">{h.firstName} {h.lastName}</span>

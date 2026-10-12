@@ -93,6 +93,40 @@
   opacity: 0.6;
 }
 .topbar-brand { display: none; }
+/* "Ben / Me" hub: the hero's face, one tap from every screen (fame level badge in the corner). */
+.topbar-me {
+  position: relative;
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  height: 44px;
+  margin-left: -6px;
+  border-radius: 50%;
+  border: 0;
+  background: none;
+  padding: 0;
+}
+.topbar-me .avatar-wrap { border-radius: 50%; box-shadow: 0 0 0 2px var(--accent-gold); overflow: hidden; }
+.topbar-me.is-active .avatar-wrap { box-shadow: 0 0 0 2px var(--text-hi); }
+.topbar-me-lvl {
+  position: absolute;
+  right: -2px;
+  bottom: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  padding: 0 4px;
+  border-radius: var(--r-pill);
+  background: var(--accent-gold);
+  color: var(--text-on-gold);
+  font-family: var(--font-score);
+  font-size: 0.8125rem;
+  line-height: 1.2;
+  font-weight: 700;
+}
+@media (min-width: 900px) { .topbar-me { display: none; } }
 .topbar-stats { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; flex: 1; }
 .tstat { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
 .tstat-money { color: var(--accent-gold); font-family: var(--font-score); font-size: 1.3125rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1; }
@@ -111,6 +145,9 @@
   80% { transform: rotate(-12deg); }
   86% { transform: rotate(8deg); }
   92% { transform: rotate(-4deg); }
+}
+@media (max-width: 420px) {
+  .tstat-bar { display: none; }
 }
 @media (max-width: 380px) {
   .tstat-happy { display: none; }
