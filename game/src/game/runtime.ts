@@ -146,6 +146,10 @@ import { momentSkill } from './momentSkill'
 export const HERO_SHOT_NOISE = 1.0
 /** Extra noise on hero headers (corner headers converted ~45% before). */
 export const HERO_HEADER_NOISE = 1.3
+/** A challenge lunging in harder than this (0..1, see lunge) is reckless: it can be a foul. */
+export const RECKLESS_LUNGE = 0.3
+/** A missed standing tackle: back into it after this (s), plus as much again for a defender with no Agility. */
+export const MISS_RECOVER = 0.35
 /** A standing tackle pressed out of reach and made on the charge loses this much timing (input skill: press when he is in reach). */
 export const HERO_LUNGE_TIMING = 0.3
 /** Base chance an AI keeper reads a penalty's side (before positioning/difficulty). Was 0.2. */
@@ -274,6 +278,8 @@ export const HOLD_UP_SECONDS = 2.6
  * rather than taking a heavy touch.
  */
 export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 0.5, cushion: -2, cushionSkill: 7 } as const
+/** The hero's delivery into the corridor in his runner's aerial duel: points per unit of delivery quality over 0.5. */
+export const DELIVERY_EDGE = 80
 /** Team-mates helping in the hero's defending moment: points off their interception read (the moment is his). */
 export const HELPER_MOD = -40
 /** Extra scatter of a long ground pass (15 → 30 m) per unit of missing pass skill. */
@@ -303,7 +309,7 @@ export const PARTIAL_SAVE_RANGE = 18
 /** Moments about striking from range (the range save rule applies there only). */
 const RANGE_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['long_shot', 'edge_of_box', 'freekick', 'counter_2v1', 'rebound'])
 /** Stretch a save from range needs to count (he had to dive for it). */
-export const PARTIAL_SAVE_STRETCH_RANGE = 0.2
+export const PARTIAL_SAVE_STRETCH_RANGE = 0.45
 /** …or placed at least this far (m) from his body (a range shot struck at the keeper does not count). */
 export const PARTIAL_SAVE_OFF_BODY = 0.6
 /** Hero keeper set on his angle: within this distance (m) of his textbook spot as the shot is struck. */
@@ -335,7 +341,7 @@ export const REBOUND_WATCH = 0.6
 /** A shot aimed (before execution noise) at least this far (m) across from the keeper is a deliberate placement. */
 export const PLACED_AIM = 1.4
 /** …and from range it must still have this much pace (m/s) when it reaches the keeper (a free kick dips over the wall). */
-export const PARTIAL_RANGE_PACE: Partial<Record<HighlightKind, number>> = { long_shot: 17, edge_of_box: 17, freekick: 20, rebound: 17 }
+export const PARTIAL_RANGE_PACE: Partial<Record<HighlightKind, number>> = { long_shot: 24, edge_of_box: 24.5, freekick: 23.5, rebound: 17 }
 /** Longest lead (m) of a ground pass to a named team-mate. */
 export const PASS_LEAD_MAX = 3
 /** How much of the receiving help a pass carries, from its quality (kick.planKick: the passer's execution): ×0.32 at 0.4, ×0.68 at 0.6, ×1.22 at 0.9. */
@@ -733,6 +739,8 @@ export class HighlightRuntime {
   private chance = false
   /** Kind of the hero's last kick (a cross / corner met in the box is a chance created). */
   private heroLastKick: KickKind | null = null
+  /** The last kick was a long ball (read against Long Passing rather than Passing). */
+  private lastKickLong = false
   /** The hero's cross / corner is in flight untouched (danger-zone delivery check). */
   private crossWatch = false
   /** Opening grace: no challenge on the hero's ball until then (game time). */
@@ -1716,8 +1724,11 @@ export class HighlightRuntime {
     // Graded keeping: he went the right way for a shot on target (doing his job, even if beaten or it was kept out
     // by someone else).
     const sv = this.defending ? planSave(hero, this.aiWorld(), 0) : null
-    if (sv?.onTarget && (Math.abs(sv.point.y - hero.pos.y) < 0.5 || Math.sign(sv.point.y - hero.pos.y) === Math.sign(dir.y))) this.keeperRightWay = true
-    this.startDive(hero, dir)
+    const rightWay = !!sv?.onTarget && (Math.abs(sv.point.y - hero.pos.y) < 0.5 || Math.sign(sv.point.y - hero.pos.y) === Math.sign(dir.y))
+    if (rightWay) this.keeperRightWay = true
+    // (Diving the right way at a ball he has read: to it, not past it — with the aim assist; manual dives go full length.)
+    const at = this.assist !== 'manual' && rightWay && sv ? sv.point : undefined
+    this.startDive(hero, dir, at)
   }
 
   /** A high ball (cross / corner, not a shot) is dropping into our box. */
@@ -1740,7 +1751,8 @@ export class HighlightRuntime {
     return { p: { x: b.x + b.vx * t * k, y: b.y + b.vy * t * k }, t }
   }
 
-  private startDive(k: Agent, dir: Vec2): void {
+  /** @param to the point he dives at (his hand meets the ball there): the body travels only as far as it needs. */
+  private startDive(k: Agent, dir: Vec2, to?: Vec2): void {
     // Dives are mostly lateral; clamp forward component.
     const inward = attackDir(k.team)
     let d = norm(dir)
@@ -1748,6 +1760,7 @@ export class HighlightRuntime {
     k.state = 'dive'
     k.stateT = 0
     k.actionDir = d
+    k.diveLeft = to ? Math.max(0, dot(sub(to, k.pos), d) - armReach(k) * 0.6) : undefined
     k.facing = Math.atan2(d.y, d.x)
     this.events.push({ type: 'dive', by: k.id })
   }
@@ -1955,8 +1968,15 @@ export class HighlightRuntime {
     // Timing (build 9): going as the man steps in (1.6–2.8 m) is the take-on; too early or too late he reads it.
     const dd = def ? dist(def.pos, hero.pos) : 99
     // Owner, build 9: his Dribbling vs the man's Tackling (+1 % a point); the timing ±15 points; nobody there: no roll.
+    // (The same rule as the AI's take-on: a man rushing in is sold more easily — up to +20 — one goal-side of him is
+    // harder to get past — up to −15.)
     const timing = dd >= 1.6 && dd <= 2.8 ? CHANCE_MOD.timing : -CHANCE_MOD.timing
-    const success = !def || this.rng.chance(eventChance('takeOn', hero, def, timing - (this.difficulty - 1) * 20))
+    let mod = timing - (this.difficulty - 1) * 20
+    if (def) {
+      const toH = norm(sub(hero.pos, def.pos))
+      mod += clamp01((def.vel.x * toH.x + def.vel.y * toH.y - 1) / 4) * 20 - goalSideness(def, hero) * 15
+    }
+    const success = !def || this.rng.chance(eventChance('takeOn', hero, def, mod))
     if (success && def) this.beatMan = true
     if (success || !def) {
       const side = def ? (angleDiff(Math.atan2(def.pos.y - hero.pos.y, def.pos.x - hero.pos.x), hero.facing) > 0 ? -1 : 1) : 0
@@ -2004,12 +2024,14 @@ export class HighlightRuntime {
     const st = { win: eventChance('tackle', hero, carrier, mod), early: gap <= LOOSE_BALL_GAP }
     if (this.rng.chance(st.win)) {
       this.winBall(hero, carrier, false)
-    } else if (!this.rng.chance(this.cleanChance(hero, false, behind, this.lunge))) {
+    } else if ((behind || this.lunge > RECKLESS_LUNGE) && !this.rng.chance(this.cleanChance(hero, false, behind, this.lunge))) {
+      // (A standing challenge from the front that misses is a miss; a reckless one — from behind, lunging in — can be a
+      // foul: clean on his Tackling.)
       this.heroFoul(carrier, false, behind)
     } else {
-      // Diving in at his feet (early) gets you beaten: longer stumble, he accelerates past.
-      // He stays on his feet (a missed standing tackle is not a fall), just out of the play for a beat.
-      this.stumbleUntil = this.time + KEEPER_GETUP + (st.early ? 0.4 : 0.15)
+      // Diving in at his feet (early) gets you beaten: he accelerates past. He stays on his feet (a missed standing
+      // tackle is not a fall): his footwork back into it is Agility (0.35 s + up to 0.35 s, +0.3 s diving in early).
+      this.stumbleUntil = this.time + MISS_RECOVER + MISS_RECOVER * (1 - a01(hero.attrs.agility)) + (st.early ? 0.3 : 0)
       hero.vel = scale(hero.vel, 0.3)
       if (st.early) carrier.vel = scale(carrier.vel, 1.15)
       hero.noTouch = this.stumbleUntil - this.time
@@ -2306,6 +2328,8 @@ export class HighlightRuntime {
     if (this.owner && this.owner !== by) return
     // A first-time touch (volley, header, flick) is the receiver's first involvement.
     if (this.owner !== by && this.offsideCheck(by)) return
+    // A long ball (lofted, crossed, cleared, or aimed beyond 25 m) is read against the passer's Long Passing.
+    this.lastKickLong = kind === 'lofted' || kind === 'cross' || kind === 'clear' || Math.hypot(plan.aim.x - this.ball.x, plan.aim.y - this.ball.y) > 25
     // First-time finish/flick by a team-mate straight from the hero's delivery completes the pass.
     if (!by.isHero && by.team === 'hero' && this.owner !== by && this.lastTouch?.isHero && this.heroPassTo) {
       this.stats.passesCompleted++
@@ -2384,7 +2408,8 @@ export class HighlightRuntime {
       this.oneTwo = passTo && (kind === 'pass' || kind === 'lofted') ? { id: passTo, t: this.time, armed: false, armedAt: -1 } : null
       this.heroDeliveryAt = SHOT_KINDS.has(kind) ? -1 : this.time
       // A ball into the box from the hero (cross / lofted / corner): its quality is his Crossing / Curve.
-      this.heroCrossQ = kind === 'cross' || kind === 'lofted' ? momentSkill('cross', by.attrs) : 0
+      // (The delivery as struck — his Crossing / Curve and how true he hit it: plan.quality carries the execution error.)
+      this.heroCrossQ = kind === 'cross' || kind === 'lofted' ? clamp01(plan.quality) : 0
       // A quality ball away from the keeper makes him think twice about coming for it (his Crossing / Curve).
       // (A corner: an out-swinger curls away from him — he stays; an in-swinger curls onto him — he comes. Open play: a
       // ball to the penalty spot is no keeper's ball; one into the six-yard box is.)
@@ -3362,7 +3387,9 @@ export class HighlightRuntime {
     // goal-side of him is harder to get past (up to −15); the difficulty sharpens the opposition's dribblers.
     const toA = norm(sub(a.pos, def.pos))
     const rush = clamp01((def.vel.x * toA.x + def.vel.y * toA.y - 1) / 4) * (def.isKeeper ? 0.3 : 1)
-    const mod = rush * 20 - goalSideness(def, a) * 15 + (a.team === 'opp' ? (this.difficulty - 1) * 20 : 0)
+    // (A set defender — the hero holding JOCKEY on him — is hard to sell: −15.)
+    const set = def.isHero && this.jockeying() ? 15 : 0
+    const mod = rush * 20 - goalSideness(def, a) * 15 - set + (a.team === 'opp' ? (this.difficulty - 1) * 20 : 0)
     if (this.rng.chance(eventChanceOf(a.attrs.dribbling, def.isKeeper ? def.attrs.gkPositioning : def.attrs.tackling, mod))) {
       const side = angleDiff(Math.atan2(def.pos.y - a.pos.y, def.pos.x - a.pos.x), a.facing) > 0 ? -1 : 1
       a.state = 'skill'
@@ -3507,7 +3534,12 @@ export class HighlightRuntime {
       case 'dive': {
         const t = a.stateT
         const dur = DIVE_TIME
-        const sp = diveSpeed(a) * (t < DIVE_PEAK ? 1 : Math.max(0, 1 - (t - DIVE_PEAK) / 0.22))
+        let sp = diveSpeed(a) * (t < DIVE_PEAK ? 1 : Math.max(0, 1 - (t - DIVE_PEAK) / 0.22))
+        // (Diving to a point: the body stops where his hand meets the ball — a better diver does not over-dive it.)
+        if (a.diveLeft !== undefined) {
+          sp = Math.min(sp, Math.max(0, a.diveLeft) / DT)
+          a.diveLeft -= sp * DT
+        }
         a.vel = scale(a.actionDir, sp)
         a.z = Math.max(0, Math.sin((Math.PI * t) / dur) * 0.55)
         if (t > dur) {
@@ -3777,7 +3809,7 @@ export class HighlightRuntime {
     // Owner, build 9: getting there is physics (the pool above: reach, jump height); the duel is ONE chance — the
     // best-placed man of each side, Heading vs Heading (+1 % a point; the hero taking it on his chest: First Touch,
     // 10 points harder). Being in front of the ball ±10, the hero's jump timing ±15, a quality delivery into the
-    // corridor for his runner (cross quality), a keeper's defenders leaving it to him −20, the difficulty.
+    // corridor for his runner (the delivery as struck, ±DELIVERY_EDGE/2), a keeper's defenders leaving it to him −20, the difficulty.
     const placed = (a: Agent) => frontness(a) * 0.5 - dist(a.pos, bp)
     const best = (team: string) => list.filter((a) => a.team === team).sort((p, q) => placed(q) - placed(p))[0]
     const h = best('hero')
@@ -3790,7 +3822,7 @@ export class HighlightRuntime {
       const ahead = frontness(h) - frontness(o)
       let mod = ahead > 0.15 ? 10 : ahead < -0.15 ? -10 : 0
       if (h.isHero && h.state === 'jump') mod += h.stateT > 0.12 && h.stateT < 0.44 ? CHANCE_MOD.timing : -CHANCE_MOD.timing
-      if (!h.isHero && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && this.heroCrossQ > 0 && inCorridor) mod += (this.heroCrossQ - 0.5) * 40
+      if (!h.isHero && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && this.heroCrossQ > 0 && inCorridor) mod += (this.heroCrossQ - 0.5) * DELIVERY_EDGE
       if (this.hero.isKeeper && !h.isHero) mod -= 20
       mod -= (this.difficulty - 1) * 20
       winner = this.rng.chance(eventChanceOf(stat, o.attrs.heading, mod)) ? h : o
@@ -3922,7 +3954,9 @@ export class HighlightRuntime {
       let mod = a.team === 'opp' ? (this.difficulty - 1) * 20 : 4 * this.lead
       if (a.team === 'opp' && passer.isHero) mod -= clampN((this.heroPassQuality - 0.4) * 40, -4, 20)
       if (helper) mod += this.hero.isKeeper ? HELPER_MOD - 20 : HELPER_MOD
-      if (!this.rng.chance(eventChance('read', a, passer, mod))) {
+      // (A long ball: against his Long Passing.)
+      const passing = this.lastKickLong ? passer.attrs.longPassing ?? passer.attrs.passing : passer.attrs.passing
+      if (!this.rng.chance(eventChanceOf(a.attrs.anticipation ?? a.attrs.positioning, passing, mod))) {
         a.noTouch = 0.5
         return
       }
@@ -3977,7 +4011,9 @@ export class HighlightRuntime {
     const far = RANGE_KINDS.has(this.kind) && (this.kind !== 'counter_2v1' || (sh?.range ?? 0) < PARTIAL_SAVE_RANGE)
     // (From range: a save from a shot he placed away from the keeper — his aim, not the keeper's dive — with real pace
     // on it — Shot Power: a tame one is an easy catch wherever it goes — counts.)
-    const placed = stretch >= (far ? PARTIAL_SAVE_STRETCH_RANGE : PARTIAL_SAVE_STRETCH) || (far && sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17))
+    // (Build 9 physics pass: with saves decided by reach, a dive alone is not the shooter's merit — inside the range
+    // moments the credit also needs his aim away from the keeper.)
+    const placed = far ? stretch >= PARTIAL_SAVE_STRETCH_RANGE || (sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17)) : stretch >= PARTIAL_SAVE_STRETCH && sh?.placedAim === true
     // (rebound: first to the parried ball and the follow-up on target — the moment done.)
     if (sh?.by.isHero && !k.isHero && (placed || this.reboundFirst)) this.chance = true
     // Owner, build 9: a keeper who gets to the ball stops it — physics (his reach and the ball's path) decided that,
@@ -4107,7 +4143,9 @@ export class HighlightRuntime {
       // In range of the carrier, or of a ball he has knocked away from his feet (2.1#37).
       // From behind, the body is in the way: only the ball itself counts.
       const dBall = Math.hypot(a.pos.x - this.ball.x, a.pos.y - this.ball.y)
-      const d = isBehind(o, a) ? dBall : Math.min(dist(a.pos, o.pos), dBall)
+      // (Leaning on the hero's back while he shields it: he reaches round him — the shield contest, see aiChallenge.)
+      const reachRound = o.isHero && this.shielding() && dist(a.pos, o.pos) < BODY_GAP + 0.25
+      const d = reachRound ? 0 : isBehind(o, a) ? dBall : Math.min(dist(a.pos, o.pos), dBall)
       if (d > TACKLE_RANGE) continue
       // Aggressive players go into more challenges (and foul more, see tackleOdds).
       const rate = (0.45 + a01(a.attrs.tackling) * 0.8 + a01(a.attrs.aggression ?? 50) * 0.4) * (a.team === 'opp' ? this.difficulty : (this.defending ? 0.3 * this.defendHelp() : 0.8) * Math.max(0.2, 1 + 0.8 * this.lead))
@@ -4131,7 +4169,7 @@ export class HighlightRuntime {
     if (this.rng.chance(eventChanceOf(a.attrs.tackling, shield ? o.attrs.strength : o.attrs.dribbling, mod))) {
       this.winBall(a, o, false)
       if (o.isHero) o.noTouch = 0.7
-    } else if (a.team === 'opp' && !this.rng.chance(this.cleanChance(a, false, behind))) {
+    } else if (a.team === 'opp' && behind && !this.rng.chance(this.cleanChance(a, false, behind))) {
       if (o.isHero && this.rng.chance(0.03)) this.injured = true
       const card = cardForFoul(this.rng, false, behind, false, this.refStrictness)
       if (!this.injured && this.tryAdvantage(a, o, card)) return true
@@ -4382,7 +4420,7 @@ export class HighlightRuntime {
       if (k.state === 'run' && k.noTouch <= 0) {
         const plan = keeperIntercept(k, this.ball, this.env, ownGoalX(k.team), attackDir(k.team) > 0 ? 1 : -1)
         if (plan && plan.onTarget) {
-          if (plan.dive && plan.t <= DIVE_PEAK + 0.04 && dist(plan.point, k.pos) > 0.3) this.startDive(k, norm(sub(plan.point, k.pos)))
+          if (plan.dive && plan.t <= DIVE_PEAK + 0.04 && dist(plan.point, k.pos) > 0.3) this.startDive(k, norm(sub(plan.point, k.pos)), plan.point)
           else if (plan.jump && plan.t <= JUMP_APEX + 0.02 && dist(plan.point, k.pos) < handsReach(k) + 0.3 && len(k.vel) < 3 && k.cd <= 0) {
             // Up for it (a ball dipping over him): Jumping is the height.
             k.state = 'jump'
@@ -4409,7 +4447,7 @@ export class HighlightRuntime {
       if (g.habit !== undefined) {
         // Goes where the book says; if the hero changed it up, he is left stranded.
         const ty = zoneY(g.habit)
-        if (Math.abs(plan.point.y - ty) < 1.4) this.startDive(k, norm(sub(plan.point, k.pos)))
+        if (Math.abs(plan.point.y - ty) < 1.4) this.startDive(k, norm(sub(plan.point, k.pos)), plan.point)
         else if (g.habit !== 1) this.startDive(k, norm(sub({ x: k.pos.x, y: ty }, k.pos)))
         return
       }
@@ -4417,7 +4455,7 @@ export class HighlightRuntime {
       const actualSide = Math.sign(plan.point.y - k.pos.y) || 1
       const side = g.read ? actualSide : -actualSide
       const target = g.read ? plan.point : { x: k.pos.x, y: GOAL_CENTER_Y + side * 2.6 }
-      this.startDive(k, norm(sub(target, k.pos)))
+      this.startDive(k, norm(sub(target, k.pos)), g.read ? plan.point : undefined)
       return
     }
     if (!plan.onTarget) return
@@ -4433,7 +4471,7 @@ export class HighlightRuntime {
       this.keeperAlert = { keeper: k, at: this.time + Math.min(0.12, plan.t - lead) }
       return
     }
-    this.startDive(k, norm(sub(plan.point, k.pos)))
+    this.startDive(k, norm(sub(plan.point, k.pos)), plan.point)
   }
 
   private onKeeperHold(k: Agent): void {

@@ -246,7 +246,9 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
       .filter((a) => a.team === 'opp' && a !== owner && !a.isKeeper)
       .sort((p, q) => dist(p.pos, owner.pos) - dist(q.pos, owner.pos))[0]
     const lane = opt ? norm(sub(opt.pos, owner.pos)) : toGoal
-    moveTo({ x: owner.pos.x + lane.x * 1.5, y: owner.pos.y + lane.y * 1.5 }, true)
+    // (Flat out to close him down, SPRINT let go for the last few metres: he arrives set — a presser who arrives at a
+    // sprint is the one the carrier sells.)
+    moveTo({ x: owner.pos.x + lane.x * 1.5, y: owner.pos.y + lane.y * 1.5 }, d > 4)
     if (d < 1.8 && owner.touch < 0.35) act({ kind: 'action' })
     return
   }

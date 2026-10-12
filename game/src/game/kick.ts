@@ -541,7 +541,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
   // From range a strike (beyond 20 m) drifts more for a weak kicker; a long pass (beyond 25 m) drifts more for a poor passer, less for a good one.
   const d = dist(req.from, req.target)
-  const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.7, 1 + Math.max(0, d - 25) * 0.04 * (0.65 - skill)) : 1
+  const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.6, 1 + Math.max(0, d - 25) * 0.08 * (0.65 - skill)) : 1
   const deg = baseDeg[req.kind] * (1.3 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
 }
@@ -629,7 +629,8 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
     // is the kicker's (skill, composure under pressure, overhitting) and grows with the distance; the pace, the
     // spin and how the ball then flies, bounces and slows are physics.
     const errA = rng.normal(0, sd)
-    const hErr = rng.normal(0, (0.35 + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
+    // (A lofted ball's length is its launch angle: a long passer's vertical error lands it short or long.)
+    const hErr = rng.normal(0, ((req.kind === 'lofted' || req.kind === 'cross' ? 0.9 : 0.35) + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
     const c = Math.cos(errA)
     const s = Math.sin(errA)
     const nvx = vx * c - vy * s

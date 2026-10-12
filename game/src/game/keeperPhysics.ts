@@ -5,9 +5,9 @@
  *
  *   reaction        keeperReaction (ai.ts): 0.34 − 0.22·Reflexes s (opposition sharpened by difficulty)
  *   dive            diveSpeed (ai.ts: Diving, Agility, Jumping) for DIVE_PEAK s, then the arm: armReach
- *   shuffle         2.4 + 1.6·Agility + 0.6·Pace m/s getting across / back once he has read it
- *   arm reach       0.45 + 0.6·Diving m at full stretch (0.69 at 40 … 0.99 at 90)
- *   hands (set)     0.35 + 0.45·Reflexes m round his body when he is on his feet (0.53 … 0.76)
+ *   shuffle         from a set stance at 6 + 4·Agility m/s² up to 2.4 + 1.6·Agility + 0.6·Pace m/s
+ *   arm reach       0.4 + 0.75·Diving m at full stretch (0.70 at 40 … 1.08 at 90)
+ *   hands (set)     0.3 + 0.6·Reflexes m round his body when he is on his feet (0.54 … 0.84)
  *   catch height    2.3 + 0.3·Jumping m (+ the height of a dive / jump)
  *
  * {@link keeperIntercept} walks the ball's predicted trajectory (physics.predictTrajectory: drag, bounce, spin) and
@@ -19,13 +19,23 @@ import { DIVE_PEAK, diveSpeed } from './ai'
 import { GOAL_CENTER_Y, cloneBall, createTracker, stepBall, type BallState, type PhysicsEnv } from './physics'
 
 /** Full-stretch arm reach of a dive (m) from Diving. */
-export const armReach = (k: Pick<Agent, 'attrs'>): number => 0.45 + 0.6 * a01(k.attrs.diving ?? 62)
+export const armReach = (k: Pick<Agent, 'attrs'>): number => 0.4 + 0.75 * a01(k.attrs.diving ?? 62)
 /** Hand reach round the body of a keeper on his feet (m) from Reflexes. */
-export const handsReach = (k: Pick<Agent, 'attrs'>): number => 0.35 + 0.45 * a01(k.attrs.reflexes ?? 62)
+export const handsReach = (k: Pick<Agent, 'attrs'>): number => 0.3 + 0.6 * a01(k.attrs.reflexes ?? 62)
 /** Highest ball (m) he takes standing, from Jumping. */
 export const catchHeight = (k: Pick<Agent, 'attrs'>): number => 2.3 + 0.3 * a01(k.attrs.jumping ?? 60)
 /** How fast he gets across / back to a ball once he has read it (m/s): a keeper's shuffle, Agility first, then Pace. */
 export const keeperBurst = (k: Pick<Agent, 'attrs'>): number => 2.4 + 1.6 * a01(k.attrs.agility ?? 60) + 0.6 * a01(k.attrs.pace ?? 55)
+/** How hard he gets going sideways / back from a set stance (m/s²), from Agility. */
+export const keeperAccel = (k: Pick<Agent, 'attrs'>): number => 6 + 4 * a01(k.attrs.agility ?? 60)
+/** Ground he covers on his feet in `t` s from a standstill: accelerating (keeperAccel) up to his shuffle (keeperBurst). */
+export function keeperCover(k: Pick<Agent, 'attrs'>, t: number): number {
+  if (t <= 0) return 0
+  const a = keeperAccel(k)
+  const v = keeperBurst(k)
+  const tv = v / a
+  return t <= tv ? 0.5 * a * t * t : (v * v) / (2 * a) + v * (t - tv)
+}
 /** His area: how far out (m) from his line he goes for a ball. */
 export const KEEPER_AREA = 16.5
 /** Where he is safest taking a ball heading into goal: within this many metres of his line (the six-yard box). */
@@ -90,12 +100,12 @@ export function keeperIntercept(k: Agent, ball: BallState, env: PhysicsEnv, goal
     if (avail <= 0) continue
     const d = dist(k.pos, { x: b.x, y: b.y })
     const p = { x: b.x, y: b.y }
-    if (d <= run * avail + hands && (b.z <= zFeet || (b.z <= zJump && avail >= JUMP_APEX))) {
+    if (d <= keeperCover(k, avail) + hands && (b.z <= zFeet || (b.z <= zJump && avail >= JUMP_APEX))) {
       const plan = { point: p, z: b.z, t, dive: false, jump: b.z > zFeet, reachable: true, onTarget: true }
       if (depth <= KEEPER_SAFE_DEPTH) return plan
       feetFar ??= plan
     } else if (d > hands && b.z <= zFeet + 0.2) {
-      const reach = run * Math.max(0, avail - DIVE_PEAK) + diveV * Math.min(avail, DIVE_PEAK) + arm
+      const reach = keeperCover(k, avail - DIVE_PEAK) + diveV * Math.min(avail, DIVE_PEAK) + arm
       if (d <= reach) {
         const plan = { point: p, z: b.z, t, dive: true, jump: false, reachable: true, onTarget: true }
         if (depth <= KEEPER_SAFE_DEPTH) diveNear ??= plan

@@ -96,6 +96,8 @@ export interface Agent {
   actionDir: Vec2
   /** Seconds during which this agent cannot touch the ball (after losing it, being beaten…). */
   noTouch: number
+  /** A dive's remaining body travel (m): a keeper dives to where his hand meets the ball, not as far as he can. */
+  diveLeft?: number
   /** Seconds of AI "thinking" lag before the next decision. */
   think: number
   /** Wants to sprint this frame. */

@@ -61,11 +61,11 @@ export const eventChanceOf = (stat: number, opp?: number, mod = 0): number => st
 
 /**
  * Input adjustments, in percentage points (documented so the card and BALANCE.md can show them):
- * timing ±15 (a challenge as the ball leaves his foot / a take-on as the man steps in), from behind −20, a lunge
- * −30 at worst (pressed from well out of reach / barging in at a sprint), a slide −5, a shield +10 for the body
+ * timing ±20 (a challenge as the ball leaves his foot / a take-on as the man steps in), from behind −20, a lunge
+ * −40 at worst (pressed from well out of reach / barging in at a sprint), a slide −5, a shield +15 for the body
  * in the way, a heavy ball −3 per m/s over the easy pace.
  */
-export const CHANCE_MOD = { timing: 15, behind: -20, lunge: -30, slide: -5, shield: 10, heavyPerMs: -3, cleanStanding: 30, cleanSlide: 10 } as const
+export const CHANCE_MOD = { timing: 20, behind: -20, lunge: -40, slide: -5, shield: 15, heavyPerMs: -3, cleanStanding: 30, cleanSlide: 10 } as const
 
 /** A ball arriving at most this fast (m/s, relative to him) is simply controlled; above it First Touch decides. */
 export const CONTROL_EASY = 8

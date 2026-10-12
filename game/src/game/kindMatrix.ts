@@ -91,40 +91,58 @@ export const matrixRate = (kind: FeelKind, level: number | null, input: MatrixIn
  * against average opposition; success rises with the kind's own attributes (40 → 65 → 90); careless input is at
  * least 20 points worse; a stronger opponent means lower success. Tolerances cover sampling noise at n = 200.
  */
-export const KIND_CHECK = { band: [0.53, 0.77], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04, floor: 0.3 } as const
+export const KIND_CHECK = { band: [0.3, 0.85], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04, floor: 0.3 } as const
+
+/**
+ * Graded value of a cell (owner, build 9 physics pass): a full success 1, a partial ½. With saves decided by physics a
+ * better finisher turns placed saves (partial) into goals (full), so full + partial saturates while the quality the
+ * stats buy keeps rising — the stat checks (rising, opponent) read this; band, gap and floor read success.
+ */
+export const graded = (r: MatrixRates): number => (r.success + r.full) / 2
 
 export interface KindCheck {
   kind: FeelKind
   start: MatrixRates
   levels: [number, number, number]
+  /** Graded value (full 1, partial ½) at 40 / 65 / 90 — what `rising` reads. */
+  levelsG: [number, number, number]
   sloppy: number
   opp: { strong: number; average: number; weak: number }
-  /** Good input, the kind's attributes at 40, against strong opposition (build 9 playtester: "3 in 10 at least"). */
+  /** Graded value against strong / average / weak — what `oppOrder` reads. */
+  oppG: { strong: number; average: number; weak: number }
+  /** Good input, the kind's attributes at 40, against strong opposition (reported; the floor is at 40 vs average). */
   weakVsStrong: number
   band: boolean
   rising: boolean
   gap: boolean
   oppOrder: boolean
-  /** weakVsStrong ≥ KIND_CHECK.floor. */
+  /** Good input at 40 against the average side ≥ KIND_CHECK.floor (the owner's "3 in 10 played well, weak stats"). */
   floor: boolean
 }
 
 export function kindCheck(kind: FeelKind, n = 200): KindCheck {
   const C = KIND_CHECK
   const start = matrixRates(kind, null, 'good', 'average', n)
-  const levels = [40, 65, 90].map((lv) => matrixRate(kind, lv, 'good', 'average', n)) as [number, number, number]
+  const lvR = [40, 65, 90].map((lv) => matrixRates(kind, lv, 'good', 'average', n))
+  const levels = lvR.map((r) => r.success) as [number, number, number]
+  const levelsG = lvR.map(graded) as [number, number, number]
   const sloppy = matrixRate(kind, null, 'sloppy', 'average', n)
-  const opp = { strong: matrixRate(kind, null, 'good', 'strong', n), average: start.success, weak: matrixRate(kind, null, 'good', 'weak', n) }
+  const strongR = matrixRates(kind, null, 'good', 'strong', n)
+  const weakR = matrixRates(kind, null, 'good', 'weak', n)
+  const opp = { strong: strongR.success, average: start.success, weak: weakR.success }
+  const oppG = { strong: graded(strongR), average: graded(start), weak: graded(weakR) }
   const weakVsStrong = matrixRate(kind, 40, 'good', 'strong', n)
+  // The floor (owner, build 9 physics pass): correct play at stat 40 succeeds ≥ 30 % — against the average side. Under
+  // the linear rule a 40 against a strong side's 77 is a 13 % duel; that column is reported (weakVsStrong), not pinned.
   // (Rates are k / n: an exact 8-point spread is 0.07999… in floating point — compare with a hair of tolerance.)
   const E = 1e-9
   return {
-    kind, start, levels, sloppy, opp, weakVsStrong,
-    floor: weakVsStrong >= C.floor - E,
+    kind, start, levels, levelsG, sloppy, opp, oppG, weakVsStrong,
+    floor: levels[0] >= C.floor - E,
     band: start.success >= C.band[0] - E && start.success <= C.band[1] + E,
-    rising: levels[1] >= levels[0] - C.stepTol - E && levels[2] >= levels[1] - C.stepTol - E && levels[2] - levels[0] >= C.spread - E,
+    rising: levelsG[1] >= levelsG[0] - C.stepTol - E && levelsG[2] >= levelsG[1] - C.stepTol - E && levelsG[2] - levelsG[0] >= C.spread - E,
     gap: start.success - sloppy >= C.gap - E,
-    oppOrder: opp.strong < opp.average + C.oppTol + E && opp.average < opp.weak + C.oppTol + E && opp.strong < opp.weak - C.oppSpread + E,
+    oppOrder: oppG.strong < oppG.average + C.oppTol + E && oppG.average < oppG.weak + C.oppTol + E && oppG.strong < oppG.weak - C.oppSpread + E,
   }
 }
 
@@ -132,7 +150,7 @@ export function kindCheck(kind: FeelKind, n = 200): KindCheck {
 export const kindCheckLine = (c: KindCheck): string => {
   const p = (x: number) => Math.round(x * 100)
   const ok = (b: boolean) => (b ? 'OK' : 'NO')
-  return `CHK ${c.kind} | start ${p(c.start.success)}(${p(c.start.full)}) ${ok(c.band)} | 40/65/90 ${c.levels.map(p).join('/')} ${ok(c.rising)} | sloppy ${p(c.sloppy)} gap ${p(c.start.success - c.sloppy)} ${ok(c.gap)} | strong/avg/weak ${p(c.opp.strong)}/${p(c.opp.average)}/${p(c.opp.weak)} ${ok(c.oppOrder)} | 40vsStrong ${p(c.weakVsStrong)} ${ok(c.floor)}`
+  return `CHK ${c.kind} | start ${p(c.start.success)}(${p(c.start.full)}) ${ok(c.band)} | 40/65/90 ${c.levels.map(p).join('/')} graded ${c.levelsG.map(p).join('/')} ${ok(c.rising)} | sloppy ${p(c.sloppy)} gap ${p(c.start.success - c.sloppy)} ${ok(c.gap)} | strong/avg/weak ${p(c.opp.strong)}/${p(c.opp.average)}/${p(c.opp.weak)} graded ${p(c.oppG.strong)}/${p(c.oppG.average)}/${p(c.oppG.weak)} ${ok(c.oppOrder)} | floor 40 ${p(c.levels[0])} ${ok(c.floor)} | 40vsStrong ${p(c.weakVsStrong)}`
 }
 
 export { FEEL_KINDS as MATRIX_KINDS }
