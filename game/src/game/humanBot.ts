@@ -146,7 +146,8 @@ export function createHumanBot(level: BotLevel, seed: number, phone = false): Hu
     slider: rng.chance(skill.slide),
     // Build 9 (sloppy = sloppy): a poor keeper stands off the angle and comes out too early (or not at all).
     gkDrift: clamp01((1 - skill.read) * rng.range(0.6, 1.1)),
-    rushAt: rng.chance(skill.read >= 0.5 ? skill.read * 0.5 + 0.45 : 0.2) ? (skill.read >= 0.5 ? 7 : 15) + rng.normal(0, skill.timingSd * 8) : -1,
+    // (A sensible keeper comes out to meet a man through on goal; a careless one goes far too early, or never.)
+    rushAt: rng.chance(skill.read >= 0.5 ? 0.95 : 0.6) ? (skill.read >= 0.5 ? 7 : 14) + rng.normal(0, skill.timingSd * 8) : -1,
     blocked: false,
     rushReal: -1,
     jumpErr: rng.normal(0, skill.timingSd),
@@ -640,7 +641,9 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
       // (A ball over the top he runs onto where it comes down, not where it passes head height.)
       const ground = rt.kind === 'timed_run' || rt.kind === 'shoulder_duel'
       const drop = (pts.find((p, i) => i > 0 && p.z < (ground ? 0.6 : 2.2) && p.z < pts[i - 1!]!.z) ?? pts[pts.length - 1])!
-      moveTo({ x: drop.x, y: drop.y }, true)
+      // (A careless player watches the ball, not its flight: he runs under where it is and arrives behind it.)
+      if (st.skill.read < 0.5 && !ground) moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+      else moveTo({ x: drop.x, y: drop.y }, true)
       // A ball over the top far from goal: run onto it and bring it down, don't head it.
       if ((rt.kind === 'timed_run' || rt.kind === 'shoulder_duel') && hero.pos.x < PITCH_LENGTH - 16) return
       const eta = dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) / Math.max(4, Math.hypot(rt.ball.vx, rt.ball.vy))

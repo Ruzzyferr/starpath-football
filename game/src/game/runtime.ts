@@ -740,6 +740,10 @@ export class HighlightRuntime {
   private heroKickY = 0
   /** dribble: the hero got past his man (a skill move that worked, or carried it beyond him). */
   private beatMan = false
+  /** gk_1v1: the hero keeper came off his line to meet the man (RUSH). */
+  private heroRushed = false
+  /** fk_wall: the hero keeper was set on his angle as the free kick was struck. */
+  private fkKeeperSet = false
   /** The hero created a clear chance this moment (graded success, sim/match/tier). */
   private chance = false
   /** Kind of the hero's last kick (a cross / corner met in the box is a chance created). */
@@ -2268,6 +2272,9 @@ export class HighlightRuntime {
   /** RUSH (keeper): off the line at the ball / the man on it to smother or sweep. */
   private startRush(): void {
     this.stayUntil = -1
+    // (Timed: the man within 10 m as he goes — charging out from further is the gamble, not the job.)
+    const oc = this.owner
+    if (oc && oc.team !== this.hero.team && dist(oc.pos, this.hero.pos) < 10) this.heroRushed = true
     this.dash = {
       why: 'rush',
       until: this.time + 1.2,
@@ -2512,6 +2519,7 @@ export class HighlightRuntime {
       if (gk) this.shot.placedAim = Math.abs(plan.aim.y - gk.pos.y) >= PLACED_AIM
       // The hero in goal: set on his angle as it was struck (his textbook spot), or caught off it.
       if (gk?.isHero) this.shot.keeperSet = dist(gk.pos, keeperTarget(gk, this.aiWorld()).pos) < KEEPER_SET_R
+      if (gk?.isHero && wasSetPiece?.kind === 'freekick') this.fkKeeperSet = !!this.shot.keeperSet
       const defTeam = other(by.team)
       const keeper = this.agents.find((a) => a.team === defTeam && a.isKeeper)
       if (keeper) {
@@ -2656,6 +2664,11 @@ export class HighlightRuntime {
     // A keeper did his job if he held his textbook spot or went for the ball (sweeping, coming for it).
     // (gk_sweep: the job is coming off the line for it — staying home is not doing it.)
     if (h.isKeeper && this.kind === 'gk_sweep') return dist(h.pos, b) < 6 || Math.abs(h.pos.x - ownGoalX(h.team)) > 9
+    // (gk_1v1: the man comes at him whatever he does — being near the ball is not the job; coming out to meet him,
+    // holding his angle or going the right way is.)
+    if (h.isKeeper && this.kind === 'gk_1v1') return this.keeperRightWay || this.heroRushed || dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5
+    // (fk_wall: set on his angle as it was struck, or the right way — the ball dropping near him is not his doing.)
+    if (h.isKeeper && this.kind === 'fk_wall') return this.keeperRightWay || this.fkKeeperSet
     if (h.isKeeper) return this.keeperRightWay || dist(h.pos, keeperTarget(h, this.aiWorld()).pos) < 1.5 || dist(h.pos, b) < 6
     const goal = { x: ownGoalX(h.team), y: GOAL_CENTER_Y }
     // (back_post: the job is his man at the far post — tight on him, or up contesting the header.)

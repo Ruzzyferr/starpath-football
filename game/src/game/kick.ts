@@ -341,9 +341,9 @@ export function curlBulge(from: Vec2, z0: number, l: { vx: number; vy: number; v
 /** Shot speed (m/s) at power 1 for a kicker. */
 export function shotSpeed(power: number, at: Attributes, kind: KickKind = 'shot'): number {
   const p = clampN(power, 0, 1.15)
-  // (Build 9 range pass: Shot Power carries the strike — 25.8 m/s at 40 … 34.8 at 90, unchanged at 62; a free kick's
-  // pace 27.5 … 32.5.)
-  const strength = kind === 'freekick' ? 29.72 + (a01(at.shooting) - 0.62) * 10 + a01(at.strength) * 3 : 29.74 + (a01(at.shooting) - 0.62) * 18 + a01(at.strength) * 3
+  // (Build 9 range pass: Shot Power carries the strike — 25.8 m/s at 40 … 34.8 at 90, a free kick's 25.3 … 35.3, both
+  // unchanged at 62, + up to 3 from Strength.)
+  const strength = kind === 'freekick' ? 29.72 + (a01(at.shooting) - 0.62) * 20 + a01(at.strength) * 3 : 29.74 + (a01(at.shooting) - 0.62) * 18 + a01(at.strength) * 3
   if (kind === 'header') return 9 + p * (6 + a01(at.heading) * 6)
   return 11 + (strength - 11) * Math.pow(p, 0.85)
 }
@@ -487,7 +487,8 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   // needs — whether it then dips back under the bar is his topspin (Set Pieces / Curve), physics.
   // (If that lift would carry it over the bar, he takes pace off — more time for the dip: the more topspin he has, the
   // more pace he keeps.)
-  if (kind === 'freekick' && d > FK_WALL_D + 5) {
+  // (A low one driven round the side of the wall — aimed under 1 m — is not lifted.)
+  if (kind === 'freekick' && d > FK_WALL_D + 5 && aimZ >= 1) {
     const wallAt = { x: from.x + axis.x * FK_WALL_D, y: from.y + axis.y * FK_WALL_D }
     for (let pass = 0; pass < 8; pass++) {
       for (let it = 0; it < 4; it++) {
