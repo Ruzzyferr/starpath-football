@@ -1366,7 +1366,8 @@ export class HighlightRuntime {
     }
     if (this.owner === this.hero) {
       this.startBullet(0.25, this.possessionWindow())
-      this.graceUntil = this.time + startGrace(this.hero.attrs.composure)
+      // (hold_up: the marker is on his back as it starts — holding him off is the moment, no free first look.)
+      this.graceUntil = this.kind === 'hold_up' ? this.time : this.time + startGrace(this.hero.attrs.composure)
     }
     if (this.kind === 'rebound') {
       this.startBullet(0.45, 0.45 + a01(this.hero.attrs.composure) * 0.3)
@@ -4170,8 +4171,11 @@ export class HighlightRuntime {
     // Strength he has to get past, and the body in the way is worth CHANCE_MOD.shield. The timing (the ball off the
     // foot) ±15, from behind −20, a ball knocked away from the carrier's feet +10, the difficulty sharpens him.
     const shield = o.isHero && this.shielding()
-    const mod = clampN((this.exposure(o) - 0.45) / 0.45, -1, 1) * CHANCE_MOD.timing + (behind ? CHANCE_MOD.behind : 0) + (this.ballGap(o) > LOOSE_BALL_GAP ? 10 : 0) - (shield ? CHANCE_MOD.shield : 0) + (a.team === 'opp' ? (this.difficulty - 1) * 20 : 0)
-    if (this.rng.chance(eventChanceOf(a.attrs.tackling, shield ? o.attrs.strength : o.attrs.dribbling, mod))) {
+    // (A shield contest is body against body — his Strength / Balance and the shield's CHANCE_MOD.shield; the timing and
+    // the from-behind of a tackle on a carrier are that same body, not counted twice.)
+    const mod = (shield ? -CHANCE_MOD.shield : clampN((this.exposure(o) - 0.45) / 0.45, -1, 1) * CHANCE_MOD.timing + (behind ? CHANCE_MOD.behind : 0) + (this.ballGap(o) > LOOSE_BALL_GAP ? 10 : 0)) + (a.team === 'opp' ? (this.difficulty - 1) * 20 : 0)
+    // (The shield is his body: Strength and Balance together.)
+    if (this.rng.chance(eventChanceOf(a.attrs.tackling, shield ? (o.attrs.strength + (o.attrs.balance ?? o.attrs.strength)) / 2 : o.attrs.dribbling, mod))) {
       this.winBall(a, o, false)
       if (o.isHero) o.noTouch = 0.7
     } else if (a.team === 'opp' && behind && !this.rng.chance(this.cleanChance(a, false, behind))) {

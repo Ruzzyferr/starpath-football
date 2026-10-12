@@ -50,7 +50,7 @@ export interface BotSkill {
 
 export const BOT_SKILL: Readonly<Record<BotLevel, BotSkill>> = {
   // Build 9: a genuinely careless player (the owner's "sloppy input"): late, loose aim, mistimed, reads nothing.
-  novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.5, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.65, slide: 0.4, anticipate: 0.05 },
+  novice: { aimSd: 2.8, powerMean: 0.92, powerSd: 0.2, reaction: 0.7, wrongSide: 0.5, timingSd: 0.38, shootFrom: [17, 26], read: 0.08, rush: 0.85, slide: 0.4, anticipate: 0.05 },
   average: { aimSd: 1.1, powerMean: 0.86, powerSd: 0.1, reaction: 0.32, wrongSide: 0.18, timingSd: 0.15, shootFrom: [12, 20], read: 0.5, rush: 0.22, slide: 0.18, anticipate: 0.45 },
   good: { aimSd: 0.75, powerMean: 0.84, powerSd: 0.07, reaction: 0.25, wrongSide: 0.1, timingSd: 0.1, shootFrom: [11, 18], read: 0.72, rush: 0.1, slide: 0.08, anticipate: 0.7 },
   expert: { aimSd: 0.45, powerMean: 0.84, powerSd: 0.05, reaction: 0.2, wrongSide: 0.05, timingSd: 0.06, shootFrom: [10, 16], read: 0.88, rush: 0.04, slide: 0.04, anticipate: 0.85 },
@@ -102,6 +102,8 @@ export interface HumanBotState {
   waitSince: number
   /** Id of the opponent carrier the current engagement is against. */
   engaged: string
+  /** Real time the current engagement began (the defender sees the new carrier then). */
+  engagedAt: number
   /** press_trap: the carrier he last pressed (PRESS again on the next one). */
   pressed: string
   /** Real time the ball last became loose (−1 = someone has it). */
@@ -154,6 +156,7 @@ export function createHumanBot(level: BotLevel, seed: number, phone = false): Hu
     anticipator: rng.chance(skill.anticipate),
     waitSince: -1,
     engaged: '',
+    engagedAt: 0,
     pressed: '',
     looseSince: -1,
     blockErr: Number.NaN,
@@ -180,11 +183,15 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   if (st.engaged !== owner.id) {
     // New carrier: re-roll this engagement's habits.
     st.engaged = owner.id
+    st.engagedAt = st.real
     st.reader = st.rng.chance(st.skill.read)
     st.rusher = st.rng.chance(st.skill.rush)
     st.waitSince = -1
     st.pendingAt = -1
   }
+  // (A careless defender is late off the mark — he sees who has it a beat after a sensible one, who reads it coming:
+  // until then he carries on as he was. Back post: he is ball-watching anyway.)
+  if (rt.kind !== 'back_post' && st.real - st.engagedAt < Math.max(0, st.skill.reaction - 0.3)) return
   const ownGoal = { x: 0, y: GOAL_CENTER_Y }
   const toGoal = norm(sub(ownGoal, owner.pos))
   // Back post: a sensible defender picks up the runner at the far post (goal-side, a yard off him, ball side) instead
@@ -362,7 +369,8 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
     const d = sub(p, hero.pos)
     const l = Math.hypot(d.x, d.y)
     // A careless player does not work back hard: in a recovery run he jogs until he is right on it.
-    const sprint = sprintIn && !(rt.kind === 'recovery_run' && st.skill.read < 0.5 && dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) > 4)
+    // (Nor does he press flat out: he jogs up to the man on the ball.)
+    const sprint = sprintIn && !((rt.kind === 'recovery_run' || rt.kind === 'press_trap') && st.skill.read < 0.5 && dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) > 4)
     rt.setControl({ move: l > 0.3 ? norm(d) : { x: 0, y: 0 }, sprint, ...(hold ? { hold } : {}) })
   }
 
@@ -529,12 +537,17 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
         if (held > 1.2) act({ kind: 'shoot', target: aimPoint(st, 0.9), power: power(st), curl: 0, chip: false })
         return
       }
-      rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
+      // (Back to goal with the marker on him: SHIELD — body between man and ball, Strength / Balance against his
+      // challenge.)
+      const mk = rt.agents.filter((o) => o.team === 'opp' && !o.isKeeper).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
+      if (mk && dist(mk.pos, hero.pos) < 2.5) rt.setControl({ move: { x: 0, y: 0 }, sprint: false, hold: 'shield' })
+      else rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
       const free = (a: Agent) => !rt.agents.some((o) => o.team === 'opp' && !o.isKeeper && dist(o.pos, a.pos) < 3)
       const mate = rt.agents
         .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && dist(a.pos, hero.pos) > 5 && dist(a.pos, hero.pos) < 20 && free(a))
         .sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
-      if (mate && held > 0.9 + st.skill.reaction) act({ kind: 'pass', target: { x: mate.pos.x + st.rng.normal(0, st.skill.aimSd), y: mate.pos.y + st.rng.normal(0, st.skill.aimSd) } })
+      // (A target man holds it while the support arrives — two seconds on the pitch clock — then lays it off.)
+      if (mate && held > 0.9 + st.skill.reaction && heldGame > 2) act({ kind: 'pass', target: { x: mate.pos.x + st.rng.normal(0, st.skill.aimSd), y: mate.pos.y + st.rng.normal(0, st.skill.aimSd) } })
       return
     }
     if (rt.kind === 'long_ball_control' && held > 3) {
@@ -591,9 +604,17 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
   }
 
   // ── Long ball to bring down: get under it, don't jump ──
+  // (Reading the flight takes a human reaction time too: a careless player is late off the mark.)
   if (!owner && rt.kind === 'long_ball_control' && rt.ball.z > 0.5) {
+    if (st.looseSince < 0) st.looseSince = st.real
+    if (st.real - st.looseSince < st.skill.reaction) return
     const pts = predictTrajectory(rt.ball, rt.env, { duration: 2.5, sampleEvery: 2 })
     const drop = (pts.find((p) => p.z < 1.8 && p.t > 0.1 && p.z < (pts[pts.indexOf(p) - 1]?.z ?? 9)) ?? pts[pts.length - 1])!
+    // (A careless one watches the ball, not its flight: he runs under where it is and arrives behind it.)
+    if (st.skill.read < 0.5) {
+      moveTo({ x: rt.ball.x, y: rt.ball.y }, true)
+      return
+    }
     // A late reader arrives off-line by up to a meter.
     moveTo({ x: drop.x + st.jumpErr * 3, y: drop.y }, dist(hero.pos, drop!) > 0.8)
     return
