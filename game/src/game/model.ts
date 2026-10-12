@@ -184,3 +184,8 @@ export function turnAccelMult(a: Agent, desired: Vec2): number {
 export function accel(a: Agent): number {
   return 6.6 + a01(a.attrs.acceleration ?? a.attrs.pace) * 10 + a01(a.attrs.agility) * 2
 }
+
+/** Height (m) a player's jump lifts him, from Jumping (0.45 m at 40 … 0.80 m at 85; 0.25–0.95). */
+export function jumpHeight(jumping: number): number {
+  return clampN(0.45 + (jumping - 40) * (0.35 / 45), 0.25, 0.95)
+}

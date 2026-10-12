@@ -1,8 +1,10 @@
 /** Intent-respecting aim primitives (kick.ts): corner magnet, frame-safe folds, PASS button target, mis-hit curve. */
 import { describe, expect, it } from 'vitest'
-import { buttonPassTarget, foldHeight, foldLateral, heroMisHit, intentShotTarget } from './kick'
-import { GOAL_CENTER_Y, POST_Y_HIGH } from './physics'
-import { PITCH_LENGTH, GOAL_HEIGHT } from '../sim/match/types'
+import { Rng } from '../core/rng'
+import type { Attributes } from '../core/types'
+import { buttonPassTarget, headingNoise, intentShotTarget, planKick, type KickRequest } from './kick'
+import { DEFAULT_ENV, GOAL_CENTER_Y, POST_Y_HIGH } from './physics'
+import { PITCH_LENGTH } from '../sim/match/types'
 
 const line = (y: number) => ({ x: PITCH_LENGTH, y })
 
@@ -31,20 +33,20 @@ describe('intentShotTarget (corner magnet)', () => {
   })
 })
 
-describe('frame-safe folds', () => {
-  const from = { x: PITCH_LENGTH - 14, y: GOAL_CENTER_Y }
-  const target = line(POST_Y_HIGH - 0.5)
-  it('an error that would carry an on-target aim wide is folded back inside when kept', () => {
-    const err = 0.12
-    const folded = foldLateral(err, from, target, () => true)
-    const yAt = (e: number) => target.y + (Math.tan(e) * 14 * 14) / 14
-    expect(yAt(err)).toBeGreaterThan(POST_Y_HIGH)
-    expect(yAt(folded)).toBeLessThan(POST_Y_HIGH)
-    expect(foldLateral(err, from, target, () => false)).toBe(err)
+describe('a kick: only the direction is chance (owner, build 9)', () => {
+  const attrs = { shooting: 62, finishing: 62, composure: 62, curve: 62, passing: 62, strength: 60 } as unknown as Attributes
+  const req = (d: number): KickRequest => ({ kind: 'shot', from: { x: PITCH_LENGTH - d, y: GOAL_CENTER_Y }, target: { x: PITCH_LENGTH, y: POST_Y_HIGH - 0.8 }, power: 0.85, curl: 0.3, attrs, pressure: 0, assist: 'half', env: DEFAULT_ENV })
+  it('pace and spin are the same with and without execution noise: the ball is only turned', () => {
+    const clean = planKick(req(20))
+    for (let s = 1; s <= 30; s++) {
+      const p = planKick(req(20), new Rng(`k${s}`))
+      expect(Math.hypot(p.vx, p.vy)).toBeCloseTo(Math.hypot(clean.vx, clean.vy), 9)
+      expect(p.spin.side).toBeCloseTo(clean.spin.side, 9)
+    }
   })
-  it('over-the-bar errors fold under the bar', () => {
-    const h = foldHeight(4, 1.6, 0.5, () => true)
-    expect(1.6 + h * 0.5).toBeLessThan(GOAL_HEIGHT)
+  it('the direction spread grows with the distance (same kicker)', () => {
+    expect(headingNoise(req(35), 0.6)).toBeGreaterThan(headingNoise(req(20), 0.6))
+    expect(headingNoise(req(50), 0.6)).toBeGreaterThan(headingNoise(req(35), 0.6))
   })
 })
 
@@ -61,17 +63,5 @@ describe('PASS button target', () => {
   it('stick at an open man: him', () => {
     expect(buttonPassTarget(from, { x: 1, y: 0 }, mates, [], 'half')?.id).toBe('fwd')
     expect(buttonPassTarget(from, { x: 0.15, y: 1 }, mates, [], 'half')?.id).toBe('side')
-  })
-})
-
-describe('hero mis-hit curve', () => {
-  it('falls smoothly and strictly with skill, rises with pressure', () => {
-    let prev = Infinity
-    for (let s = 0.3; s <= 1.0001; s += 0.05) {
-      const m = heroMisHit(s)
-      expect(m).toBeLessThan(prev)
-      prev = m
-    }
-    expect(heroMisHit(0.6, 1)).toBeGreaterThan(heroMisHit(0.6, 0))
   })
 })
