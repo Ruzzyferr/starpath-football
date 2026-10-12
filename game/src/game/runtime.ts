@@ -283,6 +283,10 @@ export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 
 export const DELIVERY_EDGE = 80
 /** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
 export const HEAD_ADJUST = 0.35
+/** The danger zone a delivery has to be met in to make a chance: up to DANGER_ZONE.depth m out, DANGER_ZONE.half m either
+ * side of the goal (a cross met out by the corner of the box or on the edge of it is not a chance from the cross). */
+export const DANGER_ZONE = { depth: 13, half: 9 } as const
+const inDangerZone = (p: Vec2): boolean => PITCH_LENGTH - p.x < DANGER_ZONE.depth && Math.abs(p.y - GOAL_CENTER_Y) < DANGER_ZONE.half
 /** gk_sweep: how far (m) off his line the hero keeper goes to sweep a ball over the top (outside the box: his feet). */
 export const SWEEP_RANGE = 30
 /** A defender this close (m) in front of an AI shooter is in his line: going round him is the shooter's chance event. */
@@ -2609,10 +2613,10 @@ export class HighlightRuntime {
     // Pass completion bookkeeping: a team-mate receiving the hero's pass may score → assist.
     // Plan 2.1#58: any team-mate receiving it counts (deflections included), not only the target.
     // His cross / corner / ball into the box met by a team-mate there, or a timed run received onside: a clear chance.
-    if (this.heroPassTo && passCompletedBy(a) && (this.heroLastKick === 'cross' || this.heroLastKick === 'lofted') && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
+    if (this.heroPassTo && passCompletedBy(a) && (this.heroLastKick === 'cross' || this.heroLastKick === 'lofted') && inDangerZone(a.pos)) this.chance = true
     if (a.isHero && this.kind === 'timed_run' && this.phase === 'live' && prevOwner === null && this.lastTouchBefore?.team === 'hero' && !this.lastTouchBefore.isHero) this.chance = true
     // (The hero's cross / corner controlled by a team-mate in the box — feetContact covers the loose touches.)
-    if (!a.isHero && a.team === 'hero' && prevOwner === null && this.lastTouchBefore?.isHero && this.heroCrossQ > 0 && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
+    if (!a.isHero && a.team === 'hero' && prevOwner === null && this.lastTouchBefore?.isHero && this.heroCrossQ > 0 && inDangerZone(a.pos)) this.chance = true
     if (this.heroPassTo && passCompletedBy(a)) {
       this.stats.passesCompleted++
       this.assistChain = a.id
@@ -3941,7 +3945,7 @@ export class HighlightRuntime {
       winner = this.rng.chance(eventChanceOf(stat, o.attrs.heading, mod)) ? h : o
     }
     // The hero's cross / corner won in the air by a team-mate: a chance created (graded success).
-    if (winner.team === 'hero' && !winner.isHero && this.lastTouch?.isHero && this.heroDeliveryAt >= 0) this.chance = true
+    if (winner.team === 'hero' && !winner.isHero && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && inDangerZone(bp)) this.chance = true
     if (list.some((a) => a.isHero)) this.heroContested = true
     this.events.push({ type: 'aerial', by: winner.id, n: list.length - 1, hero: winner.isHero, heroIn: list.some((a) => a.isHero && a.state === 'jump') })
     for (const a of list) {
@@ -4085,7 +4089,7 @@ export class HighlightRuntime {
     if (a.isHero && this.kind === 'rebound' && (!this.lastTouch || this.lastTouch.team === 'opp')) this.reboundFirst = true
     // The hero's ball into the box (cross / corner) reaching a team-mate in the box (first touch his, clean or not):
     // a chance created (graded success).
-    if (!a.isHero && a.team === 'hero' && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && this.heroCrossQ > 0 && a.pos.x > PITCH_LENGTH - 16.5 && Math.abs(a.pos.y - GOAL_CENTER_Y) < 20.2) this.chance = true
+    if (!a.isHero && a.team === 'hero' && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && this.heroCrossQ > 0 && inDangerZone(a.pos)) this.chance = true
     // long_ball_control: first to the long ball (clean or not) — he won the contact the moment is about (graded success).
     if (a.isHero && this.kind === 'long_ball_control' && this.lastTouch?.team === 'hero' && !this.lastTouch.isHero) this.chance = true
     // switch_play: the switch reached a team-mate across the pitch (first touch his, clean or not).

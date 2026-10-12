@@ -507,7 +507,7 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
           .sort((p, q) => Math.abs(p.pos.y - GOAL_CENTER_Y) - Math.abs(q.pos.y - GOAL_CENTER_Y))[0]
         const aim = st.skill.read >= 0.5 ? (free ? { x: free.pos.x + 1.5, y: free.pos.y } : { x: PITCH_LENGTH - 12, y: GOAL_CENTER_Y }) : st.skill.read > 0.3 && box ? box.pos : { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
         // (Across 30 m a careless swipe is metres out: the scatter grows with the carelessness.)
-        const sc = st.skill.read >= 0.5 ? 1 : 2.4
+        const sc = st.skill.read >= 0.5 ? 1 : 3
         const tgt = { x: aim.x + st.rng.normal(0, st.skill.aimSd * 1.6 * sc), y: aim.y + st.rng.normal(0, st.skill.aimSd * 2.2 * sc) }
         const dir = norm(sub(tgt, hero.pos))
         // (A careless swipe's weight is all over the place: short of the runners or over everyone.)
