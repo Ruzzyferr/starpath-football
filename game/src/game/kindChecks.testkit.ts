@@ -20,19 +20,22 @@ export const KIND_CHECK_GROUPS: readonly (readonly FeelKind[])[] = [
 
 export function kindChecksSuite(group: number): void {
   const kinds = KIND_CHECK_GROUPS[group]!
-  describe('build 9: every kind — fair band, follows its stats, careless input is worse, the opponent matters', () => {
+  describe('build 9: every kind on the phone input path — fair band, follows its stats, careless input is worse, the opponent matters, a floor', () => {
     for (const k of kinds) {
       if (KIND_CHECK_PENDING.has(k)) {
         it.todo(`${k}: four checks (still being tuned)`)
         continue
       }
-      it(`${k}: 55–75 % for a starting hero, rising 40 → 90, sloppy ≥ 20 pts lower, stronger opponent lower`, () => {
+      it(`${k}: 55–75 % for a starting hero, rising 40 → 90, sloppy ≥ 20 pts lower, stronger opponent lower, ≥ 30 % at 40 vs strong`, () => {
         const c = kindCheck(k)
         const line = kindCheckLine(c)
+        console.log(line)
         expect(c.band, line).toBe(true)
         expect(c.rising, line).toBe(true)
         expect(c.gap, line).toBe(true)
         expect(c.oppOrder, line).toBe(true)
+        // Build 9 playtester floor: played well, the weakest plausible hero still wins 3 in 10 against a strong side.
+        expect(c.floor, line).toBe(true)
         // Goals stay goals: a strike kind is never mostly goals (a penalty is meant to be).
         if (GOAL_KINDS.has(k) && k !== 'penalty') expect(c.start.full, line).toBeLessThan(0.75)
       }, 900_000)

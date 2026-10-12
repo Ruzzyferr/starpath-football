@@ -19,6 +19,14 @@ export const OPP_SHIFT: Record<OppStrength, number> = { weak: -15, average: 0, s
 export const MATRIX_TEAM_OVR = 62
 export const MATRIX_START_OVR = 57
 export type MatrixInput = 'good' | 'sloppy'
+/**
+ * Input path of the bots: 'phone' = only what a touch screen sends (game/phoneInput — context buttons with the stick,
+ * on-screen holds), the default since the build 9 pressing report; 'keys' = the bot's own shapes (the desktop ACTION
+ * key among them), the pre-fix harness. KIND_PATH=keys in the reports to compare.
+ */
+export type MatrixPath = 'phone' | 'keys'
+const ENV = (globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env ?? {}
+export const MATRIX_PATH: MatrixPath = ENV.KIND_PATH === 'keys' ? 'keys' : 'phone'
 const BOT: Record<MatrixInput, BotLevel> = { good: 'good', sloppy: 'novice' }
 
 const shift = (a: Attributes, d: number): Attributes => {
@@ -42,9 +50,9 @@ export function matrixHighlight(kind: FeelKind, seed: number, level: number | nu
 }
 
 /** One trial's graded result (sim/match/tier). */
-export function matrixTier(kind: FeelKind, seed: number, level: number | null, input: MatrixInput, opp: OppStrength): MomentTier {
+export function matrixTier(kind: FeelKind, seed: number, level: number | null, input: MatrixInput, opp: OppStrength, path: MatrixPath = MATRIX_PATH): MomentTier {
   const rt = new HighlightRuntime(matrixHighlight(kind, seed, level, opp), { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 13 })
-  const bot = createHumanBot(BOT[input], seed)
+  const bot = createHumanBot(BOT[input], seed, path === 'phone')
   const dt = 1 / 60
   for (let f = 0; f < 60 * 90 && !rt.finished; f++) {
     humanBotStep(rt, bot, dt)
@@ -83,7 +91,7 @@ export const matrixRate = (kind: FeelKind, level: number | null, input: MatrixIn
  * against average opposition; success rises with the kind's own attributes (40 → 65 → 90); careless input is at
  * least 20 points worse; a stronger opponent means lower success. Tolerances cover sampling noise at n = 200.
  */
-export const KIND_CHECK = { band: [0.53, 0.77], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04 } as const
+export const KIND_CHECK = { band: [0.53, 0.77], stepTol: 0.04, spread: 0.08, gap: 0.2, oppTol: 0.02, oppSpread: 0.04, floor: 0.3 } as const
 
 export interface KindCheck {
   kind: FeelKind
@@ -91,10 +99,14 @@ export interface KindCheck {
   levels: [number, number, number]
   sloppy: number
   opp: { strong: number; average: number; weak: number }
+  /** Good input, the kind's attributes at 40, against strong opposition (build 9 playtester: "3 in 10 at least"). */
+  weakVsStrong: number
   band: boolean
   rising: boolean
   gap: boolean
   oppOrder: boolean
+  /** weakVsStrong ≥ KIND_CHECK.floor. */
+  floor: boolean
 }
 
 export function kindCheck(kind: FeelKind, n = 200): KindCheck {
@@ -103,12 +115,16 @@ export function kindCheck(kind: FeelKind, n = 200): KindCheck {
   const levels = [40, 65, 90].map((lv) => matrixRate(kind, lv, 'good', 'average', n)) as [number, number, number]
   const sloppy = matrixRate(kind, null, 'sloppy', 'average', n)
   const opp = { strong: matrixRate(kind, null, 'good', 'strong', n), average: start.success, weak: matrixRate(kind, null, 'good', 'weak', n) }
+  const weakVsStrong = matrixRate(kind, 40, 'good', 'strong', n)
+  // (Rates are k / n: an exact 8-point spread is 0.07999… in floating point — compare with a hair of tolerance.)
+  const E = 1e-9
   return {
-    kind, start, levels, sloppy, opp,
-    band: start.success >= C.band[0] && start.success <= C.band[1],
-    rising: levels[1] >= levels[0] - C.stepTol && levels[2] >= levels[1] - C.stepTol && levels[2] - levels[0] >= C.spread,
-    gap: start.success - sloppy >= C.gap,
-    oppOrder: opp.strong < opp.average + C.oppTol && opp.average < opp.weak + C.oppTol && opp.strong < opp.weak - C.oppSpread,
+    kind, start, levels, sloppy, opp, weakVsStrong,
+    floor: weakVsStrong >= C.floor - E,
+    band: start.success >= C.band[0] - E && start.success <= C.band[1] + E,
+    rising: levels[1] >= levels[0] - C.stepTol - E && levels[2] >= levels[1] - C.stepTol - E && levels[2] - levels[0] >= C.spread - E,
+    gap: start.success - sloppy >= C.gap - E,
+    oppOrder: opp.strong < opp.average + C.oppTol + E && opp.average < opp.weak + C.oppTol + E && opp.strong < opp.weak - C.oppSpread + E,
   }
 }
 
@@ -116,7 +132,7 @@ export function kindCheck(kind: FeelKind, n = 200): KindCheck {
 export const kindCheckLine = (c: KindCheck): string => {
   const p = (x: number) => Math.round(x * 100)
   const ok = (b: boolean) => (b ? 'OK' : 'NO')
-  return `CHK ${c.kind} | start ${p(c.start.success)}(${p(c.start.full)}) ${ok(c.band)} | 40/65/90 ${c.levels.map(p).join('/')} ${ok(c.rising)} | sloppy ${p(c.sloppy)} gap ${p(c.start.success - c.sloppy)} ${ok(c.gap)} | strong/avg/weak ${p(c.opp.strong)}/${p(c.opp.average)}/${p(c.opp.weak)} ${ok(c.oppOrder)}`
+  return `CHK ${c.kind} | start ${p(c.start.success)}(${p(c.start.full)}) ${ok(c.band)} | 40/65/90 ${c.levels.map(p).join('/')} ${ok(c.rising)} | sloppy ${p(c.sloppy)} gap ${p(c.start.success - c.sloppy)} ${ok(c.gap)} | strong/avg/weak ${p(c.opp.strong)}/${p(c.opp.average)}/${p(c.opp.weak)} ${ok(c.oppOrder)} | 40vsStrong ${p(c.weakVsStrong)} ${ok(c.floor)}`
 }
 
 export { FEEL_KINDS as MATRIX_KINDS }

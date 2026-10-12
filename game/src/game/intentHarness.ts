@@ -591,8 +591,19 @@ export function pressureTrial(kind: HighlightKind, seed: number, mode: 'idle' | 
         heroX0 = hero.pos.x
       }
       if (mode === 'run') {
-        const d = sub(goal, hero.pos)
-        rt.setControl({ move: norm(d), sprint: true })
+        // Carrying it on toward goal like a person: round a man standing in his path, not into his chest (bodies are
+        // solid since build 9's pressing fix).
+        let dir = norm(sub(goal, hero.pos))
+        const block = opps(rt)
+          .filter((a) => !a.isKeeper)
+          .map((a) => { const r = sub(a.pos, hero.pos); return { along: r.x * dir.x + r.y * dir.y, side: r.x * dir.y - r.y * dir.x } })
+          .filter((b) => b.along > 0 && b.along < 4 && Math.abs(b.side) < 1.2)
+          .sort((p, q) => p.along - q.along)[0]
+        if (block) {
+          const s = block.side > 0 ? -1 : 1
+          dir = norm({ x: dir.x - dir.y * s * 1.2, y: dir.y + dir.x * s * 1.2 })
+        }
+        rt.setControl({ move: dir, sprint: true })
       } else rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
     } else rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
     const facing = hero.facing

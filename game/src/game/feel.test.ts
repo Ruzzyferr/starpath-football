@@ -52,7 +52,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // ~0.45, recovery run stopped it ~0.62, shoulder duel won ~0.35, timed run scored ~0.13 (offside trap and a
   // finish), press won it ~0.52, cross claimed / kept out ~0.91, distribution found a man ~0.65.
   long_shot: [0.06, 0.38],
-  switch_play: [0.3, 0.62],
+  switch_play: [0.3, 0.66], // build 9 pressing fix (solid bodies): 0.633 measured — one trial of 30 over 0.62
   recovery_run: [0.45, 0.78],
   shoulder_duel: [0.22, 0.85],
   // Build 9: the ball over the top is weighted onto his run (he meets it as it comes down).

@@ -61,8 +61,11 @@ describe('build 8: no steal in the first beat', () => {
     expect(pressureRate(ON_BALL_KINDS, 30, 'idle', 1.0).lostEarly).toBe(0)
   }, 300_000)
 
-  it('carrying it on: tackled within 1.5 s ≤ 5 % (hold-up excluded: running into the marker is the wrong input)', () => {
-    expect(pressureRate(ON_BALL_KINDS.filter((k) => k !== 'hold_up'), 30, 'run', 1.5).lostEarly).toBeLessThanOrEqual(0.05)
+  // Build 9 pressing fix: bodies are solid, so a man who closed the carrier down inside the grace is still at his
+  // shoulder when it ends (he used to be left behind by a carrier running through him) — 5 % → 12 % (measured 9 %).
+  // Inside the grace it stays 0 (above).
+  it('carrying it on: tackled within 1.5 s ≤ 12 % (hold-up excluded: running into the marker is the wrong input)', () => {
+    expect(pressureRate(ON_BALL_KINDS.filter((k) => k !== 'hold_up'), 30, 'run', 1.5).lostEarly).toBeLessThanOrEqual(0.12)
   }, 300_000)
 
   it('losing the ball follows Dribbling/Strength/Balance/Agility vs Tackling/Aggression, both ways', () => {

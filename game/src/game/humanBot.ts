@@ -18,6 +18,7 @@ import { PITCH_LENGTH } from '../sim/match/types'
 import { interceptPoint, isBehind, keeperTarget, planSave } from './ai'
 import { clamp01, dist, norm, sub, type Agent, type Vec2 } from './model'
 import { GOAL_CENTER_Y, POST_Y_HIGH, POST_Y_LOW, predictTrajectory } from './physics'
+import { phoneRuntime } from './phoneInput'
 import type { HighlightRuntime } from './runtime'
 
 export type BotLevel = 'novice' | 'average' | 'good' | 'expert'
@@ -58,6 +59,8 @@ export const BOT_SKILL: Readonly<Record<BotLevel, BotSkill>> = {
 export interface HumanBotState {
   rng: Rng
   skill: BotSkill
+  /** Phone input path (game/phoneInput): context buttons, stick and on-screen holds only. */
+  phone: boolean
   /** Real time (accumulated by the caller via `step`). */
   real: number
   lastAct: number
@@ -117,12 +120,17 @@ export interface HumanBotState {
   claimed: boolean
 }
 
-export function createHumanBot(level: BotLevel, seed: number): HumanBotState {
+/**
+ * @param phone drive the runtime only through what a touch screen sends (game/phoneInput): the balance harness's
+ *   default since the build 9 pressing report.
+ */
+export function createHumanBot(level: BotLevel, seed: number, phone = false): HumanBotState {
   const rng = new Rng(`bot:${level}:${seed}`)
   const skill = BOT_SKILL[level]
   return {
     rng,
     skill,
+    phone,
     real: 0,
     lastAct: -10,
     shotSeenReal: -1,
@@ -243,7 +251,9 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
     return
   }
   // (Recovery run, a sensible one: the fastest line to him, flat out; a clean challenge in reach, never a lunge from behind.)
-  if (rt.kind === 'recovery_run' && st.skill.read >= 0.5) {
+  // (Shoulder duel lost: the forward who was beaten to it gets straight back at the man — no jockeying a marker who is
+  // about to clear it.)
+  if ((rt.kind === 'recovery_run' || rt.kind === 'shoulder_duel') && st.skill.read >= 0.5) {
     // Far off: cut across to the line between him and goal (ahead of him), then step in.
     const ahead = d > 4 ? Math.min(6, d * 0.6) : 0.8
     moveTo({ x: owner.pos.x + toGoal.x * ahead, y: owner.pos.y + toGoal.y * ahead }, true)
@@ -313,7 +323,8 @@ const power = (st: HumanBotState, bias = 0): number =>
  * Feeds one frame of input; call before `rt.update(realDt)`.
  * @param realDt the same wall-clock step passed to `rt.update`
  */
-export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: number): void {
+export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: number): void {
+  const rt = st.phone ? phoneRuntime(rt0) : rt0
   st.real += realDt
   if (rt.phase !== 'live') {
     rt.setControl({ move: { x: 0, y: 0 }, sprint: false })
@@ -549,8 +560,9 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       }
     }
     const dGoal = dist(hero.pos, goal)
-    // Take-on (2.1#36): a skill move when the defender steps in.
-    if (rt.kind === 'dribble') {
+    // Take-on (2.1#36): a skill move when the defender steps in (edge of the box too: SKILL is on screen to get past
+    // the man between him and the shot — bodies are solid since build 9's pressing fix).
+    if (rt.kind === 'dribble' || (rt.kind === 'edge_of_box' && st.skill.read >= 0.5)) {
       const man = rt.agents.filter((a) => a.team === 'opp' && !a.isKeeper && a.pos.x > hero.pos.x - 0.5).sort((p, q) => dist(p.pos, hero.pos) - dist(q.pos, hero.pos))[0]
       // A good dribbler goes as the man steps in (1.8–2.6 m); a careless one goes far too early, or runs into him.
       const d = man ? dist(man.pos, hero.pos) : 99
@@ -613,6 +625,9 @@ export function humanBotStep(rt: HighlightRuntime, st: HumanBotState, realDt: nu
       moveTo({ x: rt.ball.x + rt.ball.vx * t * 0.7, y: rt.ball.y + rt.ball.vy * t * 0.7 }, true)
       return
     }
+    // Rebound (SHOOT is the off-ball button): an experienced player hits the low loose ball first time as it reaches
+    // him, rather than taking a touch with defenders closing (the average player of the feel bands does not, yet).
+    if (rt.kind === 'rebound' && st.skill.read >= 0.7 && rt.ball.z < 1 && dist(hero.pos, { x: rt.ball.x, y: rt.ball.y }) < 1.6) act({ kind: 'action' })
     // A sensible player goes where he can meet a moving ball (a pass to cut out, a parry to pounce on), not where it is.
     if ((rt.defending || rt.kind === 'rebound') && st.skill.read >= 0.5 && Math.hypot(rt.ball.vx, rt.ball.vy) > 2) {
       const ip = interceptPoint(hero, rt.aiWorld(), 2.5)
