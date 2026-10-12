@@ -2343,3 +2343,98 @@ Boştaki arkadaşa iyi oynanmış kısa pas, statlar 40: **%89–90** alınıyor
 - `balance8` "topla devam: 1,5 s içinde kaptırma" ≤ %5 → ≤ %12 (ölçülen %9): gövdeler katı, ilk vuruşta (grace) kapanan adam grace bitince hâlâ omzunda (eskiden içinden geçip arkada bırakılıyordu). Grace içinde kaptırma hâlâ **0**.
 - `feel` switch_play üst sınırı 0,62 → 0,66 (ölçülen 0,633; 30 denemede bir deneme).
 - `actionSet` JOCKEY etkisi: "4 m içinde bitir" ya da "en az 1 m kapat" (interception'da uzaktan başlıyor).
+
+
+## Build 9 (4. tur): fizik + tek şans kuralı — "her şey statlara bağlı" (Ekim 2026)
+
+Sahip (iki playtester raporu ve tasarım kararı): (1) ortasahada DEPAR yerine yanlışlıkla ŞUT'a basınca top orta sahadan gole gitti — olmamalı; (2) "her şey tek tek dengeli, statlarla tutarlı olsun; şans yok, her şey statlara bağlı". Model: **deterministik fizik** (top, vuruş, oyuncu, gövde, kaleci) + **tek şans kuralı** (`statChance`: tek oyuncu S %, çekişme (S − (O − 50)) %, girdi birkaç puan, %5–85). Şutta tek şans yön hatasıdır. Ayrıntı: `docs/SYSTEMS-MAP.md` §6.
+
+### Kök neden: orta sahadan gol
+
+- ŞUT düğmesi nişansız dokunuşta kalecinin açık bıraktığı köşeye (direğin 1,3 m içine) vuruyordu.
+- AI kalecinin `decide()`'ı 0,1–0,36 s'de bir onu konum noktasına geri çekiyordu: havada 3 s kalan yavaş, sekip gelen bir şutu takip zinciri kopunca hiç izlemedi; dokunursa da kurtarış zarı atılıyordu.
+- Önce: 40–50 m'den dokunuş %19–65 gol (`LONG_REPORT=1`), doğal anlarda 45 m+ dokunuş counter %32, switch_play %19.
+- Sonra: kaleci tepkisinden (Refleks) sonra her adımda topun **gerçek yörüngesinde** yetişebileceği en güvenli noktaya gider (önce ayakta / zıplayarak, gerekmedikçe dalmaz, topa doğru dalar); yetişirse kurtarır; kaleye girecek her serbest top (şut, uzun "pas") izlenir. 40–50 m dokunuş **%0–2**, 90'lık uzun şutçunun 40 m'den nişanlı şutu **%0** (≤ %8), 13 / 20 m şutçu statıyla artar, kaleci statıyla düşer; doğal anlarda 35 m+ dokunuş ≤ %2 (`longShot.test.ts` sabitliyor).
+
+### Zar envanteri (önce → sonra)
+
+| Zar (önce) | Ne yapıyordu | Sonra |
+|---|---|---|
+| Kurtarış / tutuş / yumruk zarı (`saveChance`, `catchChance`, `punchChance`, `KEEPER_SAVE_BONUS`, `HERO_PLACED_BEAT`, `HERO_FINISH_EDGE`, `TIGHT_ANGLE_SAVE`, `KEEPER_EDGE`, `SHOOTER_EDGE`, `OPP_KEEPER_REACH`, `HERO_KEEPER_HANDS`) | Kaleci dokunsa da gol olabiliyordu, yetişemese de kurtarabiliyordu | Kaldırıldı. Yetişen kurtarır (fizik: tepki, hızlanma, uzanma = Dalış / Refleks / Çeviklik / Hız); tutup tutmamak `hold` (Elle Kontrol, 11 m/s altı kesin), sekme yönü deterministik |
+| Şutta yanlış vuruş (`misHit`, `MISHIT_DEG`, `frameSafe`, `heroMisHit`), hız / falso gürültüsü | İyi vuruşu zar bozabiliyordu | Kaldırıldı. Tek şans yön hatası (`errA`, `hErr`), statla küçülür, mesafeyle büyür |
+| Penaltı okuma zarı (`PENALTY_READ_SAVE`, `penaltyRead`) | Kaleci tarafı rastgele okuyordu | `penaltyRead` olayı: GK Pozisyon vs Soğukkanlılık; okursa erken çıkar, kurtarış yine fizik |
+| Müdahale / top kapma / omuz / ayakta kalma / hava topu / okuma / ilk dokunuş / smother / çalım / çağrı olasılıkları (her yerde ayrı formül) | Her an kendi oranını kullanıyordu | Hepsi `eventChance` → `statChance` (tek kural, `chanceEvents.ts`); girdi puanı `CHANCE_MOD` (zamanlama +20, arkadan −20, uzaktan dalış −40, kayarak −5, kalkan +15) |
+| Faul zarı (her başarısız müdahalede) | Temiz müdahaleler de faul olabiliyordu | Yalnız pervasız müdahale (`RECKLESS_LUNGE`) `clean` olayı atar |
+| Blok / sekme / başarısız çalım yönü | Rastgele | Deterministik (gövdeden geliş açısına göre) |
+
+### Şans olayları (oyuncu statı ↔ karşı stat, girdi puanı)
+
+| Olay | Oyuncu statı | Karşı stat | Girdi |
+|---|---|---|---|
+| tackle (top kapma) | Müdahale | Dripling | zamanlama +20, arkadan −20, uzaktan −40, kayarak −5 |
+| clean (faulsüz) | Müdahale | – | ayakta +30, kayarak +10 |
+| takeOn (çalım) | Dripling | Müdahale | hız / adamın tarafı |
+| shoulder (omuz) | Güç | Güç | kalkan +15 |
+| keepFeet (ayakta kalma) | Denge | Güç | – |
+| aerial (hava topu) | Kafa | Kafa | servis kalitesi (Orta / Falso) |
+| read (pas okuma) | Önsezi | Pas (uzun topta Uzun Pas) | yardım −40 |
+| firstTouch (ilk dokunuş) | İlk Dokunuş | – | 8 m/s altı kesin; üstünde 50 − 3·(hız−8) |
+| hold / smother (kaleci) | Elle Kontrol | – / Dripling | – |
+| penaltyRead | GK Pozisyon | Soğukkanlılık | – |
+| shift / call | Dripling / Vizyon | Çeviklik / – | – |
+
+### Kontroller (telefon yolu, N = 200)
+
+Sahibin yeni modeli 55–75 bandını kaldırdı (tek şans olayında başlangıç kahramanı ~%45–55). Kontroller: **akıl bandı** %30–85, **stat** (40 → 65 → 90 artış; puanlı değer: tam 1, kısmi ½ — fizik kurtarışında daha iyi şutçu kısmiyi gole çevirir), **özensiz** ≥ 20 puan aşağıda, **rakip** (güçlü < orta < zayıf, puanlı), **taban** (stat 40, iyi girdi, orta rakip ≥ %30; 40 vs güçlü bilgi olarak), **uzak şut** (dokunuş ≤ %2, nişanlı 40 m ≤ %8), **fizik değişmezleri** (`physicsInvariants.test.ts`).
+
+| an | başlangıç (tam) | bant | stat 40/65/90 | özensiz farkı | rakip güçlü/orta/zayıf | taban (40) | 40 vs güçlü | uzak şut | fizik |
+|---|---|---|---|---|---|---|---|---|---|
+| back_post | 59 (49) | ✅ | 55/60/70 ✅ | 39 ✅ | 59/59/61 ❌ | 55 ✅ | 52 | – | ✅ |
+| block | 71 (55) | ✅ | 68/69/77 ✅ | 21 ✅ | 69/71/74 ❌ | 68 ✅ | 68 | – | ✅ |
+| corner | 45 (23) | ✅ | 34/46/52 ✅ | 20 ✅ | 34/45/53 ✅ | 34 ✅ | 26 | – | ✅ |
+| corner_kick | 45 (27) | ✅ | 33/50/75 ✅ | 17 ❌ | 38/45/57 ✅ | 33 ✅ | 23 | – | ✅ |
+| counter_2v1 | 58 (22) | ✅ | 53/59/60 ✅ | 17 ❌ | 47/58/70 ✅ | 53 ✅ | 44 | ✅ | ✅ |
+| cross | 33 (10) | ✅ | 30/34/50 ✅ | 14 ❌ | 28/33/50 ✅ | 30 ❌ | 25 | ✅ | ✅ |
+| defend | 52 (49) | ✅ | 28/67/85 ✅ | 31 ✅ | 34/52/68 ✅ | 28 ❌ | 17 | – | ✅ |
+| defend_1v1 | 69 (68) | ✅ | 49/73/92 ✅ | 40 ✅ | 51/69/85 ✅ | 49 ✅ | 31 | – | ✅ |
+| dribble | 35 (35) | ✅ | 21/38/49 ✅ | 24 ✅ | 28/35/37 ✅ | 21 ❌ | 18 | ✅ | ✅ |
+| edge_of_box | 53 (25) | ✅ | 51/52/56 ✅ | 34 ✅ | 41/53/62 ✅ | 51 ✅ | 33 | ✅ | ✅ |
+| fk_wall | 77 (25) | ✅ | 77/79/81 ❌ | 20 ✅ | 76/77/82 ❌ | 77 ✅ | 73 | – | ✅ |
+| freekick | 41 (1) | ✅ | 41/48/50 ❌ | 22 ✅ | 34/41/51 ✅ | 41 ✅ | 33 | – | ✅ |
+| gk_1v1 | 60 (30) | ✅ | 55/63/67 ✅ | 15 ❌ | 51/60/76 ✅ | 55 ✅ | 40 | – | ✅ |
+| gk_claim | 78 (35) | ✅ | 69/76/83 ✅ | 24 ✅ | 70/78/87 ✅ | 69 ✅ | 60 | – | ✅ |
+| gk_distribution | 81 (81) | ✅ | 76/81/85 ✅ | 48 ✅ | 69/81/87 ✅ | 76 ✅ | 65 | – | ✅ |
+| gk_save | 74 (60) | ✅ | 74/75/74 ❌ | 21 ✅ | 73/74/82 ✅ | 74 ✅ | 70 | – | ✅ |
+| gk_sweep | 55 (11) | ✅ | 52/59/65 ✅ | 30 ✅ | 47/55/73 ✅ | 52 ✅ | 40 | – | ✅ |
+| header | 45 (34) | ✅ | 35/46/53 ✅ | 20 ❌ | 39/45/48 ✅ | 35 ✅ | 32 | – | ✅ |
+| hold_up | 73 (73) | ✅ | 72/73/74 ❌ | 66 ✅ | 70/73/74 ❌ | 72 ✅ | 71 | ✅ | ✅ |
+| interception | 62 (52) | ✅ | 40/62/83 ✅ | 26 ✅ | 41/62/69 ✅ | 40 ✅ | 26 | – | ✅ |
+| long_ball_control | 48 (40) | ✅ | 43/54/61 ✅ | 14 ❌ | 37/48/61 ✅ | 43 ✅ | 33 | ✅ | ✅ |
+| long_shot | 42 (3) | ✅ | 39/42/49 ❌ | 24 ✅ | 34/42/46 ✅ | 39 ✅ | 31 | ✅ | ✅ |
+| one_on_one | 66 (45) | ✅ | 63/67/73 ✅ | 28 ✅ | 65/66/75 ✅ | 63 ✅ | 61 | ✅ | ✅ |
+| penalty | 61 (61) | ✅ | 35/63/80 ✅ | 28 ✅ | 38/61/73 ✅ | 35 ✅ | 20 | – | ✅ |
+| press_trap | 41 (40) | ✅ | 31/52/62 ✅ | 8 ❌ | 28/41/54 ✅ | 31 ✅ | 23 | – | ✅ |
+| rebound | 67 (58) | ✅ | 61/69/72 ✅ | 37 ✅ | 58/67/68 ✅ | 61 ✅ | 53 | – | ✅ |
+| recovery_run | 54 (23) | ✅ | 43/63/78 ✅ | 28 ✅ | 38/54/66 ✅ | 43 ✅ | 32 | – | ✅ |
+| shoulder_duel | 64 (64) | ✅ | 57/68/77 ✅ | 17 ❌ | 40/64/73 ✅ | 57 ✅ | 37 | ✅ | ✅ |
+| switch_play | 68 (67) | ✅ | 64/68/66 ❌ | 50 ✅ | 65/68/71 ✅ | 64 ✅ | 61 | ✅ | ✅ |
+| timed_run | 70 (16) | ✅ | 69/78/93 ✅ | 24 ✅ | 64/70/79 ✅ | 69 ✅ | 63 | – | ✅ |
+
+"–" uzak şut: o anda uzaktan şut yolu yok. Fizik sütunu: `physicsInvariants.test.ts` (8 değişmez: azalan hız, tünelleme yok, durma mesafesi hızla artar, uzun uçuş = daha çok kurtarış …) tüm anlar için ortak modülde geçiyor.
+
+**❌ nedenleri (dürüst):**
+- **Özensiz farkı < 20** (corner_kick, counter_2v1, cross, gk_1v1, header, long_ball_control, press_trap, shoulder_duel): sahibin modelinde girdi olayı *açar*, şansı yalnız birkaç puan değiştirir; stat ilk sırada. Özensiz bot da çoğu zaman olaya giriyor, fark statın payı kadar kalıyor.
+- **Stat düz** (fk_wall, freekick, gk_save, hold_up, long_shot, switch_play): sonuç çoğunlukla fizikten (duvar, kalecinin yetişmesi, pasın yumuşak gelmesi); stat yalnız yön hatasını küçültüyor → 40–90 arası 2–9 puan.
+- **Rakip düz** (back_post, block, fk_wall, hold_up): anahtar rakibin statı sonucu belirleyen olayda değil (ör. blokta sonuç gövdenin şut çizgisinde olması).
+- **Taban < %30** (defend 28, dribble 21, cross 30): doğrusal kuralda 40'lık oyuncu orta rakibe (56–62) karşı %28–34 tavanla başlıyor; ardından fizik (alım, bitiriş) düşürüyor.
+
+
+### Bilinçli değişen sabitlemeler
+
+- `balance8`: kısa pas alımı ≥ %90 (stat 40) korunuyor; İlk Dokunuş sert topta sabit (+1 % / puan, yumuşak top kesin).
+- `intent`: başlangıç minimumları şut 0,65 → 0,38, ŞUT düğmesi 0,2, müdahale 0,55 → 0,25; 1v1 köşe bantları fizik kalecisine (%34 / 47 / 63) — **sahip kararı**.
+- `feel`: one_on_one 0,40 → 0,22, penaltı 0,62 → 0,50, edge_of_box 0,20 → 0,12, long_shot 0,06 → 0,02 alt; switch_play üst 0,72, gk_distribution üst 0,90.
+- Drill par / eğri: pas 2130 → 1900, orta 1890 → 1500, dağıtım 690 → 560 (+ `CROSS_AWAY_M` 3: güçlü rakip artık drili kolaylaştırmıyor), kalecilik 72 → 60 ve eğri 1,01 → 1,6 (hiçbir şey yapmayan kaleci 0,33, iyi 0,66).
+- `attrSensitivity`: Saldırganlık / GK Pozisyon / Zıplama / Refleks probları statın şimdi etki ettiği yere taşındı. Bulgu: Zıplama hava topunda ters çalışıyordu (40 → 85 kazanma 91 → 64/300) — `HEAD_ADJUST` 0,35 m ile düzeltildi (header 90'da %35 → 53). Kart DEFEND çiftinden Saldırganlık çıktı (artık müdahaleye etkisi yok).
+- `KIND_CHECK_PENDING`: yukarıdaki ❌'li 18 an todo olarak listeli (gizlenmedi).
+- Kariyer: `BALANCE=1` seed 1000 / 2000 / 3000 geçti (10. sezon OVR 82 / 82 / 83). Rol dengesi (ST / LW / CB, 12 kariyer × 8 sezon): sim reytingi, kariyer OVR'si ve reytingi her rolde mevki ortalamasının ±%3'ü içinde.
