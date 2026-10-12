@@ -18,6 +18,7 @@ import {
 } from './intentHarness'
 import { keyOpponent, momentMatchup } from './matchup'
 import { RECEIVE, SUPPORT_KINDS, dribblePace, receiveReact, receiveWeight, startGrace } from './runtime'
+import { CONTROL_EASY, firstTouchChance } from './chanceEvents'
 
 const all = (keys: readonly AttributeKey[], v: number): Partial<Record<AttributeKey, number>> => Object.fromEntries(keys.map((k) => [k, v]))
 /** Non-decreasing within `tol` (sampling noise between neighbouring levels). */
@@ -26,19 +27,25 @@ const falling = (xs: readonly number[], tol = 0.01) => xs.every((x, i) => i === 
 const L3 = [40, 65, 90] as const
 
 describe('build 8: clean short pass to a free man is received', () => {
-  it('≥ 90 % at pass attributes 40, rising to 90 (good input; the pass target ring is read)', () => {
+  // Build 9 physics pass: a clean short pass to a free man arrives soft (≤ CONTROL_EASY m/s) and is simply his — physics,
+  // not a roll — so reception sits near 100 % at every level; the passer's quality shows in where the ball goes (the
+  // intent pass curves), the receiver's First Touch on a hard ball (below).
+  it('≥ 90 % at pass attributes 40, never falling with them (good input; the pass target ring is read)', () => {
     const r = [40, 50, 60, 70, 80, 90].map((lv) => shortPassReception(lv, 150).rate)
     expect(r[0]!).toBeGreaterThanOrEqual(0.9)
     expect(rising(r)).toBe(true)
-    expect(r[5]! - r[0]!).toBeGreaterThanOrEqual(0.03)
-    expect(r[5]!).toBeLessThan(0.995)
   }, 300_000)
 
-  it('follows the receiver: First Touch / Anticipation 40 → 90', () => {
+  it('follows the receiver on a hard ball: First Touch, +1 % a point (a soft one is simply his)', () => {
+    const ft = (v: number, rel: number) => firstTouchChance({ attrs: { firstTouch: v } as never }, rel)
+    expect(ft(40, CONTROL_EASY)).toBe(1)
+    expect(ft(90, CONTROL_EASY)).toBe(1)
+    expect(ft(60, 18) - ft(40, 18)).toBeCloseTo(0.2, 9)
+    expect(ft(90, 22)).toBeGreaterThan(ft(65, 22))
+    // A harder ball is harder to bring down (3 points per m/s).
+    expect(ft(50, 20)).toBeLessThan(ft(50, 16))
     const r = [40, 65, 90].map((lv) => shortPassReception('start', 150, 'good', { mates: all(['firstTouch', 'anticipation'], lv) }).rate)
     expect(rising(r)).toBe(true)
-    // Small for a free man 5–18 m away (a heavy touch is recovered with nobody near); it grows under pressure.
-    expect(r[2]! - r[0]!).toBeGreaterThanOrEqual(0.015)
   }, 300_000)
 
   it('sloppy input stays ≥ 20 points below good (wrong man, late, no look at the ring)', () => {

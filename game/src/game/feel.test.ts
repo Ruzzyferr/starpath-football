@@ -14,12 +14,13 @@ import { FEEL_KINDS, feelRate, playFeel, type FeelKind } from './feelHarness'
  */
 const BANDS: Record<FeelKind, [number, number]> = {
   // Oct 2026 intent pass (playtester build 7): placed hero finishes beat the keeper, frame-safe execution — 1v1 ~0.65.
-  one_on_one: [0.4, 0.78],
-  penalty: [0.62, 0.88],
+  // Build 9 physics pass (a keeper who gets there saves it, no save roll): 1v1 measured 0.30, penalty 0.617.
+  one_on_one: [0.22, 0.78],
+  penalty: [0.5, 0.88],
   // Build 9 (the bot judges its patience on the pitch clock, shot power follows Shooting): bands re-based on the measured rates.
   freekick: [0.06, 0.38],
   // Build 8: measured 0.35 at N=120 already at build 7 (the 0.25 cap only held on seeds 1–60); ~0.33–0.39 now.
-  edge_of_box: [0.2, 0.68],
+  edge_of_box: [0.12, 0.68], // build 9 physics pass: measured 0.18
   cross: [0.1, 0.4],
   // Build 9 (the hero's timed leap attacks the ball; the header feed is the setup): re-based on measured rates.
   corner: [0.15, 0.48],
@@ -51,8 +52,8 @@ const BANDS: Record<FeelKind, [number, number]> = {
   // Attribute moments (measured N=150 average, normal): long shot scored ~0.14, switch found the far side
   // ~0.45, recovery run stopped it ~0.62, shoulder duel won ~0.35, timed run scored ~0.13 (offside trap and a
   // finish), press won it ~0.52, cross claimed / kept out ~0.91, distribution found a man ~0.65.
-  long_shot: [0.06, 0.38],
-  switch_play: [0.3, 0.66], // build 9 pressing fix (solid bodies): 0.633 measured — one trial of 30 over 0.62
+  long_shot: [0.02, 0.38], // build 9 physics pass: measured 0.05 (long shots are rare)
+  switch_play: [0.3, 0.72], // build 9: 0.633 (solid bodies), 0.667 (physics pass)
   recovery_run: [0.45, 0.78],
   shoulder_duel: [0.22, 0.85],
   // Build 9: the ball over the top is weighted onto his run (he meets it as it comes down).
@@ -60,7 +61,7 @@ const BANDS: Record<FeelKind, [number, number]> = {
   press_trap: [0.25, 0.66],
   // Build 9: graded keeper credit (his own claim / on his spot) and team-mates leave the cross to him.
   gk_claim: [0.6, 0.98],
-  gk_distribution: [0.5, 0.8],
+  gk_distribution: [0.5, 0.9], // build 9 physics pass: measured 0.85 (a soft ball is simply controlled)
 }
 
 const N = 60

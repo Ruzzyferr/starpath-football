@@ -34,6 +34,8 @@ test('moment card shows hero vs key opponent and the opponent tag follows in the
   }
   expect(await card.getByTestId('mu-row').count()).toBeGreaterThanOrEqual(3)
   await expect(card.getByTestId('mu-edge')).toHaveText(/Your edge|Their edge|Even/)
+  // Build 9: the real odds of the moment's chance event (stat +1 = +1 %), where it turns on one (shots do not).
+  if (await card.getByTestId('mu-chance').count()) await expect(card.getByTestId('mu-chance')).toHaveText(/ chance: \d{1,2}% \(.+ \d+( vs .+ \d+)?\)$/)
   // The card must fit inside the viewport (no off-screen dialog).
   const box = await page.locator('.lm-moment-card').boundingBox()
   const vp = page.viewportSize()!
