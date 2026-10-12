@@ -224,14 +224,45 @@ export function carrierHold(c: Pick<Agent, 'attrs'>): number {
  * his feet), never from behind, and a lunge (pressed out of reach and made on
  * the charge) more than halving it at every level.
  */
-export function heroTackleWin(skill: number, carrier: number, timing: number, gap: number, behind: boolean, difficulty: number, lunge: boolean): number {
+export function heroTackleWin(skill: number, carrier: number, timing: number, gap: number, behind: boolean, difficulty: number, lunge: boolean | number): number {
   const T = HERO_TACKLE
   // Timing helps up to a well-timed challenge (the ball off his feet); beyond that the tackler's quality decides.
   let z = T.base + (skill - carrier) * T.skill + (Math.min(timing, T.timingCap) - 0.45) * T.timing + (gap > LOOSE_BALL_GAP ? T.exposed : 0) + (1 - difficulty) * T.difficulty
   if (behind) z -= T.behind
   const p = 1 / (1 + Math.exp(-z))
-  return lunge ? p * T.lunge : p
+  // A lunge is graded by how far out he pressed (1 = from well out of reach, see LUNGE_SPAN).
+  const l = typeof lunge === 'number' ? clamp01(lunge) : lunge ? 1 : 0
+  return p * (1 - (1 - T.lunge) * l)
 }
+
+/**
+ * Bodies (playtester build 9: "I ran straight at the man pressing PRESS and went THROUGH him and the ball"): the hero
+ * and an opponent never come closer than this between centres (m). Checked swept over the step, so a fast approach
+ * cannot skip the contact frame.
+ */
+export const BODY_GAP = 0.7
+/** The ball at an opponent's feet: the hero's body never closer than this to it (m) — he meets it, never runs over it. */
+export const BALL_CONTACT = 0.45
+/** A defensive press (TACKLE / PRESS / SLIDE / BLOCK / INTERCEPT, or a tap) this recent turns contact with the carrier or his ball into a challenge (s). */
+export const CONTEST_INTENT = 1.2
+/** TACKLE pressed out of reach: the lunge penalty grows from nothing at reach to full this many metres further out. */
+export const LUNGE_SPAN = 1.5
+/** Standing-tackle reach (m). */
+export const TACKLE_REACH = 1.8
+/**
+ * PRESS arrived (playtester build 9: PRESS used to stop at hurrying him, then ran through him): for this long he
+ * stays on the carrier and goes in for the ball — the moment it comes off his foot (exposure ≥ PRESS_GO_EXPOSED),
+ * after PRESS_GO_AFTER s in reach, or on contact, whichever is first. Hurried, the carrier often lets it go before.
+ */
+export const PRESS_STICK = 1.0
+/** recovery_run: back in the play (partial credit when another stops it) within this many metres of the ball (build 9 floor: 12 → 14). */
+export const RECOVERY_DUTY = 14
+/** JOCKEY held: he gets goal-side of the carrier from this far (m; 12 before interception offered JOCKEY too). */
+export const JOCKEY_RANGE = 30
+/** The PRESS run's longest life (s): he keeps going at whoever has the ball until he arrives. */
+export const PRESS_RUN = 3.0
+export const PRESS_GO_EXPOSED = 0.7
+export const PRESS_GO_AFTER = 0.5
 
 /** Difficulty label → opponent sharpness multiplier. */
 export const DIFFICULTY_SCALE: Record<Difficulty, number> = { easy: 0.85, normal: 1, hard: 1.15, legend: 1.3 }
@@ -243,6 +274,8 @@ export const ADVANTAGE_GAIN_M = 7
 export const DEFAULT_ADVANTAGE = 0.5
 /** Penalty tell-tale: meters an AI keeper cheats toward the hero's habit (× the habit share). */
 export const KEEPER_LEAN = 0.7
+/** Shoulder contact: seconds between two leans of the same pair (0.3 before bodies were solid). */
+export const SHOULDER_EVERY = 0.6
 /** shoulder_duel: seconds on the ball after the duel that count as winning it. */
 export const SHOULDER_WON_SECONDS = 1.0
 /** press_trap: the press is beaten once they carry it into midfield (hero frame x). */
@@ -275,12 +308,12 @@ export const DEFEND_HELP = 0.15
 /** …and in a keeper's moment (the keeper's job; build 9: team-mates were winning most of them). */
 export const KEEPER_MOMENT_HELP = 0.08
 /** Pressing reads (see readPressedPass): range (m), base, factor in the pass's line / off it. */
-export const PRESS_READ = { range: 11, base: 2.0, shadow: 1.5, open: 0.3, hurried: 1.9 } as const
+export const PRESS_READ = { range: 11, base: 2.0, shadow: 1.5, open: 0.3, hurried: 3.0 } as const
 const PRESS_READ_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['press_trap'])
 /** An AI shooter's scatter follows his own Finishing (Set Pieces for a free kick): ×1.12 at 47, ×1 at 62, ×0.88 at 77. */
 export const aiFinishNoise = (finishing: number): number => clampN(1.5 - 0.8 * a01(finishing), 0.7, 1.3)
 /** Take-on timing bonus / penalty (build 9): right as the man steps in, or not. */
-export const SKILL_TIMING = 0.3
+export const SKILL_TIMING = 0.4
 /** Opposition free-kick taker's spread (build 9: 1.3 → 1.15, a free kick against was kept out 80 % of the time). */
 export const FK_AGAINST_NOISE = 1.15
 /** AI carrier's share of the hero's carrying pace (build 9: was ×0.80–0.83 of a sprint, the hero ×0.97–0.99). */
@@ -694,7 +727,8 @@ export class HighlightRuntime {
     if (d > PRESS_READ.range) return false
     const toBy = norm(sub(by.pos, h.pos))
     const closing = h.vel.x * toBy.x + h.vel.y * toBy.y
-    if (closing < 1) return false
+    // Closing him down — or already tight on him (PRESS arrived / in reach: bodies are solid, he cannot close further).
+    if (closing < 1 && this.pressOn?.id !== by.id && d > TACKLE_REACH) return false
     const read = a01(h.attrs.anticipation ?? h.attrs.positioning) * 0.6 + a01(h.attrs.positioning) * 0.4
     const tight = clamp01((PRESS_READ.range - d) / 4)
     const passDir = norm({ x: plan.aim.x - by.pos.x, y: plan.aim.y - by.pos.y })
@@ -771,9 +805,13 @@ export class HighlightRuntime {
   /** Context button run (tackle/slide close-in, intercept, press, rush, block): flat out to `to()` until `until`. */
   private dash: { to: () => Vec2 | null; until: number; why: 'engage' | 'intercept' | 'press' | 'rush' | 'block' } | null = null
   /** TACKLE / SLIDE pressed out of range: the challenge goes in as soon as he is close enough. */
-  private engage: { slide: boolean; until: number } | null = null
-  /** True while a buffered (pressed out of reach) challenge is going in: a lunge, timed worse. */
-  private lunge = false
+  private engage: { slide: boolean; until: number; d0: number } | null = null
+  /** While a buffered (pressed out of reach) challenge is going in: how much of a lunge it is (0..1, timed worse). */
+  private lunge = 0
+  /** Game time of his last defensive press (TACKLE / PRESS / SLIDE / BLOCK / INTERCEPT, or a tap on the carrier). */
+  private defPressAt = -9
+  /** PRESS arrived on this carrier: on him, he goes in for the ball (see {@link PRESS_STICK}). */
+  private pressOn: { id: string; since: number; until: number } | null = null
   /** BLOCK: until when the hero is spread in the shot's line (wider body, Positioning / Aggression). */
   private blockUntil = -1
   /** STAY (keeper): set and big, no auto-positioning drift, until then. */
@@ -1215,6 +1253,7 @@ export class HighlightRuntime {
     this.moveHero()
     for (const a of this.agents) if (!a.isHero) this.thinkAndSteer(a)
     for (const a of this.agents) this.integrateAgent(a)
+    if (this.phase === 'live' || this.phase === 'post') this.heroBodyContact()
 
     this.updateBall()
     // A delivery that reaches the danger zone (six-yard box to the spot, between the posts' width + 2 m, at a playable
@@ -1754,6 +1793,7 @@ export class HighlightRuntime {
     // Defending: tackles.
     if (carrier && carrier.team === 'opp') {
       const d = dist(hero.pos, carrier.pos)
+      this.defPressAt = this.time
       if (act.kind === 'swipe' && !act.swipe.isTap) return this.startSlide(act.swipe.dir)
       if (act.kind === 'action' || act.kind === 'skill' || act.kind === 'tapAt' || act.kind === 'pass') {
         if (d < 1.8) return this.standingTackle(carrier)
@@ -1980,12 +2020,14 @@ export class HighlightRuntime {
     hero.cd = 0.9
     // Anticipation: reading the carrier's touch times the challenge better.
     // A patient jockey (JOCKEY held first) waits for the touch: better timed, more so with Anticipation.
-    const patience = Math.min(0.18, this.jockeyT * 0.12) * (0.5 + a01(hero.attrs.anticipation ?? 50))
+    // (Tight on him after a PRESS counts the same: he arrived, got set and waited for the touch.)
+    const setT = Math.max(this.jockeyT, this.pressOn?.id === carrier.id ? (this.time - this.pressOn.since) * 2 : 0)
+    const patience = Math.min(0.18, setT * 0.12) * (0.5 + a01(hero.attrs.anticipation ?? 50))
     // Charging in flat out (build 9): a set carrier sells him the shift — the faster he arrives, the worse his timing
     // (Agility: stopping and adjusting at pace).
     const closing = dot(hero.vel, norm(sub(carrier.pos, hero.pos)))
     const charge = clamp01((closing - HERO_CHARGE.from) / HERO_CHARGE.span) * HERO_CHARGE.timing * (1.2 - a01(hero.attrs.agility) * 0.6)
-    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9 + patience - (this.lunge ? HERO_LUNGE_TIMING : 0) - charge)
+    const timing = clamp01(this.exposure(carrier) + (a01(hero.attrs.anticipation ?? 50) - 0.65) * 0.9 + patience - HERO_LUNGE_TIMING * this.lunge - charge)
     const behind = isBehind(carrier, hero)
     const odds = tackleOdds(hero, carrier, timing, behind, false, this.difficulty)
     const gap = this.ballGap(carrier)
@@ -2015,6 +2057,19 @@ export class HighlightRuntime {
     hero.actionDir = norm(dir)
     hero.vel = scale(hero.actionDir, Math.max(len(hero.vel), topSpeed({ ...hero, sprint: true })) + 1.2)
     this.heroTackleResolved = false
+    // block: diving in at the set shooter is what the shift sells (BLOCK_SHIFT, his Dribbling vs the hero's Agility) —
+    // rolled as he goes to ground (a slide from range resolved before the shooter's next look, so it never was).
+    const o = this.owner
+    if (this.kind === 'block' && o && o.team === 'opp' && !this.blockShifted && dist(hero.pos, o.pos) < 5.5) {
+      this.blockShifted = true
+      const p = BLOCK_SHIFT.base + BLOCK_SHIFT.drib * a01(o.attrs.dribbling) - BLOCK_SHIFT.agility * a01(hero.attrs.agility)
+      if (this.rng.chance(clampN(p + (this.difficulty - 1) * 0.5, 0.05, 0.85))) {
+        const side = o.pos.y >= hero.pos.y ? 1 : -1
+        o.intent = { kind: 'run', to: inField(add(o.pos, { x: -0.4, y: side * 1.8 }), 1), until: this.time + 0.35 }
+        // Sold: he goes past the ball.
+        this.heroTackleResolved = true
+      }
+    }
     this.events.push({ type: 'tackle', by: hero.id, won: false, slide: true, x: hero.pos.x, y: hero.pos.y })
   }
 
@@ -2056,13 +2111,20 @@ export class HighlightRuntime {
         return this.heroJump()
       case 'tackle':
       case 'slide':
-        if (!this.tryEngage(act.id === 'slide')) this.engage = { slide: act.id === 'slide', until: this.time + 1.1 }
+        this.defPressAt = this.time
+        if (!this.tryEngage(act.id === 'slide')) {
+          const c = this.owner
+          this.engage = { slide: act.id === 'slide', until: this.time + 1.1, d0: c && c.team === 'opp' ? dist(hero.pos, c.pos) : TACKLE_REACH }
+        }
         return
       case 'block':
+        this.defPressAt = this.time
         return this.startBlock()
       case 'intercept':
+        this.defPressAt = this.time
         return this.startIntercept()
       case 'press':
+        this.defPressAt = this.time
         return this.startPress()
       case 'dive':
         return this.keeperDive(null)
@@ -2175,7 +2237,8 @@ export class HighlightRuntime {
   private startPress(): void {
     this.dash = {
       why: 'press',
-      until: this.time + 1.3,
+      // Until he gets there (build 9 playtester: a 1.3 s run fizzled out short of a man pressed from 10+ m away).
+      until: this.time + PRESS_RUN,
       to: () => {
         const o = this.owner
         if (o && o.team === 'opp') return o.pos
@@ -2568,8 +2631,8 @@ export class HighlightRuntime {
     const goal = { x: ownGoalX(h.team), y: GOAL_CENTER_Y }
     // (back_post: the job is his man at the far post — tight on him, or up contesting the header.)
     if (this.kind === 'back_post') return this.heroContested || this.agents.some((o) => o.team === 'opp' && !o.isKeeper && dist(o.pos, h.pos) < 2.5 && dist(o.pos, b) < 10)
-    // (recovery_run: getting back into the play is the job — within 12 m and level or goal-side.)
-    if (this.kind === 'recovery_run') return dist(h.pos, b) < 12 && dist(h.pos, goal) < dist(b, goal) + 4
+    // (recovery_run: getting back into the play is the job — within RECOVERY_DUTY m and level or goal-side.)
+    if (this.kind === 'recovery_run') return dist(h.pos, b) < RECOVERY_DUTY && dist(h.pos, goal) < dist(b, goal) + 4
     return dist(h.pos, b) < 8 && dist(h.pos, goal) < dist(b, goal) + 0.5
   }
 
@@ -2649,10 +2712,10 @@ export class HighlightRuntime {
       const o = this.owner
       if (this.time > this.engage.until || hero.state !== 'run') this.engage = null
       else {
-        // Pressed out of reach: he charges in and lunges on arrival (badly timed).
-        this.lunge = true
+        // Pressed out of reach: he charges in and lunges on arrival (the further out he pressed, the worse it is timed).
+        this.lunge = clamp01((this.engage.d0 - TACKLE_REACH) / LUNGE_SPAN)
         const went = this.tryEngage(this.engage.slide)
-        this.lunge = false
+        this.lunge = 0
         if (went) {
           this.engage = null
           return
@@ -2673,16 +2736,38 @@ export class HighlightRuntime {
         mv = dm
         hero.sprint = len(dm) > 0.6
         const o = this.owner
-        // PRESS arriving: the carrier is hurried into his next decision (Aggression closes him down harder).
-        if (this.dash?.why === 'press' && o && o.team === 'opp' && dist(o.pos, hero.pos) < 1.8) {
+        // PRESS: flat out to him, but the last few metres only at a sprint while SPRINT is held — easing off arrives
+        // under control (the charge in standingTackle times a flat-out arrival worse).
+        if (this.dash?.why === 'press' && o && o.team === 'opp' && !this.control.sprint && dist(o.pos, hero.pos) < 3.5) hero.sprint = false
+        // PRESS arriving: the carrier is hurried into his next decision (Aggression closes him down harder) and the
+        // presser goes in for the ball (playtester build 9: PRESS used to stop at hurrying him, then ran through him).
+        // Arriving flat out is the reckless part: the charge in standingTackle times it worse, an agile one less so.
+        if (this.dash?.why === 'press' && o && o.team === 'opp' && dist(o.pos, hero.pos) < TACKLE_REACH) {
           o.think = Math.min(o.think, 0.04 + (1 - a01(hero.attrs.aggression ?? 50)) * 0.12)
           this.hurried = { id: o.id, until: this.time + 1.0 }
           this.dash = null
+          this.pressOn = { id: o.id, since: this.time, until: this.time + PRESS_STICK }
         }
       }
     }
+    // PRESS on him: stick tight and go in at the right moment (the ball off his foot), or after a beat.
+    const po = this.pressOn
+    if (po) {
+      const c = this.owner
+      if (this.time > po.until || !c || c.id !== po.id) this.pressOn = null
+      else if (hero.state === 'run' && hero.cd <= 0 && hero.noTouch <= 0 && this.time >= this.stumbleUntil) {
+        const d = dist(c.pos, hero.pos)
+        if (d < TACKLE_REACH && (this.exposure(c) >= PRESS_GO_EXPOSED || this.time - po.since >= PRESS_GO_AFTER)) {
+          this.pressOn = null
+          this.standingTackle(c)
+          return
+        }
+        // Tight on him, at his pace (the stick still steers; no stick = stay on him).
+        if (len(this.control.move) < 0.2) mv = norm(sub(add(c.pos, scale(c.vel, 0.15)), hero.pos))
+      }
+    }
     const jo = this.owner
-    if (this.control.hold === 'jockey' && jo && jo.team === 'opp' && hero.state === 'run' && dist(jo.pos, hero.pos) < 12) {
+    if (this.control.hold === 'jockey' && jo && jo.team === 'opp' && hero.state === 'run' && dist(jo.pos, hero.pos) < JOCKEY_RANGE) {
       // Jockey: goal-side of the carrier at arm's length, feet quick, no lunging (Positioning).
       const spot = add(jo.pos, scale(norm(sub({ x: ownGoalX(hero.team), y: GOAL_CENTER_Y }, jo.pos)), 1.7))
       const v = sub(spot, hero.pos)
@@ -2821,6 +2906,21 @@ export class HighlightRuntime {
       a.sprint = true
       speed = topSpeed(a)
       a.sprint = false
+    }
+    // Bodies are solid (build 9 pressing fix): an opponent chasing the hero's ball does not run through him — when
+    // his line to it crosses the hero's body he comes round on his own side, at the hero's shoulder.
+    const hb = this.hero
+    if (target && this.owner === hb && a.team !== hb.team && !a.isKeeper && dist(a.pos, hb.pos) < 3) {
+      const seg = sub(target, a.pos)
+      const l2 = dot(seg, seg)
+      const t = l2 > 1e-6 ? clamp01(dot(sub(hb.pos, a.pos), seg) / l2) : 0
+      const near = add(a.pos, scale(seg, t))
+      if (t > 0 && t < 1 && dist(near, hb.pos) < BODY_GAP) {
+        // (Same target, moved a body width to his side: arrive() keeps its lead on the ball.)
+        const f = fromAngle(hb.facing)
+        const side = (a.pos.x - hb.pos.x) * -f.y + (a.pos.y - hb.pos.y) * f.x >= 0 ? 1 : -1
+        target = { x: target.x - f.y * side * BODY_GAP * 1.2, y: target.y + f.x * side * BODY_GAP * 1.2 }
+      }
     }
     if (this.owner === a) {
       // A carrier running at a retreating defence attacks the space at pace.
@@ -4044,40 +4144,125 @@ export class HighlightRuntime {
       // Aggressive players go into more challenges (and foul more, see tackleOdds).
       const rate = (0.45 + a01(a.attrs.tackling) * 0.8 + a01(a.attrs.aggression ?? 50) * 0.4) * (a.team === 'opp' ? this.difficulty : (this.defending ? 0.3 * this.defendHelp() : 0.8) * Math.max(0.2, 1 + 0.8 * this.lead))
       if (!this.rng.chance(rate * DT)) continue
-      a.cd = 1.1
-      const behind = isBehind(o, a)
-      const raw = tackleOdds(a, o, this.exposure(o), behind, false, this.difficulty)
-      const odds = behind ? { win: raw.win * BEHIND_CHALLENGE.win, foul: raw.foul } : raw
-      // SHIELD held: Strength and Balance keep the ball away from the challenge.
-      const shield = o.isHero && this.shielding() ? 1 - (0.2 + a01(o.attrs.strength) * 0.3 + a01(o.attrs.balance ?? o.attrs.strength) * 0.15) : 1
-      if (this.rng.chance(looseBallWin(odds.win, this.ballGap(o)) * shield)) {
-        this.winBall(a, o, false)
-        if (o.isHero) o.noTouch = 0.7
-      } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3 * refHighlightFoulMult(this.refStrictness))) {
-        if (o.isHero && this.rng.chance(0.03)) this.injured = true
-        const card = cardForFoul(this.rng, false, behind, false, this.refStrictness)
-        if (!this.injured && this.tryAdvantage(a, o, card)) return
-        this.events.push({ type: 'foul', by: a.id, on: o.id, card })
-        this.finish(this.defending ? 'defended' : 'foul_won', 'fouled')
-        return
-      } else {
-        a.state = 'down'
-        a.stateT = 0
-        a.noTouch = 0.6
-        if (o.isHero) this.stats.dribbles++
-        this.events.push({ type: 'tackle', by: a.id, won: false, slide: false, x: a.pos.x, y: a.pos.y })
+      if (this.aiChallenge(a, o)) return
+    }
+  }
+
+  /**
+   * One AI challenge on the carrier `o` (his Tackling / Aggression vs the carrier's hold, a shield, the ball's gap,
+   * foul and card risk). Returns true when it ended the moment (a foul given).
+   */
+  private aiChallenge(a: Agent, o: Agent): boolean {
+    a.cd = 1.1
+    const behind = isBehind(o, a)
+    const raw = tackleOdds(a, o, this.exposure(o), behind, false, this.difficulty)
+    const odds = behind ? { win: raw.win * BEHIND_CHALLENGE.win, foul: raw.foul } : raw
+    // SHIELD held: Strength and Balance keep the ball away from the challenge.
+    const shield = o.isHero && this.shielding() ? 1 - (0.2 + a01(o.attrs.strength) * 0.3 + a01(o.attrs.balance ?? o.attrs.strength) * 0.15) : 1
+    if (this.rng.chance(looseBallWin(odds.win, this.ballGap(o)) * shield)) {
+      this.winBall(a, o, false)
+      if (o.isHero) o.noTouch = 0.7
+    } else if (a.team === 'opp' && this.rng.chance(odds.foul * 0.3 * refHighlightFoulMult(this.refStrictness))) {
+      if (o.isHero && this.rng.chance(0.03)) this.injured = true
+      const card = cardForFoul(this.rng, false, behind, false, this.refStrictness)
+      if (!this.injured && this.tryAdvantage(a, o, card)) return true
+      this.events.push({ type: 'foul', by: a.id, on: o.id, card })
+      this.finish(this.defending ? 'defended' : 'foul_won', 'fouled')
+      return true
+    } else {
+      a.state = 'down'
+      a.stateT = 0
+      a.noTouch = 0.6
+      if (o.isHero) this.stats.dribbles++
+      this.events.push({ type: 'tackle', by: a.id, won: false, slide: false, x: a.pos.x, y: a.pos.y })
+    }
+    return false
+  }
+
+  /**
+   * Bodies (playtester build 9: the hero ran through the carrier and the ball). The hero never overlaps an opponent
+   * (centres {@link BODY_GAP} apart) nor the ball at an opponent's feet ({@link BALL_CONTACT}); the check is swept over
+   * the step (closest approach of the two moving points), so no approach speed skips it. Meeting the carrier or his
+   * ball right after a defensive press is a challenge (standing tackle: Tackling and timing vs his hold, a reckless
+   * charge timed worse, foul risk); otherwise the hero is simply stopped by the body.
+   */
+  private heroBodyContact(): void {
+    const hero = this.hero
+    if (hero.state !== 'run' && hero.state !== 'jump' && hero.state !== 'wall') return
+    const o = this.owner
+    const swept = (p0: Vec2, p1: Vec2, q0: Vec2, q1: Vec2): { d: number; r0: Vec2; r1: Vec2 } => {
+      const r0 = sub(p0, q0)
+      const r1 = sub(p1, q1)
+      const dr = sub(r1, r0)
+      const l2 = dot(dr, dr)
+      const t = l2 > 1e-9 ? clamp01(-dot(r0, dr) / l2) : 1
+      return { d: len(add(r0, scale(dr, t))), r0, r1 }
+    }
+    // (Sold — shifted past, beaten on the turn: noTouch — he is out of it for that beat, contact or not.)
+    const intent = () => this.phase === 'live' && hero.cd <= 0 && hero.noTouch <= 0 && hero.state === 'run' && !hero.isKeeper && this.time >= this.stumbleUntil && (this.time - this.defPressAt < CONTEST_INTENT || this.dash?.why === 'press' || !!this.engage || !!this.pressOn)
+    // Body weight in a collision (Strength, Balance): the stronger man gives less ground.
+    const weight = (a: Agent) => 0.6 + a01(a.attrs.strength) * 0.6 + a01(a.attrs.balance ?? a.attrs.strength) * 0.3
+    const push = (gap: number, r0: Vec2, r1: Vec2, vel: Vec2, other: Agent | null, keepPace = false): void => {
+      // Back on the side he came from (crossed over this step) or straight out along the contact normal.
+      const crossed = dot(r0, r1) < 0 && len(r0) > 1e-3
+      const n = crossed ? norm(r0) : len(r1) > 1e-3 ? norm(r1) : len(r0) > 1e-3 ? norm(r0) : { x: -1, y: 0 }
+      // Both bodies give way (the ball does not): the hero's share by weight.
+      // Shielding is a braced stance (SHIELD held, body between man and ball): he gives far less ground.
+      const wh = other ? weight(other) / (weight(hero) * (this.shielding() ? 3 : 1) + weight(other)) : 1
+      const delta = sub(scale(n, gap), r1)
+      hero.pos = add(hero.pos, scale(delta, wh))
+      if (other) other.pos = sub(other.pos, scale(delta, 1 - wh))
+      const vn = dot(sub(hero.vel, vel), n)
+      if (vn < 0 && !keepPace) {
+        hero.vel = sub(hero.vel, scale(n, vn * wh))
+        if (other) other.vel = add(other.vel, scale(n, vn * (1 - wh)))
       }
+    }
+    const hp0 = { x: hero.prev.x, y: hero.prev.y }
+    // Barging into him at a sprint is a lunge (graded by the closing speed, HERO_CHARGE): arriving under control is not.
+    const contest = (c: Agent): void => {
+      const closing = dot(hero.vel, norm(sub(c.pos, hero.pos)))
+      this.lunge = clamp01((closing - HERO_CHARGE.from) / HERO_CHARGE.span)
+      this.standingTackle(c)
+      this.lunge = 0
+    }
+    // The ball at an opponent's feet first (it sits in front of him, the side a defender comes from).
+    // (A keeper going down at a man's feet takes the ball with his hands: keeperLogic's smother, not a body block.)
+    if (o && o.team === 'opp' && this.ball.z < 0.7 && !hero.isKeeper) {
+      const b1 = { x: this.ball.x, y: this.ball.y }
+      const c = swept(hp0, hero.pos, { x: this.prevBall.x, y: this.prevBall.y }, b1)
+      if (c.d < BALL_CONTACT) {
+        if (intent()) {
+          contest(o)
+          if (this.owner !== o) return
+        }
+        push(BALL_CONTACT, c.r0, c.r1, o.vel, null)
+      }
+    }
+    for (const a of this.agents) {
+      if (a.team === hero.team || a.state === 'down' || a.state === 'slide' || a.state === 'dive') continue
+      const c = swept(hp0, hero.pos, { x: a.prev.x, y: a.prev.y }, a.pos)
+      if (c.d >= BODY_GAP) continue
+      if (a === this.owner && intent()) {
+        contest(a)
+        if (this.owner !== a) continue
+      }
+      // Contact takes out the closing speed only (they slide round each other, nobody is bulldozed). A loose ball (a
+      // drop, a rebound, a cross): bodies never overlap but nobody is slowed either — the aerial / race contests
+      // decide it (playtester build 9 phone pass).
+      push(BODY_GAP, c.r0, c.r1, a.vel, a, !this.owner)
     }
   }
 
   /**
    * Shoulder to shoulder (Strength, Balance): the hero and the nearest opponent running side by side (racing for
-   * a loose ball, or one of them carrying it) lean into each other every 0.3 s. Strength (with a little
+   * a loose ball, or one of them carrying it) lean into each other every {@link SHOULDER_EVERY} s. Strength (with a little
    * aggression and momentum) wins the contact; the loser is knocked off his line and, with poor Balance, off
    * his feet — losing the ball if he had it.
    */
   private shoulderContact(): void {
-    if (this.time - this.shoulderAt < 0.3) return
+    // (Bodies are solid since build 9's pressing fix: side by side they stay in range, so the lean is re-decided less often.)
+    if (this.time - this.shoulderAt < SHOULDER_EVERY) return
     const hero = this.hero
     if (hero.state !== 'run' || hero.isKeeper || this.time < this.stumbleUntil) return
     if (this.owner === hero && this.time < this.graceUntil) return
