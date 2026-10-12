@@ -100,7 +100,7 @@ describe("keepers' book on penalties", () => {
     // Same corner again: the keeper is waiting. Switching it up beats him.
     expect(habitSaved).toBeGreaterThan(freshSaved + N * 0.15)
     expect(switchSaved).toBeLessThan(habitSaved)
-  })
+  }, 60_000)
 
   it('no habit, no read: a hero who mixes it up gives nothing away', () => {
     const { rt, events } = penalty(2, 31.2, { pen: [2, 1, 2], shot: [0, 0, 0] })

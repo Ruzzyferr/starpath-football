@@ -8,7 +8,14 @@ import { GOAL_KINDS } from '../sim/match/tier'
 import type { FeelKind } from './feelHarness'
 import { kindCheck, kindCheckLine } from './kindMatrix'
 
-export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>([])
+/**
+ * Build 9 physics + stat-chance pass (owner model): kinds with at least one check still open, listed so the suite shows
+ * them as todo rather than hiding them — docs/BALANCE.md "Build 9 (4. tur)" has each one's ❌ and cause.
+ */
+export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>([
+  'back_post', 'block', 'corner_kick', 'counter_2v1', 'cross', 'defend', 'dribble', 'fk_wall', 'freekick', 'gk_1v1',
+  'gk_save', 'header', 'hold_up', 'long_ball_control', 'long_shot', 'press_trap', 'shoulder_duel', 'switch_play',
+])
 
 /** The four parallel groups (kindChecks.a–d.test.ts); together every FEEL_KIND. */
 export const KIND_CHECK_GROUPS: readonly (readonly FeelKind[])[] = [

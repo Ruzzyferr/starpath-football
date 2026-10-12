@@ -249,6 +249,16 @@ const momentShare = (kind: HighlightKind, pos: Position, pred: (rt: HighlightRun
 
 const heroId = (rt: HighlightRuntime) => rt.hero.id
 
+/** gk_save with the keeper left on his feet (no dive; the assisted set position only): share of moments kept out. */
+const standingKeeper = (attrs: Attributes, n: number) => {
+  let ok = 0
+  for (let s = 1; s <= n; s++) {
+    const rt = play(sensHighlight('gk_save', s, 'GK', attrs), s, (r) => r.setControl({ move: { x: 0, y: 0 }, sprint: false }))
+    if (rt.result && isSuccess('gk_save', rt.result.outcome)) ok++
+  }
+  return ok / n
+}
+
 /** The probe set: one (or two) per attribute, each on the moment that exercises it. */
 export const MOMENT_PROBES: readonly MomentProbe[] = [
   // ── Physical ──
@@ -283,12 +293,37 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     },
   },
   {
-    attr: 'jumping', kind: 'corner', pos: 'CB', metric: 'contested headers won at corners', unit: '%', sign: 1, min: 0.1, n: 300,
-    run: eventShare('corner', 'CB', (e) => e.type === 'aerial' && e.heroIn && e.hero, (e) => e.type === 'aerial' && e.heroIn),
+    // Build 9: getting to a high ball is physics (the jump lifts him jumpHeight: 0.45 m at 40 … 0.80 m at 85, and the
+    // header pool admits a leaper only up to 1.72 m + that + 0.28 m); the duel itself is ONE chance, Heading vs Heading
+    // (chanceEvents 'aerial'), so Jumping is no longer in the win roll ("contested headers won at corners" measured
+    // −6 pp at 40 → 85: see the attribute report). The probe measures what Jumping drives: the height of his leap, live
+    // in the corner moment. Expected +0.35 m; bar 0.25 m.
+    attr: 'jumping', kind: 'corner', pos: 'CB', metric: 'height of his leap at a corner', unit: 'm', sign: 1, min: 0.25, n: 20,
+    run: (attrs, n) => {
+      const peaks: number[] = []
+      for (let s = 1; s <= n; s++) {
+        let jumped = false
+        let peak = 0
+        play(sensHighlight('corner', s, 'CB', attrs), s, live((r) => {
+          r.setControl({ move: { x: 0, y: 0 }, sprint: false })
+          if (!jumped && r.time > 0.2) {
+            jumped = true
+            r.queueAction({ kind: 'btn', id: 'jump' })
+          }
+        }), (r) => {
+          peak = Math.max(peak, r.hero.z)
+        }, 2)
+        peaks.push(peak)
+      }
+      return mean(peaks)
+    },
   },
   // ── Technical ──
   {
-    attr: 'passing', kind: 'build_up', pos: 'CM', metric: 'short-pass miss at the receiver (median)', unit: 'm', sign: -1, min: 0.05, rel: 0.25, n: 80,
+    // Build 9: a pass's direction error scales with (1.3 − moment skill), Passing 60 % of the pass skill: 40 → 85 (rest
+    // 65) is skill 0.50 → 0.77, a third less miss (measured 0.14 → 0.09 m). The short pass's base miss is now ~0.14 m,
+    // so a third of it is ~0.05 m: the absolute bar 0.05 → 0.03 m; the relative bar (a quarter less) stays the test.
+    attr: 'passing', kind: 'build_up', pos: 'CM', metric: 'short-pass miss at the receiver (median)', unit: 'm', sign: -1, min: 0.03, rel: 0.25, n: 80,
     run: kickStat('build_up', 'CM', 'err', passTo(nearMate(9, 22)), 'median'),
   },
   {
@@ -334,9 +369,14 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     attr: 'dribbling', kind: 'dribble', pos: 'LW', metric: 'take-on success', unit: '%', sign: 1, min: 0.1, n: 300, run: successRate('dribble', 'LW'),
   },
   {
-    attr: 'firstTouch', kind: 'long_ball_control', pos: 'ST', metric: 'first touch killed it (no heavy touch)', unit: '%', sign: 1, min: 0.1, n: 150,
+    // Build 9: a ball at him over CONTROL_EASY is First Touch +1 % a point, +50, −3 per m/s over 8 m/s, +3 per m/s of
+    // receiving help (full aim assist 3 m/s, the cushion of a ball meant for him). A long ball meets him at ~11 m/s, so
+    // even a 40 sits at the 85 % cap (40 + 50 − 9 + 9 + cushion): the clean share of his first touches no longer moves
+    // (74 % → 73 %). First Touch still decides how much of the long ball he gets to and kills — his reach for a ball
+    // meant for him (RECEIVE.reachSkill) and its cushion — so the probe counts the moments in which he brought it
+    // under control with his first touch (per moment, not per touch). Measured 39 % → 47 %; bar 5 pp.
+    attr: 'firstTouch', kind: 'long_ball_control', pos: 'ST', metric: 'long ball killed with his first touch (per moment)', unit: '%', sign: 1, min: 0.05, n: 150,
     run: (attrs, n) => {
-      let first = 0
       let clean = 0
       for (let s = 1; s <= n; s++) {
         let seen = false
@@ -344,13 +384,12 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
           if (seen) return
           for (const e of ev) if (e.type === 'touch' && e.hero) {
             seen = true
-            first++
             if (rt.owner === rt.hero) clean++
             break
           }
         })
       }
-      return share(clean, first)
+      return share(clean, n)
     },
   },
   {
@@ -358,7 +397,10 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: kickStat('long_shot', 'CM', 'speed', shootAt(2.6, 1)),
   },
   {
-    attr: 'finishing', kind: 'one_on_one', pos: 'ST', metric: 'close-range finish miss vs aim (median)', unit: 'm', sign: -1, min: 0.08, rel: 0.2, n: 80,
+    // Build 9: a shot's direction error scales with (1.3 − moment skill), Finishing 45 % of the shot skill: 40 → 85
+    // (rest 65) is skill 0.54 → 0.74, 27 % less miss (measured 0.28 → 0.20 m). The close-range base miss is now
+    // ~0.28 m, so the absolute bar 0.08 → 0.05 m; the relative bar (a fifth less) stays the test.
+    attr: 'finishing', kind: 'one_on_one', pos: 'ST', metric: 'close-range finish miss vs aim (median)', unit: 'm', sign: -1, min: 0.05, rel: 0.2, n: 80,
     run: kickStat('one_on_one', 'ST', 'err', shootAt(-2.6, 0.85), 'median', { approach: 11 }),
   },
   {
@@ -411,8 +453,24 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     // Build 9: a sprinted, timed run is the player's own (the line aid only holds a drifting forward), so a sensible
     // runner is rarely offside at any Positioning; Positioning now shows in getting in behind onside — level on the line
     // as it is played (RUN_ON_LINE) and off their blind side (BLIND_SIDE).
-    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'in behind onside on the ball over the top', unit: '%', sign: 1, min: 0.05, n: 150,
-    run: momentShare('timed_run', 'ST', (rt) => !!rt.result?.chance && !rt.result?.offside),
+    // Physics pass: the bot's run ends onside on the ball 95 % → 97 % of the time at any Positioning (saturated), so
+    // the probe measures the other half of the mechanic: his blind-side run makes their back line look for him first
+    // (BLIND_SIDE · Positioning: +0.14 s → +0.30 s of turn) and his read of the ball over the top (readBurst) gets him
+    // there sooner — the metres he is clear of the nearest defender as he takes it. Measured 4.2 → 5.2 m; bar 0.5 m.
+    attr: 'positioning', kind: 'timed_run', pos: 'ST', metric: 'metres clear of the nearest defender as he takes it in behind', unit: 'm', sign: 1, min: 0.5, n: 150,
+    run: (attrs, n) => {
+      const gaps: number[] = []
+      for (let s = 1; s <= n; s++) {
+        let got = false
+        play(sensHighlight('timed_run', s, 'ST', attrs), s, null, (rt, ev) => {
+          if (got || !ev.some((e) => e.type === 'touch' && e.hero)) return
+          got = true
+          const opp = rt.agents.filter((a) => a.team === 'opp' && !a.isKeeper)
+          if (opp.length) gaps.push(Math.min(...opp.map((a) => Math.hypot(a.pos.x - rt.hero.pos.x, a.pos.y - rt.hero.pos.y))))
+        })
+      }
+      return mean(gaps)
+    },
   },
   {
     // Anticipation also feeds the hero's tackle moment skill (game/momentSkill), which lifts the low end of this share: 5 pp+.
@@ -422,13 +480,42 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: momentShare('interception', 'CB', (rt) => !!rt.result?.heroStop),
   },
   {
-    attr: 'aggression', kind: 'defend', pos: 'CB', metric: 'tackles won per attempt', unit: '%', sign: 1, min: 0.04, n: 300,
-    run: eventShare('defend', 'CB', (e, rt) => e.type === 'tackle' && e.by === heroId(rt) && e.won, (e, rt) => e.type === 'tackle' && e.by === heroId(rt) && !e.slide),
+    // Build 9 (one chance rule): the hero's standing tackle is Tackling vs Dribbling and a reckless miss stays clean on
+    // Tackling (chanceEvents 'tackle' / 'clean'), so Aggression is in neither his tackle win nor his foul risk any
+    // more (both defend probes measured 0.0 pp). What it drives now: a PRESS landing on the carrier hurries his next
+    // decision to 0.04 + 0.12·(1 − Aggression) s (0.11 s at 40, 0.06 s at 85; runtime dashMove). Measured live (the
+    // carrier's decision clock the frame the press lands, median): 0.095 → 0.041 s; bar 0.03 s.
+    attr: 'aggression', kind: 'press_trap', pos: 'ST', metric: 'carrier\'s time to decide when his PRESS lands (median)', unit: 's', sign: -1, min: 0.03, n: 150,
+    run: (attrs, n) => {
+      const clocks: number[] = []
+      for (let s = 1; s <= n; s++) {
+        let got = false
+        let lastPress = -1
+        play(sensHighlight('press_trap', s, 'ST', attrs), s, live((r) => {
+          r.setControl({ move: { x: 0, y: 0 }, sprint: true })
+          const o = r.owner
+          if (o && o.team === 'opp' && r.time - lastPress > 0.8) {
+            lastPress = r.time
+            r.queueAction({ kind: 'btn', id: 'press' })
+          }
+        }), (r) => {
+          const h = (r as unknown as { hurried: { id: string } | null }).hurried
+          const o = r.owner
+          if (!got && h && o && o.id === h.id) {
+            got = true
+            clocks.push(o.think)
+          }
+        }, 8)
+      }
+      return median(clocks)
+    },
   },
   {
-    // Build 9: 0.02 → 0.01 — a timed tackle (HERO_TACKLE.timing) wins cleanly more often, so fewer fouls overall.
-    attr: 'aggression', kind: 'defend', pos: 'CB', metric: 'fouls given away (trade-off)', unit: '%', sign: 1, min: 0.01, n: 300,
-    run: momentShare('defend', 'CB', (rt) => rt.result?.outcome === 'foul_committed'),
+    // Build 9: the old trade-off (fouls given away) went with Aggression out of the tackle (above). Its other live use:
+    // BLOCK spreads his body in the shooting line by HERO_BLOCK_SPREAD · 0.4 · Aggression (+0.13 m at 40 → 85 on
+    // ~0.7 m). Measured 31.7 % → 34.7 % of block moments (n 300); bar 2 pp.
+    attr: 'aggression', kind: 'block', pos: 'CB', metric: 'shots blocked by his body (BLOCK)', unit: '%', sign: 1, min: 0.02, n: 300,
+    run: momentShare('block', 'CB', (rt, evs) => evs.some((e) => e.type === 'block' && e.by === rt.hero.id)),
   },
   {
     attr: 'leadership', kind: 'cross', pos: 'ST', metric: 'calls for the ball answered (captain)', unit: '%', sign: 1, min: 0.1, n: 200,
@@ -453,7 +540,15 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     },
   },
   // ── Goalkeeping ──
-  { attr: 'reflexes', kind: 'gk_save', pos: 'GK', metric: 'shots kept out', unit: '%', sign: 1, min: 0.08, n: 150, run: successRate('gk_save', 'GK') },
+  {
+    // Build 9 (keeper physics, no save roll): the hero keeper's reaction is the player's own (keeperReaction is the AI
+    // keeper's), so with the bot diving Reflexes shows only through his hands (keeperPhysics.handsReach: 0.54 m at 40,
+    // 0.81 m at 85) and the slow-motion window, under the noise of the bot's dives (shots kept out +5 pp at n 150,
+    // +2 pp at n 300). The probe isolates the mechanic: the keeper stays on his feet (assisted set position, no dive)
+    // and what his hands reach is kept out. Measured 46 % → 57 % (n 300); bar 6 pp.
+    attr: 'reflexes', kind: 'gk_save', pos: 'GK', metric: 'shots kept out on his feet (hands reach, no dive)', unit: '%', sign: 1, min: 0.06, n: 300,
+    run: standingKeeper,
+  },
   {
     attr: 'diving', kind: 'gk_save', pos: 'GK', metric: 'fingertip reach of a full-stretch dive', unit: 'm', sign: 1, min: 0.3, n: 20,
     run: (attrs, n) => {
@@ -482,8 +577,14 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: eventShare('gk_save', 'GK', (e, rt) => e.type === 'save' && e.by === heroId(rt) && e.held, (e, rt) => e.type === 'save' && e.by === heroId(rt)),
   },
   {
-    attr: 'gkPositioning', kind: 'gk_claim', pos: 'GK', metric: 'crosses claimed or punched', unit: '%', sign: 1, min: 0.1, n: 150,
-    run: momentShare('gk_claim', 'GK', (rt, evs) => evs.some((e) => e.type === 'save' && e.by === rt.hero.id)),
+    // Build 9 (keeper physics): in gk_claim a keeper who comes for the cross claims or punches it ~97 % of the time at
+    // any GK Positioning (scripted: 290 vs 288 of 300 kept out), and whether the bot comes is its own read — "crosses
+    // claimed or punched" measured 0.0 pp. GK Positioning still sets where he stands: the assisted set position he
+    // takes up (keeperTarget, at 0.6 + 0.8 · GK Positioning of his pace) and the step across as the shot is struck (up
+    // to 1 + 5 · GK Positioning m/s). Measured with the keeper on his feet (no dive): 47.0 % → 51.7 % kept out (n 300);
+    // bar 3 pp.
+    attr: 'gkPositioning', kind: 'gk_save', pos: 'GK', metric: 'shots kept out on his feet (set position, no dive)', unit: '%', sign: 1, min: 0.03, n: 300,
+    run: standingKeeper,
   },
   {
     attr: 'gkDistribution', kind: 'gk_distribution', pos: 'GK', metric: 'kick-out miss at the far man (median)', unit: 'm', sign: -1, min: 0.1, rel: 0.25, n: 80,
