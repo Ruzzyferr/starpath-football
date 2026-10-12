@@ -2550,8 +2550,9 @@ export class HighlightRuntime {
       if (keeper) {
         if (keeper.isHero) {
           // Reflex window for the hero keeper (penalties are a pure read — no slow motion).
-          // A bigger wall screens the keeper: he sees the ball later (fk_wall).
-          const screen = wasSetPiece?.kind === 'freekick' && by.team === 'opp' ? (wasSetPiece.wall.length - 3) * 0.1 : 0
+          // A bigger wall screens the keeper: he sees the ball later (fk_wall) — less so a keeper who has set himself where
+          // he can see it (GK Positioning).
+          const screen = wasSetPiece?.kind === 'freekick' && by.team === 'opp' ? clamp01((wasSetPiece.wall.length - 1) / 4) * 0.3 * (1.3 - a01(keeper.attrs.gkPositioning)) : 0
           if (wasSetPiece?.kind !== 'penalty') this.startBullet(0.3, Math.max(0.2, 0.3 + a01(keeper.attrs.reflexes) * 0.55 - screen))
         } else {
           const isPen = wasSetPiece?.kind === 'penalty'
@@ -2562,7 +2563,7 @@ export class HighlightRuntime {
           if (!isPen) reaction += momentumDelay(keeper, plan.aim.y)
           // A free kick over the wall: he picks the ball up only as it clears the heads — the time it takes to get there
           // (FK_WALL_D at its pace), the more of it the bigger the wall.
-          if (wasSetPiece?.kind === 'freekick' && wasSetPiece.wall.length >= 2) reaction += (FK_WALL_D / Math.max(10, Math.hypot(plan.vx, plan.vy))) * clamp01((wasSetPiece.wall.length - 1) / 4)
+          if (wasSetPiece?.kind === 'freekick' && wasSetPiece.wall.length >= 2) reaction += (FK_WALL_D / Math.max(10, Math.hypot(plan.vx, plan.vy))) * clamp01((wasSetPiece.wall.length - 1) / 4) * (1.3 - a01(keeper.attrs.gkPositioning))
           // A keeper who knows the hero's favourite corner is quicker to it (open play).
           const shotHabit = by.isHero && !isPen ? bookHabit(this.highlight.keeperBook, false) : null
           if (shotHabit && goalZoneOf(plan.aim.y, GOAL_CENTER_Y) === shotHabit.zone) reaction *= 0.8
@@ -2810,7 +2811,7 @@ export class HighlightRuntime {
         // presser goes in for the ball (playtester build 9: PRESS used to stop at hurrying him, then ran through him).
         // Arriving flat out is the reckless part: the charge in standingTackle times it worse, an agile one less so.
         if (this.dash?.why === 'press' && o && o.team === 'opp' && dist(o.pos, hero.pos) < TACKLE_REACH) {
-          o.think = Math.min(o.think, 0.04 + (1 - a01(hero.attrs.aggression ?? 50)) * 0.12)
+          o.think = Math.min(o.think, 0.04 + (1 - a01(hero.attrs.aggression ?? 50)) * 0.2)
           this.hurried = { id: o.id, until: this.time + 1.0 }
           this.dash = null
           this.pressOn = { id: o.id, since: this.time, until: this.time + PRESS_STICK }
@@ -3801,7 +3802,7 @@ export class HighlightRuntime {
       // Shot blocks by opponents of the shooter (bodies in the way, incl. jumping wall).
       // BLOCK button: spread in the line, wider with Positioning and Aggression (committing the body).
       // Build 9: the spread follows Positioning / Aggression properly (0.52 m at 40 → 0.88 m at 90; 0.66 at 62).
-      const spread = a.isHero && this.time < this.blockUntil ? HERO_BLOCK_SPREAD * (0.4 + a01(a.attrs.positioning) * 0.65 + a01(a.attrs.aggression ?? 50) * 0.4) : 0
+      const spread = a.isHero && this.time < this.blockUntil ? HERO_BLOCK_SPREAD * (0.3 + a01(a.attrs.positioning) * 0.65 + a01(a.attrs.aggression ?? 50) * 0.55) : 0
       // Spread (BLOCK held) is his own body shape: it replaces the default, it is not a floor on it.
       const blockR = a.isHero && this.kind === 'block' ? (a.state === 'slide' ? HERO_BLOCK_SLIDE_R : spread || HERO_BLOCK_R) : spread || 0.46
       if (this.shot && this.shot.by.team !== a.team && speed > 12 && d < blockR && b.z < 1.8 + a.z) {
@@ -4160,7 +4161,7 @@ export class HighlightRuntime {
       this.onKeeperHold(k)
     } else {
       // Parry: pushed out and wide, away from the goal (the side the ball was going), a third of its pace — physics.
-      const pv = parryVelocity(b.y, speed, stretch, attackDir(k.team))
+      const pv = parryVelocity(b.y, speed, stretch, attackDir(k.team), a01(k.attrs.handling ?? 62))
       b.vx = pv.vx
       b.vy = pv.vy
       b.vz = pv.vz

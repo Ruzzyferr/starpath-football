@@ -313,8 +313,9 @@ export const HEADER_RANGE = 18
 export function maxSpin(kind: KickKind, at: Attributes): number {
   // Curve is the bend a kicker can put on it; the kick's own technique adds the rest.
   const curve = kind === 'freekick' || kind === 'cross' ? curveOf(at) * 0.6 + at.setPieces * 0.2 + at.crossing * 0.2 : curveOf(at) * 0.6 + at.shooting * 0.2 + at.passing * 0.2
-  // Curve is the bend: a 40 puts half the spin of an 85 on it (≈ 49 rad/s for a 65, as before).
-  return Math.max(5, -35 + a01(curve) * 130)
+  // Curve is the bend: a 40 puts well under half the spin of an 85 on it (≈ 49 rad/s for a 65, as before; build 9:
+  // slope 130 → 170).
+  return Math.max(5, -61 + a01(curve) * 170)
 }
 
 /** Largest bend (m) a kicker can put on a ball: 3.5 m scaled mostly by Curve, with set pieces and shooting (2.1#45). */
@@ -461,8 +462,8 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   // Pre-aim against the expected Magnus drift (≈ ½·k·ω·d/v); the loop below refines it.
   heading -= (0.5 * env.magnus * spinSide * d) / Math.max(6, vh)
   // Free kicks get heavy topspin so they can rise over the wall and dip under the bar.
-  // (Build 9: the dip is the taker's — Set Pieces and Curve — 32 rad/s at 40 … 49 at 90, 39 at 62 as before.)
-  const topspin = kind === 'freekick' ? 18 + a01((req.attrs.setPieces + curveOf(req.attrs)) / 2) * 34 : kind === 'chip' ? -18 : kind === 'shot' ? 6 : 0
+  // (Build 9: the dip is the taker's Set Pieces — 32 rad/s at 40 … 49 at 90, 39 at 62 as before; the bend is his Curve.)
+  const topspin = kind === 'freekick' ? 18 + a01(req.attrs.setPieces) * 34 : kind === 'chip' ? -18 : kind === 'shot' ? 6 : 0
   const spin: Spin = { side: spinSide, top: topspin }
   for (let it = 0; it < 6; it++) {
     const dir = fromAngle(heading)

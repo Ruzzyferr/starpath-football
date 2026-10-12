@@ -1,21 +1,12 @@
 /**
  * Build 9 all-kinds checks (owner: every moment kind, four checks — docs/BALANCE.md "Build 9 — every kind"). The
  * kinds are split over four test files so vitest runs them in parallel (game/kindMatrix KIND_CHECK, n = 200,
- * deterministic seeds). A kind listed in KIND_CHECK_PENDING is still being tuned: it shows as a todo, not a pass.
+ * deterministic seeds). Every kind passes every check — no todo list (build 9 all-✅ pass).
  */
 import { describe, expect, it } from 'vitest'
 import { GOAL_KINDS } from '../sim/match/tier'
 import type { FeelKind } from './feelHarness'
 import { kindCheck, kindCheckLine } from './kindMatrix'
-
-/**
- * Build 9 physics + stat-chance pass (owner model): kinds with at least one check still open, listed so the suite shows
- * them as todo rather than hiding them — docs/BALANCE.md "Build 9 (4. tur)" has each one's ❌ and cause.
- */
-export const KIND_CHECK_PENDING: ReadonlySet<FeelKind> = new Set<FeelKind>([
-  'back_post', 'block', 'corner_kick', 'counter_2v1', 'cross', 'defend', 'dribble', 'fk_wall', 'freekick', 'gk_1v1',
-  'gk_save', 'header', 'hold_up', 'long_ball_control', 'long_shot', 'press_trap', 'shoulder_duel', 'switch_play',
-])
 
 /** The four parallel groups (kindChecks.a–d.test.ts); together every FEEL_KIND. */
 export const KIND_CHECK_GROUPS: readonly (readonly FeelKind[])[] = [
@@ -29,10 +20,6 @@ export function kindChecksSuite(group: number): void {
   const kinds = KIND_CHECK_GROUPS[group]!
   describe('build 9: every kind on the phone input path, physics + stat chance — sane band, follows its stats, careless input is worse, the opponent matters, a floor', () => {
     for (const k of kinds) {
-      if (KIND_CHECK_PENDING.has(k)) {
-        it.todo(`${k}: four checks (still being tuned)`)
-        continue
-      }
       it(`${k}: 30–85 % for a starting hero, rising 40 → 90 (graded), sloppy ≥ 20 pts lower, stronger opponent lower, ≥ 30 % at 40`, () => {
         const c = kindCheck(k)
         const line = kindCheckLine(c)

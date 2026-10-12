@@ -14,7 +14,7 @@ import {
 } from '../ai'
 import { armReach, catchHeight, handsReach, keeperHoldChance, parryVelocity } from '../keeperPhysics'
 import { BALL_RADIUS, type BallState, type PhysicsEnv } from '../physics'
-import { add, len, norm, pointSegment, scale, sub, type Agent, type Vec2 } from '../model'
+import { a01, add, len, norm, pointSegment, scale, sub, type Agent, type Vec2 } from '../model'
 
 /** A keeper's world view for the AI helpers. */
 export function keeperWorld(k: Agent, others: readonly Agent[], ball: BallState, env: PhysicsEnv, time: number, difficulty: number, kind: HighlightKind = 'one_on_one'): AiWorld {
@@ -142,7 +142,7 @@ export function resolveSave(rng: Rng, k: Agent, b: BallState, touch: KeeperTouch
     b.z = Math.min(b.z, 1.2)
     return 'held'
   }
-  const v = parryVelocity(b.y, speed, touch.stretch, attackDir(k.team))
+  const v = parryVelocity(b.y, speed, touch.stretch, attackDir(k.team), a01(k.attrs.handling ?? 62))
   b.vx = v.vx
   b.vy = v.vy
   b.vz = v.vz

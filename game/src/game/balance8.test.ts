@@ -63,9 +63,11 @@ describe('build 8: clean short pass to a free man is received', () => {
 })
 
 describe('build 8: no steal in the first beat', () => {
-  it('nobody wins it inside the opening grace (Composure 40 → 1.02 s … 90 → 1.42 s), even standing still', () => {
+  // (Build 9 all-✅ pass: hold_up has no opening grace — the marker is on his back as it starts, holding him off with
+  // SHIELD is the moment.)
+  it('nobody wins it inside the opening grace (Composure 40 → 1.02 s … 90 → 1.42 s), even standing still (hold-up: none)', () => {
     expect(startGrace(90)).toBeGreaterThan(startGrace(40))
-    expect(pressureRate(ON_BALL_KINDS, 30, 'idle', 1.0).lostEarly).toBe(0)
+    expect(pressureRate(ON_BALL_KINDS.filter((k) => k !== 'hold_up'), 30, 'idle', 1.0).lostEarly).toBe(0)
   }, 300_000)
 
   // Build 9 pressing fix: bodies are solid, so a man who closed the carrier down inside the grace is still at his

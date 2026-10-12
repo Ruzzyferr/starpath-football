@@ -7,7 +7,7 @@
  *   dive            diveSpeed (ai.ts: Diving, Agility, Jumping) for DIVE_PEAK s, then the arm: armReach
  *   shuffle         from a set stance at 6 + 4·Agility m/s² up to 2.4 + 1.6·Agility + 0.6·Pace m/s
  *   arm reach       0.89 + 1.2·(Diving − 0.65) m at full stretch (0.59 at 40 … 1.19 at 90)
- *   hands (set)     0.3 + 0.6·Reflexes m round his body when he is on his feet (0.54 … 0.84)
+ *   hands (set)     0.672 + 0.9·(Reflexes − 0.62) m round his body when he is on his feet (0.47 … 0.92)
  *   catch height    2.3 + 0.3·Jumping m (+ the height of a dive / jump)
  *
  * {@link keeperIntercept} walks the ball's predicted trajectory (physics.predictTrajectory: drag, bounce, spin) and
@@ -20,8 +20,8 @@ import { GOAL_CENTER_Y, cloneBall, createTracker, stepBall, type BallState, type
 
 /** Full-stretch arm reach of a dive (m) from Diving (build 9 finishing pass: slope 0.75 → 1.2, unchanged at 65). */
 export const armReach = (k: Pick<Agent, 'attrs'>): number => 0.89 + 1.2 * (a01(k.attrs.diving ?? 62) - 0.65)
-/** Hand reach round the body of a keeper on his feet (m) from Reflexes. */
-export const handsReach = (k: Pick<Agent, 'attrs'>): number => 0.3 + 0.6 * a01(k.attrs.reflexes ?? 62)
+/** Hand reach round the body of a keeper on his feet (m) from Reflexes (all-✅ pass: slope 0.6 → 0.9, unchanged at 62). */
+export const handsReach = (k: Pick<Agent, 'attrs'>): number => 0.672 + 0.9 * (a01(k.attrs.reflexes ?? 62) - 0.62)
 /** Highest ball (m) he takes standing, from Jumping. */
 export const catchHeight = (k: Pick<Agent, 'attrs'>): number => 2.3 + 0.3 * a01(k.attrs.jumping ?? 60)
 /** How fast he gets across / back to a ball once he has read it (m/s): a keeper's shuffle, Agility first, then Pace. */
@@ -152,9 +152,12 @@ export function claimHoldChance(k: Pick<Agent, 'attrs'>, z: number, crowd: numbe
  * A parry (physics, no dice): pushed out and wide, away from the goal on the side the ball was going, a third of its
  * pace, higher the more he stretched. `inward` points from his goal into the pitch along x.
  */
-export function parryVelocity(ballY: number, speed: number, stretch: number, inward: number): { vx: number; vy: number; vz: number } {
+export function parryVelocity(ballY: number, speed: number, stretch: number, inward: number, handling01 = 0.62): { vx: number; vy: number; vz: number } {
   const side = ballY >= GOAL_CENTER_Y ? 1 : -1
-  const d = norm({ x: inward * 0.65, y: side * 0.9 })
+  // (Where he pushes it is his Handling: a sure pair of hands turns it wide, a poor one pushes it back into the box —
+  // unchanged at 62.)
+  const off = 0.62 - handling01
+  const d = norm({ x: inward * (0.65 + 1.2 * off), y: side * Math.max(0.2, 0.9 - 1.0 * off) })
   const sp = Math.max(5, speed * 0.32)
   return { vx: d.x * sp, vy: d.y * sp, vz: 1.5 + Math.min(1, Math.max(0, stretch)) * 2 }
 }

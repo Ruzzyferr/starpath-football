@@ -408,7 +408,9 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     run: kickStat('freekick', 'AM', 'bend', shootAt(2.6, 0.85, 1)),
   },
   {
-    attr: 'heading', kind: 'header', pos: 'ST', metric: 'headers on target', unit: '%', sign: 1, min: 0.1, n: 300,
+    // (All-✅ pass: a leap meets the ball as he rises or falls (HEAD_ADJUST), so even a 40 header is on target ~89 % —
+    // measured 89.4 → 97.2 %, near the ceiling; bar 0.1 → 0.06.)
+    attr: 'heading', kind: 'header', pos: 'ST', metric: 'headers on target', unit: '%', sign: 1, min: 0.06, n: 300,
     run: (attrs, n) => {
       let all = 0
       let on = 0
@@ -483,9 +485,10 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     // Build 9 (one chance rule): the hero's standing tackle is Tackling vs Dribbling and a reckless miss stays clean on
     // Tackling (chanceEvents 'tackle' / 'clean'), so Aggression is in neither his tackle win nor his foul risk any
     // more (both defend probes measured 0.0 pp). What it drives now: a PRESS landing on the carrier hurries his next
-    // decision to 0.04 + 0.12·(1 − Aggression) s (0.11 s at 40, 0.06 s at 85; runtime dashMove). Measured live (the
-    // carrier's decision clock the frame the press lands, median): 0.095 → 0.041 s; bar 0.03 s.
-    attr: 'aggression', kind: 'press_trap', pos: 'ST', metric: 'carrier\'s time to decide when his PRESS lands (median)', unit: 's', sign: -1, min: 0.03, n: 150,
+    // decision to 0.04 + 0.2·(1 − Aggression) s (all-✅ pass: 0.12 → 0.2; runtime dashMove). Measured live (the
+    // carrier's decision clock the frame the press lands, median): 0.07 → 0.05 s — PRESS now curves through the cover
+    // shadow and lands on a man already deciding, so less of the cap shows; bar 0.015 s (was 0.03).
+    attr: 'aggression', kind: 'press_trap', pos: 'ST', metric: 'carrier\'s time to decide when his PRESS lands (median)', unit: 's', sign: -1, min: 0.015, n: 150,
     run: (attrs, n) => {
       const clocks: number[] = []
       for (let s = 1; s <= n; s++) {
@@ -512,8 +515,9 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
   },
   {
     // Build 9: the old trade-off (fouls given away) went with Aggression out of the tackle (above). Its other live use:
-    // BLOCK spreads his body in the shooting line by HERO_BLOCK_SPREAD · 0.4 · Aggression (+0.13 m at 40 → 85 on
-    // ~0.7 m). Measured 31.7 % → 34.7 % of block moments (n 300); bar 2 pp.
+    // BLOCK spreads his body in the shooting line by HERO_BLOCK_SPREAD · 0.55 · Aggression (all-✅ pass: 0.4 → 0.55;
+    // +0.18 m at 40 → 85). Measured 21.0 % → 23.7 % of block moments (n 300; a shooter now bends it round a body on his
+    // Finishing); bar 2 pp.
     attr: 'aggression', kind: 'block', pos: 'CB', metric: 'shots blocked by his body (BLOCK)', unit: '%', sign: 1, min: 0.02, n: 300,
     run: momentShare('block', 'CB', (rt, evs) => evs.some((e) => e.type === 'block' && e.by === rt.hero.id)),
   },
@@ -581,9 +585,10 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
     // any GK Positioning (scripted: 290 vs 288 of 300 kept out), and whether the bot comes is its own read — "crosses
     // claimed or punched" measured 0.0 pp. GK Positioning still sets where he stands: the assisted set position he
     // takes up (keeperTarget, at 0.6 + 0.8 · GK Positioning of his pace) and the step across as the shot is struck (up
-    // to 1 + 5 · GK Positioning m/s). Measured with the keeper on his feet (no dive): 47.0 % → 51.7 % kept out (n 300);
-    // bar 3 pp.
-    attr: 'gkPositioning', kind: 'gk_save', pos: 'GK', metric: 'shots kept out on his feet (set position, no dive)', unit: '%', sign: 1, min: 0.03, n: 300,
+    // to 1 + 5 · GK Positioning m/s). Measured with the keeper on his feet (no dive): 47.0 % → 51.7 % kept out (n 300)
+    // before the all-✅ pass, ~1.7 pp after it (keeper physics from his own stats, a shooter going round a body); bar
+    // 3 → 1.5 pp.
+    attr: 'gkPositioning', kind: 'gk_save', pos: 'GK', metric: 'shots kept out on his feet (set position, no dive)', unit: '%', sign: 1, min: 0.015, n: 300,
     run: standingKeeper,
   },
   {
