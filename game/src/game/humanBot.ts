@@ -348,10 +348,12 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
     if (st.choiceAt < 0) st.choiceAt = st.real + st.rng.range(0.8, 2.2)
     if (st.real < st.choiceAt) return
     if (rt.pendingChoice === 'corner') {
-      // A sensible taker floats it to the far post, curling away from the keeper (where his big men attack it);
-      // a careless one picks anything.
+      // A sensible taker floats it where his delivery can reach: a good crosser onto the penalty spot curling in, a
+      // poorer one to the far post curling away from the keeper (a softer ball for his big men); a careless one picks
+      // anything.
       if (st.skill.read >= 0.5) {
-        rt.queueAction({ kind: 'corner', zone: 'far', height: 'floated', curl: 'out' })
+        const good = rt.hero.attrs.crossing >= 55
+        rt.queueAction({ kind: 'corner', zone: good ? 'spot' : 'far', height: 'floated', curl: good ? 'in' : 'out' })
         return
       }
       const zone = st.rng.weighted(['near', 'far', 'spot', 'short'] as const, (z) => ({ near: 0.3, far: 0.35, spot: 0.25, short: 0.1 })[z])
@@ -484,7 +486,8 @@ export function humanBotStep(rt0: HighlightRuntime, st: HumanBotState, realDt: n
     }
     if (sp) {
       // Other set pieces (corner taken by the hero): whip it to the near post area.
-      const dir = norm(sub({ x: PITCH_LENGTH - 8 + st.rng.normal(0, 2), y: GOAL_CENTER_Y + st.rng.normal(0, 3) }, hero.pos))
+      // (The swipe's scatter is the taker's thumb: a careless one sprays it.)
+      const dir = norm(sub({ x: PITCH_LENGTH - 8 + st.rng.normal(0, 1.2 + st.skill.aimSd), y: GOAL_CENTER_Y + st.rng.normal(0, 2 + st.skill.aimSd * 1.4) }, hero.pos))
       if (held > 0.8) act({ kind: 'swipe', swipe: { dir, length: 0.4, duration: 0.2, speed: 2, power: power(st, -0.15), curl: 0.3, chip: false, isTap: false } })
       return
     }

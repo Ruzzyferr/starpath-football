@@ -4045,7 +4045,9 @@ export class HighlightRuntime {
     // on it — Shot Power: a tame one is an easy catch wherever it goes — counts.)
     // (Build 9 physics pass: with saves decided by reach, a dive alone is not the shooter's merit — inside the range
     // moments the credit also needs his aim away from the keeper.)
-    const placed = far ? stretch >= PARTIAL_SAVE_STRETCH_RANGE || (sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17)) : stretch >= PARTIAL_SAVE_STRETCH && sh?.placedAim === true
+    // (…and a pot-shot from outside the box in a 2-on-1 earns nothing, as the rule above says.)
+    const potShot = this.kind === 'counter_2v1' && (sh?.range ?? 0) >= PARTIAL_SAVE_RANGE
+    const placed = !potShot && (far ? stretch >= PARTIAL_SAVE_STRETCH_RANGE || (sh?.placedAim === true && speed >= (PARTIAL_RANGE_PACE[this.kind] ?? 17)) : stretch >= PARTIAL_SAVE_STRETCH && sh?.placedAim === true)
     // (rebound: first to the parried ball and the follow-up on target — the moment done.)
     if (sh?.by.isHero && !k.isHero && (placed || this.reboundFirst)) this.chance = true
     // (dribble: past his man, the move ended in a shot the keeper had to stop — held or pushed out, the same thing.)
