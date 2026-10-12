@@ -28,12 +28,12 @@ describe('tackling drill: the match tackle rule', () => {
     expect(drillTackleChances(tackler(99), carrier, 1, false, false).win).toBe(0.85)
   })
 
-  it('timing ±15, from behind −20, slide −5 (points, not multipliers)', () => {
+  it('timing ±CHANCE_MOD.timing, from behind CHANCE_MOD.behind, slide CHANCE_MOD.slide (points, not multipliers)', () => {
     const h = tackler(60)
-    expect(drillTackleChances(h, carrier, 0.9, false, false).win).toBeCloseTo(0.75, 10)
-    expect(drillTackleChances(h, carrier, 0, false, false).win).toBeCloseTo(0.45, 10)
-    expect(drillTackleChances(h, carrier, 0.45, true, false).win).toBeCloseTo(0.4, 10)
-    expect(drillTackleChances(h, carrier, 0.45, false, true).win).toBeCloseTo(0.55, 10)
+    expect(drillTackleChances(h, carrier, 0.9, false, false).win).toBeCloseTo((60 + CHANCE_MOD.timing) / 100, 10)
+    expect(drillTackleChances(h, carrier, 0, false, false).win).toBeCloseTo((60 - CHANCE_MOD.timing) / 100, 10)
+    expect(drillTackleChances(h, carrier, 0.45, true, false).win).toBeCloseTo((60 + CHANCE_MOD.behind) / 100, 10)
+    expect(drillTackleChances(h, carrier, 0.45, false, true).win).toBeCloseTo((60 + CHANCE_MOD.slide) / 100, 10)
   })
 
   it('a challenge that misses is a foul on 1 − clean (Tackling + 30 standing / + 10 slide, −20 from behind)', () => {

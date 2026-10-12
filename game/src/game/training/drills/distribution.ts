@@ -28,7 +28,7 @@ import { a01, add, angleDiff, clampN, dist, len, norm, scale, sub, type Agent, t
 import { eventChanceOf } from '../../chanceEvents'
 import { claimHoldChance, keeperBurst } from '../../keeperPhysics'
 import { arriveTo } from '../vec'
-import { DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
+import { DEFAULT_OPP_LEVEL, DT, DrillBase, actorView, makeActor, place, snapPrev } from '../base'
 import { DIST_CLAIM_POINTS, DIST_PUNCH_POINTS, DIST_QUICK_S, DIST_RECEIVE_R, DIST_THROW_RANGE, distributionPoints } from '../scoring'
 import type { DrillConfig, DrillInput, DrillView, LineView, RingView } from '../types'
 
@@ -38,6 +38,12 @@ type Cycle = 'setup' | 'cross' | 'hold' | 'release' | 'resolved'
 const CONTEST_MOD = -20
 /** The ball counts as "in reach" below this height while it is dropping. */
 const CLAIM_Z = 2.4
+/**
+ * Metres a cross is placed further from the keeper per unit (0..1 scale) of the winger's Crossing above the default
+ * opposition. Without it a better winger's tighter delivery landed nearer the keeper and a stronger opposition made the
+ * drill easier.
+ */
+const CROSS_AWAY_M = 3
 
 interface Mate {
   agent: Agent
@@ -89,6 +95,10 @@ export class DistributionDrill extends DrillBase {
     Object.assign(this.ball, { x: this.spot.x - 0.5, y: this.spot.y - flip * 0.4, z: 0, vx: 0, vy: 0, vz: 0 })
     this.ball.spin = { side: 0, top: 0 }
     place(this.hero, { x: 3, y: GOAL_CENTER_Y + this.rng.range(-2.5, 2.5) }, 0)
+    // A better crosser picks his spot where the keeper has further to come (a weaker one drops it on top of him).
+    const off = sub(zone, this.hero.pos)
+    const push = (a01(this.winger.attrs.crossing) - a01(DEFAULT_OPP_LEVEL)) * CROSS_AWAY_M
+    if (len(off) > 0.1) Object.assign(zone, add(zone, scale(norm(off), push)))
     place(this.winger, this.spot, Math.atan2(zone.y - this.spot.y, zone.x - this.spot.x))
     place(this.striker, { x: zone.x + 4.5, y: zone.y + this.rng.range(-4, 4) }, Math.PI)
     // Team-mates wait up the pitch, then break forward once the keeper has it.
