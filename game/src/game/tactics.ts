@@ -266,7 +266,8 @@ export function evaluateCarrier(a: Agent, w: AiWorld, rng: Rng, ctx: CarrierCont
   // Take on the defender in front.
   const ahead = w.agents
     .filter((o) => o.team !== team && !o.isKeeper && o.state === 'run')
-    .filter((o) => dist(o.pos, a.pos) < 3.6 && ((o.pos.x - a.pos.x) * dir > -0.3))
+    // (In front of him — a man alongside or chasing is not taken on, he is outrun.)
+    .filter((o) => dist(o.pos, a.pos) < 3.6 && ((o.pos.x - a.pos.x) * dir > 0.5))
     .sort((p, q) => dist(p.pos, a.pos) - dist(q.pos, a.pos))[0]
   if (ahead) {
     const beat = takeOnChance(a, ahead, w.difficulty)

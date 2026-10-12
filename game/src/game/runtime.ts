@@ -182,7 +182,7 @@ export const HERO_CROSS_BLOCK = 1.3
 export const HERO_CHARGE_DOWN = { range: 2.2, cos: 0.5, chance: 0.75 } as const
 
 /** block: the shooter's set-up time scale (× base + composure × Composure). */
-export const BLOCK_WINDUP = { base: 0.6, composure: 0.8 } as const
+export const BLOCK_WINDUP = { base: 1.4, composure: -0.8 } as const
 /** block: chance a set shooter sells the shift to a charging / diving defender (Dribbling vs his Agility). */
 export const BLOCK_SHIFT = { base: 0.6, drib: 0.5, agility: 0.45, calm: -0.3, calmDrib: 1.1, read: 0.45 } as const
 /** block: a shot passing within base + pos × Positioning (m) of him, close in, was forced (graded partial). */
@@ -283,6 +283,11 @@ export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 
 export const DELIVERY_EDGE = 80
 /** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
 export const HEAD_ADJUST = 0.35
+/** A defender this close (m) in front of an AI shooter is in his line: going round him is the shooter's chance event. */
+export const BODY_IN_LINE = 6
+/** PRESS: run through the cover shadow, PRESS_SHADOW m off the man toward his nearest pass, until PRESS_SHADOW_IN m from him. */
+export const PRESS_SHADOW = 1.5
+export const PRESS_SHADOW_IN = 3
 /** Highest ball (m) a player brings down on his chest (above it he has to head it). */
 export const CHEST_TOP = 1.95
 /** A marker this much beyond body contact (m) behind a shielding hero still reaches round him for the ball. */
@@ -2267,7 +2272,13 @@ export class HighlightRuntime {
       until: this.time + PRESS_RUN,
       to: () => {
         const o = this.owner
-        if (o && o.team === 'opp') return o.pos
+        if (o && o.team === 'opp') {
+          // (He curves his run through the cover shadow — the line to the man's nearest pass — and only goes straight at
+          // him for the last few metres: pressing cuts a pass off as it closes the man down.)
+          const opt = this.agents.filter((a) => a.team === 'opp' && a !== o && !a.isKeeper).sort((p, q) => dist(p.pos, o.pos) - dist(q.pos, o.pos))[0]
+          if (!opt || dist(this.hero.pos, o.pos) < PRESS_SHADOW_IN) return o.pos
+          return add(o.pos, scale(norm(sub(opt.pos, o.pos)), PRESS_SHADOW))
+        }
         return o ? null : interceptPoint(this.hero, this.aiWorld(), 1.5).point
       },
     }
@@ -3213,7 +3224,8 @@ export class HighlightRuntime {
     // Shooting wait for drama in keeper moments; in gk_save the attacker always pulls the trigger.
     // block: the shooter on the edge of the box shapes, then always pulls the trigger.
     const blockShooter = this.kind === 'block' && a.team === 'opp'
-    // block: a composed shooter takes the extra touch to open the angle; a nervous one snatches at it (Composure).
+    // block: a composed shooter strikes as the angle opens; a nervous one dithers over the extra touch (Composure) —
+    // time the man in front of him uses to get set.
     if (blockShooter && !this.blockWindUpSet) {
       this.blockWindUpSet = true
       this.blockWindUp *= BLOCK_WINDUP.base + BLOCK_WINDUP.composure * a01(a.attrs.composure)
@@ -3266,7 +3278,9 @@ export class HighlightRuntime {
         // (A forced strike — gk_save / block — is hit as hard as his Shot Power allows.)
         const forced = this.kind === 'gk_save' || blockShooter
         const power = forced ? this.rng.range(0.62 + 0.3 * a01(a.attrs.shooting), 0.8 + 0.18 * a01(a.attrs.shooting)) : this.rng.range(0.72, 0.95)
-        const plan = planKick({ ...base, kind: 'shot', target: dec.target, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
+        const tgt = { ...dec.target }
+        this.roundTheBody(a, tgt)
+        const plan = planKick({ ...base, kind: 'shot', target: tgt, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
         this.kickBall(a, plan, 'shot', power, null)
         return
       }
@@ -3325,6 +3339,7 @@ export class HighlightRuntime {
         const gy = GOAL_CENTER_Y
         const off = dec.target.y - gy
         const tgt = { x: dec.target.x, y: gy + (Math.sign(off) || 1) * clampN(Math.max(Math.abs(off), Math.min(3.0, 0.3 + 2.8 * a01(a.attrs.finishing))), 0, 3.2) }
+        this.roundTheBody(a, tgt)
         const plan = planKick({ ...base, kind: 'shot', target: tgt, power, curl: this.rng.range(-0.35, 0.35), noiseScale: oppNoise }, this.rng)
         this.kickBall(a, plan, 'shot', power, null)
         return true
@@ -3414,14 +3429,40 @@ export class HighlightRuntime {
     }
   }
 
+  /**
+   * An AI shooter with the hero standing in his line (within BODY_IN_LINE m, on his feet): bending it round him is his
+   * Finishing vs the hero's Positioning (+1 % a point) — he moves his target off the body; otherwise he strikes it as
+   * he meant to, body or not. Mutates `tgt` (goal-line point).
+   */
+  private roundTheBody(a: Agent, tgt: Vec2): void {
+    const h = this.hero
+    if (a.team !== 'opp' || h.isKeeper || h.state !== 'run' || dist(h.pos, a.pos) > BODY_IN_LINE) return
+    const line = norm(sub(tgt, a.pos))
+    const rel = sub(h.pos, a.pos)
+    const along = dot(rel, line)
+    const across = rel.x * line.y - rel.y * line.x
+    if (along < 0.4 || Math.abs(across) > 1.2) return
+    if (!this.rng.chance(eventChanceOf(a.attrs.finishing, h.attrs.positioning, 0))) return
+    // Round the body: of the two corners, the one whose line passes furthest from him.
+    const clear = (y: number): number => {
+      const l = norm(sub({ x: tgt.x, y }, a.pos))
+      const r = sub(h.pos, a.pos)
+      return dot(r, l) < 0 ? 9 : Math.abs(r.x * l.y - r.y * l.x)
+    }
+    const lo = GOAL_CENTER_Y - 2.9
+    const hi = GOAL_CENTER_Y + 2.9
+    tgt.y = clear(lo) >= clear(hi) ? lo : hi
+  }
+
   /** AI carrier tries to beat the defender in front (skill move / change of pace). */
   private aiTakeOn(a: Agent, def: Agent): void {
     a.cd = 1.1
-    // Owner, build 9: his Dribbling vs the man's Tackling (a keeper: his GK Positioning), +1 % a point. A defender
-    // rushing in (closing > 1 m/s) is sold more easily (up to +20 points; a keeper coming off his line far less), one
-    // goal-side of him is harder to get past (up to −15); the difficulty sharpens the opposition's dribblers.
+    // Owner, build 9: his Dribbling vs the man's Tackling (a keeper: his GK Positioning), +1 % a point; one goal-side of
+    // him is harder to get past (up to −15); the difficulty sharpens the opposition's dribblers. (Build 9 all-✅ pass: a
+    // defender rushing in pays for it once — sold, he stumbles and has to turn (below) — no longer also +20 on the roll;
+    // a keeper charging off his line is the gamble a 1v1 is about: rounded more easily, up to +20.)
     const toA = norm(sub(a.pos, def.pos))
-    const rush = clamp01((def.vel.x * toA.x + def.vel.y * toA.y - 1) / 4) * (def.isKeeper ? 0.3 : 1)
+    const rush = def.isKeeper ? clamp01((def.vel.x * toA.x + def.vel.y * toA.y - 1) / 4) : 0
     // (A set defender — the hero holding JOCKEY on him — is hard to sell: −15.)
     const set = def.isHero && this.jockeying() ? 15 : 0
     const mod = rush * 20 - goalSideness(def, a) * 15 - set + (a.team === 'opp' ? (this.difficulty - 1) * 20 : 0)

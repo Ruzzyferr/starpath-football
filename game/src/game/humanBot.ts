@@ -193,7 +193,7 @@ function defendStep(rt: HighlightRuntime, st: HumanBotState, owner: Agent, act: 
   }
   // (A careless defender is late off the mark — he sees who has it a beat after a sensible one, who reads it coming:
   // until then he carries on as he was. Back post: he is ball-watching anyway.)
-  if (rt.kind !== 'back_post' && st.real - st.engagedAt < Math.max(0, st.skill.reaction - 0.3)) return
+  if (rt.kind !== 'back_post' && st.real - st.engagedAt < Math.max(0, st.skill.reaction - 0.2)) return
   const ownGoal = { x: 0, y: GOAL_CENTER_Y }
   const toGoal = norm(sub(ownGoal, owner.pos))
   // Back post: a sensible defender picks up the runner at the far post (goal-side, a yard off him, ball side) instead
