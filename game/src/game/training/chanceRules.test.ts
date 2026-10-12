@@ -75,7 +75,7 @@ describe('drill keeper: the match keeper', () => {
     const speed = Math.hypot(25, 3, 1)
     expect(resolveSave(spy, k, b, { stretch: 0.8 })).toBe('parried')
     expect(asked).toBeCloseTo(keeperHoldChance(k, speed, 0.8), 10)
-    const v = parryVelocity(GOAL_CENTER_Y + 1.5, speed, 0.8, -1)
+    const v = parryVelocity(GOAL_CENTER_Y + 1.5, speed, 0.8, -1, (k.attrs.handling ?? 62) / 100)
     expect({ vx: b.vx, vy: b.vy, vz: b.vz }).toEqual(v)
     // A soft ball is simply gathered.
     expect(resolveSave(rngAlways(false), keeper(), ball(104, GOAL_CENTER_Y, 0.5, 9), { stretch: 0 })).toBe('held')

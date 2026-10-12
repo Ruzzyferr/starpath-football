@@ -34,7 +34,7 @@ export const DRILL_PAR: Readonly<Record<DrillKind, number>> = {
   passing: 1563,
   dribbling: 202,
   fitness: 1470,
-  goalkeeping: 52,
+  goalkeeping: 50,
   crossing: 1500,
   heading: 1540,
   tackling: 575,
@@ -68,7 +68,7 @@ export const DRILL_FOR_TRAINING: Readonly<Record<TrainingType, { kind: DrillKind
 }
 
 /** Variants with their own scoring scale (curl gate: 5 × 20 points). */
-export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 19, rondo: 41, switch: 1100, diving: 79, contact: 2020, press: 1180 }
+export const VARIANT_PAR: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 16, rondo: 41, switch: 1100, diving: 79, contact: 2020, press: 1180 }
 /** Variants with their own length (rondo: 60 s, 2.3#24). */
 export const VARIANT_DURATION: Readonly<Partial<Record<DrillVariant, number>>> = { rondo: 60 }
 
@@ -108,8 +108,8 @@ export const drillNoise = (skill01: number): number => 0.35 + 1.3 * (1 - clamp01
  * attributes (a fixed number of reps in a fixed time) get a steeper curve, so the grade follows the
  * stats: calibrated with the human-input bots in drillCurves.test.ts (BALANCE.md "Training drills").
  */
-export const DRILL_CURVE: Readonly<Partial<Record<DrillKind, number>>> = { passing: 0.85, dribbling: 0.85, goalkeeping: 1.6, sprint: 1.91 }
-export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 1.0, rondo: 0.85, switch: 1.05, contact: 1.09, press: 1.07, diving: 0.85 }
+export const DRILL_CURVE: Readonly<Partial<Record<DrillKind, number>>> = { passing: 0.85, dribbling: 0.85, goalkeeping: 1.9, sprint: 1.91 }
+export const VARIANT_CURVE: Readonly<Partial<Record<DrillVariant, number>>> = { setPiece: 1.15, rondo: 0.85, switch: 1.05, contact: 1.09, press: 1.07, diving: 0.85 }
 
 /** Raw points → 0..1 performance. */
 export function performanceFromPoints(kind: DrillKind, points: number, variant: DrillVariant = 'standard'): number {

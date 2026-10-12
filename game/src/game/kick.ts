@@ -864,7 +864,7 @@ export type GestureMeaning =
   | { kind: 'shot'; target: Vec2; chip: boolean }
   | { kind: 'pass'; to: PassCandidate; lofted: boolean }
   | { kind: 'through'; point: Vec2; lofted: boolean }
-  | { kind: 'cross'; point: Vec2; zone?: CrossZone }
+  | { kind: 'cross'; point: Vec2; zone?: CrossZone; miss?: number }
 
 /**
  * Decides what a swipe means for the ball carrier: a shot if it points at the
@@ -899,7 +899,8 @@ export function interpretSwipe(
       const mateGap = (z: CrossZone) => Math.min(12, ...mates.map((m) => dist(leadPosition(ball, m, 20, 4), z.point)))
       const zone = zones.reduce((best, z) => (dist(raw, z.point) + mateGap(z) * 0.8 < dist(raw, best.point) + mateGap(best) * 0.8 ? z : best), nearestZone(zones, raw))
       const point = assist === 'full' ? zone.point : { x: (raw.x + zone.point.x) / 2, y: (raw.y + zone.point.y) / 2 }
-      return { kind: 'cross', point, zone }
+      // (How far the swipe itself was from that zone: the delivery's truth, runtime CROSS_TRUE_R.)
+      return { kind: 'cross', point, zone, miss: dist(raw, zone.point) }
     }
   }
   if (mate) {

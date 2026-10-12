@@ -283,6 +283,10 @@ export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 
 export const DELIVERY_EDGE = 80
 /** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
 export const HEAD_ADJUST = 0.35
+/** A swiped cross within CROSS_TRUE_R m of the zone it is pulled to gains CROSS_TRUE_Q delivery quality a metre closer;
+ * further off it loses as much (+0.25 … −0.4). */
+export const CROSS_TRUE_R = 4
+export const CROSS_TRUE_Q = 0.08
 /** The danger zone a delivery has to be met in to make a chance: up to DANGER_ZONE.depth m out, DANGER_ZONE.half m either
  * side of the goal (a cross met out by the corner of the box or on the edge of it is not a chance from the cross). */
 export const DANGER_ZONE = { depth: 13, half: 9 } as const
@@ -1605,6 +1609,9 @@ export class HighlightRuntime {
               return { plan, kind: 'through' as KickKind, power: 0.7, passTo: null }
             }
             const plan = planKick({ ...base, kind: 'cross', target: m.point, targetZ: m.zone?.z ?? 1.8, power: sw.power, curl: sw.curl * 0.7, noiseScale: this.noiseScale(), skill: momentSkill('cross', hero.attrs) }, rng)
+            // (How true the swipe was: a cross the aim assist hardly had to correct is a better ball — up to +0.25 of delivery
+            // quality, the timing's 20 points in the duel — one it had to rescue from metres away a worse one.)
+            plan.quality = clamp01(plan.quality + clampN((CROSS_TRUE_R - (m.miss ?? CROSS_TRUE_R)) * CROSS_TRUE_Q, -0.4, 0.25))
             return { plan, kind: 'cross' as KickKind, power: sw.power, passTo: null }
           }
         }
