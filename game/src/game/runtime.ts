@@ -283,6 +283,8 @@ export const RECEIVE = { react: 0.3, reactSkill: 0.3, reach: -0.05, reachSkill: 
 export const DELIVERY_EDGE = 80
 /** Jumping for a header: how much lower than his head (m) he still meets the ball, rising or falling. */
 export const HEAD_ADJUST = 0.35
+/** Highest ball (m) a player brings down on his chest (above it he has to head it). */
+export const CHEST_TOP = 1.95
 /** A marker this much beyond body contact (m) behind a shielding hero still reaches round him for the ball. */
 export const REACH_ROUND = 0.6
 /** Team-mates helping in the hero's defending moment: points off their interception read (the moment is his). */
@@ -742,6 +744,8 @@ export class HighlightRuntime {
   private beatMan = false
   /** gk_1v1: the hero keeper came off his line to meet the man (RUSH). */
   private heroRushed = false
+    /** How many went up for the last aerial ball (headerContest). */
+  private aerialPool = 0
   /** fk_wall: the hero keeper was set on his angle as the free kick was struck. */
   private fkKeeperSet = false
   /** The hero created a clear chance this moment (graded success, sim/match/tier). */
@@ -3792,6 +3796,18 @@ export class HighlightRuntime {
       best = this.headerContest(heads, bp)
       // The hero on the ground wins it with his chest: a first touch, not a header.
       mode = best.isHero && best.state !== 'jump' ? 'feet' : 'head'
+      // (A team-mate's ball dropping to a man nobody contests: he brings it down on his chest — he does not head his own
+      // side's pass away.)
+      if (mode === 'head' && !best.isHero && this.lastTouch && this.lastTouch.team === best.team && this.aerialPool === 1 && this.ball.z < CHEST_TOP) mode = 'feet'
+      // (A long ball dropping to a lone opponent: he has to have read its flight to be there — his Anticipation vs the
+      // passer's Long Passing, as for a ground pass he cuts out.)
+      const passer = this.lastTouch
+      if (mode === 'head' && !best.isHero && passer && passer.team !== best.team && !this.shot && this.lastKickLong && this.aerialPool === 1 && this.heroLastKick !== 'cross') {
+        if (!this.rng.chance(eventChanceOf(best.attrs.anticipation ?? best.attrs.positioning, passer.attrs.longPassing ?? passer.attrs.passing, best.team === 'opp' ? (this.difficulty - 1) * 20 : 0))) {
+          best.noTouch = 0.5
+          return
+        }
+      }
     }
     if (!best) return
     switch (mode) {
@@ -3834,6 +3850,7 @@ export class HighlightRuntime {
       if (dist(a.pos, bp) < 1.15 + meet) pool.add(a)
     }
     const list = [...pool]
+    this.aerialPool = list.length
     if (list.length === 1) return list[0]!
     // Body position: the player in front (toward where the ball comes from) gets there first.
     const inc = norm({ x: -b.vx, y: -b.vy })
@@ -3855,6 +3872,8 @@ export class HighlightRuntime {
       let mod = ahead > 0.15 ? 10 : ahead < -0.15 ? -10 : 0
       if (h.isHero && h.state === 'jump') mod += h.stateT > 0.12 && h.stateT < 0.44 ? CHANCE_MOD.timing : -CHANCE_MOD.timing
       if (!h.isHero && this.heroDeliveryAt >= 0 && this.lastTouch?.isHero && this.heroCrossQ > 0 && inCorridor) mod += (this.heroCrossQ - 0.5) * DELIVERY_EDGE
+      // (The hero's long ball to a team-mate the same: a well-weighted one drops onto his man, not between him and his marker.)
+      else if (!h.isHero && this.lastTouch?.isHero && this.heroLastKick === 'lofted' && this.heroPassTo?.id === h.id) mod += (this.heroPassQuality - 0.5) * DELIVERY_EDGE
       if (this.hero.isKeeper && !h.isHero) mod -= 20
       mod -= (this.difficulty - 1) * 20
       winner = this.rng.chance(eventChanceOf(stat, o.attrs.heading, mod)) ? h : o

@@ -557,6 +557,9 @@ export function powerSpread(power: number, composure: number): number {
 }
 
 /** Kicks whose accuracy falls away over a long distance (long passing). */
+/** Long-pass drift: per metre beyond 25, × (0.65 − skill) (build 9 all-✅ pass: 0.08 → 0.5 — a 40 long passer's 40 m ball
+ * scatters ×2.9, a 90's ×0.6). */
+export const LONG_PASS_DRIFT = 0.5
 const PASS_KINDS_RANGE: ReadonlySet<KickKind> = new Set<KickKind>(['pass', 'lofted', 'through'])
 
 /** Accuracy noise (radians, 1σ) for a kick. */
@@ -571,7 +574,7 @@ export function headingNoise(req: KickRequest, skill: number): number {
   const assist = req.assist === 'full' ? 0.6 : req.assist === 'half' ? 0.8 : 1
   // From range a strike (beyond 20 m) drifts more for a weak kicker; a long pass (beyond 25 m) drifts more for a poor passer, less for a good one.
   const d = dist(req.from, req.target)
-  const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.6, 1 + Math.max(0, d - 25) * 0.08 * (0.65 - skill)) : 1
+  const range = req.kind === 'shot' ? 1 + Math.max(0, d - 20) * 0.06 * (1.2 - skill) : PASS_KINDS_RANGE.has(req.kind) ? Math.max(0.6, 1 + Math.max(0, d - 25) * LONG_PASS_DRIFT * (0.65 - skill)) : 1
   // (Build 9 finishing pass: 1.3 → 1.25 — a placed finish lands where the owner's 1v1 rule puts it, Finishing 50 ≈ 50 %.)
   const deg = baseDeg[req.kind] * (1.25 - skill) * pressure * overhit * assist * range * (req.noiseScale ?? 1) * (req.placed ? PLACED_NOISE : 1)
   return (deg * Math.PI) / 180
@@ -661,7 +664,9 @@ export function planKick(req: KickRequest, rng?: Rng): KickPlan {
     // spin and how the ball then flies, bounces and slows are physics.
     const errA = rng.normal(0, sd)
     // (A lofted ball's length is its launch angle: a long passer's vertical error lands it short or long.)
-    const hErr = rng.normal(0, ((req.kind === 'lofted' || req.kind === 'cross' ? 0.9 : 0.35) + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
+    // (Build 9 all-✅ pass: a long ball's length is the passer's hardest judgement — 2.6 m/s at the base, ±8 m at 40 m for
+    // a 40 long passer, ±3 m for a 90.)
+    const hErr = rng.normal(0, ((req.kind === 'lofted' ? 2.6 : req.kind === 'cross' ? 0.9 : 0.35) + Math.max(0, req.power - 0.85) * 3) * (1.25 - skill) * (req.noiseScale ?? 1))
     const c = Math.cos(errA)
     const s = Math.sin(errA)
     const nvx = vx * c - vy * s
