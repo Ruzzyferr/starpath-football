@@ -198,7 +198,8 @@ describe('context buttons do real, sensible things in every kind', () => {
     slide: (tr) => tr.states.has('slide'),
     // Goes in at once in range; out of range he closes the carrier down flat out and goes in when he can.
     tackle: (tr) => tr.events.some((e) => (e.type === 'tackle' || e.type === 'foul') && e.by === tr.heroId) || tr.endDist < tr.startDist - 1 || tr.maxSpeed > 5,
-    jockey: (tr) => tr.endDist < 4 && !tr.states.has('slide'),
+    // On him: stays within arm's length; from range (interception offers JOCKEY since build 9's phone pass): closes him down goal-side.
+    jockey: (tr) => (tr.endDist < 4 || tr.endDist < tr.startDist - 1) && !tr.states.has('slide'),
     press: (tr) => tr.endDist < tr.startDist - 1 || tr.rt.finished,
     intercept: (tr) => tr.maxSpeed > 4 || tr.rt.finished,
     block: (tr) => tr.maxSpeed > 1 || tr.rt.finished,
