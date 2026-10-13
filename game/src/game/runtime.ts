@@ -792,6 +792,12 @@ export class HighlightRuntime {
   private keeperStays = false
   /** The hero has had the ball under control this moment. */
   private heroControlled = false
+  /**
+   * A team-mate's ball named for the hero (long_ball_control's long ball, the one-two return): while it is loose and
+   * nobody else has touched it, it is his — his team-mates leave it to him (build 12 playtester: a supporting man ran
+   * onto the long ball and headed it away before the hero could get to it).
+   */
+  private feedBy: Agent | null = null
   /** Hero positions sampled twice a second (heat map). */
   private readonly track: Vec2[] = []
   /** Hero shots this moment (shot map). */
@@ -2405,6 +2411,7 @@ export class HighlightRuntime {
     by.touch = 0
     this.lastTouch = by
     this.lastPossTeam = by.team
+    this.feedBy = !by.isHero && by.team === 'hero' && passTo === this.hero.id ? by : null
     const spd = Math.hypot(plan.vx, plan.vy, plan.vz)
     this.events.push({ type: 'kick', by: by.id, hero: by.isHero, kick: kind, power, speed: spd, x: this.ball.x, y: this.ball.y })
     if (this.readPressedPass(by, kind, plan)) return
@@ -2594,7 +2601,7 @@ export class HighlightRuntime {
       this.shot = null
     }
 
-    if (kind === 'cross' || kind === 'lofted') this.planAttackingRuns(by)
+    if ((kind === 'cross' || kind === 'lofted') && !this.feeding()) this.planAttackingRuns(by)
     // Corner/cross toward the hero → header slow-mo armed.
     if ((kind === 'cross' || kind === 'lofted') && !by.isHero && by.team === 'hero') this.crossBulletArmed = true
     if (by.team === 'opp' && this.lastPossTeam === 'opp' && !this.defending) this.oppClearedAt = this.time
@@ -2680,6 +2687,11 @@ export class HighlightRuntime {
 
   private passMeantFor(a: Agent): boolean {
     return !a.isHero && a.team === 'hero' && !!this.heroPassTo && this.heroPassTo.id === a.id && !!this.lastTouch?.isHero
+  }
+
+  /** The loose ball is a team-mate's pass for the hero, untouched since (see {@link feedBy}). */
+  private feeding(): boolean {
+    return !!this.feedBy && !this.owner && this.lastTouch === this.feedBy
   }
 
   /** Receiving help the hero's last pass carries (see {@link RECEIVE}). */
@@ -2987,8 +2999,10 @@ export class HighlightRuntime {
     }
     // Bodies are solid (build 9 pressing fix): an opponent chasing the hero's ball does not run through him — when
     // his line to it crosses the hero's body he comes round on his own side, at the hero's shoulder.
+    // (Build 12: the same while a team-mate's ball for him is in the air — his marker does not step through his back to
+    // the ball; he comes round and meets it at the hero's shoulder, where the duel decides it.)
     const hb = this.hero
-    if (target && this.owner === hb && a.team !== hb.team && !a.isKeeper && dist(a.pos, hb.pos) < 3) {
+    if (target && (this.owner === hb || this.feeding()) && a.team !== hb.team && !a.isKeeper && dist(a.pos, hb.pos) < 3) {
       const seg = sub(target, a.pos)
       const l2 = dot(seg, seg)
       const t = l2 > 1e-6 ? clamp01(dot(sub(hb.pos, a.pos), seg) / l2) : 0
@@ -3100,7 +3114,7 @@ export class HighlightRuntime {
 
     // A keeper's moment (sweeping, 1v1, claiming): his outfielders leave the loose ball to him and track the runners.
     const keeperRace = !this.owner && a.team === 'hero' && this.hero.isKeeper && this.defending
-    if (!this.owner && !keeperRace) {
+    if (!this.owner && !keeperRace && !(a.team === 'hero' && this.feeding())) {
       // Loose ball: best-placed player per team chases.
       const mates = this.agents.filter((q) => q.team === a.team && !q.isKeeper && !q.isHero)
       let bestId = ''
@@ -3933,7 +3947,8 @@ export class HighlightRuntime {
     // corridor for his runner (the delivery as struck, ±DELIVERY_EDGE/2), a keeper's defenders leaving it to him −20, the difficulty.
     const placed = (a: Agent) => frontness(a) * 0.5 - dist(a.pos, bp)
     const best = (team: string) => list.filter((a) => a.team === team).sort((p, q) => placed(q) - placed(p))[0]
-    const h = best('hero')
+    // (A team-mate's ball for the hero: he is his side's man for it.)
+    const h = this.feeding() && list.includes(this.hero) ? this.hero : best('hero')
     const o = best('opp')
     let winner: Agent
     if (!h || !o) winner = (h ?? o)!
