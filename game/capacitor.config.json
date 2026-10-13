@@ -6,6 +6,7 @@
   "loggingBehavior": "debug",
   "android": {
     "allowMixedContent": false,
+    "minWebViewVersion": 80,
     "captureInput": true
   },
   "ios": {

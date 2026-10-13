@@ -62,6 +62,7 @@
     "@preact/preset-vite": "^2.10.6",
     "@types/node": "^24.13.3",
     "@vitest/coverage-v8": "^5.0.3",
+    "acorn": "^8.19.0",
     "electron": "^44.6.0",
     "electron-builder": "^26.15.3",
     "eslint": "^10.12.0",

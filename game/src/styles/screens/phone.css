@@ -168,6 +168,7 @@
   .ph-notch { display: block; position: absolute; top: 22px; left: 50%; width: 92px; height: 22px; margin-left: -46px; border-radius: var(--r-pill); background: #05070b; z-index: 4; }
   .ph-screen {
     position: relative;
+    height: min(780px, calc(100vh - 200px));
     height: min(780px, calc(100dvh - 200px));
     min-height: 560px;
     border-radius: calc(var(--r-modal) * 1.7);

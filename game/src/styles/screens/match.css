@@ -1139,6 +1139,7 @@
   .lm-feed-wrap {
     position: sticky;
     top: 110px;
+    max-height: calc(100vh - 220px);
     max-height: calc(100dvh - 220px);
   }
   .lm-feed {

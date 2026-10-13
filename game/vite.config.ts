@@ -23,7 +23,15 @@ export default defineConfig({
     /** trial | premium | auto (see src/store-iap/flavor.ts). */
     __SP_FLAVOR__: JSON.stringify(process.env.SP_FLAVOR ?? 'auto'),
   },
-  build: { target: 'es2022', chunkSizeWarningLimit: 2000 },
+  // Oldest engines the shipped bundle must parse in (see src/platform/compat.ts MIN_CHROME and
+  // compat.node.test.ts): Android System WebView / Chrome 80 (ES2020 syntax: no `||=`, no class
+  // fields, no top-level await) and iOS 15 WKWebView. Newer runtime APIs are polyfilled in
+  // src/platform/polyfills.ts; CSS is lowered by Lightning CSS (inset, colour fallbacks) where it can.
+  build: {
+    target: ['es2020', 'chrome80', 'safari15'],
+    cssTarget: ['chrome80', 'safari15'],
+    chunkSizeWarningLimit: 2000,
+  },
   // The e2e suite (playwright.config.ts) runs without HMR so edits made while it runs cannot reload pages mid-test.
   server: process.env.E2E_NO_HMR ? { hmr: false, watch: { ignored: ['**/*'] } } : undefined,
   test: {

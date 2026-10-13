@@ -474,6 +474,7 @@
 .modal-panel {
   position: relative;
   width: 100%;
+  max-height: calc(100vh - 24px - var(--safe-top));
   max-height: calc(100dvh - 24px - var(--safe-top));
   display: flex;
   flex-direction: column;
@@ -509,7 +510,7 @@
 .modal-foot > * { flex: 1; }
 @media (min-width: 900px) {
   .modal-root { align-items: center; padding: calc(var(--sp-8) + var(--safe-top)) calc(var(--sp-8) + var(--safe-right)) calc(var(--sp-8) + var(--safe-bottom)) calc(var(--sp-8) + var(--safe-left)); }
-  .modal-panel { border-radius: var(--r-modal); border-bottom: 1px solid var(--border-strong); animation: dialog-in var(--dur-screen) var(--ease-out); max-height: min(86dvh, 860px); padding-bottom: 0; }
+  .modal-panel { border-radius: var(--r-modal); border-bottom: 1px solid var(--border-strong); animation: dialog-in var(--dur-screen) var(--ease-out); max-height: min(86vh, 860px); max-height: min(86dvh, 860px); padding-bottom: 0; }
   .sheet-grabber { display: none; }
   .modal-head { padding-top: var(--sp-5); }
   .modal-sm { max-width: 420px; }

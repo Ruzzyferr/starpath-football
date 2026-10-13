@@ -295,6 +295,7 @@ html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
 .trn-drill-card {
   position: relative;
   width: min(460px, calc(100vw - 32px));
+  max-height: calc(100vh - 32px - var(--safe-top) - var(--safe-bottom));
   max-height: calc(100dvh - 32px - var(--safe-top) - var(--safe-bottom));
   overflow: auto;
   padding: var(--sp-5);
