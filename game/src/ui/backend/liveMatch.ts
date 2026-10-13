@@ -817,7 +817,19 @@ export function persistNow(): void {
   persistProgress(true)
 }
 
-export const liveActive = (): boolean => !!live && !live.finalized
+/**
+ * A match is running only while the save still holds it: once the day moved on
+ * (another action spent the matchday, the AI played the fixture) the controller
+ * is stale and must not keep blocking Advance.
+ */
+export function liveActive(): boolean {
+  if (!live || live.finalized) return false
+  if (current()?.activeMatchId !== live.fixtureId) {
+    clearLive()
+    return false
+  }
+  return true
+}
 
 /**
  * A U21 / training match opened from the bench but never kicked off (the player

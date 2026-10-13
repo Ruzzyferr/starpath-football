@@ -62,4 +62,25 @@ describe('reserve match left at the pre-match screen', () => {
     }
     expect(tested).toBe(true)
   })
+
+  it('a league match whose day already passed does not block either', () => {
+    let tested = false
+    for (const seed of [777, 4242, 31]) {
+      A.newGame({ ...DEFAULT_CAREER, birthYear: 2000, seed })
+      for (let i = 0; i < 40 && D.nextFixture()?.daysUntil !== 0; i++) {
+        quickResolveAll()
+        while ((gameState.value?.pendingEvents.length ?? 0) > 0) A.resolveEvent(0, 0)
+        A.advance()
+      }
+      if (D.nextFixture()?.daysUntil !== 0) continue
+      A.playMatch() // pre-match opened, then Back
+      if (!liveActive()) continue
+      // The day moved on without the match (as calendar.advanceDay does): the controller is stale.
+      gameState.value!.activeMatchId = null
+      expect(liveActive()).toBe(false)
+      tested = true
+      break
+    }
+    expect(tested).toBe(true)
+  })
 })
