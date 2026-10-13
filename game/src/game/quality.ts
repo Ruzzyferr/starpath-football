@@ -58,6 +58,37 @@ export interface DeviceProbe {
   memoryGb: number
   /** Touch-first device (phones / tablets). */
   coarse: boolean
+  /** Unmasked WebGL renderer string ('' when unknown or WebGL is unavailable). */
+  gpu?: string
+}
+
+export type GpuClass = 'low' | 'mid' | 'high' | 'unknown'
+
+/**
+ * Coarse GPU class from the WebGL renderer string. Software rasterisers and old mobile parts are
+ * Low; mid-range phone GPUs (e.g. the Galaxy A52's Adreno 618, Mali-G52/G57/G68) are Mid; flagship
+ * and desktop parts are High. Anything unrecognised is 'unknown' (the benchmark alone decides).
+ */
+export function gpuClass(renderer: string | undefined): GpuClass {
+  const r = (renderer ?? '').toLowerCase()
+  if (!r) return 'unknown'
+  if (/swiftshader|llvmpipe|softpipe|software|microsoft basic render/.test(r)) return 'low'
+  const adreno = /adreno[^0-9]*(\d{3})/.exec(r)
+  if (adreno) {
+    const n = Number(adreno[1])
+    return n < 600 ? 'low' : n < 640 ? 'mid' : 'high'
+  }
+  const mali = /mali-?([a-z]?)(\d+)/.exec(r)
+  if (mali) {
+    const series = mali[1]
+    const n = Number(mali[2])
+    if (series !== 'g') return 'low' // Mali-400 / T-series
+    return n < 57 ? 'low' : n < 710 ? 'mid' : 'high' // G52 low … G78 mid … G710+ high
+  }
+  if (/powervr|vivante|videocore/.test(r)) return 'low'
+  if (/apple|nvidia|geforce|radeon|amd|xclipse|immortalis/.test(r)) return 'high'
+  if (/intel/.test(r)) return 'mid'
+  return 'unknown'
 }
 
 /** Benchmark time thresholds (ms) for the reference workload. A 2020 laptop runs it in ~4 ms. */
@@ -72,7 +103,52 @@ export function profileFromProbe(p: DeviceProbe): QualityProfile {
   if ((p.cores > 0 && p.cores <= 2) || (p.memoryGb > 0 && p.memoryGb <= 2)) rank = Math.min(rank, 0)
   else if ((p.cores > 0 && p.cores <= 4) || (p.memoryGb > 0 && p.memoryGb <= 4)) rank = Math.min(rank, 1)
   if (p.coarse) rank = Math.min(rank, 1)
+  const gpu = gpuClass(p.gpu)
+  if (gpu === 'low') rank = 0
+  else if (gpu === 'mid') rank = Math.min(rank, 1)
   return QUALITY_PROFILES[rank]!
+}
+
+/** Frame rate (fps) under which a measured Auto profile drops one step. */
+export const FPS_FLOOR = 40
+
+/** The Auto profile after a short frame-rate probe: a device that cannot hold {@link FPS_FLOOR} drops a step. */
+export function adjustForFps(profile: QualityProfile, fps: number): QualityProfile {
+  if (!Number.isFinite(fps) || fps <= 0 || fps >= FPS_FLOOR) return profile
+  const rank = QUALITY_PROFILES.indexOf(profile)
+  return QUALITY_PROFILES[Math.max(0, rank - 1)]!
+}
+
+/** Unmasked GPU renderer string via a throw-away WebGL context ('' if unavailable). Browser only. */
+export function readGpuRenderer(): string {
+  try {
+    if (typeof document === 'undefined') return ''
+    const c = document.createElement('canvas')
+    const gl = (c.getContext('webgl') ?? c.getContext('experimental-webgl')) as WebGLRenderingContext | null
+    if (!gl) return ''
+    const ext = gl.getExtension('WEBGL_debug_renderer_info')
+    const name = String(gl.getParameter(ext ? ext.UNMASKED_RENDERER_WEBGL : gl.RENDERER) ?? '')
+    gl.getExtension('WEBGL_lose_context')?.loseContext()
+    return name
+  } catch {
+    return ''
+  }
+}
+
+/** Average frame rate over `ms` of requestAnimationFrame (resolves 0 without rAF). Browser only. */
+export function measureFps(ms = 1000): Promise<number> {
+  return new Promise((resolve) => {
+    if (typeof requestAnimationFrame !== 'function' || typeof performance === 'undefined') return resolve(0)
+    let frames = 0
+    let t0 = 0
+    const tick = (t: number) => {
+      if (!t0) t0 = t
+      else frames++
+      if (t - t0 >= ms) resolve((frames * 1000) / (t - t0))
+      else requestAnimationFrame(tick)
+    }
+    requestAnimationFrame(tick)
+  })
 }
 
 /** The fixed workload: particle-style float integration over typed arrays. */
@@ -111,7 +187,7 @@ export function runDeviceBenchmark(): DeviceProbe {
   const nav = (typeof navigator !== 'undefined' ? navigator : {}) as { hardwareConcurrency?: number; deviceMemory?: number }
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   benchSink = sink // keeps the workload observable (no dead-code elimination)
-  return { benchMs: times[1]!, cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse }
+  return { benchMs: times[1]!, cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse, gpu: readGpuRenderer() }
 }
 
 // ───────────────────────── Particle budget ─────────────────────────
@@ -154,12 +230,15 @@ export const DPR_CAP = 2
  * Render scale for the match canvas (WP-P, 2.9#13). Starts from the device
  * ratio (capped at {@link DPR_CAP}), then lowers it so the backing store stays
  * inside a pixel budget: far tighter on touch-first devices (heat, battery,
- * mid-range GPUs), and the Low profile never renders above 1.25x. Never below
+ * mid-range GPUs), the Low profile never renders above 1.25x and Medium on touch devices
+ * never above 1.5x. Never below
  * 1, never above the device ratio. Result is rounded to 0.05 steps.
  */
 export function renderScale(opts: { dpr: number; cssW: number; cssH: number; coarse: boolean; profile?: QualityProfile }): number {
   let s = Math.min(DPR_CAP, Math.max(1, Number.isFinite(opts.dpr) ? opts.dpr : 1))
   if (opts.profile === 'low') s = Math.min(s, 1.25)
+  // Mid-range phones are fill-rate bound: Medium renders touch devices at no more than 1.5x.
+  else if (opts.profile === 'medium' && opts.coarse) s = Math.min(s, 1.5)
   const area = Math.max(1, opts.cssW) * Math.max(1, opts.cssH)
   const budget = opts.coarse ? PIXEL_BUDGET.coarse : PIXEL_BUDGET.desktop
   s = Math.min(s, Math.sqrt(budget / area))

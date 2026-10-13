@@ -27,7 +27,7 @@ import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isCameraDistanceChoice, type CameraDistanceChoice } from '../game/view'
-import { isQualityChoice, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
+import { adjustForFps, isQualityChoice, measureFps, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { SlotThumb } from '../state/save'
 import type { DrillKind, DrillVariant } from '../game/training/types'
 
@@ -1069,6 +1069,14 @@ export const lang = computed<Lang>(() => settings.value.lang)
 export function detectQuality(): QualityProfile {
   const auto = profileFromProbe(runDeviceBenchmark())
   updateSettings({ qualityAuto: auto })
+  // Then a one-second frame-rate probe: a device that cannot hold the floor drops a step. Skipped
+  // under automation (webdriver), where frame timing reflects the test host, not a device.
+  if (typeof navigator !== 'undefined' && !navigator.webdriver) {
+    void measureFps(1000).then((fps) => {
+      const adjusted = adjustForFps(auto, fps)
+      if (adjusted !== auto && settings.peek().qualityAuto === auto) updateSettings({ qualityAuto: adjusted })
+    })
+  }
   return auto
 }
 
