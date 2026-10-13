@@ -12,6 +12,22 @@ import { NET_DEPTH } from './physics'
 import { clothAt, type NetCloth } from './netCloth'
 import { PPM, TILT, ZS, project } from './view'
 
+/**
+ * Four-corner gradient fill that is safe on the Canvas renderer. Phaser 4.2's Canvas Graphics
+ * renderer skips 5 values for GRADIENT_FILL_STYLE while the command carries 8, so every later
+ * command is read misaligned (e.g. "arc: radius -132 is negative" on devices without WebGL).
+ * On Canvas this uses a flat fill: the top-left colour at the average alpha.
+ */
+export function fillGradient(
+  g: Phaser.GameObjects.Graphics,
+  tl: number, tr: number, bl: number, br: number,
+  aTL: number, aTR: number, aBL: number, aBR: number,
+): Phaser.GameObjects.Graphics {
+  const renderer = (g.scene as Phaser.Scene | undefined)?.game?.renderer
+  if (renderer && renderer.type === Phaser.CANVAS) return g.fillStyle(tl, (aTL + aTR + aBL + aBR) / 4)
+  return g.fillGradientStyle(tl, tr, bl, br, aTL, aTR, aBL, aBR)
+}
+
 /** '#rrggbb' → 0xrrggbb. */
 export function colorNum(hex: string): number {
   const h = hex.replace('#', '')
@@ -501,7 +517,7 @@ export function drawPitch(g: Phaser.GameObjects.Graphics, weather: Weather, o: P
   const A = P(PITCH_LENGTH + 6.2, -5.5)
   const B = P(-16, PITCH_WIDTH + 5.5)
   if (!night) {
-    g.fillGradientStyle(0xfff2c8, 0xfff2c8, 0x000000, 0x000000, 0.07, 0.02, 0.0, 0.07)
+    fillGradient(g, 0xfff2c8, 0xfff2c8, 0x000000, 0x000000, 0.07, 0.02, 0.0, 0.07)
     g.fillRect(A.x, A.y, B.x - A.x, B.y - A.y)
     // Stand shadow across the touchline strip on the sun side.
     const sh = o.standShadow ?? 0

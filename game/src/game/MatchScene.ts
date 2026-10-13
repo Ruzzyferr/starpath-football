@@ -28,6 +28,7 @@ import {
   utilTextures,
   NET_BACK_TOP,
   type NetRipple,
+  fillGradient,
 } from './art'
 import { Sfx } from './audio'
 import { autopilotStep, createAutopilot, type AutopilotState } from './autopilot'
@@ -58,7 +59,7 @@ import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } fr
 import { applyInput, InputRecorder, type InputRecording } from './inputReplay'
 import type { AimState } from './runtime'
 import { queueGoalReplay } from '../sim/game/saveHistory'
-import { setReportAttachment } from '../telemetry/errorLog'
+import { recordError, setReportAttachment } from '../telemetry/errorLog'
 import { PickerDom, PickerState, keyToPickerInput, padToPickerInputs } from './setPiecePicker'
 import { wallGeometry } from './setup'
 import type { HeroAction } from './runtime'
@@ -859,7 +860,7 @@ export class MatchScene extends Phaser.Scene {
         const half = (look.lights === 'poles' || look.lights === 'pylons' ? 11 : 6) * PPM
         const nx = (-dy / len) * half
         const ny = (dx / len) * half
-        cones.fillGradientStyle(0xfff4d6, 0xfff4d6, 0xfff4d6, 0xfff4d6, 0.13, 0, 0, 0)
+        fillGradient(cones, 0xfff4d6, 0xfff4d6, 0xfff4d6, 0xfff4d6, 0.13, 0, 0, 0)
         cones.fillTriangle(l.x, l.y, tx + nx, ty + ny, tx - nx, ty - ny)
       }
       this.bakeLater(cones, { x0: -12, x1: PITCH_LENGTH + 12, y0: -14, y1: PITCH_WIDTH + 14, z: 26 })
@@ -2910,7 +2911,7 @@ ${attrs}`, open: false, box: null }
 
     // HUD band (the play camera starts below it): deep navy glass with a pitch-green hairline.
     const top = this.safeTop
-    g.fillGradientStyle(0x070b14, 0x070b14, 0x0b1220, 0x0b1220, 0.97, 0.97, 0.94, 0.94)
+    fillGradient(g, 0x070b14, 0x070b14, 0x0b1220, 0x0b1220, 0.97, 0.97, 0.94, 0.94)
     g.fillRect(0, 0, w, this.hudTop)
     g.fillStyle(0x1fd47a, 0.35)
     g.fillRect(0, this.hudTop - 1 * u, w, 1 * u)
@@ -3123,6 +3124,28 @@ function safeAreaTop(canvas: HTMLCanvasElement): number {
 
 // ───────────────────────── Factory & API ─────────────────────────
 
+/** Set once WebGL context creation has failed on this device: later games go straight to Canvas. */
+let webglBroken = false
+
+/**
+ * Builds the game with Phaser.AUTO, and with the Canvas renderer when WebGL fails. AUTO only
+ * probes for *a* WebGL context; the real one (with our antialias / powerPreference attributes)
+ * can still fail on blocklisted or exhausted GPUs (some Adreno/Mali drivers), and Phaser then
+ * throws "WebGL unsupported" from the constructor, leaving the match blank.
+ */
+function newGameWithFallback(config: (type: number) => Phaser.Types.Core.GameConfig): Phaser.Game {
+  if (!webglBroken) {
+    try {
+      return new Phaser.Game(config(Phaser.AUTO))
+    } catch (e) {
+      webglBroken = true
+      console.warn('[StarPath] WebGL renderer failed, falling back to Canvas', e)
+      recordError(`WebGL init failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'render')
+    }
+  }
+  return new Phaser.Game(config(Phaser.CANVAS))
+}
+
 /**
  * Creates a Phaser.Game sized to `parent`, crisp on high-DPI screens.
  *
@@ -3142,8 +3165,8 @@ export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): 
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   const dpr = renderScale({ dpr: typeof window !== 'undefined' ? window.devicePixelRatio || 1 : 1, cssW, cssH, coarse, profile })
   const hiDpi = dpr > 1.01
-  const game = new Phaser.Game({
-    type: Phaser.AUTO,
+  const game = newGameWithFallback((type) => ({
+    type,
     parent,
     backgroundColor: '#0b1410',
     banner: false,
@@ -3151,11 +3174,14 @@ export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): 
     // All audio goes through the shared engine (src/audio); no second AudioContext.
     audio: { noAudio: true },
     input: { keyboard: false, mouse: false, touch: false, gamepad: false },
-    render: { antialias: true, roundPixels: false, powerPreference: 'high-performance' },
+    // Low profile: no MSAA and the default GPU (mid-range Adreno/Mali run cooler, fill rate is the bottleneck).
+    render: { antialias: profile !== 'low', roundPixels: false, powerPreference: profile === 'low' ? 'default' : 'high-performance' },
+    // 90/120 Hz phones would otherwise render every refresh; 60 fps is the design rate.
+    fps: { limit: 60 },
     scale: hiDpi
       ? { mode: Phaser.Scale.NONE, width: Math.round(cssW * dpr), height: Math.round(cssH * dpr), zoom: 1 / dpr }
       : { mode: Phaser.Scale.RESIZE, width: cssW, height: cssH },
-  })
+  }))
   game.registry.set('dpr', hiDpi ? dpr : 1)
   if (hiDpi && typeof ResizeObserver !== 'undefined') {
     const ro = new ResizeObserver(() => {
