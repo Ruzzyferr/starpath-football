@@ -14,7 +14,7 @@ import { lt, t } from '../../../i18n'
 import { Button, Chip, Spinner, toast } from '../../components'
 import { haptic } from '../../haptics'
 import { Icon } from '../../icons'
-import { gameState, settings } from '../../store'
+import { gameState, phaserRenderOpts, settings } from '../../store'
 import { finishScouting, scoutPacing, scoutReport, scoutingOpen, type ScoutOutcome } from '../../backend/scouting'
 import { GameTutorial, GateBeat } from '../../tutorial/ControlHint'
 
@@ -131,6 +131,8 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
         reducedMotion: settings.value.reducedMotion,
         insets: () => ({ top: 52, bottom: panel.current?.getBoundingClientRect().height ?? 260 }),
         onFrame: (f) => setFrame(f),
+        ...phaserRenderOpts(),
+        onExit: () => quit(),
       }, (r) => {
         handle.current = null
         setResult(r)
@@ -168,7 +170,7 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
     <div class={`trn-drill scout is-${phase}`} role="dialog" aria-modal="true" aria-label={t('training.scout.title', { c: club })} data-testid="scout">
       <div class="trn-drill-stage" ref={host} id="scout-canvas" />
       {(phase === 'playing' || phase === 'loading') && (
-        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.scout.quit')}>
+        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.scout.quit')} data-back-exit>
           <Icon name="close" size={20} />
           <span>{t('training.scout.quit')}</span>
         </button>

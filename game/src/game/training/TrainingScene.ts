@@ -19,6 +19,8 @@ import { probeKick } from '../touchProbe'
 import type { AimAssist } from '../kick'
 import { clampN } from '../model'
 import { createMatchGame } from '../MatchScene'
+import { guardPhaser, type GuardHandle } from '../phaserGuard'
+import type { QualityProfile } from '../quality'
 import { canvasSafeInsets } from '../../platform/viewport'
 import { pauseGate, wireAppPause } from '../pauseGate'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from '../view'
@@ -34,6 +36,12 @@ export interface DrillSceneOptions {
   title?: string
   /** Players' gender (female heads get ponytails/buns; dummies stay plain). */
   gender?: 'male' | 'female'
+  /** Graphics quality profile (render scale cap). */
+  quality?: QualityProfile
+  /** The player chose Low graphics: Canvas renderer from the start. */
+  canvasRenderer?: boolean
+  /** Exit pressed on the render-failure panel (nothing could draw the drill). */
+  onExit?: () => void
 }
 
 export interface DrillHandle {
@@ -1046,30 +1054,49 @@ export class TrainingScene extends Phaser.Scene {
 }
 
 /**
- * Plays one drill in `container` (a Phaser game is created and destroyed).
- * `onDone` receives the result after the final grade has been shown.
+ * Plays one drill in `container` (a Phaser game is created and destroyed) under the render guard:
+ * a failed WebGL start restarts the drill on Canvas; if Canvas fails too, a panel with Exit
+ * (= `opts.onExit`) replaces the canvas. `onDone` receives the result after the final grade.
  */
-export function startDrill(container: HTMLElement, drill: Drill, opts: DrillSceneOptions, onDone: (r: DrillResult) => void): DrillHandle {
-  const game = createMatchGame(container)
+export function startDrill(container: HTMLElement, drill: Drill, opts: DrillSceneOptions, onDone: (r: DrillResult) => void, makeDrill?: () => Drill): DrillHandle {
   let stopped = false
+  let current = drill
+  let guard: GuardHandle | null = null
   const finish = (r: DrillResult) => {
     if (stopped) return
     stopped = true
-    game.destroy(true)
+    guard?.stop()
     onDone(r)
   }
-  const launch = () => {
-    if (stopped) return
-    game.scene.add(SCENE_KEY, TrainingScene, true, { drill, opts, onDone: finish } satisfies SceneData)
-  }
-  if (game.isBooted) launch()
-  else game.events.once(Phaser.Core.Events.READY, launch)
+  guard = guardPhaser({
+    container,
+    host: 'drill',
+    lowGraphics: opts.canvasRenderer,
+    build: (renderer, safe) => {
+      const game = createMatchGame(container, opts.quality, renderer)
+      const launch = safe(() => {
+        if (stopped) return
+        game.scene.add(SCENE_KEY, TrainingScene, true, { drill: current, opts, onDone: finish } satisfies SceneData)
+      })
+      if (game.isBooted) launch()
+      else game.events.once(Phaser.Core.Events.READY, launch)
+      return game
+    },
+    // A restart replays the drill from its first rep (a fresh copy when the caller can make one).
+    onRestart: () => {
+      if (makeDrill) current = makeDrill()
+    },
+    onExit: () => opts.onExit?.(),
+  })
+  const g = guard
   return {
-    game,
+    get game() {
+      return g.game as Phaser.Game
+    },
     stop() {
       if (stopped) return
       stopped = true
-      game.destroy(true)
+      g.stop()
     },
   }
 }

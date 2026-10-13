@@ -85,6 +85,7 @@ export function playHighlight(
             reducedMotion: req.settings.reducedMotion,
             lowFx: req.settings.lowFx,
             quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
+            canvasRenderer: req.settings.quality === 'low',
             cameraDistance: req.settings.cameraDistance,
           },
           stadium: req.stadium,
@@ -100,6 +101,14 @@ export function playHighlight(
           replay: !req.settings.reducedMotion,
           gender: req.gender,
           onEvent: (e) => emitHintEvent(e, heroId),
+          // Nothing could draw the moment (failure panel → Exit): the sim resolves it.
+          onRenderFail: () => {
+            if (stopped) return
+            stopped = true
+            clearWatchdog()
+            handle?.stop()
+            onFallback('render-failed')
+          },
         },
         (r) => {
           clearWatchdog()
@@ -154,7 +163,7 @@ export function rewatchMoment(
       handle = mod.replayMoment(
         container,
         moment,
-        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx, quality: resolveQuality(settings.quality, settings.qualityAuto), cameraDistance: settings.cameraDistance } },
+        { angle, settings: { aimAssist: settings.aimAssist, slowMoAim: settings.slowMoAim, vibration: false, sound: settings.sound, reducedMotion: settings.reducedMotion, lowFx: settings.lowFx, quality: resolveQuality(settings.quality, settings.qualityAuto), canvasRenderer: settings.quality === 'low', cameraDistance: settings.cameraDistance }, onRenderFail: () => { if (!stopped) onDone() } },
         () => {
           if (!stopped) onDone()
         },
@@ -206,6 +215,7 @@ export function rewatchGoal(container: HTMLElement, req: GoalReelRequest, onDone
             reducedMotion: req.settings.reducedMotion,
             lowFx: req.settings.lowFx,
             quality: resolveQuality(req.settings.quality, req.settings.qualityAuto),
+            canvasRenderer: req.settings.quality === 'low',
             cameraDistance: req.settings.cameraDistance,
           },
           matchKey: 'goal-reel',
@@ -216,6 +226,12 @@ export function rewatchGoal(container: HTMLElement, req: GoalReelRequest, onDone
           gender: req.gender,
           replay: !req.settings.reducedMotion,
           inputReplay: req.rec,
+          onRenderFail: () => {
+            if (stopped) return
+            stopped = true
+            handle?.stop()
+            onDone({ outcome: 'timeout', passes: 0, passesCompleted: 0, shots: 0, shotsOnTarget: 0, dribbles: 0, tackles: 0 })
+          },
         },
         (r) => {
           if (import.meta.env.DEV) (globalThis as { __spLastReel?: unknown }).__spLastReel = r

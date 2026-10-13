@@ -19,7 +19,7 @@ import { DrillMatchupCard } from './DrillMatchupCard'
 import { drillMatchup } from '../../../game/training/matchup'
 import { DRILL_DIFFICULTY, drillOpponentFor } from './drillOpponent'
 import { formatNumber } from '../../format'
-import { actions, gameState, heroClub, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
+import { actions, gameState, heroClub, phaserRenderOpts, settings, type TrainingOutcomeView, type TrainingSessionView } from '../../store'
 import { drillFinished } from '../../backend/meta'
 import { impressResult } from '../../backend/benchPath'
 import '../../../styles/screens/bench.css'
@@ -74,26 +74,31 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
       if (!el) return
       const cal = s.calendar
       const seed = hashString(`${s.meta.seed}|${cal.season}|${cal.week}|${cal.day}|${cal.slot}|${session.id}`)
-      const d = createDrill(drill.kind, {
-        attrs: s.hero.attrs,
-        seed,
-        aimAssist: settings.value.aimAssist,
-        difficulty: DRILL_DIFFICULTY[s.meta.difficulty] ?? 1,
-        opponent: drillOpponentFor(s, s.hero.contract?.clubId),
-        variant: drill.variant,
-      })
-      // Observe drill events for the first-run control hint (read-only tap).
-      const drain = d.drainEvents.bind(d)
-      d.drainEvents = () => {
-        const evs = drain()
-        for (const e of evs) emitHintEvent(e)
-        return evs
+      const make = () => {
+        const d = createDrill(drill.kind, {
+          attrs: s.hero.attrs,
+          seed,
+          aimAssist: settings.value.aimAssist,
+          difficulty: DRILL_DIFFICULTY[s.meta.difficulty] ?? 1,
+          opponent: drillOpponentFor(s, s.hero.contract?.clubId),
+          variant: drill.variant,
+        })
+        // Observe drill events for the first-run control hint (read-only tap).
+        const drain = d.drainEvents.bind(d)
+        d.drainEvents = () => {
+          const evs = drain()
+          for (const e of evs) emitHintEvent(e)
+          return evs
+        }
+        return d
       }
       setPhase('playing')
       handle.current = mod.startDrill(
         el,
-        d,
+        make(),
         {
+          ...phaserRenderOpts(),
+          onExit: () => quit(),
           lang: settings.value.lang,
           heroKit: heroClub.value?.colors ?? DEFAULT_KIT,
           settings: {
@@ -121,6 +126,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
           if (o.ok) haptic(r.grade === 'S' || r.grade === 'A' ? 'success' : 'select')
           else haptic('error')
         },
+        make,
       )
     } catch (e) {
       console.warn('[StarPath] training mini-game unavailable', e)
@@ -149,7 +155,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
     <div class={`trn-drill is-${phase}`} role="dialog" aria-modal="true" aria-label={title}>
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
       {(phase === 'playing' || phase === 'loading') && (
-        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.drill.quit')} title={t('training.drill.quitHint')}>
+        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.drill.quit')} title={t('training.drill.quitHint')} data-back-exit data-testid="drill-quit">
           <Icon name="close" size={20} />
           <span>{t('training.drill.quit')}</span>
         </button>
@@ -192,7 +198,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
             <Chip tone="violet" icon="sparkle">{t('training.session.xpRange', { a: session.xpMin ?? Math.round(session.xpMax * 0.25), b: session.xpMax })}</Chip>
           </div>
           <div class="row trn-drill-actions">
-            <Button variant="ghost" onClick={() => onClose(null)}>{t('common.cancel')}</Button>
+            <Button variant="ghost" onClick={() => onClose(null)} data-back-exit>{t('common.cancel')}</Button>
             {apply && <Button variant="secondary" icon="fast-forward" onClick={auto} data-testid="drill-quick">{t('bench.scene.quick')}</Button>}
             <Button variant="primary" icon="play" onClick={() => void start()} autoFocus>{t('training.drill.start')}</Button>
           </div>
@@ -202,7 +208,7 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
         <div class="trn-drill-card stack">
           <p class="t-mid">{t('training.drill.loadFailed')}</p>
           <div class="row trn-drill-actions">
-            <Button variant="ghost" onClick={() => onClose(null)}>{t('common.cancel')}</Button>
+            <Button variant="ghost" onClick={() => onClose(null)} data-back-exit>{t('common.cancel')}</Button>
             <Button variant="primary" onClick={auto}>{t('training.session.auto')}</Button>
           </div>
         </div>

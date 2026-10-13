@@ -1044,6 +1044,14 @@ function loadSettings(): UiSettings {
 export function effectiveQuality(s: Pick<UiSettings, 'quality' | 'qualityAuto'> = settings.value): QualityProfile {
   return resolveQuality(s.quality, s.qualityAuto)
 }
+/**
+ * What a Phaser host needs from the graphics settings: the profile (render scale) and whether the
+ * player explicitly chose Low, which also selects the Canvas renderer (the safe path on GPUs whose
+ * WebGL driver misbehaves). An Auto profile that measured Low keeps WebGL.
+ */
+export function phaserRenderOpts(s: Pick<UiSettings, 'quality' | 'qualityAuto'> = settings.value): { quality: QualityProfile; canvasRenderer: boolean } {
+  return { quality: effectiveQuality(s), canvasRenderer: s.quality === 'low' }
+}
 function withDerivedFx(s: UiSettings): UiSettings {
   return { ...s, lowFx: effectiveQuality(s) === 'low' }
 }

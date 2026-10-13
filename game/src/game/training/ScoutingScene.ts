@@ -11,6 +11,8 @@ import Phaser from 'phaser'
 import type { KitColors } from '../../core/types'
 import { colorNum, luminance, mixHex } from '../art'
 import { createMatchGame } from '../MatchScene'
+import { guardPhaser, type GuardHandle } from '../phaserGuard'
+import type { QualityProfile } from '../quality'
 import { pauseGate, wireAppPause } from '../pauseGate'
 import { PITCH_L, PITCH_W, actorAt, ballAt, type Clip, type ScoutFrame, type ScoutingGame, type ScoutingResult } from './scouting'
 
@@ -22,6 +24,12 @@ export interface ScoutingSceneOptions {
   insets: () => { top: number; bottom: number }
   /** Called whenever the phase / clip changes (the overlay re-renders its question). */
   onFrame: (f: ScoutFrame) => void
+  /** Graphics quality profile (render scale cap). */
+  quality?: QualityProfile
+  /** The player chose Low graphics: Canvas renderer from the start. */
+  canvasRenderer?: boolean
+  /** Exit pressed on the render-failure panel. */
+  onExit?: () => void
 }
 
 export interface ScoutingHandle {
@@ -418,28 +426,41 @@ class ScoutingScene extends Phaser.Scene {
   }
 }
 
-/** Plays the scouting session in `container`; `onDone` gets the result. */
-export function startScouting(container: HTMLElement, sg: ScoutingGame, opts: ScoutingSceneOptions, onDone: (r: ScoutingResult) => void): ScoutingHandle & { game: Phaser.Game } {
-  const game = createMatchGame(container)
+/** Plays the scouting session in `container` (render-guarded, see startDrill); `onDone` gets the result. */
+export function startScouting(container: HTMLElement, sg: ScoutingGame, opts: ScoutingSceneOptions, onDone: (r: ScoutingResult) => void): ScoutingHandle & { readonly game: Phaser.Game } {
   let stopped = false
+  let guard: GuardHandle | null = null
   const finish = (r: ScoutingResult) => {
     if (stopped) return
     stopped = true
     onDone(r)
-    setTimeout(() => game.destroy(true), 0)
+    setTimeout(() => guard?.stop(), 0)
   }
-  const launch = () => {
-    if (stopped) return
-    game.scene.add(SCENE_KEY, ScoutingScene, true, { game: sg, opts, onDone: finish } satisfies SceneData)
-  }
-  if (game.isBooted) launch()
-  else game.events.once(Phaser.Core.Events.READY, launch)
+  guard = guardPhaser({
+    container,
+    host: 'scouting',
+    lowGraphics: opts.canvasRenderer,
+    build: (renderer, safe) => {
+      const game = createMatchGame(container, opts.quality, renderer)
+      const launch = safe(() => {
+        if (stopped) return
+        game.scene.add(SCENE_KEY, ScoutingScene, true, { game: sg, opts, onDone: finish } satisfies SceneData)
+      })
+      if (game.isBooted) launch()
+      else game.events.once(Phaser.Core.Events.READY, launch)
+      return game
+    },
+    onExit: () => opts.onExit?.(),
+  })
+  const g = guard
   return {
-    game,
+    get game() {
+      return g.game as Phaser.Game
+    },
     stop() {
       if (stopped) return
       stopped = true
-      game.destroy(true)
+      g.stop()
     },
   }
 }

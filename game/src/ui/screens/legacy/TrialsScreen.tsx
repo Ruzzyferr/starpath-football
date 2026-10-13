@@ -7,7 +7,7 @@ import { currentLang, lt, t, tx } from '../../../i18n'
 import { Button, Chip, Crest, Spinner } from '../../components'
 import { Icon } from '../../icons'
 import { haptic } from '../../haptics'
-import { gameState, navigate, settings } from '../../store'
+import { gameState, navigate, phaserRenderOpts, settings } from '../../store'
 import { drillFinished, finishTrial, trialInvites, type TrialResultView } from '../../backend/meta'
 import { startTourIfDue } from '../../tutorial/tour'
 import { HowToTip } from '../../tutorial/ControlHint'
@@ -50,9 +50,11 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
         const [mod, { createDrill }] = await Promise.all([import('../../../game/training/TrainingScene'), import('../../../game/training/drills')])
         if (cancelled || !s || !host.current) return
         // The trial's opposition: the inviting club's players.
-        const d = createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1, opponent: drillOpponentFor(s, invite.clubId) })
+        const make = () => createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1, opponent: drillOpponentFor(s, invite.clubId) })
         setLoading(false)
-        handle.current = mod.startDrill(host.current, d, {
+        handle.current = mod.startDrill(host.current, make(), {
+          ...phaserRenderOpts(),
+          onExit: () => onDone(null),
           lang: settings.value.lang,
           heroKit: s.world.clubs[invite.clubId]?.colors ?? DEFAULT_KIT,
           settings: { sound: settings.value.sound, vibration: settings.value.vibration, aimAssist: settings.value.aimAssist, reducedMotion: settings.value.reducedMotion },
@@ -62,7 +64,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           handle.current = null
           drillFinished(r.kind, r.grade, r.performance)
           onDone(r.performance)
-        })
+        }, make)
       } catch (e) {
         console.warn('[StarPath] trial drill unavailable', e)
         onDone(null)
@@ -80,7 +82,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
     <div class={`trn-drill is-${phase === 'intro' ? 'intro' : 'playing'}`} role="dialog" aria-modal="true" aria-label={invite.clubName} data-testid="trial-drill">
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
       {phase === 'playing' && (
-        <button type="button" class="trn-drill-quit" onClick={() => onDone(null)} aria-label={t('training.drill.quit')}>
+        <button type="button" class="trn-drill-quit" onClick={() => onDone(null)} aria-label={t('training.drill.quit')} data-back-exit data-testid="drill-quit">
           <Icon name="close" size={20} />
           <span>{t('training.drill.quit')}</span>
         </button>
@@ -110,7 +112,7 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
             </Chip>
           </div>
           <div class="row trn-drill-actions">
-            <Button variant="ghost" onClick={() => onDone(null)}>{t('common.cancel')}</Button>
+            <Button variant="ghost" onClick={() => onDone(null)} data-back-exit>{t('common.cancel')}</Button>
             <Button variant="primary" icon="play" onClick={() => setPhase('playing')} autoFocus data-testid="trial-start">{t('training.drill.start')}</Button>
           </div>
         </div>

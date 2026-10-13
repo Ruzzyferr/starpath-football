@@ -18,6 +18,7 @@ import { buildDataExport, wipeLocalData } from '../../state/privacy'
 import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
 import { ASSIST_REWARD } from '../../sim/match/rating'
+import { clearWebglBroken, isWebglBroken } from '../../game/renderGuard'
 
 function Group({ title, icon, children }: { title: string; icon: IconName; children: ComponentChildren }) {
   return (
@@ -49,6 +50,7 @@ export function SettingsScreen() {
   const s = settings.value
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
+  const [webglOff, setWebglOff] = useState(isWebglBroken)
 
   const doExportAll = async () => {
     setBusy(true)
@@ -242,10 +244,12 @@ export function SettingsScreen() {
               <span class="t-xs t-mid" data-testid="quality-detected" data-profile={effectiveQuality(s)}>
                 {s.qualityAuto ? t('settings.qualityDetected', { p: qualityLabel(s.qualityAuto) }) : t('settings.qualityNotMeasured')}
               </span>
-              <Button size="sm" variant="ghost" icon="stopwatch" onClick={() => toast(t('settings.qualityDetected', { p: qualityLabel(detectQuality()) }), 'success')}>
+              <Button size="sm" variant="ghost" icon="stopwatch" onClick={() => { clearWebglBroken(); setWebglOff(false); toast(t('settings.qualityDetected', { p: qualityLabel(detectQuality()) }), 'success') }}>
                 {t('settings.qualityRedetect')}
               </Button>
             </div>
+            {s.quality === 'low' && <p class="t-xs t-mid" data-testid="quality-canvas">{t('settings.qualityLowCanvas')}</p>}
+            {webglOff && <p class="t-xs t-mid" data-testid="webgl-off">{t('settings.webglOff')}</p>}
           </div>
           <div data-testid="camera-setting">
             <Field label={t('settings.camera')} hint={t('settings.cameraDesc')}>

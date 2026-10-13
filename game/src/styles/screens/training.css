@@ -282,7 +282,7 @@ html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
 }
 /* The canvas HUD (title, score, clock) stays out of the notch / status bar and the
    home indicator: the stage is inset by the safe areas, the band behind is --bg-0. */
-.trn-drill-stage { position: absolute; inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
+.trn-drill-stage { position: absolute; z-index: 0; inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
 .trn-drill-stage canvas { display: block; }
 .trn-drill.is-intro .trn-drill-stage,
 .trn-drill.is-result .trn-drill-stage,
@@ -345,11 +345,15 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
 .trn-mu-val.is-lead { color: var(--gold, #f5c451); }
 .trn-mu-mark { text-align: center; color: var(--text-mid); font-size: 0.75rem; }
 .trn-mu-foot { margin-top: var(--sp-1); color: var(--text-mid); }
+/* Quit is a DOM button above the canvas (its own layer, always tappable), so it works even
+   when Phaser has stalled or the GPU draws nothing. */
 .trn-drill-quit {
   position: absolute;
   top: calc(8px + var(--safe-top));
   right: calc(10px + var(--safe-right));
-  z-index: 2;
+  z-index: 5;
+  pointer-events: auto;
+  touch-action: manipulation;
   display: inline-flex;
   align-items: center;
   gap: 4px;

@@ -75,6 +75,8 @@ import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, 
 import { ObjectPool } from './pool'
 import { probeKick } from './touchProbe'
 import { canvasSafeInsets } from '../platform/viewport'
+import { isWebglBroken, markWebglBroken, type RendererChoice } from './renderGuard'
+import { guardPhaser, type GuardHandle } from './phaserGuard'
 import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 
 // ───────────────────────── Public types ─────────────────────────
@@ -93,6 +95,11 @@ export interface HighlightSettings {
   quality?: QualityProfile
   /** Camera distance (Far / Normal / Close / Auto). */
   cameraDistance?: CameraDistanceChoice
+  /**
+   * The player explicitly chose Low graphics: render with Canvas (the safest path on GPUs whose
+   * WebGL driver misbehaves). An Auto profile that measured Low keeps WebGL.
+   */
+  canvasRenderer?: boolean
 }
 
 export interface StartHighlightOptions {
@@ -131,6 +138,11 @@ export interface StartHighlightOptions {
    * the live settings) so the moment replays exactly. Nothing is recorded or queued again.
    */
   inputReplay?: InputRecording
+  /**
+   * Neither WebGL nor Canvas could show the moment and the player pressed Exit on the failure
+   * panel: resolve the moment without the interactive scene (the live match auto-resolves it).
+   */
+  onRenderFail?: () => void
 }
 
 /** Handle returned by {@link startHighlight}. */
@@ -3124,21 +3136,20 @@ function safeAreaTop(canvas: HTMLCanvasElement): number {
 
 // ───────────────────────── Factory & API ─────────────────────────
 
-/** Set once WebGL context creation has failed on this device: later games go straight to Canvas. */
-let webglBroken = false
-
 /**
- * Builds the game with Phaser.AUTO, and with the Canvas renderer when WebGL fails. AUTO only
- * probes for *a* WebGL context; the real one (with our antialias / powerPreference attributes)
- * can still fail on blocklisted or exhausted GPUs (some Adreno/Mali drivers), and Phaser then
- * throws "WebGL unsupported" from the constructor, leaving the match blank.
+ * Builds the game. With an explicit `renderer` (every guarded host, see phaserGuard.ts) exactly
+ * that one is used and a failure throws to the guard. Without it (demo page), Phaser.AUTO is tried
+ * and the Canvas renderer used when WebGL fails: AUTO only probes for *a* WebGL context; the real
+ * one (with our antialias / powerPreference attributes) can still fail on blocklisted or exhausted
+ * GPUs (some Adreno/Mali drivers), and Phaser then throws "WebGL unsupported" from the constructor.
  */
-function newGameWithFallback(config: (type: number) => Phaser.Types.Core.GameConfig): Phaser.Game {
-  if (!webglBroken) {
+function newGameWithFallback(config: (type: number) => Phaser.Types.Core.GameConfig, renderer?: RendererChoice): Phaser.Game {
+  if (renderer) return new Phaser.Game(config(renderer === 'canvas' ? Phaser.CANVAS : Phaser.WEBGL))
+  if (!isWebglBroken()) {
     try {
       return new Phaser.Game(config(Phaser.AUTO))
     } catch (e) {
-      webglBroken = true
+      markWebglBroken(`WebGL init failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`)
       console.warn('[StarPath] WebGL renderer failed, falling back to Canvas', e)
       recordError(`WebGL init failed: ${String((e as Error)?.message ?? e).slice(0, 120)}`, 'render')
     }
@@ -3154,9 +3165,10 @@ function newGameWithFallback(config: (type: number) => Phaser.Types.Core.GameCon
  * maps 1 CSS px to 1 canvas px (blurry on retina). On DPR = 1 it uses
  * Phaser.Scale.RESIZE directly. Handles orientation changes via the observer.
  * `profile` is the active graphics quality profile: Low caps the render scale at 1.25x.
+ * `renderer` forces WebGL or Canvas (guarded hosts); omitted, WebGL is tried with a Canvas fallback.
  * Destroy with `game.destroy(true)`; observers are disconnected automatically.
  */
-export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): Phaser.Game {
+export function createMatchGame(parent: HTMLElement, profile?: QualityProfile, renderer?: RendererChoice): Phaser.Game {
   // Capped at 2: a 3x backing store costs ~2.25x the fill rate for no visible gain on phones.
   const rect = parent.getBoundingClientRect()
   const cssW = Math.max(1, Math.floor(rect.width || parent.clientWidth || 800))
@@ -3181,7 +3193,7 @@ export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): 
     scale: hiDpi
       ? { mode: Phaser.Scale.NONE, width: Math.round(cssW * dpr), height: Math.round(cssH * dpr), zoom: 1 / dpr }
       : { mode: Phaser.Scale.RESIZE, width: cssW, height: cssH },
-  }))
+  }), renderer)
   game.registry.set('dpr', hiDpi ? dpr : 1)
   if (hiDpi && typeof ResizeObserver !== 'undefined') {
     const ro = new ResizeObserver(() => {
@@ -3214,30 +3226,70 @@ export function startHighlight(
   onDone: (r: HighlightResult) => void,
   replayOnly?: MomentRecording,
 ): HighlightHandle {
-  const owned = !(target instanceof Phaser.Game)
-  const game = target instanceof Phaser.Game ? target : createMatchGame(target, profileOfSettings(opts.settings))
   let stopped = false
+  const sceneData = (finish: (r: HighlightResult) => void): SceneData => ({ highlight, opts, onDone: finish, replayOnly })
+  if (target instanceof Phaser.Game) {
+    // Shared game (demo page): the caller owns it, no guard.
+    const game = target
+    const finish = (r: HighlightResult) => {
+      if (stopped) return
+      stopped = true
+      game.scene.remove(SCENE_KEY)
+      onDone(r)
+    }
+    const launch = () => {
+      if (stopped) return
+      if (game.scene.getScene(SCENE_KEY)) game.scene.remove(SCENE_KEY)
+      game.scene.add(SCENE_KEY, MatchScene, true, sceneData(finish))
+    }
+    if (game.isBooted) launch()
+    else game.events.once(Phaser.Core.Events.READY, launch)
+    return {
+      game,
+      stop() {
+        if (stopped) return
+        stopped = true
+        if (game.scene.getScene(SCENE_KEY)) game.scene.remove(SCENE_KEY)
+      },
+    }
+  }
+  const profile = profileOfSettings(opts.settings)
+  let guard: GuardHandle | null = null
   const finish = (r: HighlightResult) => {
     if (stopped) return
     stopped = true
-    if (owned) game.destroy(true)
-    else game.scene.remove(SCENE_KEY)
+    guard?.stop()
     onDone(r)
   }
-  const launch = () => {
-    if (stopped) return
-    if (game.scene.getScene(SCENE_KEY)) game.scene.remove(SCENE_KEY)
-    game.scene.add(SCENE_KEY, MatchScene, true, { highlight, opts, onDone: finish, replayOnly } satisfies SceneData)
-  }
-  if (game.isBooted) launch()
-  else game.events.once(Phaser.Core.Events.READY, launch)
+  guard = guardPhaser({
+    container: target,
+    host: opts.replay && replayOnly ? 'replay' : 'match',
+    lowGraphics: !!opts.settings.canvasRenderer,
+    build: (renderer, safe) => {
+      const game = createMatchGame(target, profile, renderer)
+      const launch = safe(() => {
+        if (stopped) return
+        game.scene.add(SCENE_KEY, MatchScene, true, sceneData(finish))
+      })
+      if (game.isBooted) launch()
+      else game.events.once(Phaser.Core.Events.READY, launch)
+      return game
+    },
+    // Exit on the failure panel: the moment is over without a result the player earned.
+    onExit: () => {
+      if (stopped) return
+      opts.onRenderFail?.()
+    },
+  })
+  const g = guard
   return {
-    game,
+    get game() {
+      return g.game as Phaser.Game
+    },
     stop() {
       if (stopped) return
       stopped = true
-      if (owned) game.destroy(true)
-      else if (game.scene.getScene(SCENE_KEY)) game.scene.remove(SCENE_KEY)
+      g.stop()
     },
   }
 }
@@ -3250,7 +3302,7 @@ export function startHighlight(
 export function replayMoment(
   target: Phaser.Game | HTMLElement,
   moment: MomentRecording,
-  o: { settings: HighlightSettings; angle?: ReplayAngleChoice; lang?: Lang },
+  o: { settings: HighlightSettings; angle?: ReplayAngleChoice; lang?: Lang; onRenderFail?: () => void },
   onDone: () => void,
 ): HighlightHandle {
   const v = moment.view
@@ -3271,6 +3323,7 @@ export function replayMoment(
       gender: v.gender,
       replay: true,
       replayAngle: o.angle ?? 'auto',
+      onRenderFail: o.onRenderFail,
     },
     () => onDone(),
     moment,
