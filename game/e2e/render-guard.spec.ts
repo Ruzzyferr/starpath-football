@@ -38,6 +38,19 @@ async function startTrialDrill(page: Page): Promise<void> {
 const rendererType = (page: Page) =>
   page.evaluate(() => (globalThis as { __spTraining?: { game: { renderer: { type: number } } } }).__spTraining?.game.renderer.type ?? null)
 
+test('a healthy WebGL drill stays on WebGL (no false alarm from the watchdog or blank-frame check)', async ({ page }) => {
+  await boot(page)
+  await toTrials(page)
+  await startTrialDrill(page)
+  await expect(page.locator('.trn-drill canvas')).toBeVisible({ timeout: 20_000 })
+  await page.waitForTimeout(6000)
+  expect(await rendererType(page)).toBe(2) // Phaser.WEBGL
+  expect(await page.evaluate(() => localStorage.getItem('sp.render.webglBroken'))).toBeNull()
+  expect(await page.evaluate(() => localStorage.getItem('sp.render.starting'))).toBeNull()
+  await page.getByTestId('drill-quit').click()
+  await expect(page.getByTestId('trial-drill')).toHaveCount(0)
+})
+
 test('WebGL failing: the trial drill restarts on Canvas, the failure is remembered, Quit works', async ({ page, shot }) => {
   await boot(page, { force: 'throw-webgl' })
   await toTrials(page)
