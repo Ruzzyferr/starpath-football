@@ -103,6 +103,7 @@ function advance(): void {
     notify(L('Kariyerin sona erdi.', 'Your career is over.'), 'info')
     return
   }
+  live.dropUnstartedReserve()
   if (live.liveActive()) {
     notify(L('Önce maçını tamamla.', 'Finish your match first.'), 'info')
     return
@@ -149,6 +150,7 @@ function advanceToMatch(): void {
   const s = get()
   if (lockedOut(s)) return
   // Every early exit says why (a silent no-op read as a dead button on iPhone).
+  live.dropUnstartedReserve()
   if (live.liveActive()) {
     notify(L('Önce maçını tamamla.', 'Finish your match first.'), 'info')
     return

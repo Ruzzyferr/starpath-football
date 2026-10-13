@@ -11,7 +11,7 @@ import { worldGender } from '../../core/gender'
 import { customMomentOverrides } from '../../core/customDifficulty'
 import { currentLang } from '../../i18n'
 import {
-  GFLAG, HERO_ID, answerInterview, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
+  GFLAG, HERO_ID, answerInterview, clearActiveMatch, finishHeroMatch, interviewFor, saveMatchProgress, startHeroMatch, resumeHeroMatch,
   type InterviewDef, type InterviewEffect, type InterviewTone,
 } from '../../sim/game'
 import { heroClub, readJson, weekCounters, writeJson } from '../../sim/game/internal'
@@ -818,4 +818,19 @@ export function persistNow(): void {
 }
 
 export const liveActive = (): boolean => !!live && !live.finalized
+
+/**
+ * A U21 / training match opened from the bench but never kicked off (the player
+ * backed out of the pre-match screen) is dropped, so it cannot block the day.
+ * True when one was dropped. A league match or a reserve game already under way stays.
+ */
+export function dropUnstartedReserve(): boolean {
+  const s = current()
+  if (!s || !live || live.finalized || !s.activeMatchId?.startsWith('reserve:')) return false
+  if (live.sim.snapshot().minute > 0) return false
+  clearLive()
+  clearActiveMatch(s)
+  commit(s, { silent: true })
+  return true
+}
 export const liveFixtureId = (): string | null => live?.fixtureId ?? null
