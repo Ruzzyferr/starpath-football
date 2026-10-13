@@ -6,7 +6,7 @@ import { buildErrorReport, clearErrorLog, isErrorLogEnabled, readErrorLog, setEr
 
 const L = (tr: string, en: string): string => lt({ tr, en })
 
-async function copyText(text: string): Promise<boolean> {
+export async function copyText(text: string): Promise<boolean> {
   try {
     await navigator.clipboard.writeText(text)
     return true

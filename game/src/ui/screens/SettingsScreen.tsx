@@ -19,6 +19,9 @@ import { ErrorReportPanel } from '../../telemetry/ErrorReportPanel'
 import type { ColorblindMode } from '../store'
 import { ASSIST_REWARD } from '../../sim/match/rating'
 import { clearWebglBroken, isWebglBroken } from '../../game/renderGuard'
+import { DiagnosticsPanel } from '../../telemetry/DiagnosticsPanel'
+import { setSoftwareMode, softwareModeState } from '../../platform/renderMode'
+import { detectPlatform } from '../../platform/detect'
 
 function Group({ title, icon, children }: { title: string; icon: IconName; children: ComponentChildren }) {
   return (
@@ -51,6 +54,7 @@ export function SettingsScreen() {
   const [confirm, setConfirm] = useState(false)
   const [busy, setBusy] = useState(false)
   const [webglOff, setWebglOff] = useState(isWebglBroken)
+  const [compat, setCompat] = useState(softwareModeState)
 
   const doExportAll = async () => {
     setBusy(true)
@@ -251,6 +255,20 @@ export function SettingsScreen() {
             {s.quality === 'low' && <p class="t-xs t-mid" data-testid="quality-canvas">{t('settings.qualityLowCanvas')}</p>}
             {webglOff && <p class="t-xs t-mid" data-testid="webgl-off">{t('settings.webglOff')}</p>}
           </div>
+          <div data-testid="compat-setting">
+            <Switch
+              label={t('settings.compatMode')}
+              desc={t('settings.compatModeDesc')}
+              checked={compat.on}
+              onChange={(on) => {
+                void setSoftwareMode(on).then(() => {
+                  setCompat(softwareModeState())
+                  if (detectPlatform() === 'android') toast(t('settings.compatRestart'), 'info', 'info', 6000)
+                })
+              }}
+            />
+            {compat.on && compat.auto && <p class="t-xs t-mid" data-testid="compat-auto">{t('settings.compatAuto')}</p>}
+          </div>
           <div data-testid="camera-setting">
             <Field label={t('settings.camera')} hint={t('settings.cameraDesc')}>
               <Segmented<CameraDistanceChoice>
@@ -361,6 +379,10 @@ export function SettingsScreen() {
               </Button>
             </div>
           </div>
+        </Group>
+
+        <Group title={t('settings.sections.diagnostics')} icon="stopwatch">
+          <DiagnosticsPanel />
         </Group>
 
         <Group title={t('settings.sections.about')} icon="info">

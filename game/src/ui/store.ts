@@ -30,6 +30,7 @@ import { isCameraDistanceChoice, type CameraDistanceChoice } from '../game/view'
 import { adjustForFps, isQualityChoice, measureFps, profileFromProbe, readGpuRenderer, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { SlotThumb } from '../state/save'
 import type { DrillKind, DrillVariant } from '../game/training/types'
+import { isSoftwareMode } from '../game/renderGuard'
 
 // ───────────────────────── Shared view types ─────────────────────────
 
@@ -1047,10 +1048,12 @@ export function effectiveQuality(s: Pick<UiSettings, 'quality' | 'qualityAuto'> 
 /**
  * What a Phaser host needs from the graphics settings: the profile (render scale) and whether the
  * player explicitly chose Low, which also selects the Canvas renderer (the safe path on GPUs whose
- * WebGL driver misbehaves). An Auto profile that measured Low keeps WebGL.
+ * WebGL driver misbehaves). An Auto profile that measured Low keeps WebGL. Compatibility mode
+ * (software drawing, platform/renderMode) is Canvas at the Low render scale.
  */
 export function phaserRenderOpts(s: Pick<UiSettings, 'quality' | 'qualityAuto'> = settings.value): { quality: QualityProfile; canvasRenderer: boolean } {
-  return { quality: effectiveQuality(s), canvasRenderer: s.quality === 'low' }
+  const sw = isSoftwareMode()
+  return { quality: sw ? 'low' : effectiveQuality(s), canvasRenderer: s.quality === 'low' || sw }
 }
 function withDerivedFx(s: UiSettings): UiSettings {
   return { ...s, lowFx: effectiveQuality(s) === 'low' }

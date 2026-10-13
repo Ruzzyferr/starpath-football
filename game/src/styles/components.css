@@ -971,3 +971,45 @@
   user-select: text;
 }
 .render-fail .btn { align-self: flex-start; min-width: 120px; }
+
+/* One-time boot notice: the last game-screen start did not finish (telemetry/lastRunNotice.ts).
+   Plain colours first: it must stay readable whatever else failed. */
+.last-run-notice {
+  position: fixed;
+  left: 12px;
+  right: 12px;
+  bottom: calc(12px + var(--safe-bottom, 0px));
+  z-index: 70;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  max-width: 560px;
+  margin: 0 auto;
+  padding: 14px 16px;
+  border-radius: 14px;
+  background: #18202e;
+  background: var(--surface-1, #18202e);
+  color: #f2f5fa;
+  color: var(--text-hi, #f2f5fa);
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+}
+.last-run-notice p { margin: 6px 0 10px; color: #c4ccd8; color: var(--text-mid, #c4ccd8); font-size: 0.875rem; }
+
+/* Settings › Diagnostics: the copyable report. */
+.diag-text {
+  width: 100%;
+  min-height: 12em;
+  padding: 8px 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: var(--r-btn, 10px);
+  background: #10151f;
+  background: var(--surface-2, #10151f);
+  color: #f2f5fa;
+  color: var(--text-hi, #f2f5fa);
+  font: 0.75rem/1.4 ui-monospace, Menlo, Consolas, monospace;
+  white-space: pre;
+  overflow: auto;
+  resize: vertical;
+  user-select: text;
+  -webkit-user-select: text;
+}
