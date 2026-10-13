@@ -17,7 +17,8 @@
 | Elmasın kullanımı | Antrenmanı hızlandıran ekipman (krampon vb.), kozmetik (forma, krampon rengi, gol sevinci). |
 | Oyun içi para (€) | **Satılır** (nakit paketleri). Kumarhane aynı parayla çalışmaya devam eder (sahip kararı). Yaş derecesi buna göre güncellenmeli. |
 | Abonelik | **Pro Sözleşme €4.99/ay:** her gün 50💎 (sahip kararı). Panelde ilk ayda kimse almadı, gelir ana kalemi değil. |
-| Ücretsiz kalanlar | Reklam yok, ganimet kutusu yok, enerji sınırı yok, çevrimdışı. **Editör** (gerçek isimler) ve **kayıt yedekleme** ücretsiz. |
+| Reklam | **Ödüllü reklam var** (isteğe bağlı: "izle, kazan"). **Zorla reklam yok** (geçiş reklamı yok). Banner: yalnızca menülerde, herhangi bir satın alma kaldırır; lansmanda kapalı, test sonrası karar (§6.7). |
+| Ücretsiz kalanlar | Zorla reklam yok, ganimet kutusu yok, enerji sınırı yok, çevrimdışı. **Editör** (gerçek isimler) ve **kayıt yedekleme** ücretsiz. |
 | Değişmez kural | **Satılan hiçbir şey maç sonucunu veya maç içi istatistiği doğrudan değiştirmez.** Ekipman yalnızca antrenman XP hızını etkiler. Fiyatlar maaşla birlikte asla artmaz. |
 | En iyi sonuç (simülasyon) | v5 teklifi: aynı 20 alıcıda **9/20 (%45)**, hiç görmediği 20 yeni alıcıda **13/20 (%65)**, 16 satın alma. Gerçek F2P dönüşümü bunun çok altında olur (genelde %2-5). |
 
@@ -267,8 +268,60 @@ Kurallar:
 ### 6.6 Kazanılmayan, satılmayan şeyler
 - Ganimet kutusu ve rastgele ödüllü ücretli ürün **yok**.
 - Enerji yenileme satışı **yok**.
-- Reklam **yok** (ödüllü reklam dahil).
+- Zorla izletilen reklam (geçiş/interstitial) **yok**; maç ve mini oyun içinde hiçbir reklam **yok**.
 - Maç içi güç, istatistik veya maç sonucu satışı **yok**.
+
+### 6.7 Reklam geliri (sahip talebi, 2026-10-13)
+
+Reklam NSS'in gelirinin ~%77'si. Ama aynı zamanda en sık 1-2★ sebebi. Bu yüzden iki reklam türü çok farklı ele alınır.
+
+#### Ödüllü reklam ("izle, kazan"): VAR
+Oyuncu kendisi seçer, izler, ödülü alır. F2P'de en az şikâyet edilen ve birim başına en çok kazandıran reklam türüdür.
+
+| Teklif | Ödül | Günlük sınır | Nerede |
+|---|---|---|---|
+| Elmas | +10💎 | 5 izleme | Mağaza › Elmas sekmesi |
+| Maç primi ×2 | O maçın maç primi iki katı | Maç başına 1 | Maç sonu ekranı |
+| Antrenman takviyesi | Sonraki antrenman seansı XP +%20 | 3 | Antrenman ekranı |
+| Fizyoterapi indirimi | Fizyoterapi seansı 100💎 yerine 50💎 | Sakatlık başına 1 | Sakatlık kartı |
+| Sezon sonu ödülü ×2 | Sezon sonu elmas ödülü iki katı | Sezonda 1 | Sezon özeti |
+
+Kurallar (NSS şikâyetlerinden):
+- **Ödül garantili.** Reklam yüklenmezse veya yarıda kesilirse oyuncu yine de ödülü alır ya da hakkı yanmaz. NSS'te "izledim, ödül gelmedi" büyük şikâyetti.
+- **Satın alanlardan ödüllü reklam kalkmaz.** NSS'te "reklam kaldırmayı aldım, ödüllü seçenek de gitti" şikâyeti vardı. Ödüllü reklam her zaman isteğe bağlı ve her zaman açık.
+- **Maç ve mini oyun sırasında asla reklam yok.** Teklif yalnızca maç sonu ve menü anlarında çıkar.
+- Pro Sözleşme sahipleri ödülü reklamsız alır (aboneliğe değer katar).
+- Enerji ödülü yok (enerji satılmıyor, reklamla da verilmiyor).
+
+#### Banner reklam: lansmanda KAPALI, test sonrası karar
+- **Gerekçe:**
+  - Panelde satın alanların çoğu "reklam yok" vaadini sebep olarak saydı.
+  - Banner kazancı düşük (ödüllü reklamın onda biri ile yirmide biri arası).
+  - Küçük telefon ekranında maç dışı UI'yi sıkıştırır (safe-area düzenimiz zaten sıkı).
+- **Açılırsa kurallar:**
+  - Yalnızca menü ekranlarında (ana sayfa, takvim, hayat).
+  - Maç, mini oyun, kumarhane ve mağaza ekranlarında **asla**.
+  - **Herhangi bir satın alma** (€0.99 Başlangıç dahil) banner'ı kalıcı kaldırır. Bu, Başlangıç Paketi için ek bir sebep olur.
+  - Çapraz tanıtım veya "başka oyun" reklamı yok. NSS'te ücretli no-ads sonrası çıkan FM reklamı şikâyeti vardı.
+- Yumuşak lansmanda A/B: banner açık ve kapalı. Ölçüt: D7 tutunma, Başlangıç dönüşümü, 1★ yorum tonu. Banner tutunmayı veya dönüşümü düşürüyorsa kapalı kalır.
+
+#### Geçiş (interstitial) reklam: YOK
+Ekran geçişinde zorla izletilen reklam, NSS'in son yıllardaki 1 numaralı 1-2★ sebebi ("Your content will resume in 80 seconds").
+
+#### Teknik ve yasal gereksinimler
+- **SDK:** Google AdMob, Capacitor eklentisiyle (ör. `@capacitor-community/admob`). Ödüllü reklam için sunucu tarafı doğrulama (SSV) önerilir.
+- **Gizlilik:** bugünkü gizlilik politikası "veri toplama yok" diyor. Reklam SDK'sı reklam kimliği ve cihaz verisi toplar. Değişmesi gerekenler:
+  - gizlilik politikası;
+  - Google Play "Veri güvenliği" formu;
+  - App Store "Privacy Nutrition Label".
+- **AB, BK, Türkiye:** reklam öncesi rıza ekranı (Google UMP / IAB TCF). Rıza yoksa kişiselleştirilmemiş reklam gösterilir.
+- **iOS:** App Tracking Transparency (ATT) izni. Reddedilirse kişiselleştirilmemiş reklam gösterilir.
+- **Yaş:** kitlenin bir kısmı genç. 13 yaş altı kullanıcılar için reklam isteği çocuğa yönelik işaretlenir (COPPA, `tagForChildDirectedTreatment` / `tagForUnderAgeOfConsent`). Oyunda yaş beyanı gerekir.
+- **Çevrimdışı:** oyun çevrimdışı çalışır. Ödüllü reklam yalnızca çevrimiçiyken görünür, çevrimdışıyken teklif gizlenir.
+- **Kumarhane ekranında reklam yok.** Reklam ağları kumar içerikli sayfalarda ek kısıtlama uygular.
+
+#### Tahmini katkı
+Gerçek gelir ülkeye ve ağa göre çok değişir. Rakamlar yumuşak lansmanla ölçülmeli. Kabaca: ödüllü reklam, F2P gelirinin genelde önemli bir parçasıdır ve ödemeyen %95+ oyuncudan gelir alınmasını sağlar. Satın almaların yerini almaz, onlara eklenir.
 
 ---
 
@@ -395,7 +448,7 @@ Kurallar:
 
 Önerilen yeni çekirdek:
 
-> Ücretsiz oyna, tüm kariyer açık. Reklam yok, enerji sınırı yok, ganimet kutusu yok, çevrimdışı. Satın aldığın hiçbir şey maç sonucunu değiştirmez; fiyatlar maaşınla artmaz.
+> Ücretsiz oyna, tüm kariyer açık. Zorla reklam yok (ödüllü reklam isteğe bağlı), enerji sınırı yok, ganimet kutusu yok, çevrimdışı. Satın aldığın hiçbir şey maç sonucunu değiştirmez; fiyatlar maaşınla artmaz.
 
 ---
 
@@ -439,9 +492,11 @@ Analitik bugün yok (gizlilik politikası "veri toplama yok" diyor). Eklenirse p
 | F | Efsane Kariyerler v1 (harika çocuk + miras paketleme) | 1-2 gün |
 | G | Teknik direktör kariyeri | 1-2 hafta (ayrı sürüm) |
 | H | Sunucu makbuz doğrulama (edge function) | 1 gün |
+| J | Ödüllü reklam (AdMob + rıza ekranı + ATT + gizlilik metinleri) | 1-1,5 gün |
+| K | Banner (yalnızca A/B kararı "aç" çıkarsa) | 0,5 gün |
 | I | Mağaza ürünleri (Play Console, App Store Connect), yaş anketi, mağaza metni, yasal metin güncellemesi | 0,5 gün + sahip onayı |
 
-Toplam: G hariç **~6-8 iş günü.**
+Toplam: G hariç **~7,5-10 iş günü.**
 
 ---
 
