@@ -282,7 +282,9 @@ html.trn-drill-open, html.trn-drill-open body { overflow: hidden; }
 }
 /* The canvas HUD (title, score, clock) stays out of the notch / status bar and the
    home indicator: the stage is inset by the safe areas, the band behind is --bg-0. */
-.trn-drill-stage { position: absolute; z-index: 0; inset: var(--safe-top) var(--safe-right) var(--safe-bottom) var(--safe-left); }
+/* Longhands: the build cannot lower `inset` with var() values, and WebView < 87 has no `inset`
+   (the stage collapsed to 0×0 there: a tiny canvas, a squeezed failure panel). */
+.trn-drill-stage { position: absolute; z-index: 0; top: var(--safe-top); right: var(--safe-right); bottom: var(--safe-bottom); left: var(--safe-left); }
 .trn-drill-stage canvas { display: block; }
 .trn-drill.is-intro .trn-drill-stage,
 .trn-drill.is-result .trn-drill-stage,

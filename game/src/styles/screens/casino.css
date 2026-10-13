@@ -401,7 +401,7 @@
 .slot-cell.is-hit { background: radial-gradient(closest-side, rgba(255, 196, 0, 0.55), rgba(255, 196, 0, 0.12) 80%, transparent); }
 .slot-cell.is-hit svg { animation: pop-in var(--dur-slow) var(--ease-spring) both; }
 /* Paylines over the reels (inset = window padding so the centres line up). */
-.slot-lines { position: absolute; inset: var(--sp-2); width: calc(100% - 2 * var(--sp-2)); height: calc(100% - 2 * var(--sp-2)); pointer-events: none; overflow: visible; }
+.slot-lines { position: absolute; top: var(--sp-2); right: var(--sp-2); bottom: var(--sp-2); left: var(--sp-2); width: calc(100% - 2 * var(--sp-2)); height: calc(100% - 2 * var(--sp-2)); pointer-events: none; overflow: visible; }
 .slot-line { fill: none; stroke: var(--state-danger); stroke-width: 2; stroke-opacity: 0.22; stroke-linecap: round; stroke-linejoin: round; }
 .slot-window.has-result .slot-line { stroke-opacity: 0.1; }
 .slot-line.is-lit, .slot-window.has-result .slot-line.is-lit { stroke: var(--accent-gold); stroke-width: 4; stroke-opacity: 0.95; filter: drop-shadow(0 0 4px var(--accent-gold)); animation: pulse-dot 700ms ease-in-out 3; }
