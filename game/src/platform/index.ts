@@ -23,7 +23,7 @@ import { handleBack } from './back'
 import { installGlRecovery } from './glRecovery'
 import { flushAutosave } from '../ui/backend/persistence'
 import { recordError } from '../telemetry/errorLog'
-import { registerServiceWorker } from './sw-register'
+import { registerServiceWorker, unregisterServiceWorkers } from './sw-register'
 import { createWebWakeLock } from './wakeLock'
 import { installViewport, setKeyboard, markNativeKeyboard } from './viewport'
 import './platform.css'
@@ -153,5 +153,6 @@ export async function initPlatform(): Promise<PlatformId> {
   })
 
   if (id === 'web') registerServiceWorker()
+  else if (isMobileNative(id)) void unregisterServiceWorkers()
   return id
 }
