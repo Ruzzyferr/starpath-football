@@ -364,6 +364,9 @@ export type CarrierDecision =
   | { kind: 'cross'; to: Agent | null; point: Vec2 }
   | { kind: 'dribble'; dir: Vec2 }
 
+/** Longest backward pass an AI carrier plays, and only when closed down from in front (a lay-off, m). */
+export const LAY_OFF_MAX = 15
+
 /**
  * AI carrier: shoots in range when the angle is open, passes to the hero
  * based on relationship & vision when the hero is in a good spot, crosses
@@ -405,9 +408,14 @@ export function carrierDecision(a: Agent, w: AiWorld, rng: Rng, opts: { heldFor:
   const offsideFree = mates.filter((m) => !isOffside(w, m))
   let best: Agent | null = null
   let bestScore = -Infinity
+  // Recycling it backwards only as a short lay-off when a man in front closes him down (build 12 playtester: the
+  // team-mate put through on a 2-v-1 turned and hit it 30 m back to his own defence) — as the tactical carrier
+  // (tactics.ts). A chaser from behind is outrun, not passed back to.
+  const blocked = opp.some((o) => !o.isKeeper && dist(o.pos, a.pos) < 2.2 && (o.pos.x - a.pos.x) * dir > 0)
   for (const m of offsideFree) {
     const d = dist(a.pos, m.pos)
     if (d < 4 || d > 40) continue
+    if ((m.pos.x - a.pos.x) * dir < -3 && !(blocked && d < LAY_OFF_MAX)) continue
     const open = laneOpenness(a.pos, m.pos, oppPos)
     const space = clamp01(nearestDist(m.pos, oppPos) / 7)
     const fwd = ((m.pos.x - a.pos.x) * dir) / 25
