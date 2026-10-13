@@ -64,8 +64,10 @@ test('a run that ended mid-start shows a one-time notice with the last stage; Se
   const notice = page.getByTestId('last-run-notice')
   await expect(notice).toBeVisible()
   await expect(notice).toContainText('scene-create')
-  // Web: compatibility mode is an Android shell switch; it is not turned on automatically here.
-  await expect(notice).toHaveAttribute('data-compat', '0')
+  // It hung on the GPU path: compatibility mode (CPU canvas) is switched on (the Android software
+  // layer would only follow a second hang with it on, and only in the Android shell).
+  await expect(notice).toHaveAttribute('data-compat', 'compat')
+  expect(await page.evaluate(() => JSON.parse(localStorage.getItem('sp.render.software') ?? '{}'))).toMatchObject({ on: true, auto: 'hung at scene-create' })
   await page.getByTestId('last-run-ok').click()
   await expect(notice).toHaveCount(0)
   await page.reload()
@@ -76,6 +78,8 @@ test('a run that ended mid-start shows a one-time notice with the last stage; Se
   const text = await page.getByTestId('diagnostics-text').inputValue()
   expect(text).toContain('Last start did not finish: trial · finishing · medium → scene-create')
   expect(text).toContain('main thread hung')
+  expect(text).toContain('Compatibility mode: on (automatic: hung at scene-create)')
+  await expect(page.getByTestId('compat-auto')).toBeVisible()
   // The GPU path misbehaved: the panel does not open a WebGL context itself.
   expect(text).toContain('WebGL: not probed · last: webgl · Adreno (TM) 618')
 })

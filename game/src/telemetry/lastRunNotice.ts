@@ -1,44 +1,57 @@
 /**
  * Boot check of the start breadcrumbs: when the previous run stopped in the middle of starting a
  * game screen (a hang leaves no error), show a one-time TR/EN notice with the last stage reached.
- * On Android, a run that hung once the Phaser game was being built switches compatibility mode
- * (software drawing, platform/renderMode) on, and the notice says so.
+ * A run that hung once the Phaser game was being built (the GPU path) escalates the drawing
+ * mode: compatibility mode first, then (Android, hung again) the software layer.
  *
  * Plain DOM: shown even if the thing that broke is in Preact.
  */
 import { checkLastRunAtBoot, heartbeatState, reachedPhaser, type UnfinishedRun } from './breadcrumbs'
 import type { PlatformId } from '../platform/detect'
+import type { SoftwareModeState } from '../platform/renderMode'
 import { bindExitTap } from '../platform/exitTap'
 
-/** Compatibility mode is switched on automatically for a run that hung on the GPU path (Android only). */
-export function shouldAutoCompat(run: UnfinishedRun, platform: PlatformId, alreadyOn: boolean): boolean {
-  if (platform !== 'android' || alreadyOn) return false
-  return reachedPhaser(run) && heartbeatState(run) !== 'running'
+export type CompatStep = 'compat' | 'layer'
+
+/**
+ * The step to switch on after an unfinished run, keyed on observed behaviour only: the run reached
+ * the Phaser build and did not keep running. Compatibility mode first; with that already on, the
+ * Android software layer; nothing further after that.
+ */
+export function shouldAutoCompat(run: UnfinishedRun, platform: PlatformId, state: SoftwareModeState): CompatStep | null {
+  if (!reachedPhaser(run) || heartbeatState(run) === 'running') return null
+  if (!state.on) return 'compat'
+  if (platform === 'android' && !state.layer) return 'layer'
+  return null
 }
 
-export function lastRunNoticeText(run: UnfinishedRun, compat: boolean, tr: boolean): { title: string; body: string } {
+export function lastRunNoticeText(run: UnfinishedRun, step: CompatStep | null, tr: boolean): { title: string; body: string } {
   const stage = `${run.last.stage}${run.last.info ? ` (${run.last.info})` : ''}`
-  if (tr) {
-    return {
-      title: 'Son açılış yarım kaldı',
-      body: `Geçen sefer oyun ekranı açılırken takıldı. Son adım: ${stage}.${compat ? ' Uyumluluk modu (yazılımsal çizim) açıldı; Ayarlar › Grafik bölümünden kapatabilirsin.' : ''} Ayrıntılar Ayarlar › Tanılama’da; “Kopyala” ile bize gönderebilirsin.`,
-    }
+  const tail = tr ? ' Ayrıntılar Ayarlar › Tanılama’da; “Kopyala” ile bize gönderebilirsin.' : ' Details are in Settings › Diagnostics; use “Copy” to send them to us.'
+  let what = ''
+  if (step === 'compat') {
+    what = tr
+      ? ' Uyumluluk modu açıldı: oyun ekranları artık ekran kartı sürücüsünü kullanmadan çizilecek. Ayarlar › Grafik bölümünden kapatabilirsin.'
+      : ' Compatibility mode is now on: game screens are drawn without the graphics driver. You can turn it off in Settings › Graphics.'
+  } else if (step === 'layer') {
+    what = tr
+      ? ' Yazılımsal çizim açıldı (son çare): uygulamayı kapatıp yeniden aç. Oyun yavaşlayabilir; Ayarlar › Grafik bölümünden kapatabilirsin.'
+      : ' Software drawing is now on (last resort): close and reopen the app. The game may run slowly; you can turn it off in Settings › Graphics.'
   }
-  return {
-    title: 'The last start did not finish',
-    body: `Last time a game screen got stuck while opening. Last step: ${stage}.${compat ? ' Compatibility mode (software drawing) is now on; you can turn it off in Settings › Graphics.' : ''} Details are in Settings › Diagnostics; use “Copy” to send them to us.`,
-  }
+  return tr
+    ? { title: 'Son açılış yarım kaldı', body: `Geçen sefer oyun ekranı açılırken takıldı. Son adım: ${stage}.${what}${tail}` }
+    : { title: 'The last start did not finish', body: `Last time a game screen got stuck while opening. Last step: ${stage}.${what}${tail}` }
 }
 
-export function showLastRunNotice(run: UnfinishedRun, compat: boolean): HTMLElement | null {
+export function showLastRunNotice(run: UnfinishedRun, step: CompatStep | null): HTMLElement | null {
   if (typeof document === 'undefined' || !document.body) return null
   const tr = (document.documentElement.lang || 'tr').startsWith('tr')
-  const { title, body } = lastRunNoticeText(run, compat, tr)
+  const { title, body } = lastRunNoticeText(run, step, tr)
   const box = document.createElement('div')
   box.className = 'last-run-notice'
   box.setAttribute('role', 'alertdialog')
   box.setAttribute('data-testid', 'last-run-notice')
-  box.setAttribute('data-compat', compat ? '1' : '0')
+  box.setAttribute('data-compat', step ?? 'none')
   const h = document.createElement('strong')
   h.textContent = title
   const p = document.createElement('p')
@@ -54,14 +67,14 @@ export function showLastRunNotice(run: UnfinishedRun, compat: boolean): HTMLElem
   return box
 }
 
-/** Boot: check, maybe switch compatibility mode on, show the notice. Never throws. */
-export async function handleLastRunAtBoot(o: { platform: PlatformId; softwareOn: boolean; enableCompat: (reason: string) => Promise<unknown> }): Promise<UnfinishedRun | null> {
+/** Boot: check, maybe escalate the drawing mode, show the notice. Never throws. */
+export async function handleLastRunAtBoot(o: { platform: PlatformId; state: SoftwareModeState; enable: (step: CompatStep, reason: string) => Promise<unknown> }): Promise<UnfinishedRun | null> {
   try {
     const run = checkLastRunAtBoot()
     if (!run) return null
-    const compat = shouldAutoCompat(run, o.platform, o.softwareOn)
-    if (compat) await o.enableCompat(`hung at ${run.last.stage}`)
-    showLastRunNotice(run, compat)
+    const step = shouldAutoCompat(run, o.platform, o.state)
+    if (step) await o.enable(step, `hung at ${run.last.stage}`)
+    showLastRunNotice(run, step)
     return run
   } catch {
     return null

@@ -77,7 +77,7 @@ export function formatDiagnostics(d: DiagInput): string {
     `${L('Ekran', 'Screen')}: ${d.screen.w}×${d.screen.h} @${Math.round(d.screen.dpr * 100) / 100}x`,
     `WebGL: ${d.webgl || 'none'}`,
     `${L('Kalite', 'Quality')}: ${d.quality.choice} → ${d.quality.effective}${d.quality.auto ? ` (${L('ölçülen', 'measured')} ${d.quality.auto})` : ''}`,
-    `${L('Uyumluluk modu', 'Compatibility mode')}: ${d.compat.on ? L('açık', 'on') : L('kapalı', 'off')}${d.compat.auto ? ` (${L('otomatik', 'automatic')}: ${d.compat.auto})` : ''}${d.native ? ` · ${L('yerel katman', 'native layer')}: ${d.native.active ? 'software' : 'hardware'}${d.native.unresponsive ? ` · ${L('yanıt vermeyen çizim süreci', 'renderer unresponsive')} ×${d.native.unresponsive}` : ''}` : ''}`,
+    `${L('Uyumluluk modu', 'Compatibility mode')}: ${d.compat.on ? L('açık', 'on') : L('kapalı', 'off')}${d.compat.layer ? ` + ${L('yazılımsal katman', 'software layer')}` : ''}${d.compat.auto ? ` (${L('otomatik', 'automatic')}: ${d.compat.auto})` : ''}${d.native ? ` · ${L('yerel katman', 'native layer')}: ${d.native.active ? 'software' : 'hardware'}${d.native.unresponsive ? ` · ${L('yanıt vermeyen çizim süreci', 'renderer unresponsive')} ×${d.native.unresponsive}` : ''}` : ''}`,
     `${L('Çizici', 'Renderer')}: ${d.renderer}${d.webglBroken ? ` · ${L('WebGL kapalı', 'WebGL off')}: ${d.webglBroken}` : ''}${d.readbackSlow ? ` · ${L('okuma yavaş', 'slow readback')}` : ''}`,
   ]
   if (d.unfinished) {

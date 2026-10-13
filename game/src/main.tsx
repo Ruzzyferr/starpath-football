@@ -16,7 +16,7 @@ import { installErrorLog } from './telemetry/errorLog'
 import { installErrorRing, pushError } from './telemetry/errorRing'
 import { recoverStaleStart } from './game/renderGuard'
 import { handleLastRunAtBoot } from './telemetry/lastRunNotice'
-import { setSoftwareMode, softwareModeOn, syncSoftwareModeFromNative } from './platform/renderMode'
+import { setSoftwareMode, softwareModeState, syncSoftwareModeFromNative } from './platform/renderMode'
 import { detectPlatform } from './platform/detect'
 import { actions, navigate, screen } from './ui/store'
 import { DEFAULT_CAREER } from './ui/backend'
@@ -83,10 +83,10 @@ async function boot(): Promise<void> {
   const root = document.getElementById('app')
   if (root) render(<App />, root)
   window.__spBootDone?.()
-  // The previous run stopped mid-start (a hang leaves no error): one-time notice, and on Android
-  // compatibility mode (software drawing) when it hung on the GPU path.
+  // The previous run stopped mid-start (a hang leaves no error): one-time notice, and
+  // compatibility mode, then the software layer, when it hung on the GPU path.
   await syncSoftwareModeFromNative()
-  await handleLastRunAtBoot({ platform: detectPlatform(), softwareOn: softwareModeOn(), enableCompat: (auto) => setSoftwareMode(true, { applyNow: true, auto }) })
+  await handleLastRunAtBoot({ platform: detectPlatform(), state: softwareModeState(), enable: (step, auto) => setSoftwareMode(true, { auto, ...(step === 'layer' ? { layer: true } : {}) }) })
   if (isDemo() && params.get('mock') !== '1') {
     await startDemoCareer()
     installDemoMode(startDemoCareer)

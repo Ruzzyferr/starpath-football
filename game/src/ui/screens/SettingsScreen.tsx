@@ -261,13 +261,27 @@ export function SettingsScreen() {
               desc={t('settings.compatModeDesc')}
               checked={compat.on}
               onChange={(on) => {
+                const wasLayer = compat.layer === true
                 void setSoftwareMode(on).then(() => {
                   setCompat(softwareModeState())
-                  if (detectPlatform() === 'android') toast(t('settings.compatRestart'), 'info', 'info', 6000)
+                  if (wasLayer && !on) toast(t('settings.compatRestart'), 'info', 'info', 6000)
                 })
               }}
             />
             {compat.on && compat.auto && <p class="t-xs t-mid" data-testid="compat-auto">{t('settings.compatAuto')}</p>}
+            {compat.on && detectPlatform() === 'android' && (
+              <Switch
+                label={t('settings.compatLayer')}
+                desc={t('settings.compatLayerDesc')}
+                checked={compat.layer === true}
+                onChange={(layer) => {
+                  void setSoftwareMode(true, { layer }).then(() => {
+                    setCompat(softwareModeState())
+                    toast(t('settings.compatRestart'), 'info', 'info', 6000)
+                  })
+                }}
+              />
+            )}
           </div>
           <div data-testid="camera-setting">
             <Field label={t('settings.camera')} hint={t('settings.cameraDesc')}>

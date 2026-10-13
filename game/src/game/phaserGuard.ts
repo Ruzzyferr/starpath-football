@@ -129,15 +129,14 @@ export function showRenderErrorPanel(container: HTMLElement, info: { reason: str
 
 /**
  * A GPU context was lost (WebGL, or Chrome's GPU-backed 2D canvas): counted per device; from the
- * second loss on, compatibility mode (software drawing) is switched on, so later starts bypass the
- * GPU driver altogether (Android applies the software layer at once).
+ * second loss on, compatibility mode is switched on, so later starts draw on a CPU canvas.
  */
 function onContextLoss(host: string, r: RendererChoice): void {
   const n = noteContextLoss()
   crumb('ctx-lost', `${host} ${r} #${n}`)
   if (n >= CTX_LOSS_COMPAT && !isSoftwareMode()) {
     crumb('compat-auto', `context lost ×${n}`)
-    void setSoftwareMode(true, { applyNow: true, auto: `context lost ×${n}` })
+    void setSoftwareMode(true, { auto: `context lost ×${n}` })
   }
 }
 

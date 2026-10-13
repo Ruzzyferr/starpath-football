@@ -1,28 +1,34 @@
 /**
- * Compatibility mode (software drawing). Some Android GPU drivers (an old Adreno driver shipped
- * with an OS that no longer updates, under a current WebView) stall the GPU when a game screen
- * starts: a frozen black screen whose DOM buttons no longer respond. Low graphics does not help
- * there, because Canvas 2D is GPU-rastered as well.
+ * Compatibility mode. Some GPU drivers (seen: a Galaxy A52's Adreno 618 driver under a current
+ * WebView) stall, reset or lose the GPU when a game screen starts: a black or flickering screen
+ * whose buttons no longer respond. Low graphics alone does not help there, because Chrome
+ * rasters Canvas 2D on the GPU as well.
  *
- * Compatibility mode bypasses the driver: on Android the native shell (MainActivity +
- * SpRenderPlugin) switches the WebView to a software layer at startup, and every Phaser host
- * uses the Canvas renderer. Elsewhere it only forces Canvas.
+ * Two steps, both keyed on observed behaviour (never on a device or OS version):
+ *  1. Compatibility mode: every Phaser host uses Canvas with a CPU-rastered 2D context
+ *     (willReadFrequently) at the Low render scale, so the game itself never touches the driver;
+ *     the page is still composited on the GPU (measured: 60 fps on an Android 14 emulator).
+ *  2. Software layer (Android, last resort): the native shell (MainActivity + SpRenderPlugin)
+ *     draws the whole WebView in software from the next start. Bypasses the driver completely,
+ *     but is slow (measured: about 3-4 fps on the same emulator).
  *
- * The JS copy lives in localStorage (read synchronously by the render guard); the native copy in
- * SharedPreferences (read by MainActivity before the WebView draws).
+ * The JS state lives in localStorage (read synchronously by the render guard); the native layer
+ * setting in SharedPreferences (read by MainActivity before the WebView draws).
  */
 
 export const SOFTWARE_KEY = 'sp.render.software'
 
 export interface SoftwareModeState {
   on: boolean
+  /** Android: the whole WebView is drawn in software (applies at the next start). */
+  layer?: boolean
   /** Why it was switched on automatically (absent when the player chose it). */
   auto?: string
   at?: number
 }
 
 export interface NativeRenderInfo {
-  /** Stored setting (applies at startup). */
+  /** Stored software-layer setting (applies at startup). */
   software: boolean
   /** The WebView's current layer is software. */
   active: boolean
@@ -69,28 +75,35 @@ export function softwareModeState(): SoftwareModeState {
   }
 }
 
-/** Synchronous: Phaser hosts start on Canvas while this is on. */
+/** Synchronous: Phaser hosts start on a CPU Canvas while this is on. */
 export function softwareModeOn(): boolean {
   return softwareModeState().on
 }
 
-/**
- * Switches compatibility mode. On Android the native setting is written too (it applies at the
- * next start, or at once with `applyNow`). Never throws; resolves with the native info if any.
- */
-export async function setSoftwareMode(on: boolean, opts: { applyNow?: boolean; auto?: string } = {}): Promise<NativeRenderInfo | null> {
+function writeState(s: SoftwareModeState): void {
   try {
-    if (typeof localStorage !== 'undefined') {
-      if (on) localStorage.setItem(SOFTWARE_KEY, JSON.stringify({ on: true, at: Date.now(), ...(opts.auto ? { auto: opts.auto } : {}) }))
-      else localStorage.removeItem(SOFTWARE_KEY)
-    }
+    if (typeof localStorage === 'undefined') return
+    if (s.on) localStorage.setItem(SOFTWARE_KEY, JSON.stringify(s))
+    else localStorage.removeItem(SOFTWARE_KEY)
   } catch {
-    /* storage blocked: native setting below still applies */
+    /* storage blocked: the native setting below still applies */
   }
+}
+
+/**
+ * Switches compatibility mode and, on Android, the software layer (`layer`; applies at the next
+ * start, or at once with `applyNow`). Turning compatibility mode off turns the layer off too; an
+ * omitted `layer` keeps the current one. Never throws; resolves with the native info if any.
+ */
+export async function setSoftwareMode(on: boolean, opts: { applyNow?: boolean; auto?: string; layer?: boolean } = {}): Promise<NativeRenderInfo | null> {
+  const prev = softwareModeState()
+  const layer = on && (opts.layer !== undefined ? opts.layer : prev.layer === true)
+  const auto = opts.auto ?? (prev.on ? prev.auto : undefined)
+  writeState(on ? { on: true, at: Date.now(), ...(layer ? { layer: true } : {}), ...(auto ? { auto } : {}) } : { on: false })
   const p = nativePlugin()
   if (!p) return null
   try {
-    return await p.set({ software: on, applyNow: opts.applyNow === true })
+    return await p.set({ software: layer, applyNow: opts.applyNow === true })
   } catch {
     return null
   }
@@ -108,19 +121,15 @@ export async function nativeRenderInfo(): Promise<NativeRenderInfo | null> {
 }
 
 /**
- * Boot: the native setting wins when they disagree (e.g. the JS copy was wiped with site data),
- * so the renderer choice matches what MainActivity applied.
+ * Boot: the native layer setting wins when they disagree (e.g. the JS copy was wiped with site
+ * data), so the JS state matches what MainActivity applied.
  */
 export async function syncSoftwareModeFromNative(): Promise<NativeRenderInfo | null> {
   const n = await nativeRenderInfo()
-  if (n && n.software !== softwareModeOn()) {
-    try {
-      if (n.software) localStorage.setItem(SOFTWARE_KEY, JSON.stringify({ on: true, at: Date.now() }))
-      else localStorage.removeItem(SOFTWARE_KEY)
-    } catch {
-      /* ignore */
-    }
-  }
+  if (!n) return null
+  const s = softwareModeState()
+  if (n.software && !(s.on && s.layer)) writeState({ ...s, on: true, layer: true, at: s.at ?? Date.now() })
+  else if (!n.software && s.layer) writeState({ ...s, layer: false })
   return n
 }
 

@@ -83,25 +83,33 @@ describe('breadcrumbs', () => {
 describe('last-run notice', () => {
   const run = (stages: string[], hb: Heartbeat | null = null) => ({ start: c('start', 1000, 'trial'), last: c(stages[stages.length - 1]!, 2000), stages, heartbeat: hb })
 
-  it('compatibility mode is switched on automatically only on Android, after the Phaser build, when the page did not keep running', () => {
-    expect(shouldAutoCompat(run(['chunk-loaded', 'phaser-build']), 'android', false)).toBe(true)
-    expect(shouldAutoCompat(run(['chunk-loaded', 'phaser-build']), 'web', false)).toBe(false)
-    expect(shouldAutoCompat(run(['chunk-loaded', 'phaser-build']), 'android', true)).toBe(false)
-    expect(shouldAutoCompat(run(['chunk-loaded']), 'android', false)).toBe(false)
+  it('escalates on observed behaviour only: compatibility mode first, then (Android) the software layer, then nothing', () => {
+    const off = { on: false }
+    const compat = { on: true }
+    const layer = { on: true, layer: true }
+    const gpu = run(['chunk-loaded', 'phaser-build'])
+    expect(shouldAutoCompat(gpu, 'android', off)).toBe('compat')
+    expect(shouldAutoCompat(gpu, 'web', off)).toBe('compat')
+    expect(shouldAutoCompat(gpu, 'android', compat)).toBe('layer')
+    expect(shouldAutoCompat(gpu, 'web', compat)).toBeNull()
+    expect(shouldAutoCompat(gpu, 'android', layer)).toBeNull()
+    // Never reached the GPU path, or the page kept running: no change.
+    expect(shouldAutoCompat(run(['chunk-loaded']), 'android', off)).toBeNull()
     const running: Heartbeat = { since: 1000, raf: 16000, rafN: 900, timer: 16000, timerN: 60 }
-    expect(shouldAutoCompat(run(['phaser-build', 'phaser-built'], running), 'android', false)).toBe(false)
+    expect(shouldAutoCompat(run(['phaser-build', 'phaser-built'], running), 'android', off)).toBeNull()
     const hung: Heartbeat = { since: 1000, raf: 2000, rafN: 3, timer: 2000, timerN: 4 }
-    expect(shouldAutoCompat(run(['phaser-build', 'phaser-built'], hung), 'android', false)).toBe(true)
+    expect(shouldAutoCompat(run(['phaser-build', 'phaser-built'], hung), 'android', off)).toBe('compat')
   })
 
   it('names the last stage in TR and EN and mentions compatibility mode when it was switched on', () => {
     const r = run(['phaser-build', 'scene-create'])
-    const tr = lastRunNoticeText(r, true, true)
+    const tr = lastRunNoticeText(r, 'compat', true)
     expect(tr.body).toContain('scene-create')
     expect(tr.body).toContain('Uyumluluk modu')
     expect(tr.body).toContain('Tanılama')
-    const en = lastRunNoticeText(r, false, false)
+    const en = lastRunNoticeText(r, null, false)
     expect(en.body).toContain('scene-create')
     expect(en.body).not.toContain('Compatibility')
+    expect(lastRunNoticeText(r, 'layer', true).body).toContain('Yazılımsal çizim')
   })
 })
