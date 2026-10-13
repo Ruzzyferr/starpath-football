@@ -21,7 +21,8 @@ class FakeEl {
   style: Record<string, string> = {}
   width = 0
   height = 0
-  constructor(public tag: string) {}
+  tag: string
+  constructor(tag: string) { this.tag = tag }
   setAttribute(k: string, v: string) { this.attrs[k] = v }
   append(...els: FakeEl[]) { for (const e of els) this.appendChild(e) }
   appendChild(e: FakeEl) { e.parent = this; this.children.push(e); return e }
@@ -50,7 +51,8 @@ class FakeGame {
   destroyed = false
   loop = { stop: vi.fn() }
   throwInStep = false
-  constructor(public type: 'webgl' | 'canvas', container: FakeEl) { container.appendChild(this.canvas) }
+  type: 'webgl' | 'canvas'
+  constructor(type: 'webgl' | 'canvas', container: FakeEl) { this.type = type; container.appendChild(this.canvas) }
   step(_t: number, _d: number) { if (this.throwInStep) throw new Error('scene update exploded') }
   destroy() { this.destroyed = true }
   /** One game loop tick: step, then the post-render event. */
