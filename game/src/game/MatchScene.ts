@@ -75,7 +75,7 @@ import { MOMENT_FRAME_TIME, clampCamera, easeOut, lookAheadOffset, momentFrame, 
 import { ObjectPool } from './pool'
 import { probeKick } from './touchProbe'
 import { canvasSafeInsets } from '../platform/viewport'
-import { isWebglBroken, markWebglBroken, type RendererChoice } from './renderGuard'
+import { isSoftwareMode, isWebglBroken, markWebglBroken, type RendererChoice } from './renderGuard'
 import { guardPhaser, type GuardHandle } from './phaserGuard'
 import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
 import { crumb } from '../telemetry/breadcrumbs'
@@ -3162,6 +3162,22 @@ function newGameWithFallback(config: (type: number) => Phaser.Types.Core.GameCon
 }
 
 /**
+ * Canvas on a device whose GPU path already failed (WebGL broken, or compatibility mode): the game's
+ * 2D context is created with willReadFrequently, which keeps it in CPU memory (software raster), so
+ * a driver that loses / resets GPU canvases cannot take the game view down with it.
+ */
+function softwareCanvas(): { canvas?: HTMLCanvasElement; context?: CanvasRenderingContext2D } {
+  if (typeof document === 'undefined' || !(isSoftwareMode() || isWebglBroken())) return {}
+  try {
+    const canvas = document.createElement('canvas')
+    const context = canvas.getContext('2d', { alpha: false, willReadFrequently: true })
+    return context ? { canvas, context } : {}
+  } catch {
+    return {}
+  }
+}
+
+/**
  * Creates a Phaser.Game sized to `parent`, crisp on high-DPI screens.
  *
  * On DPR > 1 the canvas backing store is rendered at device pixels (Scale.NONE
@@ -3184,6 +3200,7 @@ export function createMatchGame(parent: HTMLElement, profile?: QualityProfile, r
   const game = newGameWithFallback((type) => ({
     type,
     parent,
+    ...(type === Phaser.CANVAS ? softwareCanvas() : {}),
     backgroundColor: '#0b1410',
     banner: false,
     disableContextMenu: true,

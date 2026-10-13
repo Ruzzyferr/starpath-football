@@ -15,9 +15,10 @@
  */
 import Phaser from 'phaser'
 import { bindExitTap } from '../platform/exitTap'
+import { setSoftwareMode } from '../platform/renderMode'
 import { pushError, recentErrors, describeError } from '../telemetry/errorRing'
 import { beginRun, crumb, readCrumbs, startHeartbeat, stopHeartbeat, unfinishedRun } from '../telemetry/breadcrumbs'
-import { beginStart, createWatchdog, endStart, FIRST_FRAME_MS, isBlankFrame, isReadbackSlow, markReadbackSlow, markWebglBroken, pickRenderer, PROBE_STALL_MS, type RendererChoice, type Watchdog } from './renderGuard'
+import { beginStart, CTX_LOSS_COMPAT, isSoftwareMode, noteContextLoss, createWatchdog, endStart, FIRST_FRAME_MS, isBlankFrame, isReadbackSlow, markReadbackSlow, markWebglBroken, pickRenderer, PROBE_STALL_MS, type RendererChoice, type Watchdog } from './renderGuard'
 
 export type PhaserHostKind = 'drill' | 'match' | 'replay' | 'scouting'
 
@@ -126,6 +127,20 @@ export function showRenderErrorPanel(container: HTMLElement, info: { reason: str
   return panel
 }
 
+/**
+ * A GPU context was lost (WebGL, or Chrome's GPU-backed 2D canvas): counted per device; from the
+ * second loss on, compatibility mode (software drawing) is switched on, so later starts bypass the
+ * GPU driver altogether (Android applies the software layer at once).
+ */
+function onContextLoss(host: string, r: RendererChoice): void {
+  const n = noteContextLoss()
+  crumb('ctx-lost', `${host} ${r} #${n}`)
+  if (n >= CTX_LOSS_COMPAT && !isSoftwareMode()) {
+    crumb('compat-auto', `context lost ×${n}`)
+    void setSoftwareMode(true, { applyNow: true, auto: `context lost ×${n}` })
+  }
+}
+
 /** Starts a Phaser host under the render guard. */
 export function guardPhaser(o: GuardOptions): GuardHandle {
   const dbg = (typeof globalThis !== 'undefined' ? globalThis : {}) as DebugHooks
@@ -161,7 +176,7 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
     // This attempt is over: its game's later frames (until the pending destroy runs) are ignored.
     attemptNo++
     pushError('render', `${renderer}: ${reason}`)
-    crumb('render-fail', `${o.host} ${renderer}: ${reason}`)
+    crumb('render-fail', `${o.host} ${renderer}: ${reason}${renderer === 'webgl' ? ' → canvas' : ' → panel'}`)
     console.warn(`[StarPath] ${o.host} ${renderer} renderer failed: ${reason}`)
     if (renderer === 'webgl') gpu = gpuOfGame(game) || gpu
     teardown()
@@ -253,12 +268,18 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
     }
     const canvas = g.canvas
     if (canvas) {
+      // Never wait for a restore: a driver that drops the context tends to drop it again (an
+      // endless lost / restored flicker). WebGL is marked broken and the host restarts on Canvas
+      // once; a lost GPU-backed 2D canvas ends with the panel (no further restarts).
       const onLost = (ev: Event) => {
         ev.preventDefault()
-        fail(attempt, 'WebGL context lost')
+        if (attempt !== attemptNo || stopped) return
+        onContextLoss(o.host, r)
+        fail(attempt, r === 'webgl' ? 'WebGL context lost' : 'canvas context lost')
       }
-      canvas.addEventListener('webglcontextlost', onLost)
-      offs.push(() => canvas.removeEventListener('webglcontextlost', onLost))
+      const lostEvent = r === 'webgl' ? 'webglcontextlost' : 'contextlost'
+      canvas.addEventListener(lostEvent, onLost)
+      offs.push(() => canvas.removeEventListener(lostEvent, onLost))
     }
     // Frames: the first one settles the watchdog; WebGL is then checked for blank output a few
     // times (fades / dark intros never last the whole window) before the start counts as good.

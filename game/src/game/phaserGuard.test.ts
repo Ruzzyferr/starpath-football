@@ -203,6 +203,25 @@ describe('render guard: WebGL first, Canvas second, a readable panel last', () =
     }
   })
 
+  it('context loss never loops: WebGL lost → Canvas once; the Canvas context lost too → panel; losses are counted per device', () => {
+    const t = host()
+    playFrames(t.last())
+    t.games[0]!.canvas.dispatch('webglcontextlost')
+    // A restore attempt on the dead WebGL canvas changes nothing.
+    t.games[0]!.canvas.dispatch('webglcontextrestored')
+    expect(t.h.renderer).toBe('canvas')
+    expect(t.games).toHaveLength(2)
+    expect(store.get('sp.render.ctxLost')).toBe('1')
+    t.games[1]!.canvas.dispatch('contextlost')
+    expect(t.panel()).not.toBeNull()
+    expect(t.games).toHaveLength(2)
+    expect(store.get('sp.render.ctxLost')).toBe('2')
+    // Repeated losses after the panel do nothing more.
+    for (let i = 0; i < 5; i++) t.games[1]!.canvas.dispatch('contextlost')
+    expect(t.games).toHaveLength(2)
+    expect(store.get('sp.render.ctxLost')).toBe('2')
+  })
+
   it('compatibility mode (software drawing) starts on Canvas directly', () => {
     store.set('sp.render.software', JSON.stringify({ on: true }))
     const t = host()

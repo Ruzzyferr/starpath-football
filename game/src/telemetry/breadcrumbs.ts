@@ -236,9 +236,22 @@ export function startHeartbeat(ms = 15_000): () => void {
   }, 250)
   const endId = setTimeout(() => stop(), ms)
   flush(true)
+  // Background / foreground flips during the start (a GPU reset can make the WebView flap): each is
+  // a breadcrumb, capped so a flapping page cannot flood the log.
+  let flips = 0
+  const onFlip = (ev: Event) => {
+    if (flips++ >= 12) return
+    const vis = typeof document !== 'undefined' ? document.visibilityState : '?'
+    crumb(ev.type === 'visibilitychange' ? `visibility-${vis}` : ev.type.replace('sp:', ''))
+  }
+  const flipEvents = ['sp:app-pause', 'sp:app-resume', 'pagehide']
+  for (const t of flipEvents) window.addEventListener(t, onFlip)
+  if (typeof document !== 'undefined') document.addEventListener('visibilitychange', onFlip)
   const stop = () => {
     if (stopped) return
     stopped = true
+    for (const t of flipEvents) window.removeEventListener(t, onFlip)
+    if (typeof document !== 'undefined') document.removeEventListener('visibilitychange', onFlip)
     flush(true)
     clearInterval(timerId)
     clearTimeout(endId)

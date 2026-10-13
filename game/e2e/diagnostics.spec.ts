@@ -111,3 +111,50 @@ test('a trial start leaves its breadcrumbs; compatibility mode starts the drill 
   expect(after).toContain('quit-tap')
   expect(after[after.length - 1]).toBe('exit')
 })
+
+test('a WebGL context-loss loop (WEBGL_lose_context) ends on Canvas, stable, no restart loop; Back and Quit work throughout', async ({ page }) => {
+  await english(page)
+  await toTrials(page)
+  const play = async () => {
+    await page.locator('.trial-card').first().getByRole('button', { name: 'Play the trial' }).click()
+    await page.getByTestId('trial-start').click()
+    await expect(page.locator('.trn-drill canvas')).toBeVisible({ timeout: 20_000 })
+  }
+  await play()
+  expect(await page.evaluate(() => (globalThis as { __spTraining?: { game: { renderer: { type: number } } } }).__spTraining?.game.renderer.type)).toBe(2) // WebGL
+  // Lose and restore the context over and over, like a driver that keeps resetting.
+  for (let i = 0; i < 6; i++) {
+    await page.evaluate(async () => {
+      const c = document.querySelector<HTMLCanvasElement>('.trn-drill-stage canvas')
+      const gl = (c?.getContext('webgl2') ?? c?.getContext('webgl')) as WebGLRenderingContext | null | undefined
+      const ext = gl?.getExtension('WEBGL_lose_context')
+      if (!ext) return
+      ext.loseContext()
+      await new Promise((r) => setTimeout(r, 200))
+      try { ext.restoreContext() } catch { /* already gone */ }
+    })
+    await page.waitForTimeout(300)
+    // Quit stays reachable the whole time.
+    await expect(page.getByTestId('drill-quit')).toBeVisible()
+  }
+  await page.waitForTimeout(1500)
+  const stages = (await crumbs(page)).map((c) => c.stage)
+  expect(stages.filter((s) => s === 'phaser-build')).toHaveLength(2) // WebGL, then Canvas once
+  expect(stages).toContain('ctx-lost')
+  expect(await page.evaluate(() => (globalThis as { __spTraining?: { game: { renderer: { type: number } } } }).__spTraining?.game.renderer.type)).toBe(1) // Canvas
+  await expect(page.locator('.trn-drill canvas')).toHaveCount(1)
+  await expect(page.getByTestId('render-fail')).toHaveCount(0)
+  expect(await page.evaluate(() => localStorage.getItem('sp.render.webglBroken'))).toContain('context lost')
+  expect(await page.evaluate(() => localStorage.getItem('sp.render.ctxLost'))).toBe('1')
+  // Android Back presses the overlay's Quit.
+  await page.evaluate(async () => {
+    const m = (await import('/src/platform/back.ts')) as { exitFullScreenGame: () => boolean }
+    m.exitFullScreenGame()
+  })
+  await expect(page.getByTestId('trial-drill')).toHaveCount(0)
+  // The next start goes straight to Canvas: no second WebGL attempt.
+  await play()
+  expect(await page.evaluate(() => (globalThis as { __spTraining?: { game: { renderer: { type: number } } } }).__spTraining?.game.renderer.type)).toBe(1)
+  await page.getByTestId('drill-quit').click()
+  await expect(page.getByTestId('trial-drill')).toHaveCount(0)
+})

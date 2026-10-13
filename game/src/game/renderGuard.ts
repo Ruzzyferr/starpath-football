@@ -23,6 +23,10 @@ export const START_SENTINEL_KEY = 'sp.render.starting'
 export const READBACK_SLOW_KEY = 'sp.render.readbackSlow'
 /** A blank-frame sample slower than this marks the device's readback as slow. */
 export const PROBE_STALL_MS = 120
+/** GPU context losses seen on this device (WebGL or a GPU-backed 2D canvas), across launches. */
+export const CTX_LOSS_KEY = 'sp.render.ctxLost'
+/** From this many losses on, compatibility mode (software drawing) is switched on automatically. */
+export const CTX_LOSS_COMPAT = 2
 /** No frame within this long after the game is created counts as a failed start. */
 export const FIRST_FRAME_MS = 3000
 
@@ -79,6 +83,18 @@ export function clearWebglBroken(): void {
   sessionBroken = null
   set(WEBGL_BROKEN_KEY, null)
   set(READBACK_SLOW_KEY, null)
+  set(CTX_LOSS_KEY, null)
+}
+
+/** Records one GPU context loss; returns the total for this device. */
+export function noteContextLoss(): number {
+  const n = (Number(get(CTX_LOSS_KEY)) || 0) + 1
+  set(CTX_LOSS_KEY, String(n))
+  return n
+}
+
+export function contextLosses(): number {
+  return Number(get(CTX_LOSS_KEY)) || 0
 }
 
 export function isReadbackSlow(): boolean {
