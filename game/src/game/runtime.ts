@@ -91,7 +91,7 @@ import { offsideSnapshot } from './offside'
 import { ASSIST_REWARD } from '../sim/match/rating'
 import { bookHabit, goalZoneOf, refHighlightFoulMult, type GoalZone } from '../sim/match/referee'
 import { CONTACT_KINDS, GOAL_KINDS, momentTier } from '../sim/match/tier'
-import { evaluateCarrier, passLead, reactionTime, runTarget, shotTarget, goalSideness } from './tactics'
+import { evaluateCarrier, keeperCloseTime, passLead, strikeLead, throughOnGoal, reactionTime, runTarget, shotTarget, goalSideness } from './tactics'
 import { SET_PIECE_DISTANCE, arrangeWall, buildCast, isDefendingKind, isKeeperKind, type SetPiece } from './setup'
 import { leadershipBoost } from '../sim/match/heroDuels'
 import { KEEPER_GETUP, KEEPER_SCENARIO_WEIGHTS, applyKeeperScenario, buildKeeperScenario, momentumDelay, pickScenarioKind, type KeeperScenario, type KeeperScenarioKind } from './keeperScenario'
@@ -3356,7 +3356,11 @@ export class HighlightRuntime {
     const heroBias = a.team === 'hero' ? 0.02 + (a.relationToHero / 100) * 0.04 + a01(a.attrs.vision) * 0.02 : 0
     // In a keeper moment the striker is set on shooting: he only picks his moment and corner.
     const shotBias = this.kind === 'gk_save' ? 0.6 + heldFor * 0.6 : 0
-    const dec = evaluateCarrier(a, w, this.rng, { heldFor, noise, heroBias, shotBias })
+    // Through on goal with the keeper coming: eyes on him, he looks up again just as the keeper is about to smother it
+    // (his Composure sets how late — tactics.strikeLead), to strike then rather than carry it into him.
+    const keeperDuel = isKeeperKind(this.kind) && this.hero.isKeeper && a.team === 'opp'
+    if (!keeperDuel && throughOnGoal(a, w)) a.think = Math.min(a.think, Math.max(0.02, keeperCloseTime(a.pos, a.team, w, a.vel) - strikeLead(a)))
+    const dec = evaluateCarrier(a, w, this.rng, { heldFor, noise, heroBias, shotBias, keeperDuel })
     const from = { x: this.ball.x, y: this.ball.y }
     const base = { from, attrs: a.attrs, pressure: this.pressureOn(a), assist: 'manual' as AimAssist, env: this.env, fromHands: a.isKeeper }
     const oppNoise = a.team === 'opp' ? (1.15 / this.difficulty) * aiFinishNoise(a.attrs.finishing) : this.mateNoise()
@@ -3364,7 +3368,8 @@ export class HighlightRuntime {
       case 'shoot': {
         // Only pull the trigger on a real chance (or when time is up / swamped).
         const late = this.time > this.timeLimit - 2.5 || (this.kind === 'gk_save' && heldFor > 1.4)
-        if (heldFor < minHold || (dec.value < 0.13 && !late && heldFor < 2.6)) break
+        // Through on goal with the keeper closing (dec.urgent): there is no better one coming — strike it now.
+        if (heldFor < minHold || (dec.value < 0.13 && !late && !dec.urgent && heldFor < 2.6)) break
         // (In a keeper moment the strike is as hard as his Shot Power allows.)
         const sp = a01(a.attrs.shooting)
         const power = isKeeperKind(this.kind) && a.team === 'opp' ? this.rng.range(0.62 + 0.3 * sp, 0.8 + 0.18 * sp) : this.rng.range(0.72, 0.95)

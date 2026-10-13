@@ -184,7 +184,8 @@ export function positionValue(p: Vec2, team: Team, w: AiWorld): number {
 }
 
 export type TacticalDecision =
-  | { kind: 'shoot'; target: Vec2; value: number }
+  /** `urgent`: through on goal with the keeper about to close him down — now or never (no waiting for a better one). */
+  | { kind: 'shoot'; target: Vec2; value: number; urgent?: boolean }
   | { kind: 'pass'; to: Agent; lofted: boolean; value: number; safety: number }
   | { kind: 'dribble'; dir: Vec2; value: number }
   | { kind: 'takeOn'; defender: Agent; value: number }
@@ -201,6 +202,50 @@ export interface CarrierContext {
   noise?: number
   /** Allow unpressured backward passes (build-up play). */
   allowBack?: boolean
+  /**
+   * A keeper moment with the hero in goal (gk_1v1 / gk_save / gk_sweep): the duel is his to win — the striker comes at
+   * him as scripted (no last-moment strike, no keeper race on the dribble), so the hero keeper's own stats and timing
+   * decide it (a strike from point-blank range would beat any keeper, his stats unseen).
+   */
+  keeperDuel?: boolean
+}
+
+/** Reach (m) of a keeper smothering the ball at a carrier's feet. */
+const SMOTHER_REACH = 1.6
+/** Furthest (m) from goal a man counts as through on goal (inside it, with an angle, the shot is on). */
+export const THROUGH_SHOT_RANGE = 18
+
+/**
+ * How long (s) before the keeper's smother a man through on goal strikes it: a composed finisher waits for the keeper
+ * to come right on to him and commit (0.02 s at Composure 100 — and now and then leaves it too late), a nervous one
+ * snatches at it early (0.06 s at 0), which gives the keeper time to set and save.
+ */
+export const strikeLead = (a: Agent): number => 0.02 + (1 - a01(a.attrs.composure)) * 0.04
+
+/**
+ * Through on goal: inside {@link THROUGH_SHOT_RANGE} with an angle on goal (within 60° of straight at it), and nobody but
+ * the keeper between him and the goal (no outfield opponent on his feet within 2 m of the line) — not a goalmouth
+ * scramble, not a tight angle by the byline.
+ */
+export function throughOnGoal(a: Agent, w: AiWorld): boolean {
+  const g = goalOf(a.team)
+  if (dist(a.pos, g) >= THROUGH_SHOT_RANGE) return false
+  if (Math.abs(angleDiff(angleOf(sub(g, a.pos)), angleOf({ x: dirOf(a.team), y: 0 }))) >= 1.05) return false
+  return !w.agents.some((o) => o.team !== a.team && !o.isKeeper && o.state !== 'down' && (({ t, d }) => t > 0 && t < 1 && d < 2)(pointSegment(o.pos, a.pos, g)))
+}
+
+/**
+ * Seconds before the opposing keeper can reach the ball at `p` (smother range), running flat out — Infinity when
+ * he is down or none. With the carrier's velocity `vel`, the carrier's own run at him closes the gap too.
+ * Deterministic: positions, the keeper's Pace, his reach.
+ */
+export function keeperCloseTime(p: Vec2, team: Team, w: AiWorld, vel?: Vec2): number {
+  const gk = w.agents.find((o) => o.team !== team && o.isKeeper)
+  if (!gk || gk.state === 'down') return Infinity
+  const gap = Math.max(0, dist(gk.pos, p) - SMOTHER_REACH)
+  const u = norm(sub(gk.pos, p))
+  const towards = vel ? Math.max(0, vel.x * u.x + vel.y * u.y) : 0
+  return gap / (topSpeed({ ...gk, sprint: true }) + towards)
 }
 
 /** Best corner to aim at from `p`: the side away from the keeper. */
@@ -235,8 +280,15 @@ export function evaluateCarrier(a: Agent, w: AiWorld, rng: Rng, ctx: CarrierCont
 
   // Shoot.
   const sq = shotQuality(a.pos, team, w, pressure) * (1 + (ctx.shotBias ?? 0))
+  // Through on goal (build 12 owner: "he ran it into the keeper"): with the keeper about to smother it (his run and the
+  // carrier's own closing the gap), the shot is now or never — no carrying on into him, no waiting for a better one
+  // (the runtime has him look up at that moment: smartCarrier). The hero's own keeper duels keep their script.
+  const gk = w.agents.find((o) => o.team !== team && o.isKeeper)
+  const gkClose = keeperCloseTime(a.pos, team, w)
+  const through = !ctx.keeperDuel && throughOnGoal(a, w)
+  const urgent = through && keeperCloseTime(a.pos, team, w, a.vel) < strikeLead(a)
   // Attackers shoot when the chance is good *now*; long-range only when nothing better.
-  let best: TacticalDecision = { kind: 'shoot', target: shotTarget(a.pos, team, w, rng), value: sq * 1.05 * jitter() }
+  let best: TacticalDecision = { kind: 'shoot', target: shotTarget(a.pos, team, w, rng), value: sq * 1.05 * jitter(), ...(urgent ? { urgent: true } : {}) }
 
   // Pass.
   const offside = offsideLine(w, team)
@@ -281,13 +333,23 @@ export function evaluateCarrier(a: Agent, w: AiWorld, rng: Rng, ctx: CarrierCont
 
   // Dribble: try a fan of directions toward goal.
   const toGoal = angleOf(sub(goal, a.pos))
-  for (const off of [0, -0.45, 0.45, -0.9, 0.9]) {
+  // Time to carry it the 4.5 m (a touch slower than his sprint with the ball at his feet).
+  const carryT = 4.5 / (topSpeed({ ...a, sprint: true }) * 0.9)
+  // (Through on goal with the keeper on him: no carrying it into his smother.)
+  for (const off of urgent ? [] : [0, -0.45, 0.45, -0.9, 0.9]) {
     const ang = toGoal + off
     const dv = fromAngle(ang)
     const p = { x: clampN(a.pos.x + dv.x * 4.5, 1, PITCH_LENGTH - 1), y: clampN(a.pos.y + dv.y * 4.5, 1, PITCH_WIDTH - 1) }
-    const gk = w.agents.find((o) => o.team !== team && o.isKeeper)
     const room = Math.min(space(p, team, w), gk ? dist(gk.pos, p) + 0.4 : Infinity)
-    const keep = clamp01((room - 0.6) / 2.6) * (0.75 + a01(a.attrs.dribbling) * 0.25)
+    let keep = clamp01((room - 0.6) / 2.6) * (0.75 + a01(a.attrs.dribbling) * 0.25)
+    // A keeper who can get to the ball on the way (to him, or to the spot along his line) has to be gone round first:
+    // the carrier's Dribbling / Agility against his keeping (takeOnChance), the more so the sooner he gets there. The
+    // spot past him was valued as if he were not there (build 12: the 2-v-1 receiver ran it into his smother, 8–11 of 29).
+    if (gk && gk.state !== 'down' && through) {
+      const onLine = pointSegment(gk.pos, a.pos, p).d < SMOTHER_REACH + 0.6
+      const tk = Math.min(gkClose, onLine ? keeperCloseTime(p, team, w) : Infinity)
+      keep *= 1 - clamp01((carryT - tk) / carryT) * (1 - takeOnChance(a, gk, w.difficulty))
+    }
     // Carrying on is worth less than the same chance now: defenders and the keeper close in.
     const v = keep * positionValue(p, team, w) * 0.8 * jitter()
     if (v > best.value) best = { kind: 'dribble', dir: dv, value: v }

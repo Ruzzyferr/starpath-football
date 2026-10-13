@@ -18,10 +18,24 @@ interface Reception {
   kick: string | null
   aimFwd: number
   toHero: boolean
+  /** (`follow`) the move ended in a goal for the hero's team. */
+  goal?: boolean
 }
 
-function receive(kind: HighlightKind, seed: number, ahead = false): Reception | null {
+interface ReceiveOpts {
+  /** The hero's team-mates' Finishing / Shooting / Composure (stat sensitivity). */
+  finish?: number
+  /** Play on after the receiver's kick and report whether the move ends in a goal. */
+  follow?: boolean
+}
+
+function receive(kind: HighlightKind, seed: number, ahead = false, ro: ReceiveOpts = {}): Reception | null {
   const rt = new HighlightRuntime(generatedHighlight(kind, seed, { ovr: 62, heroOvr: 57 }), { aimAssist: 'half', slowMoAim: true, difficulty: 'normal', seed: seed * 7919 + 101 })
+  if (ro.finish !== undefined) {
+    for (const m of rt.agents) if (m.team === 'hero' && !m.isHero && !m.isKeeper) Object.assign(m.attrs, { finishing: ro.finish, shooting: ro.finish, composure: ro.finish })
+  }
+  let done: Reception | null = null
+  let doneT = 0
   const goal = { x: PITCH_LENGTH, y: GOAL_CENTER_Y }
   let heldAt = -1
   let passed = false
@@ -52,6 +66,11 @@ function receive(kind: HighlightKind, seed: number, ahead = false): Reception | 
     }
     rt.update(1 / 60)
     const o = rt.owner
+    if (done) {
+      if (rt.drainEvents().some((e) => e.type === 'goal' && e.team === 'hero')) return { ...done, goal: true }
+      if (rt.finished || rt.time - doneT > 4 || (o && o.team === 'opp')) return { ...done, goal: false }
+      continue
+    }
     for (const e of rt.drainEvents()) {
       if (recv && e.type === 'kick' && e.by === recv) {
         // Aim from the ball's launch velocity (the plan is the receiver's own): where it is heading along the pitch.
@@ -59,16 +78,21 @@ function receive(kind: HighlightKind, seed: number, ahead = false): Reception | 
         const travel = Math.hypot(rt.ball.vx, rt.ball.vy) * 1.2
         const hero = rt.hero
         const toHero = e.kick !== 'shot' && Math.abs((hero.pos.x - e.x) * v.y - (hero.pos.y - e.y) * v.x) < 6 && (hero.pos.x - e.x) * v.x + (hero.pos.y - e.y) * v.y > 0
-        return { kick: e.kick, aimFwd: v.x * travel, toHero }
+        const r = { kick: e.kick, aimFwd: v.x * travel, toHero }
+        if (!ro.follow) return r
+        done = r
+        doneT = rt.time
       }
     }
     if (passed && !recv && o && o.team === 'hero' && !o.isHero) {
       recv = o.id
       recvT = rt.time
     }
+    if (done) continue
     if (recv && o && o.id !== recv) return { kick: o.team === 'opp' ? `lost(${o.isKeeper ? 'gk' : 'def'} t=${(rt.time - recvT).toFixed(1)} x=${o.pos.x.toFixed(0)} heroDx=${(rt.hero.pos.x - o.pos.x).toFixed(0)} off=${rt.offsideMates().size})` : null, aimFwd: 0, toHero: false }
     if (recv && rt.time - recvT > 6) break
   }
+  if (done) return { ...done, goal: false }
   return recv ? { kick: rt.finished ? `end:${rt.result?.outcome}` : 'held', aimFwd: 0, toHero: false } : null
 }
 
@@ -115,5 +139,58 @@ describe('build 12: the team-mate the hero passes to goes on with it (phone PASS
     }
     expect(n).toBeGreaterThan(100)
     expect(bad, bad.join(' ')).toEqual([])
+  }, 300_000)
+})
+
+/**
+ * Owner (build 12): a man through on goal shoots — he does not run the ball into the keeper. With the hero sprinting
+ * on to the last line (offside, so no square ball), the receiver of the 2-v-1 pass carries it at the keeper; he must
+ * pull the trigger once the shot is on, before the keeper closes it down (or square it when the hero is onside and
+ * better placed). And the finish is his own: better Finishing scores more.
+ */
+describe('build 12: through on goal, the team-mate shoots before the keeper smothers it (phone PASS button)', () => {
+  it('counter_2v1 (hero sprints to the offside line): the receiver shoots or squares far more often than he runs into the keeper', () => {
+    let n = 0
+    let gk = 0
+    let onGoal = 0
+    const rows: string[] = []
+    for (let s = 1; s <= SEEDS; s++) {
+      const r = receive('counter_2v1', s, true)
+      if (!r) continue
+      n++
+      if (r.kick?.startsWith('lost(gk')) gk++
+      if (r.kick === 'shot' || r.toHero) onGoal++
+      rows.push(`s${s}:${r.kick ?? '-'}${r.toHero ? '>hero' : ''}`)
+    }
+    const line = `n=${n} into the keeper=${gk} shot/square=${onGoal} | ${rows.join(' ')}`
+    console.log(line)
+    expect(n, line).toBeGreaterThanOrEqual(20)
+    // Before the fix: 8 of 29 carried it on into the keeper's smother (the dribble valued the spot past him as if he
+    // were not there); after: 1.
+    expect(gk / n, line).toBeLessThanOrEqual(0.1)
+    expect(onGoal, line).toBeGreaterThanOrEqual(gk * 5)
+    expect(onGoal / n, line).toBeGreaterThanOrEqual(0.7)
+  }, 120_000)
+
+  it('stat-sensitive: a better finisher among the team-mates scores more of those 2-v-1s (and a weak one still some)', () => {
+    const N = 80
+    const goals = (finish: number) => {
+      let g = 0
+      let n = 0
+      for (let s = 1; s <= N; s++) {
+        const r = receive('counter_2v1', s, true, { finish, follow: true })
+        if (!r) continue
+        n++
+        if (r.goal) g++
+      }
+      return { g, n }
+    }
+    const weak = goals(30)
+    const strong = goals(95)
+    const line = `2v1 receiver goals: Finishing/Composure 30 → ${weak.g}/${weak.n}, 95 → ${strong.g}/${strong.n}`
+    console.log(line)
+    // After the fix: 35/79 → 46/79 (before: 36 → 45, with 19 of 79 run into the keeper).
+    expect(strong.g, line).toBeGreaterThanOrEqual(weak.g + 5)
+    expect(weak.g / weak.n, line).toBeGreaterThanOrEqual(0.3)
   }, 300_000)
 })

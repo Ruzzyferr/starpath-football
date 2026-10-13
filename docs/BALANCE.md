@@ -2525,3 +2525,22 @@ Hedef: yerleşik şut, orta kaleciye (~62–65) karşı Bitiricilik 50 → %45�
 **long_ball_control** (`game/runtime.ts`): kahramana adıyla atılan uzun topa (aynı zamanda one-two dönüşü) kendi takım arkadaşları da koşuyordu (`planAttackingRuns`, boş top kovalaması, hava düellosunda "en iyi yerdeki" takım arkadaşı). İyi oyuncu denemelerinin ~%25'inde topa ilk dokunan kendi takım arkadaşıydı ve top kafayla uzaklaşıyordu, yani kahraman hiç topa dokunamadan an bitiyordu. Artık top havadayken (`feedBy`) takım arkadaşları onu kahramana bırakıyor, düelloda kahramanın tarafını kendisi temsil ediyor ve markajcı kahramanın sırtından geçemiyor, omzundan dolanmak zorunda (build 9 "bedenler katı" kuralının uzantısı). Düello yine statla: İlk Dokunuş / Kafa ↔ markajcının Kafa vuruşu. İlk temasta kahraman: %63 → %81, takım arkadaşı: %25 → %2 (`longBallFeed.test.ts`, N = 100). Statın etkisi büyüdü: tutma oranı 40 → 90 statta 21 → 26 iken 22 → 36 oldu (60 deneme).
 
 Tür kontrolü (telefon yolu, N = 200), long_ball_control: başlangıç 52 (42) → **64 (55)**; 40/65/90 50/57/65 → 56/70/78; özensiz farkı 27 → 38; rakip güçlü/orta/zayıf 40/47/66 → 46/64/74; taban (40) 50 → 56. 30 türün tamamı yeşil, tam vitest yeşil; golden değişmedi.
+
+### Build 12: kaleye karşı yalnız kalan şut çekiyor, topu kaleciye sürmüyor (Ekim 2026)
+
+**Sahibin kararı:** kaleye karşı yalnız kalan (kaleye 18 m'den yakın, açı var, kaleciden başka kimse önünde değil) vuruyor; kalecinin üstüne sürmüyor. **Kök neden** (`game/tactics.ts` `evaluateCarrier`, dribling yelpazesi): 4,5 m ilerideki nokta, kaleci orada yokmuş gibi değerleniyordu (kaleci koşarak gelirken o noktanın şut kalitesi 0,5–0,6'ya, yerinde şutunki 0,1–0,2'ye çıkıyordu). Bu yüzden counter_2v1'de pas alan arkadaş kaleciye kadar sürüyor, 29 denemenin 8–11'inde kaleci topu ayağından alıyordu.
+
+**Ne değişti** (aynı mantık rakip için de geçerli; kahramanın kaleci olduğu gk_1v1 / gk_save / gk_sweep düelloları senaryolarını koruyor):
+- **Dribling, kaleciyle yarış:** kaleci topa ya da yol üstündeki noktaya topçudan önce varabiliyorsa o yönde sürmek, önce kaleciyi geçmeyi gerektiriyor. Bunun değeri `takeOnChance` ile hesaplanıyor (topçunun Top Sürme / Çeviklik değerine karşı kalecinin GK Pozisyon / Top Tutma / Çeviklik değeri) ve kaleci ne kadar erken varırsa o kadar ağır basıyor.
+- **Son an vuruşu:** taşıyıcı, kalecinin topu kapatmasına `strikeLead` kala yeniden bakıyor (`smartCarrier` düşünme zamanını ona göre ayarlıyor). Bu süre Soğukkanlılık 100'de 0,02 s, 0'da 0,06 s. O anda vuruş zorunlu (`urgent`): ne "daha iyisini bekle" (0,13 eşiği) ne de kaleciye sürmek var. Kahraman daha iyi yerdeyse (ve ofsayt değilse) yana pas hâlâ seçilebiliyor. Fizik deterministik; şuttaki tek rastgelelik statla ölçeklenen yön hatası.
+
+**Önce → sonra** (`passReceiver.test.ts`, telefon PAS düğmesi, kahraman ofsayt çizgisine koşuyor):
+- 29 denemede kaleciye sürüp topu kaptırma: 8 → **1**; şut ya da kahramana pas: 17 → **25**.
+- 79 denemede gol, takım arkadaşlarının Bitiricilik / Şut / Soğukkanlılık değeri 30 → 95 iken: 36 → 45'ten **35 → 46**'ya. Kaleciye kaptırma 19'dan 2'ye (30'da) / 7'ye (95'te; soğukkanlı oyuncu bazen fazla bekliyor) indi.
+
+**Tür kontrolü** (telefon yolu, N = 200; 30 türün hepsi yeşil):
+- counter_2v1: başlangıç 59 → 60; 40/65/90 54/60/62 → 56/62/64; özensiz farkı 34 → 34.
+- corner_kick: değişmedi (45 (26), fark 21–22).
+- gk_1v1 / gk_save / gk_sweep: kahraman kaleciyken kapsam dışı (`keeperDuel`). Kapsam içindeyken son an vuruşu kalecinin statını devre dışı bırakıyordu (gk_1v1 40/65/90 50/51/49), bu yüzden bu düellolar senaryolarını koruyor.
+
+Golden değişmedi; tam vitest yeşil (255 dosya, 2240 test). Kariyer `BALANCE=1` seed 1000 / 2000 / 3000 geçti (10. sezon OVR 82 / 82 / 83; kariyer simi bu koda dokunmuyor). `ROLE_BALANCE=1`: sim maç reytingi her rolde mevki ortalamasının ±%3'ü içinde; oynanan-an tahmini en uçta CM playmaker −%5,7, AM playmaker −%4,6.
