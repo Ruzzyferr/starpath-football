@@ -938,3 +938,36 @@
   .save-indicator { left: calc(var(--safe-left) + 88px); bottom: calc(var(--safe-bottom) + 16px); }
 }
 [data-motion='reduced'] .save-indicator { transition: none; }
+
+/* Render-failure panel (game/phaserGuard.ts): replaces a Phaser canvas that could not draw. */
+.render-fail {
+  position: absolute;
+  inset: 0;
+  z-index: 6;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: var(--sp-3);
+  padding: max(16px, var(--safe-top)) 16px max(16px, var(--safe-bottom));
+  overflow: auto;
+  background: var(--bg-1);
+  color: var(--text-hi);
+  pointer-events: auto;
+  touch-action: auto;
+}
+.render-fail h2 { margin: 0; font-size: var(--fs-lg, 1.25rem); }
+.render-fail p { margin: 0; color: var(--text-mid); }
+.render-fail pre {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  max-height: 40vh;
+  overflow: auto;
+  border-radius: var(--r-btn);
+  background: var(--surface-2);
+  font-size: 0.75rem;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+}
+.render-fail .btn { align-self: flex-start; min-width: 120px; }

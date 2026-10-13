@@ -13,6 +13,8 @@ import { installRealBackend } from './ui/backend'
 import { initPlatform } from './platform'
 import { installAudioDirector } from './audio/director'
 import { installErrorLog } from './telemetry/errorLog'
+import { installErrorRing, pushError } from './telemetry/errorRing'
+import { recoverStaleStart } from './game/renderGuard'
 import { actions, navigate, screen } from './ui/store'
 import { DEFAULT_CAREER } from './ui/backend'
 import { DEMO_SEED, installDemoMode, isDemo } from './store-iap'
@@ -59,6 +61,10 @@ async function initPlatformBounded(): Promise<void> {
  * development, `?dev=<screen>` jumps with a canned career) behind `?mock=1`.
  */
 async function boot(): Promise<void> {
+  installErrorRing()
+  // A Phaser start that never reached a good frame last time (GPU hang / killed app): Canvas from now on.
+  const hung = recoverStaleStart()
+  if (hung) pushError('render', `last WebGL start hung (${hung}); using Canvas`)
   const params = new URLSearchParams(location.search)
   if (params.get('mock') === '1') {
     const { installMockBackend } = await import('./ui/dev/mockActions')
