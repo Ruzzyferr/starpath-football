@@ -3176,8 +3176,8 @@ export function createMatchGame(parent: HTMLElement, profile?: QualityProfile): 
     input: { keyboard: false, mouse: false, touch: false, gamepad: false },
     // Low profile: no MSAA and the default GPU (mid-range Adreno/Mali run cooler, fill rate is the bottleneck).
     render: { antialias: profile !== 'low', roundPixels: false, powerPreference: profile === 'low' ? 'default' : 'high-performance' },
-    // 90/120 Hz phones would otherwise render every refresh; 60 fps is the design rate.
-    fps: { limit: 60 },
+    // No fps.limit: Phaser's limiter carries the remainder, so a 60 cap on a 90 Hz screen (Galaxy A52)
+    // alternates 1- and 2-refresh frames (judder) and drops jittered frames at 60 Hz.
     scale: hiDpi
       ? { mode: Phaser.Scale.NONE, width: Math.round(cssW * dpr), height: Math.round(cssH * dpr), zoom: 1 / dpr }
       : { mode: Phaser.Scale.RESIZE, width: cssW, height: cssH },

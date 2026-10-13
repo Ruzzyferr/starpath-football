@@ -187,7 +187,8 @@ export function runDeviceBenchmark(): DeviceProbe {
   const nav = (typeof navigator !== 'undefined' ? navigator : {}) as { hardwareConcurrency?: number; deviceMemory?: number }
   const coarse = typeof matchMedia === 'function' && matchMedia('(pointer: coarse)').matches
   benchSink = sink // keeps the workload observable (no dead-code elimination)
-  return { benchMs: times[1]!, cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse, gpu: readGpuRenderer() }
+  // No GPU readout here: it creates a WebGL context, which stays off the boot path (see detectQuality).
+  return { benchMs: times[1]!, cores: nav.hardwareConcurrency ?? 0, memoryGb: nav.deviceMemory ?? 0, coarse }
 }
 
 // ───────────────────────── Particle budget ─────────────────────────

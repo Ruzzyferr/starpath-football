@@ -27,7 +27,7 @@ import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isCameraDistanceChoice, type CameraDistanceChoice } from '../game/view'
-import { adjustForFps, isQualityChoice, measureFps, profileFromProbe, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
+import { adjustForFps, isQualityChoice, measureFps, profileFromProbe, readGpuRenderer, resolveQuality, runDeviceBenchmark, type QualityChoice, type QualityProfile } from '../game/quality'
 import type { SlotThumb } from '../state/save'
 import type { DrillKind, DrillVariant } from '../game/training/types'
 
@@ -1067,16 +1067,25 @@ export const lang = computed<Lang>(() => settings.value.lang)
  * Called once on first launch and from Settings ("Detect again").
  */
 export function detectQuality(): QualityProfile {
-  const auto = profileFromProbe(runDeviceBenchmark())
+  const probe = runDeviceBenchmark()
+  const auto = profileFromProbe(probe)
   updateSettings({ qualityAuto: auto })
-  // Then a one-second frame-rate probe: a device that cannot hold the floor drops a step. Skipped
-  // under automation (webdriver), where frame timing reflects the test host, not a device.
-  if (typeof navigator !== 'undefined' && !navigator.webdriver) {
-    void measureFps(1000).then((fps) => {
-      const adjusted = adjustForFps(auto, fps)
-      if (adjusted !== auto && settings.peek().qualityAuto === auto) updateSettings({ qualityAuto: adjusted })
-    })
-  }
+  // Refined off the boot path: the GPU class (reading it creates a throw-away WebGL context), then a
+  // one-second frame-rate probe that drops a device unable to hold the floor by a step. The probe is
+  // skipped under automation (webdriver), where frame timing reflects the test host, not a device.
+  setTimeout(() => {
+    const byGpu = profileFromProbe({ ...probe, gpu: readGpuRenderer() })
+    const apply = (p: QualityProfile) => {
+      if (settings.peek().qualityAuto !== p && settings.peek().qualityAuto === auto) updateSettings({ qualityAuto: p })
+    }
+    apply(byGpu)
+    if (typeof navigator !== 'undefined' && !navigator.webdriver) {
+      void measureFps(1000).then((fps) => {
+        const adjusted = adjustForFps(byGpu, fps)
+        if (adjusted !== byGpu && settings.peek().qualityAuto === byGpu) updateSettings({ qualityAuto: adjusted })
+      })
+    }
+  }, 1500)
   return auto
 }
 
