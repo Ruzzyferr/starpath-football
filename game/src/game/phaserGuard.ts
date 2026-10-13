@@ -57,7 +57,7 @@ function sampleCanvas(src: HTMLCanvasElement): Uint8ClampedArray | null {
     const c = document.createElement('canvas')
     c.width = 8
     c.height = 8
-    const ctx = c.getContext('2d')
+    const ctx = c.getContext('2d', { willReadFrequently: true })
     if (!ctx) return null
     ctx.drawImage(src, 0, 0, 8, 8)
     return ctx.getImageData(0, 0, 8, 8).data
