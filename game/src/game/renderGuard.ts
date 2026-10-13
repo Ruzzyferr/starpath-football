@@ -6,6 +6,8 @@
  * The Phaser glue lives in phaserGuard.ts; this file stays pure so it is unit-tested.
  */
 
+import { SOFTWARE_KEY } from '../platform/renderMode'
+
 export type RendererChoice = 'webgl' | 'canvas'
 
 type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
@@ -14,6 +16,13 @@ type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>
 export const WEBGL_BROKEN_KEY = 'sp.render.webglBroken'
 /** Set while a Phaser host is starting, cleared at its first good frame (or a clean stop). */
 export const START_SENTINEL_KEY = 'sp.render.starting'
+/**
+ * Set when the blank-frame check's GPU readback stalled the main thread (seen on some Adreno /
+ * Samsung WebViews): later starts skip the check and trust the first frame, like Canvas.
+ */
+export const READBACK_SLOW_KEY = 'sp.render.readbackSlow'
+/** A blank-frame sample slower than this marks the device's readback as slow. */
+export const PROBE_STALL_MS = 120
 /** No frame within this long after the game is created counts as a failed start. */
 export const FIRST_FRAME_MS = 3000
 
@@ -69,15 +78,35 @@ export function markWebglBroken(reason: string): void {
 export function clearWebglBroken(): void {
   sessionBroken = null
   set(WEBGL_BROKEN_KEY, null)
+  set(READBACK_SLOW_KEY, null)
+}
+
+export function isReadbackSlow(): boolean {
+  return get(READBACK_SLOW_KEY) !== null
+}
+
+export function markReadbackSlow(ms: number): void {
+  set(READBACK_SLOW_KEY, String(Math.round(ms)))
+}
+
+/** Compatibility mode (platform/renderMode: software drawing) is on. */
+export function isSoftwareMode(): boolean {
+  const raw = get(SOFTWARE_KEY)
+  if (!raw) return false
+  try {
+    return (JSON.parse(raw) as { on?: unknown }).on === true
+  } catch {
+    return false
+  }
 }
 
 /**
- * The renderer a Phaser host starts with: Canvas when the player chose Low graphics, when
- * WebGL already failed on this device, or when the caller forces it (the watchdog's retry).
+ * The renderer a Phaser host starts with: Canvas when the player chose Low graphics or
+ * compatibility mode, when WebGL already failed on this device, or when the caller forces it.
  */
 export function pickRenderer(o: { lowGraphics?: boolean; force?: RendererChoice }): RendererChoice {
   if (o.force) return o.force
-  if (o.lowGraphics) return 'canvas'
+  if (o.lowGraphics || isSoftwareMode()) return 'canvas'
   return isWebglBroken() ? 'canvas' : 'webgl'
 }
 

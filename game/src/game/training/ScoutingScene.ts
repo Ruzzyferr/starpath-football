@@ -15,6 +15,7 @@ import { guardPhaser, type GuardHandle } from '../phaserGuard'
 import type { QualityProfile } from '../quality'
 import { pauseGate, wireAppPause } from '../pauseGate'
 import { PITCH_L, PITCH_W, actorAt, ballAt, type Clip, type ScoutFrame, type ScoutingGame, type ScoutingResult } from './scouting'
+import { crumb } from '../../telemetry/breadcrumbs'
 
 export interface ScoutingSceneOptions {
   /** Localised canvas labels. */
@@ -87,6 +88,9 @@ class ScoutingScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Breadcrumbs (telemetry/breadcrumbs): a hang inside create leaves the last stage behind.
+    crumb('scene-create', 'scouting')
+    this.events.once(Phaser.Scenes.Events.CREATE, () => crumb('scene-ready', 'scouting'))
     const u = this.ui
     this.cameras.main.setBackgroundColor('#081210')
     this.makeTextures()

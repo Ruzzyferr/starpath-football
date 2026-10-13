@@ -14,8 +14,10 @@
  * can: a GPU driver that hangs the main thread. The next app start sees it and uses Canvas.
  */
 import Phaser from 'phaser'
+import { bindExitTap } from '../platform/exitTap'
 import { pushError, recentErrors, describeError } from '../telemetry/errorRing'
-import { beginStart, createWatchdog, endStart, FIRST_FRAME_MS, isBlankFrame, markWebglBroken, pickRenderer, type RendererChoice, type Watchdog } from './renderGuard'
+import { beginRun, crumb, readCrumbs, startHeartbeat, stopHeartbeat, unfinishedRun } from '../telemetry/breadcrumbs'
+import { beginStart, createWatchdog, endStart, FIRST_FRAME_MS, isBlankFrame, isReadbackSlow, markReadbackSlow, markWebglBroken, pickRenderer, PROBE_STALL_MS, type RendererChoice, type Watchdog } from './renderGuard'
 
 export type PhaserHostKind = 'drill' | 'match' | 'replay' | 'scouting'
 
@@ -113,7 +115,11 @@ export function showRenderErrorPanel(container: HTMLElement, info: { reason: str
   btn.setAttribute('data-back-exit', '')
   btn.setAttribute('data-testid', 'render-fail-exit')
   btn.textContent = tr ? 'Çık' : 'Exit'
-  btn.addEventListener('click', () => onExit())
+  // Touch / pointer as well as click: the first tap must exit even on a struggling WebView.
+  bindExitTap(btn, (via) => {
+    crumb('exit-tap', via)
+    onExit()
+  })
   panel.append(h, p, pre, btn)
   if (getComputedStyle(container).position === 'static') container.style.position = 'relative'
   container.appendChild(panel)
@@ -155,6 +161,7 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
     // This attempt is over: its game's later frames (until the pending destroy runs) are ignored.
     attemptNo++
     pushError('render', `${renderer}: ${reason}`)
+    crumb('render-fail', `${o.host} ${renderer}: ${reason}`)
     console.warn(`[StarPath] ${o.host} ${renderer} renderer failed: ${reason}`)
     if (renderer === 'webgl') gpu = gpuOfGame(game) || gpu
     teardown()
@@ -166,6 +173,8 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
       return
     }
     endStart()
+    crumb('fail-panel', `${o.host}: ${reason}`.slice(0, 160))
+    stopHeartbeat()
     panel = showRenderErrorPanel(o.container, { reason, gpu, tried }, () => o.onExit())
   }
 
@@ -174,6 +183,13 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
     const r = renderer
     tried.push(r)
     beginStart(r, o.host)
+    // Breadcrumbs (telemetry/breadcrumbs): written before each step that could hang the thread.
+    if (attempt === 1) {
+      // The UI may have opened the run already (trial: intro → start tap → chunk → drill).
+      if (!unfinishedRun(readCrumbs())) beginRun(o.host)
+      startHeartbeat()
+    }
+    crumb('phaser-build', `${o.host} ${r}`)
     const safe: Safe = (fn) => (...a) => {
       if (stopped || attempt !== attemptNo) return
       try {
@@ -211,6 +227,7 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
       return
     }
     game = g
+    crumb('phaser-built', `${r === 'webgl' && (g.renderer as { gl?: unknown } | null)?.gl ? 'webgl' : g.renderer ? 'canvas' : 'booting'}${r === 'webgl' ? ` · ${gpuOfGame(g) || '?'}` : ''}`)
     // The step is called by Phaser's rAF loop; one throw there ends the loop forever (black, and
     // destroy() never runs). Wrapped, the failure is reported and the loop keeps going so the
     // pending destroy can complete.
@@ -253,7 +270,11 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
       if (firstAt < 0) {
         firstAt = now
         wd?.ok()
-        if (r === 'canvas') {
+        crumb('first-frame', r)
+        // Canvas has no blank-shader failure mode; a device whose GPU readback stalls skips the check.
+        const skipProbe = r === 'webgl' && isReadbackSlow()
+        if (r === 'canvas' || skipProbe) {
+          crumb('render-ok', skipProbe ? `${r} · no probe` : r)
           endStart()
           g.events.off(Phaser.Core.Events.POST_RENDER, onFrame)
         }
@@ -261,9 +282,17 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
       }
       if (probe >= BLANK_PROBE_MS.length || now - firstAt < BLANK_PROBE_MS[probe]!) return
       probe++
+      crumb('probe', String(probe))
+      const t0 = performance.now()
       const px = g.canvas ? sampleCanvas(g.canvas) : null
-      if (!px || !isBlankFrame(px, [0x0b, 0x14, 0x10])) {
+      const took = performance.now() - t0
+      // A readback that stalls the thread is worse than the failure it looks for: frames are being
+      // presented, so count the start as good and never probe on this device again.
+      const stalled = took > PROBE_STALL_MS
+      if (stalled) markReadbackSlow(took)
+      if (stalled || !px || !isBlankFrame(px, [0x0b, 0x14, 0x10])) {
         if (!gpu) gpu = gpuOfGame(g)
+        crumb('render-ok', `${r} · probe ${probe} · ${Math.round(took)} ms`)
         endStart()
         g.events.off(Phaser.Core.Events.POST_RENDER, onFrame)
         return
@@ -285,6 +314,8 @@ export function guardPhaser(o: GuardOptions): GuardHandle {
     stop() {
       if (stopped) return
       stopped = true
+      crumb('exit', o.host)
+      stopHeartbeat()
       // A clean exit is not a hang: the next start must not be pushed to Canvas.
       endStart()
       teardown()

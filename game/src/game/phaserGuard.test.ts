@@ -182,6 +182,33 @@ describe('render guard: WebGL first, Canvas second, a readable panel last', () =
     expect(recentErrors().some((e) => /blank/.test(e.message))).toBe(true)
   })
 
+  it('a blank-frame readback that stalls counts as rendered and is never repeated on this device', () => {
+    blankPixels = true
+    // Each sample takes 400 ms (an Adreno readback stall).
+    const orig = FakeEl.prototype.getContext
+    FakeEl.prototype.getContext = function () { return { drawImage() { now += 400 }, getImageData: () => ({ data: new Uint8ClampedArray(256) }) } }
+    try {
+      const t = host()
+      playFrames(t.games[0]!)
+      expect(t.h.renderer).toBe('webgl')
+      expect(store.get('sp.render.readbackSlow')).toBeDefined()
+      expect(store.has(START_SENTINEL_KEY)).toBe(false)
+      t.h.stop()
+      // Next start: no probe at all (first frame settles it).
+      const t2 = host()
+      t2.last().frame()
+      expect(store.has(START_SENTINEL_KEY)).toBe(false)
+    } finally {
+      FakeEl.prototype.getContext = orig
+    }
+  })
+
+  it('compatibility mode (software drawing) starts on Canvas directly', () => {
+    store.set('sp.render.software', JSON.stringify({ on: true }))
+    const t = host()
+    expect(t.h.renderer).toBe('canvas')
+  })
+
   it('Low graphics starts on Canvas directly', () => {
     const t = host({ lowGraphics: true })
     expect(t.h.renderer).toBe('canvas')

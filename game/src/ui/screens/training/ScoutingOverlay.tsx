@@ -17,6 +17,7 @@ import { Icon } from '../../icons'
 import { gameState, phaserRenderOpts, settings } from '../../store'
 import { finishScouting, scoutPacing, scoutReport, scoutingOpen, type ScoutOutcome } from '../../backend/scouting'
 import { GameTutorial, GateBeat } from '../../tutorial/ControlHint'
+import { DrillQuit } from './DrillQuit'
 
 type Phase = 'intro' | 'loading' | 'playing' | 'result' | 'error'
 
@@ -169,12 +170,6 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
   return createPortal(
     <div class={`trn-drill scout is-${phase}`} role="dialog" aria-modal="true" aria-label={t('training.scout.title', { c: club })} data-testid="scout">
       <div class="trn-drill-stage" ref={host} id="scout-canvas" />
-      {(phase === 'playing' || phase === 'loading') && (
-        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.scout.quit')} data-back-exit>
-          <Icon name="close" size={20} />
-          <span>{t('training.scout.quit')}</span>
-        </button>
-      )}
       <GameTutorial active={phase === 'playing'} tkey="scout" onQuit={quit} />
       {phase === 'playing' && <GateBeat />}
       {phase === 'loading' && (
@@ -301,6 +296,8 @@ export function ScoutingOverlay({ onClose }: { onClose: () => void }) {
         </div>
         )
       })()}
+      {/* Last child: nothing can be stacked above Quit. */}
+      {(phase === 'playing' || phase === 'loading') && <DrillQuit onQuit={quit} label={t('training.scout.quit')} testId="scout-quit" />}
     </div>,
     document.body,
   )

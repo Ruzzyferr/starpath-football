@@ -25,6 +25,7 @@ import { impressResult } from '../../backend/benchPath'
 import '../../../styles/screens/bench.css'
 import { DrillHints } from '../../tutorial/ControlHint'
 import { emitHintEvent } from '../../tutorial/hints'
+import { DrillQuit } from './DrillQuit'
 
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
 
@@ -154,12 +155,6 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
   return createPortal(
     <div class={`trn-drill is-${phase}`} role="dialog" aria-modal="true" aria-label={title}>
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
-      {(phase === 'playing' || phase === 'loading') && (
-        <button type="button" class="trn-drill-quit" onClick={quit} aria-label={t('training.drill.quit')} title={t('training.drill.quitHint')} data-back-exit data-testid="drill-quit">
-          <Icon name="close" size={20} />
-          <span>{t('training.drill.quit')}</span>
-        </button>
-      )}
       <DrillHints active={phase === 'playing'} drill={drill?.kind} variant={drill?.variant} onQuit={quit} />
       {phase === 'loading' && (
         <div class="trn-drill-center">
@@ -264,6 +259,8 @@ export function DrillOverlay({ session, onClose, challenge, onDrillResult, apply
           <Button variant="primary" block onClick={() => onClose(outcome && outcome.ok ? outcome : null)} autoFocus>{t('training.result.done')}</Button>
         </div>
       )}
+      {/* Last child: nothing can be stacked above Quit. */}
+      {(phase === 'playing' || phase === 'loading') && <DrillQuit onQuit={quit} label={t('training.drill.quit')} title={t('training.drill.quitHint')} />}
     </div>,
     document.body,
   )

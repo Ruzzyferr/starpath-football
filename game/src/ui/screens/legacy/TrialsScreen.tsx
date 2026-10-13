@@ -16,6 +16,9 @@ import { DrillDiagram } from '../training/DrillDiagram'
 import { DrillMatchupCard } from '../training/DrillMatchupCard'
 import { drillOpponentFor } from '../training/drillOpponent'
 import { drillMatchup } from '../../../game/training/matchup'
+import { DrillQuit } from '../training/DrillQuit'
+import { beginRun, crumb, readCrumbs, unfinishedRun } from '../../../telemetry/breadcrumbs'
+import { describeError } from '../../../telemetry/errorRing'
 import type { TrialInvite } from '../../../sim/game/trials'
 
 const DEFAULT_KIT = { primary: '#1f6feb', secondary: '#f2f5fa', pattern: 'plain' as const }
@@ -39,8 +42,11 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
       document.documentElement.classList.remove('trn-drill-open')
       handle.current?.stop()
       handle.current = null
+      // Closed before the host reached a frame (Quit while loading, load error): not a hang.
+      if (unfinishedRun(readCrumbs())) crumb('cancel', 'trial closed')
     }
   }, [])
+  useEffect(() => crumb('trial-intro', invite.drill), [invite.drill])
   useEffect(() => {
     if (phase !== 'playing') return
     let cancelled = false
@@ -48,9 +54,14 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
       const s = gameState.value
       try {
         const [mod, { createDrill }] = await Promise.all([import('../../../game/training/TrainingScene'), import('../../../game/training/drills')])
+        crumb('chunk-loaded')
         if (cancelled || !s || !host.current) return
         // The trial's opposition: the inviting club's players.
-        const make = () => createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1, opponent: drillOpponentFor(s, invite.clubId) })
+        const make = () => {
+          const d = createDrill(invite.drill, { attrs: s.hero.attrs, seed: hashString(`${s.meta.seed}|trial|${invite.id}`), aimAssist: settings.value.aimAssist, difficulty: 1, opponent: drillOpponentFor(s, invite.clubId) })
+          crumb('drill-created', invite.drill)
+          return d
+        }
         setLoading(false)
         handle.current = mod.startDrill(host.current, make(), {
           ...phaserRenderOpts(),
@@ -65,7 +76,9 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           drillFinished(r.kind, r.grade, r.performance)
           onDone(r.performance)
         }, make)
+        crumb('host-started')
       } catch (e) {
+        crumb('load-fail', describeError(e))
         console.warn('[StarPath] trial drill unavailable', e)
         onDone(null)
       }
@@ -81,12 +94,6 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
   return createPortal(
     <div class={`trn-drill is-${phase === 'intro' ? 'intro' : 'playing'}`} role="dialog" aria-modal="true" aria-label={invite.clubName} data-testid="trial-drill">
       <div class="trn-drill-stage" ref={host} id="training-canvas" />
-      {phase === 'playing' && (
-        <button type="button" class="trn-drill-quit" onClick={() => onDone(null)} aria-label={t('training.drill.quit')} data-back-exit data-testid="drill-quit">
-          <Icon name="close" size={20} />
-          <span>{t('training.drill.quit')}</span>
-        </button>
-      )}
       {phase === 'playing' && loading && <div class="trn-drill-center"><Spinner /></div>}
       {phase === 'intro' && (
         <div class="trn-drill-card stack" data-testid="trial-intro">
@@ -113,10 +120,16 @@ function TrialDrill({ invite, onDone }: { invite: TrialInvite; onDone: (performa
           </div>
           <div class="row trn-drill-actions">
             <Button variant="ghost" onClick={() => onDone(null)} data-back-exit>{t('common.cancel')}</Button>
-            <Button variant="primary" icon="play" onClick={() => setPhase('playing')} autoFocus data-testid="trial-start">{t('training.drill.start')}</Button>
+            <Button variant="primary" icon="play" onClick={() => {
+              const o = phaserRenderOpts()
+              beginRun('trial', `${kind} · ${o.quality}${o.canvasRenderer ? ' · canvas' : ''}`)
+              setPhase('playing')
+            }} autoFocus data-testid="trial-start">{t('training.drill.start')}</Button>
           </div>
         </div>
       )}
+      {/* Last child: nothing can be stacked above Quit. */}
+      {phase === 'playing' && <DrillQuit onQuit={() => onDone(null)} label={t('training.drill.quit')} />}
     </div>,
     document.body,
   )

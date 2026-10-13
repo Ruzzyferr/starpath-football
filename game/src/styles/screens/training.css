@@ -353,7 +353,7 @@ html[data-motion='reduced'] .trn-drill-card { animation: none; }
   position: absolute;
   top: calc(8px + var(--safe-top));
   right: calc(10px + var(--safe-right));
-  z-index: 5;
+  z-index: 30; /* above the stage (0), the guard panel (inside the stage) and any hint card */
   pointer-events: auto;
   touch-action: manipulation;
   display: inline-flex;

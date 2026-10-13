@@ -78,6 +78,7 @@ import { canvasSafeInsets } from '../platform/viewport'
 import { isWebglBroken, markWebglBroken, type RendererChoice } from './renderGuard'
 import { guardPhaser, type GuardHandle } from './phaserGuard'
 import { PPM, TILT, ZS, resolveCameraDistance, type CameraDistanceChoice, crossCamFit, depthFor, fitZoom, pitchDirToScreen, project, screenDirToPitch, unproject } from './view'
+import { crumb } from '../telemetry/breadcrumbs'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -467,6 +468,9 @@ export class MatchScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Breadcrumbs (telemetry/breadcrumbs): a hang inside create leaves the last stage behind.
+    crumb('scene-create', 'match')
+    this.events.once(Phaser.Scenes.Events.CREATE, () => crumb('scene-ready', 'match'))
     const { highlight, opts } = this.data0
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
     this.hudU = this.ui * (this.scale.width / this.ui >= 1100 ? 1.25 : 1)

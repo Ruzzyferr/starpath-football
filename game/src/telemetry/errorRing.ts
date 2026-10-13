@@ -27,9 +27,33 @@ export function describeError(err: unknown): string {
   return clip(String(err), 300)
 }
 
+/** The last few entries are also kept in localStorage, so a hang / restart does not lose them. */
+export const PERSISTED_ERRORS_KEY = 'sp.diag.errors'
+const PERSISTED_MAX = 8
+
 export function pushError(kind: RingEntry['kind'], err: unknown, now: number = Date.now()): void {
-  ring.push({ at: now, kind, message: describeError(err) })
+  const e: RingEntry = { at: now, kind, message: describeError(err) }
+  ring.push(e)
   if (ring.length > RING_SIZE) ring.splice(0, ring.length - RING_SIZE)
+  try {
+    if (typeof localStorage === 'undefined') return
+    const list = persistedErrors()
+    list.push(e)
+    localStorage.setItem(PERSISTED_ERRORS_KEY, JSON.stringify(list.slice(-PERSISTED_MAX)))
+  } catch {
+    /* storage unavailable: the in-memory ring still works */
+  }
+}
+
+/** Errors kept across launches (oldest first). */
+export function persistedErrors(): RingEntry[] {
+  try {
+    if (typeof localStorage === 'undefined') return []
+    const v = JSON.parse(localStorage.getItem(PERSISTED_ERRORS_KEY) || '[]') as unknown
+    return Array.isArray(v) ? (v as RingEntry[]).filter((e) => e && typeof e.message === 'string') : []
+  } catch {
+    return []
+  }
 }
 
 /** Oldest first. */

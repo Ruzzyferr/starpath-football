@@ -25,6 +25,7 @@ import { canvasSafeInsets } from '../../platform/viewport'
 import { pauseGate, wireAppPause } from '../pauseGate'
 import { PPM, TILT, ZS, depthFor, pitchDirToScreen, project, screenDirToPitch, unproject } from '../view'
 import type { ActorView, Drill, DrillEvent, DrillKind, DrillLabel, DrillPrompt, DrillResult, DrillView, Grade, Tone } from './types'
+import { crumb } from '../../telemetry/breadcrumbs'
 
 // ───────────────────────── Public types ─────────────────────────
 
@@ -279,6 +280,9 @@ export class TrainingScene extends Phaser.Scene {
   }
 
   create(): void {
+    // Breadcrumbs (telemetry/breadcrumbs): a hang inside create leaves the last stage behind.
+    crumb('scene-create', 'drill')
+    this.events.once(Phaser.Scenes.Events.CREATE, () => crumb('scene-ready', 'drill'))
     const { opts } = this.data0
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
     this.s = T[opts.lang] ?? T.en
@@ -292,9 +296,11 @@ export class TrainingScene extends Phaser.Scene {
     this.cameras.main.ignore(this.hudLayer)
     this.uiCam.ignore(this.worldLayer)
     utilTextures(this)
+    crumb('scene-textures')
 
     const view = this.drill.view()
     this.bakePitch()
+    crumb('scene-pitch')
     for (const end of view.goals) {
       const gx = end === 'east' ? PITCH_LENGTH : 0
       const back = end === 'east' ? gx + 2 : gx - 2
@@ -317,6 +323,7 @@ export class TrainingScene extends Phaser.Scene {
       }),
     ).setDepth(4_000_000)
     this.buildHud()
+    crumb('scene-hud')
 
     this.input0 = new InputController(this.game.canvas, {
       toWorld: (gx, gy) => this.screenToPitch(gx, gy),
