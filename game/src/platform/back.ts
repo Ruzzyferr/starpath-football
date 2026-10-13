@@ -29,8 +29,21 @@ export function pauseLiveMatchOnBack(): boolean {
   return true
 }
 
+/**
+ * A full-screen mini-game or Phaser host (drill, trial, scouting, render-failure panel) marks its
+ * way out with `data-back-exit`; Back presses the most recent one. Returns true when one was found.
+ */
+export function exitFullScreenGame(root: Pick<Document, 'querySelectorAll'> = document): boolean {
+  const all = root.querySelectorAll<HTMLElement>('[data-back-exit]')
+  const btn = all[all.length - 1]
+  if (!btn) return false
+  btn.click()
+  return true
+}
+
 export function handleBack(exit: () => void): void {
   const modalOpen = !!document.querySelector('.modal-root')
+  if (!modalOpen && exitFullScreenGame()) return
   if (!modalOpen && pauseLiveMatchOnBack()) return
   if (!modalOpen && ROOTS.has(screen.value.id)) {
     if (window.confirm(exitPrompt())) exit()

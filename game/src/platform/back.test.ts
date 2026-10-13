@@ -32,3 +32,15 @@ describe('Android back during a live match (2.9#76)', () => {
     expect(screen.value.id).toBe('liveMatch')
   })
 })
+
+describe('Android back on a full-screen mini-game', () => {
+  it('presses the most recent data-back-exit control (drill quit, failure panel exit)', async () => {
+    const { exitFullScreenGame } = await import('./back')
+    const quit = { click: vi.fn() }
+    const panelExit = { click: vi.fn() }
+    expect(exitFullScreenGame({ querySelectorAll: () => [] as never })).toBe(false)
+    expect(exitFullScreenGame({ querySelectorAll: () => [quit, panelExit] as never })).toBe(true)
+    expect(panelExit.click).toHaveBeenCalledTimes(1)
+    expect(quit.click).not.toHaveBeenCalled()
+  })
+})
