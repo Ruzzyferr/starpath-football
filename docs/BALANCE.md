@@ -2517,3 +2517,11 @@ Hedef: yerleşik şut, orta kaleciye (~62–65) karşı Bitiricilik 50 → %45�
 - Drill: pas 1900 → 1563 (eğri 0,85), kalecilik 60 → 50 (eğri 1,9), switch 1865 → 1100, serbest vuruş 14 → 16 (eğri 1,15).
 - Kariyer: `BALANCE=1` seed 1000 / 2000 / 3000 geçti (10. sezon OVR 82 / 82 / 83); rol dengesi (ST / LW / CB, 12 kariyer × 8 sezon) her rolde mevki ortalamasının ±%3'ü içinde. Golden ve tam vitest yeşil (246 dosya, 2190 test, 0 todo).
 
+
+## Build 12: oyuncu raporu — 2'ye 1'de pas alan geri döndü, uzun topta görev başlamadı (Ekim 2026)
+
+**counter_2v1 / pas alan takım arkadaşı** (`game/ai.ts` `carrierDecision`): kalenin 30 m dışındaki takım arkadaşı, açık koridor ve boş alan puanıyla 25–40 m geriye havadan pas atıyordu (telefon PAS düğmesiyle 29 denemenin 9–13'ünde). Artık geriye top yalnızca **önden** baskı varsa ve kısa bir aktarma ise (`LAY_OFF_MAX` = 15 m) oynanıyor; taktik taşıyıcıdaki (`tactics.ts`) kuralın aynısı. Sonuç: topu taşıyıp vuruyor ya da (Vizyon / ilişki) kahramana geri veriyor. Kahraman topla aynı hizada koşarsa 29 denemenin 26'sında şut ya da kahramana pas (`passReceiver.test.ts`). Eğri pratikte değişmedi: counter_2v1 başlangıç 59 → 59, 40/65/90 54/60/61 → 54/60/62, özensiz farkı 33 → 34.
+
+**long_ball_control** (`game/runtime.ts`): kahramana adıyla atılan uzun topa (aynı zamanda one-two dönüşü) kendi takım arkadaşları da koşuyordu (`planAttackingRuns`, boş top kovalaması, hava düellosunda "en iyi yerdeki" takım arkadaşı). İyi oyuncu denemelerinin ~%25'inde topa ilk dokunan kendi takım arkadaşıydı ve top kafayla uzaklaşıyordu, yani kahraman hiç topa dokunamadan an bitiyordu. Artık top havadayken (`feedBy`) takım arkadaşları onu kahramana bırakıyor, düelloda kahramanın tarafını kendisi temsil ediyor ve markajcı kahramanın sırtından geçemiyor, omzundan dolanmak zorunda (build 9 "bedenler katı" kuralının uzantısı). Düello yine statla: İlk Dokunuş / Kafa ↔ markajcının Kafa vuruşu. İlk temasta kahraman: %63 → %81, takım arkadaşı: %25 → %2 (`longBallFeed.test.ts`, N = 100). Statın etkisi büyüdü: tutma oranı 40 → 90 statta 21 → 26 iken 22 → 36 oldu (60 deneme).
+
+Tür kontrolü (telefon yolu, N = 200), long_ball_control: başlangıç 52 (42) → **64 (55)**; 40/65/90 50/57/65 → 56/70/78; özensiz farkı 27 → 38; rakip güçlü/orta/zayıf 40/47/66 → 46/64/74; taban (40) 50 → 56. 30 türün tamamı yeşil, tam vitest yeşil; golden değişmedi.
