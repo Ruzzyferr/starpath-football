@@ -1,3 +1,5 @@
+// First: polyfills for older Android System WebViews (module bodies run in import order).
+import './platform/polyfills'
 import { render } from 'preact'
 import './styles/fonts.css'
 import './styles/tokens.css'
@@ -22,6 +24,36 @@ async function startDemoCareer(): Promise<void> {
   navigate('home', undefined, { tab: true })
 }
 
+/** Longest the first render waits for native platform setup (storage, plugins) before going ahead. */
+const PLATFORM_INIT_LIMIT_MS = 6000
+
+declare global {
+  interface Window {
+    /** Set by public/boot-guard.js: the app has rendered, the boot error screen stands down. */
+    __spBootDone?: () => void
+  }
+}
+
+/**
+ * Native platform setup must never hold the first render hostage: a plugin call or an IndexedDB
+ * open that never settles on some Android WebViews would otherwise leave a black screen. Setup
+ * keeps running in the background after the limit (storage switches over when it is ready).
+ */
+async function initPlatformBounded(): Promise<void> {
+  let timer: ReturnType<typeof setTimeout> | undefined
+  const limit = new Promise<'timeout'>((resolve) => {
+    timer = setTimeout(() => resolve('timeout'), PLATFORM_INIT_LIMIT_MS)
+  })
+  try {
+    const r = await Promise.race([initPlatform(), limit])
+    if (r === 'timeout') console.warn(`[StarPath] platform setup still running after ${PLATFORM_INIT_LIMIT_MS} ms; rendering anyway`)
+  } catch (e) {
+    console.error('[StarPath] platform setup failed; rendering anyway', e)
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
 /**
  * Backend selection: the real simulation by default; the mock backend (UI
  * development, `?dev=<screen>` jumps with a canned career) behind `?mock=1`.
@@ -36,11 +68,12 @@ async function boot(): Promise<void> {
   }
   bindSettingsToDocument()
   installErrorLog(() => screen.value.id)
-  await initPlatform()
+  await initPlatformBounded()
   // After initPlatform so the AudioContext is tracked for background suspend.
   installAudioDirector()
   const root = document.getElementById('app')
   if (root) render(<App />, root)
+  window.__spBootDone?.()
   if (isDemo() && params.get('mock') !== '1') {
     await startDemoCareer()
     installDemoMode(startDemoCareer)

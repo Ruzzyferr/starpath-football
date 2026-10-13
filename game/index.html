@@ -18,6 +18,9 @@
     <style>
       html, body { background: #070b14; touch-action: manipulation; }
     </style>
+    <!-- Boot guard (ES5, runs on any WebView): shows a readable error instead of a black screen when the
+         bundle cannot load or throws before the first render. See public/boot-guard.js. -->
+    <script src="./boot-guard.js"></script>
   </head>
   <body>
     <div id="app"></div>
