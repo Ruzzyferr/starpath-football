@@ -22,7 +22,7 @@ export const tr = {
   skeleton: 'İçerik yükleniyor',
   sparkline: 'Son {n} değer',
   noForm: 'Henüz maç yok',
-  topbar: { money: 'Para', energy: 'Enerji', happiness: 'Mutluluk', date: 'Tarih', events: 'Bekleyen kararlar' },
+  topbar: { money: 'Para', energy: 'Enerji', happiness: 'Mutluluk', date: 'Tarih', events: 'Bekleyen kararlar', news: 'Haberler: {n} okunmamış' },
   ctx: { nextMatch: 'Sıradaki maç', quickStats: 'Hızlı bakış', decisions: 'Kararlar', noMatch: 'Planlı maç yok', form: 'Form', trust: 'TD güveni' },
 }
 
@@ -47,6 +47,6 @@ export const en: Shape<typeof tr> = {
   skeleton: 'Loading content',
   sparkline: 'Last {n} values',
   noForm: 'No matches yet',
-  topbar: { money: 'Money', energy: 'Energy', happiness: 'Happiness', date: 'Date', events: 'Pending decisions' },
+  topbar: { money: 'Money', energy: 'Energy', happiness: 'Happiness', date: 'Date', events: 'Pending decisions', news: 'News: {n} unread' },
   ctx: { nextMatch: 'Next match', quickStats: 'At a glance', decisions: 'Decisions', noMatch: 'No match scheduled', form: 'Form', trust: 'Manager trust' },
 }

@@ -137,7 +137,19 @@
 .topbar-date { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; text-align: right; min-width: 0; }
 .topbar-season { color: var(--text-lo); font-size: 0.75rem; }
 .topbar-day { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); color: var(--text-hi); white-space: nowrap; }
-.topbar-bell { flex: none; }
+.topbar-bell { flex: none; position: relative; }
+/* Unread headlines: a small red dot on the bell (pending decisions keep their count badge). */
+.bell-dot {
+  position: absolute;
+  top: 9px;
+  right: 10px;
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: var(--state-danger);
+  box-shadow: 0 0 0 2px var(--bg-1);
+  pointer-events: none;
+}
 .bell-ring { animation: bell 2.4s ease-in-out infinite; transform-origin: 50% 10%; }
 @keyframes bell {
   0%, 70%, 100% { transform: rotate(0); }

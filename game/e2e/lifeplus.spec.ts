@@ -58,6 +58,17 @@ test('open a business and see its weekly profit & loss', async ({ page, shot }) 
   await shot('w3-business-pnl')
 })
 
+test('restaurant: a short wallet says what is missing instead of a dead button', async ({ page }) => {
+  await sp(page, `(() => { const s = sp.state(); s.life.money = 100000; s.life.bank.savings = 400000; s.hero.reputation = 16; sp.touch() })()`)
+  await sp(page, `sp.navigate('life', { tab: 'business' })`)
+  const shop = page.locator('.biz-shop[data-kind="restaurant"]')
+  await expect(shop.getByRole('button', { name: /Not enough cash/ })).toBeDisabled()
+  await expect(page.getByTestId('biz-short-restaurant')).toContainText('Bank tab')
+  await sp(page, `(() => { const s = sp.state(); s.life.money = 300000; sp.touch() })()`)
+  await shop.getByRole('button', { name: /^Open/ }).click()
+  await expect(page.locator('.biz-card[data-kind="restaurant"]')).toBeVisible()
+})
+
 test('press conference: three questions, answers apply, headline printed', async ({ page, shot }) => {
   await sp(page, `sp.navigate('life', { tab: 'social' })`)
   const room = page.locator('[data-testid="press-room"]')

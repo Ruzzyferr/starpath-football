@@ -1,5 +1,5 @@
 import '../../styles/screens/inbox.css'
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
 import type { NewsItem } from '../../core/types'
 import { lt, t } from '../../i18n'
 import { Avatar, Button, Card, Crest, EmptyState, Modal, Page, Tabs } from '../components'
@@ -8,6 +8,7 @@ import { collapseRepeats } from '../collapseRepeats'
 import { seasonLabel } from '../format'
 import { Icon } from '../icons'
 import { gameState, heroClub, navigate } from '../store'
+import { markNewsSeen } from '../backend/newsSeen'
 
 type Filter = 'all' | 'pos' | 'neu' | 'neg'
 const sentKey = (n: NewsItem): Exclude<Filter, 'all'> => (n.sentiment > 0 ? 'pos' : n.sentiment < 0 ? 'neg' : 'neu')
@@ -40,6 +41,8 @@ function StoryCause({ item }: { item: NewsItem }) {
 export function InboxScreen() {
   const s = gameState.value
   const [filter, setFilter] = useState<Filter>('all')
+  const newest = s?.life.news[s.life.news.length - 1]?.id
+  useEffect(() => markNewsSeen(), [newest])
   if (!s) return <Page title={t('inbox.title')}><EmptyState /></Page>
   const club = heroClub.value
   const all = [...s.life.news].reverse().sort((a, b) => b.season - a.season || b.week - a.week)

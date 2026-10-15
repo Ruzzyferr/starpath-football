@@ -121,10 +121,12 @@ function OwnedCard({ b, reputation, money }: { b: Biz; reputation: number; money
   )
 }
 
-function ShopCard({ kind, owned, reputation, money }: { kind: BusinessKind; owned: boolean; reputation: number; money: number }) {
+function ShopCard({ kind, owned, reputation, money, savings }: { kind: BusinessKind; owned: boolean; reputation: number; money: number; savings: number }) {
   const def = BUSINESS_DEFS[kind]
   const [name, setName] = useState('')
   const locked = reputation < def.minReputation
+  // A greyed-out "Open" button with no reason read as broken (playtest): say what is missing.
+  const short = !owned && !locked ? Math.max(0, def.price - money) : 0
   const preview = expectedRevenue({ kind, level: 1, brand: 40, manager: false }, reputation)
   return (
     <Card class="biz-shop" data-kind={kind}>
@@ -146,8 +148,17 @@ function ShopCard({ kind, owned, reputation, money }: { kind: BusinessKind; owne
         disabled={owned || locked || money < def.price}
         onClick={() => lifePlus.openBusiness(kind, name)}
       >
-        {owned ? t('life.biz.owned') : locked ? t('life.biz.minRep', { n: def.minReputation }) : t('life.biz.open', { price: formatMoney(def.price, { compact: true }) })}
+        {owned ? t('life.biz.owned')
+          : locked ? t('life.biz.minRep', { n: def.minReputation })
+          : short > 0 ? t('life.biz.needCash', { missing: formatMoney(short, { compact: true }) })
+          : t('life.biz.open', { price: formatMoney(def.price, { compact: true }) })}
       </Button>
+      {short > 0 && (
+        <p class="t-xs t-lo" data-testid={`biz-short-${kind}`}>
+          {t('life.biz.open', { price: formatMoney(def.price, { compact: true }) })}
+          {savings >= short ? ` · ${t('life.biz.inBank')}` : ''}
+        </p>
+      )}
     </Card>
   )
 }
@@ -206,7 +217,7 @@ export function Business() {
       <section class="stack">
         <SectionTitle>{t('life.biz.shop')}</SectionTitle>
         <div class="biz-grid">
-          {BUSINESS_KINDS.map((k) => <ShopCard key={k} kind={k} owned={list.some((b) => b.kind === k)} reputation={rep} money={s.life.money} />)}
+          {BUSINESS_KINDS.map((k) => <ShopCard key={k} kind={k} owned={list.some((b) => b.kind === k)} reputation={rep} money={s.life.money} savings={s.life.bank.savings} />)}
         </div>
       </section>
     </div>

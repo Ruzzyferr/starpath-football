@@ -16,6 +16,7 @@ import { requestAdvance } from '../tutorial/MatchdayConfirm'
 import { NewTag } from '../tutorial/UnlockGate'
 import { SaveIndicator } from '../components/SaveIndicator'
 import { AVATAR_BG, fameLevel } from '../screens/me/hubData'
+import { unreadNews } from '../newsUnread'
 
 export type TabId = 'home' | 'career' | 'life' | 'world' | 'menu'
 
@@ -72,6 +73,7 @@ export function TopBar() {
   const club = heroClub.value
   const fame = fameLevel(s.hero.reputation)
   const pending = s.pendingEvents.length
+  const unread = pending ? 0 : unreadNews(s.life, c)
   const dateText = `${t('common.weekShort', { n: c.week + 1 })} · ${tx(`data.dayShort.${c.day}`)} · ${tx(`data.slot.${c.slot}`)}`
   return (
     <header class="topbar" aria-label={t('nav.statusBar')}>
@@ -112,11 +114,13 @@ export function TopBar() {
         type="button"
         class="icon-btn icon-btn-ghost topbar-bell"
         data-tour="bell"
-        aria-label={`${t('ui.topbar.events')}: ${pending}`}
+        aria-label={unread ? t('ui.topbar.news', { n: unread }) : `${t('ui.topbar.events')}: ${pending}`}
         onClick={() => (pending ? (activeEvent.value = 0) : navigate('inbox'))}
+        data-unread={unread || undefined}
       >
         <Icon name="bell" size={22} class={pending ? 'bell-ring' : ''} />
         <Badge count={pending} />
+        {unread > 0 && <span class="bell-dot" aria-hidden="true" data-testid="bell-unread" />}
       </button>
     </header>
   )
