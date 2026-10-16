@@ -369,10 +369,11 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     }
     // One-on-one (the card): take it on toward the keeper and finish close, not from 22 m.
     const oppNear = info.agents.some((a) => a.team === 'opp' && wdist(a.world, hero.world) < 5)
-    const carryOn = info.kind === 'one_on_one' && toGoal > 13 && !oppNear
+    // (Through on goal after a timed run the same: run at the keeper.)
+    const carryOn = (info.kind === 'one_on_one' || info.kind === 'timed_run') && toGoal > 13 && !oppNear
     if (!carryOn && (SHOOT_KINDS.has(info.kind) || (toGoal < persona.shootRange && central))) {
       // A person looks before he shoots: the goal still off screen (the camera on its way) and nobody on him — wait.
-      if (!visible(info, info.goal) && !oppNear && state.now < 2500) return { kind: 'wait', why: 'looking for the goal' }
+      if (!visible(info, info.goal) && !oppNear) return { kind: 'wait', why: 'looking for the goal' }
       // From distance the ŞUT button (the card: a placed shot to the keeper's far corner) — half the people use it.
       const sb = btn(['shoot'])
       if (sb && toGoal > 17 && th.r() < 0.5) {

@@ -605,6 +605,11 @@ export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKi
 /** A tap within this distance (m) of the opponent on the ball is a challenge on him; elsewhere it is not. */
 export const TAP_CHALLENGE_R = 3.5
 
+/** CROSS button: delivery quality added for a ball picked onto the freest runner in the corridor (see resolveHeroKick). */
+export const CROSS_BUTTON_Q = 0.2
+/** A delivery at least this good (0–1) into the corridor counts as a chance made even when their man wins the header. */
+export const GOOD_CROSS_Q = 0.72
+
 export const PASS_MAGNET = 1.5
 
 /** The mate a free-space pass snaps to under full assist, if any is within {@link PASS_MAGNET}. */
@@ -1738,12 +1743,21 @@ export class HighlightRuntime {
             const spot = { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
             const room = (m: { pos: Vec2 }) => Math.min(6, ...opp.map((o) => dist(o, m.pos)))
             const vis = a01(hero.attrs.vision)
-            const runner = mates.filter((m) => m.pos.x > PITCH_LENGTH - 18 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 12).sort((p, q) => (dist(p.pos, spot) * 0.25 - room(p) * vis) - (dist(q.pos, spot) * 0.25 - room(q) * vis))[0]
+            // (…and the man who heads it: his Heading — playtest: the pick went to a 20-Heading winger every time.)
+            const headOf = (m: PassCandidate) => this.agents.find((a) => a.id === m.id)?.attrs.heading ?? 50
+            const crossPick = (m: PassCandidate) => -dist(m.pos, spot) * 0.25 + room(m) * vis + a01(headOf(m)) * 4 * (0.5 + vis)
+            const runner = mates.filter((m) => m.pos.x > PITCH_LENGTH - 18 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 12).sort((p, q) => crossPick(q) - crossPick(p))[0]
             const sk = momentSkill('cross', hero.attrs)
-            const aimed = inField(runner ? leadPosition(from, runner, 18, 3) : { x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + sideY * 2 }, 2)
+            // (Into the corridor between the six-yard box and the spot, where a good ball is the runner's — the delivery
+            // edge counts there; playtest: the button led runners out of it and the centre-backs won 3 in 4.)
+            const lead = runner ? leadPosition(from, runner, 18, 3) : { x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + sideY * 2 }
+            const aimed = inField({ x: clampN(lead.x, PITCH_LENGTH - CROSS_CORRIDOR.far + 1, PITCH_LENGTH - CROSS_CORRIDOR.near - 0.5), y: clampN(lead.y, GOAL_CENTER_Y - CROSS_CORRIDOR.half + 1, GOAL_CENTER_Y + CROSS_CORRIDOR.half - 1) }, 2)
             // Left too late, with the full-back on him: blocked.
             const target = chargedDown(norm(sub(aimed, from)), sk, HERO_CROSS_BLOCK) ?? aimed
             const plan = planKick({ ...base, kind: 'cross', target, targetZ: 1.8, power: 0.7, curl: 0.4 * sideY, noiseScale: this.noiseScale(), skill: sk }, rng)
+            // (Picked out on the button — the freest runner, into the corridor: as true as a well-drawn swipe; playtest:
+            // the button's ball lost the header 7 times in 8.)
+            if (target === aimed) plan.quality = clamp01(plan.quality + CROSS_BUTTON_Q)
             return { plan, kind: 'cross' as KickKind, power: 0.7, passTo: null }
           }
           case 'throw': {
@@ -4147,6 +4161,9 @@ export class HighlightRuntime {
       mod -= (this.difficulty - 1) * 20
       winner = this.rng.chance(eventChanceOf(stat, o.attrs.heading, mod)) ? h : o
     }
+    // A quality ball of his into the corridor that their centre-back had to win in a duel is a chance made too — the
+    // delivery is the crosser's job, the header his team-mate's (playtest: a perfect button cross read as TOP KAYBI).
+    if (winner.team === 'opp' && list.some((a) => a.team === 'hero' && !a.isHero) && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && this.heroCrossQ >= GOOD_CROSS_Q && inCorridor) this.chance = true
     // The hero's cross / corner won in the air by a team-mate: a chance created (graded success).
     if (winner.team === 'hero' && !winner.isHero && this.lastTouch?.isHero && this.heroDeliveryAt >= 0 && inDangerZone(bp)) this.chance = true
     if (list.some((a) => a.isHero)) this.heroContested = true
