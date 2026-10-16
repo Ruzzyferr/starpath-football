@@ -475,6 +475,8 @@ export type RuntimeEvent =
   | { type: 'bullet'; on: boolean }
   | { type: 'out'; x: number; y: number }
   | { type: 'callForBall'; by: string }
+  /** HEAD pressed before the delivery: he goes up for the next ball that comes in (feedback: it was not ignored). */
+  | { type: 'headReady'; by: string }
   /** The team-mate on the ball ignored the hero's call: poor relationship, or no passing lane. */
   | { type: 'callRefused'; by: string; reason: 'relation' | 'lane' }
   /** One-two armed: `by` (the receiver of the hero's pass) will return it into the hero's run. */
@@ -595,6 +597,9 @@ export const HEAD_ARM_LEAD = 0.28
 export const HEAD_ARM_EXACT = 0.5
 /** Kinds where a pass that found its man is his part done even if the team loses it afterwards (playtest). */
 export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['build_up', 'counter', 'counter_2v1', 'one_on_one', 'edge_of_box', 'dribble'])
+
+/** A tap within this distance (m) of the opponent on the ball is a challenge on him; elsewhere it is not. */
+export const TAP_CHALLENGE_R = 3.5
 
 export const PASS_MAGNET = 1.5
 
@@ -1223,10 +1228,25 @@ export class HighlightRuntime {
         this.heroVolley()
       }
     }
+    // HEAD pressed before the delivery: once the ball is struck and in the air, it is a press on it (timed as one).
+    if (this.headQueued) {
+      if (this.owner?.team === 'opp' || this.result) this.headQueued = false
+      else if (!this.owner && this.ball.z > 0.4 && this.headArmAt < 0) {
+        this.headQueued = false
+        this.heroJump()
+      }
+    }
     // A HEAD pressed while the ball was still on its way: he goes up when it arrives (see heroJump).
     if (this.headArmAt >= 0 && this.time >= this.headArmAt) {
-      this.headArmAt = -1
-      if (!this.owner) this.heroJump(true)
+      // Up only when the ball will meet him where he is now (playtest: still running onto the cross, he leapt short of
+      // it); while it is still on its way to him, wait a frame.
+      const hero = this.hero
+      const near = this.owner ? null : predictTrajectory(this.ball, this.env, { duration: 0.6, sampleEvery: 1 }).find((p) => p.t > 0 && p.z > 1.3 && p.z < 2.7 && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.3)
+      if (this.owner) this.headArmAt = -1
+      else if (near && near.t <= HEAD_ARM_LEAD + 0.06) {
+        this.headArmAt = -1
+        this.heroJump(true)
+      } else if (this.ball.z < 0.6 || this.time - this.headArmAt > 1.2) this.headArmAt = -1
     }
     this.stepInner()
     this.noteHeroStops()
@@ -1854,6 +1874,9 @@ export class HighlightRuntime {
       const d = dist(hero.pos, carrier.pos)
       this.defPressAt = this.time
       if (act.kind === 'swipe' && !act.swipe.isTap) return this.startSlide(act.swipe.dir)
+      // A tap counts as a challenge only on (or near) the man with the ball (playtest: a pass tap on a team-mate, the
+      // ball lost within the reaction time, became a foul from behind and a yellow).
+      if (act.kind === 'tapAt' && dist(act.at, carrier.pos) > TAP_CHALLENGE_R) return
       if (act.kind === 'action' || act.kind === 'skill' || act.kind === 'tapAt' || act.kind === 'pass') {
         if (d < 1.8) return this.standingTackle(carrier)
         if (d < 5.5) return this.startSlide(norm(sub(add(ballP, scale(carrier.vel, 0.25)), hero.pos)))
@@ -2033,7 +2056,9 @@ export class HighlightRuntime {
    * the flight of rolled past to the defender).
    */
   dropZone(): { x: number; y: number; t: number } | null {
-    if (this.owner || this.ball.z < 0.8) return null
+    // (Also just off the boot, still low but rising: playtest — the marker came 0.2 s late and he had set off for the
+    // crosser.)
+    if (this.owner || (this.ball.z < 0.8 && this.ball.vz < 2)) return null
     const pts = predictTrajectory(this.ball, this.env, { duration: 3, sampleEvery: 2 })
     // Where it comes down through head height (a header is met there, not where it lands); a low ball: where it lands.
     const p = pts.find((q, i) => i > 0 && q.z < DROP_MARK_Z && q.z < pts[i - 1]!.z) ?? pts.find((q) => q.t > 0 && q.z < 0.25)
@@ -2256,6 +2281,8 @@ export class HighlightRuntime {
 
   /** Sim time at which an early HEAD press makes him jump (−1 = none armed). */
   private headArmAt = -1
+  /** HEAD pressed before the delivery was struck: armed on the next ball in the air (see heroJump). */
+  private headQueued = false
 
   /**
    * HEAD / JUMP: up for the ball (Jumping sets the height, Heading the reach), aimed at goal or cleared.
@@ -2280,7 +2307,15 @@ export class HighlightRuntime {
     }
     // Nothing coming to him and the ball far away (the delivery not even struck yet): a leap at nothing helps no
     // one, the press is ignored and HEAD stays ready for the ball.
-    if (!armed && this.owner !== hero && Math.hypot(this.ball.x - hero.pos.x, this.ball.y - hero.pos.y) > 4 && !(!this.owner && this.ballIncomingToHero())) return
+    // (Playtest: pressed while the corner taker was still over the ball, it did nothing and said nothing — he is now
+    // set for the delivery: the press is kept and he goes up for the next ball in, timed as above.)
+    if (!armed && this.owner !== hero && Math.hypot(this.ball.x - hero.pos.x, this.ball.y - hero.pos.y) > 4 && !(!this.owner && this.ballIncomingToHero())) {
+      if (this.owner?.team !== 'opp' && !this.headQueued) {
+        this.headQueued = true
+        this.events.push({ type: 'headReady', by: hero.id })
+      }
+      return
+    }
     hero.state = 'jump'
     hero.stateT = 0
     hero.cd = 0.75
@@ -2865,6 +2900,21 @@ export class HighlightRuntime {
         this.claimUntil = -1
         this.events.push({ type: 'jump', by: hero.id })
         return
+      }
+    }
+    // HEAD pressed for a ball in the air: he attacks the point where it comes down through head height (playtest: the
+    // stick still pointing where he had been running, he ran under or past it and the marker met it first). Heading /
+    // Jumping still decide the duel; pulling the stick hard the other way takes him back.
+    if (this.headArmAt >= 0 && !this.owner && !hero.isKeeper && hero.state === 'run') {
+      // The same point the drop marker shows (a person steers onto the marker; past it, he must not run on).
+      const p = this.dropZone()
+      if (p) {
+        const d = sub({ x: p.x, y: p.y }, hero.pos)
+        const back = len(d) > 1.5 && len(this.control.move) > 0.6 && dot(norm(this.control.move), norm(d)) < -0.3
+        if (!back && len(d) > 0.35) {
+          mv = scale(norm(d), Math.min(1, len(d) / 1.2))
+          hero.sprint = len(d) > 2
+        } else if (!back) mv = { x: 0, y: 0 }
       }
     }
     // Anticipation: he read the pass — straight into the lane, flat out, while the ball is on its way.

@@ -52,6 +52,8 @@ export interface Info {
   passTarget: string | null
   events?: Record<string, unknown>[]
   drop?: { x: number; y: number; t: number } | null
+  edgeMates?: { x: number; y: number; world: Pt }[]
+  ballSpeed?: number
   goalFrame: { postL: Pt; postR: Pt; barL: Pt; barR: Pt }
   pendingChoice?: unknown
   cornerChoice?: unknown
@@ -121,6 +123,10 @@ export class Thumbs {
   private send(type: 'touchStart' | 'touchMove' | 'touchEnd', extra?: { x: number; y: number; id: number }) {
     return this.cdp.send('Input.dispatchTouchEvent', { type, touchPoints: this.pts(extra) })
   }
+  /** Lifts one finger (CDP: touchEnd lists only the points being released; the others stay down). */
+  private lift(p: { x: number; y: number; id: number }) {
+    return this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [{ ...p, radiusX: 8, radiusY: 8, force: 1 }] })
+  }
   note(what: string, at?: Pt, detail?: string) {
     this.log.push({ t: Date.now() - this.t0, what, at, detail })
   }
@@ -156,14 +162,16 @@ export class Thumbs {
       this.note('hold SPRINT', this.sprintAt)
       await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: this.pts({ ...this.sprintAt, id: SPRINT }) })
     } else if (!on && this.sprintAt) {
+      const p = this.sprintAt
       this.sprintAt = null
-      await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
+      await this.lift({ ...p, id: SPRINT })
     }
   }
   async releaseStick(): Promise<void> {
     if (!this.joy) return
+    const j = this.joy.cur
     this.joy = null
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
+    await this.lift({ ...j, id: JOY })
   }
 
   /** A quick tap (second finger if the stick is held). */
@@ -172,7 +180,7 @@ export class Thumbs {
     this.note(what, q)
     await this.send('touchStart', { ...q, id: TAP })
     await sleep(60 + this.r() * 60)
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
+    await this.lift({ ...q, id: TAP })
   }
 
   /** A swipe from the lower right toward a screen point (shot / pass by swipe). */
@@ -194,7 +202,7 @@ export class Thumbs {
       await sleep(dur / n)
       await this.send('touchMove', { x: s.x + (dx / dl) * len * e, y: s.y + (dy / dl) * len * e, id: TAP })
     }
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
+    await this.lift({ x: s.x + (dx / dl) * len, y: s.y + (dy / dl) * len, id: TAP })
   }
 }
 
@@ -230,7 +238,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   const hero = info.agents.find((a) => a.hero)
   if (!hero) return { kind: 'wait', why: 'no hero' }
   const carrier0 = info.agents.find((a) => a.owner)
-  if (carrier0 && carrier0.team === 'hero' && info.kind !== 'timed_run') await th.sprint(undefined, false)
+  if (carrier0 && carrier0.team === 'hero' && info.kind !== 'timed_run' && info.kind !== 'long_ball_control') await th.sprint(undefined, false)
   const btn = (pool: string[]) => pool.map((id) => info.buttons.find((b) => b.id === id)).find(Boolean)
   const ballW = info.ballWorld
   const goalX = 105
@@ -259,6 +267,14 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   }
   // On the ball.
   if (info.heroOnBall) {
+    // Long ball brought down: shield it a moment as the card says (the job is keeping it).
+    if (info.kind === 'long_ball_control' && state.now - state.actedAt > 400) {
+      const sh = btn(['shield'])
+      if (sh) {
+        await th.sprint(sh, true)
+        return { kind: 'wait', why: 'shielding the long ball' }
+      }
+    }
     await th.releaseStick()
     if (state.now - state.actedAt < 500) return { kind: 'wait', why: 'just acted' }
     await th.reaction()
@@ -281,6 +297,9 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     // A cross: the runner in the box, or whip it toward the penalty spot.
     if (info.kind === 'cross') {
       const cb = btn(['cross'])
+      // The card: release as the runner arrives in the box.
+      const arriving = info.agents.some((a) => a.team === 'hero' && !a.hero && !a.keeper && a.world.x > 91)
+      if (cb && !arriving && info.clock < 2.2) return { kind: 'wait', why: 'waiting for the runner' }
       if (cb) {
         await th.tap(cb, 'cross: CROSS button')
         return { kind: 'pass', why: 'CROSS button' }
@@ -293,6 +312,20 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       await th.swipe(c, goalAt, 0.7, 'cross: swipe toward the box')
       return { kind: 'pass', why: 'cross swipe' }
     }
+    // Switch of play (the card): the long diagonal to the far wing — UZUN TOP finds the freest man far away.
+    if (info.kind === 'switch_play') {
+      const lb = btn(['lofted'])
+      if (lb) {
+        await th.tap(lb, 'switch: LOFTED (long ball) button')
+        return { kind: 'pass', why: 'lofted switch' }
+      }
+      const far = [...info.agents.filter((a) => a.team === 'hero' && !a.hero && !a.keeper && visible(info, a.feet)).map((a) => ({ p: a.feet as Pt, w: a.world })), ...(info.edgeMates ?? []).map((e) => ({ p: { x: e.x, y: e.y }, w: e.world }))]
+        .sort((p, q) => Math.abs(q.w.y - hero.world.y) - Math.abs(p.w.y - hero.world.y))[0]
+      if (far) {
+        await th.tap(far.p, `switch: tap the far-side man (${Math.abs(far.w.y - hero.world.y).toFixed(0)} m across)`)
+        return { kind: 'pass', why: 'switch tap' }
+      }
+    }
     const allMates = info.agents.filter((a) => a.team === 'hero' && !a.hero && !a.keeper)
     const mates = allMates
       .filter((a) => visible(info, a.feet))
@@ -303,6 +336,12 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     if (pick) {
       await th.tap(pick.m.feet, `pass tap on ${pick.m.id} (${pick.fwd.toFixed(0)} m fwd, ${pick.free.toFixed(1)} m free)`)
       return { kind: 'pass', why: `tap ${pick.m.id}` }
+    }
+    // A badge on the screen edge for a team-mate off screen: tap the most forward one.
+    const edge = (info.edgeMates ?? []).slice().sort((p, q) => q.world.x - p.world.x)[0]
+    if (edge && edge.world.x > hero.world.x - 6) {
+      await th.tap(edge, `pass tap on the edge badge (mate ${(edge.world.x - hero.world.x).toFixed(0)} m fwd, off screen)`)
+      return { kind: 'pass', why: 'edge badge' }
     }
     // No team-mate on screen to tap: swipe the ball forward (a pass into space / a cross).
     th.note(`no visible team-mate (${allMates.length} off screen)`)
@@ -342,6 +381,20 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       else await th.tap(carrier.feet, `tap on carrier at ${d.toFixed(1)} m`)
       return { kind: 'tackle', why: b ? `button ${b.id}` : 'tap carrier' }
     }
+    // 1v1 (as the card says): stay goal-side on your feet, JOCKEY, and only go in when he is right on you.
+    if (info.kind === 'defend_1v1') {
+      const jk = btn(['jockey'])
+      if (d < 1.5 && state.now - state.actedAt > 700) {
+        const tk = btn(['tackle'])
+        await th.reaction()
+        if (tk) await th.tap(tk, `1v1 tackle at ${d.toFixed(1)} m`)
+        return { kind: 'tackle', why: '1v1 tackle close' }
+      }
+      await th.sprint(btn(['sprint']), false)
+      await th.sprint(jk, d < 6)
+      await th.stick(c, { x: carrier.feet.x - hero.feet.x + (info.ownGoal.x - carrier.feet.x) * 0.15, y: carrier.feet.y - hero.feet.y + (info.ownGoal.y - carrier.feet.y) * 0.15 })
+      return { kind: 'move', why: `1v1 jockey ${d.toFixed(1)} m` }
+    }
     // The big PRESS / INTERCEPT button does the closing down for you: a person hits it when the man is in reach.
     const smart = btn(['press', 'intercept'])
     if (smart && d < 14 && state.now - state.actedAt > 1500) {
@@ -357,14 +410,15 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   if (carrier && carrier.team === 'hero') {
     // Timed run: hold the line (stay onside) until the pass is played, then go (the drop marker takes over).
     if (info.kind === 'timed_run') {
-      if (info.clock < 1.6) {
-        await th.releaseStick()
-        return { kind: 'wait', why: 'holding the line' }
+      // The card: wait on the line until the pass is played (ask for it with CALL); the drop marker takes over then.
+      await th.releaseStick()
+      const call = btn(['call'])
+      if (call && info.clock > 0.9 && state.now - state.actedAt > 2500) {
+        await th.reaction()
+        await th.tap(call, 'CALL for the ball on the line')
+        return { kind: 'button', why: 'call' }
       }
-      // Go: sprint in behind toward goal (the passer plays it into the run).
-      await th.sprint(btn(['sprint']), true)
-      await th.stick(c, { x: info.goal.x - hero.feet.x, y: info.goal.y - hero.feet.y })
-      return { kind: 'move', why: 'timed run in behind' }
+      return { kind: 'wait', why: 'holding the line' }
     }
     await th.stick(c, { x: info.goal.x - hero.feet.x, y: info.goal.y - hero.feet.y })
     return { kind: 'move', why: 'make a run' }
@@ -378,6 +432,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       await th.tap(b2, `button ${b2.id} at the drop marker`)
       return { kind: 'button', why: `${b2.id} at drop` }
     }
+    await th.sprint(btn(['sprint']), dScr > 70)
     await th.stick(c, { x: info.drop.x - hero.feet.x, y: info.drop.y - hero.feet.y })
     return { kind: 'move', why: 'to drop marker' }
   }
@@ -388,6 +443,11 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     await th.reaction()
     await th.tap(b, `button ${b.id} on loose ball at ${dBall.toFixed(1)} m`)
     return { kind: 'button', why: b.id }
+  }
+  // A ball struck from far away toward the box (a cross just off the boot): a person waits for it, not runs at it.
+  if (dBall > 15 && info.ballSpeed !== undefined && info.ballSpeed > 12) {
+    await th.releaseStick()
+    return { kind: 'wait', why: 'ball on its way' }
   }
   await th.sprint(btn(['sprint']), dBall > 6)
   await th.stick(c, { x: info.ball.x - info.hero.x, y: info.ball.y - info.hero.y })

@@ -116,6 +116,10 @@ for (const kind of KINDS) {
             st.actedAt = Date.now() - t0
             decisions.push({ t: st.actedAt, kind: d.kind, why: d.why })
           }
+          if (process.env.PT_TRACE) {
+            const tr = await page.evaluate(() => { const s = (globalThis as any).__spScene; const rt = s.rt; return `t=${rt.time.toFixed(2)} ph=${rt.phase} arm=${rt.headArmAt.toFixed(2)} q=${rt.headQueued} st=${rt.hero.state} cd=${rt.hero.cd.toFixed(2)} hero=(${rt.hero.pos.x.toFixed(1)},${rt.hero.pos.y.toFixed(1)}) ball=(${rt.ball.x.toFixed(1)},${rt.ball.y.toFixed(1)},${rt.ball.z.toFixed(1)}) drop=${JSON.stringify(rt.dropZone())} mv=${JSON.stringify(rt.control.move)} dash=${rt.dash?.why} rc=${!!rt.readCut} eng=${!!rt.engage} vel=(${rt.hero.vel.x.toFixed(1)},${rt.hero.vel.y.toFixed(1)}) sp=${rt.hero.sprint} stum=${(rt.stumbleUntil - rt.time).toFixed(2)}` })
+            decisions.push({ t: Date.now() - t0, kind: 'trace', why: `${d.kind}:${d.why} | ${tr}` })
+          }
           await sleep(60)
         }
         await th.releaseStick()

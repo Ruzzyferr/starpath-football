@@ -204,7 +204,8 @@ const T = {
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
-    teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You were not involved · no credit',
+    headReady: 'READY TO HEAD', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
+    tierForced: 'SHOT FORCED', tierForcedSub: 'The shot got away but you were on him · partial success',
     tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
   tr: {
@@ -224,7 +225,8 @@ const T = {
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
-    teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Sen müdahale etmedin · başarı sayılmadı',
+    headReady: 'KAFAYA HAZIR', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
+    tierForced: 'ŞUTU ZORLADIN', tierForcedSub: 'Şut çıktı ama adamının üstündeydin · kısmi başarı',
     tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
 } as const
@@ -558,7 +560,7 @@ export class MatchScene extends Phaser.Scene {
 
     const canvas = this.game.canvas
     this.input0 = new InputController(canvas, {
-      toWorld: (gx, gy) => this.screenToPitch(gx, gy),
+      toWorld: (gx, gy) => this.edgeMateAt(gx, gy) ?? this.screenToPitch(gx, gy),
       screenDirToWorld: (dx, dy) => screenDirToPitch(dx, dy),
       size: () => ({ w: this.scale.width, h: this.scale.height }),
       ui: () => this.ui,
@@ -664,6 +666,9 @@ export class MatchScene extends Phaser.Scene {
       })),
       passTarget: rt.passTargetId,
       events: this.evTrail.slice(),
+      /** Off-screen team-mate badges on the screen edge (CSS px), tappable to pass. */
+      ballSpeed: Math.hypot(this.rt.ball.vx, this.rt.ball.vy),
+      edgeMates: this.edgeMarks.map((e) => ({ x: r.left + e.x * kx, y: r.top + e.y * ky, world: e.world })),
       /** Drop-zone marker shown for a ball in the air (CSS px), as the player sees it. */
       drop: this.drop ? { ...css(project(this.drop.x, this.drop.y)), t: this.drop.t } : null,
       /** Attacked goal on screen: posts at the ground and the bar, to judge its size against the keeper. */
@@ -1217,17 +1222,20 @@ export class MatchScene extends Phaser.Scene {
 
   // ───────────────────────── Coordinate helpers ─────────────────────────
 
+  /** Screen y of the camera centre: the middle of the band between the score bar and the thumb strip (see centerOn). */
+  private camScreenY(): number {
+    return (this.scale.height + this.hudTop - this.thumbReserve()) / 2
+  }
+
   private worldToScreen(wx: number, wy: number): { x: number; y: number } {
     const w = this.scale.width
-    const vh = this.scale.height - this.hudTop
-    return { x: (wx - this.cam.x) * this.cam.zoom + w / 2, y: (wy - this.cam.y) * this.cam.zoom + this.hudTop + vh / 2 }
+    return { x: (wx - this.cam.x) * this.cam.zoom + w / 2, y: (wy - this.cam.y) * this.cam.zoom + this.camScreenY() }
   }
 
   private screenToPitch(gx: number, gy: number): { x: number; y: number } {
     const w = this.scale.width
-    const vh = this.scale.height - this.hudTop
     const wx = (gx - w / 2) / this.cam.zoom + this.cam.x
-    const wy = (gy - this.hudTop - vh / 2) / this.cam.zoom + this.cam.y
+    const wy = (gy - this.camScreenY()) / this.cam.zoom + this.cam.y
     return unproject(wx, wy)
   }
 
@@ -2415,11 +2423,16 @@ export class MatchScene extends Phaser.Scene {
     const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
     const picked = ids.map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m).slice(0, 3)
     const rest = nearestPoints(rt.ball, mates.filter((m) => !picked.includes(m)).map((m) => m.pos), 3 - picked.length)
-    const opts = [...picked.map((m) => m.pos), ...rest]
+    let opts = [...picked.map((m) => m.pos), ...rest]
     // On the ball within range of goal: the goal mouth is in the opening frame too (you aim at what you see).
     if (rt.heroOnBall && !rt.heroIsKeeper && PITCH_LENGTH - rt.ball.x < GOAL_FRAME_RANGE) opts.push({ x: PITCH_LENGTH, y: GOAL_CENTER_Y })
+    // In shooting range the opening frame is the goal itself (playtest: a long shot struck in the first second went
+    // at a goal still off screen).
+    if (rt.heroOnBall && !rt.heroIsKeeper && PITCH_LENGTH - rt.ball.x < SHOT_FRAME_RANGE) {
+      opts = [{ x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y - GOAL_WIDTH / 2 - 1 }, { x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y + GOAL_WIDTH / 2 + 1 }]
+    }
     const h = this.scale.height - this.hudTop - this.thumbReserve()
-    const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base)
+    const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base, 1, rt.heroOnBall ? ON_BALL_MIN_ZOOM : undefined)
     this.openCam = { x: f.x, y: f.y, zoomMult: f.zoomMult, t0: this.elapsed, fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom }
   }
 
@@ -2661,6 +2674,81 @@ export class MatchScene extends Phaser.Scene {
     this.drawPickerPreview(g)
     this.drawLabels()
     this.drawOppTag()
+    this.drawEdgeMates()
+  }
+
+  /** Off-screen team-mates as tappable badges on the screen edge (screen px + where he is on the pitch). */
+  private edgeMarks: { x: number; y: number; r: number; world: Vec2 }[] = []
+  private edgeG: Phaser.GameObjects.Graphics | null = null
+  private edgeTexts: Phaser.GameObjects.Text[] = []
+
+  /** A tap on an edge badge is a tap on that team-mate (the pass goes to him). */
+  private edgeMateAt(gx: number, gy: number): Vec2 | null {
+    const m = this.edgeMarks.find((e) => Math.hypot(gx - e.x, gy - e.y) < e.r * 1.6)
+    return m ? { ...m.world } : null
+  }
+
+  /**
+   * Team-mates off the screen while he is on the ball: a badge with the shirt number on the edge, pointing at him
+   * (playtest: a portrait phone shows ~30 m of the pitch's width; the winger to switch to, the runner in a 2v1 were
+   * off screen with nothing to tap). Tapping it passes to him. At most four, nearest first.
+   */
+  private drawEdgeMates(): void {
+    const rt = this.rt
+    if (!this.edgeG) this.edgeG = this.addH(this.add.graphics().setDepth(40))
+    const g = this.edgeG
+    g.clear()
+    this.edgeMarks = []
+    for (const t of this.edgeTexts) t.setVisible(false)
+    if (this.mode !== 'play' || rt.phase !== 'live' || !rt.heroOnBall || this.data0.replayOnly) return
+    const u = this.ui
+    const w = this.scale.width
+    const left = 20 * u
+    const right = w - 20 * u
+    const top = this.hudTop + 30 * u
+    const bottom = this.scale.height - this.thumbReserve() - 12 * u
+    const cx = w / 2
+    const cy = this.camScreenY()
+    const mates = rt.agents
+      .filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper && dist(a.pos, rt.hero.pos) < 50)
+      .sort((p, q) => dist(p.pos, rt.hero.pos) - dist(q.pos, rt.hero.pos))
+    let n = 0
+    for (const m of mates) {
+      if (n >= 4) break
+      const p = project(m.pos.x, m.pos.y)
+      const s = this.worldToScreen(p.x, p.y)
+      if (s.x > left && s.x < right && s.y > top && s.y < bottom) continue
+      // Where the line from the centre to him leaves the play area.
+      const dx = s.x - cx
+      const dy = s.y - cy
+      const k = Math.min(dx > 0 ? (right - cx) / dx : dx < 0 ? (left - cx) / dx : Infinity, dy > 0 ? (bottom - cy) / dy : dy < 0 ? (top - cy) / dy : Infinity)
+      if (!Number.isFinite(k) || k <= 0) continue
+      const x = cx + dx * k
+      const y = cy + dy * k
+      if (this.edgeMarks.some((e) => Math.hypot(e.x - x, e.y - y) < 30 * u)) continue
+      const r = 15 * u
+      const ang = Math.atan2(dy, dx)
+      g.fillStyle(0x000000, 0.35)
+      g.fillCircle(x + 1.5 * u, y + 2 * u, r)
+      g.fillStyle(Phaser.Display.Color.HexStringToColor(this.data0.opts.heroTeamColors.primary).color, 0.95)
+      g.fillCircle(x, y, r)
+      g.lineStyle(2 * u, 0xffffff, 0.95)
+      g.strokeCircle(x, y, r)
+      // Arrow pointing off screen, toward him.
+      const tip = { x: x + Math.cos(ang) * (r + 8 * u), y: y + Math.sin(ang) * (r + 8 * u) }
+      const b1 = { x: x + Math.cos(ang + 0.5) * (r + 1 * u), y: y + Math.sin(ang + 0.5) * (r + 1 * u) }
+      const b2 = { x: x + Math.cos(ang - 0.5) * (r + 1 * u), y: y + Math.sin(ang - 0.5) * (r + 1 * u) }
+      g.fillStyle(0xffffff, 0.95)
+      g.fillTriangle(tip.x, tip.y, b1.x, b1.y, b2.x, b2.y)
+      let t = this.edgeTexts[n]
+      if (!t) {
+        t = this.addH(this.add.text(0, 0, '', { fontFamily: HUD_FONTS.score, fontSize: `${Math.round(15 * u)}px`, color: '#ffffff', stroke: '#000000', strokeThickness: 3 }).setOrigin(0.5).setDepth(41))
+        this.edgeTexts[n] = t
+      }
+      t.setText(String(m.number)).setPosition(x, y).setVisible(true)
+      this.edgeMarks.push({ x, y, r, world: { x: m.pos.x, y: m.pos.y } })
+      n++
+    }
   }
 
   /** The key opponent's tag, from the same matchup the moment card showed. */
@@ -2987,6 +3075,9 @@ ${attrs}`, open: false, box: null }
         case 'end':
           this.showBanner(e.result)
           break
+        case 'headReady':
+          this.floatText(this.s.headReady, rt.hero.pos.x, rt.hero.pos.y, '#9fe8ff', 1.1, 2.8)
+          break
         case 'jump':
         case 'out':
           break
@@ -3003,7 +3094,8 @@ ${attrs}`, open: false, box: null }
     // (Defending / keeping: kept out while he did his job; long ball / switch: the first contact won.)
     const dutyKind = DEFENSIVE_KINDS.has(this.rt.kind)
     const contactKind = CONTACT_KINDS.has(this.rt.kind)
-    if (partial && !r.offside) txt = dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'pass_complete' ? s.tierPass : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
+    const forced = partial && r.outcome === 'shot_conceded'
+    if (partial && !r.offside) txt = forced ? s.tierForced : dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'pass_complete' ? s.tierPass : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
     else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
     // Kept out by the others while he did nothing (playtest: "SAVUNDUN!" with no input taught nothing).
     const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')
@@ -3016,6 +3108,7 @@ ${attrs}`, open: false, box: null }
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
     else if (teamOnly) sub = s.teamDefendedSub
+    else if (forced) sub = s.tierForcedSub
     else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'pass_complete' ? s.tierPassSub : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && !partial && r.outcome !== 'woodwork') this.shake(100, 0.002)
