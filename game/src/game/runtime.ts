@@ -4802,7 +4802,9 @@ export class HighlightRuntime {
         this.stats.shotsOnTarget++
         this.finish('saved', 'keeper holds hero shot')
       } else if (s && s.by.team === 'hero') {
-        this.finish(s.assistBy ? 'pass_complete' : this.heroInvolvedOutcome(), 'keeper holds teammate shot')
+        // (Not his ball and not his pass: the keeper saved it — playtest: a held header ended "SÜRE BİTTİ".)
+        const inv = this.heroInvolvedOutcome()
+        this.finish(s.assistBy ? 'pass_complete' : inv === 'timeout' ? 'saved' : inv, 'keeper holds teammate shot')
       } else {
         this.finish(this.passCredit() ? 'pass_complete' : 'lost_ball', 'keeper claims')
       }

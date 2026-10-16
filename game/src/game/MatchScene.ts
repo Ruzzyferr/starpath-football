@@ -202,7 +202,7 @@ const T = {
     grip_slick: 'SLICK', grip_heavy: 'HEAVY',
     tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', noSwitch: 'NOT SWITCHED', noSwitchSub: 'Your pass did not reach the far wing · no credit', chanceLost: 'CHANCE MADE', chanceLostSub: 'You made the chance, then the ball was lost · partial success', beatMan: 'MAN BEATEN', beatManSub: 'You got past him, then lost it · partial success', tierWoodSub: 'Off the woodwork · partial success',
-    tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
+    tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success', keeperDutySub: 'Team-mates won it before a shot · you held your spot · partial',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
     headReady: 'READY TO HEAD', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
     tierForced: 'SHOT FORCED', tierForcedSub: 'The shot got away but you were on him · partial success',
@@ -223,7 +223,7 @@ const T = {
     grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
     tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', noSwitch: 'KANAT DEĞİŞMEDİ', noSwitchSub: 'Pasın öbür kanada gitmedi · başarı sayılmadı', chanceLost: 'FIRSAT YARATTIN', chanceLostSub: 'Fırsatı yarattın, sonra top gitti · kısmi başarı', beatMan: 'ADAMINI GEÇTİN', beatManSub: 'Rakibini geçtin, sonra top gitti · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
-    tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
+    tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı', keeperDutySub: 'Şut gelmeden arkadaşların kaptı · yerini korudun · kısmi',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
     headReady: 'KAFAYA HAZIR', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
     tierForced: 'ŞUTU ZORLADIN', tierForcedSub: 'Şut çıktı ama adamının üstündeydin · kısmi başarı',
@@ -286,7 +286,7 @@ const zpx = (z: number) => z * PPM * ZS
 /** Within this distance (m) of goal the live camera leans toward the goal so the goal mouth stays on a phone screen. */
 const GOAL_FRAME_RANGE = 36
 /** On the ball this close to goal the view frames the goal mouth, zooming in up to {@link SHOT_FRAME_MAX_ZOOM}. */
-const SHOT_FRAME_RANGE = 30
+const SHOT_FRAME_RANGE = 34
 const SHOT_FRAME_MAX_ZOOM = 1.35
 /** Share of a portrait phone screen kept clear of the action at the bottom (thumbs, context buttons). */
 const THUMB_RESERVE = 0.17
@@ -2385,7 +2385,7 @@ export class MatchScene extends Phaser.Scene {
     // (The view is not centred on cam.y: it shows `up` above and `down` below it — the thumb strip at the bottom is
     // pitch too. Playtest: a black band below the goal line in keeper moments.)
     const cs = this.camScreenY()
-    const up = (cs - this.hudTop) / this.cam.zoom
+    const up = (cs - this.hudTop - this.promptReserve()) / this.cam.zoom
     const down = (this.scale.height - cs) / this.cam.zoom
     const c0 = clampCamera(this.cam.x, this.cam.y + (down - up) / 2, w / (2 * this.cam.zoom), (up + down) / 2)
     const c = { x: c0.x, y: c0.y - (down - up) / 2 }
@@ -2814,7 +2814,7 @@ ${attrs}`, open: false, box: null }
     const v = tag.view
     const sp = this.worldToScreen(v.c.x, v.c.y - zpx(HEAD_Z + 0.9))
     const tt = tag.text
-    const on = sp.y > this.hudTop + 14 && sp.y < this.scale.height - 40
+    const on = sp.y > this.hudTop + this.promptReserve() + 14 && sp.y < this.scale.height - 40
     tt.setVisible(on).setPosition(sp.x, sp.y).setAlpha(tag.open ? 1 : 0.88)
     tag.box = on ? { x0: sp.x - tt.width / 2, y0: sp.y - tt.height / 2, x1: sp.x + tt.width / 2, y1: sp.y + tt.height / 2 } : null
   }
@@ -3158,6 +3158,7 @@ ${attrs}`, open: false, box: null }
     else if (lostAfter) sub = this.rt.kind === 'dribble' ? s.beatManSub : s.chanceLostSub
     else if (wallHit) sub = s.wallHitSub
     else if (forced) sub = s.tierForcedSub
+    else if (partial && dutyKind && this.rt.heroIsKeeper && r.outcome === 'defended' && !r.heroStop) sub = s.keeperDutySub
     else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'pass_complete' ? s.tierPassSub : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && !partial && r.outcome !== 'woodwork') this.shake(100, 0.002)
