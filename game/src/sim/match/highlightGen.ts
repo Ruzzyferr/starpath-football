@@ -300,12 +300,12 @@ function clearBehind(l: Layout, keep: ReadonlySet<string>, fromX: number): void 
 
 const placeOneOnOne: Placer = (l) => {
   const rng = l.input.rng
-  const hp = { x: rng.range(83, 88), y: rng.range(26, 42) }
+  const hp = { x: rng.range(80, 87), y: rng.range(26, 42) }
   set(l, l.input.heroId, hp)
   const gk = oppKeeper(l)
   set(l, gk?.player.id, { x: 101.5, y: 34 + (hp.y - 34) * 0.3 })
   const chasers = nearest(l, l.opps, hp, 2, new Set([gk?.player.id ?? '']))
-  chasers.forEach((c, i) => set(l, c.player.id, { x: hp.x - 4 - i * 3, y: hp.y + (i ? 3 : -3) }))
+  chasers.forEach((c, i) => set(l, c.player.id, { x: hp.x - 3 - i * 3, y: hp.y + (i ? 3 : -3) }))
   clearBehind(l, new Set(chasers.map((c) => c.player.id)), hp.x)
   const passer = pickMate(l, (m) => relationWeight(m) * (['CM', 'AM', 'DM'].includes(roleOf(m)) ? 2 : 0.6))
   if (passer) set(l, passer.player.id, { x: hp.x - rng.range(18, 26), y: hp.y + rng.range(-12, 12) })
@@ -336,15 +336,7 @@ const placeCross: Placer = (l) => {
     set(l, l.input.heroId, hp)
     const strikers = l.mates.filter((m) => ATTACKERS.has(roleOf(m)) && m.player.id !== l.input.heroId).slice(0, 3)
     fillBox(l, strikers, new Set([gk?.player.id ?? '']))
-    const marker = nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? '']))
-    // His full-back 5 m off him (playtest: two defenders were on the crosser 2 s in, before a runner could get into the
-    // box); anyone else that close drops into the box.
-    closeDown(l, marker, hp, 5, 0)
-    for (const o of l.opps) {
-      if (o === gk || marker.includes(o)) continue
-      const q = l.pos.get(o.player.id)
-      if (q && Math.hypot(q.x - hp.x, q.y - hp.y) < 9) set(l, o.player.id, { x: rng.range(92, 99), y: clamp(34 + (q.y - 34) * 0.4 + rng.range(-4, 4), 24, 44) })
-    }
+    closeDown(l, nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? ''])), hp, 3, 0)
     const finisher = strikers[0] ?? pickMate(l, relationWeight)
     return { ball: owned(hp, l.input.heroId), passerId: null, finisherId: finisher?.player.id ?? null, opponentId: gk?.player.id ?? null }
   }
