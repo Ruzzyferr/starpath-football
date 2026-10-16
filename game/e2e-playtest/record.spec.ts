@@ -91,7 +91,12 @@ for (const kind of KINDS) {
               if (b) await th.tap({ x: b.x + b.width / 2, y: b.y + b.height / 2 }, what)
             }
             if (nz) {
-              const z = zones.nth(Math.floor(r() * nz))
+              // Most people go for the far post or the spot; some the near post or short.
+              const pref = picker.locator('button[data-pick="zone:far"], button[data-pick="zone:spot"]')
+              const np = await pref.count()
+              const roll = (r() * 13.37) % 1
+              const z = np && roll < (pname === 'casual' ? 0.6 : 0.9) ? pref.nth(Math.floor(r() * np)) : zones.nth(Math.floor(r() * nz))
+              th.note(`picker roll ${roll.toFixed(2)} pref ${np}`)
               await touchBtn(z, `picker: ${(await z.textContent()) ?? ''}`)
               await sleep(250)
             }
@@ -117,7 +122,7 @@ for (const kind of KINDS) {
             decisions.push({ t: st.actedAt, kind: d.kind, why: d.why })
           }
           if (process.env.PT_TRACE) {
-            const tr = await page.evaluate(() => { const s = (globalThis as any).__spScene; const rt = s.rt; return `t=${rt.time.toFixed(2)} ph=${rt.phase} arm=${rt.headArmAt.toFixed(2)} q=${rt.headQueued} st=${rt.hero.state} cd=${rt.hero.cd.toFixed(2)} hero=(${rt.hero.pos.x.toFixed(1)},${rt.hero.pos.y.toFixed(1)}) ball=(${rt.ball.x.toFixed(1)},${rt.ball.y.toFixed(1)},${rt.ball.z.toFixed(1)}) drop=${JSON.stringify(rt.dropZone())} mv=${JSON.stringify(rt.control.move)} dash=${rt.dash?.why} rc=${!!rt.readCut} eng=${!!rt.engage} vel=(${rt.hero.vel.x.toFixed(1)},${rt.hero.vel.y.toFixed(1)}) sp=${rt.hero.sprint} stum=${(rt.stumbleUntil - rt.time).toFixed(2)}` })
+            const tr = await page.evaluate(() => { const s = (globalThis as any).__spScene; const rt = s.rt; return `t=${rt.time.toFixed(2)} ph=${rt.phase} arm=${rt.headArmAt.toFixed(2)} q=${rt.headQueued} st=${rt.hero.state} cd=${rt.hero.cd.toFixed(2)} hero=(${rt.hero.pos.x.toFixed(1)},${rt.hero.pos.y.toFixed(1)}) ball=(${rt.ball.x.toFixed(1)},${rt.ball.y.toFixed(1)},${rt.ball.z.toFixed(1)}) drop=${JSON.stringify(rt.dropZone())} mv=${JSON.stringify(rt.control.move)} dash=${rt.dash?.why} rc=${!!rt.readCut} eng=${!!rt.engage} vel=(${rt.hero.vel.x.toFixed(1)},${rt.hero.vel.y.toFixed(1)}) sp=${rt.hero.sprint} stum=${(rt.stumbleUntil - rt.time).toFixed(2)} ts=${rt.timeScale.toFixed(2)} bl=${rt.bulletLeft.toFixed(2)} aim=${!!rt.aim} hold=${rt.control.hold} stay=${(rt.stayUntil - rt.time).toFixed(2)} IN=${JSON.stringify({ g: !!s.input0.gesture, b: s.input0.button?.id ?? null, m: !!s.input0.meter, o: [...s.input0.others.keys()], cd: [...s.input0.ctxDown.values()], j: !!s.input0.joy, st: s.input0.sprintTouch })}` })
             decisions.push({ t: Date.now() - t0, kind: 'trace', why: `${d.kind}:${d.why} | ${tr}` })
           }
           await sleep(60)

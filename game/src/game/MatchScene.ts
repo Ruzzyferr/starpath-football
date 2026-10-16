@@ -204,7 +204,7 @@ const T = {
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
-    headReady: 'READY TO HEAD', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
+    headReady: 'READY TO HEAD', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
     tierForced: 'SHOT FORCED', tierForcedSub: 'The shot got away but you were on him · partial success',
     tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
@@ -225,7 +225,7 @@ const T = {
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
-    headReady: 'KAFAYA HAZIR', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
+    headReady: 'KAFAYA HAZIR', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
     tierForced: 'ŞUTU ZORLADIN', tierForcedSub: 'Şut çıktı ama adamının üstündeydin · kısmi başarı',
     tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
@@ -668,6 +668,10 @@ export class MatchScene extends Phaser.Scene {
       events: this.evTrail.slice(),
       /** Off-screen team-mate badges on the screen edge (CSS px), tappable to pass. */
       ballSpeed: Math.hypot(this.rt.ball.vx, this.rt.ball.vy),
+      intercept: (() => { const q = this.rt.interceptPoint(); if (!q) return null; const sp = this.worldToScreen(project(q.x, q.y).x, project(q.x, q.y).y); return { x: r.left + sp.x * kx, y: r.top + sp.y * ky } })(),
+      dropWorld: (() => { const d = this.rt.dropZone(); return d ? { x: d.x, y: d.y } : null })(),
+      ballZ: this.rt.ball.z,
+      ballVz: this.rt.ball.vz,
       edgeMates: this.edgeMarks.map((e) => ({ x: r.left + e.x * kx, y: r.top + e.y * ky, world: e.world })),
       /** Drop-zone marker shown for a ball in the air (CSS px), as the player sees it. */
       drop: this.drop ? { ...css(project(this.drop.x, this.drop.y)), t: this.drop.t } : null,
@@ -1671,7 +1675,10 @@ export class MatchScene extends Phaser.Scene {
    */
   private frameMates(mates: readonly Agent[]): Vec2[] {
     const rt = this.rt
-    const opts = rt.passOptions().map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m).slice(0, 2)
+    // Forward options only when there are some (playtest: the counter 2v1 framed the back pass, the runner off screen).
+    const all = rt.passOptions().map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m)
+    const fwd = all.filter((m) => m.pos.x > rt.hero.pos.x - 4)
+    const opts = (fwd.length ? fwd : all).slice(0, 2)
     const opp = rt.agents.filter((a) => a.team === 'opp')
     const free = (m: Agent) => Math.min(...opp.map((o) => dist(o.pos, m.pos)))
     const ahead = mates
@@ -2368,7 +2375,13 @@ export class MatchScene extends Phaser.Scene {
       this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
     }
     // Clamp to the stadium: at most 6 m past the lines (2.2#7); wider views centre and show the stands.
-    const c = clampCamera(this.cam.x, this.cam.y, w / (2 * this.cam.zoom), h / (2 * this.cam.zoom))
+    // (The view is not centred on cam.y: it shows `up` above and `down` below it — the thumb strip at the bottom is
+    // pitch too. Playtest: a black band below the goal line in keeper moments.)
+    const cs = this.camScreenY()
+    const up = (cs - this.hudTop) / this.cam.zoom
+    const down = (this.scale.height - cs) / this.cam.zoom
+    const c0 = clampCamera(this.cam.x, this.cam.y + (down - up) / 2, w / (2 * this.cam.zoom), (up + down) / 2)
+    const c = { x: c0.x, y: c0.y - (down - up) / 2 }
     if (this.camSpring && (c.x !== this.cam.x || c.y !== this.cam.y)) {
       if (c.x !== this.cam.x) this.camSpring.vx = 0
       if (c.y !== this.cam.y) this.camSpring.vy = 0
@@ -2706,7 +2719,9 @@ export class MatchScene extends Phaser.Scene {
     const left = 20 * u
     const right = w - 20 * u
     const top = this.hudTop + 30 * u
-    const bottom = this.scale.height - this.thumbReserve() - 12 * u
+    // Above the thumb buttons (playtest: a badge sat on DEPAR).
+    const btnTop = Math.min(...this.input0.touchUi().buttons.map((b) => b.y - b.r), this.scale.height - this.thumbReserve())
+    const bottom = btnTop - 22 * u
     const cx = w / 2
     const cy = this.camScreenY()
     const mates = rt.agents
@@ -2714,7 +2729,7 @@ export class MatchScene extends Phaser.Scene {
       .sort((p, q) => dist(p.pos, rt.hero.pos) - dist(q.pos, rt.hero.pos))
     let n = 0
     for (const m of mates) {
-      if (n >= 4) break
+      if (n >= 3) break
       const p = project(m.pos.x, m.pos.y)
       const s = this.worldToScreen(p.x, p.y)
       if (s.x > left && s.x < right && s.y > top && s.y < bottom) continue
@@ -3098,9 +3113,17 @@ ${attrs}`, open: false, box: null }
     if (partial && !r.offside) txt = forced ? s.tierForced : dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'pass_complete' ? s.tierPass : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
     else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
     // Kept out by the others while he did nothing (playtest: "SAVUNDUN!" with no input taught nothing).
+    // Keeper moments: kept out, then the loose ball went the other way — the job (the save) is what the banner says
+    // (playtest: "TOP KAYBI" after a save).
+    if (this.rt.heroIsKeeper && r.tier === 'full' && r.outcome !== 'defended' && r.outcome !== 'pass_complete' && !r.offside) txt = s.defended
+    // Dribble: a pass (or anything) without beating his man first is not the job (playtest: "İYİ OYUN" on a 2 m pass).
+    const notBeaten = this.rt.kind === 'dribble' && r.tier === 'fail' && r.beat === false && !r.offside && !r.card
+    if (notBeaten) txt = s.notBeaten
+    const wallHit = this.rt.kind === 'freekick' && r.outcome === 'blocked'
+    if (wallHit) txt = s.wallHit
     const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')
     if (teamOnly && !r.offside) txt = s.teamDefended
-    const good = GOOD.has(r.outcome) && !teamOnly
+    const good = (GOOD.has(r.outcome) || (this.rt.heroIsKeeper && r.tier === 'full')) && !teamOnly && !notBeaten
     this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(0.3)
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
     let sub = ''
@@ -3108,6 +3131,8 @@ ${attrs}`, open: false, box: null }
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
     else if (teamOnly) sub = s.teamDefendedSub
+    else if (notBeaten) sub = s.notBeatenSub
+    else if (wallHit) sub = s.wallHitSub
     else if (forced) sub = s.tierForcedSub
     else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'pass_complete' ? s.tierPassSub : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)

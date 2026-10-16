@@ -70,7 +70,7 @@ export function cornerZoneTarget(zone: CornerZone, spot: Vec2, shortMate?: Vec2 
   const s = top ? -1 : 1 // side of the near post relative to the goal centre
   switch (zone) {
     case 'near':
-      return { x: PITCH_LENGTH - 5, y: GOAL_CENTER_Y + s * 2.8 }
+      return { x: PITCH_LENGTH - 6.5, y: GOAL_CENTER_Y + s * 4.2 }
     case 'far':
       return { x: PITCH_LENGTH - 6.5, y: GOAL_CENTER_Y - s * 4.2 }
     case 'spot':

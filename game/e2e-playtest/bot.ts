@@ -54,6 +54,10 @@ export interface Info {
   drop?: { x: number; y: number; t: number } | null
   edgeMates?: { x: number; y: number; world: Pt }[]
   ballSpeed?: number
+  intercept?: Pt | null
+  dropWorld?: Pt | null
+  ballZ?: number
+  ballVz?: number
   goalFrame: { postL: Pt; postR: Pt; barL: Pt; barR: Pt }
   pendingChoice?: unknown
   cornerChoice?: unknown
@@ -111,7 +115,7 @@ export class Thumbs {
   private joy: { base: Pt; cur: Pt } | null = null
   readonly log: InputLog[] = []
   private t0 = Date.now()
-  constructor(private cdp: CDPSession, private r: () => number, private p: Persona) {}
+  constructor(private cdp: CDPSession, readonly r: () => number, private p: Persona) {}
 
   private pts(extra?: { x: number; y: number; id: number }) {
     const a: { x: number; y: number; id: number; radiusX: number; radiusY: number; force: number }[] = []
@@ -219,6 +223,8 @@ const wdist = sdist
 
 /** Buttons a person reaches for, by situation. */
 const DEFEND_BTNS = ['tackle', 'press', 'block', 'intercept', 'slide', 'jump', 'head']
+/** Moments built on a delivery into the box: a person waits for the cross, not runs at the crosser. */
+const WAIT_FOR_DELIVERY = new Set(['corner', 'header', 'back_post', 'cross', 'corner_kick'])
 const ATTACK_OFF_BTNS = ['shoot', 'head', 'jump', 'control', 'first_touch', 'volley']
 const KEEPER_BTNS = ['dive', 'claim', 'save', 'rush', 'punch']
 
@@ -233,7 +239,7 @@ export interface Decision {
  * forward free team-mate; chase the ball / the carrier with the stick and hit
  * the context button when close.
  */
-export async function humanStep(th: Thumbs, info: Info, persona: Persona, state: { lastOwnerHero: boolean; actedAt: number; now: number }): Promise<Decision> {
+export async function humanStep(th: Thumbs, info: Info, persona: Persona, state: { lastOwnerHero: boolean; actedAt: number; now: number; skills?: number }): Promise<Decision> {
   const c = info.canvas
   const hero = info.agents.find((a) => a.hero)
   if (!hero) return { kind: 'wait', why: 'no hero' }
@@ -268,29 +274,73 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   // On the ball.
   if (info.heroOnBall) {
     // Long ball brought down: shield it a moment as the card says (the job is keeping it).
-    if (info.kind === 'long_ball_control' && state.now - state.actedAt > 400) {
+    if ((info.kind === 'long_ball_control' || info.kind === 'shoulder_duel') && state.now - state.actedAt > 400) {
       const sh = btn(['shield'])
       if (sh) {
         await th.sprint(sh, true)
         return { kind: 'wait', why: 'shielding the long ball' }
       }
     }
-    await th.releaseStick()
+    // (The left thumb stays on the stick while he reads the play: playtest round 5 — releasing it every step froze
+    // the dribbler for the whole reaction time, every step.)
     if (state.now - state.actedAt < 500) return { kind: 'wait', why: 'just acted' }
     await th.reaction()
     const toGoal = goalX - hero.world.x
     const central = Math.abs(hero.world.y - 34) < 16
     // A set piece at goal: the banner says shoot, a person swipes at the goal (even if it is off the top).
     const goalAt = visible(info, info.goal) ? info.goal : { x: info.goal.x, y: Math.max(info.goal.y, c.top + 80) }
-    if (SHOOT_KINDS.has(info.kind) || (toGoal < persona.shootRange && central)) {
+    // Dribble (the card): take the man on — run at him, SKILL 1.5–2.5 m out, then sprint past; only then pass / shoot.
+    // Just did the skill: burst past him (the card: SPRINT past) before looking up.
+    if (info.kind === 'dribble' && (state.skills ?? 0) >= 1 && state.now - state.actedAt < 1300) {
+      await th.sprint(btn(['sprint']), true)
+      await th.stick(c, { x: goalAt.x - hero.feet.x, y: goalAt.y - hero.feet.y })
+      return { kind: 'move', why: 'burst past after the skill' }
+    }
+    // (One take-on: after the skill he plays on — shoots or passes — instead of taking on every man after it.)
+    if (info.kind === 'dribble' && (state.skills ?? 0) < 1) {
+      const man = info.agents.filter((a) => a.team === 'opp' && !a.keeper && a.world.x > hero.world.x - 0.5 && wdist(a.world, hero.world) < 9).sort((p, q) => wdist(p.world, hero.world) - wdist(q.world, hero.world))[0]
+      if (man) {
+        const d = wdist(man.world, hero.world)
+        const sk = btn(['skill'])
+        if (sk && d < 2.6 && d > 1.2 && state.now - state.actedAt > 600) {
+          await th.tap(sk, `SKILL at ${d.toFixed(1)} m from his man`)
+          state.skills = (state.skills ?? 0) + 1
+          return { kind: 'button', why: 'skill' }
+        }
+        await th.sprint(btn(['sprint']), d < 2)
+        await th.stick(c, { x: goalAt.x - hero.feet.x, y: goalAt.y - hero.feet.y })
+        return { kind: 'move', why: `take on his man (${d.toFixed(1)} m)` }
+      }
+    }
+    // One-on-one (the card): take it on toward the keeper and finish close, not from 22 m.
+    const oppNear = info.agents.some((a) => a.team === 'opp' && wdist(a.world, hero.world) < 5)
+    const carryOn = info.kind === 'one_on_one' && toGoal > 13 && !oppNear
+    if (!carryOn && (SHOOT_KINDS.has(info.kind) || (toGoal < persona.shootRange && central))) {
+      // A person looks before he shoots: the goal still off screen (the camera on its way) and nobody on him — wait.
+      if (!visible(info, info.goal) && !oppNear && state.now < 2500) return { kind: 'wait', why: 'looking for the goal' }
+      // From distance the ŞUT button (the card: a placed shot to the keeper's far corner) — half the people use it.
+      const sb = btn(['shoot'])
+      if (sb && toGoal > 17 && th.r() < 0.5) {
+        await th.tap(sb, `ŞUT button from ${toGoal.toFixed(0)} m`)
+        return { kind: 'shoot', why: `button ${toGoal.toFixed(0)} m` }
+      }
       const strength = toGoal < 12 ? 0.55 : 0.85
-      await th.swipe(c, goalAt, strength, `shot from ${toGoal.toFixed(0)} m${visible(info, info.goal) ? '' : ' (goal off screen)'}`)
+      // A person aims for a corner, away from the keeper (the far side of him, inside the post).
+      const gf = info.goalFrame
+      const kp = info.agents.find((a) => a.keeper && a.team === 'opp')
+      let shotAt = goalAt
+      if (gf && visible(info, info.goal)) {
+        const mid = { x: (gf.postL.x + gf.postR.x) / 2, y: (gf.postL.y + gf.postR.y) / 2 }
+        const far = kp && Math.hypot(kp.feet.x - gf.postL.x, kp.feet.y - gf.postL.y) > Math.hypot(kp.feet.x - gf.postR.x, kp.feet.y - gf.postR.y) ? gf.postL : gf.postR
+        shotAt = { x: mid.x + (far.x - mid.x) * 0.7, y: mid.y + (far.y - mid.y) * 0.7 }
+      }
+      await th.swipe(c, shotAt, strength, `shot from ${toGoal.toFixed(0)} m${visible(info, info.goal) ? '' : ' (goal off screen)'}`)
       return { kind: 'shoot', why: `in range ${toGoal.toFixed(0)} m` }
     }
     const opps = info.agents.filter((a) => a.team === 'opp')
     // Space in front and not yet in range: run at goal with it (what a person does in a 1v1 / on a break).
     const inFront = opps.filter((o) => !o.keeper && o.world.x > hero.world.x - 1 && wdist(o.world, hero.world) < 7).length
-    if (!inFront && toGoal > persona.shootRange && info.kind !== 'cross' && info.kind !== 'switch_play' && state.now - state.actedAt > 300) {
+    if ((carryOn || (!inFront && toGoal > persona.shootRange)) && info.kind !== 'cross' && info.kind !== 'switch_play' && state.now - state.actedAt > 300) {
       await th.stick(c, { x: goalAt.x - hero.feet.x, y: goalAt.y - hero.feet.y })
       return { kind: 'move', why: 'dribble into space' }
     }
@@ -374,7 +424,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       return { kind: 'move', why: 'into the shooting line' }
     }
     const b = btn(DEFEND_BTNS)
-    if (d < 2.6 && state.now - state.actedAt > 600) {
+    if (d < 1.8 && state.now - state.actedAt > 600) {
       await th.sprint(undefined, false)
       await th.reaction()
       if (b) await th.tap(b, `defend button ${b.id} at ${d.toFixed(1)} m`)
@@ -408,6 +458,11 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   }
   // Team-mate on the ball: run forward into space.
   if (carrier && carrier.team === 'hero') {
+    // Long ball (the card): he is the target — stay and get under it, do not run away from the ball.
+    if (info.kind === 'long_ball_control') {
+      await th.releaseStick()
+      return { kind: 'wait', why: 'waiting for the ball played to him' }
+    }
     // Timed run: hold the line (stay onside) until the pass is played, then go (the drop marker takes over).
     if (info.kind === 'timed_run') {
       // The card: wait on the line until the pass is played (ask for it with CALL); the drop marker takes over then.
@@ -432,6 +487,13 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       await th.tap(b2, `button ${b2.id} at the drop marker`)
       return { kind: 'button', why: `${b2.id} at drop` }
     }
+    // On the marker: stand still and let it come (playtest: the stick kept hunting and he drifted off it).
+    const dW = wdist(hero.world, info.dropWorld ?? hero.world)
+    if (info.dropWorld ? dW < 0.6 : dScr < 14) {
+      await th.sprint(undefined, false)
+      await th.releaseStick()
+      return { kind: 'wait', why: 'on the drop marker' }
+    }
     await th.sprint(btn(['sprint']), dScr > 70)
     await th.stick(c, { x: info.drop.x - hero.feet.x, y: info.drop.y - hero.feet.y })
     return { kind: 'move', why: 'to drop marker' }
@@ -445,11 +507,14 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     return { kind: 'button', why: b.id }
   }
   // A ball struck from far away toward the box (a cross just off the boot): a person waits for it, not runs at it.
-  if (dBall > 15 && info.ballSpeed !== undefined && info.ballSpeed > 12) {
+  // (In the air only: a through ball along the ground is chased.)
+  if (WAIT_FOR_DELIVERY.has(info.kind) && dBall > 15 && info.ballSpeed !== undefined && info.ballSpeed > 12 && ((info.ballZ ?? 0) > 0.4 || (info.ballVz ?? 0) > 2)) {
     await th.releaseStick()
     return { kind: 'wait', why: 'ball on its way' }
   }
   await th.sprint(btn(['sprint']), dBall > 6)
-  await th.stick(c, { x: info.ball.x - info.hero.x, y: info.ball.y - info.hero.y })
+  // A moving ball: run to where he meets it, not where it is now (playtest: he ran back at a ball played past him).
+  const to = info.intercept && (info.ballSpeed ?? 0) > 4 ? info.intercept : info.ball
+  await th.stick(c, { x: to.x - info.hero.x, y: to.y - info.hero.y })
   return { kind: 'move', why: `to loose ball ${dBall.toFixed(1)} m` }
 }

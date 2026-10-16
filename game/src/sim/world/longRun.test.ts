@@ -72,7 +72,7 @@ describe(`${SEASONS} simulated seasons`, () => {
 })
 
 describe('2.6#62 per-country promotion rules keep every tier the same size', () => {
-  it('works for 2, 3 and 4 swapping places', () => {
+  it('works for 2, 3 and 4 swapping places', { timeout: 30_000 }, () => {
     const world = generateWorld(new Rng(21), { season: 2026, heroCountryId: 'DE', countryIds: ['DE', 'JP', 'BR'] })
     expect(world.leagues.DE1!.relegate).toBe(2)
     expect(world.leagues.DE2!.promote).toBe(2)

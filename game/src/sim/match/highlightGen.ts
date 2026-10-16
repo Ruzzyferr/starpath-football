@@ -741,6 +741,12 @@ const placeGk1v1: Placer = (l) => {
   // Our defenders are beaten: chasing from behind the attacker.
   const chasers = nearest(l, l.mates, ap, 2, new Set([l.input.heroId]))
   chasers.forEach((c, i) => set(l, c.player.id, { x: ap.x + 3 + i * 3, y: ap.y + (i ? 3 : -3) }))
+  // A one-on-one: everyone else is upfield, behind the play (playtest: ten players piled into the box with them).
+  const keep = new Set([att?.player.id ?? '', l.input.heroId, ...chasers.map((c) => c.player.id)])
+  ;[...l.opps, ...l.mates].forEach((p, i) => {
+    if (keep.has(p.player.id) || roleOf(p) === 'GK') return
+    set(l, p.player.id, { x: ap.x + rng.range(12, 24), y: clamp(8 + ((i * 11) % 52) + rng.range(-3, 3), 4, PITCH_WIDTH - 4) })
+  })
   return { ball: owned(ap, att?.player.id ?? null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
 }
 

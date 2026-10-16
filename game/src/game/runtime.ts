@@ -17,7 +17,7 @@ import { Rng } from '../core/rng'
 import { roleAiStyle, type RoleAiStyle } from '../core/roles'
 import type { Difficulty } from '../core/types'
 import type { Highlight, HighlightKind, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH, SHOT_PRESS_KINDS } from '../sim/match/types'
+import { DEFENSIVE_KINDS, GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH, SHOT_PRESS_KINDS } from '../sim/match/types'
 import {
   DIVE_PEAK,
   DIVE_TIME,
@@ -592,6 +592,8 @@ export function dribbleReach(dribbling: number, sprinting: boolean): number {
  * and how early a press still gets the ideal jump (beyond it the jump comes a little late). */
 export const HEAD_ARM_WINDOW = 3
 /** The drop marker: where a falling ball passes this height (m), the header's meeting point. */
+/** Moments built around a header: the drop marker shows where the ball comes down through head height. */
+export const HEADER_MARK_KINDS: ReadonlySet<string> = new Set(['corner', 'header', 'back_post', 'corner_kick', 'cross', 'gk_claim'])
 export const DROP_MARK_Z = 2.3
 export const HEAD_ARM_LEAD = 0.28
 export const HEAD_ARM_EXACT = 0.5
@@ -784,6 +786,8 @@ export class HighlightRuntime {
   private heroLastKick: KickKind | null = null
   /** The last kick was a long ball (read against Long Passing rather than Passing). */
   private lastKickLong = false
+  /** The kind of the last kick (the drop marker shows head height for a cross, the landing for a ball over the top). */
+  private lastKickKind: KickKind | null = null
   /** The hero's cross / corner is in flight untouched (danger-zone delivery check). */
   private crossWatch = false
   /** Opening grace: no challenge on the hero's ball until then (game time). */
@@ -2061,7 +2065,20 @@ export class HighlightRuntime {
     if (this.owner || (this.ball.z < 0.8 && this.ball.vz < 2)) return null
     const pts = predictTrajectory(this.ball, this.env, { duration: 3, sampleEvery: 2 })
     // Where it comes down through head height (a header is met there, not where it lands); a low ball: where it lands.
-    const p = pts.find((q, i) => i > 0 && q.z < DROP_MARK_Z && q.z < pts[i - 1]!.z) ?? pts.find((q) => q.t > 0 && q.z < 0.25)
+    // A ball over the top / a long pass is met at the chest where it drops (playtest: the timed run's marker at head
+    // height stood him under a ball he could not reach, and their centre-back headed it off him).
+    const aerial = this.lastKickKind === 'cross' || this.lastKickKind === 'clear' || HEADER_MARK_KINDS.has(this.kind)
+    const markZ = aerial ? DROP_MARK_Z : 1.2
+    const p = pts.find((q, i) => i > 0 && q.z < markZ && q.z < pts[i - 1]!.z) ?? pts.find((q) => q.t > 0 && q.z < 0.25)
+    return p ? { x: p.x, y: p.y, t: p.t } : null
+  }
+
+  /** Where the hero, sprinting, first gets to a loose ball on its way (null when on the ball or none in 3 s). */
+  interceptPoint(): { x: number; y: number; t: number } | null {
+    if (this.owner) return null
+    const v = topSpeed({ ...this.hero, sprint: true })
+    const pts = predictTrajectory(this.ball, this.env, { duration: 3, sampleEvery: 2 })
+    const p = pts.find((q) => q.t > 0 && q.z < 1.8 && Math.hypot(q.x - this.hero.pos.x, q.y - this.hero.pos.y) / v <= q.t + 0.1)
     return p ? { x: p.x, y: p.y, t: p.t } : null
   }
 
@@ -2310,7 +2327,8 @@ export class HighlightRuntime {
     // (Playtest: pressed while the corner taker was still over the ball, it did nothing and said nothing — he is now
     // set for the delivery: the press is kept and he goes up for the next ball in, timed as above.)
     if (!armed && this.owner !== hero && Math.hypot(this.ball.x - hero.pos.x, this.ball.y - hero.pos.y) > 4 && !(!this.owner && this.ballIncomingToHero())) {
-      if (this.owner?.team !== 'opp' && !this.headQueued) {
+      // (Only before it is struck — a team-mate still on the ball; a loose ball not coming to him is no delivery.)
+      if (this.owner && this.owner.team === 'hero' && !this.headQueued) {
         this.headQueued = true
         this.events.push({ type: 'headReady', by: hero.id })
       }
@@ -2499,6 +2517,7 @@ export class HighlightRuntime {
     // A first-time touch (volley, header, flick) is the receiver's first involvement.
     if (this.owner !== by && this.offsideCheck(by)) return
     // A long ball (lofted, crossed, cleared, or aimed beyond 25 m) is read against the passer's Long Passing.
+    this.lastKickKind = kind
     this.lastKickLong = kind === 'lofted' || kind === 'cross' || kind === 'clear' || Math.hypot(plan.aim.x - this.ball.x, plan.aim.y - this.ball.y) > 25
     // (Their cross into our box: its quality is the crosser's, as the hero's is his.)
     this.oppCrossQ = by.team === 'opp' && kind === 'cross' ? clamp01(plan.quality) : 0
@@ -3486,7 +3505,10 @@ export class HighlightRuntime {
     const noise = clampN(0.35 - a01(a.attrs.vision) * 0.25, 0.05, 0.35) / (a.team === 'opp' ? this.difficulty : 1)
     const heroBias = a.team === 'hero' ? 0.02 + (a.relationToHero / 100) * 0.04 + a01(a.attrs.vision) * 0.02 : 0
     // In a keeper moment the striker is set on shooting: he only picks his moment and corner.
-    const shotBias = this.kind === 'gk_save' ? 0.6 + heldFor * 0.6 : 0
+    // (Late in a defending moment and in range: he shoots — playtest: attackers walked into the box, passed it sideways
+    // and the moment ran out with no ending.)
+    const lateDanger = a.team === 'opp' && DEFENSIVE_KINDS.has(this.kind) && this.time > this.timeLimit - 3 && Math.hypot(a.pos.x - attackGoalX(a.team), a.pos.y - GOAL_CENTER_Y) < 24
+    const shotBias = this.kind === 'gk_save' ? 0.6 + heldFor * 0.6 : lateDanger ? 1.2 : 0
     // Through on goal with the keeper coming: eyes on him, he looks up again just as the keeper is about to smother it
     // (his Composure sets how late — tactics.strikeLead), to strike then rather than carry it into him.
     const keeperDuel = isKeeperKind(this.kind) && this.hero.isKeeper && a.team === 'opp'
@@ -4057,7 +4079,10 @@ export class HighlightRuntime {
       // (Build 9: the hero standing right under it is in the way of the man jumping over him — he contests it with his
       // body even without a leap.)
       if (a.isHero && a.state !== 'jump') {
-        if (b.z < 2.4 && dist(a.pos, bp) < 0.8) pool.add(a)
+        // (A ball played to him — long ball, channel ball: he goes up for it himself, as any player would; playtest: his
+        // marker headed the long ball off him while he stood under it.)
+        const mine = this.feeding()
+        if (b.z < (mine ? 1.72 + jumpHeight(a.attrs.jumping) * 0.7 : 2.4) && dist(a.pos, bp) < (mine ? 1.2 : 0.8)) pool.add(a)
         continue
       }
       const jumpTop = 1.72 + jumpHeight(a.attrs.jumping) + 0.28
@@ -4151,6 +4176,8 @@ export class HighlightRuntime {
     this.events.push({ type: 'block', by: a.id, x: b.x, y: b.y })
     // block: the hero got his body in the way: that is the moment won.
     if (a.isHero && this.kind === 'block' && this.shot) this.finish('defended', 'shot blocked')
+    // His free kick into the wall: that is the free kick (playtest: the loose ball played on and it read "TOP KAYBI").
+    if (this.kind === 'freekick' && this.shot?.by.isHero && this.wallIds.has(a.id)) this.finish('blocked', 'into the wall')
   }
 
   private headerContact(a: Agent): void {
