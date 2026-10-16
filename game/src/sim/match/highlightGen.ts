@@ -334,11 +334,7 @@ const placeCross: Placer = (l) => {
   if (heroWide) {
     const hp = { x: rng.range(84, 92), y: flankY + (flankY < 34 ? 2 : -2) }
     set(l, l.input.heroId, hp)
-    // His best headers attack the box (playtest: a 20-Heading winger was the target and lost every header).
-    const strikers = l.mates
-      .filter((m) => m.player.id !== l.input.heroId && roleOf(m) !== 'GK' && !['CB', 'LB', 'RB'].includes(roleOf(m)))
-      .sort((a, b) => b.player.attrs.heading + (ATTACKERS.has(roleOf(b)) ? 15 : 0) - (a.player.attrs.heading + (ATTACKERS.has(roleOf(a)) ? 15 : 0)))
-      .slice(0, 3)
+    const strikers = l.mates.filter((m) => ATTACKERS.has(roleOf(m)) && m.player.id !== l.input.heroId).slice(0, 3)
     fillBox(l, strikers, new Set([gk?.player.id ?? '']))
     closeDown(l, nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? ''])), hp, 3, 0)
     const finisher = strikers[0] ?? pickMate(l, relationWeight)

@@ -201,7 +201,7 @@ const T = {
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
     grip_slick: 'SLICK', grip_heavy: 'HEAVY',
     tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
-    tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', savedEasySub: 'Straight at him — aim for a corner to make him work', pressBeaten: 'PRESS BEATEN', pressBeatenSub: 'They carried it out into midfield · win it before the halfway line', noSwitch: 'NOT SWITCHED', noSwitchSub: 'Your pass did not reach the far wing · no credit', chanceLost: 'CHANCE MADE', chanceLostSub: 'You made the chance, then the ball was lost · partial success', beatMan: 'MAN BEATEN', beatManSub: 'You got past him, then lost it · partial success', tierWoodSub: 'Off the woodwork · partial success',
+    tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', savedEasySub: 'Straight at him — aim for a corner to make him work', missedSub: 'Off target — a softer, placed swipe stays on', blockedSub: 'Into a defender — find the gap or move the ball first', pressBeaten: 'PRESS BEATEN', pressBeatenSub: 'They carried it out into midfield · win it before the halfway line', noSwitch: 'NOT SWITCHED', noSwitchSub: 'Your pass did not reach the far wing · no credit', chanceLost: 'CHANCE MADE', chanceLostSub: 'You made the chance, then the ball was lost · partial success', beatMan: 'MAN BEATEN', beatManSub: 'You got past him, then lost it · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success', keeperDutySub: 'Team-mates won it before a shot · you held your spot · partial',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
     headReady: 'READY TO HEAD', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
@@ -222,7 +222,7 @@ const T = {
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
     grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
     tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
-    tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', savedEasySub: 'Kalecinin üstüne gitti · köşeye vurursan kısmi başarı', pressBeaten: 'PRES KIRILDI', pressBeatenSub: 'Topu orta sahaya taşıdılar · ondan önce kap', noSwitch: 'KANAT DEĞİŞMEDİ', noSwitchSub: 'Pasın öbür kanada gitmedi · başarı sayılmadı', chanceLost: 'FIRSAT YARATTIN', chanceLostSub: 'Fırsatı yarattın, sonra top gitti · kısmi başarı', beatMan: 'ADAMINI GEÇTİN', beatManSub: 'Rakibini geçtin, sonra top gitti · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
+    tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', savedEasySub: 'Kalecinin üstüne gitti · köşeye vurursan kısmi başarı', missedSub: 'Çerçeveyi bulmadı · daha yumuşak ve köşeye kaydır', blockedSub: 'Savunmacıya çarptı · boşluğu bul ya da önce topu kaydır', pressBeaten: 'PRES KIRILDI', pressBeatenSub: 'Topu orta sahaya taşıdılar · ondan önce kap', noSwitch: 'KANAT DEĞİŞMEDİ', noSwitchSub: 'Pasın öbür kanada gitmedi · başarı sayılmadı', chanceLost: 'FIRSAT YARATTIN', chanceLostSub: 'Fırsatı yarattın, sonra top gitti · kısmi başarı', beatMan: 'ADAMINI GEÇTİN', beatManSub: 'Rakibini geçtin, sonra top gitti · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı', keeperDutySub: 'Şut gelmeden arkadaşların kaptı · yerini korudun · kısmi',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
     headReady: 'KAFAYA HAZIR', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
@@ -3162,6 +3162,8 @@ ${attrs}`, open: false, box: null }
     else if (noSwitch) sub = s.noSwitchSub
     else if (pressBeaten) sub = s.pressBeatenSub
     else if (goalKind && r.tier === 'fail' && r.outcome === 'saved') sub = s.savedEasySub
+    else if (goalKind && r.tier === 'fail' && r.outcome === 'missed') sub = s.missedSub
+    else if (goalKind && r.tier === 'fail' && r.outcome === 'blocked' && !wallHit) sub = s.blockedSub
     else if (lostAfter) sub = this.rt.kind === 'dribble' ? s.beatManSub : s.chanceLostSub
     else if (wallHit) sub = s.wallHitSub
     else if (forced) sub = s.tierForcedSub

@@ -966,7 +966,7 @@ export const HIGHLIGHT_PROMPTS = {
   penalty: { tr: 'Penaltı! Köşeni seç ve vur!', en: 'Penalty! Pick your corner and strike!' },
   corner: { tr: 'Korner geliyor! Doğru zamanda yüksel!', en: 'Corner incoming! Time your jump!' },
   defend: { tr: 'Rakip atakta! Yolunu kes, topu kap!', en: 'They are attacking! Cut off the attacker and win the ball!' },
-  gk_save: { tr: 'Şut geliyor! Kaleni koru!', en: 'Shot incoming! Protect your goal!' },
+  gk_save: { tr: 'Forvet kaleye geliyor! Şut gelirse uzan!', en: 'Their striker is through! Dive if he shoots!' },
   gk_penalty: { tr: 'Penaltı! Köşeyi oku ve uzan!', en: 'Penalty! Read the taker and dive!' },
   counter_2v1: { tr: '2’ye 1 kontra! Savunmacıyı üstüne çek, doğru anda pas ver ya da bitir!', en: '2-on-1 break! Draw the defender, then pass or finish!' },
   long_ball_control: { tr: 'Uzun top geliyor! Göğsüne al, sırtındaki adamı koru ve oyunu sürdür!', en: 'Long ball incoming! Bring it down, shield it and play on!' },
