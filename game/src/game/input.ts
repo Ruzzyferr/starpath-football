@@ -634,9 +634,18 @@ export class InputController {
       if (!this.oneTap && !cancel) {
         this.sample(joy.pts, e, p, t)
         const sw = this.joyFlick(joy.pts, t - joy.t0, t)
+        const { w, h } = this.map.size()
+        const still = Math.hypot(p.x - joy.bx, p.y - joy.by) < Math.min(w, h) * 0.04
         if (sw) {
           this.queueSwipe(sw)
           probeGesture({ outcome: 'swipe', power: sw.power, length: sw.length, speed: sw.speed, duration: sw.duration })
+        } else if (still && t - joy.t0 < TAP_MAX_TIME && !this.meterTap(p, t)) {
+          // A quick tap in the joystick half is a tap on the pitch (playtest: tapping a team-mate on the
+          // left of the screen to pass did nothing, the touch was taken as a joystick that never moved).
+          this.queued.push({ kind: 'tapAt', at: this.map.toWorld(p.x, p.y) })
+          this.lastTap = { t, x: p.x, y: p.y }
+          this.skipFlag = true
+          probeGesture({ outcome: 'tap', power: 0, length: 0, speed: 0, duration: t - joy.t0 })
         } else probeGesture({ outcome: 'joystick', ...ignored })
       }
     }

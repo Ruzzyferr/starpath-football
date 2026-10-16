@@ -228,6 +228,16 @@ describe('InputController touch swipes', () => {
     expect(acts).toEqual([])
   })
 
+  it('a quick tap on a team-mate in the joystick half is a pass tap, not a dead joystick touch', () => {
+    // Playtest (Android): a team-mate on the left of the screen could not be tapped to pass.
+    input.poll(ctx)
+    canvas.dispatchEvent(ptr('pointerdown', 9, W * 0.25, H * 0.45, clock))
+    clock += 0.09
+    canvas.dispatchEvent(ptr('pointerup', 9, W * 0.25 + 2, H * 0.45 + 1, clock))
+    const acts = input.poll(ctx).actions
+    expect(acts.map((a) => a.kind)).toEqual(['tapAt'])
+  })
+
   it('a joystick push toward goal that holds before letting go stays a joystick', () => {
     input.poll(ctx)
     canvas.dispatchEvent(ptr('pointerdown', 8, W * 0.2, H * 0.8, clock))

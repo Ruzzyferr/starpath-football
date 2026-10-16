@@ -193,7 +193,9 @@ describe('context buttons do real, sensible things in every kind', () => {
     throw: (tr) => tr.events.some((e) => e.type === 'kick' && e.hero && (e.kick === 'pass' || e.kick === 'through')),
     kick: (tr) => tr.events.some((e) => e.type === 'kick' && e.hero && e.kick === 'lofted'),
     call: (tr) => byHero(tr, 'callForBall'),
-    head: (tr) => byHero(tr, 'jump'),
+    // HEAD goes up now, or (pressed while the ball is still on its way) is held until it arrives; pressed with no
+    // ball coming (the cross not yet struck) it waits for the ball instead of leaping at nothing.
+    head: (tr) => byHero(tr, 'jump') || (tr.rt as unknown as { headArmAt: number }).headArmAt >= 0 || Math.hypot(tr.rt.ball.x - tr.rt.hero.pos.x, tr.rt.ball.y - tr.rt.hero.pos.y) > 4,
     jump: (tr) => byHero(tr, 'jump'),
     slide: (tr) => tr.states.has('slide'),
     // Goes in at once in range; out of range he closes the carrier down flat out and goes in when he can.

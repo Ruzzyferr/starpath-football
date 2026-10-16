@@ -586,6 +586,14 @@ export function dribbleReach(dribbling: number, sprinting: boolean): number {
 }
 
 /** Pass magnet radius (m) on full assist (plan 2.1#28/#29); half and manual have none. */
+/** HEAD pressed early: how far ahead (s) the ball's flight is read, how long before contact he leaves the ground,
+ * and how early a press still gets the ideal jump (beyond it the jump comes a little late). */
+export const HEAD_ARM_WINDOW = 3
+export const HEAD_ARM_LEAD = 0.28
+export const HEAD_ARM_EXACT = 0.5
+/** Kinds where a pass that found its man is his part done even if the team loses it afterwards (playtest). */
+export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['build_up', 'counter', 'counter_2v1', 'one_on_one', 'edge_of_box'])
+
 export const PASS_MAGNET = 1.5
 
 /** The mate a free-space pass snaps to under full assist, if any is within {@link PASS_MAGNET}. */
@@ -1205,6 +1213,11 @@ export class HighlightRuntime {
       return
     }
     this.stepEv0 = this.events.length
+    // A HEAD pressed while the ball was still on its way: he goes up when it arrives (see heroJump).
+    if (this.headArmAt >= 0 && this.time >= this.headArmAt) {
+      this.headArmAt = -1
+      if (!this.owner) this.heroJump(true)
+    }
     this.stepInner()
     this.noteHeroStops()
   }
@@ -1232,6 +1245,12 @@ export class HighlightRuntime {
   private dutySnap: boolean | null = null
   /** The hero himself stopped the attack this moment (graded defending). */
   private heroStop = false
+  /** His last pass found a team-mate and he has not had the ball since (a later loss is the team's, not his). */
+  private heroPassDone = false
+  /** Open play where finding a team-mate is his part: a loss after it is credited as his completed pass. */
+  private passCredit(): boolean {
+    return this.heroPassDone && PASS_CREDIT_KINDS.has(this.kind)
+  }
 
   private stepInner(): void {
     this.time += DT
@@ -1999,6 +2018,18 @@ export class HighlightRuntime {
     return { x: PITCH_LENGTH + 0.2, y: GOAL_CENTER_Y + side * 2.35 }
   }
 
+  /**
+   * Where a ball in the air comes down (first drop below 0.25 m) and in how many seconds, or null when it is on the
+   * ground / at someone's feet. The scene marks it so a person can run to it (playtest: a long ball you cannot read
+   * the flight of rolled past to the defender).
+   */
+  landingPoint(): { x: number; y: number; t: number } | null {
+    if (this.owner || this.ball.z < 0.8) return null
+    const pts = predictTrajectory(this.ball, this.env, { duration: 3, sampleEvery: 2 })
+    const p = pts.find((q) => q.t > 0 && q.z < 0.25)
+    return p ? { x: p.x, y: p.y, t: p.t } : null
+  }
+
   /** True if a loose ball will come within reach of the hero soon. */
   private ballIncomingToHero(): boolean {
     if (this.owner) return false
@@ -2201,10 +2232,30 @@ export class HighlightRuntime {
     }
   }
 
-  /** HEAD / JUMP: up for the ball (Jumping sets the height, Heading the reach), aimed at goal or cleared. */
-  private heroJump(): void {
+  /** Sim time at which an early HEAD press makes him jump (−1 = none armed). */
+  private headArmAt = -1
+
+  /**
+   * HEAD / JUMP: up for the ball (Jumping sets the height, Heading the reach), aimed at goal or cleared.
+   * Pressed while the ball is still in the air on its way (playtest: a person presses as the ball comes, ~2 m out,
+   * and went up too early every time), the jump is held until it arrives: he goes up {@link HEAD_ARM_LEAD} s before
+   * the ball reaches head height over him, a beat late when pressed very early (the timing still counts).
+   */
+  private heroJump(armed = false): void {
     const hero = this.hero
     if (hero.cd > 0 || (hero.state !== 'run' && hero.state !== 'wall')) return
+    if (!armed && !this.owner && (this.ball.z > 0.4 || Math.hypot(this.ball.vx, this.ball.vy) > 6)) {
+      const pts = predictTrajectory(this.ball, this.env, { duration: HEAD_ARM_WINDOW, sampleEvery: 2 })
+      const hit = pts.find((p) => p.z > 1.3 && p.z < 2.7 && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.4)
+      if (hit && hit.t > HEAD_ARM_LEAD + 0.08) {
+        const early = Math.max(0, hit.t - HEAD_ARM_LEAD - HEAD_ARM_EXACT)
+        this.headArmAt = this.time + hit.t - HEAD_ARM_LEAD + Math.min(0.14, early * 0.2)
+        return
+      }
+    }
+    // Nothing coming to him and the ball far away (the delivery not even struck yet): a leap at nothing helps no
+    // one, the press is ignored and HEAD stays ready for the ball.
+    if (!armed && this.owner !== hero && Math.hypot(this.ball.x - hero.pos.x, this.ball.y - hero.pos.y) > 4 && !(!this.owner && this.ballIncomingToHero())) return
     hero.state = 'jump'
     hero.stateT = 0
     hero.cd = 0.75
@@ -2394,6 +2445,7 @@ export class HighlightRuntime {
     // First-time finish/flick by a team-mate straight from the hero's delivery completes the pass.
     if (!by.isHero && by.team === 'hero' && this.owner !== by && this.lastTouch?.isHero && this.heroPassTo) {
       this.stats.passesCompleted++
+      this.heroPassDone = true
       this.assistChain = by.id
       this.heroPassTo = null
     }
@@ -2623,7 +2675,10 @@ export class HighlightRuntime {
     this.ball.spin.side = 0
     this.ball.spin.top = 0
     this.events.push({ type: 'touch', by: a.id, hero: a.isHero, x: a.pos.x, y: a.pos.y })
-    if (a.isHero) this.heroControlled = true
+    if (a.isHero) {
+      this.heroControlled = true
+      this.heroPassDone = false
+    }
 
     // Pass completion bookkeeping: a team-mate receiving the hero's pass may score → assist.
     // Plan 2.1#58: any team-mate receiving it counts (deflections included), not only the target.
@@ -2634,6 +2689,7 @@ export class HighlightRuntime {
     if (!a.isHero && a.team === 'hero' && prevOwner === null && this.lastTouchBefore?.isHero && this.heroCrossQ > 0 && inDangerZone(a.pos)) this.chance = true
     if (this.heroPassTo && passCompletedBy(a)) {
       this.stats.passesCompleted++
+      this.heroPassDone = true
       this.assistChain = a.id
       // hold_up: the lay-off found a team-mate: job done.
       if (this.kind === 'hold_up' && this.phase === 'live') this.finish('pass_complete', 'laid off')
@@ -4725,6 +4781,7 @@ export class HighlightRuntime {
     if (s && s.by.team === 'hero') return this.finish(s.assistBy ? 'pass_complete' : this.heroInvolvedOutcome(), 'teammate shot out')
     const lt = this.lastTouch
     if (lt && lt.team === 'opp') return this.finish(this.stats.passesCompleted > 0 ? 'pass_complete' : 'timeout', 'opponent put it out')
+    if (this.passCredit()) return this.finish('pass_complete', 'team put it out after his pass')
     return this.finish('lost_ball', 'hero team put it out')
   }
 
@@ -4753,6 +4810,8 @@ export class HighlightRuntime {
             this.stats.shotsOnTarget++
             return this.finish('saved', 'parried and cleared')
           }
+          // (His pass found its man and the others lost it later: his part was done — not his loss.)
+          if (this.passCredit()) return this.finish('pass_complete', 'team lost it after his pass')
           return this.finish('lost_ball', 'possession lost')
         }
       } else {
@@ -4765,7 +4824,7 @@ export class HighlightRuntime {
           this.stats.shotsOnTarget++
           return this.finish('saved', 'parry cleared')
         }
-        if (this.lastTouch?.team === 'opp' && Math.hypot(this.ball.vx, this.ball.vy) > 10) return this.finish('lost_ball', 'cleared')
+        if (this.lastTouch?.team === 'opp' && Math.hypot(this.ball.vx, this.ball.vy) > 10) return this.finish(this.passCredit() ? 'pass_complete' : 'lost_ball', 'cleared')
       }
     } else {
       if (o && o.team === 'hero') {

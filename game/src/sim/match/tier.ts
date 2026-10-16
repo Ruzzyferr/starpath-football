@@ -20,6 +20,9 @@ export const GOAL_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>([
 /** Non-goal kinds graded by their first contact (long ball won, switch reached the man). */
 export const CONTACT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['long_ball_control', 'switch_play'])
 
+/** Open-play goal kinds where a completed pass (no goal) is a partial success. */
+export const PASS_PARTIAL_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['counter', 'counter_2v1', 'one_on_one', 'edge_of_box'])
+
 /** Share of a goal's reward a partial success earns (rating, and through it form / XP / trust). */
 export const PARTIAL_SHARE = 0.5
 
@@ -37,6 +40,10 @@ export function isFullSuccess(kind: HighlightKind, o: HighlightOutcome): boolean
       // Beating the man counts: he got past and the move ended in a shot on target, a pass or a foul won
       // (build 9: a wild shot off target / into a defender is not beating him).
       return o !== 'lost_ball' && o !== 'foul_committed' && o !== 'timeout' && o !== 'missed' && o !== 'blocked'
+    case 'build_up':
+      // Build the attack: a pass that found its man is the job (playtest: a completed pass the team lost later read
+      // as the player's lost ball).
+      return o === 'goal' || o === 'assist' || o === 'pass_complete' || o === 'foul_won'
     case 'long_ball_control':
     case 'hold_up':
     case 'shoulder_duel':
@@ -86,6 +93,8 @@ export function momentTier(kind: HighlightKind, r: Pick<HighlightResult, 'outcom
   // Contest moments: won the first contact / found the man across the pitch, then lost it (partial).
   if (CONTACT_KINDS.has(kind) && r.chance) return 'partial'
   if (!GOAL_KINDS.has(kind) || r.offside) return 'fail'
+  // Open play: the right pass, found its man (the goal is the full success).
+  if (r.outcome === 'pass_complete' && PASS_PARTIAL_KINDS.has(kind)) return 'partial'
   // A penalty is scored or missed: saved or off the post, it is a missed penalty.
   if (kind === 'penalty') return 'fail'
   if (r.outcome === 'woodwork') return 'partial'

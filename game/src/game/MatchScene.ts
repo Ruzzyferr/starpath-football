@@ -12,7 +12,7 @@
 import Phaser from 'phaser'
 import type { Difficulty, KitColors, Lang } from '../core/types'
 import type { Highlight, HighlightOutcome, HighlightResult, Weather } from '../sim/match/types'
-import { DEFENSIVE_KINDS, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
+import { DEFENSIVE_KINDS, GOAL_HEIGHT, GOAL_WIDTH, PITCH_LENGTH, PITCH_WIDTH } from '../sim/match/types'
 import {
   adBoardTexture,
   ballRimTexture,
@@ -203,6 +203,8 @@ const T = {
     tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
+    tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
+    teamDefended: 'TEAM-MATES CLEARED IT', teamDefendedSub: 'You were not involved · no credit',
     tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
   tr: {
@@ -221,6 +223,8 @@ const T = {
     tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
+    tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
+    teamDefended: 'TAKIM ARKADAŞLARIN KURTARDI', teamDefendedSub: 'Sen müdahale etmedin · başarı sayılmadı',
     tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
 } as const
@@ -279,6 +283,9 @@ const zpx = (z: number) => z * PPM * ZS
  */
 /** Within this distance (m) of goal the live camera leans toward the goal so the goal mouth stays on a phone screen. */
 const GOAL_FRAME_RANGE = 36
+/** On the ball this close to goal the view frames the goal mouth, zooming in up to {@link SHOT_FRAME_MAX_ZOOM}. */
+const SHOT_FRAME_RANGE = 24
+const SHOT_FRAME_MAX_ZOOM = 1.35
 
 export class MatchScene extends Phaser.Scene {
   private data0!: SceneData
@@ -308,6 +315,7 @@ export class MatchScene extends Phaser.Scene {
   private lastKickHero = false
   private trailG!: Phaser.GameObjects.Graphics
   private aimG!: Phaser.GameObjects.Graphics
+  private dropG!: Phaser.GameObjects.Graphics
   private netG: Record<'east' | 'west', Phaser.GameObjects.Graphics> = {} as Record<'east' | 'west', Phaser.GameObjects.Graphics>
   private ripple: Record<'east' | 'west', NetRipple | null> = { east: null, west: null }
   private grassFx!: Phaser.GameObjects.Particles.ParticleEmitter
@@ -352,6 +360,10 @@ export class MatchScene extends Phaser.Scene {
   private camSpring: Spring2 | null = null
   /** Height (game px) of the HUD band at the top; the play camera renders below it so the HUD never covers play. */
   private hudTop = 0
+  /** Dev only: recent runtime events for the playtest recorder (debugInfo().events). */
+  private evTrail: Record<string, unknown>[] = []
+  /** Zoom multiplier of the on-the-ball framing (pass options + goal), 1 when not framing. */
+  private attnZoom = 1
   /** Safe-area inset (notch) at the top of the canvas, game px. */
   private safeTop = 0
   /** Timer bar geometry inside the HUD band (game px). */
@@ -641,6 +653,20 @@ export class MatchScene extends Phaser.Scene {
       carrier: rt.owner ? { team: rt.owner.team, keeper: rt.owner.isKeeper, world: { x: rt.owner.pos.x, y: rt.owner.pos.y }, screen: css(project(rt.owner.pos.x, rt.owner.pos.y)) } : null,
       /** Context buttons on screen (CSS px), see game/actionSet. */
       buttons: this.input0.touchUi().buttons.map((b) => ({ id: b.id, hold: b.hold, key: b.key, down: b.down, x: r.left + b.x * kx, y: r.top + b.y * ky, r: b.r * kx })),
+      /** Playtest recorder: every player on screen (CSS px), feet and head, so a touch bot can tap a man. */
+      agents: rt.agents.map((a) => ({
+        id: a.id, team: a.team, keeper: a.isKeeper, hero: a.isHero, owner: rt.owner === a,
+        world: { x: a.pos.x, y: a.pos.y }, feet: css(project(a.pos.x, a.pos.y)), head: css(project(a.pos.x, a.pos.y, 1.85)),
+      })),
+      passTarget: rt.passTargetId,
+      events: this.evTrail.slice(),
+      /** Drop-zone marker shown for a ball in the air (CSS px), as the player sees it. */
+      drop: this.drop ? { ...css(project(this.drop.x, this.drop.y)), t: this.drop.t } : null,
+      /** Attacked goal on screen: posts at the ground and the bar, to judge its size against the keeper. */
+      goalFrame: {
+        postL: css(project(PITCH_LENGTH, GOAL_CENTER_Y - GOAL_WIDTH / 2)), postR: css(project(PITCH_LENGTH, GOAL_CENTER_Y + GOAL_WIDTH / 2)),
+        barL: css(project(PITCH_LENGTH, GOAL_CENTER_Y - GOAL_WIDTH / 2, GOAL_HEIGHT)), barR: css(project(PITCH_LENGTH, GOAL_CENTER_Y + GOAL_WIDTH / 2, GOAL_HEIGHT)),
+      },
     }
   }
 
@@ -958,6 +984,7 @@ export class MatchScene extends Phaser.Scene {
     this.ballShade = this.addW(this.add.image(0, 0, 'fx_ballshade').setScale(BALL_D / 64))
     if (paint) this.ballRim = this.addW(this.add.image(0, 0, ballRimTexture(this, paint.rim)).setScale(BALL_D / 64))
     this.aimG = this.addW(this.add.graphics().setDepth(5_000_000))
+    this.dropG = this.addW(this.add.graphics().setDepth(-4))
   }
 
   private buildFx(): void {
@@ -1239,7 +1266,10 @@ export class MatchScene extends Phaser.Scene {
         // Single entry point shared with the replayer: the recording reproduces the moment exactly.
         applyInput(rt, intent, dt, this.inputRec)
       }
-      this.handleEvents(rt.drainEvents())
+      const evs = rt.drainEvents()
+      // Dev/e2e playtest recorder: a short event trail (who did what) for the review.
+      if (import.meta.env.DEV && evs.length) for (const e of evs) { this.evTrail.push({ t: Math.round(rt.time * 100) / 100, ...e } as Record<string, unknown>); if (this.evTrail.length > 120) this.evTrail.shift() }
+      this.handleEvents(evs)
       this.renderLive(dt)
       if (rt.finished) this.afterPlay()
     } else if (this.mode === 'celebrate') {
@@ -1618,8 +1648,41 @@ export class MatchScene extends Phaser.Scene {
     const speed = Math.hypot(rt.ball.vx, rt.ball.vy, rt.ball.vz)
     this.drawBall(bx, by, bz, speed, dt)
     this.drawAim()
+    this.drawDropZone()
     this.updateNets(dt)
     this.updateCamera(dt, bx, by, bz, false)
+  }
+
+  /** Last landing read of a ball in the air (refreshed ~10× a second). */
+  private drop: { x: number; y: number; t: number; at: number } | null = null
+
+  /**
+   * Drop zone: where a ball in the air near the hero comes down, a pulsing ring that tightens as it lands (NSS / FIFA
+   * show it; playtest: long balls and crosses could not be read). Only for balls he can get to (≤ 26 m).
+   */
+  private drawDropZone(): void {
+    const rt = this.rt
+    const g = this.dropG
+    g.clear()
+    if (this.mode !== 'play' || rt.phase !== 'live' || rt.heroIsKeeper) {
+      this.drop = null
+      return
+    }
+    if (!this.drop || this.elapsed - this.drop.at > 0.1) {
+      const l = rt.landingPoint()
+      this.drop = l ? { ...l, at: this.elapsed } : null
+    }
+    const d = this.drop
+    if (!d) return
+    const left = d.t - (this.elapsed - d.at)
+    if (left < -0.2 || Math.hypot(d.x - rt.hero.pos.x, d.y - rt.hero.pos.y) > 26) return
+    const p = project(d.x, d.y)
+    const r = (0.9 + Math.max(0, Math.min(1.5, left)) * 0.9) * PPM
+    const pulse = this.rm ? 1 : 0.75 + 0.25 * Math.sin(this.elapsed * 10)
+    g.lineStyle(Math.max(2, 0.14 * PPM), 0xffd23f, 0.9 * pulse)
+    g.strokeEllipse(p.x, p.y, r * 2, r * 2 * TILT)
+    g.fillStyle(0xffd23f, 0.22 * pulse)
+    g.fillEllipse(p.x, p.y, 0.7 * PPM * 2, 0.7 * PPM * 2 * TILT)
   }
 
   private drawPlayer(v: PlayerView, x: number, y: number, z: number, facing: number, state: string, stateT: number, dt: number, pose?: CelebrationPose): void {
@@ -2222,6 +2285,26 @@ export class MatchScene extends Phaser.Scene {
       const b = cc ? { x: cc.fx, y: cc.fy } : project(px, py, bz * 0.5)
       tx = b.x + lead.x
       ty = b.y + lead.y
+      // On the ball (playtest: a team-mate to tap or the goal to aim at was off screen): frame the two best
+      // pass options and, in range, the goal mouth with the ball. Pulls back as far as the moment framing does.
+      this.attnZoom = 1
+      if (!cc && !replay && rt.heroOnBall && !rt.heroIsKeeper) {
+        const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
+        const toGoal = PITCH_LENGTH - bx
+        // In shooting range the goal is what he looks at: ball and both posts, closer in (NSS: the goal fills the
+        // view when you shoot). Further out: the two best pass options (and the goal if in range).
+        const shooting = toGoal < SHOT_FRAME_RANGE
+        const pts = shooting
+          ? [{ x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y - GOAL_WIDTH / 2 - 1 }, { x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y + GOAL_WIDTH / 2 + 1 }]
+          : rt.passOptions().map((id) => mates.find((m) => m.id === id)?.pos).filter((p): p is Vec2 => !!p).slice(0, 2)
+        if (!shooting && toGoal < GOAL_FRAME_RANGE) pts.push({ x: PITCH_LENGTH + 1.5, y: GOAL_CENTER_Y })
+        if (pts.length) {
+          const f = momentFrame(rt.ball, rt.hero.pos, pts, { w, h }, this.cam.base, shooting ? SHOT_FRAME_MAX_ZOOM : 1)
+          tx = f.x
+          ty = f.y
+          this.attnZoom = f.zoomMult
+        }
+      }
     }
     if (!open) {
       if (target || replay) {
@@ -2244,7 +2327,7 @@ export class MatchScene extends Phaser.Scene {
       const bulletZoom = !this.rm && this.mode === 'play' && rt.timeScale < 0.95 ? (1 - rt.timeScale) * 0.12 : 0
       // Keeper distribution / claiming: pull back so the options upfield (or the runners in the box) are in view.
       const keeperZoom = !target && !replay && rt.heroIsKeeper ? (rt.kind === 'gk_distribution' ? 0.7 : rt.kind === 'gk_claim' ? 0.85 : 1) : 1
-      const crossZoom = (this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1) * keeperZoom
+      const crossZoom = (this.crossCam && !target && !replay ? this.crossCam.zoomMult : 1) * keeperZoom * (!target && !replay ? this.attnZoom : 1)
       const targetZoom = target ? target.zoom : this.cam.base * crossZoom * (1 + this.cam.punch + bulletZoom + (replay && !this.rm ? 0.18 : 0))
       this.cam.zoom += (targetZoom - this.cam.zoom) * (1 - Math.exp(-dt * (target ? 2.6 : 4)))
     }
@@ -2260,7 +2343,9 @@ export class MatchScene extends Phaser.Scene {
     this.cam.y = c.y
     const cam = this.cameras.main
     cam.setZoom(this.cam.zoom)
-    cam.centerOn(this.cam.x, this.cam.y)
+    // The score bar covers the top of the canvas: centre the frame in the part below it (playtest: on a free kick
+    // the goal sat under the bar).
+    cam.centerOn(this.cam.x, this.cam.y - this.hudTop / (2 * this.cam.zoom))
   }
 
   /**
@@ -2880,16 +2965,20 @@ ${attrs}`, open: false, box: null }
     // (Defending / keeping: kept out while he did his job; long ball / switch: the first contact won.)
     const dutyKind = DEFENSIVE_KINDS.has(this.rt.kind)
     const contactKind = CONTACT_KINDS.has(this.rt.kind)
-    if (partial && !r.offside) txt = dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
+    if (partial && !r.offside) txt = dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'pass_complete' ? s.tierPass : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
     else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
-    const good = GOOD.has(r.outcome)
+    // Kept out by the others while he did nothing (playtest: "SAVUNDUN!" with no input taught nothing).
+    const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')
+    if (teamOnly && !r.offside) txt = s.teamDefended
+    const good = GOOD.has(r.outcome) && !teamOnly
     this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(0.3)
     this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
     let sub = ''
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
-    else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
+    else if (teamOnly) sub = s.teamDefendedSub
+    else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'pass_complete' ? s.tierPassSub : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub
     this.bannerSub.setText(sub).setAlpha(sub ? 1 : 0)
     if (!good && !partial && r.outcome !== 'woodwork') this.shake(100, 0.002)
   }

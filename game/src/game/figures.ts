@@ -665,7 +665,9 @@ export function sheetPages(S: number, pageH: number): { w: number; pages: number
 export const FIG_RES = { low: 30, medium: 36, high: 42 } as const
 
 /** Figures are drawn a touch larger than life for readability on phones. */
-export const FIG_SCALE = 1.3
+/** Figures are drawn a little over life size for a phone (owner playtest: at 1.3 the keeper stood as tall as the bar
+ * and the goal looked tiny; a real keeper is ~0.76 of the bar's height). */
+export const FIG_SCALE = 1.12
 
 /** Figure-texture problems seen this session (dev self-check / tests). */
 export const figureTextureIssues: string[] = []

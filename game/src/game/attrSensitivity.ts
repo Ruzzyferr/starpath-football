@@ -308,7 +308,8 @@ export const MOMENT_PROBES: readonly MomentProbe[] = [
           r.setControl({ move: { x: 0, y: 0 }, sprint: false })
           if (!jumped && r.time > 0.2) {
             jumped = true
-            r.queueAction({ kind: 'btn', id: 'jump' })
+            // The leap itself (a JUMP pressed before the ball is struck now waits for it, so go up directly).
+            ;(r as unknown as { heroJump(armed: boolean): void }).heroJump(true)
           }
         }), (r) => {
           peak = Math.max(peak, r.hero.z)

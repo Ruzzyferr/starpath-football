@@ -95,7 +95,7 @@ export function nearestPoints(from: Vec2, pts: readonly Vec2[], n = 3): Vec2[] {
  * Moment-start frame: centre (world px) and zoom multiplier (× base zoom,
  * ≤ 1) that hold the ball, the hero and the given pass options.
  */
-export function momentFrame(ball: Vec2, hero: Vec2, options: readonly Vec2[], view: { w: number; h: number }, baseZoom: number): { x: number; y: number; zoomMult: number } {
+export function momentFrame(ball: Vec2, hero: Vec2, options: readonly Vec2[], view: { w: number; h: number }, baseZoom: number, maxMult = 1): { x: number; y: number; zoomMult: number } {
   const pts = [project(ball.x, ball.y), project(hero.x, hero.y), ...options.map((o) => project(o.x, o.y))]
   const pad = MOMENT_FRAME_PAD_M * PPM
   const minX = Math.min(...pts.map((p) => p.x)) - pad
@@ -103,7 +103,7 @@ export function momentFrame(ball: Vec2, hero: Vec2, options: readonly Vec2[], vi
   const minY = Math.min(...pts.map((p) => p.y)) - pad
   const maxY = Math.max(...pts.map((p) => p.y)) + pad
   const fit = Math.min(view.w / Math.max(1, maxX - minX), view.h / Math.max(1, maxY - minY))
-  const zoomMult = Math.min(1, Math.max(MOMENT_FRAME_MIN_ZOOM, fit / Math.max(1e-6, baseZoom)))
+  const zoomMult = Math.min(maxMult, Math.max(MOMENT_FRAME_MIN_ZOOM, fit / Math.max(1e-6, baseZoom)))
   return { x: (minX + maxX) / 2, y: (minY + maxY) / 2, zoomMult }
 }
 
