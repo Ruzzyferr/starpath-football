@@ -30,7 +30,7 @@ for (const kind of kinds) {
     const imgs = pick.map((f) => `<figure><img src="${pathToFileURL(join(OUT, kind, r, f.file)).href}"><figcaption>${(f.t / 1000).toFixed(1)}s ${esc(f.phase)}${f.heroOnBall ? ' ⚽' : ''}</figcaption></figure>`).join('')
     const end = existsSync(join(OUT, kind, r, 'end.jpg')) ? `<figure><img src="${pathToFileURL(join(OUT, kind, r, 'end.jpg')).href}"><figcaption>end</figcaption></figure>` : ''
     const inputs = run.inputs.filter((i) => !i.what.startsWith('tap to continue')).slice(0, 6).map((i) => `${(i.t / 1000).toFixed(1)}s ${i.what}`).join(' · ')
-    rows += `<section><h2>${esc(r)} → <b>${esc(run.result)}</b> <small>${esc(run.summary ?? '')}</small></h2>
+    rows += `<section><h2>${esc(r)} → <b>${esc(run.result)}</b>${run.graded ? ` · tier <b>${esc(run.graded.tier ?? '?')}</b> · banner “${esc(run.graded.banner)}${run.graded.sub ? ' — ' + esc(run.graded.sub) : ''}”` : ''} <small>${esc(run.summary ?? '')}</small></h2>
       <p>bot: ${esc(inputs)}<br>game recognised: ${esc(run.recognised.join(', '))} · kicks ${run.kicks}${run.geom ? ` · goal ${run.geom.goalWidthPx.toFixed(0)}×${run.geom.goalHeightPx.toFixed(0)}px, keeper ${run.geom.keeperHeightPx?.toFixed(0) ?? '-'}px, start ${run.geom.heroToGoalM?.toFixed(0)} m from the goal we attack / ${run.geom.heroToOwnGoalM?.toFixed(0) ?? '-'} m from our goal` : ''}</p>
       <div class="strip">${imgs}${end}</div></section>`
   }

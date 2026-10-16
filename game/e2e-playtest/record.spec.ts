@@ -150,6 +150,8 @@ for (const kind of KINDS) {
           persona: pname,
           seed,
           result: last?.result ?? null,
+          /** The graded tier and the banner the player saw (the raw outcome above can be a lost ball after a chance made). */
+          graded: await page.evaluate(() => { const s = (globalThis as any).__spScene; return { tier: s?.rt?.result?.tier ?? null, banner: s?.bannerText?.text ?? '', sub: s?.bannerSub?.text ?? '' } }).catch(() => null),
           finished: !!last?.finished,
           durationMs: Date.now() - t0,
           decisions,

@@ -1241,7 +1241,7 @@ export class HighlightRuntime {
     }
     // HEAD pressed before the delivery: once the ball is struck and in the air, it is a press on it (timed as one).
     if (this.headQueued) {
-      if (this.owner?.team === 'opp' || this.result) this.headQueued = false
+      if ((this.owner?.team === 'opp' && !HEADER_MARK_KINDS.has(this.kind)) || this.result) this.headQueued = false
       else if (!this.owner && this.ball.z > 0.4 && this.headArmAt < 0) {
         this.headQueued = false
         this.heroJump()
@@ -2355,7 +2355,8 @@ export class HighlightRuntime {
     // set for the delivery: the press is kept and he goes up for the next ball in, timed as above.)
     if (!armed && this.owner !== hero && Math.hypot(this.ball.x - hero.pos.x, this.ball.y - hero.pos.y) > 4 && !(!this.owner && this.ballIncomingToHero())) {
       // (Only before it is struck — a team-mate still on the ball; a loose ball not coming to him is no delivery.)
-      if (this.owner && this.owner.team === 'hero' && !this.headQueued) {
+      // (Their cross in a back-post moment the same: set for it.)
+      if (this.owner && (this.owner.team === 'hero' || HEADER_MARK_KINDS.has(this.kind)) && !this.headQueued) {
         this.headQueued = true
         this.events.push({ type: 'headReady', by: hero.id })
       }
