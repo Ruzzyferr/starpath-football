@@ -607,6 +607,8 @@ export const TAP_CHALLENGE_R = 3.5
 
 /** CROSS button: delivery quality added for a ball picked onto the freest runner in the corridor (see resolveHeroKick). */
 export const CROSS_BUTTON_Q = 0.2
+/** Defending: a touch counts as his stop only within this many seconds of a defending input (PRESS, TACKLE, …). */
+export const DEF_INPUT_WINDOW = 3
 /** A delivery at least this good (0–1) into the corridor counts as a chance made even when their man wins the header. */
 export const GOOD_CROSS_Q = 0.72
 
@@ -1278,6 +1280,10 @@ export class HighlightRuntime {
     for (let i = Math.min(this.stepEv0, this.events.length); i < this.events.length; i++) {
       const e = this.events[i]!
       if (!('by' in e) || e.by !== id) continue
+      // (A touch on a ball their man lost by himself — no challenge, no PRESS / JOCKEY — is his position doing the job,
+      // not his stop: partial at most. Playtest: holding SPRINT "won" defending moments.)
+      const passiveTouch = e.type === 'touch' && !this.hero.isKeeper && DEFENSIVE_KINDS.has(this.kind) && this.time - this.defPressAt > DEF_INPUT_WINDOW && this.control.hold !== 'jockey' && this.jockeyT <= 0
+      if (passiveTouch) continue
       if (e.type === 'block' || e.type === 'save' || e.type === 'touch' || e.type === 'header' || (e.type === 'tackle' && e.won) || (e.type === 'aerial' && e.hero)) this.heroStop = true
     }
   }
@@ -1728,10 +1734,11 @@ export class HighlightRuntime {
           }
           case 'lofted': {
             // Long Passing / Vision: the switch to the freest team-mate at least 20 m away.
-            const far = mates
-              .map((m) => ({ m, d: dist(from, m.pos), open: laneOpenness(from, m.pos, opp) }))
-              .filter((c) => c.d > 20)
-              .sort((p, q) => q.open * 0.6 + q.d / 60 - (p.open * 0.6 + p.d / 60))[0]
+            // (Across the pitch first: a man 20 m up the same flank is not a switch — playtest: LOFTED found the near-side
+            // man and the switch never happened.)
+            const cands = mates.map((m) => ({ m, d: dist(from, m.pos), dy: Math.abs(m.pos.y - from.y), open: laneOpenness(from, m.pos, opp) })).filter((c) => c.d > 20)
+            const across = cands.filter((c) => c.dy >= 18)
+            const far = (across.length ? across : cands).sort((p, q) => q.open * 0.6 + q.d / 60 - (p.open * 0.6 + p.d / 60))[0]
             if (far) return pass(far.m, true, 0.75)
             return through(add(from, scale(dir ?? fromAngle(hero.facing), 30)), true, 0.75)
           }
