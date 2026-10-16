@@ -7,7 +7,7 @@ import '../styles/fonts.css'
 import type { Difficulty, KitColors, Lang, Position } from '../core/types'
 import type { HighlightKind, Weather } from '../sim/match/types'
 import type { AimAssist } from './kick'
-import { ALL_KINDS, makeDemoHighlight } from './demoHighlights'
+import { ALL_KINDS, generatedHighlight, makeDemoHighlight } from './demoHighlights'
 import { createMatchGame, replayMoment, startHighlight, type HighlightHandle } from './MatchScene'
 import { listMoments } from './moments'
 import type { CelebrationChoice, CelebrationId, ReplayAngleChoice } from './presentation'
@@ -47,6 +47,8 @@ let handle: HighlightHandle | null = null
 /** ?hero=CB: play the moment as another position (fk_wall as the captain in the wall). */
 const HERO_POSITIONS: readonly Position[] = ['GK', 'CB', 'LB', 'RB', 'DM', 'CM', 'AM', 'LW', 'RW', 'ST']
 const heroPosParam = HERO_POSITIONS.find((p) => p === params.get('hero'))
+/** `gen=1`: the moment as a career match builds it (the scenario generator), not the hand-made demo layout. */
+const genParam = params.get('gen') === '1'
 
 const buttons = new Map<HighlightKind, HTMLButtonElement>()
 for (const k of ALL_KINDS) {
@@ -85,7 +87,7 @@ function play(): void {
   handle?.stop()
   for (const [k, b] of buttons) b.classList.toggle('on', k === current)
   const lang = $<HTMLSelectElement>('lang').value as Lang
-  const hl = makeDemoHighlight(current, seed, lang, 72, heroPosParam)
+  const hl = genParam ? { ...generatedHighlight(current, seed, { heroOvr: 72, lang, ...(heroPosParam ? { heroPos: heroPosParam } : {}) }), id: `gen_${current}_${seed}` } : makeDemoHighlight(current, seed, lang, 72, heroPosParam)
   resultEl.textContent = '…'
   // Blur selects so keyboard controls reach the game.
   ;(document.activeElement as HTMLElement | null)?.blur?.()

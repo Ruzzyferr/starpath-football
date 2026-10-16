@@ -982,7 +982,7 @@ export const HIGHLIGHT_PROMPTS = {
   gk_1v1: { tr: 'Forvet kaleye doğru tek başına! Çık, açıyı daralt!', en: 'An attacker is clean through! Come out and narrow the angle!' },
   gk_sweep: { tr: 'Savunmanın arkasına top! Çizgiden çık, önce sen ulaş!', en: 'Ball over the top! Come off your line and get there first!' },
   back_post: { tr: 'Uzak kanattan orta! Arka direği kapat!', en: 'Cross from the far side! Cover the back post!' },
-  long_shot: { tr: 'Önün boş, kale 25 metre ötede! Sert ve isabetli vur!', en: 'Space in front, 25 yards out! Hit it hard and true!' },
+  long_shot: { tr: 'Kale 25 metre ötede: savunmacıların arasından sert ve isabetli vur!', en: '25 yards out: hit it hard and true between the defenders!' },
   switch_play: { tr: 'Bu kanat kapandı, öbür taraf bomboş! Uzun çaprazla oyunu değiştir!', en: 'This flank is shut, the far side is wide open! Switch it with a long diagonal!' },
   recovery_run: { tr: 'Top kaybı, rakip kontrada! Geriye depar at, topu geri kazan!', en: 'We lost it and they break! Sprint back and win it!' },
   shoulder_duel: { tr: 'Top koridora! Omuz omuza mücadele: dengeni koru, topu al!', en: 'Ball into the channel! Shoulder to shoulder: stay on your feet and take it!' },

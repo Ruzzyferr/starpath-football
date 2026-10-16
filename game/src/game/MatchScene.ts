@@ -201,7 +201,7 @@ const T = {
     angle_broadcast: 'BROADCAST', angle_goalcam: 'GOAL CAM', angle_tactical: 'TACTICAL CAM',
     grip_slick: 'SLICK', grip_heavy: 'HEAVY',
     tierSaved: 'ON TARGET!', tierChance: 'CHANCE!', tierPartial: 'PARTIAL SUCCESS', tierMissed: 'MISSED IT',
-    tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
+    tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', noSwitch: 'NOT SWITCHED', noSwitchSub: 'Your pass did not reach the far wing · no credit', chanceLost: 'CHANCE MADE', chanceLostSub: 'You made the chance, then the ball was lost · partial success', beatMan: 'MAN BEATEN', beatManSub: 'You got past him, then lost it · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
     headReady: 'READY TO HEAD', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
@@ -222,7 +222,7 @@ const T = {
     angle_broadcast: 'YAYIN KAMERASI', angle_goalcam: 'KALE ARKASI', angle_tactical: 'TAKTİK KAMERA',
     grip_slick: 'KAYGAN', grip_heavy: 'AĞIR',
     tierSaved: 'İSABETLİ!', tierChance: 'FIRSAT!', tierPartial: 'KISMİ BAŞARI', tierMissed: 'KAÇTI',
-    tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
+    tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', noSwitch: 'KANAT DEĞİŞMEDİ', noSwitchSub: 'Pasın öbür kanada gitmedi · başarı sayılmadı', chanceLost: 'FIRSAT YARATTIN', chanceLostSub: 'Fırsatı yarattın, sonra top gitti · kısmi başarı', beatMan: 'ADAMINI GEÇTİN', beatManSub: 'Rakibini geçtin, sonra top gitti · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
     headReady: 'KAFAYA HAZIR', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
@@ -3041,11 +3041,15 @@ ${attrs}`, open: false, box: null }
         case 'whistle':
           this.sfx.whistle(e.long)
           break
-        case 'skill':
+        case 'skill': {
           this.sfx.whoosh(false)
+          // Only his own skill is labelled over him (playtest: an opponent's failed trick showed "KAPTIRDIN" over the
+          // hero who had just won the ball).
+          if (e.by !== rt.hero.id) break
           this.floatText(e.success ? this.s.skillOk : this.s.skillBad, rt.hero.pos.x, rt.hero.pos.y, e.success ? '#5dff8a' : '#ff7a7a', 0.9, 2.8)
           if (e.success) this.vibrate(30)
           break
+        }
         case 'dive': {
           this.sfx.scuff()
           const dv = this.views.find((w) => w.agent.id === e.by)
@@ -3127,6 +3131,13 @@ ${attrs}`, open: false, box: null }
     // Dribble: a pass (or anything) without beating his man first is not the job (playtest: "İYİ OYUN" on a 2 m pass).
     const notBeaten = this.rt.kind === 'dribble' && r.tier === 'fail' && r.beat === false && !r.offside && !r.card
     if (notBeaten) txt = s.notBeaten
+    // A partial success that ended with the ball gone: say what he did, then that it was lost (playtest: "FIRSAT!" on a
+    // lost ball read as a contradiction).
+    const lostAfter = partial && !forced && !dutyKind && !contactKind && (r.outcome === 'lost_ball' || r.outcome === 'foul_committed' || r.outcome === 'timeout')
+    if (lostAfter) txt = this.rt.kind === 'dribble' ? s.beatMan : s.chanceLost
+    // Switch of play: a pass that found a man on the same side, then lost — the switch was not made (not his "lost ball").
+    const noSwitch = this.rt.kind === 'switch_play' && r.tier === 'fail' && (r.passesCompleted ?? 0) > 0 && !r.offside
+    if (noSwitch) txt = s.noSwitch
     const wallHit = this.rt.kind === 'freekick' && r.outcome === 'blocked'
     if (wallHit) txt = s.wallHit
     const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')
@@ -3143,6 +3154,8 @@ ${attrs}`, open: false, box: null }
     else if (r.outcome === 'assist' && r.scorerId) sub = `→ ${this.rt.agents.find((a) => a.id === r.scorerId)?.name ?? ''}`
     else if (teamOnly) sub = s.teamDefendedSub
     else if (notBeaten) sub = s.notBeatenSub
+    else if (noSwitch) sub = s.noSwitchSub
+    else if (lostAfter) sub = this.rt.kind === 'dribble' ? s.beatManSub : s.chanceLostSub
     else if (wallHit) sub = s.wallHitSub
     else if (forced) sub = s.tierForcedSub
     else if (partial) sub = dutyKind ? s.tierDutySub : contactKind ? (this.rt.kind === 'switch_play' ? s.tierSwitchSub : s.tierContactSub) : r.outcome === 'pass_complete' ? s.tierPassSub : r.outcome === 'woodwork' ? s.tierWoodSub : r.outcome === 'saved' ? s.tierSavedSub : s.tierChanceSub

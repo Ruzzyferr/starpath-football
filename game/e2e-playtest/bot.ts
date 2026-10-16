@@ -274,6 +274,18 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       await th.releaseStick()
       return { kind: 'wait', why: 'keeper set' }
     }
+    // Penalty: pick a side and go as he strikes it (the run-up ends ~1.5 s in) — not long before, not after.
+    if (info.kind === 'gk_penalty') {
+      const ds = btn(['diveLeft', 'diveRight', 'dive'])
+      if (ds && !(state as any).pkSide) (state as any).pkSide = th.r() < 0.5 ? 'diveLeft' : 'diveRight'
+      const pick = btn([(state as any).pkSide, 'dive'])
+      if (pick && info.clock >= 1.36 && !(state as any).pkDone) {
+        ;(state as any).pkDone = true
+        await th.tap(pick, `penalty: ${pick.id} as he strikes`)
+        return { kind: 'keeper', why: 'penalty dive' }
+      }
+      return { kind: 'wait', why: 'penalty: reading the taker' }
+    }
     // A ball played over the top toward our box with nobody on it (the sweeper moment): come out for it — ÇIK.
     const rushB = btn(['rush'])
     if (rushB && !kc && (info.ballSpeed ?? 0) > 3 && (info.ballZ ?? 0) < 1 && wdist(hero.world, ballW) > 6 && !(state as any).rushed) {

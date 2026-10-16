@@ -1283,6 +1283,8 @@ export class HighlightRuntime {
   private heroStop = false
   /** His last pass found a team-mate and he has not had the ball since (a later loss is the team's, not his). */
   private heroPassDone = false
+  /** Sim time of the hero's last touch of the ball (−1 = none). */
+  private heroTouchT = -1
   /** Open play where finding a team-mate is his part: a loss after it is credited as his completed pass. */
   private passCredit(): boolean {
     return this.heroPassDone && PASS_CREDIT_KINDS.has(this.kind)
@@ -2444,7 +2446,9 @@ export class HighlightRuntime {
     if (oc && oc.team !== this.hero.team && dist(oc.pos, this.hero.pos) < 10) this.heroRushed = true
     this.dash = {
       why: 'rush',
-      until: this.time + 1.2,
+      // (A ball over the top in the sweeper moment: he keeps going until he gets there — playtest: the 1.2 s run ran
+      // out half-way and the keeper walked back as their forward reached it.)
+      until: this.time + (this.kind === 'gk_sweep' && !oc ? 3.5 : 1.2),
       to: () => {
         const o = this.owner
         if (o === this.hero) return null
@@ -2755,6 +2759,7 @@ export class HighlightRuntime {
     this.ball.vz = 0
     this.ball.spin.side = 0
     this.ball.spin.top = 0
+    if (a.isHero) this.heroTouchT = this.time
     this.events.push({ type: 'touch', by: a.id, hero: a.isHero, x: a.pos.x, y: a.pos.y })
     if (a.isHero) {
       this.heroControlled = true
@@ -4301,6 +4306,7 @@ export class HighlightRuntime {
     b.vz = Math.min(3, rel * 0.08)
     a.noTouch = 0.3
     this.lastTouch = a
+    if (a.isHero) this.heroTouchT = this.time
     this.events.push({ type: 'touch', by: a.id, hero: a.isHero, x: a.pos.x, y: a.pos.y })
   }
 
@@ -4841,7 +4847,7 @@ export class HighlightRuntime {
   // ───────────────────────── Ending ─────────────────────────
 
   private heroInvolvedOutcome(): HighlightOutcome {
-    if (this.stats.passesCompleted > 0) return 'pass_complete'
+    if (this.stats.passesCompleted > 0 || this.passCredit()) return 'pass_complete'
     // Bringing a long ball down and keeping it is the job done.
     if (this.kind === 'long_ball_control' && this.heroControlled && this.owner?.team === 'hero') return 'pass_complete'
     return 'timeout'
@@ -4863,7 +4869,10 @@ export class HighlightRuntime {
       } else if (s?.assistBy || this.assistChain === scorerId || (this.heroDeliveryAt >= 0 && this.time - this.heroDeliveryAt < 4)) {
         this.finish('assist', 'teammate scored from hero pass', { scorerId, assistId: this.hero.id })
       } else {
-        this.finish(this.heroInvolvedOutcome(), 'teammate scored', { scorerId })
+        // (In the move — he had the ball in the build-up a few seconds before: his part counts as a completed pass;
+        // playtest: a goal straight after his ball-winning touch ended "SÜRE BİTTİ".)
+        const inMove = this.heroTouchT >= 0 && this.time - this.heroTouchT < 5
+        this.finish(inMove ? 'pass_complete' : this.heroInvolvedOutcome(), 'teammate scored', { scorerId })
       }
     } else {
       const scorerId = this.lastTouch && this.lastTouch.team === 'opp' ? this.lastTouch.id : s?.by.id ?? 'opp'

@@ -41,7 +41,7 @@ for (const kind of KINDS) {
             document.head.appendChild(st)
           })
         })
-        await page.goto(`/match-demo.html?kind=${kind}&seed=${seed * 7 + 1}&lang=tr`)
+        await page.goto(`/match-demo.html?kind=${kind}&seed=${seed * 7 + 1}&lang=tr&gen=1`)
         await page.waitForFunction(() => !!(globalThis as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 60_000 })
         const cdp = await page.context().newCDPSession(page)
         const r = rng(seed * 1000 + kind.length * 17 + pname.length)
