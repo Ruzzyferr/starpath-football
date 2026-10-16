@@ -188,7 +188,7 @@ export class Thumbs {
   }
 
   /** A swipe from the lower right toward a screen point (shot / pass by swipe). */
-  async swipe(c: Info['canvas'], toward: Pt, strength: number, what: string): Promise<void> {
+  async swipe(c: Info['canvas'], toward: Pt, strength: number, what: string, bend = 0): Promise<void> {
     const short = Math.min(c.width, c.height)
     const s = { x: c.left + c.width * (0.6 + this.r() * 0.25), y: c.top + c.height * (0.62 + this.r() * 0.2) }
     const aim = this.scatter(toward)
@@ -204,7 +204,9 @@ export class Thumbs {
       const tau = k / n
       const e = 10 * tau ** 3 - 15 * tau ** 4 + 6 * tau ** 5
       await sleep(dur / n)
-      await this.send('touchMove', { x: s.x + (dx / dl) * len * e, y: s.y + (dy / dl) * len * e, id: TAP })
+      // A curved swipe (free kicks): the path bows sideways by `bend` × its length, most in the middle.
+      const off = bend * len * 4 * e * (1 - e)
+      await this.send('touchMove', { x: s.x + (dx / dl) * len * e + (-dy / dl) * off, y: s.y + (dy / dl) * len * e + (dx / dl) * off, id: TAP })
     }
     await this.lift({ x: s.x + (dx / dl) * len, y: s.y + (dy / dl) * len, id: TAP })
   }
@@ -380,7 +382,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
         await th.tap(sb, `ŞUT button from ${toGoal.toFixed(0)} m`)
         return { kind: 'shoot', why: `button ${toGoal.toFixed(0)} m` }
       }
-      const strength = toGoal < 12 ? 0.55 : 0.85
+      const strength = info.kind === 'freekick' ? 0.6 : toGoal < 12 ? 0.55 : 0.85
       // A person aims for a corner, away from the keeper (the far side of him, inside the post).
       const gf = info.goalFrame
       const kp = info.agents.find((a) => a.keeper && a.team === 'opp')
@@ -390,7 +392,9 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
         const far = kp && Math.hypot(kp.feet.x - gf.postL.x, kp.feet.y - gf.postL.y) > Math.hypot(kp.feet.x - gf.postR.x, kp.feet.y - gf.postR.y) ? gf.postL : gf.postR
         shotAt = { x: mid.x + (far.x - mid.x) * 0.7, y: mid.y + (far.y - mid.y) * 0.7 }
       }
-      await th.swipe(c, shotAt, strength, `shot from ${toGoal.toFixed(0)} m${visible(info, info.goal) ? '' : ' (goal off screen)'}`)
+      // Free kick (the card): curl it round the wall — a bowed swipe, away from the side it starts on.
+      const bend = info.kind === 'freekick' ? (shotAt.x < hero.feet.x ? -0.18 : 0.18) : 0
+      await th.swipe(c, shotAt, strength, `shot from ${toGoal.toFixed(0)} m${visible(info, info.goal) ? "" : " (goal off screen)"}${bend ? ` curled ${bend > 0 ? "right" : "left"}` : ""}`, bend)
       return { kind: 'shoot', why: `in range ${toGoal.toFixed(0)} m` }
     }
     const opps = info.agents.filter((a) => a.team === 'opp')

@@ -87,6 +87,9 @@ export const SWIPE_MIN_LENGTH = 0.045
  * space, not pitch meters).
  */
 export const GESTURE_UNIT_MAX_CSS = 480
+/** Free kick: the height (m) a shot with no aimed height crosses the goal line at (lifted over the wall). */
+export const FK_DEFAULT_Z = 1.6
+
 export function gestureUnit(w: number, h: number, dpr = 1): number {
   const short = Math.max(1, Math.min(w, h))
   return Math.min(short, GESTURE_UNIT_MAX_CSS * Math.max(1, dpr))
@@ -454,7 +457,9 @@ export function solveLaunch(req: KickRequest, spinSide: number): { vx: number; v
   } else {
     // Shots, headers, penalties, free kicks: speed from power, height from aim.
     vh = shotSpeed(req.power, req.attrs, kind) * (req.placed ? PLACED_SPEED : 1)
-    aimZ = req.targetZ ?? 0.5
+    // (A free kick with no height given goes up over the wall into the top half — playtest: a plain swipe was driven
+    // flat into the wall every time; to drive it low round the wall the aim gives a height under 1 m.)
+    aimZ = req.targetZ ?? (kind === 'freekick' ? FK_DEFAULT_Z : 0.5)
     flightT = d / vh
     vz = (aimZ - z0 + 0.5 * GRAVITY * flightT * flightT) / flightT
   }
