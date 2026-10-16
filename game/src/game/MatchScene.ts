@@ -204,7 +204,7 @@ const T = {
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', savedEasySub: 'Straight at him — aim for a corner to make him work', missedSub: 'Off target — a softer, placed swipe stays on', blockedSub: 'Into a defender — find the gap or move the ball first', pressBeaten: 'PRESS BEATEN', pressBeatenSub: 'They carried it out into midfield · win it before the halfway line', noSwitch: 'NOT SWITCHED', noSwitchSub: 'Your pass did not reach the far wing · no credit', chanceLost: 'CHANCE MADE', chanceLostSub: 'You made the chance, then the ball was lost · partial success', beatMan: 'MAN BEATEN', beatManSub: 'You got past him, then lost it · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success', keeperDutySub: 'Team-mates won it before a shot · you held your spot · partial',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
-    headReady: 'READY TO HEAD', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
+    headReady: 'READY TO HEAD', tellLeft: '◀ LOOKING LEFT', tellRight: 'LOOKING RIGHT ▶', wallHit: 'INTO THE WALL', wallHitSub: 'Curl it round the wall or over it', notBeaten: 'MAN NOT BEATEN', notBeatenSub: 'The job was to take him on · no credit', teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You did not touch the ball · no credit',
     tierForced: 'SHOT FORCED', tierForcedSub: 'The shot got away but you were on him · partial success',
     tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
@@ -225,7 +225,7 @@ const T = {
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', savedEasySub: 'Kalecinin üstüne gitti · köşeye vurursan kısmi başarı', missedSub: 'Çerçeveyi bulmadı · daha yumuşak ve köşeye kaydır', blockedSub: 'Savunmacıya çarptı · boşluğu bul ya da önce topu kaydır', pressBeaten: 'PRES KIRILDI', pressBeatenSub: 'Topu orta sahaya taşıdılar · ondan önce kap', noSwitch: 'KANAT DEĞİŞMEDİ', noSwitchSub: 'Pasın öbür kanada gitmedi · başarı sayılmadı', chanceLost: 'FIRSAT YARATTIN', chanceLostSub: 'Fırsatı yarattın, sonra top gitti · kısmi başarı', beatMan: 'ADAMINI GEÇTİN', beatManSub: 'Rakibini geçtin, sonra top gitti · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı', keeperDutySub: 'Şut gelmeden arkadaşların kaptı · yerini korudun · kısmi',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
-    headReady: 'KAFAYA HAZIR', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
+    headReady: 'KAFAYA HAZIR', tellLeft: '◀ SOLA BAKIYOR', tellRight: 'SAĞA BAKIYOR ▶', wallHit: 'BARAJA TAKILDI', wallHitSub: 'Kavis ver: barajın yanından ya da üstünden', notBeaten: 'ADAMINI GEÇEMEDİN', notBeatenSub: 'Görev çalımla geçmekti · başarı sayılmadı', teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Topa sen dokunmadın · başarı sayılmadı',
     tierForced: 'ŞUTU ZORLADIN', tierForcedSub: 'Şut çıktı ama adamının üstündeydin · kısmi başarı',
     tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
@@ -3102,6 +3102,15 @@ ${attrs}`, open: false, box: null }
         case 'end':
           this.showBanner(e.result)
           break
+        case 'penaltyTell': {
+          // Over the taker: an arrow to the side his body shows (screen-side of the goal mouth).
+          const a = this.agentById(e.by)
+          if (!a) break
+          const c = this.worldToScreen(project(0, GOAL_CENTER_Y).x, project(0, GOAL_CENTER_Y).y)
+          const t = this.worldToScreen(project(0, e.y).x, project(0, e.y).y)
+          this.floatText(t.x < c.x ? this.s.tellLeft : this.s.tellRight, a.pos.x, a.pos.y, '#ffd23f', 1.0, 2.9)
+          break
+        }
         case 'headReady':
           this.floatText(this.s.headReady, rt.hero.pos.x, rt.hero.pos.y, '#9fe8ff', 1.1, 2.8)
           break

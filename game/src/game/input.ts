@@ -421,6 +421,17 @@ export class InputController {
     const corner = { x: m(w - side - pad - rc), y: bottom - pad - rc }
     const lay = contextButtonLayout(btns.length, corner, rc, prefs.leftHanded)
     const buttons = btns.map((b, i) => ({ ...b, ...(lay[i] ?? lay[0]!), down: this.ctxHeld(b.id) }))
+    // Penalty keeper: SOLA on the left, SAĞA on the right, ORTADA KAL between (playtest: stacked diagonally in the
+    // corner, the two sides did not read as left and right).
+    const dl = buttons.find((b) => b.id === 'diveLeft')
+    const dr = buttons.find((b) => b.id === 'diveRight')
+    if (dl && dr) {
+      const y = bottom - pad - rc
+      Object.assign(dl, { x: side + pad + rc, y })
+      Object.assign(dr, { x: w - side - pad - rc, y })
+      const st = buttons.find((b) => b.id === 'stay')
+      if (st) Object.assign(st, { x: w / 2, y })
+    }
     return { enabled: this.touchMode, joystick: joy, sprint, skill, buttons }
   }
 

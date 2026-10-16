@@ -281,9 +281,19 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     // Penalty: pick a side and go as he strikes it (the run-up ends ~1.5 s in) — not long before, not after.
     if (info.kind === 'gk_penalty') {
       const ds = btn(['diveLeft', 'diveRight', 'dive'])
+      // The tell over the taker (◀ / ▶): a person goes that way.
+      const tellE = (info.events ?? []).filter((e: any) => e.type === 'penaltyTell').pop() as { y: number } | undefined
+      if (tellE && info.goalFrame && !(state as any).pkTold) {
+        ;(state as any).pkTold = true
+        const gf = info.goalFrame
+        const f = (tellE.y - (34 - 3.66)) / 7.32
+        const sx = gf.postL.x + (gf.postR.x - gf.postL.x) * f
+        ;(state as any).pkSide = sx < (gf.postL.x + gf.postR.x) / 2 ? 'diveLeft' : 'diveRight'
+        th.note(`penalty tell read: ${(state as any).pkSide}`)
+      }
       if (ds && !(state as any).pkSide) (state as any).pkSide = th.r() < 0.5 ? 'diveLeft' : 'diveRight'
       const pick = btn([(state as any).pkSide, 'dive'])
-      if (pick && info.clock >= 1.36 && !(state as any).pkDone) {
+      if (pick && info.clock >= 1.5 && !(state as any).pkDone) {
         ;(state as any).pkDone = true
         await th.tap(pick, `penalty: ${pick.id} as he strikes`)
         return { kind: 'keeper', why: 'penalty dive' }

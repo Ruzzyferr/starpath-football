@@ -477,6 +477,8 @@ export type RuntimeEvent =
   | { type: 'callForBall'; by: string }
   /** HEAD pressed before the delivery: he goes up for the next ball that comes in (feedback: it was not ignored). */
   | { type: 'headReady'; by: string }
+  /** Penalty against the hero keeper: the taker's body shape gives away the side (read with GK Positioning / Reflexes). */
+  | { type: 'penaltyTell'; by: string; y: number }
   /** The team-mate on the ball ignored the hero's call: poor relationship, or no passing lane. */
   | { type: 'callRefused'; by: string; reason: 'relation' | 'lane' }
   /** One-two armed: `by` (the receiver of the hero's pass) will return it into the hero's run. */
@@ -803,7 +805,7 @@ export class HighlightRuntime {
   private graceUntil = -1
   private ballX0: number
   private defendCache: { t: number; team: Team; map: Map<string, DefendAssignment> } | null = null
-  private penaltyPlan: { target: Vec2; z: number; runStart: number; punished?: boolean } | null = null
+  private penaltyPlan: { target: Vec2; z: number; runStart: number; punished?: boolean; told?: boolean } | null = null
   private crossBulletArmed = false
   private readonly physEvents: PhysicsEvent[] = []
   private lastTouchBefore: Agent | null = null
@@ -3793,6 +3795,14 @@ export class HighlightRuntime {
         }
       }
       const pp = this.penaltyPlan
+      // The tell, shown (playtest: the body shape alone was invisible on a phone and the dive was a blind guess): once,
+      // as it shows; a good reader sees the true side, a poor one is sold the other way now and then.
+      if (this.time >= pp.runStart - 0.4 && this.hero.isKeeper && !pp.told && Math.abs(pp.target.y - GOAL_CENTER_Y) > 1) {
+        pp.told = true
+        const truthful = this.rng.chance(0.55 + (a01(this.hero.attrs.gkPositioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2) * 0.4)
+        const y = truthful ? pp.target.y : GOAL_CENTER_Y - (pp.target.y - GOAL_CENTER_Y)
+        this.events.push({ type: 'penaltyTell', by: taker.id, y })
+      }
       if (this.time < pp.runStart) return
       // Run-up: approach the ball; a good keeper may read the taker's body shape.
       const behind = { x: sp.spot.x + 0.5, y: sp.spot.y + 0.25 }
