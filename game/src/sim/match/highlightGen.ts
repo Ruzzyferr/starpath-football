@@ -761,6 +761,14 @@ const placeGkSweep: Placer = (l) => {
   set(l, l.input.heroId, { x: 3, y: 34 + (bp.y - 34) * 0.2 })
   const backs = nearest(l, l.mates, ap, 2, new Set([l.input.heroId]))
   backs.forEach((c, i) => set(l, c.player.id, { x: ap.x + 6 + i * 3, y: ap.y + (i ? 6 : -6) }))
+  // The ball over the top is the keeper's or the forward's: the rest are upfield (playtest: a centre-back got there first
+  // and the moment ended before the keeper could do anything).
+  const keep = new Set([att?.player.id ?? '', l.input.heroId, ...backs.map((c) => c.player.id)])
+  ;[...l.opps, ...l.mates].forEach((p, i) => {
+    if (keep.has(p.player.id) || roleOf(p) === 'GK') return
+    const q = l.pos.get(p.player.id)
+    if (q && q.x < ap.x + 8) set(l, p.player.id, { x: ap.x + rng.range(10, 22), y: clamp(8 + ((i * 11) % 52) + rng.range(-3, 3), 4, PITCH_WIDTH - 4) })
+  })
   return { ball: owned(bp, null), passerId: null, finisherId: null, opponentId: att?.player.id ?? null }
 }
 

@@ -1228,7 +1228,14 @@ export class MatchScene extends Phaser.Scene {
 
   /** Screen y of the camera centre: the middle of the band between the score bar and the thumb strip (see centerOn). */
   private camScreenY(): number {
-    return (this.scale.height + this.hudTop - this.thumbReserve()) / 2
+    return (this.scale.height + this.hudTop + this.promptReserve() - this.thumbReserve()) / 2
+  }
+
+  /** Strip under the score bar taken by the moment's prompt pill while it shows (playtest: the goal sat under it). */
+  private promptReserve(): number {
+    const p = this.promptText
+    if (!p || this.mode !== 'play' || p.alpha < 0.3 || p.y > this.scale.height / 2) return 0
+    return p.height + 16 * this.ui
   }
 
   private worldToScreen(wx: number, wy: number): { x: number; y: number } {
@@ -2283,7 +2290,7 @@ export class MatchScene extends Phaser.Scene {
     let ty: number
     if (this.debugCam) target = this.debugCam
     const w = this.scale.width
-    const h = this.scale.height - this.hudTop - this.thumbReserve()
+    const h = this.scale.height - this.hudTop - this.promptReserve() - this.thumbReserve()
     // Moment-start framing (2.2#4): ease in 350 ms to ball + hero + 3 pass options, hold until play starts.
     const open = !target && !replay && this.mode === 'play' ? this.openCamStep() : null
     if (open) {
@@ -2394,7 +2401,7 @@ export class MatchScene extends Phaser.Scene {
     cam.setZoom(this.cam.zoom)
     // The score bar covers the top of the canvas: centre the frame in the part below it (playtest: on a free kick
     // the goal sat under the bar).
-    cam.centerOn(this.cam.x, this.cam.y - (this.hudTop - this.thumbReserve()) / (2 * this.cam.zoom))
+    cam.centerOn(this.cam.x, this.cam.y - (this.hudTop + this.promptReserve() - this.thumbReserve()) / (2 * this.cam.zoom))
   }
 
   /**
@@ -2444,7 +2451,7 @@ export class MatchScene extends Phaser.Scene {
     if (rt.heroOnBall && !rt.heroIsKeeper && PITCH_LENGTH - rt.ball.x < SHOT_FRAME_RANGE) {
       opts = [{ x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y - GOAL_WIDTH / 2 - 1 }, { x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y + GOAL_WIDTH / 2 + 1 }]
     }
-    const h = this.scale.height - this.hudTop - this.thumbReserve()
+    const h = this.scale.height - this.hudTop - this.promptReserve() - this.thumbReserve()
     const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base, 1, rt.heroOnBall ? ON_BALL_MIN_ZOOM : undefined)
     this.openCam = { x: f.x, y: f.y, zoomMult: f.zoomMult, t0: this.elapsed, fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom }
   }
@@ -2718,7 +2725,7 @@ export class MatchScene extends Phaser.Scene {
     const w = this.scale.width
     const left = 20 * u
     const right = w - 20 * u
-    const top = this.hudTop + 30 * u
+    const top = this.hudTop + this.promptReserve() + 22 * u
     // Above the thumb buttons (playtest: a badge sat on DEPAR).
     const btnTop = Math.min(...this.input0.touchUi().buttons.map((b) => b.y - b.r), this.scale.height - this.thumbReserve())
     const bottom = btnTop - 22 * u
@@ -3111,7 +3118,8 @@ ${attrs}`, open: false, box: null }
     const contactKind = CONTACT_KINDS.has(this.rt.kind)
     const forced = partial && r.outcome === 'shot_conceded'
     if (partial && !r.offside) txt = forced ? s.tierForced : dutyKind ? s.tierDuty : contactKind ? s.tierContact : r.outcome === 'pass_complete' ? s.tierPass : r.outcome === 'saved' ? s.tierSaved : r.outcome === 'woodwork' ? s.woodHit : s.tierChance
-    else if (goalKind && r.tier === 'fail' && (r.outcome === 'missed' || r.outcome === 'saved' || r.outcome === 'blocked')) txt = s.tierMissed
+    // (A save says the keeper saved it, a block that it was blocked — playtest: "KAÇTI" on a held save read as a miss.)
+    else if (goalKind && r.tier === 'fail' && r.outcome === 'missed') txt = s.tierMissed
     // Kept out by the others while he did nothing (playtest: "SAVUNDUN!" with no input taught nothing).
     // Keeper moments: kept out, then the loose ball went the other way — the job (the save) is what the banner says
     // (playtest: "TOP KAYBI" after a save).
@@ -3124,8 +3132,11 @@ ${attrs}`, open: false, box: null }
     const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')
     if (teamOnly && !r.offside) txt = s.teamDefended
     const good = (GOOD.has(r.outcome) || (this.rt.heroIsKeeper && r.tier === 'full')) && !teamOnly && !notBeaten
-    this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(0.3)
-    this.tweens.add({ targets: this.bannerText, scale: 1, duration: 420, ease: 'Back.Out' })
+    this.bannerText.setText(txt).setColor(good ? '#ffc83d' : partial ? '#7fd8ff' : '#ffffff').setAlpha(1).setScale(1)
+    // Fits the screen (playtest: "RAKİP ŞUT BULDU" was cut off at both edges on a phone).
+    const fit = Math.min(1, (this.scale.width * 0.92) / Math.max(1, this.bannerText.width))
+    this.bannerText.setScale(0.3 * fit)
+    this.tweens.add({ targets: this.bannerText, scale: fit, duration: 420, ease: 'Back.Out' })
     let sub = ''
     if (r.card) sub = r.card === 'red' ? s.red : s.yellow
     else if (r.offside) sub = `${s.offsideFlag} ${this.rt.agents.find((a) => a.id === r.offside?.playerId)?.name ?? ''}`.trim()

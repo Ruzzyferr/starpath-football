@@ -17,7 +17,7 @@ function howToCard(kind: string): string {
   if (!h) return ''
   const goal = typeof h.goal === 'string' ? h.goal : h.goal.tr
   const touch = (helpTr.hints.touch as Record<string, string>)
-  const controls = h.groups.map((g) => touch[g]).filter(Boolean).join(' ')
+  const controls = h.touchControls?.tr ?? h.groups.slice(0, 2).map((g) => touch[g]).filter(Boolean).join(' ')
   return `HEDEF: ${goal} | KONTROL: ${controls} | İPUCU: ${h.tip.tr}`
 }
 

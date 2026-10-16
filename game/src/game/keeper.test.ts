@@ -109,7 +109,7 @@ describe("keepers' book on penalties", () => {
   })
 })
 
-describe('hero keeper hold and distribution (2.1#85)', () => {
+describe('hero keeper catch in a save moment (2.1#85, playtest round 7)', () => {
   function holdingKeeper(seed: number): HighlightRuntime {
     const rt = new HighlightRuntime(generatedHighlight('gk_save', seed), { aimAssist: 'full', slowMoAim: false, seed })
     for (let i = 0; i < 90 && rt.phase !== 'live'; i++) rt.update(1 / 60)
@@ -124,28 +124,15 @@ describe('hero keeper hold and distribution (2.1#85)', () => {
     return rt
   }
 
-  it('a held ball stays in his hands (no instant whistle) and the six-second rule ends it', () => {
-    const rt = holdingKeeper(3)
-    expect(rt.keeperHoldLeft).toBeGreaterThan(5)
-    expect(rt.finished).toBe(false)
-    for (let i = 0; i < 60 * 7 && !rt.result; i++) rt.stepOnce()
-    expect(rt.result).not.toBeNull()
-    expect(rt.endReason).toBe('six seconds')
-    expect(rt.result?.outcome).toBe('defended')
-  })
-
-  it('a throw to a team-mate completes the distribution; the outcome never counts as conceded', () => {
-    let completed = 0
-    for (let seed = 1; seed <= 8; seed++) {
+  // Playtest round 7: in a save moment the catch ends it (the save is the moment; distribution is gk_distribution).
+  it('a held ball in a save moment ends it as defended (no hold, no throw to lose)', () => {
+    for (let seed = 1; seed <= 4; seed++) {
       const rt = holdingKeeper(seed)
-      if (rt.keeperHoldLeft === 0) continue
-      rt.queueAction({ kind: 'pass', dir: { x: 1, y: 0 } })
-      for (let i = 0; i < 60 * 8 && !rt.finished; i++) rt.stepOnce()
-      expect(rt.finished).toBe(true)
+      expect(rt.keeperHoldLeft).toBe(0)
+      for (let i = 0; i < 60 && !rt.result; i++) rt.stepOnce()
+      if (rt.endReason === 'keeper holds') expect(rt.result?.outcome).toBe('defended')
       expect(rt.result?.outcome).not.toBe('conceded')
-      if (rt.result?.outcome === 'pass_complete') completed++
     }
-    expect(completed).toBeGreaterThan(0)
   })
 })
 

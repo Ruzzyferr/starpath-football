@@ -507,7 +507,9 @@ export const KEEPER_HOLD_SECONDS = 6
 /** After the release, how long the distribution has to find a team-mate. */
 export const KEEPER_RELEASE_SECONDS = 4.5
 /** Keeper moments where a hero keeper who holds the ball gets to distribute it. */
-const KEEPER_HOLD_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['gk_save', 'gk_1v1', 'gk_sweep'])
+// (Playtest round 7: the save is the moment — six more seconds of holding it, a throw and "TOP KAYBI" after a catch read
+// as punishment; distribution has its own moment, gk_distribution.)
+const KEEPER_HOLD_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>([])
 /** fk_wall outcomes that all mean "the free kick was kept out". */
 const FK_WALL_HELD: ReadonlySet<HighlightOutcome> = new Set<HighlightOutcome>(['timeout', 'shot_conceded', 'saved', 'missed', 'blocked', 'woodwork', 'pass_complete', 'lost_ball'])
 const SHOT_KINDS: ReadonlySet<KickKind> = new Set<KickKind>(['shot', 'chip', 'header', 'penalty', 'freekick'])
@@ -3537,6 +3539,9 @@ export class HighlightRuntime {
       }
       case 'pass': {
         if (heldFor < 0.35) break
+        // recovery_run: the breakaway is his to run with — he drives at goal, not plays it around (playtest: they passed
+        // it about for eight seconds and the hero never had a man to catch).
+        if (this.kind === 'recovery_run' && a.team === 'opp' && a.pos.x > 22) break
         // Lead the runner as evaluated (half a second ahead), never past his reach into the keeper.
         const target = passLead(a.pos, dec.to, dec.lofted)
         const kind: KickKind = dec.lofted ? 'lofted' : 'pass'
@@ -4793,7 +4798,7 @@ export class HighlightRuntime {
       } else if (s && s.by.team === 'hero') {
         this.finish(s.assistBy ? 'pass_complete' : this.heroInvolvedOutcome(), 'keeper holds teammate shot')
       } else {
-        this.finish('lost_ball', 'keeper claims')
+        this.finish(this.passCredit() ? 'pass_complete' : 'lost_ball', 'keeper claims')
       }
     } else if (k.isHero && this.phase === 'live' && KEEPER_HOLD_KINDS.has(this.kind) && !this.keeperHold) {
       // Hero keeper: the ball is in his hands, now he decides where it goes (2.1#85).

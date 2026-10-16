@@ -84,6 +84,7 @@ const FOCUSABLE = 'button:not([disabled]), input:not([disabled])'
 /** Controls text for the current input platform. */
 function controlsText(h: HowTo, p: InputPlatform): string[] {
   if (h.controls) return [copy(p === 'touch' ? h.controls.touch : h.controls.pc)]
+  if (p === 'touch' && h.touchControls) return [lt(h.touchControls)]
   return h.groups.slice(0, 2).map((g) => tx(`help.hints.${p}.${g}`))
 }
 

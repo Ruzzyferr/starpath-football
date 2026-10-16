@@ -254,22 +254,63 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     const side = info.ball.x < info.hero.x ? 'diveLeft' : 'diveRight'
     const b = btn([side, ...KEEPER_BTNS])
     const incoming = wdist(hero.world, ballW) < 22
-    if (b && incoming && state.now - state.actedAt > 700) {
+    const kc = info.agents.find((a) => a.owner)
+    // A man running at him with the ball (1v1 / sweeper): come off the line once (ÇIK) to narrow the angle, then stay
+    // big — a keeper does not dive at a man still dribbling (playtest: diving at 20 m, he was walked round every time).
+    if (kc && kc.team === 'opp' && !info.heroOnBall) {
+      const dk = wdist(hero.world, kc.world)
+      const rush = btn(['rush'])
+      if (rush && dk < 16 && dk > 6 && !(state as any).rushed) {
+        ;(state as any).rushed = true
+        await th.reaction()
+        await th.tap(rush, `keeper ÇIK at ${dk.toFixed(0)} m`)
+        return { kind: 'keeper', why: 'rush' }
+      }
+      const blockB = btn(['dive', 'smother', 'claim'])
+      if (blockB && dk < 2.2 && state.now - state.actedAt > 600) {
+        await th.tap(blockB, `keeper goes down at his feet (${dk.toFixed(1)} m)`)
+        return { kind: 'keeper', why: 'smother' }
+      }
+      await th.releaseStick()
+      return { kind: 'wait', why: 'keeper set' }
+    }
+    // A ball played over the top toward our box with nobody on it (the sweeper moment): come out for it — ÇIK.
+    const rushB = btn(['rush'])
+    if (rushB && !kc && (info.ballSpeed ?? 0) > 3 && (info.ballZ ?? 0) < 1 && wdist(hero.world, ballW) > 6 && !(state as any).rushed) {
+      ;(state as any).rushed = true
+      await th.reaction()
+      await th.tap(rushB, `keeper ÇIK for the loose ball (${wdist(hero.world, ballW).toFixed(0)} m)`)
+      return { kind: 'keeper', why: 'sweep' }
+    }
+    // A cross dropping into the box: CATCH it (or punch), not dive at it.
+    const claimB = btn(['claim', 'punch'])
+    if (claimB && !kc && (info.ballZ ?? 0) > 1 && incoming && state.now - state.actedAt > 700) {
+      await th.reaction()
+      await th.tap(claimB, `keeper ${claimB.id} the cross`)
+      return { kind: 'keeper', why: claimB.id }
+    }
+    // A shot / cross on its way: dive / claim.
+    const shotOn = !kc && (info.ballSpeed ?? 0) > 9
+    if (b && incoming && (shotOn || info.kind === 'gk_penalty' || info.kind === 'fk_wall') && state.now - state.actedAt > 700) {
       await th.reaction()
       await th.releaseStick()
       await th.tap(b, `keeper button ${b.id}`)
       return { kind: 'keeper', why: `pressed ${b.id}` }
     }
     if (info.heroOnBall) {
-      const mate = info.agents.filter((a) => a.team === 'hero' && !a.hero).sort((p, q) => q.world.x - p.world.x)[0]
+      // A team-mate he can see (or his badge on the screen edge) — not one off the screen.
+      const seen = info.agents.filter((a) => a.team === 'hero' && !a.hero && visible(info, a.feet)).sort((p, q) => q.world.x - p.world.x)[0]
+      const edge = (info.edgeMates ?? [])[0]
+      const mate = seen ? { id: seen.id, feet: seen.feet } : edge ? { id: 'edge badge', feet: { x: edge.x, y: edge.y } } : null
       if (mate && state.now - state.actedAt > 900) {
         await th.reaction()
         await th.tap(mate.feet, `keeper distributes to ${mate.id}`)
         return { kind: 'pass', why: `tap mate ${mate.id}` }
       }
     }
-    await th.stick(c, { x: info.ball.x - info.hero.x, y: info.ball.y - info.hero.y })
-    return { kind: 'move', why: 'keeper tracks ball' }
+    // The keeper positions himself when the stick is free (assisted positioning).
+    await th.releaseStick()
+    return { kind: 'wait', why: 'keeper positioning' }
   }
   // On the ball.
   if (info.heroOnBall) {
