@@ -595,7 +595,7 @@ export function dribbleReach(dribbling: number, sprinting: boolean): number {
 export const HEAD_ARM_WINDOW = 3
 /** The drop marker: where a falling ball passes this height (m), the header's meeting point. */
 /** Moments built around a header: the drop marker shows where the ball comes down through head height. */
-export const HEADER_MARK_KINDS: ReadonlySet<string> = new Set(['corner', 'header', 'back_post', 'corner_kick', 'cross', 'gk_claim'])
+export const HEADER_MARK_KINDS: ReadonlySet<string> = new Set(['corner', 'header', 'back_post', 'corner_kick', 'cross', 'gk_claim', 'long_ball_control'])
 export const DROP_MARK_Z = 2.3
 export const HEAD_ARM_LEAD = 0.28
 export const HEAD_ARM_EXACT = 0.5
