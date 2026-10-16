@@ -1733,7 +1733,12 @@ export class HighlightRuntime {
           case 'cross': {
             // Crossing: whip it toward the runner in the box (or the penalty spot area).
             const sideY = from.y < GOAL_CENTER_Y ? 1 : -1
-            const runner = mates.filter((m) => m.pos.x > PITCH_LENGTH - 18 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 12).sort((p, q) => dist(p.pos, { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }) - dist(q.pos, { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }))[0]
+            // (The freest runner, not the nearest to the spot — playtest: the button found the marked man and the defender
+            // headed it clear every time. His Vision decides how well he picks: a low-Vision crosser still goes central.)
+            const spot = { x: PITCH_LENGTH - 9, y: GOAL_CENTER_Y }
+            const room = (m: { pos: Vec2 }) => Math.min(6, ...opp.map((o) => dist(o, m.pos)))
+            const vis = a01(hero.attrs.vision)
+            const runner = mates.filter((m) => m.pos.x > PITCH_LENGTH - 18 && Math.abs(m.pos.y - GOAL_CENTER_Y) < 12).sort((p, q) => (dist(p.pos, spot) * 0.25 - room(p) * vis) - (dist(q.pos, spot) * 0.25 - room(q) * vis))[0]
             const sk = momentSkill('cross', hero.attrs)
             const aimed = inField(runner ? leadPosition(from, runner, 18, 3) : { x: PITCH_LENGTH - 8, y: GOAL_CENTER_Y + sideY * 2 }, 2)
             // Left too late, with the full-back on him: blocked.

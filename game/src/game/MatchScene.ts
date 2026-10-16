@@ -2386,7 +2386,8 @@ export class MatchScene extends Phaser.Scene {
     // pitch too. Playtest: a black band below the goal line in keeper moments.)
     const cs = this.camScreenY()
     const up = (cs - this.hudTop - this.promptReserve()) / this.cam.zoom
-    const down = (this.scale.height - cs) / this.cam.zoom
+    // (…and the thumb strip at the bottom is under the buttons: our goal in a keeper moment sat behind them.)
+    const down = (this.scale.height - this.thumbReserve() - cs) / this.cam.zoom
     const c0 = clampCamera(this.cam.x, this.cam.y + (down - up) / 2, w / (2 * this.cam.zoom), (up + down) / 2)
     const c = { x: c0.x, y: c0.y - (down - up) / 2 }
     if (this.camSpring && (c.x !== this.cam.x || c.y !== this.cam.y)) {
@@ -3133,13 +3134,15 @@ ${attrs}`, open: false, box: null }
     if (notBeaten) txt = s.notBeaten
     // A partial success that ended with the ball gone: say what he did, then that it was lost (playtest: "FIRSAT!" on a
     // lost ball read as a contradiction).
-    const lostAfter = partial && !forced && !dutyKind && !contactKind && (r.outcome === 'lost_ball' || r.outcome === 'foul_committed' || r.outcome === 'timeout')
+    const lostAfter = partial && !forced && !dutyKind && !contactKind && (r.outcome === 'lost_ball' || r.outcome === 'timeout' || r.outcome === 'cleared')
     if (lostAfter) txt = this.rt.kind === 'dribble' ? s.beatMan : s.chanceLost
     // Switch of play: a pass that found a man on the same side, then lost — the switch was not made (not his "lost ball").
     const noSwitch = this.rt.kind === 'switch_play' && r.tier === 'fail' && (r.passesCompleted ?? 0) > 0 && !r.offside
     if (noSwitch) txt = s.noSwitch
     const pressBeaten = this.rt.kind === 'press_trap' && r.outcome === 'timeout' && r.tier !== 'full'
     if (pressBeaten) txt = s.pressBeaten
+    // His foul ends it: the banner says the foul (the card is the sub), not the good part before it.
+    if (r.outcome === 'foul_committed' && !r.offside) txt = s.foul_committed
     const wallHit = this.rt.kind === 'freekick' && r.outcome === 'blocked'
     if (wallHit) txt = s.wallHit
     const teamOnly = dutyKind && r.tier === 'fail' && (r.outcome === 'defended' || r.outcome === 'cleared')

@@ -260,16 +260,18 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     if (kc && kc.team === 'opp' && !info.heroOnBall) {
       const dk = wdist(hero.world, kc.world)
       const rush = btn(['rush'])
-      if (rush && dk < 16 && dk > 6 && !(state as any).rushed) {
+      if (rush && dk < (info.kind === 'gk_1v1' ? 8 : 16) && dk > 3 && !(state as any).rushed) {
         ;(state as any).rushed = true
         await th.reaction()
         await th.tap(rush, `keeper ÇIK at ${dk.toFixed(0)} m`)
         return { kind: 'keeper', why: 'rush' }
       }
-      const blockB = btn(['dive', 'smother', 'claim'])
-      if (blockB && dk < 2.2 && state.now - state.actedAt > 600) {
-        await th.tap(blockB, `keeper goes down at his feet (${dk.toFixed(1)} m)`)
-        return { kind: 'keeper', why: 'smother' }
+      // Then set and big (ORTADA KAL) as he comes in; the dive is for the shot (below), not at a man still on it.
+      const stayB = btn(['stay'])
+      if (stayB && dk < 8 && info.kind !== 'gk_1v1' && !(state as any).stayed) {
+        ;(state as any).stayed = true
+        await th.tap(stayB, `keeper ORTADA KAL at ${dk.toFixed(1)} m`)
+        return { kind: 'keeper', why: 'stay big' }
       }
       await th.releaseStick()
       return { kind: 'wait', why: 'keeper set' }

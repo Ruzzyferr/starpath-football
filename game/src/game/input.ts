@@ -214,6 +214,9 @@ function oscPower(t: number): number {
 }
 
 /** Converts device input into a per-frame intent stream. Call {@link dispose} when done. */
+/** Seconds a challenge button that just appeared ignores presses (a thumb meant for the button that was there). */
+export const CTX_SWAP_GRACE = 0.35
+
 export class InputController {
   private readonly canvas: HTMLCanvasElement
   private readonly map: InputMapper
@@ -245,6 +248,8 @@ export class InputController {
   private readonly off: (() => void)[] = []
   /** Context buttons (null = the legacy SPRINT / SKILL pair, as in training). */
   private ctxButtons: ContextButton[] | null = null
+  /** When the button set last changed (see ctxHit). */
+  private ctxChangedAt = -1e9
   /** Pointer id → context button held down by it. */
   private readonly ctxDown = new Map<number, ActionId>()
   /** Last polled movement (a PASS / THROUGH button plays along it). */
@@ -258,6 +263,8 @@ export class InputController {
     const cur = this.ctxButtons
     const same = cur && btns && cur.length === btns.length && cur.every((b, i) => b.id === btns[i]!.id && b.key === btns[i]!.key)
     if (same || (!cur && !btns)) return
+    // (A swap of one live set for another — not the first set of the moment.)
+    if (cur && cur.length && btns?.length) this.ctxChangedAt = this.now()
     this.ctxButtons = btns ? btns.map((b) => ({ ...b })) : null
     const ids = new Set(btns?.map((b) => b.id) ?? [])
     for (const [p, id] of [...this.ctxDown]) {
@@ -427,6 +434,13 @@ export class InputController {
       .filter((q) => this.hit(q, p))
       .sort((q1, q2) => Math.hypot(p.x - q1.x, p.y - q1.y) / q1.r - Math.hypot(p.x - q2.x, p.y - q2.y) / q2.r)[0]
     if (!b) return false
+    // A challenge button that has just replaced another under his thumb (the ball lost, DEPAR became KAYARAK) does not
+    // fire for a beat — playtest: a thumb going back to DEPAR slid in from behind for a red card. The press is taken
+    // (the thumb is on it) but does nothing.
+    if ((b.id === 'slide' || b.id === 'tackle') && this.now() - this.ctxChangedAt < CTX_SWAP_GRACE) {
+      this.ctxDown.set(pointerId, b.id)
+      return true
+    }
     this.ctxDown.set(pointerId, b.id)
     // With the ball at his feet a thumb may start on a button on its way to goal: the tap waits for the
     // release (a drag becomes the swipe). Off the ball / in goal it fires at once and never swipes.
