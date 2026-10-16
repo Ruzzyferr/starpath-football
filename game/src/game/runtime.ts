@@ -1492,9 +1492,13 @@ export class HighlightRuntime {
     // Into the space ahead of the pair, curling toward the touchline side of the channel.
     const target = inField({ x: this.hero.pos.x + this.rng.range(7, 9), y: this.hero.pos.y + (this.hero.pos.y < GOAL_CENTER_Y ? -1 : 1) * this.rng.range(0, 1.5) }, 3)
     // A driven ball over that distance (a ground through ball would die short of the channel).
-    const kind: KickKind = dist(from, target) > 24 ? 'lofted' : 'through'
-    const plan = planKick({ kind, from, target, ...(kind === 'lofted' ? { targetZ: 0.3 } : {}), power: 0.75, curl: 0, attrs: by.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 0.8 }, this.rng)
-    this.kickBall(by, plan, kind, 0.75, null)
+    // (Along the ground, harder when it is longer: playtest — a lofted channel ball crossed head height beside his marker,
+    // who headed it away before the duel could happen.)
+    const d = dist(from, target)
+    const kind: KickKind = d > 34 ? 'lofted' : 'through'
+    const power = kind === 'through' ? clampN(0.75 + (d - 20) * 0.015, 0.75, 0.95) : 0.75
+    const plan = planKick({ kind, from, target, ...(kind === 'lofted' ? { targetZ: 0.3 } : {}), power, curl: 0, attrs: by.attrs, pressure: 0, assist: 'manual', env: this.env, noiseScale: 0.8 }, this.rng)
+    this.kickBall(by, plan, kind, power, null)
   }
 
   /** long_ball_control: the deep team-mate hits a long diagonal toward the hero's feet/chest. */
