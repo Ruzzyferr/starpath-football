@@ -605,7 +605,7 @@ export const HEAD_ARM_EXACT = 0.5
 export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['build_up', 'counter', 'counter_2v1', 'one_on_one', 'edge_of_box', 'dribble'])
 
 /** A tap within this distance (m) of the opponent on the ball is a challenge on him; elsewhere it is not. */
-export const TAP_CHALLENGE_R = 3.5
+export const TAP_CHALLENGE_R = 1.8
 
 /** CROSS button: delivery quality added for a ball picked onto the freest runner in the corridor (see resolveHeroKick). */
 export const CROSS_BUTTON_Q = 0.2
@@ -1916,7 +1916,8 @@ export class HighlightRuntime {
       if (act.kind === 'swipe' && !act.swipe.isTap) return this.startSlide(act.swipe.dir)
       // A tap counts as a challenge only on (or near) the man with the ball (playtest: a pass tap on a team-mate, the
       // ball lost within the reaction time, became a foul from behind and a yellow).
-      if (act.kind === 'tapAt' && dist(act.at, carrier.pos) > TAP_CHALLENGE_R) return
+      // (…and a tap nearer one of his own team-mates than the carrier is a pass that came too late, not a challenge.)
+      if (act.kind === 'tapAt' && (dist(act.at, carrier.pos) > TAP_CHALLENGE_R || this.agents.some((m) => m.team === 'hero' && !m.isHero && dist(m.pos, act.at) < dist(carrier.pos, act.at)))) return
       if (act.kind === 'action' || act.kind === 'skill' || act.kind === 'tapAt' || act.kind === 'pass') {
         if (d < 1.8) return this.standingTackle(carrier)
         if (d < 5.5) return this.startSlide(norm(sub(add(ballP, scale(carrier.vel, 0.25)), hero.pos)))
@@ -3799,7 +3800,7 @@ export class HighlightRuntime {
       // as it shows; a good reader sees the true side, a poor one is sold the other way now and then.
       if (this.time >= pp.runStart - 0.4 && this.hero.isKeeper && !pp.told && Math.abs(pp.target.y - GOAL_CENTER_Y) > 1) {
         pp.told = true
-        const truthful = this.rng.chance(0.55 + (a01(this.hero.attrs.gkPositioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2) * 0.4)
+        const truthful = this.rng.chance(0.4 + (a01(this.hero.attrs.gkPositioning) * 0.6 + a01(this.hero.attrs.reflexes) * 0.2) * 0.45)
         const y = truthful ? pp.target.y : GOAL_CENTER_Y - (pp.target.y - GOAL_CENTER_Y)
         this.events.push({ type: 'penaltyTell', by: taker.id, y })
       }
