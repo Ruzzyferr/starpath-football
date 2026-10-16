@@ -85,16 +85,18 @@ for (const kind of KINDS) {
             await sleep(persona.react[0] * 3)
             const zones = picker.locator('button[data-pick^="zone:"]')
             const nz = await zones.count()
+            // (A real touch at the button, like a thumb; Playwright's locator.tap() crashed the page here.)
+            const touchBtn = async (loc: typeof zones, what: string) => {
+              const b = await loc.boundingBox().catch(() => null)
+              if (b) await th.tap({ x: b.x + b.width / 2, y: b.y + b.height / 2 }, what)
+            }
             if (nz) {
               const z = zones.nth(Math.floor(r() * nz))
-              th.note(`picker: ${(await z.textContent()) ?? ''}`)
-              await z.tap().catch(() => undefined)
+              await touchBtn(z, `picker: ${(await z.textContent()) ?? ''}`)
               await sleep(250)
             }
-            const go = picker.locator('button[data-pick="take"], button[data-pick="ok"]').first()
-            th.note('picker: take / ok')
-            await go.tap().catch(() => undefined)
-            await sleep(200)
+            await touchBtn(picker.locator('button[data-pick="take"], button[data-pick="ok"]').first(), 'picker: take / ok')
+            await sleep(300)
             continue
           }
           if (info.phase !== 'live' || info.paused) {
@@ -117,6 +119,7 @@ for (const kind of KINDS) {
           await sleep(60)
         }
         await th.releaseStick()
+        await th.sprint(undefined, false)
         const probe = await gestureProbe(page)
         const gf = first?.goalFrame
         const keeper = first?.agents?.find((a) => a.keeper && a.team === 'opp')
@@ -126,6 +129,7 @@ for (const kind of KINDS) {
               goalHeightPx: Math.hypot(gf.barL.x - gf.postL.x, gf.barL.y - gf.postL.y),
               keeperHeightPx: keeper ? Math.hypot(keeper.head.x - keeper.feet.x, keeper.head.y - keeper.feet.y) : null,
               heroToGoalM: first ? 105 - first.heroWorld.x : null,
+              heroToOwnGoalM: first ? first.heroWorld.x : null,
               heroLateralM: first ? first.heroWorld.y - 34 : null,
             }
           : null

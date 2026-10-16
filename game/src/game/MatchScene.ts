@@ -204,7 +204,7 @@ const T = {
     tierSavedSub: 'Keeper saved · partial success', tierChanceSub: 'Clear chance created · partial success', tierWoodSub: 'Off the woodwork · partial success',
     tierDuty: 'JOB DONE', tierDutySub: 'Kept out while you did your job · partial success',
     tierPass: 'GOOD PASS!', tierPassSub: 'Your pass found its man · partial success',
-    teamDefended: 'TEAM-MATES CLEARED IT', teamDefendedSub: 'You were not involved · no credit',
+    teamDefended: 'TEAM SAVED IT', teamDefendedSub: 'You were not involved · no credit',
     tierContact: 'FIRST BALL!', tierContactSub: 'Won the first contact · partial success', tierSwitchSub: 'The switch found its man · partial success',
   },
   tr: {
@@ -224,7 +224,7 @@ const T = {
     tierSavedSub: 'Kaleci kurtardı · kısmi başarı', tierChanceSub: 'Net fırsat yarattın · kısmi başarı', tierWoodSub: 'Direkten döndü · kısmi başarı',
     tierDuty: 'GÖREV TAMAM', tierDutySub: 'Görevini yaptın, tehlike önlendi · kısmi başarı',
     tierPass: 'İYİ PAS!', tierPassSub: 'Pasın adamını buldu · kısmi başarı',
-    teamDefended: 'TAKIM ARKADAŞLARIN KURTARDI', teamDefendedSub: 'Sen müdahale etmedin · başarı sayılmadı',
+    teamDefended: 'TAKIM KURTARDI', teamDefendedSub: 'Sen müdahale etmedin · başarı sayılmadı',
     tierContact: 'İLK TOP!', tierContactSub: 'İlk teması kazandın · kısmi başarı', tierSwitchSub: 'Kanat değişti, adamını buldu · kısmi başarı',
   },
 } as const
@@ -286,6 +286,10 @@ const GOAL_FRAME_RANGE = 36
 /** On the ball this close to goal the view frames the goal mouth, zooming in up to {@link SHOT_FRAME_MAX_ZOOM}. */
 const SHOT_FRAME_RANGE = 24
 const SHOT_FRAME_MAX_ZOOM = 1.35
+/** Share of a portrait phone screen kept clear of the action at the bottom (thumbs, context buttons). */
+const THUMB_RESERVE = 0.17
+/** The on-the-ball frame may pull back this far (a switch to the far wing has to fit on a portrait phone). */
+const ON_BALL_MIN_ZOOM = 0.48
 
 export class MatchScene extends Phaser.Scene {
   private data0!: SceneData
@@ -1653,6 +1657,21 @@ export class MatchScene extends Phaser.Scene {
     this.updateCamera(dt, bx, by, bz, false)
   }
 
+  /**
+   * Team-mates the on-the-ball frame keeps in view: the game's two best pass options plus the freest man ahead (the
+   * switch / the runner the moment is built around — playtest: they were off screen, nobody to tap).
+   */
+  private frameMates(mates: readonly Agent[]): Vec2[] {
+    const rt = this.rt
+    const opts = rt.passOptions().map((id) => mates.find((m) => m.id === id)).filter((m): m is Agent => !!m).slice(0, 2)
+    const opp = rt.agents.filter((a) => a.team === 'opp')
+    const free = (m: Agent) => Math.min(...opp.map((o) => dist(o.pos, m.pos)))
+    const ahead = mates
+      .filter((m) => !opts.includes(m) && m.pos.x > rt.hero.pos.x - 3 && dist(m.pos, rt.hero.pos) < 45)
+      .sort((p, q) => free(q) + (q.pos.x - rt.hero.pos.x) * 0.15 - (free(p) + (p.pos.x - rt.hero.pos.x) * 0.15))[0]
+    return [...opts, ...(ahead ? [ahead] : [])].map((m) => m.pos)
+  }
+
   /** Last landing read of a ball in the air (refreshed ~10× a second). */
   private drop: { x: number; y: number; t: number; at: number } | null = null
 
@@ -1669,7 +1688,7 @@ export class MatchScene extends Phaser.Scene {
       return
     }
     if (!this.drop || this.elapsed - this.drop.at > 0.1) {
-      const l = rt.landingPoint()
+      const l = rt.dropZone()
       this.drop = l ? { ...l, at: this.elapsed } : null
     }
     const d = this.drop
@@ -2249,7 +2268,7 @@ export class MatchScene extends Phaser.Scene {
     let ty: number
     if (this.debugCam) target = this.debugCam
     const w = this.scale.width
-    const h = this.scale.height - this.hudTop
+    const h = this.scale.height - this.hudTop - this.thumbReserve()
     // Moment-start framing (2.2#4): ease in 350 ms to ball + hero + 3 pass options, hold until play starts.
     const open = !target && !replay && this.mode === 'play' ? this.openCamStep() : null
     if (open) {
@@ -2296,14 +2315,21 @@ export class MatchScene extends Phaser.Scene {
         const shooting = toGoal < SHOT_FRAME_RANGE
         const pts = shooting
           ? [{ x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y - GOAL_WIDTH / 2 - 1 }, { x: PITCH_LENGTH + 1.2, y: GOAL_CENTER_Y + GOAL_WIDTH / 2 + 1 }]
-          : rt.passOptions().map((id) => mates.find((m) => m.id === id)?.pos).filter((p): p is Vec2 => !!p).slice(0, 2)
+          : this.frameMates(mates)
         if (!shooting && toGoal < GOAL_FRAME_RANGE) pts.push({ x: PITCH_LENGTH + 1.5, y: GOAL_CENTER_Y })
         if (pts.length) {
-          const f = momentFrame(rt.ball, rt.hero.pos, pts, { w, h }, this.cam.base, shooting ? SHOT_FRAME_MAX_ZOOM : 1)
+          const f = momentFrame(rt.ball, rt.hero.pos, pts, { w, h }, this.cam.base, shooting ? SHOT_FRAME_MAX_ZOOM : 1, ON_BALL_MIN_ZOOM)
           tx = f.x
           ty = f.y
           this.attnZoom = f.zoomMult
         }
+      } else if (!cc && !replay && !rt.heroOnBall && !rt.heroIsKeeper && dist(rt.hero.pos, rt.ball) > 8) {
+        // Off the ball: he stays in the frame with the ball (playtest: after his pass the camera followed the
+        // ball and he ran off the bottom of the screen, out of control).
+        const f = momentFrame(rt.ball, rt.hero.pos, [], { w, h }, this.cam.base)
+        tx = f.x
+        ty = f.y
+        this.attnZoom = f.zoomMult
       }
     }
     if (!open) {
@@ -2345,7 +2371,17 @@ export class MatchScene extends Phaser.Scene {
     cam.setZoom(this.cam.zoom)
     // The score bar covers the top of the canvas: centre the frame in the part below it (playtest: on a free kick
     // the goal sat under the bar).
-    cam.centerOn(this.cam.x, this.cam.y - this.hudTop / (2 * this.cam.zoom))
+    cam.centerOn(this.cam.x, this.cam.y - (this.hudTop - this.thumbReserve()) / (2 * this.cam.zoom))
+  }
+
+  /**
+   * Screen strip at the bottom taken by the thumbs and the touch buttons (playtest: the hero sank under the
+   * buttons). Phones in portrait only; 0 elsewhere.
+   */
+  private thumbReserve(): number {
+    const ui = this.input0?.touchUi()
+    if (!ui?.enabled || this.scale.width >= this.scale.height) return 0
+    return Math.round(this.scale.height * THUMB_RESERVE)
   }
 
   /**
@@ -2380,7 +2416,7 @@ export class MatchScene extends Phaser.Scene {
     const opts = [...picked.map((m) => m.pos), ...rest]
     // On the ball within range of goal: the goal mouth is in the opening frame too (you aim at what you see).
     if (rt.heroOnBall && !rt.heroIsKeeper && PITCH_LENGTH - rt.ball.x < GOAL_FRAME_RANGE) opts.push({ x: PITCH_LENGTH, y: GOAL_CENTER_Y })
-    const h = this.scale.height - this.hudTop
+    const h = this.scale.height - this.hudTop - this.thumbReserve()
     const f = momentFrame(rt.ball, hero.pos, opts, { w: this.scale.width, h }, this.cam.base)
     this.openCam = { x: f.x, y: f.y, zoomMult: f.zoomMult, t0: this.elapsed, fromX: this.cam.x, fromY: this.cam.y, fromZoom: this.cam.zoom }
   }

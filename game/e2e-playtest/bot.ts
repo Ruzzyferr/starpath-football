@@ -95,6 +95,7 @@ export const gestureProbe = (page: Page) =>
 
 const JOY = 1
 const TAP = 2
+const SPRINT = 3
 
 /** Logged input, for the review. */
 export interface InputLog {
@@ -113,6 +114,7 @@ export class Thumbs {
   private pts(extra?: { x: number; y: number; id: number }) {
     const a: { x: number; y: number; id: number; radiusX: number; radiusY: number; force: number }[] = []
     if (this.joy) a.push({ x: this.joy.cur.x, y: this.joy.cur.y, id: JOY, radiusX: 8, radiusY: 8, force: 1 })
+    if (this.sprintAt && extra?.id !== SPRINT) a.push({ x: this.sprintAt.x, y: this.sprintAt.y, id: SPRINT, radiusX: 8, radiusY: 8, force: 1 })
     if (extra) a.push({ ...extra, radiusX: 8, radiusY: 8, force: 1 })
     return a
   }
@@ -131,7 +133,10 @@ export class Thumbs {
 
   /** Push the stick toward a screen direction (thumb stays down). */
   async stick(c: Info['canvas'], dir: Pt | null): Promise<void> {
-    if (!dir) return this.releaseStick()
+    if (!dir || !Number.isFinite(dir.x) || !Number.isFinite(dir.y)) {
+      if (dir) this.note(`bad stick target ${dir.x},${dir.y}`)
+      return this.releaseStick()
+    }
     const l = Math.hypot(dir.x, dir.y)
     if (l < 1e-3) return this.releaseStick()
     const radius = Math.min(c.width, c.height) * 0.11
@@ -143,10 +148,22 @@ export class Thumbs {
     this.joy.cur = { x: this.joy.base.x + (dir.x / l) * radius, y: this.joy.base.y + (dir.y / l) * radius }
     await this.send('touchMove')
   }
+  private sprintAt: Pt | null = null
+  /** Hold / release the SPRINT button with another finger (third touch id). */
+  async sprint(btn: ButtonInfo | undefined, on: boolean): Promise<void> {
+    if (on && btn && !this.sprintAt) {
+      this.sprintAt = this.scatter(btn)
+      this.note('hold SPRINT', this.sprintAt)
+      await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: this.pts({ ...this.sprintAt, id: SPRINT }) })
+    } else if (!on && this.sprintAt) {
+      this.sprintAt = null
+      await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
+    }
+  }
   async releaseStick(): Promise<void> {
     if (!this.joy) return
     this.joy = null
-    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] })
+    await this.cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: this.pts() })
   }
 
   /** A quick tap (second finger if the stick is held). */
@@ -212,6 +229,8 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   const c = info.canvas
   const hero = info.agents.find((a) => a.hero)
   if (!hero) return { kind: 'wait', why: 'no hero' }
+  const carrier0 = info.agents.find((a) => a.owner)
+  if (!carrier0 || carrier0.team !== 'opp') await th.sprint(undefined, false)
   const btn = (pool: string[]) => pool.map((id) => info.buttons.find((b) => b.id === id)).find(Boolean)
   const ballW = info.ballWorld
   const goalX = 105
@@ -253,6 +272,22 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       return { kind: 'shoot', why: `in range ${toGoal.toFixed(0)} m` }
     }
     const opps = info.agents.filter((a) => a.team === 'opp')
+    // Space in front and not yet in range: run at goal with it (what a person does in a 1v1 / on a break).
+    const inFront = opps.filter((o) => !o.keeper && o.world.x > hero.world.x - 1 && wdist(o.world, hero.world) < 7).length
+    if (!inFront && toGoal > persona.shootRange && info.kind !== 'cross' && info.kind !== 'switch_play' && state.now - state.actedAt > 300) {
+      await th.stick(c, { x: goalAt.x - hero.feet.x, y: goalAt.y - hero.feet.y })
+      return { kind: 'move', why: 'dribble into space' }
+    }
+    // A cross: the runner in the box, or whip it toward the penalty spot.
+    if (info.kind === 'cross') {
+      const runner = info.agents.filter((a) => a.team === 'hero' && !a.hero && !a.keeper && a.world.x > 88 && visible(info, a.feet)).sort((p, q) => q.world.x - p.world.x)[0]
+      if (runner) {
+        await th.tap(runner.feet, `cross: tap on runner ${runner.id} in the box`)
+        return { kind: 'pass', why: `cross to ${runner.id}` }
+      }
+      await th.swipe(c, goalAt, 0.7, 'cross: swipe toward the box')
+      return { kind: 'pass', why: 'cross swipe' }
+    }
     const allMates = info.agents.filter((a) => a.team === 'hero' && !a.hero && !a.keeper)
     const mates = allMates
       .filter((a) => visible(info, a.feet))
@@ -277,18 +312,42 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   // Defending: chase the man on the ball, challenge when close.
   if (carrier && carrier.team === 'opp') {
     const d = wdist(hero.world, carrier.world)
+    // Block (as the card says): get into the line between him and our goal, ~3 m off him, and stay on your feet.
+    if (info.kind === 'block') {
+      const own = { x: 0, y: 34 }
+      const dx = own.x - carrier.world.x
+      const dy = own.y - carrier.world.y
+      const l = Math.hypot(dx, dy) || 1
+      const spot = { x: carrier.world.x + (dx / l) * 3, y: carrier.world.y + (dy / l) * 3 }
+      if (wdist(hero.world, spot) < 0.8) {
+        await th.releaseStick()
+        return { kind: 'wait', why: 'set in the shooting line' }
+      }
+      // The spot on screen: 3 m along the line from him to our goal (both are on screen-space known points).
+      const f = 3 / l
+      const spotS = { x: carrier.feet.x + (info.ownGoal.x - carrier.feet.x) * f, y: carrier.feet.y + (info.ownGoal.y - carrier.feet.y) * f }
+      await th.stick(c, { x: spotS.x - hero.feet.x, y: spotS.y - hero.feet.y })
+      return { kind: 'move', why: 'into the shooting line' }
+    }
     const b = btn(DEFEND_BTNS)
     if (d < 2.6 && state.now - state.actedAt > 600) {
+      await th.sprint(undefined, false)
       await th.reaction()
       if (b) await th.tap(b, `defend button ${b.id} at ${d.toFixed(1)} m`)
       else await th.tap(carrier.feet, `tap on carrier at ${d.toFixed(1)} m`)
       return { kind: 'tackle', why: b ? `button ${b.id}` : 'tap carrier' }
     }
+    await th.sprint(btn(['sprint']), d > 5)
     await th.stick(c, { x: carrier.feet.x - hero.feet.x, y: carrier.feet.y - hero.feet.y })
     return { kind: 'move', why: `chase carrier ${d.toFixed(1)} m` }
   }
   // Team-mate on the ball: run forward into space.
   if (carrier && carrier.team === 'hero') {
+    // Timed run: hold the line (stay onside) until the pass is played, then go (the drop marker takes over).
+    if (info.kind === 'timed_run') {
+      await th.releaseStick()
+      return { kind: 'wait', why: 'holding the line' }
+    }
     await th.stick(c, { x: info.goal.x - hero.feet.x, y: info.goal.y - hero.feet.y })
     return { kind: 'move', why: 'make a run' }
   }

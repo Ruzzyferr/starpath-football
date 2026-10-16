@@ -589,10 +589,12 @@ export function dribbleReach(dribbling: number, sprinting: boolean): number {
 /** HEAD pressed early: how far ahead (s) the ball's flight is read, how long before contact he leaves the ground,
  * and how early a press still gets the ideal jump (beyond it the jump comes a little late). */
 export const HEAD_ARM_WINDOW = 3
+/** The drop marker: where a falling ball passes this height (m), the header's meeting point. */
+export const DROP_MARK_Z = 2.3
 export const HEAD_ARM_LEAD = 0.28
 export const HEAD_ARM_EXACT = 0.5
 /** Kinds where a pass that found its man is his part done even if the team loses it afterwards (playtest). */
-export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['build_up', 'counter', 'counter_2v1', 'one_on_one', 'edge_of_box'])
+export const PASS_CREDIT_KINDS: ReadonlySet<HighlightKind> = new Set<HighlightKind>(['build_up', 'counter', 'counter_2v1', 'one_on_one', 'edge_of_box', 'dribble'])
 
 export const PASS_MAGNET = 1.5
 
@@ -1213,6 +1215,14 @@ export class HighlightRuntime {
       return
     }
     this.stepEv0 = this.events.length
+    // A SHOOT pressed while the loose ball was on its way: he strikes it as it gets to him.
+    if (this.volleyArmUntil >= 0) {
+      if (this.time > this.volleyArmUntil || this.owner) this.volleyArmUntil = -1
+      else if (this.ball.z < 1.0 && dist(this.hero.pos, this.ball) < 1.6) {
+        this.volleyArmUntil = -1
+        this.heroVolley()
+      }
+    }
     // A HEAD pressed while the ball was still on its way: he goes up when it arrives (see heroJump).
     if (this.headArmAt >= 0 && this.time >= this.headArmAt) {
       this.headArmAt = -1
@@ -1856,22 +1866,21 @@ export class HighlightRuntime {
     const incoming = this.ballIncomingToHero()
     if (act.kind === 'swipe' && !act.swipe.isTap) this.heroHeaderAim = this.headerAimFromDir(act.swipe.dir)
     if (incoming || act.kind === 'action' || act.kind === 'tapAt' || act.kind === 'swipe') {
-      if (incoming && this.ball.z < 1.0 && dist(hero.pos, ballP) < 1.6) {
-        // First-time volley / shot.
-        const aim = this.heroHeaderAim ?? this.autoGoalAim()
-        const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, assistPull: this.assistPull(), env: this.env, noiseScale: this.noiseScale() * 1.3 * HERO_SHOT_NOISE, skill: momentSkill('shot', hero.attrs) }, this.rng)
-        this.kickBall(hero, plan, 'shot', 0.85, null)
-        return
-      }
+      if (incoming && this.ball.z < 1.0 && dist(hero.pos, ballP) < 1.6) return this.heroVolley()
       if (incoming || this.ball.z > 0.8 || !carrier) {
-        if (hero.cd <= 0 && hero.state !== 'jump') {
-          hero.state = 'jump'
-          hero.stateT = 0
-          hero.cd = 0.75
-          if (!this.heroHeaderAim) this.heroHeaderAim = this.autoGoalAim()
-          this.events.push({ type: 'jump', by: hero.id })
+        // Pressed as the loose ball comes (playtest: SHOOT 2–3 m from a rebound made him jump, and he could not shoot
+        // when it arrived): a ball arriving low is volleyed when it gets to him, a high one is headed (heroJump).
+        if (!carrier && act.kind !== 'swipe') {
+          const pts = predictTrajectory(this.ball, this.env, { duration: 1.6, sampleEvery: 2 })
+          const run = topSpeed({ ...hero, sprint: true }) * 0.8
+          const low = pts.find((p) => p.t > 0 && p.z < 1.0 && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.6 + run * p.t)
+          const high = pts.find((p) => p.t > 0 && p.z >= 1.3 && p.z < 2.7 && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.4 + run * p.t)
+          if (low && (!high || low.t <= high.t)) {
+            this.volleyArmUntil = this.time + low.t + 0.35
+            return
+          }
         }
-        return
+        return this.heroJump()
       }
     }
     // Team-mate on the ball: call for it (optionally pointing to space).
@@ -2023,10 +2032,11 @@ export class HighlightRuntime {
    * ground / at someone's feet. The scene marks it so a person can run to it (playtest: a long ball you cannot read
    * the flight of rolled past to the defender).
    */
-  landingPoint(): { x: number; y: number; t: number } | null {
+  dropZone(): { x: number; y: number; t: number } | null {
     if (this.owner || this.ball.z < 0.8) return null
     const pts = predictTrajectory(this.ball, this.env, { duration: 3, sampleEvery: 2 })
-    const p = pts.find((q) => q.t > 0 && q.z < 0.25)
+    // Where it comes down through head height (a header is met there, not where it lands); a low ball: where it lands.
+    const p = pts.find((q, i) => i > 0 && q.z < DROP_MARK_Z && q.z < pts[i - 1]!.z) ?? pts.find((q) => q.t > 0 && q.z < 0.25)
     return p ? { x: p.x, y: p.y, t: p.t } : null
   }
 
@@ -2232,6 +2242,18 @@ export class HighlightRuntime {
     }
   }
 
+  /** An early SHOOT on a loose ball: volley it when it reaches him, until this sim time (−1 = none). */
+  private volleyArmUntil = -1
+
+  /** First-time volley / shot of a loose ball at his feet. */
+  private heroVolley(): void {
+    const hero = this.hero
+    const ballP = { x: this.ball.x, y: this.ball.y }
+    const aim = this.heroHeaderAim ?? this.autoGoalAim()
+    const plan = planKick({ kind: 'shot', from: ballP, fromZ: this.ball.z, target: aim, power: 0.85, curl: 0, attrs: hero.attrs, pressure: this.pressureOn(hero), assist: this.assist, assistPull: this.assistPull(), env: this.env, noiseScale: this.noiseScale() * 1.3 * HERO_SHOT_NOISE, skill: momentSkill('shot', hero.attrs) }, this.rng)
+    this.kickBall(hero, plan, 'shot', 0.85, null)
+  }
+
   /** Sim time at which an early HEAD press makes him jump (−1 = none armed). */
   private headArmAt = -1
 
@@ -2246,7 +2268,10 @@ export class HighlightRuntime {
     if (hero.cd > 0 || (hero.state !== 'run' && hero.state !== 'wall')) return
     if (!armed && !this.owner && (this.ball.z > 0.4 || Math.hypot(this.ball.vx, this.ball.vy) > 6)) {
       const pts = predictTrajectory(this.ball, this.env, { duration: HEAD_ARM_WINDOW, sampleEvery: 2 })
-      const hit = pts.find((p) => p.z > 1.3 && p.z < 2.7 && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.4)
+      // Where the ball comes down through head height within his reach — counting the ground he covers on the way
+      // (playtest: running onto the cross, the press found nothing within reach of where he stood).
+      const run = topSpeed({ ...hero, sprint: true }) * 0.8
+      const hit = pts.find((p, i) => i > 0 && p.z > 1.3 && p.z < 2.7 && p.z <= pts[i - 1]!.z && Math.hypot(p.x - hero.pos.x, p.y - hero.pos.y) < 1.4 + run * p.t)
       if (hit && hit.t > HEAD_ARM_LEAD + 0.08) {
         const early = Math.max(0, hit.t - HEAD_ARM_LEAD - HEAD_ARM_EXACT)
         this.headArmAt = this.time + hit.t - HEAD_ARM_LEAD + Math.min(0.14, early * 0.2)

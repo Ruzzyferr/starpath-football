@@ -31,7 +31,7 @@ for (const kind of kinds) {
     const end = existsSync(join(OUT, kind, r, 'end.jpg')) ? `<figure><img src="${pathToFileURL(join(OUT, kind, r, 'end.jpg')).href}"><figcaption>end</figcaption></figure>` : ''
     const inputs = run.inputs.filter((i) => !i.what.startsWith('tap to continue')).slice(0, 6).map((i) => `${(i.t / 1000).toFixed(1)}s ${i.what}`).join(' · ')
     rows += `<section><h2>${esc(r)} → <b>${esc(run.result)}</b> <small>${esc(run.summary ?? '')}</small></h2>
-      <p>bot: ${esc(inputs)}<br>game recognised: ${esc(run.recognised.join(', '))} · kicks ${run.kicks}${run.geom ? ` · goal ${run.geom.goalWidthPx.toFixed(0)}×${run.geom.goalHeightPx.toFixed(0)}px, keeper ${run.geom.keeperHeightPx?.toFixed(0) ?? '-'}px, start ${run.geom.heroToGoalM?.toFixed(0)} m from goal` : ''}</p>
+      <p>bot: ${esc(inputs)}<br>game recognised: ${esc(run.recognised.join(', '))} · kicks ${run.kicks}${run.geom ? ` · goal ${run.geom.goalWidthPx.toFixed(0)}×${run.geom.goalHeightPx.toFixed(0)}px, keeper ${run.geom.keeperHeightPx?.toFixed(0) ?? '-'}px, start ${run.geom.heroToGoalM?.toFixed(0)} m from the goal we attack / ${run.geom.heroToOwnGoalM?.toFixed(0) ?? '-'} m from our goal` : ''}</p>
       <div class="strip">${imgs}${end}</div></section>`
   }
   const html = `<!doctype html><meta charset="utf-8"><style>
