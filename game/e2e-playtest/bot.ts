@@ -230,7 +230,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   const hero = info.agents.find((a) => a.hero)
   if (!hero) return { kind: 'wait', why: 'no hero' }
   const carrier0 = info.agents.find((a) => a.owner)
-  if (!carrier0 || carrier0.team !== 'opp') await th.sprint(undefined, false)
+  if (carrier0 && carrier0.team === 'hero' && info.kind !== 'timed_run') await th.sprint(undefined, false)
   const btn = (pool: string[]) => pool.map((id) => info.buttons.find((b) => b.id === id)).find(Boolean)
   const ballW = info.ballWorld
   const goalX = 105
@@ -280,6 +280,11 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     }
     // A cross: the runner in the box, or whip it toward the penalty spot.
     if (info.kind === 'cross') {
+      const cb = btn(['cross'])
+      if (cb) {
+        await th.tap(cb, 'cross: CROSS button')
+        return { kind: 'pass', why: 'CROSS button' }
+      }
       const runner = info.agents.filter((a) => a.team === 'hero' && !a.hero && !a.keeper && a.world.x > 88 && visible(info, a.feet)).sort((p, q) => q.world.x - p.world.x)[0]
       if (runner) {
         await th.tap(runner.feet, `cross: tap on runner ${runner.id} in the box`)
@@ -337,6 +342,13 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
       else await th.tap(carrier.feet, `tap on carrier at ${d.toFixed(1)} m`)
       return { kind: 'tackle', why: b ? `button ${b.id}` : 'tap carrier' }
     }
+    // The big PRESS / INTERCEPT button does the closing down for you: a person hits it when the man is in reach.
+    const smart = btn(['press', 'intercept'])
+    if (smart && d < 14 && state.now - state.actedAt > 1500) {
+      await th.reaction()
+      await th.tap(smart, `${smart.id} at ${d.toFixed(1)} m`)
+      return { kind: 'tackle', why: `${smart.id} button` }
+    }
     await th.sprint(btn(['sprint']), d > 5)
     await th.stick(c, { x: carrier.feet.x - hero.feet.x, y: carrier.feet.y - hero.feet.y })
     return { kind: 'move', why: `chase carrier ${d.toFixed(1)} m` }
@@ -345,8 +357,14 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
   if (carrier && carrier.team === 'hero') {
     // Timed run: hold the line (stay onside) until the pass is played, then go (the drop marker takes over).
     if (info.kind === 'timed_run') {
-      await th.releaseStick()
-      return { kind: 'wait', why: 'holding the line' }
+      if (info.clock < 1.6) {
+        await th.releaseStick()
+        return { kind: 'wait', why: 'holding the line' }
+      }
+      // Go: sprint in behind toward goal (the passer plays it into the run).
+      await th.sprint(btn(['sprint']), true)
+      await th.stick(c, { x: info.goal.x - hero.feet.x, y: info.goal.y - hero.feet.y })
+      return { kind: 'move', why: 'timed run in behind' }
     }
     await th.stick(c, { x: info.goal.x - hero.feet.x, y: info.goal.y - hero.feet.y })
     return { kind: 'move', why: 'make a run' }
@@ -371,6 +389,7 @@ export async function humanStep(th: Thumbs, info: Info, persona: Persona, state:
     await th.tap(b, `button ${b.id} on loose ball at ${dBall.toFixed(1)} m`)
     return { kind: 'button', why: b.id }
   }
+  await th.sprint(btn(['sprint']), dBall > 6)
   await th.stick(c, { x: info.ball.x - info.hero.x, y: info.ball.y - info.hero.y })
   return { kind: 'move', why: `to loose ball ${dBall.toFixed(1)} m` }
 }

@@ -284,7 +284,7 @@ const zpx = (z: number) => z * PPM * ZS
 /** Within this distance (m) of goal the live camera leans toward the goal so the goal mouth stays on a phone screen. */
 const GOAL_FRAME_RANGE = 36
 /** On the ball this close to goal the view frames the goal mouth, zooming in up to {@link SHOT_FRAME_MAX_ZOOM}. */
-const SHOT_FRAME_RANGE = 24
+const SHOT_FRAME_RANGE = 30
 const SHOT_FRAME_MAX_ZOOM = 1.35
 /** Share of a portrait phone screen kept clear of the action at the bottom (thumbs, context buttons). */
 const THUMB_RESERVE = 0.17
@@ -2307,7 +2307,9 @@ export class MatchScene extends Phaser.Scene {
       // On the ball (playtest: a team-mate to tap or the goal to aim at was off screen): frame the two best
       // pass options and, in range, the goal mouth with the ball. Pulls back as far as the moment framing does.
       this.attnZoom = 1
-      if (!cc && !replay && rt.heroOnBall && !rt.heroIsKeeper) {
+      // (The taker standing over a set piece counts: on a free kick the goal was under the score bar.)
+      const taking = !!rt.setPiece && rt.setPiece.takerId === rt.hero.id && !rt.owner
+      if (!cc && !replay && (rt.heroOnBall || taking) && !rt.heroIsKeeper) {
         const mates = rt.agents.filter((a) => a.team === 'hero' && !a.isHero && !a.isKeeper)
         const toGoal = PITCH_LENGTH - bx
         // In shooting range the goal is what he looks at: ball and both posts, closer in (NSS: the goal fills the
@@ -2323,7 +2325,7 @@ export class MatchScene extends Phaser.Scene {
           ty = f.y
           this.attnZoom = f.zoomMult
         }
-      } else if (!cc && !replay && !rt.heroOnBall && !rt.heroIsKeeper && dist(rt.hero.pos, rt.ball) > 8) {
+      } else if (!cc && !replay && !rt.heroOnBall && dist(rt.hero.pos, rt.ball) > 8 && !(rt.heroIsKeeper && (rt.kind === 'gk_claim' || rt.kind === 'gk_distribution'))) {
         // Off the ball: he stays in the frame with the ball (playtest: after his pass the camera followed the
         // ball and he ran off the bottom of the screen, out of control).
         const f = momentFrame(rt.ball, rt.hero.pos, [], { w, h }, this.cam.base)

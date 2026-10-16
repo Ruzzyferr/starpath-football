@@ -87,7 +87,7 @@ for (const kind of KINDS) {
             const nz = await zones.count()
             // (A real touch at the button, like a thumb; Playwright's locator.tap() crashed the page here.)
             const touchBtn = async (loc: typeof zones, what: string) => {
-              const b = await loc.boundingBox().catch(() => null)
+              const b = (await loc.count().catch(() => 0)) ? await loc.boundingBox({ timeout: 1000 }).catch(() => null) : null
               if (b) await th.tap({ x: b.x + b.width / 2, y: b.y + b.height / 2 }, what)
             }
             if (nz) {

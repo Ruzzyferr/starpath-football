@@ -286,6 +286,18 @@ const placeCounter: Placer = (l) => {
   return { ball: owned(hp, l.input.heroId), passerId: null, finisherId: runner?.player.id ?? null, opponentId: null }
 }
 
+/**
+ * Moves every opponent not named in `keep` well behind the play (playtest: a "one-on-one" or a "2-on-1" read as a
+ * crowd because the rest of the back line stood in its formation spots around the hero).
+ */
+function clearBehind(l: Layout, keep: ReadonlySet<string>, fromX: number): void {
+  const rng = l.input.rng
+  l.opps.forEach((o, i) => {
+    if (keep.has(o.player.id) || roleOf(o) === 'GK') return
+    set(l, o.player.id, { x: fromX - rng.range(16, 30), y: clamp(8 + ((i * 11) % 52) + rng.range(-3, 3), 4, PITCH_WIDTH - 4) })
+  })
+}
+
 const placeOneOnOne: Placer = (l) => {
   const rng = l.input.rng
   const hp = { x: rng.range(80, 87), y: rng.range(26, 42) }
@@ -294,6 +306,7 @@ const placeOneOnOne: Placer = (l) => {
   set(l, gk?.player.id, { x: 101.5, y: 34 + (hp.y - 34) * 0.3 })
   const chasers = nearest(l, l.opps, hp, 2, new Set([gk?.player.id ?? '']))
   chasers.forEach((c, i) => set(l, c.player.id, { x: hp.x - 3 - i * 3, y: hp.y + (i ? 3 : -3) }))
+  clearBehind(l, new Set(chasers.map((c) => c.player.id)), hp.x)
   const passer = pickMate(l, (m) => relationWeight(m) * (['CM', 'AM', 'DM'].includes(roleOf(m)) ? 2 : 0.6))
   if (passer) set(l, passer.player.id, { x: hp.x - rng.range(18, 26), y: hp.y + rng.range(-12, 12) })
   return { ball: owned(hp, l.input.heroId), passerId: passer?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
@@ -712,7 +725,9 @@ const placeHeader: Placer = (l) => {
   set(l, l.input.heroId, hp)
   const others = l.mates.filter((m) => ATTACKERS.has(roleOf(m)) && m.player.id !== l.input.heroId && m !== crosser).slice(0, 2)
   fillBox(l, others, new Set([gk?.player.id ?? '']))
-  closeDown(l, nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? ''])), hp, 1.4, PITCH_LENGTH)
+  // His marker a stride off him (playtest: at 1.4 m goal-side the marker met every cross first, the header was never
+  // his to win); the duel in the air is then Heading / Jumping and the timing of his leap.
+  closeDown(l, nearest(l, l.opps, hp, 1, new Set([gk?.player.id ?? ''])), hp, 2.4, PITCH_LENGTH)
   closeDown(l, nearest(l, l.opps, cp, 1, new Set([gk?.player.id ?? ''])), cp, 4, PITCH_LENGTH)
   return { ball: owned(cp, crosser?.player.id ?? null), passerId: crosser?.player.id ?? null, finisherId: null, opponentId: gk?.player.id ?? null }
 }
