@@ -30,7 +30,7 @@ export default defineConfig({
     channel: chrome ? 'chrome' : undefined,
     // Pixel 7-class Android phone, portrait.
     viewport: { width: 412, height: 915 },
-    deviceScaleFactor: 2,
+    deviceScaleFactor: Number(process.env.PT_DPR ?? 2),
     isMobile: true,
     hasTouch: true,
     video: { mode: 'on', size: { width: 412, height: 915 } },

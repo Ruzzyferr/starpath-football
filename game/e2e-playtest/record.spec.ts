@@ -41,7 +41,7 @@ for (const kind of KINDS) {
             document.head.appendChild(st)
           })
         })
-        await page.goto(`/match-demo.html?kind=${kind}&seed=${seed * 7 + 1}&lang=tr&gen=1`)
+        await page.goto(`/match-demo.html?kind=${kind}&seed=${seed * 7 + 1}&lang=${process.env.PT_LANG ?? 'tr'}&gen=1`)
         await page.waitForFunction(() => !!(globalThis as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 60_000 })
         const cdp = await page.context().newCDPSession(page)
         const r = rng(seed * 1000 + kind.length * 17 + pname.length)
@@ -65,9 +65,11 @@ for (const kind of KINDS) {
           last = info
           const now = Date.now() - t0
           st.now = now
-          if (now - lastShot > 350 && shotN < 70) {
-            const file = `f${String(shotN).padStart(2, '0')}.jpg`
-            await page.screenshot({ path: `${dir}/${file}`, type: 'jpeg', quality: 55 })
+          // PT_HQ=1: PNG frames every 160 ms (stills for the portfolio / store), else the review cadence.
+          const hq = process.env.PT_HQ === '1'
+          if (now - lastShot > (hq ? 160 : 350) && shotN < (hq ? 160 : 70)) {
+            const file = `f${String(shotN).padStart(hq ? 3 : 2, '0')}.${hq ? 'png' : 'jpg'}`
+            await page.screenshot(hq ? { path: `${dir}/${file}`, type: 'png' } : { path: `${dir}/${file}`, type: 'jpeg', quality: 55 })
             frames.push({ t: now, file, phase: info.phase, heroOnBall: info.heroOnBall, carrier: info.agents?.find((a) => a.owner)?.id ?? null, result: info.result })
             lastShot = now
             shotN++
