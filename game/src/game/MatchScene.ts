@@ -331,6 +331,8 @@ export class MatchScene extends Phaser.Scene {
 
   private hudG!: Phaser.GameObjects.Graphics
   /** Score bug parts (minute, home abbreviation, score, away abbreviation) and their laid-out x positions. */
+  /** The moment's goal is already on the score bug. */
+  private scoreBumped = false
   private sb!: {
     min: Phaser.GameObjects.Text
     home: Phaser.GameObjects.Text
@@ -456,6 +458,7 @@ export class MatchScene extends Phaser.Scene {
 
   init(data: SceneData): void {
     this.data0 = data
+    this.scoreBumped = false
     this.views = []
     this.hudTexts = []
     this.floaters = []
@@ -1584,6 +1587,17 @@ export class MatchScene extends Phaser.Scene {
       return
     }
     this.afterCelebration()
+  }
+
+  /** The goal just scored in the moment goes on the score bug (owner: it stayed 0-0 after a goal). */
+  private bumpScore(ours: boolean): void {
+    if (this.scoreBumped) return
+    this.scoreBumped = true
+    const h = this.data0.highlight
+    const homeScored = ours === (h.side === 'home')
+    const sc: [number, number] = [h.score[0] + (homeScored ? 1 : 0), h.score[1] + (homeScored ? 0 : 1)]
+    this.sb.score.setText(`${sc[0]}-${sc[1]}`)
+    if (!this.rm) this.tweens.add({ targets: this.sb.score, scale: { from: 1.6, to: 1 }, duration: 420, ease: 'Back.Out' })
   }
 
   /** Goal replay (when enabled) after the celebration, else done. */
@@ -2973,6 +2987,7 @@ ${attrs}`, open: false, box: null }
           break
         case 'goal': {
           const ours = e.team === 'hero'
+          this.bumpScore(ours)
           if (ours) {
             this.sfx.roar(1)
             const gp = project(e.end === 'east' ? PITCH_LENGTH : 0, GOAL_CENTER_Y, 1.5)
