@@ -13,7 +13,8 @@
  * sim estimate the performance from the hero's attributes, then calls
  * {@link resolveTrial}. Invitations live in `life.flags['c:trials']`.
  */
-import type { GameState, LText, Position, SquadRole } from '../../core/types'
+import type { GameState, LText, Position, Role, SquadRole } from '../../core/types'
+import { normalizeRole } from '../../core/roles'
 import type { Rng } from '../../core/rng'
 import { clamp, hashString } from '../../core/rng'
 import { fill, lt } from '../career/common'
@@ -24,7 +25,9 @@ import { pickStartingClub, signFirstClub } from './newGame'
 
 export type TrialKind = 'academy' | 'trial' | 'open'
 /** Drill used for the trial (same ids as game/training DrillKind). */
-export type TrialDrill = 'finishing' | 'passing' | 'dribbling' | 'goalkeeping' | 'fitness'
+export type TrialDrill =
+  | 'finishing' | 'passing' | 'dribbling' | 'goalkeeping' | 'fitness' | 'crossing' | 'heading' | 'tackling'
+  | 'distribution' | 'sprint' | 'interception'
 
 export interface TrialInvite {
   id: string
@@ -47,12 +50,45 @@ export interface TrialOutcome {
 
 export const TRIALS_FLAG = 'c:trials'
 
-/** Drill that suits the hero's position. */
-export function trialDrillFor(position: Position): TrialDrill {
-  if (position === 'GK') return 'goalkeeping'
-  if (position === 'ST' || position === 'LW' || position === 'RW' || position === 'AM') return 'finishing'
-  if (position === 'CM' || position === 'DM') return 'passing'
-  return 'dribbling'
+/**
+ * The three trial drills for a starting role, most telling first (owner, 2026-10-17: the trials must fit the chosen
+ * position AND the role picked at the start — a centre-back was shooting at every club). The open tryout asks for the
+ * role's signature skill, the trial club for its second, the academy for its third.
+ */
+export const ROLE_TRIAL_DRILLS: Readonly<Record<Role, readonly [TrialDrill, TrialDrill, TrialDrill]>> = {
+  reflexKeeper: ['goalkeeping', 'distribution', 'goalkeeping'],
+  shotStopper: ['goalkeeping', 'goalkeeping', 'distribution'],
+  sweeperKeeper: ['distribution', 'goalkeeping', 'sprint'],
+  attackingFullBack: ['crossing', 'sprint', 'tackling'],
+  defensiveFullBack: ['tackling', 'interception', 'sprint'],
+  balancedFullBack: ['tackling', 'crossing', 'interception'],
+  stopper: ['tackling', 'interception', 'heading'],
+  aerialDefender: ['heading', 'tackling', 'interception'],
+  ballPlayingDefender: ['passing', 'interception', 'tackling'],
+  anchor: ['interception', 'tackling', 'passing'],
+  boxToBox: ['fitness', 'passing', 'tackling'],
+  playmaker: ['passing', 'dribbling', 'interception'],
+  touchlineWinger: ['crossing', 'sprint', 'dribbling'],
+  invertedWinger: ['dribbling', 'finishing', 'crossing'],
+  freeWinger: ['dribbling', 'crossing', 'finishing'],
+  dribbler: ['dribbling', 'sprint', 'finishing'],
+  targetForward: ['heading', 'finishing', 'passing'],
+  runner: ['sprint', 'finishing', 'dribbling'],
+  pivot: ['finishing', 'passing', 'heading'],
+}
+
+/** The trial drills for a position and role (an attacking midfield playmaker finishes instead of intercepting). */
+export function trialDrillsFor(position: Position, role?: Role | null): readonly [TrialDrill, TrialDrill, TrialDrill] {
+  const r = normalizeRole(position, role)
+  const d = ROLE_TRIAL_DRILLS[r]
+  if (position === 'AM' && r === 'playmaker') return ['passing', 'dribbling', 'finishing']
+  if (position === 'AM' && r === 'boxToBox') return ['passing', 'finishing', 'fitness']
+  return d
+}
+
+/** The signature trial drill for a position and role. */
+export function trialDrillFor(position: Position, role?: Role | null): TrialDrill {
+  return trialDrillsFor(position, role)[0]
 }
 
 export const pendingTrials = (state: GameState): TrialInvite[] => readJson<TrialInvite[]>(state.life, TRIALS_FLAG, [])
@@ -68,7 +104,7 @@ export function generateTrialInvites(state: GameState, rng: Rng): TrialInvite[] 
   const lowest = leagues[leagues.length - 1]!
   const upper = (leagues.length > 1 ? leagues[leagues.length - 2] : lowest)!
   const ovr = heroOvr(state.hero)
-  const drill = trialDrillFor(state.hero.position)
+  const [first, second, third] = trialDrillsFor(state.hero.position, state.hero.role)
   const used = new Set<string>()
   const nearest = (ids: readonly string[], want: number): string => {
     const ranked = ids.filter((id) => !used.has(id)).map((id) => ({ id, d: Math.abs(clubStrength(w, id).overall - want) })).sort((a, b) => a.d - b.d || (a.id < b.id ? -1 : 1))
@@ -80,10 +116,10 @@ export function generateTrialInvites(state: GameState, rng: Rng): TrialInvite[] 
   const trial = nearest(lowest.clubIds, ovr + 4)
   used.add(trial)
   const open = nearest(upper.clubIds, ovr + 8)
-  const make = (clubId: string, kind: TrialKind, target: number, tier: number): TrialInvite => ({
+  const make = (clubId: string, kind: TrialKind, drill: TrialDrill, target: number, tier: number): TrialInvite => ({
     id: `tr-${kind}-${clubId}`, clubId, clubName: w.clubs[clubId]!.name, kind, drill, target, tier,
   })
-  return [make(open, 'open', 0.65, upper.tier), make(trial, 'trial', 0.3, lowest.tier), make(academy, 'academy', 0, top.tier)]
+  return [make(open, 'open', first, 0.65, upper.tier), make(trial, 'trial', second, 0.3, lowest.tier), make(academy, 'academy', third, 0, top.tier)]
 }
 
 /** Deterministic simulated trial performance from the hero's attributes (0.3..0.85). */

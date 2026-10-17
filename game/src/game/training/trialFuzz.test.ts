@@ -11,7 +11,7 @@ import { Rng, hashString } from '../../core/rng'
 import { POSITIONS, type Attributes, type Position } from '../../core/types'
 import { makeGame } from '../../sim/game/testHelpers'
 import { COUNTRY_BY_ID } from '../../data/world/countries'
-import { pendingTrials, trialDrillFor } from '../../sim/game/trials'
+import { pendingTrials, trialDrillsFor } from '../../sim/game/trials'
 import { drillOpponentFor } from '../../ui/screens/training/drillOpponent'
 import { flatAttrs } from '../setup'
 import { createDrill } from './drills'
@@ -96,7 +96,7 @@ describe('trial / drill start hang fuzz', () => {
       const invites = pendingTrials(s)
       expect(invites.length).toBeGreaterThan(0)
       for (const inv of invites) {
-        expect(inv.drill).toBe(trialDrillFor(position))
+        expect(trialDrillsFor(position, s.hero.role)).toContain(inv.drill)
         const t0 = performance.now()
         const opp = drillOpponentFor(s, inv.clubId)
         expect(Number.isFinite(opp)).toBe(true)
