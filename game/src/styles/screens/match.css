@@ -670,9 +670,13 @@
 
 .lm-grid {
   display: grid;
+  /* One column no wider than the screen: a long one-line row (a played moment, owner's 8-2 screenshot)
+     widened the auto track and pushed the radar and stats off the right edge. */
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-3);
   flex: 1;
 }
+.lm-grid > * { min-width: 0; }
 .lm-left {
   display: flex;
   flex-direction: column;
@@ -1264,6 +1268,7 @@
 }
 .post-grid {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   gap: var(--sp-3);
 }
 .post-card {
