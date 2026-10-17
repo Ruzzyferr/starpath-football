@@ -67,7 +67,7 @@ export const tr = {
     pc: 'Bilgisayar',
     touch: 'Dokunmatik',
     goal: {
-      finishing: '10 şut: 9 bölgeli kalede sırayla yanan bölgeyi vur. Merkez 10, bölge 6, başka yere gol 2 puan. 3. şuttan itibaren kaleci var.',
+      finishing: '10 şut: 9 bölgeli kalede sırayla yanan bölgeyi vur. Merkez 10, bölge 6, başka yere gol 2 puan. Kaleci ilk şuttan itibaren kalede; ilk iki şutta daha yavaş.',
       setPiece: 'Falso kapısı: 5 serbest vuruş. Kalenin iki yanındaki kapılar hedef: gol 20 puan, barajı aşıp kapıya giden ama kurtarılan vuruş 6, kalecinin ortasına giden 2. Rüzgâr ekranda yazıyor.',
       passing: 'Yanan arkadaşına doğru pası at: YERDEN kapıdan geçir, HAVADAN mankenlerin üstünden aşırt.',
       rondo: '60 saniye, 4’e 2: boştaki arkadaşa pas ver, top sana geri gelir. Her pas 1, tek dokunuş 1,5 puan, arkadaşın ayağına giden pasa +0,5; top kaybı seriyi sıfırlar. Vizyon 60 ve üstü ortadan 3. seçeneği görür.',
@@ -270,7 +270,7 @@ export const en: Shape<typeof tr> = {
     pc: 'Desktop',
     touch: 'Touch',
     goal: {
-      finishing: '10 shots: hit the zone that lights up on a 9-zone goal. Centre 10, zone 6, any other goal 2. A keeper joins from shot 3.',
+      finishing: '10 shots: hit the zone that lights up on a 9-zone goal. Centre 10, zone 6, any other goal 2. A keeper is in goal from the first shot, a little slower for the first two.',
       setPiece: 'Curl gate: 5 free kicks at the two gates either side of the keeper. A goal scores 20, a kick over the wall into a gate that is saved 6, one at the keeper’s middle 2. The wind is shown on screen.',
       passing: 'Find the lit team-mate: GROUND passes through the gate, LOFTED balls over the mannequins.',
       rondo: '60 seconds, 4 v 2: pass to an open team-mate and get it back. Each pass 1, one-touch 1.5, up to +0.5 when it is on his foot; losing the ball resets the streak. Vision 60+ sees the third option through the middle.',

@@ -4,7 +4,7 @@
  * Target grid (2.3#23): 10 shots from new spots 13–24 m out. One of the 9
  * zones of a 3×3 goal grid lights up per shot, in a shuffled sequence: the
  * zone centre scores 10, the rest of the zone 6, any other goal 2. The keeper
- * joins from shot 3 (moving keeper). Shots use the match kick model
+ * is in goal from the first shot (moving keeper, slower for the first two). Shots use the match kick model
  * (swipe / hold-release / pad) and the AI keeper reacts like in a highlight.
  *
  * Set-piece variant = curl gate (2.3#25): 5 free kicks; the two gates are the
@@ -49,6 +49,12 @@ const WALL_GAP = 9.15
 const CURL_GATES: readonly [number, number][] = [[GOAL_CENTER_Y - 2.55, 1.2], [GOAL_CENTER_Y + 2.55, 1.2]]
 /** A training keeper reads the strike a beat later than a match keeper (s): placement beats him, a shot at him does not. */
 const KEEPER_LATE = 0.15
+/** …and in the target grid later still, and slower across his line (owner, 2026-10-17: NSS's beatable keeper). */
+const GRID_KEEPER_LATE = 0.12
+/** The first shots of the grid (the warm-up the keeper used to sit out): he is on his line and slower still (s). */
+const KEEPER_WARMUP_LATE = 0.1
+/** Shots before the keeper is at full sharpness. */
+const KEEPER_WARMUP_SHOTS = 2
 /** The wall screens the keeper on a free kick: he picks the ball up later (s). */
 const WALL_SCREEN = 0.06
 /** Free kicks from 19–27 m: the curl gate leans on the set-piece skill (aim spread at the drill's noise). */
@@ -201,7 +207,7 @@ export class FinishingDrill extends DrillBase {
         w.state = 'jump'
         w.stateT = 0
       }
-      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.oppSharpness), 1, KEEPER_LATE + (this.wall.length ? WALL_SCREEN : 0) + momentumDelay(this.keeper, plan.aim.y))
+      if (this.keeperLive) this.react = aiKeeperReact(this.keeper, () => keeperWorld(this.keeper, [this.hero], this.ball, this.env, this.time, this.oppSharpness), 1, KEEPER_LATE + (this.variant !== 'setPiece' ? GRID_KEEPER_LATE + (this.attempt <= KEEPER_WARMUP_SHOTS ? KEEPER_WARMUP_LATE : 0) : 0) + (this.wall.length ? WALL_SCREEN : 0) + momentumDelay(this.keeper, plan.aim.y))
       return
     }
   }
@@ -273,7 +279,10 @@ export class FinishingDrill extends DrillBase {
     return this.attempt >= n && this.state === 'resolved' && this.stateT > 0.6
   }
 
-  /** Target grid: keeper joins from shot 3; the curl gate always has one. */
+  /**
+   * A keeper in goal from the first shot (owner, 2026-10-17: two free shots then a keeper who saved everything felt
+   * like a switch flipping); the first {@link KEEPER_WARMUP_SHOTS} he is slower to react.
+   */
   private get keeperLive(): boolean {
     return this.variant === 'setPiece' || this.attempt >= GRID_KEEPER_FROM
   }
@@ -308,7 +317,8 @@ export class FinishingDrill extends DrillBase {
     if (this.state === 'ready') this.scnT += dt
     const scn = this.state === 'ready' && this.scn && this.scnT < this.scn.hold ? this.scn : null
     const tgt = this.state === 'flight' && intent?.kind === 'run' ? intent.to : scn ? scn.to : this.state === 'ready' ? this.keeperHome : null
-    integrateKeeper(this.keeper, dt, tgt, this.state === 'flight' ? 4.2 : scn ? scn.speed : 2.6)
+    // (Slower across his line than a match keeper — a training keeper you can beat with placement.)
+    integrateKeeper(this.keeper, dt, tgt, this.variant === 'setPiece' ? (this.state === 'flight' ? 4.2 : scn ? scn.speed : 2.6) : this.state === 'flight' ? 3.6 : scn ? scn.speed * 0.85 : 2.2)
     if (this.state !== 'flight') this.keeper.intent = null
 
     if (this.state === 'flight') this.flight()

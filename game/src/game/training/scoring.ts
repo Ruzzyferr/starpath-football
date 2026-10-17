@@ -154,8 +154,8 @@ export function shotPoints(i: ShotScoreInput): number {
 export const GRID_SHOTS = 10
 export const GRID_CENTRE_R = 0.4
 export const GRID_ZONE_R = 0.85
-/** From this shot on the keeper is live (2.3#23: moving keeper from level 3). */
-export const GRID_KEEPER_FROM = 3
+/** From this shot on the keeper is live (owner, 2026-10-17: from the first — slower for the first two shots). */
+export const GRID_KEEPER_FROM = 1
 /** Points: zone centre 10, rest of the zone 6, anywhere else in the goal 2, no goal 0. */
 export function gridShotPoints(goal: boolean, y: number, z: number, zone: { y: number; z: number }): number {
   if (!goal) return 0

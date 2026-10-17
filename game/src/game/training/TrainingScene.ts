@@ -216,6 +216,9 @@ interface Floater {
 }
 
 /** The training pitch scene. Create through {@link startDrill}. */
+/** Training keeper figure size (the reach is the keeper's attributes; this is how big he looks). */
+export const TRAINING_KEEPER_SCALE = 0.86
+
 export class TrainingScene extends Phaser.Scene {
   private data0!: SceneData
   private drill!: Drill
@@ -559,6 +562,8 @@ export class TrainingScene extends Phaser.Scene {
       skin: dummy ? '#f5c400' : skinTone(h),
       S,
       headTint: dummy ? 0xf5c400 : undefined,
+      // (The keeper a touch smaller: the goal reads big and the corners open, as in NSS — owner, 2026-10-17.)
+      ...(a.role === 'keeper' ? { scale: TRAINING_KEEPER_SCALE } : {}),
     })
     figureSelfCheck(this, [rig])
     const c = this.add.container(0, 0)

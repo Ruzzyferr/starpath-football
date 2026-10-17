@@ -1049,6 +1049,8 @@ export interface FigureRigOptions {
   S: number
   /** Tint applied to the head (training dummies). */
   headTint?: number
+  /** Size multiplier (training keeper: a touch smaller so the goal reads big, as in NSS). */
+  scale?: number
 }
 
 /**
@@ -1078,7 +1080,7 @@ export class FigureRig {
   constructor(scene: Phaser.Scene, o: FigureRigOptions) {
     this.S = o.S
     this.skinHex = o.skin
-    this.k = (PPM * FIG_SCALE) / o.S
+    this.k = (PPM * FIG_SCALE * (o.scale ?? 1)) / o.S
     const f0 = frameName('idle', 2)
     this.skin = scene.add.image(0, 0, o.skinKey, f0).setTint(colorNum(mixHex(o.skin, '#ffffff', 0.1)))
     this.kit = scene.add.image(0, 0, o.kitKey, f0)
@@ -1086,7 +1088,7 @@ export class FigureRig {
     this.head = scene.add.image(0, 0, o.headKey, 'f')
     if (o.headTint !== undefined) this.head.setTint(o.headTint)
     for (const im of [this.skin, this.kit]) im.setScale(this.k)
-    this.head.setScale((HEAD_M * PPM * FIG_SCALE) / HEAD_TEX_D)
+    this.head.setScale((HEAD_M * PPM * FIG_SCALE * (o.scale ?? 1)) / HEAD_TEX_D)
   }
 
   parts(): Phaser.GameObjects.Image[] {
