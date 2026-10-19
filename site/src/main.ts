@@ -1,4 +1,4 @@
-import { KICKS_PER_ROUND, resolveShot, swipePower, GOAL_HALF_W, GOAL_H, type Outcome, type ShotResult } from './penalty'
+import { KICKS_PER_ROUND, KEY_AIM_X, KEY_AIM_Y, resolveShot, swipePower, GOAL_HALF_W, GOAL_H, type Outcome, type ShotResult } from './penalty'
 import type { World, Anchor } from './world'
 
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T | null
@@ -393,7 +393,9 @@ function setupPenalty(w: World): void {
   const power = $<HTMLElement>('.power')!
   const powerFill = $<HTMLElement>('.power-fill')!
   let pointer: { id: number; pts: { x: number; y: number; t: number }[] } | null = null
-  let aim = { x: 0, y: 1.2 }
+  // Keyboard aim on the target grid (centre, middle height to start).
+  const keyAim = { col: 2, row: 1 }
+  let aim: { x: number; y: number } = { x: KEY_AIM_X[2], y: KEY_AIM_Y[1] }
   let charge: { t0: number; raf: number } | null = null
 
   const unit = () => Math.min(Math.min(innerWidth, innerHeight), 480)
@@ -501,11 +503,15 @@ function setupPenalty(w: World): void {
   })
   pitch.addEventListener('blur', () => w.showAim(null))
   pitch.addEventListener('keydown', (e) => {
-    const step = e.shiftKey ? 0.15 : 0.45
-    if (e.key === 'ArrowLeft') aim.x = Math.max(-GOAL_HALF_W - 0.6, aim.x - step)
-    else if (e.key === 'ArrowRight') aim.x = Math.min(GOAL_HALF_W + 0.6, aim.x + step)
-    else if (e.key === 'ArrowUp') aim.y = Math.min(GOAL_H + 0.4, aim.y + step * 0.7)
-    else if (e.key === 'ArrowDown') aim.y = Math.max(0.2, aim.y - step * 0.7)
+    const move = (dc: number, dr: number) => {
+      keyAim.col = Math.max(0, Math.min(KEY_AIM_X.length - 1, keyAim.col + dc))
+      keyAim.row = Math.max(0, Math.min(KEY_AIM_Y.length - 1, keyAim.row + dr))
+      aim = { x: KEY_AIM_X[keyAim.col]!, y: KEY_AIM_Y[keyAim.row]! }
+    }
+    if (e.key === 'ArrowLeft') move(-1, 0)
+    else if (e.key === 'ArrowRight') move(1, 0)
+    else if (e.key === 'ArrowUp') move(0, 1)
+    else if (e.key === 'ArrowDown') move(0, -1)
     else if ((e.key === ' ' || e.key === 'Enter') && !e.repeat) {
       e.preventDefault()
       if (busy() || charge) return

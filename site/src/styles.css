@@ -113,7 +113,7 @@ p { text-wrap: pretty; }
 .wordmark img { width: 40px; height: 40px; border-radius: 10px; }
 /* The brand wordmark: KICK in white, BORN in green (the game's logo; a brand asset, not a styled headline word). */
 .brand-born { color: var(--action); }
-.wordmark .brand, .foot-name { letter-spacing: 0.01em; text-transform: uppercase; }
+.wordmark .brand, .foot-name { letter-spacing: 0.01em; }
 .bar-nav { display: flex; gap: clamp(16px, 2vw, 32px); }
 .bar-nav a, .bar-lang, .foot-cols a { position: relative; text-decoration: none; min-height: 44px; display: inline-flex; align-items: center; color: var(--ink); }
 .bar-nav a, .bar-lang { font-size: var(--step-small); font-weight: 600; }

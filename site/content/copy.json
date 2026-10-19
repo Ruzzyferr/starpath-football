@@ -152,8 +152,8 @@
     "momentsAutoPause": "Otomatik geçişi durdur",
     "momentsAutoPlay": "Otomatik geçişi başlat",
     "lifeLead": "Para, ev, aile ve ün: kariyerin sahayla bitmiyor. Her kararın bir sonucu var.",
-    "brandKick": "Kick",
-    "brandBorn": "born"
+    "brandKick": "KICK",
+    "brandBorn": "BORN"
   },
   "en": {
     "lang": "en",
@@ -308,7 +308,7 @@
     "momentsAutoPause": "Pause auto-advance",
     "momentsAutoPlay": "Resume auto-advance",
     "lifeLead": "Money, home, family and fame: your career does not end at the final whistle. Every choice has a consequence.",
-    "brandKick": "Kick",
-    "brandBorn": "born"
+    "brandKick": "KICK",
+    "brandBorn": "BORN"
   }
 }

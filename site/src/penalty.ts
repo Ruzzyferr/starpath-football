@@ -126,6 +126,13 @@ export function resolveShot(shot: ShotInput, rnd: () => number = Math.random): S
   return result('goal', keeperSide === 0 ? clamp(x, -1.2, 1.2) * (reacts ? 1 : 0.2) : defaultDive, keeperSide === 0 ? 1.1 : clamp(y, 0.4, 1.8))
 }
 
+/**
+ * Keyboard aim: arrow keys step through the same targets a tap or the corner buttons reach
+ * (columns from post to post, rows low / middle / high), so a keyboard corner is a real corner.
+ */
+export const KEY_AIM_X = [-2.9, -1.45, 0, 1.45, 2.9] as const
+export const KEY_AIM_Y = [0.45, 1.25, 1.95] as const
+
 /** Five kicks, then a summary. */
 export interface Round {
   kicks: Outcome[]

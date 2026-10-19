@@ -44,6 +44,10 @@ for (const [group, sizes] of Object.entries(GROUPS)) {
     page.on('pageerror', (e) => errors.push(e.message))
     await page.goto(url, { waitUntil: 'networkidle' })
     if (!flags.nowebgl) await page.waitForSelector('.world.is-live', { timeout: 20000 }).catch(() => errors.push('world never went live'))
+    // The brand is Latin: no Turkish dotted capital I may appear in it (CSS uppercase under lang="tr").
+    const brands = await page.evaluate(() => [...document.querySelectorAll('[data-brand], .wordmark .brand, .foot-name')].map((e) => e.innerText))
+    if (!brands.length) failures.push(`${size} (${group}): no brand elements found`)
+    for (const b of brands) if (/[İı]/.test(b) || b.replace(/\s/g, '') !== 'KICKBORN') failures.push(`${size} (${group}): brand renders as "${b}"`)
     // Reveal everything so the check measures the settled layout.
     await page.evaluate(() => document.querySelectorAll('.reveal').forEach((e) => e.classList.add('is-in')))
     for (const id of SECTIONS) {
