@@ -138,7 +138,7 @@
 .tstat-gauge { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1; }
 .tstat-row { display: inline-flex; align-items: center; gap: 4px; }
 .tstat-gauge .num { font-family: var(--font-score); font-size: 1.05rem; }
-.tstat-cap { font-size: 0.6875rem; font-weight: 600; color: var(--text-lo); letter-spacing: 0; }
+.tstat-cap { font-size: 0.75rem; font-weight: 600; color: var(--text-lo); letter-spacing: 0; }
 .tstat-gems-label { font-size: 0.8125rem; font-weight: 700; }
 /* Diamond balance: a pill with a 44px hit area (the ::before extends it without growing the bar). */
 .tstat-gems { position: relative; flex: none; margin-left: 6px; min-height: 32px; border: 0; background: color-mix(in srgb, #4fc3ff 14%, transparent); color: var(--text-hi); padding: 4px 10px; border-radius: 999px; cursor: pointer; font-size: var(--fs-sm); }
@@ -177,11 +177,11 @@
   /* The gauges' names say what they are, so their icons give way to the room the pill needs. */
   .tstat-gauge .icon { display: none; }
   .topbar { gap: var(--sp-1); }
-  .topbar-stats { gap: var(--sp-2); }
+  .topbar-stats { gap: 6px; }
   .tstat-money { font-size: 1.125rem; }
   .tstat-gems { margin-left: 0; padding: 4px 6px; gap: 3px; }
   .topbar-season { display: none; }
-  .topbar-date { max-width: 56px; }
+  .topbar-date { max-width: 50px; }
   .topbar-day { white-space: normal; font-size: 0.75rem; }
 }
 @media (max-width: 380px) {
@@ -191,7 +191,7 @@
 @media (max-width: 340px) {
   /* 320px: tighter still, so "Mutluluk" keeps clear of the pill. */
   .topbar-stats { gap: var(--sp-1); }
-  .tstat-cap { font-size: 0.625rem; }
+  .tstat-money { font-size: 1rem; }
   .tstat-gems { padding: 4px 4px; }
 }
 
