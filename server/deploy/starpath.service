@@ -8,7 +8,7 @@ Wants=network-online.target
 Type=simple
 User=starpath
 Group=starpath
-WorkingDirectory=/opt/starpath
+WorkingDirectory=/opt/starpath/app
 EnvironmentFile=/etc/starpath.env
 ExecStart=/snap/node/current/bin/node --disable-warning=ExperimentalWarning src/main.mjs
 Restart=always
