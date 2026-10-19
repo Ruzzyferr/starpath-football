@@ -1,41 +1,56 @@
 # Yaş Derecelendirmesi Anketi Notları (TASLAK, DOĞRULANMASI GEREKLİ)
 
-> Bu notlar IARC (Google Play), Apple ve Steam/PEGI/USK anket yanıtlarını hazırlamak içindir. Resmi soru metinleri değişir: **her mağazada güncel anket, oyun içeriği gözden geçirilerek yeniden doğrulanmalıdır.** Aşağıdaki yanıtlar kodun ve içeriğin mevcut halinden çıkarılmış ön değerlendirmedir.
+> Bu notlar IARC (Google Play), Apple ve Steam/PEGI/USK anket yanıtlarını hazırlamak içindir. Resmi soru metinleri değişir: **her mağazada güncel anket, oyun içeriği gözden geçirilerek yeniden doldurulmalıdır.** Aşağıdaki yanıtlar kodun ve içeriğin mevcut halinden çıkarılmış ön değerlendirmedir. Model: ücretsiz oyun, elmas, nakit paketleri, ödüllü reklam, Pro Contract aboneliği (bkz. `docs/MONETIZASYON.md` §8.2).
 
-## Önemli nokta: simüle kumar
+## Önemli nokta: simüle kumar + satın alınabilir oyun içi para
 
 Oyunda bir kumarhane bölümü var (slot, blackjack vb.; `src/sim/life/casino.ts`). Özellikleri:
 
-- Yalnızca **oyun içi sanal para** ile oynanır; gerçek para yatırılamaz, gerçek ödül yoktur, paraya çevrilemez.
-- Gerçek para ile oyun içi para arasında bağ yoktur: mağaza satın alımları yalnızca "Tam Kariyer" kilidi ve görsel kozmetiklerdir, oyun içi para satmaz.
-- Karakter 18 yaşından küçükse bölüm kapalıdır (oyun içi yaş kapısı, `ADULT_AGE`).
+- Yalnızca **oyun içi para** ile oynanır; gerçek ödül yoktur, oyun içi para **hiçbir zaman gerçek paraya çevrilemez**.
+- **Oyun içi para gerçek parayla satın alınabilir** (nakit paketleri ve elmastan nakde çevirme) ve bu para kumarhanede harcanabilir. Eski "gerçek para ile oyun içi para arasında bağ yoktur" varsayımı artık **geçersizdir**.
+- Karakter yaşı `CASINO_MIN_AGE` altındaysa bölüm kapalıdır (oyun içi kapı; oyuncunun gerçek yaşı değildir).
 - Kutu/ganimet kutusu, rastgele ücretli ödül yoktur.
 
-Mağaza anketlerinde "simüle kumar" ayrı bir sorudur ve **evet** işaretlenmesi beklenir; bu çoğu mağazada yaş derecesini yükseltir (ör. Apple'da 17+/18+ bandına, IARC'ta 12+ ila 16+ bandına çıkabilir; ülkeye göre değişir). Karar verilmeden önce, kumarhane bölümünün tamamı bir çocuk modu/bayrak ile çıkarılabilir mi diye ürün kararı alınmalıdır (daha düşük yaş derecesi için alternatif).
+### Verilecek yanıt ve sonuç
+
+- "Simüle kumar" sorusu: **evet, sık/yoğun (frequent/intense)** olarak işaretlenir. Satın alınabilir para kumarhanede kullanılabildiği için "seyrek/hafif" yanıtı savunulamaz.
+- Beklenen sonuç: **Apple 17+** (App Store Connect'te "Simulated Gambling: Frequent/Intense"), **IARC** için Google Play'de yüksek bant (ülkeye göre 16+/18+ ve ek "simüle kumar" uyarısı). USK/PEGI ve Türkiye sınıflaması ayrıca kontrol edilir.
+- "Gerçek para ile kumar" sorusu **hayır** kalır (kazanç çevrilemez, ödül yok).
+- Anketler **nakit paketi satışa çıkmadan önce** yeniden doldurulur.
+
+### Uygulamaya eklenecek uygulama içi yaş kapısı (in-app age gate)
+
+- İlk açılışta yaş sorusu (doğum yılı/ay veya "18 yaşında veya daha büyüğüm" onayı); cevap cihazda tutulur.
+- 18 yaş altı veya cevap vermeyen kullanıcıda: kumarhane kapalı, nakit paketleri ve elmastan nakde çevirme gizli/kilitli, ödüllü reklam isteğe bağlı kalır ve kişiselleştirilmemiş istek gönderilir.
+- Reklam rızası: AB/BK'de Google UMP formu, iOS'ta ATT istemi (TR/EN metin).
+- Satın alma ekranında açık metin: "Oyun içi para gerçek paraya çevrilemez."
+- Kumarhaneye günlük kayıp limiti (oyun içi) ve karakter yaşı kapısı korunur.
+- Bu kapı mağaza derecesinin yerine geçmez; yalnızca onu destekleyen ek önlemdir.
 
 ## Soru bazlı ön yanıtlar
 
 | Konu | Ön yanıt | Not |
 |---|---|---|
-| Gerçek para ile kumar | Hayır | Gerçek para akışı yok |
-| Simüle kumar (sanal para) | **Evet** | Yukarıda; doğrulanacak |
+| Gerçek para ile kumar | Hayır | Oyun içi para nakde çevrilemez, ödül yok |
+| Simüle kumar | **Evet, sık/yoğun** | Satın alınabilir para kumarhanede kullanılır; Apple 17+ |
 | Şiddet | Yok / çok hafif | Futbol teması; sakatlık metinleri var, grafik şiddet yok. Doğrulanacak |
 | Cinsellik / çıplaklık | Yok | İlişki olayları metinseldir; içerik taraması yapılacak |
 | Küfür | Doğrulanacak | Olay metinleri ve yorumlar taranmalı |
 | Madde (alkol, sigara, uyuşturucu) | Doğrulanacak | Hayat olaylarında partiler/alkol anıları olabilir; olay içerikleri (`sim/life/events/content`) taranmalı |
 | Korku | Yok | |
-| Kullanıcı etkileşimi / sohbet | Yok | Çevrimiçi özellik yok |
+| Kullanıcı etkileşimi / sohbet | Yok | Kullanıcılar arası etkileşim yok |
 | Konum paylaşımı | Yok | |
-| Kişisel veri toplama | Hayır (hesap, analitik yok) | Gizlilik politikası taslağıyla tutarlı |
-| Reklam | Yok | |
-| Uygulama içi satın alma | Evet | Tam Kariyer (tüketilmeyen) + kozmetik paketler; rastgele ödül yok |
+| Kişisel veri toplama | Evet (anonim mağaza hesabı, cihaz kimliği, satın alma geçmişi) | `docs/legal/PRIVACY.*.md` ve `PrivacyInfo.xcprivacy` ile tutarlı |
+| Reklam | Evet (isteğe bağlı ödüllü reklam, Google AdMob) | Zorla reklam yok; ATT/UMP; Play'de AD_ID beyanı |
+| Uygulama içi satın alma | Evet | Elmas ve nakit paketleri (tüketilen), Pro Contract aboneliği; rastgele ödül yok |
 | Dijital satın alma sıklığı/ebeveyn onayı | Mağaza mekanizması | Aile paylaşımı/ebeveyn onayı mağazada |
 | Çocuklara yönelik | Hayır (genel kitle) | "Designed for Families" / Kids kategorisine başvurulmaz |
 
 ## Yapılacaklar (insan doğrulaması)
 
-- [ ] Her mağazada güncel anketi doldurup kumar yanıtının çıkardığı yaş sınırını not al
+- [ ] Her mağazada güncel anketi doldurup kumar yanıtının çıkardığı yaş sınırını not al (Apple 17+, IARC bandı)
+- [ ] Uygulama içi yaş kapısını (yukarıdaki liste) geliştir ve mağaza derecesiyle uyumlu karara bağla
 - [ ] Olay metinlerini alkol/uyuşturucu/küfür/cinsellik için tara ve yanıtları buna göre kesinleştir
-- [ ] Kumarhane yaş kapısını hem oyun içi hem mağaza derecesiyle uyumlu karara bağla
 - [ ] Türkiye için (Bilgi ve İletişim; Google/Apple bölgesel sınıflama) ve Almanya USK için ek soruları kontrol et
+- [ ] Apple "App Privacy" ve Google "Data safety" formlarını yeni veri akışlarına göre doldur
 - [ ] Hukuk incelemesi (docs/legal) ile birlikte son kararı onayla

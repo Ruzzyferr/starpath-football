@@ -53,6 +53,24 @@ export async function handleWallet(w: ServerWallet): Promise<void> {
   if (w.inbox.length && inboxHandler) await inboxHandler(w)
 }
 
+const REDEEMED_KEY = 'starpath.redeemed.v1'
+function redeemedIds(): string[] {
+  try {
+    const v = JSON.parse(globalThis.localStorage?.getItem(REDEEMED_KEY) ?? '[]') as unknown
+    return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string') : []
+  } catch {
+    return []
+  }
+}
+function markRedeemed(id: string | undefined): void {
+  if (!id) return
+  try {
+    globalThis.localStorage?.setItem(REDEEMED_KEY, JSON.stringify([...redeemedIds(), id].slice(-300)))
+  } catch {
+    /* private mode */
+  }
+}
+
 /** Sends a store receipt to the server; finishes the store transaction only once it is credited. */
 async function redeem(r: StoreReceipt): Promise<ServerWallet> {
   let w: ServerWallet
@@ -61,7 +79,40 @@ async function redeem(r: StoreReceipt): Promise<ServerWallet> {
   else if (r.purchaseToken) w = await shopApi.buyGoogle(r.productId, r.purchaseToken)
   else throw new ShopApiError('invalid_receipt')
   await r.finish().catch(() => {})
+  markRedeemed(r.txId)
   return w
+}
+
+/** Paid receipts the server has not credited yet (network/server trouble), retried until it does. */
+const unredeemed: StoreReceipt[] = []
+let retryTimer: ReturnType<typeof setInterval> | null = null
+
+function queueRetry(r: StoreReceipt): void {
+  if (!unredeemed.some((x) => x === r || (r.txId && x.txId === r.txId))) unredeemed.push(r)
+  retryTimer ??= setInterval(() => void retryUnredeemed(), 60_000)
+}
+
+/** Retries paid-but-not-credited receipts (timer, reconnect, app resume, store screen). */
+export async function retryUnredeemed(): Promise<void> {
+  for (const r of [...unredeemed]) {
+    try {
+      await handleWallet(await redeem(r))
+      unredeemed.splice(unredeemed.indexOf(r), 1)
+    } catch (e) {
+      // A definitive refusal (forged, someone else's, revoked) is not retried forever.
+      if (e instanceof ShopApiError && e.code !== 'offline' && e.status >= 400 && e.status < 500 && e.status !== 429) unredeemed.splice(unredeemed.indexOf(r), 1)
+    }
+  }
+  if (!unredeemed.length && retryTimer) {
+    clearInterval(retryTimer)
+    retryTimer = null
+  }
+}
+
+/** Android needs the server's Play verification set up; until then nothing is charged there. */
+export function storeReady(): boolean {
+  if (detectPlatform() !== 'android' || getProvider().id !== 'capacitor') return true
+  return serverWallet.peek()?.stores?.google === true
 }
 
 export async function purchase(id: string): Promise<PurchaseResult> {
@@ -71,23 +122,28 @@ export async function purchase(id: string): Promise<PurchaseResult> {
   let account: string
   try {
     account = (await ensureAccount(detectPlatform())).accountId
+    if (!serverWallet.peek()) await shopApi.wallet()
   } catch {
     return { ok: false, error: 'offline' }
   }
+  if (!storeReady()) return { ok: false, error: 'store_not_ready' }
   const r = await p.buy(id, account)
   if (!r.ok || !r.receipt) return { ok: false, error: r.error ?? 'failed' }
   try {
     await handleWallet(await redeem(r.receipt))
     return { ok: true }
   } catch (e) {
-    // Paid but not credited yet (network): the store keeps the transaction unfinished and
-    // `resumePending()` redeems it on the next launch.
+    // Paid but not credited yet: the store keeps the transaction unfinished and it is retried.
     const code = e instanceof ShopApiError ? e.code : 'failed'
-    return { ok: false, error: code === 'offline' ? 'offline' : 'rejected' }
+    if (code === 'offline' || (e instanceof ShopApiError && e.status >= 500) || code === 'rate_limited') {
+      queueRetry(r.receipt)
+      return { ok: false, error: 'offline' }
+    }
+    return { ok: false, error: 'rejected' }
   }
 }
 
-/** Re-verify everything the store account owns (Restore purchases). Returns product ids confirmed. */
+/** Re-verify everything the store account owns (the Restore button: a full store sync). */
 export async function restorePurchases(): Promise<string[]> {
   const p = getProvider()
   const receipts = await p.restore()
@@ -98,13 +154,19 @@ export async function restorePurchases(): Promise<string[]> {
       ok.push(r.productId)
     } catch (e) {
       // A new install: the receipt belongs to this player's earlier account; take it back.
-      if (e instanceof ShopApiError && e.code === 'not_your_receipt' && r.jws && (await shopApi.recoverApple(r.jws))) {
-        await refreshWallet()
+      if (e instanceof ShopApiError && e.code === 'not_your_receipt' && (await recoverFrom(r))) {
+        await refreshWallet(true)
         ok.push(r.productId)
       }
     }
   }
   return ok
+}
+
+async function recoverFrom(r: StoreReceipt): Promise<boolean> {
+  if (r.jws) return shopApi.recoverApple(r.jws)
+  if (r.purchaseToken) return shopApi.recoverGoogle(r.productId, r.purchaseToken)
+  return false
 }
 
 /**
@@ -126,5 +188,23 @@ export async function refreshWallet(userAction = false): Promise<ServerWallet | 
 
 export async function resumePending(): Promise<void> {
   if (!storeAvailable() || getProvider().id !== 'capacitor' || !currentAccountId()) return
-  await restorePurchases().catch(() => [])
+  const done = redeemedIds()
+  for (const r of (await getProvider().pending?.()) ?? []) if (!r.txId || !done.includes(r.txId)) queueRetry(r)
+  await retryUnredeemed()
+}
+
+let listening = false
+/** Boot: listen for transactions finishing outside a purchase call, and retry on reconnect / resume. */
+export function installPurchaseListeners(): void {
+  if (listening || !storeAvailable()) return
+  listening = true
+  getProvider().listen?.((r) => {
+    if (r.txId && redeemedIds().includes(r.txId)) return
+    queueRetry(r)
+    void retryUnredeemed()
+  })
+  globalThis.addEventListener?.('online', () => void retryUnredeemed())
+  globalThis.document?.addEventListener?.('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void retryUnredeemed()
+  })
 }

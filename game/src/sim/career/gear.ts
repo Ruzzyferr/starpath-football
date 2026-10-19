@@ -62,7 +62,8 @@ export function readGear(life: Pick<Life, 'flags'>): GearState {
   try {
     const o = JSON.parse(raw) as Partial<GearState>
     const inv: Record<string, number> = {}
-    for (const [id, n] of Object.entries(o.inv ?? {})) if (GEAR_BY_ID[id] && typeof n === 'number' && n > 0) inv[id] = Math.floor(n)
+    // Clamped: a hand-edited save cannot stack years of gear (10 purchases' worth at most).
+    for (const [id, n] of Object.entries(o.inv ?? {})) if (GEAR_BY_ID[id] && typeof n === 'number' && n > 0) inv[id] = Math.min(Math.floor(n), GEAR_BY_ID[id]!.matches * 10)
     const eq: Partial<Record<GearSlot, string>> = {}
     for (const [slot, id] of Object.entries(o.eq ?? {})) if (typeof id === 'string' && inv[id] && GEAR_BY_ID[id]?.slot === slot) eq[slot as GearSlot] = id
     return { inv, eq }
@@ -141,7 +142,8 @@ export function wearGear(life: Pick<Life, 'flags'>): GearDef[] {
 /** Rewarded-ad training boost: sessions banked (each = +{@link AD_TRAIN_BOOST} XP on one session). */
 export function adTrainBoosts(life: Pick<Life, 'flags'>): number {
   const n = life.flags[AD_BOOST_FLAG]
-  return typeof n === 'number' && n > 0 ? n : 0
+  // At most a few days' worth of ads (3 a day): an edited save cannot bank hundreds.
+  return typeof n === 'number' && n > 0 ? Math.min(Math.floor(n), 9) : 0
 }
 export function addAdTrainBoost(life: Pick<Life, 'flags'>): void {
   life.flags[AD_BOOST_FLAG] = adTrainBoosts(life) + 1

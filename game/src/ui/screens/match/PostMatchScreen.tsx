@@ -366,7 +366,7 @@ function EarningsStep({ pm }: { pm: PostMatchView }) {
         </>
       )}
       {bonus > 0 && (
-        <AdOffer offer="match_bonus" label={{ tr: `İzle: maç primi ×2 (+${fmtMoney(bonus).tr})`, en: `Watch: match bonus ×2 (+${fmtMoney(bonus).en})` }} testId="ad-match-bonus" />
+        <AdOffer offer="match_bonus" context={pm.fixture.fixtureId} label={{ tr: `İzle: maç primi ×2 (+${fmtMoney(bonus).tr})`, en: `Watch: match bonus ×2 (+${fmtMoney(bonus).en})` }} done={{ tr: `💰 Maç primi ikiye katlandı: +${fmtMoney(bonus).tr}`, en: `💰 Match bonus doubled: +${fmtMoney(bonus).en}` }} testId="ad-match-bonus" />
       )}
       {week.length > 0 && (
         <>

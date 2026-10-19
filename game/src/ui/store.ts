@@ -882,7 +882,7 @@ export type ScreenId =
   | 'preMatch' | 'liveMatch' | 'postMatch' | 'seasonEnd' | 'trophies' | 'inbox' | 'careerLog'
   | 'settings' | 'saves' | 'credits' | 'menu' | 'glossary'
   | 'achievements' | 'hallOfFame' | 'retire' | 'documentary' | 'trials'
-  | 'board' | 'whatsNew' | 'community' | 'objectives' | 'national' | 'cupDraw' | 'awards' | 'paywall' | 'store' | 'me'
+  | 'board' | 'whatsNew' | 'community' | 'objectives' | 'national' | 'cupDraw' | 'awards' | 'store' | 'me'
 
 export interface Route {
   id: ScreenId
@@ -1101,7 +1101,7 @@ export function detectQuality(): QualityProfile {
 }
 
 /** Match-night screens stay dark in every theme (floodlit pitch, replay, casino felt). */
-const DARK_SCREENS = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'paywall', 'casino', 'blackjack', 'roulette', 'slots', 'horses', 'cupDraw', 'awards'])
+const DARK_SCREENS = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'casino', 'blackjack', 'roulette', 'slots', 'horses', 'cupDraw', 'awards'])
 
 /** Reflect settings onto <html> data attributes (browser only). */
 export function bindSettingsToDocument(): () => void {

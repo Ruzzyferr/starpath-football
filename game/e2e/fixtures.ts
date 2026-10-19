@@ -27,6 +27,14 @@ export const test = base.extend<{ problems: Problems; shot: (name: string) => Pr
   problems: [
     async ({ page }, use, testInfo) => {
       const problems: Problems = { list: [] }
+      // The e2e player is an adult (ui/ageGate) unless a test clears it: casino specs go straight in.
+      await page.addInitScript(() => {
+        try {
+          if (!localStorage.getItem('starpath.agegate.v1') && !sessionStorage.getItem('e2e.noage')) localStorage.setItem('starpath.agegate.v1', JSON.stringify({ year: 1990 }))
+        } catch {
+          /* ignore */
+        }
+      })
       page.on('console', (m) => {
         const text = m.text()
         if (IGNORE.some((r) => r.test(text))) return

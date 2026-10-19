@@ -9,7 +9,7 @@ export interface StoreProduct {
   priceString: string
 }
 
-export type PurchaseError = 'cancelled' | 'unavailable' | 'failed' | 'offline' | 'rejected'
+export type PurchaseError = 'cancelled' | 'unavailable' | 'failed' | 'offline' | 'rejected' | 'pending' | 'store_not_ready'
 export interface PurchaseResult {
   ok: boolean
   error?: PurchaseError
@@ -18,6 +18,8 @@ export interface PurchaseResult {
 /** What the store hands back after a payment, for the shop server to verify. */
 export interface StoreReceipt {
   productId: string
+  /** Store transaction id (dedupe of already-redeemed transactions on this install). */
+  txId?: string
   /** iOS StoreKit 2 signed transaction. */
   jws?: string
   /** Android Play Billing token. */
@@ -41,6 +43,10 @@ export interface PurchaseProvider {
   buy(id: string, accountId: string): Promise<BuyResult>
   /** Receipts for what the store account owns (non-consumables, active subscriptions), to re-verify. */
   restore(): Promise<StoreReceipt[]>
+  /** Paid but not yet finished transactions (launch / resume), without a full store sync. */
+  pending?(): Promise<StoreReceipt[]>
+  /** Transactions that complete outside a purchase call (Ask to Buy, renewals, interrupted purchases). */
+  listen?(cb: (r: StoreReceipt) => void): void
 }
 
 const DEV_STORE_KEY = 'starpath.devstore.v1'

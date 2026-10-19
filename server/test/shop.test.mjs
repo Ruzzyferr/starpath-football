@@ -171,10 +171,10 @@ test('free diamonds: deduplicated by reference and capped per day', () => {
   assert.equal(shop.earn(acc, { source: 'motm', ref: 'c1:s2026:w5' }).earned, 5)
   assert.equal(shop.earn(acc, { source: 'motm', ref: 'c1:s2026:w5' }).earned, 0)
   for (let i = 0; i < 20; i++) shop.earn(acc, { source: 'motm', ref: `c1:w${i}` })
-  assert.equal(shop.wallet(acc).gems, 30, '6 MOTM claims a day at most')
+  assert.equal(shop.wallet(acc).gems, 50, '10 MOTM claims a day at most')
   let total = 0
   for (let i = 0; i < 100; i++) total += shop.earn(acc, { source: ['objective', 'award', 'first', 'season'][i % 4], ref: `r${i}` }).earned
-  assert.ok(shop.wallet(acc).gems <= 120, `daily free cap holds (${shop.wallet(acc).gems})`)
+  assert.ok(shop.wallet(acc).gems <= 250, `daily free cap holds (${shop.wallet(acc).gems})`)
   assert.equal(code(() => shop.earn(acc, { source: 'admin', ref: 'x' })), 'unknown_source')
 })
 

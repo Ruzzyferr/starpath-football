@@ -22,6 +22,8 @@ export interface ProductDef {
   /** Cash pack: weeks of the hero's current gross wage, at least `cashFloor`. */
   cashWeeks?: number
   cashFloor?: number
+  /** Ceiling on a cash pack (euros), so it never becomes a late-career power lever. */
+  cashCap?: number
   /** Gear given to the active career (starter pack). */
   gear?: string
   /** Shown as the store's highlighted pack. */
@@ -114,20 +116,21 @@ export const PRODUCTS: readonly ProductDef[] = [
     fallbackPrice: price,
   })),
   ...([
-    ['cash_s', 4, 5_000, '€1.99'],
-    ['cash_m', 12, 15_000, '€4.99'],
-    ['cash_l', 30, 40_000, '€9.99'],
-  ] as const).map(([id, weeks, floor, price]): ProductDef => ({
+    ['cash_s', 4, 5_000, 50_000, '€1.99'],
+    ['cash_m', 12, 15_000, 150_000, '€4.99'],
+    ['cash_l', 30, 40_000, 400_000, '€9.99'],
+  ] as const).map(([id, weeks, floor, cap, price]): ProductDef => ({
     id,
     kind: 'cash',
     storeType: 'inapp',
     consumable: true,
     cashWeeks: weeks,
     cashFloor: floor,
+    cashCap: cap,
     name: { tr: `${weeks} Haftalık Maaş`, en: `${weeks} Weeks’ Wages` },
     desc: {
-      tr: `Kariyer cüzdanına ${weeks} haftalık brüt maaşın (en az €${floor.toLocaleString('tr-TR')}). Gerçek paraya çevrilemez.`,
-      en: `${weeks} weeks of your gross wage into your career wallet (at least €${floor.toLocaleString('en-GB')}). Cannot be turned back into real money.`,
+      tr: `Kariyer cüzdanına ${weeks} haftalık brüt maaşın (en az €${floor.toLocaleString('tr-TR')}, en çok €${cap.toLocaleString('tr-TR')}). Gerçek paraya çevrilemez.`,
+      en: `${weeks} weeks of your gross wage into your career wallet (€${floor.toLocaleString('en-GB')} to €${cap.toLocaleString('en-GB')}). Cannot be turned back into real money.`,
     },
     icon: '💶',
     fallbackPrice: price,
@@ -140,8 +143,8 @@ export const PRODUCTS: readonly ProductDef[] = [
     gems: 50,
     name: { tr: 'Pro Sözleşme', en: 'Pro Contract' },
     desc: {
-      tr: 'Aylık abonelik: her gün 50💎 (o gün açınca), ödüllü reklamların ödülü reklamsız, Pro rozeti. Maç veya XP avantajı yok. İstediğin an iptal.',
-      en: 'Monthly subscription: 50💎 every day (claimed when you open the game that day), rewarded-ad rewards without the ad, a Pro badge. No match or XP advantage. Cancel any time.',
+      tr: 'Her gün mağazadan 50 elmas al (kaçırılan gün birikmez), reklam ödüllerini reklamsız al, Pro rozeti. Maç veya XP avantajı yok.',
+      en: 'Claim 50 diamonds in the store every day (missed days do not stack), get ad rewards without the ad, a Pro badge. No match or XP advantage.',
     },
     icon: '⭐',
     fallbackPrice: '€4.99',
@@ -151,6 +154,9 @@ export const PRODUCTS: readonly ProductDef[] = [
 export const PRODUCT_BY_ID: Readonly<Record<string, ProductDef>> = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]))
 export const COSMETIC_PRODUCTS = PRODUCTS.filter((p) => p.kind === 'cosmetic')
 export const PRODUCT_IDS: readonly string[] = PRODUCTS.map((p) => p.id)
+/** Diamonds a cosmetic pack also costs (server/catalog.json spend.cos_*). */
+export const COSMETIC_GEM_PRICE = 250
+
 /** Products on sale (retired ones are kept only for old records). */
 export const SALE_PRODUCTS = PRODUCTS.filter((p) => !p.retired)
 export const productsOfKind = (...kinds: ProductKind[]): ProductDef[] => SALE_PRODUCTS.filter((p) => kinds.includes(p.kind))

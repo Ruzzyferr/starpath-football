@@ -99,10 +99,6 @@ export function cosmeticUnlocked(kind: CosmeticKind, option: string | number): b
   return !pack || hasEntitlement(pack.id)
 }
 
-/** The career calendar is locked (read-only mode) for this season. */
-export function careerLocked(season: number): boolean {
-  return isCareerLocked(getFlavor(), hasEntitlement(FULL_CAREER), season)
-}
 
 /** Tests only. */
 export function _resetEntitlements(rec: EntitlementRecord = emptyRecord()): void {

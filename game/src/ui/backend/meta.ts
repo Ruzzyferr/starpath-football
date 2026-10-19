@@ -11,6 +11,7 @@
  *  - Actions & views for the retirement flow, documentary, Hall of Fame,
  *    Legacy New Game+, trials, records, potential, market reference.
  */
+import { flushEarnQueue, queueEarn } from '../../store-iap'
 import { careerAchievementEvent } from '../../sim/game/achievementEffects'
 import { effect, signal } from '@preact/signals'
 import type { GameState, LText } from '../../core/types'
@@ -120,6 +121,9 @@ export function achievementEvent(ev: AchEvent, s: GameState | null = current()):
   })
   // The same event feeds the per-career store: feats earned in THIS career echo in the game (sim/game/achievementEffects).
   if (s) careerAchievementEvent(s, ev)
+  // Free diamonds for each achievement (install-wide, once each; the shop server caps them).
+  for (const d of unlocked) queueEarn('first', `ach:${d.id}`)
+  if (unlocked.length) void flushEarnQueue()
   publish()
   announce(unlocked)
   return unlocked

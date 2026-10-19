@@ -1,7 +1,7 @@
 # Mağaza Listeleme Metinleri (TASLAK)
 
 > Pazarlama metni taslağıdır. Yayın öncesi: marka/hak taraması, gerçek özellik doğrulaması, mağaza karakter sınırları.
-> Bu metinlerde vaat edilen her şey oyunda bulunmalıdır. Satın alma modeli: mobilde ilk sezon ücretsiz + tek seferlik "Tam Kariyer"; Steam/masaüstü tam sürüm; reklam, abonelik, enerji yok.
+> Bu metinlerde vaat edilen her şey oyunda bulunmalıdır. Satın alma modeli: ücretsiz oyna, tüm kariyer açık; isteğe bağlı elmas/nakit paketleri, Pro Contract aboneliği ve isteğe bağlı ödüllü reklam; zorla reklam, enerji sınırı, ganimet kutusu yok.
 
 ## Karakter sınırları
 
@@ -25,11 +25,11 @@ Bir futbolcunun tüm hayatını yönet. Akademide başla, ilk sözleşmeni imzal
 - Gerçek bir kariyer: antrenman, form, moral, sakatlıklar, menajer ve kulüp ilişkileri.
 - Sahanın dışında hayat: para, ev, ilişkiler ve olaylar; her karar seni farklı bir hikâyeye götürür.
 - Zengin dünya: birçok ülke ve lig, milli takım, kupalar ve sezonluk özetler.
-- Şeffaf adil model: reklam yok, abonelik yok, bekleme sayacı yok. Mobilde ilk tam sezon ücretsiz, sonra tek seferlik Tam Kariyer.
-- Çevrimdışı oyna: hesap gerekmez, kayıtların cihazında kalır.
+- Ücretsiz oyna, tüm kariyer açık. Zorla reklam yok (ödüllü reklam isteğe bağlı), enerji sınırı yok, ganimet kutusu yok. Satın aldığın hiçbir şey maç sonucunu değiştirmez; fiyatlar maaşınla artmaz.
+- Çevrimdışı oyna: kariyerin ve kayıtların cihazında kalır; yalnızca mağazayı açarsan anonim bir mağaza hesabı oluşur.
 - Her ekranda rahat: telefon, tablet, bilgisayar, klavye ve gamepad desteği; erişilebilirlik ayarları.
 
-Kumarhane bölümü yalnızca oyun içi sanal para kullanır; gerçek para veya ödül yoktur.
+Kumarhane bölümü yalnızca oyun içi para kullanır (gerçek parayla satın alınabilir, ancak asla nakde çevrilemez); gerçek ödül yoktur. Abonelik (Pro Contract) aylık, otomatik yenilenir; mağaza hesabı ayarlarından iptal edilir. Uygulama içi satın alma ve isteğe bağlı ödüllü reklam içerir.
 
 **Anahtar kelimeler (ASO, App Store ≤100 karakter, virgülle):**
 futbol,kariyer,futbolcu,simülasyon,menajer,transfer,akademi,spor,çevrimdışı,hayat,rpg,maç
@@ -50,11 +50,11 @@ Live a footballer's whole life. Start in the academy, sign your first contract, 
 - A real career: training, form, morale, injuries, agents and club relationships.
 - Life off the pitch: money, homes, relationships and events; every choice leads to a different story.
 - A rich world: many countries and leagues, national team, cups and season recaps.
-- Fair and transparent: no ads, no subscription, no wait timers. On mobile the first full season is free, then a single one-time Full Career unlock.
-- Play offline: no account needed, your saves stay on your device.
+- Free to play, the whole career is open. No forced ads (rewarded ads are optional), no energy limit, no loot boxes. Nothing you buy changes a match result; prices do not scale with your salary.
+- Play offline: your career and saves stay on your device; only opening the store creates an anonymous shop account.
 - Comfortable everywhere: phone, tablet, desktop, keyboard and gamepad support; accessibility options.
 
-The casino section uses in-game virtual money only; there is no real money or prize.
+The casino section uses in-game money only (it can be bought with real money but can never be cashed out); there is no real prize. Pro Contract is a monthly auto-renewing subscription, cancelled in your store account settings. Contains in-app purchases and optional rewarded ads.
 
 **Keywords (ASO, App Store ≤100 chars, comma separated):**
 football,career,soccer,simulator,manager,transfer,academy,sports,offline,life,rpg,match
@@ -67,8 +67,8 @@ football,career,soccer,simulator,manager,transfer,academy,sports,offline,life,rp
 2. Kritik anları kendin oyna · Play the key match moments
 3. Antrenman, form, moral, sakatlık · Training, form, morale, injuries
 4. Sahanın dışında hayat ve olaylar · Life and events off the pitch
-5. Reklamsız, abonelik yok · No ads, no subscription
-6. Çevrimdışı, hesapsız · Offline, no account
+5. Ücretsiz, zorla reklam yok · Free to play, no forced ads
+6. Çevrimdışı, kariyer cihazında · Offline, career stays on device
 7. Telefon, PC, gamepad, erişilebilirlik · Phone, PC, gamepad, accessibility
 8. Türkçe ve İngilizce · Turkish and English
 

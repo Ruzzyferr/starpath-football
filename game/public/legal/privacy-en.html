@@ -13,28 +13,34 @@ code{font-size:.9em}a{color:inherit}
 </style></head><body><main>
 <h1>StarPath Football Privacy Policy</h1>
 <blockquote><strong>DRAFT: legal review required (TASLAK — hukuki inceleme gerekli).</strong> Do not publish before a lawyer has reviewed it. Bracketed fields must be filled in.</blockquote>
-<p>Last updated: [DATE] · Version: draft 0.1</p>
+<p>Last updated: [DATE] · Version: draft 0.2</p>
 <h2>1. In short</h2>
 <ul>
-<li>The game works <strong>offline</strong>. Your saves stay on your device.</li>
-<li><strong>No account, no ads, no tracking (analytics), no third-party advertising or measurement SDKs.</strong> We do not profile you or sell data.</li>
-<li>In-app purchases go only through the relevant store (Google Play, Apple App Store, Steam); we never see your payment details.</li>
+<li>The game is free to play. Your <strong>career and saves stay on your device</strong>.</li>
+<li>A player who never opens the store sends nothing to our server.</li>
+<li>Opening the store creates an <strong>anonymous shop account</strong> on our server (a random id and a hashed secret). It holds your diamond balance and purchase records. It does not hold your name, e-mail or career.</li>
+<li>Purchases are processed by Apple or Google; we never see card data.</li>
+<li>Optional <strong>rewarded ads</strong> come from Google AdMob. Declining ad tracking never costs you a reward.</li>
+<li>We do not sell your data and we do not run analytics SDKs.</li>
 </ul>
 <h2>2. Controller</h2>
-<p>[COMPANY / DEVELOPER NAME], [ADDRESS], contact: [CONTACT EMAIL]. (To be completed for GDPR Art. 13 / KVKK notice duties.)</p>
+<p>[COMPANY], [ADDRESS], contact: [CONTACT_EMAIL]. (GDPR Art. 13 / KVKK Art. 10 notice.)</p>
 <h2>3. What data, where, why</h2>
-<div class="tw"><table><tr><th>Data</th><th>Where it lives</th><th>Purpose</th><th>Leaves the device?</th></tr><tr><td>Career saves (character name, progress)</td><td>On-device storage (browser/IndexedDB, desktop <code>userData/saves</code>, mobile app storage)</td><td>Continue where you left off</td><td>No (if you enable Steam Cloud, Steam's own terms apply)</td></tr><tr><td>Settings, help hints, key bindings</td><td>Local storage</td><td>Remember preferences</td><td>No</td></tr><tr><td>Purchase record (product id, date, source)</td><td>Local storage</td><td>Show what is unlocked and your purchase history</td><td>No</td></tr><tr><td>Error log (message, version, platform, screen name)</td><td>Local storage; <strong>only if you turn it on in Settings</strong></td><td>Let you copy a report and send it to us manually</td><td>No; never sent automatically, sharing is up to you</td></tr><tr><td>Store purchase transactions</td><td>The relevant store</td><td>Payment and receipts</td><td>Between you and the store</td></tr></table></div>
-<p>Text you type (e.g. character names) stays on your device. We do not collect special-category data.</p>
-<h2>4. What we do not collect</h2>
-<p>Location, contacts, camera, microphone, advertising ID, device fingerprints, online identifiers or behavioural analytics. There are no ads in the game.</p>
-<h2>5. Third parties</h2>
-<p>Purchases run through store providers' SDKs and services (Google Play Billing, Apple StoreKit, Steam), governed by their own privacy policies. Fonts, audio and images are bundled with the app; nothing is fetched from external servers at run time.</p>
-<h2>6. Retention and deletion</h2>
-<p>Data stays on your device until you delete it. You can delete all saves under Settings &gt; Data, or remove everything by uninstalling the app. We hold no server-side data.</p>
-<h2>7. Children</h2>
-<p>The game is aimed at a general audience. We do not knowingly collect children's personal data and have no collection mechanism. Casino mini-games use <strong>in-game virtual money only</strong>, involve no real money or prizes, and are closed to characters under 18. [Age rating to be verified.]</p>
-<h2>8. Your rights (GDPR / KVKK Art. 11)</h2>
-<p>You may ask whether data is processed, and request access, correction, erasure or object. Because data is on your device you can mostly exercise these yourself; for further requests contact [CONTACT EMAIL]. [Supervisory authority details to be added.]</p>
-<h2>9. Changes</h2>
+<div class="tw"><table><tr><th>Data</th><th>Where it lives</th><th>Purpose and lawful basis</th><th>Leaves the device?</th></tr><tr><td>Career saves (character name, progress), settings, hints, key bindings</td><td>On-device storage</td><td>Continue where you left off</td><td>No (if you enable Steam Cloud, Steam's terms apply)</td></tr><tr><td>Error log</td><td>Local storage; <strong>only if you turn it on in Settings</strong></td><td>Copy a report and send it to us yourself</td><td>No; never sent automatically</td></tr><tr><td>Anonymous shop account: random account id, hashed secret</td><td>Our server, created when you first open the store</td><td>Run the shop and recover your balance (contract)</td><td>Yes, to our server</td></tr><tr><td>Diamond balance, purchase ledger, store transaction ids and receipts, subscription state</td><td>Our server</td><td>Deliver what you bought, refund and fraud handling (contract; legitimate interest)</td><td>Yes</td></tr><tr><td>Rewarded-ad sessions, daily counters, free-diamond claims</td><td>Our server</td><td>Pay ad rewards once and apply fair-use limits (legitimate interest)</td><td>Yes</td></tr><tr><td>Signed grants (diamond spends applied to your career)</td><td>Our server and your save</td><td>Prove a spend was paid for once (contract)</td><td>Yes</td></tr><tr><td>Audit log with IP addresses</td><td>Our server</td><td>Security and fraud prevention (legitimate interest)</td><td>Yes</td></tr><tr><td>Advertising ID / IDFA, ad requests</td><td>Google AdMob</td><td>Show rewarded ads. Advertising ID only with your ATT permission on iOS; in the EU/UK only after your consent in Google's consent form (UMP). Personalised ads rely on consent</td><td>Yes, to Google</td></tr><tr><td>Payment data</td><td>Apple App Store / Google Play</td><td>Payment and receipts</td><td>Between you and the store; we receive only transaction ids and receipts</td></tr></table></div>
+<p>Our account id is sent to Google as the ad verification user id so a reward can be matched to its ad. We do not collect special-category data, location, contacts, camera or microphone.</p>
+<h2>4. Hosting and transfers</h2>
+<p>The server runs at DigitalOcean in Frankfurt (EU). Google and Apple process data under their own privacy policies and may transfer data outside the EEA under their safeguards.</p>
+<h2>5. Retention and deletion</h2>
+<ul>
+<li>IP addresses in the audit log are hashed after 30 days and deleted after 180 days.</li>
+<li>The ledger and store transactions are kept as long as needed for refund, chargeback and fraud handling and legal duties; then deleted or anonymised.</li>
+<li>On-device data stays until you delete it (Settings &gt; Data) or uninstall the app.</li>
+<li>You can <strong>delete your shop account</strong> in Settings (this calls <code>DELETE /v1/account</code>) and <strong>export your data</strong> there too. Deleting the account removes your balance; unused diamonds cannot be refunded after deletion except where law requires.</li>
+</ul>
+<h2>6. Children and the casino</h2>
+<p>The game is for a general audience; ads and purchases are for adults or with a parent's store approval. We do not knowingly collect children's data. Casino mini-games use in-game money, which can be bought with real money but can never be cashed out or won back as real money or prizes; they are closed to young characters and subject to the age rating. [Age rating to be verified.]</p>
+<h2>7. Your rights (GDPR / KVKK Art. 11)</h2>
+<p>You may ask whether data is processed and request access, correction, erasure, restriction, portability, or object to processing; you may withdraw consent for personalised ads at any time (iOS Settings &gt; Privacy &gt; Tracking, Android ad settings, or Google's consent form). Contact [CONTACT_EMAIL]. You may complain to your supervisory authority (in Turkey, the KVKK Board). [Authority details to be added.]</p>
+<h2>8. Changes</h2>
 <p>If this policy changes, this page and the in-app link are updated; significant changes are announced in release notes.</p>
 </main></body></html>

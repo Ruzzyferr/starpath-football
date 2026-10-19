@@ -6,7 +6,7 @@
  *
  * Not used by production code. Deterministic per seed.
  */
-import { addGear, readGear } from '../career/gear'
+import { addAdTrainBoost, addGear, adTrainBoosts, readGear } from '../career/gear'
 import { Rng } from '../../core/rng'
 import type { Background, GameState, Gender, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
@@ -49,7 +49,9 @@ export interface CareerConfig {
    * Diamond gear (docs/MONETIZASYON.md §6.3 balance check): none (free player), starter (the Starter
    * Pack's Golden Boots once), always (Golden Boots worn for the whole career, re-bought when worn out).
    */
-  gear?: 'none' | 'starter' | 'always'
+  gear?: 'none' | 'starter' | 'always' | 'max'
+  /** Real-money cash: the largest pack (30 weeks of wages, capped at €400k) at every season start. */
+  cashPerSeason?: boolean
 }
 
 /** One row per completed season (sampled at the season rollover). */
@@ -322,8 +324,20 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   }
   note()
   if (cfg.gear === 'starter' || cfg.gear === 'always') addGear(s.life, 'gold_boots')
+  let cashSeason = -1
   while (s.calendar.season < startSeason + cfg.seasons && guard++ < 6000) {
-    if (cfg.gear === 'always' && !readGear(s.life).eq.boots) addGear(s.life, 'gold_boots')
+    if ((cfg.gear === 'always' || cfg.gear === 'max') && !readGear(s.life).eq.boots) addGear(s.life, 'gold_boots')
+    if (cfg.gear === 'max') {
+      // Every slot filled and a rewarded-ad boost banked for every session (the most a spender can stack).
+      const g = readGear(s.life)
+      if (!g.eq.accessory) addGear(s.life, s.hero.position === 'GK' ? 'keeper_gloves' : 'mind_band')
+      if (!g.eq.recovery) addGear(s.life, 'compression')
+      if (adTrainBoosts(s.life) === 0) addAdTrainBoost(s.life)
+    }
+    if (cfg.cashPerSeason && cashSeason !== s.calendar.season) {
+      cashSeason = s.calendar.season
+      s.life.money += Math.min(400_000, Math.max(40_000, 30 * (s.hero.contract?.wage ?? 0)))
+    }
     const week = s.calendar.week
     const season = s.calendar.season
     // Morning bookkeeping.

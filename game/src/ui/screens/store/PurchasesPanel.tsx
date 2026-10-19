@@ -3,7 +3,7 @@ import '../../../styles/screens/store.css'
 import { t, lt, locale } from '../../../i18n'
 import { Button, toast } from '../../components'
 import { navigate } from '../../store'
-import { PRODUCTS, PRODUCT_BY_ID, entitlements, getFlavor, isDemo, purchaseHistory, restorePurchases, storeAvailable } from '../../../store-iap'
+import { PRODUCTS, PRODUCT_BY_ID, currentAccountId, entitlements, getFlavor, isDemo, purchaseHistory, restorePurchases, shopApi, storeAvailable } from '../../../store-iap'
 
 /** Settings > Purchases: restore (store policy requires it) + what this install owns. */
 export function PurchasesPanel() {
@@ -45,6 +45,7 @@ export function PurchasesPanel() {
           </li>
         ))}
       </ul>
+      {storeAvailable() && <ShopAccount />}
       {isDemo() && <p class="t-sm t-mid" data-testid="demo-note">{t('iap.panel.demo')}</p>}
       {storeAvailable() && (
         <div>
@@ -52,6 +53,68 @@ export function PurchasesPanel() {
         </div>
       )}
       <span class="t-xs t-lo">{t('iap.panel.build', { flavor })}</span>
+    </div>
+  )
+}
+
+/**
+ * The anonymous shop account: a recovery code to write down (a new phone or a reinstall gets the
+ * diamonds back) and deleting the shop data (GDPR / KVKK). Shown only once the store has been used.
+ */
+function ShopAccount() {
+  const [code, setCode] = useState<string | null>(null)
+  const [entry, setEntry] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  const has = !!currentAccountId()
+  const L = (tr: string, en: string) => lt({ tr, en })
+  const getCode = async () => {
+    setBusy(true)
+    try {
+      setCode((await shopApi.recoveryCode()).code)
+    } catch {
+      toast(L('Kod alınamadı. Bağlantını kontrol et.', 'Could not get a code. Check your connection.'), 'info')
+    }
+    setBusy(false)
+  }
+  const useCode = async () => {
+    setBusy(true)
+    const ok = await shopApi.recoverCode(entry.trim())
+    setBusy(false)
+    toast(ok ? L('Hesabın geri geldi.', 'Your account is back.') : L('Kod geçersiz veya kullanılmış.', 'The code is invalid or already used.'), ok ? 'success' : 'info')
+  }
+  const del = async () => {
+    setBusy(true)
+    try {
+      await shopApi.deleteAccount()
+      toast(L('Mağaza verilerin silindi.', 'Your shop data was deleted.'), 'success')
+    } catch {
+      toast(L('Silinemedi. Bağlantını kontrol et.', 'Could not delete. Check your connection.'), 'info')
+    }
+    setBusy(false)
+    setConfirmDelete(false)
+  }
+  return (
+    <div class="pp-panel" data-testid="shop-account">
+      <h3 class="h4">{L('Mağaza hesabı', 'Shop account')}</h3>
+      <p class="t-sm t-mid">{L('Elmasların sunucumuzdaki isimsiz bir hesapta durur. Telefon değiştirirsen bu kodla geri alırsın; kodu bir yere yaz, kimseyle paylaşma.', 'Your diamonds live in an anonymous account on our server. On a new phone this code brings them back; write it down and never share it.')}</p>
+      {has && (code
+        ? <p class="score-font" data-testid="recovery-code" style={{ fontSize: '1.4rem', letterSpacing: '0.08em' }}>{code}</p>
+        : <div><Button variant="secondary" disabled={busy} onClick={getCode} data-testid="recovery-get">{L('Kurtarma kodu oluştur', 'Create a recovery code')}</Button></div>)}
+      <label class="t-sm">
+        {L('Kodun var mı?', 'Have a code?')}{' '}
+        <input class="input" value={entry} onInput={(e) => setEntry((e.target as HTMLInputElement).value)} placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" data-testid="recovery-input" />
+      </label>
+      <div><Button variant="ghost" disabled={busy || entry.trim().length < 8} onClick={useCode} data-testid="recovery-use">{L('Hesabı geri al', 'Restore account')}</Button></div>
+      {has && (confirmDelete
+        ? (
+          <div>
+            <p class="t-sm">{L('Elmasların, mağaza geçmişin ve hesabın silinir; geri alınamaz. Mağaza işlemlerinin anonim kaydı yasal süre boyunca saklanır.', 'Your diamonds, shop history and account are deleted and cannot be restored. An anonymous record of store transactions is kept for the legal period.')}</p>
+            <Button variant="danger" disabled={busy} onClick={del} data-testid="shop-delete-confirm">{L('Evet, sil', 'Yes, delete')}</Button>{' '}
+            <Button variant="ghost" onClick={() => setConfirmDelete(false)}>{L('Vazgeç', 'Cancel')}</Button>
+          </div>
+        )
+        : <div><Button variant="ghost" onClick={() => setConfirmDelete(true)} data-testid="shop-delete">{L('Mağaza verilerimi sil', 'Delete my shop data')}</Button></div>)}
     </div>
   )
 }

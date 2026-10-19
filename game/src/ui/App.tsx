@@ -3,6 +3,7 @@
  * Screens are plain components keyed by ScreenId. Shell-less ("immersive")
  * screens: title, new career and the match flow.
  */
+import { ageGated } from './ageGate'
 import { startGamepadNav } from '../input/gamepadNav'
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
@@ -38,7 +39,6 @@ import { PreMatchScreen } from './screens/match/PreMatchScreen'
 import { LiveMatchScreen } from './screens/match/LiveMatchScreen'
 import { PostMatchScreen } from './screens/match/PostMatchScreen'
 import { SeasonEndScreen } from './screens/SeasonEndScreen'
-import { PaywallScreen } from './screens/store/PaywallScreen'
 import { StoreScreen } from './screens/store/StoreScreen'
 import { TrophiesScreen } from './screens/TrophiesScreen'
 import { NationalScreen } from './screens/national/NationalScreen'
@@ -81,11 +81,11 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   world: WorldScreen,
   contract: ContractScreen,
   life: LifeScreen,
-  casino: gated('casino', CasinoScreen),
-  blackjack: gated('casino', BlackjackScreen),
-  roulette: gated('casino', RouletteScreen),
-  slots: gated('casino', SlotsScreen),
-  horses: gated('casino', HorsesScreen),
+  casino: gated('casino', ageGated(CasinoScreen)),
+  blackjack: gated('casino', ageGated(BlackjackScreen)),
+  roulette: gated('casino', ageGated(RouletteScreen)),
+  slots: gated('casino', ageGated(SlotsScreen)),
+  horses: gated('casino', ageGated(HorsesScreen)),
   preMatch: PreMatchScreen,
   liveMatch: LiveMatchScreen,
   postMatch: PostMatchScreen,
@@ -104,11 +104,10 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   retire: RetireScreen,
   documentary: DocumentaryScreen,
   trials: TrialsScreen,
-  paywall: PaywallScreen,
   store: StoreScreen,
 }
 
-const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials', 'paywall'])
+const IMMERSIVE = new Set<ScreenId>(['title', 'newCareer', 'preMatch', 'liveMatch', 'postMatch', 'seasonEnd', 'trials'])
 /** Screens usable without a loaded career. */
 const NO_STATE = new Set<ScreenId>(['title', 'newCareer', 'settings', 'saves', 'credits', 'glossary', 'achievements', 'hallOfFame', 'documentary', 'board', 'whatsNew', 'community'])
 

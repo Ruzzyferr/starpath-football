@@ -1,6 +1,6 @@
 /**
  * Local data rights (GDPR-style, 2.12 privacy): "export everything I have stored" and
- * "delete everything". The game keeps no server data, so this is the complete picture:
+ * "delete everything". The career never leaves the device; the optional anonymous shop account lives on our server (delete it with DELETE /v1/account). Local data is:
  * save slots (IndexedDB / files), settings, key bindings, achievements and Hall of Fame,
  * entitlements cache, the opt-in error log and the offline cache.
  */
@@ -38,7 +38,7 @@ export function buildDataExport(kv: KvLike, saves: Record<string, string>, now =
     const v = kv.getItem(k)
     if (v !== null) keys[k] = v
   }
-  return { app: 'starpath-football', exportedAt: now.toISOString(), note: 'All data the game stores on this device. Nothing is sent to a server.', keys, saves }
+  return { app: 'starpath-football', exportedAt: now.toISOString(), note: 'All data the game stores on this device. The career is never sent to a server.', keys, saves }
 }
 
 /** Remove every game-owned key; returns how many were removed. */

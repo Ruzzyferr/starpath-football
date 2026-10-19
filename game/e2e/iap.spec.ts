@@ -17,6 +17,10 @@ async function openStore(page: Page): Promise<void> {
 }
 const gems = async (page: Page): Promise<number> => Number((await page.getByTestId('st-gems').innerText()).replace(/[^\d-]/g, ''))
 const tab = (page: Page, name: string) => page.getByRole('tab', { name }).click()
+/** Balance is `base` plus any free diamonds that landed meanwhile (achievements unlock as the career runs). */
+async function expectGems(page: Page, base: number): Promise<void> {
+  await expect.poll(async () => { const g = await gems(page); return g >= base && g <= base + 60 }, { timeout: 15_000 }).toBe(true)
+}
 
 test('no paywall: a free career crosses the season rollover', async ({ page }) => {
   test.setTimeout(300_000)
@@ -48,8 +52,8 @@ test('diamonds: buying a pack credits exactly its amount (server-held), the top 
   await openStore(page)
   expect(await gems(page)).toBe(0)
   await page.getByTestId('buy-gems_m').click()
-  await expect(page.getByTestId('st-gems')).toContainText('600')
-  await expect(page.getByTestId('topbar-gems')).toContainText('600')
+  await expectGems(page, 600)
+  await expect.poll(async () => Number((await page.getByTestId('topbar-gems').innerText()).replace(/[^\d]/g, ''))).toBeGreaterThanOrEqual(600)
   await shot('shop-gems')
 })
 
@@ -66,7 +70,7 @@ test('tampering with the cached balance buys nothing: the server decides', async
   await page.reload()
   await waitForApp(page)
   await openStore(page)
-  await expect(page.getByTestId('st-gems')).toContainText('0')
+  await expectGems(page, 0)
   await tab(page, 'Gear')
   await expect(page.getByTestId('buy-gear-gold_boots')).toBeDisabled()
   // Even calling the server directly with the forged belief (and a price of 0) fails.
@@ -85,10 +89,10 @@ test('gear: Golden Boots bought with diamonds land in the bag, raise training XP
   const sessionId = await sp<string>(page, `sp.data.trainingSessions().find((x) => x.xp > 0)?.id`)
   await openStore(page)
   await page.getByTestId('buy-gems_m').click()
-  await expect(page.getByTestId('st-gems')).toContainText('600')
+  await expectGems(page, 600)
   await tab(page, 'Gear')
   await page.getByTestId('buy-gear-gold_boots').click()
-  await expect(page.getByTestId('st-gems')).toContainText('300')
+  await expectGems(page, 300)
   await expect(page.getByTestId('gear-left-gold_boots')).toContainText('60')
   await shot('shop-gear')
   const gear = await sp<{ inv: Record<string, number>; eq: Record<string, string> }>(page, `JSON.parse(sp.state().life.flags['g:gear'])`)
@@ -110,7 +114,7 @@ test('starter pack: 300 diamonds + Golden Boots once; the card then shows Owned'
   await waitForApp(page)
   await openStore(page)
   await page.getByTestId('buy-starter_pack').click()
-  await expect(page.getByTestId('st-gems')).toContainText('300')
+  await expectGems(page, 300)
   await expect(page.getByTestId('pack-starter_pack')).toContainText('Owned')
   const inv = await sp<Record<string, number>>(page, `JSON.parse(sp.state().life.flags['g:gear']).inv`)
   expect(inv.gold_boots).toBe(60)
@@ -132,7 +136,7 @@ test('rewarded ad: a full view pays +10💎 and counts against the cap; closing 
   await expect(ad).toContainText('5/5')
   await ad.click()
   await expect(page.getByTestId('dev-ad')).toHaveCount(0, { timeout: 20_000 })
-  await expect(page.getByTestId('st-gems')).toContainText('10')
+  await expectGems(page, 10)
   await expect(ad).toContainText('4/5')
 })
 
@@ -163,12 +167,17 @@ test('physio: diamonds halve a long injury', async ({ page }) => {
   await waitForApp(page)
   await openStore(page)
   await page.getByTestId('buy-gems_s').click()
-  await expect(page.getByTestId('st-gems')).toContainText('220')
+  await expectGems(page, 220)
   await sp(page, `(() => { sp.state().hero.injury = { name: { tr: 'Kas', en: 'Muscle' }, weeksLeft: 6, severity: 2 }; sp.touch() })()`)
   await tab(page, 'Gear')
+  await page.waitForTimeout(800)
+  const before = await gems(page)
   await page.getByTestId('buy-physio').click()
   await expect.poll(() => sp<number>(page, 'sp.state().hero.injury?.weeksLeft ?? 0')).toBe(3)
-  await expect(page.getByTestId('st-gems')).toContainText('120')
+  // 100💎 spent (free diamonds from achievements may land meanwhile, in steps of 5-10).
+  await expect.poll(() => gems(page)).toBeLessThanOrEqual(before - 80)
+  // Once per injury.
+  await expect(page.getByTestId('st-physio')).toContainText('already')
 })
 
 test('Pro Contract: 50💎 once per day while active', async ({ page }) => {
@@ -178,7 +187,7 @@ test('Pro Contract: 50💎 once per day while active', async ({ page }) => {
   await tab(page, 'Pro')
   await page.getByTestId('buy-pro_contract').click()
   await page.getByTestId('pass-claim').click()
-  await expect(page.getByTestId('st-gems')).toContainText('50')
+  await expectGems(page, 50)
   await expect(page.getByTestId('pass-claim')).toBeDisabled()
 })
 
@@ -186,9 +195,9 @@ test('restore: a wiped install gets its non-consumables back from the store acco
   await page.goto('/?autostart=1&seed=2027')
   await waitForApp(page)
   await openStore(page)
-  await tab(page, 'Cosmetics')
+  await tab(page, 'Style')
   const pack = page.getByTestId('pack-pack_celebrations')
-  await pack.getByRole('button').click()
+  await page.getByTestId('buy-pack_celebrations').click()
   await expect(pack).toContainText('Owned')
   await page.evaluate(() => localStorage.removeItem('starpath.entitlements.v1'))
   await page.reload()
@@ -196,4 +205,55 @@ test('restore: a wiped install gets its non-consumables back from the store acco
   await sp(page, `sp.navigate('settings')`)
   await page.getByTestId('restore-btn').click()
   await expect(page.getByTestId('entitlement-list')).toContainText('Celebration Pack')
+})
+
+test('a grant typed into local storage is never applied (signature check)', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await openStore(page)
+  const acc = await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.account.v1') ?? '{}') as { accountId: string })
+  // A forged "Golden Boots" coupon: right account, right shape, signature made up.
+  await page.evaluate((id) => {
+    const k = 'starpath.walletcache.v1'
+    const w = JSON.parse(localStorage.getItem(k) ?? '{}')
+    const payload = btoa(JSON.stringify({ v: 1, n: 'forged-nonce', a: id, t: 1, k: 'gear', id: 'gold_boots' })).replace(/=+$/, '')
+    w.inbox = [{ nonce: 'forged-nonce', token: `${payload}.${'A'.repeat(86)}`, k: 'gear', id: 'gold_boots' }]
+    localStorage.setItem(k, JSON.stringify(w))
+  }, acc.accountId)
+  await sp(page, `sp.navigate('saves')`)
+  await sp(page, `(async () => { await sp.actions.load(sp.state().meta.slot) })()`)
+  await page.waitForTimeout(1500)
+  expect(await sp<string | undefined>(page, `sp.state().life.flags['g:gear']`)).toBeUndefined()
+})
+
+test('cosmetics can be unlocked with diamonds; cash from diamonds is capped per day', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await openStore(page)
+  await page.getByTestId('buy-gems_l').click()
+  await expectGems(page, 1300)
+  await tab(page, 'Style')
+  await page.getByTestId('buy-gems-pack_avatar').click()
+  await expect(page.getByTestId('pack-pack_avatar')).toContainText('Owned', { timeout: 15_000 })
+  await tab(page, 'Cash')
+  const before = await sp<number>(page, 'sp.state().life.money')
+  for (let i = 0; i < 3; i++) {
+    await page.getByTestId('gems-to-cash').click()
+    await expect.poll(() => sp<number>(page, 'sp.state().life.money')).toBeGreaterThan(before)
+    await page.waitForTimeout(300)
+  }
+  await expect(page.getByTestId('gems-to-cash')).toBeDisabled()
+})
+
+test('age gate: the casino asks the player birth year once and stays closed under 18', async ({ page }) => {
+  await page.addInitScript(() => { sessionStorage.setItem('e2e.noage', '1'); localStorage.removeItem('starpath.agegate.v1') })
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await sp(page, `(() => { const s = sp.state(); s.hero.birthYear = s.calendar.season - 25; sp.touch() })()`)
+  await sp(page, `sp.navigate('casino')`)
+  await expect(page.getByTestId('age-year')).toBeVisible()
+  await page.getByTestId('age-year').fill(String(new Date().getFullYear() - 15))
+  await page.getByTestId('age-ok').click()
+  await expect(page.locator('body')).toContainText('18')
+  await expect(page.getByTestId('age-year')).toHaveCount(0)
 })

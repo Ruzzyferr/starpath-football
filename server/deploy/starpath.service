@@ -1,0 +1,49 @@
+# /etc/systemd/system/starpath.service
+[Unit]
+Description=StarPath Football shop server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=starpath
+Group=starpath
+WorkingDirectory=/opt/starpath
+EnvironmentFile=/etc/starpath.env
+ExecStart=/snap/node/current/bin/node --disable-warning=ExperimentalWarning src/main.mjs
+Restart=always
+RestartSec=2
+# main.mjs closes the HTTP server and the database on SIGTERM.
+KillSignal=SIGTERM
+TimeoutStopSec=10
+
+# Sandbox: read-only system, writable data directory only, no privileges.
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/opt/starpath/data
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+ProtectProc=invisible
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+AmbientCapabilities=
+UMask=0077
+# Node's JIT needs W+X memory, so MemoryDenyWriteExecute stays off.
+MemoryMax=220M
+LimitNOFILE=4096
+TasksMax=64
+
+[Install]
+WantedBy=multi-user.target

@@ -30,6 +30,10 @@ export interface ServerWallet {
   physioDiscounts: number
   earnedToday: number
   prices: Record<string, number>
+  /** Which stores the server can verify right now (Android needs the Play service account). */
+  stores?: { apple: boolean; google: boolean }
+  seasonX2Ready?: boolean
+  limits?: { gemsToCashLeft: number }
 }
 
 export type ShopErrorCode =
@@ -107,7 +111,7 @@ function setWallet(w: ServerWallet): ServerWallet {
 
 let accountPromise: Promise<Account> | null = null
 
-async function raw<T>(method: 'GET' | 'POST', path: string, bodyIn?: unknown, auth?: Account): Promise<T> {
+async function raw<T>(method: 'GET' | 'POST' | 'DELETE', path: string, bodyIn?: unknown, auth?: Account): Promise<T> {
   // The server takes JSON only: a POST always carries a body.
   const body = method === 'POST' ? bodyIn ?? {} : undefined
   let r: Response
@@ -116,6 +120,8 @@ async function raw<T>(method: 'GET' | 'POST', path: string, bodyIn?: unknown, au
       method,
       headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(auth ? { Authorization: `Bearer ${auth.token}` } : {}) },
       body: body !== undefined ? JSON.stringify(body) : undefined,
+      // A stalled server reads as offline after 15 s instead of a spinner forever.
+      signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(15_000) : undefined,
     })
   } catch {
     shopOffline.value = true
@@ -199,12 +205,42 @@ export const shopApi = {
   buyApple: (jws: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/apple', { jws })),
   buyGoogle: (productId: string, purchaseToken: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/google', { productId, purchaseToken })),
   buyDev: (productId: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/dev', { productId })),
-  spend: (item: string, idem: string, discount = false) => withWallet(call<ServerWallet & { grant: ServerGrant }>('POST', '/v1/spend', { item, idem, discount })),
+  spend: (item: string, idem: string, discount = false, career?: string) => withWallet(call<ServerWallet & { grant: ServerGrant }>('POST', '/v1/spend', { item, idem, discount, ...(career ? { career } : {}) })),
   ack: (nonces: string[]) => withWallet(call<ServerWallet>('POST', '/v1/inbox/ack', { nonces })),
-  adStart: (offer: string) => call<{ nonce: string; skipAd: boolean }>('POST', '/v1/ads/start', { offer }),
-  adComplete: (nonce: string) => withWallet(call<ServerWallet & { grant: ServerGrant | null }>('POST', '/v1/ads/complete', { nonce })),
+  adStart: (offer: string, ref?: string) => call<{ nonce: string; skipAd: boolean }>('POST', '/v1/ads/start', { offer, ...(ref ? { ref } : {}) }),
+  adComplete: (nonce: string, career?: string) => withWallet(call<ServerWallet & { grant: ServerGrant | null }>('POST', '/v1/ads/complete', { nonce, ...(career ? { career } : {}) })),
   earn: (source: string, ref: string) => withWallet(call<ServerWallet & { earned: number }>('POST', '/v1/earn', { source, ref })),
   passClaim: () => withWallet(call<ServerWallet>('POST', '/v1/pass/claim')),
+  /** New install: get the old account back from a restorable Google Play purchase. */
+  async recoverGoogle(productId: string, purchaseToken: string): Promise<boolean> {
+    try {
+      const a = await raw<Account>('POST', '/v1/recover/google', { productId, purchaseToken })
+      writeJson(ACCOUNT_KEY, a)
+      return true
+    } catch {
+      return false
+    }
+  },
+  /** Recovery code shown in Settings (written down by the player). */
+  recoveryCode: () => call<{ code: string }>('POST', '/v1/account/recovery-code'),
+  async recoverCode(code: string): Promise<boolean> {
+    try {
+      const a = await raw<Account>('POST', '/v1/recover/code', { code })
+      writeJson(ACCOUNT_KEY, a)
+      await shopApi.wallet().catch(() => null)
+      return true
+    } catch {
+      return false
+    }
+  },
+  /** Settings › delete my shop data (server keeps only anonymised store transactions). */
+  async deleteAccount(): Promise<void> {
+    const acc = readJson<Account>(ACCOUNT_KEY)
+    if (acc) await raw<unknown>('DELETE', '/v1/account', undefined, acc)
+    writeJson(ACCOUNT_KEY, null)
+    writeJson(WALLET_KEY, null)
+    serverWallet.value = null
+  },
   /** New install: get the old account back from a restorable Apple receipt. */
   async recoverApple(jws: string): Promise<boolean> {
     try {

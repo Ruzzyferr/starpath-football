@@ -6,8 +6,8 @@
 import { describe, expect, it } from 'vitest'
 import { runCareer, standardMix, type CareerConfig } from './balanceSim'
 
-function cohort(gear: CareerConfig['gear'], n: number) {
-  return standardMix(n, 5, 7100).map((c) => runCareer({ ...c, gear }))
+function cohort(gear: CareerConfig['gear'], n: number, cashPerSeason = false) {
+  return standardMix(n, 5, 7100).map((c) => runCareer({ ...c, gear, cashPerSeason }))
 }
 
 describe('gear balance (5 seasons, same seeds)', () => {
@@ -28,4 +28,19 @@ describe('gear balance (5 seasons, same seeds)', () => {
     expect(gStarter / gFree).toBeLessThanOrEqual(1.1)
     expect(appsS3).toBeGreaterThanOrEqual(10)
   }, 600_000)
+
+  it('the biggest spender (every gear slot, an ad boost every session, the largest cash pack each season): ≤ +25% growth, same milestones', () => {
+    const n = 12
+    const free = cohort('none', n)
+    const whale = cohort('max', n, true)
+    const growth = (t: ReturnType<typeof runCareer>) => (t.samples.at(-1)?.ovr ?? t.startOvr) - t.startOvr
+    const avg = (xs: number[]) => xs.reduce((a, b) => a + b, 0) / xs.length
+    const gFree = avg(free.map(growth))
+    const gWhale = avg(whale.map(growth))
+    const topFree = free.filter((t) => t.firstTopTierAge !== null).length
+    const topWhale = whale.filter((t) => t.firstTopTierAge !== null).length
+    console.log(`[gear balance] biggest spender: OVR growth ${gWhale.toFixed(2)} vs free ${gFree.toFixed(2)} (×${(gWhale / gFree).toFixed(3)}); reached a top tier ${topWhale}/${n} vs ${topFree}/${n}`)
+    expect(gWhale / gFree).toBeLessThanOrEqual(1.25)
+    expect(topWhale - topFree).toBeLessThanOrEqual(3)
+  }, 900_000)
 })

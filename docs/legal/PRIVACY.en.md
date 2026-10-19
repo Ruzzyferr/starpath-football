@@ -2,50 +2,56 @@
 
 > **DRAFT: legal review required (TASLAK — hukuki inceleme gerekli).** Do not publish before a lawyer has reviewed it. Bracketed fields must be filled in.
 
-Last updated: [DATE] · Version: draft 0.1
+Last updated: [DATE] · Version: draft 0.2
 
 ## 1. In short
 
-- The game works **offline**. Your saves stay on your device.
-- **No account, no ads, no tracking (analytics), no third-party advertising or measurement SDKs.** We do not profile you or sell data.
-- In-app purchases go only through the relevant store (Google Play, Apple App Store, Steam); we never see your payment details.
+- The game is free to play. Your **career and saves stay on your device**.
+- A player who never opens the store sends nothing to our server.
+- Opening the store creates an **anonymous shop account** on our server (a random id and a hashed secret). It holds your diamond balance and purchase records. It does not hold your name, e-mail or career.
+- Purchases are processed by Apple or Google; we never see card data.
+- Optional **rewarded ads** come from Google AdMob. Declining ad tracking never costs you a reward.
+- We do not sell your data and we do not run analytics SDKs.
 
 ## 2. Controller
 
-[COMPANY / DEVELOPER NAME], [ADDRESS], contact: [CONTACT EMAIL]. (To be completed for GDPR Art. 13 / KVKK notice duties.)
+[COMPANY], [ADDRESS], contact: [CONTACT_EMAIL]. (GDPR Art. 13 / KVKK Art. 10 notice.)
 
 ## 3. What data, where, why
 
-| Data | Where it lives | Purpose | Leaves the device? |
+| Data | Where it lives | Purpose and lawful basis | Leaves the device? |
 |---|---|---|---|
-| Career saves (character name, progress) | On-device storage (browser/IndexedDB, desktop `userData/saves`, mobile app storage) | Continue where you left off | No (if you enable Steam Cloud, Steam's own terms apply) |
-| Settings, help hints, key bindings | Local storage | Remember preferences | No |
-| Purchase record (product id, date, source) | Local storage | Show what is unlocked and your purchase history | No |
-| Error log (message, version, platform, screen name) | Local storage; **only if you turn it on in Settings** | Let you copy a report and send it to us manually | No; never sent automatically, sharing is up to you |
-| Store purchase transactions | The relevant store | Payment and receipts | Between you and the store |
+| Career saves (character name, progress), settings, hints, key bindings | On-device storage | Continue where you left off | No (if you enable Steam Cloud, Steam's terms apply) |
+| Error log | Local storage; **only if you turn it on in Settings** | Copy a report and send it to us yourself | No; never sent automatically |
+| Anonymous shop account: random account id, hashed secret | Our server, created when you first open the store | Run the shop and recover your balance (contract) | Yes, to our server |
+| Diamond balance, purchase ledger, store transaction ids and receipts, subscription state | Our server | Deliver what you bought, refund and fraud handling (contract; legitimate interest) | Yes |
+| Rewarded-ad sessions, daily counters, free-diamond claims | Our server | Pay ad rewards once and apply fair-use limits (legitimate interest) | Yes |
+| Signed grants (diamond spends applied to your career) | Our server and your save | Prove a spend was paid for once (contract) | Yes |
+| Audit log with IP addresses | Our server | Security and fraud prevention (legitimate interest) | Yes |
+| Advertising ID / IDFA, ad requests | Google AdMob | Show rewarded ads. Advertising ID only with your ATT permission on iOS; in the EU/UK only after your consent in Google's consent form (UMP). Personalised ads rely on consent | Yes, to Google |
+| Payment data | Apple App Store / Google Play | Payment and receipts | Between you and the store; we receive only transaction ids and receipts |
 
-Text you type (e.g. character names) stays on your device. We do not collect special-category data.
+Our account id is sent to Google as the ad verification user id so a reward can be matched to its ad. We do not collect special-category data, location, contacts, camera or microphone.
 
-## 4. What we do not collect
+## 4. Hosting and transfers
 
-Location, contacts, camera, microphone, advertising ID, device fingerprints, online identifiers or behavioural analytics. There are no ads in the game.
+The server runs at DigitalOcean in Frankfurt (EU). Google and Apple process data under their own privacy policies and may transfer data outside the EEA under their safeguards.
 
-## 5. Third parties
+## 5. Retention and deletion
 
-Purchases run through store providers' SDKs and services (Google Play Billing, Apple StoreKit, Steam), governed by their own privacy policies. Fonts, audio and images are bundled with the app; nothing is fetched from external servers at run time.
+- IP addresses in the audit log are hashed after 30 days and deleted after 180 days.
+- The ledger and store transactions are kept as long as needed for refund, chargeback and fraud handling and legal duties; then deleted or anonymised.
+- On-device data stays until you delete it (Settings > Data) or uninstall the app.
+- You can **delete your shop account** in Settings (this calls `DELETE /v1/account`) and **export your data** there too. Deleting the account removes your balance; unused diamonds cannot be refunded after deletion except where law requires.
 
-## 6. Retention and deletion
+## 6. Children and the casino
 
-Data stays on your device until you delete it. You can delete all saves under Settings > Data, or remove everything by uninstalling the app. We hold no server-side data.
+The game is for a general audience; ads and purchases are for adults or with a parent's store approval. We do not knowingly collect children's data. Casino mini-games use in-game money, which can be bought with real money but can never be cashed out or won back as real money or prizes; they are closed to young characters and subject to the age rating. [Age rating to be verified.]
 
-## 7. Children
+## 7. Your rights (GDPR / KVKK Art. 11)
 
-The game is aimed at a general audience. We do not knowingly collect children's personal data and have no collection mechanism. Casino mini-games use **in-game virtual money only**, involve no real money or prizes, and are closed to characters under 18. [Age rating to be verified.]
+You may ask whether data is processed and request access, correction, erasure, restriction, portability, or object to processing; you may withdraw consent for personalised ads at any time (iOS Settings > Privacy > Tracking, Android ad settings, or Google's consent form). Contact [CONTACT_EMAIL]. You may complain to your supervisory authority (in Turkey, the KVKK Board). [Authority details to be added.]
 
-## 8. Your rights (GDPR / KVKK Art. 11)
-
-You may ask whether data is processed, and request access, correction, erasure or object. Because data is on your device you can mostly exercise these yourself; for further requests contact [CONTACT EMAIL]. [Supervisory authority details to be added.]
-
-## 9. Changes
+## 8. Changes
 
 If this policy changes, this page and the in-app link are updated; significant changes are announced in release notes.

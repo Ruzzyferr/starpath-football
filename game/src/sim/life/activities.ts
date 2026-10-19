@@ -6,6 +6,7 @@
  * and the game layer moves `calendar.slot` forward (and calls
  * {@link startDay} when a new day begins).
  */
+import { gearXpBonus } from '../career/gear'
 import { activityEcho } from './echoes'
 import type { AttributeGroup, AttributeKey, Calendar, Hero, LText, Life, Position } from '../../core/types'
 import { hashString, type Rng } from '../../core/rng'
@@ -254,13 +255,14 @@ export function performActivity(
     }
     case 'gym': {
       // Own weights session: 12 raw XP split strength/stamina/jumping.
-      const m = (1 + perkValue(hero, 'xp_physical') + perkValue(hero, 'xp_all') + assetEffectTotal(life, 'xp_bonus')) * wellbeingXpMultiplier(life) * fatigueEfficiency(hero.fatigue)
+      // Diamond gear speeds up the gym too (physical group, sim/career/gear).
+      const m = (1 + perkValue(hero, 'xp_physical') + perkValue(hero, 'xp_all') + assetEffectTotal(life, 'xp_bonus')) * wellbeingXpMultiplier(life) * fatigueEfficiency(hero.fatigue) * (1 + gearXpBonus(life, 'physical'))
       lines.push(...applyXpBundle(hero, { strength: 5 * m, stamina: 4 * m, jumping: 1.5 * m, balance: 1.5 * m }, ctx.calendar.season).lines)
       break
     }
     case 'video': {
       // Film study: 11 raw XP into reading the game (anticipation: seeing the pass before it is played). Works while injured.
-      const m = (1 + perkValue(hero, 'xp_tactical') + perkValue(hero, 'xp_all')) * wellbeingXpMultiplier(life)
+      const m = (1 + perkValue(hero, 'xp_tactical') + perkValue(hero, 'xp_all')) * wellbeingXpMultiplier(life) * (1 + gearXpBonus(life, 'mental'))
       lines.push(...applyXpBundle(hero, { positioning: 4 * m, vision: 3.5 * m, anticipation: 2.5 * m, composure: 1 * m }, ctx.calendar.season).lines)
       break
     }

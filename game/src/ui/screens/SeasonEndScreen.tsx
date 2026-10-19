@@ -1,5 +1,6 @@
 import '../../styles/screens/objectives.css'
 import { AdOffer } from './store/AdOffer'
+import { serverWallet } from '../../store-iap'
 import { CeremonyBanner } from './awards/CeremonyBanner'
 import '../../styles/screens/season.css'
 import { useEffect, useState } from 'preact/hooks'
@@ -201,8 +202,8 @@ export function SeasonEndScreen() {
 
       {stage >= total && <div class="se-ceremony"><CeremonyBanner /></div>}
       <footer class="se-footer">
-        {stage >= total && (
-          <AdOffer offer="season_x2" label={{ tr: 'İzle: sezon ödülü ×2 (+50💎)', en: 'Watch: season reward ×2 (+50💎)' }} done={{ tr: '+50💎', en: '+50💎' }} />
+        {stage >= total && serverWallet.value?.seasonX2Ready && (
+          <AdOffer offer="season_x2" label={{ tr: 'İzle: sezon ödülü ×2 (+80💎)', en: 'Watch: season reward ×2 (+80💎)' }} done={{ tr: '+80💎 sezon ödülü', en: '+80💎 season reward' }} />
         )}
         <Button variant="gold" size="lg" block iconRight="arrow-right" onClick={finish} disabled={stage < total}>
           {t('season.continue')}

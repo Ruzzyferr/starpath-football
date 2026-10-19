@@ -2,7 +2,7 @@
 
 > **DRAFT: legal review required (TASLAK — hukuki inceleme gerekli).** Do not publish before lawyer review.
 
-Last updated: [DATE] · Version: draft 0.1
+Last updated: [DATE] · Version: draft 0.2
 
 ## 1. Acceptance
 
@@ -16,31 +16,46 @@ You receive a non-exclusive, non-transferable licence to use the game on your ow
 
 People, clubs and events in the game are fictional and imply no affiliation or endorsement. [Trademark clearance needed.]
 
-## 4. Purchases
+## 4. Free to play and purchases
 
-- On mobile the first full season is free; afterwards a one-time "Full Career" purchase (non-consumable) may be offered. Optional cosmetic-only packs exist. There are no subscriptions, ads, or energy/wait timers.
-- Payment, pricing, tax, refund and cancellation rules are set by the relevant store. You can restore purchases under Settings > Purchases. [Withdrawal / digital-content rules to be verified legally.]
+- The whole career is free. Purchases are optional and nothing you buy changes a match result.
+- Diamonds are a virtual currency with **no cash value**. They are not transferable between accounts and **not refundable**, except where the law requires.
+- Your diamond balance is held on our server in an anonymous shop account, not in your save. A recovery code is available in the store; if you lose both the code and the device, we may be unable to restore the balance.
+- Payment, pricing, tax and cancellation rules are set by Apple or Google, and refunds go through them. If a purchase is refunded, the diamonds from it are deducted from your balance (it may go to zero).
+- Cash packs and diamond-to-cash exchanges give in-game money only.
 
-## 5. Gambling-style content
+## 5. Pro Contract subscription
 
-Casino mini-games use in-game virtual money only; they pay no real money or prizes and cannot be cashed out.
+Pro Contract is a monthly subscription that renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel it in your Apple ID or Google Play subscription settings; deleting the app does not cancel it. It gives 50 diamonds per day, claimed in the store, and no gameplay advantage.
 
-## 6. Your saves
+## 6. Rewarded ads
+
+Rewarded ads are optional. You never need to watch one to progress, and you may decline ad tracking and still receive the reward. Ads are provided by Google AdMob.
+
+## 7. Fair play
+
+Cheating, tampering with the app or server, replaying or forging purchases or rewards, and fraud (including chargeback abuse) may lead to rewards being removed and the shop account suspended or closed.
+
+## 8. Gambling-style content
+
+Casino mini-games use in-game money only. That money can be bought with real money, but it can never be cashed out, and games pay no real money or prizes.
+
+## 9. Your saves
 
 Saves live on your device and backing them up is your responsibility. Device failure, deletion or version changes may cause loss; we take care but give no guarantee.
 
-## 7. Limitation of liability
+## 10. Limitation of liability
 
 The game is provided "as is". To the extent permitted by law we accept no liability for indirect damages. Mandatory consumer rights remain unaffected. [Lawyer to review.]
 
-## 8. Changes and termination
+## 11. Changes and termination
 
 Terms may be updated. Your licence may end if you breach them.
 
-## 9. Governing law
+## 12. Governing law
 
 [Governing law and jurisdiction: to be set by counsel.]
 
-## 10. Contact
+## 13. Contact
 
-[COMPANY NAME], [CONTACT EMAIL]
+[COMPANY], [ADDRESS], [CONTACT_EMAIL]

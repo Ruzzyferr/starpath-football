@@ -4,8 +4,10 @@
  *
  * Purchases are NOT auto-acknowledged: the receipt (iOS signed JWS / Android purchase token) goes
  * to the shop server first, and only after the server has verified and credited it is the
- * transaction finished (Android: consumed for consumables, acknowledged otherwise). A payment the
- * server never saw is therefore never lost: an unfinished transaction is offered again by the store.
+ * transaction finished (iOS: finished here; Android: acknowledged or consumed by the server itself). A payment the
+ * server has not credited yet is retried by store-iap/service (timer, reconnect, app resume, next
+ * launch via `pending()`); transactions that finish outside a purchase call (Ask to Buy, renewals)
+ * arrive through `listen()`.
  */
 import { detectPlatform } from '../platform/detect'
 import { PRODUCTS, PRODUCT_BY_ID } from './catalog'
@@ -20,18 +22,17 @@ type Tx = { transactionId: string; productIdentifier: string; jwsRepresentation?
 
 function receiptOf(tx: Tx): StoreReceipt {
   const ios = detectPlatform() === 'ios'
-  const def = PRODUCT_BY_ID[tx.productIdentifier]
   return {
     productId: tx.productIdentifier,
+    txId: tx.transactionId,
     jws: ios ? tx.jwsRepresentation : undefined,
     purchaseToken: ios ? undefined : tx.purchaseToken,
     async finish() {
+      // iOS: finish the StoreKit transaction once credited. Android: the SERVER acknowledges / consumes
+      // the Play purchase after crediting it (a token consumed on the device first would be refused).
+      if (!ios) return
       const { NativePurchases } = await plugin()
-      if (ios) await NativePurchases.acknowledgePurchase({ purchaseToken: tx.transactionId })
-      else if (tx.purchaseToken) {
-        if (def?.consumable) await NativePurchases.consumePurchase({ purchaseToken: tx.purchaseToken })
-        else if (!tx.isAcknowledged) await NativePurchases.acknowledgePurchase({ purchaseToken: tx.purchaseToken })
-      }
+      await NativePurchases.acknowledgePurchase({ purchaseToken: tx.transactionId })
     },
   }
 }
@@ -67,8 +68,26 @@ export class CapacitorProvider implements PurchaseProvider {
       return { ok: true, receipt: receiptOf(tx) }
     } catch (e) {
       const msg = String((e as { message?: string })?.message ?? e).toLowerCase()
-      return { ok: false, error: /cancel/.test(msg) ? 'cancelled' : 'failed' }
+      return { ok: false, error: /cancel/.test(msg) ? 'cancelled' : /pending|deferred|approval/.test(msg) ? 'pending' : 'failed' }
     }
+  }
+  /** Launch: only what is still unfinished, no AppStore.sync (that runs from the Restore button only). */
+  async pending(): Promise<StoreReceipt[]> {
+    try {
+      const { NativePurchases } = await plugin()
+      const { purchases } = (await NativePurchases.getPurchases({})) as { purchases: Tx[] }
+      const ios = detectPlatform() === 'ios'
+      return purchases
+        .filter((t) => PRODUCT_BY_ID[t.productIdentifier] && !t.revocationDate && (ios || !t.isAcknowledged))
+        .map(receiptOf)
+    } catch {
+      return []
+    }
+  }
+  listen(cb: (r: StoreReceipt) => void): void {
+    void plugin()
+      .then(({ NativePurchases }) => NativePurchases.addListener('transactionUpdated', (tx: Tx) => { if (PRODUCT_BY_ID[tx.productIdentifier]) cb(receiptOf(tx)) }))
+      .catch(() => {})
   }
   async restore(): Promise<StoreReceipt[]> {
     try {

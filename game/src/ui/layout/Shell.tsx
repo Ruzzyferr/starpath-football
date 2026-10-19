@@ -6,7 +6,7 @@
  */
 import { serverWallet, storeAvailable } from '../../store-iap'
 import type { ComponentChildren } from 'preact'
-import { t, tx } from '../../i18n'
+import { lt, t, tx } from '../../i18n'
 import { Avatar, Crest, MeterRing, Money, Button, Badge, FormDots } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
@@ -108,7 +108,7 @@ export function TopBar() {
         </div>
       </div>
       {storeAvailable() && (
-        <button type="button" class="tstat tstat-gems" data-testid="topbar-gems" aria-label={`${serverWallet.value?.gems ?? 0} 💎`} onClick={() => navigate('store')}>
+        <button type="button" class="tstat tstat-gems" data-testid="topbar-gems" aria-label={lt({ tr: `Mağaza: ${serverWallet.value?.gems ?? 0} elmas`, en: `Store: ${serverWallet.value?.gems ?? 0} diamonds` })} onClick={() => navigate('store')}>
           <span aria-hidden="true">💎</span>
           <span class="num">{serverWallet.value ? serverWallet.value.gems : '—'}</span>
         </button>
