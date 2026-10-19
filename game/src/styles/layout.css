@@ -127,8 +127,10 @@
   font-weight: 700;
 }
 @media (min-width: 900px) { .topbar-me { display: none; } }
-.topbar-stats { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; flex: 1; }
+/* overflow: a stat can never paint under the diamond pill, whatever the money string's length. */
+.topbar-stats { display: flex; align-items: center; gap: var(--sp-3); min-width: 0; flex: 1; overflow: hidden; }
 .tstat { display: inline-flex; align-items: center; gap: 5px; font-weight: 700; font-size: var(--fs-sm); white-space: nowrap; }
+.tstat > * { flex: none; }
 .tstat-money { color: var(--accent-gold); font-family: var(--font-score); font-size: 1.3125rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1; }
 .tstat-money .icon { margin-top: -2px; }
 .tstat-happy { color: var(--brand-pitch); }
@@ -163,17 +165,22 @@
   92% { transform: rotate(-4deg); }
 }
 @media (max-width: 420px) {
+  /*
+   * Phones: the diamond pill keeps its own slot. Mood goes (Me and Life show it), the gold € figure
+   * reads as money without its coin, and the date drops the season and wraps onto two short lines.
+   */
   .tstat-bar { display: none; }
+  .tstat-happy { display: none; }
+  .tstat-money .icon { display: none; }
+  .topbar-stats { gap: var(--sp-2); }
+  .tstat-money { font-size: 1.125rem; }
+  .tstat-gems { margin-left: 0; padding: 4px 7px; }
+  .topbar-season { display: none; }
+  .topbar-date { max-width: 64px; }
+  .topbar-day { white-space: normal; font-size: 0.75rem; }
 }
 @media (max-width: 380px) {
-  .tstat-happy { display: none; }
-  .topbar-season { display: none; }
-}
-@media (max-width: 360px) {
-  /* Room for the diamond pill on the smallest phones: the date keeps only the day. */
-  .tstat-gems { padding: 4px 7px; }
-  .topbar-day { font-size: 0.75rem; }
-  .topbar-stats { min-width: 0; }
+  .topbar { gap: var(--sp-1); }
 }
 @media (max-width: 340px) {
   /* 320px phones: the date goes (the home screen's "Today" card shows it); stats and the pill stay. */

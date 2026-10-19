@@ -173,13 +173,13 @@ test('m3: Pro daily diamonds claimed in a refunded period are clawed back (and r
   assert.equal(shop.applePurchase(acc, signJws(chain, t)).pass.active, true)
   shop.passClaim(acc)
   clock.advance(DAY)
-  assert.equal(shop.passClaim(acc).gems, 100)
+  assert.equal(shop.passClaim(acc).gems, 40)
   assert.equal(count(db, "SELECT COUNT(*) AS n FROM ledger WHERE why = 'pass:daily' AND ref LIKE ?", `apple:${t.transactionId}@%`), 2)
   shop.appleNotification(note(chain, 'REFUND', t))
   const w = shop.wallet(acc)
   assert.deepEqual([w.gems, w.pass.active], [0, false])
   shop.appleNotification(note(chain, 'REFUND_REVERSED', t, { signedDate: t.signedDate + 1000 }))
-  assert.deepEqual([shop.wallet(acc).gems, shop.wallet(acc).pass.active], [100, true])
+  assert.deepEqual([shop.wallet(acc).gems, shop.wallet(acc).pass.active], [40, true])
 })
 
 // ───────── m4: refund hold lifts after 90 days ─────────
@@ -497,8 +497,10 @@ test('m32: a daily-capped claim carries retryAfter (seconds to the next UTC day)
   const { shop, acc, clock } = setup()
   for (let i = 0; i < 5; i++) shop.earn(acc, { source: 'motm', ref: `m${i}` })
   const r = shop.earn(acc, { source: 'motm', ref: 'm9' })
-  assert.deepEqual([r.capped, r.reason, r.retryAfter], [true, 'daily', secsToMidnight(clock.now())])
+  assert.deepEqual([r.capped, r.reason, r.retryAfter], [true, 'source', secsToMidnight(clock.now())])
   assert.ok(r.retryAfter > 0 && r.retryAfter <= 86400)
+  // One source at its cap does not hold the others (round 4 m10).
+  assert.equal(shop.earn(acc, { source: 'objective', ref: 'o1' }).capped, undefined)
 })
 
 test('m44: achievement diamonds (first) stop at 600 per account, lifetime', () => {

@@ -5,16 +5,16 @@
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
-import { AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, PHYSIO_DISCOUNT_PRICE, SALE_PRODUCTS } from './catalog'
+import { AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, EARN_PER_DAY, GEMS_TO_CASH, PHYSIO_DISCOUNT_PRICE, PRO_DAILY_GEMS, SALE_PRODUCTS } from './catalog'
 import { AD_TRAIN_BOOST, PURCHASED_CASH_PER_SEASON } from '../sim/career/gear'
 import { GEAR, PHYSIO_PRICE } from '../sim/career/gear'
 
 interface ServerProduct { kind: string; consumable: boolean; gems?: number; gear?: string; cashWeeks?: number; cashFloor?: number; cashCap?: number }
 const server = JSON.parse(readFileSync(join(process.cwd(), '..', 'server', 'catalog.json'), 'utf8')) as {
   products: Record<string, ServerProduct>
-  spend: Record<string, { price: number; discounted?: number; grant: { k: string; id?: string } }>
+  spend: Record<string, { price: number; discounted?: number; perDay?: number; grant: { k: string; id?: string; weeks?: number; floor?: number; cap?: number } }>
   ads: Record<string, { perDay: number; reward: { gems?: number } }>
-  limits: { cashPerSeason: number }
+  limits: { cashPerSeason: number; passDaily: number; earnPerDay: number }
   earn: Record<string, { gems: number; perDay: number }>
 }
 
@@ -45,10 +45,17 @@ describe('client ↔ server catalogue parity', () => {
     }
   })
   it('free diamonds, ad rewards and the physio discount shown in the app match the server', () => {
+    expect(Object.keys(server.earn).sort()).toEqual(Object.keys(EARN_GEMS).sort())
     for (const [k, v] of Object.entries(EARN_GEMS)) expect(server.earn[k]?.gems, k).toBe(v)
+    expect(server.limits.earnPerDay).toBe(EARN_PER_DAY)
+    const g2c = server.spend.gems_to_cash!
+    expect({ price: g2c.price, weeks: g2c.grant.weeks, floor: g2c.grant.floor, cap: g2c.grant.cap, perDay: g2c.perDay }).toEqual(GEMS_TO_CASH)
     expect(server.ads.gems?.reward.gems).toBe(AD_GEMS)
     expect(server.spend.physio?.discounted).toBe(PHYSIO_DISCOUNT_PRICE)
     expect(AD_TRAIN_BOOST).toBe(0.2)
     expect(server.limits.cashPerSeason).toBe(PURCHASED_CASH_PER_SEASON)
+    // Pro Contract daily diamonds: the server pays limits.passDaily; the app shows PRO_DAILY_GEMS.
+    expect(server.limits.passDaily).toBe(PRO_DAILY_GEMS)
+    expect(server.products.pro_contract?.gems).toBe(PRO_DAILY_GEMS)
   })
 })

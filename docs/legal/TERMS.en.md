@@ -27,7 +27,7 @@ People, clubs and events in the game are fictional and imply no affiliation or e
 
 ## 5. Pro Contract subscription
 
-Pro Contract is a monthly subscription that renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel it in your Apple ID or Google Play subscription settings; deleting the app does not cancel it. It gives 50 diamonds per day, claimed in the store, and no gameplay advantage.
+Pro Contract is a monthly subscription that renews automatically unless you cancel at least 24 hours before the end of the current period. Manage or cancel it in your Apple ID or Google Play subscription settings; deleting the app does not cancel it. It gives 20 diamonds per day, claimed in the store, and no direct match advantage (diamonds can buy optional training gear, capped at +25%).
 
 ## 6. Rewarded ads
 

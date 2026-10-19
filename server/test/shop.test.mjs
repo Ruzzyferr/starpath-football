@@ -183,14 +183,14 @@ test('free diamonds: deduplicated by reference and capped per day', () => {
   assert.equal(code(() => shop.earn(acc, { source: 'admin', ref: 'x' })), 'unknown_source')
 })
 
-test('pro contract: 50 diamonds once per day while active', () => {
+test('pro contract: 20 diamonds once per day while active', () => {
   const { shop, acc, clock } = setup()
   assert.equal(code(() => shop.passClaim(acc)), 'no_pass')
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'pro_contract', type: 'Auto-Renewable Subscription', expiresDate: clock.now() + 3 * 86400_000 })))
-  assert.equal(shop.passClaim(acc).gems, 50)
+  assert.equal(shop.passClaim(acc).gems, 20)
   assert.equal(code(() => shop.passClaim(acc)), 'already_claimed')
   clock.advance(86400_000)
-  assert.equal(shop.passClaim(acc).gems, 100)
+  assert.equal(shop.passClaim(acc).gems, 40)
   clock.advance(3 * 86400_000)
   assert.equal(code(() => shop.passClaim(acc)), 'no_pass')
 })

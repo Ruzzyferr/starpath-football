@@ -317,7 +317,7 @@ test('M19: a claim refused by the cap does not burn its reference', () => {
 test('M21: cash grants carry a cap; gems_to_cash is capped at 25000 and 3 a day', () => {
   const { shop, acc, clock } = setup()
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'cash_l' })))
-  assert.equal(shop.wallet(acc).inbox[0].cap, 400000)
+  assert.equal(shop.wallet(acc).inbox[0].cap, 200000)
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'gems_m' })))
   assert.equal(shop.wallet(acc).limits.gemsToCashLeft, 3)
   for (let i = 0; i < 3; i++) assert.equal(shop.spend(acc, { item: 'gems_to_cash', idem: `g${i}` }).grant.cap, 25000)

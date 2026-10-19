@@ -4,8 +4,8 @@
  */
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { ShopApiError, shopApi, type ServerWallet } from './shopApi'
-import { _resetShopApi } from './shopApi'
-import { purchase, retryUnredeemed, setProvider } from './service'
+import { _resetShopApi, flushEarnQueue, queueEarn } from './shopApi'
+import { purchase, restorePurchases, resumePending, retryUnredeemed, setProvider } from './service'
 import { retryPendingAds, setAdProvider, watchAd, type AdProvider } from './ads'
 import type { PurchaseProvider, StoreReceipt } from './provider'
 
@@ -53,6 +53,71 @@ describe('purchase retry', () => {
   })
 })
 
+describe('account recovery after a reinstall', () => {
+  // A reinstall makes a fresh shop account; the store still holds receipts made for the old one.
+  const oldReceipt = (finish: () => Promise<void>, txId = 'tx-old'): StoreReceipt => ({ productId: 'pack_avatar', txId, jws: `jws-${txId}`, accountToken: 'old-acc', finish })
+
+  it('restore: not_your_receipt → old account recovered → credited there and finished once', async () => {
+    const finish = vi.fn(async () => {})
+    setProvider({ id: 'fake', real: true, products: async () => [], buy: async () => ({ ok: false }), restore: async () => [oldReceipt(finish)] })
+    const recover = vi.spyOn(shopApi, 'recoverApple').mockImplementation(async () => {
+      store.set('starpath.account.v1', JSON.stringify({ accountId: 'old-acc', token: 'old-acc.x' }))
+      return 'ok'
+    })
+    vi.spyOn(shopApi, 'wallet').mockResolvedValue(wallet(900))
+    const buy = vi.spyOn(shopApi, 'buyApple').mockRejectedValueOnce(new ShopApiError('not_your_receipt', 403)).mockResolvedValue({ ...wallet(900), credited: true })
+    expect(await restorePurchases()).toEqual(['pack_avatar'])
+    expect(recover).toHaveBeenCalledTimes(1)
+    expect(buy).toHaveBeenCalledTimes(2)
+    expect(finish).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(store.get('starpath.account.v1')!).accountId).toBe('old-acc')
+  })
+  it('restore: recovery refused (another player’s receipt) → nothing credited, nothing finished, no retry', async () => {
+    const finish = vi.fn(async () => {})
+    setProvider({ id: 'fake', real: true, products: async () => [], buy: async () => ({ ok: false }), restore: async () => [oldReceipt(finish)] })
+    vi.spyOn(shopApi, 'recoverApple').mockResolvedValue('refused')
+    const buy = vi.spyOn(shopApi, 'buyApple').mockRejectedValue(new ShopApiError('not_your_receipt', 403))
+    expect(await restorePurchases()).toEqual([])
+    await retryUnredeemed()
+    expect(buy).toHaveBeenCalledTimes(1)
+    expect(finish).not.toHaveBeenCalled()
+    expect(JSON.parse(store.get('starpath.account.v1')!).accountId).toBe('acc')
+  })
+  it('retry queue: a refused recovery drops the receipt for good (no endless recover calls)', async () => {
+    const finish = vi.fn(async () => {})
+    const r = oldReceipt(finish, 'tx-q')
+    setProvider({ id: 'fake', real: true, products: async () => [], buy: async () => ({ ok: true, receipt: r }), restore: async () => [] })
+    const buy = vi.spyOn(shopApi, 'buyApple').mockRejectedValueOnce(new ShopApiError('offline')).mockRejectedValue(new ShopApiError('not_your_receipt', 403))
+    const recover = vi.spyOn(shopApi, 'recoverApple').mockResolvedValue('refused')
+    await purchase('gems_m')
+    await retryUnredeemed()
+    await retryUnredeemed()
+    expect(buy).toHaveBeenCalledTimes(2)
+    expect(recover).toHaveBeenCalledTimes(1)
+    expect(JSON.parse(store.get('starpath.redeemed.v1') ?? '[]')).toContain('tx-q')
+  })
+  it('retry queue: a recovery that could not reach the server is tried again later', async () => {
+    const r = oldReceipt(vi.fn(async () => {}), 'tx-r')
+    setProvider({ id: 'fake', real: true, products: async () => [], buy: async () => ({ ok: true, receipt: r }), restore: async () => [] })
+    vi.spyOn(shopApi, 'buyApple').mockRejectedValueOnce(new ShopApiError('offline')).mockRejectedValue(new ShopApiError('not_your_receipt', 403))
+    const recover = vi.spyOn(shopApi, 'recoverApple').mockResolvedValue('retry')
+    await purchase('gems_m')
+    await retryUnredeemed()
+    await retryUnredeemed()
+    expect(recover).toHaveBeenCalledTimes(2)
+    recover.mockResolvedValue('refused') // empty the queue for the next test
+    await retryUnredeemed()
+  })
+  it('launch: receipts made for another shop account are not sent automatically', async () => {
+    const mine: StoreReceipt = { productId: 'gems_m', txId: 'tx-mine', jws: 'jws-mine', accountToken: 'ACC', finish: vi.fn(async () => {}) }
+    setProvider({ id: 'capacitor', real: true, products: async () => [], buy: async () => ({ ok: false }), restore: async () => [], pending: async () => [oldReceipt(vi.fn(async () => {}), 'tx-other'), mine] })
+    const buy = vi.spyOn(shopApi, 'buyApple').mockResolvedValue({ ...wallet(600), credited: true })
+    await resumePending()
+    expect(buy).toHaveBeenCalledWith('jws-mine')
+    expect(buy).not.toHaveBeenCalledWith('jws-tx-other')
+  })
+})
+
 describe('watched-ad reward queue', () => {
   const okAd: AdProvider = { id: 'fake', available: () => true, show: async () => 'rewarded' }
   it('watched but the server is unreachable: kept, paid once when it comes back', async () => {
@@ -87,5 +152,19 @@ describe('watched-ad reward queue', () => {
     vi.spyOn(shopApi, 'adComplete').mockRejectedValue(new ShopApiError('offline'))
     await retryPendingAds()
     expect(JSON.parse(store.get('starpath.adpending.v1') ?? '[]')).toEqual([])
+  })
+})
+
+describe('free-diamond queue', () => {
+  it('one source at its daily cap holds only its own claims; the others are still sent', async () => {
+    queueEarn('motm', 'm1')
+    queueEarn('motm', 'm2')
+    queueEarn('objective', 'o1')
+    const earn = vi.spyOn(shopApi, 'earn').mockImplementation(async (source) =>
+      source === 'motm' ? { ...wallet(), earned: 0, capped: true, reason: 'source', retryAfter: 3600 } as never : { ...wallet(8), earned: 8 })
+    await flushEarnQueue()
+    expect(earn.mock.calls.map((c) => c[1])).toEqual(['m1', 'o1'])
+    expect(JSON.parse(store.get('starpath.earnq.v1') ?? '[]').map((x: { ref: string }) => x.ref)).toEqual(['m1', 'm2'])
+    expect(store.get('starpath.earnq.pause.v1')).toBeUndefined()
   })
 })

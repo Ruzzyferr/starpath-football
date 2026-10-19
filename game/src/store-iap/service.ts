@@ -7,7 +7,7 @@ import { CapacitorProvider } from './capacitorProvider'
 import { PRODUCT_BY_ID } from './catalog'
 import { grant, revokeMissing } from './entitlements'
 import { DevProvider, UnavailableProvider, type PurchaseProvider, type PurchaseResult, type StoreProduct, type StoreReceipt } from './provider'
-import { ShopApiError, currentAccountId, ensureAccount, flushEarnQueue, serverWallet, shopApi, type ServerWallet } from './shopApi'
+import { ShopApiError, currentAccountId, ensureAccount, flushEarnQueue, serverWallet, shopApi, type RecoverResult, type ServerWallet } from './shopApi'
 
 let provider: PurchaseProvider | null = null
 
@@ -96,6 +96,12 @@ function queueRetry(r: StoreReceipt): void {
 
 /** Server answers that will never change for this receipt: stop retrying it. Anything else is retried. */
 const DEFINITIVE = new Set(['family_shared', 'receipt_used', 'revoked', 'wrong_app', 'unknown_product', 'wrong_product', 'sandbox_receipt', 'sandbox_cap', 'consumed_elsewhere', 'expired'])
+const isFinal = (code: string, r: StoreReceipt): boolean => DEFINITIVE.has(code) || (code === 'invalid_receipt' && !r.purchaseToken)
+/** Paid, not credited, and worth sending again (network, server, Play hiccup, Play not settled yet). */
+const isTransient = (e: unknown, r: StoreReceipt): boolean => {
+  const code = e instanceof ShopApiError ? e.code : 'failed'
+  return code === 'offline' || (e instanceof ShopApiError && e.status >= 500) || code === 'rate_limited' || code === 'play_unavailable' || code === 'purchase_pending' || (code === 'invalid_receipt' && !!r.purchaseToken)
+}
 
 let retryRun: Promise<void> | null = null
 /** Retries paid-but-not-credited receipts (timer, reconnect, app resume, store screen). One run at a time. */
@@ -111,15 +117,32 @@ export function retryUnredeemed(): Promise<void> {
         drop()
       } catch (e) {
         const code = e instanceof ShopApiError ? e.code : 'failed'
-        // Bought on this store account but credited to an earlier shop account: take that account back.
-        if (code === 'not_your_receipt' && (await recoverFrom(r))) {
-          drop()
-          await refreshWallet(true)
+        // Bought for an earlier shop account of this store account (a reinstall): take that account back,
+        // then credit the receipt there (idempotent when that account already has it).
+        if (code === 'not_your_receipt') {
+          const rec = await recoverFrom(r)
+          if (rec === 'ok') {
+            await refreshWallet(true)
+            try {
+              await handleWallet(await redeem(r))
+              drop()
+            } catch (e2) {
+              if (isFinal(e2 instanceof ShopApiError ? e2.code : 'failed', r)) {
+                drop()
+                markRedeemed(r.txId)
+              }
+            }
+          } else if (rec === 'refused') {
+            // Another player's receipt (shared device, other account): never ours, stop sending it so it
+            // does not use up the recovery rate limit on every launch.
+            drop()
+            markRedeemed(r.txId)
+          }
           continue
         }
         // Only an explicit list of answers is final; transient ones (play_unavailable, 5xx, offline,
         // invalid_receipt on Android right after purchase) keep being retried.
-        if (DEFINITIVE.has(code) || (code === 'invalid_receipt' && !r.purchaseToken)) {
+        if (isFinal(code, r)) {
           drop()
           markRedeemed(r.txId)
         }
@@ -154,14 +177,15 @@ export async function purchase(id: string): Promise<PurchaseResult> {
   }
   if (!storeReady()) return { ok: false, error: 'store_not_ready' }
   const r = await p.buy(id, account)
+  // Play: paid earlier but never credited (the purchase is still owned): pick it up instead of failing.
+  if (r.error === 'already_owned') void resumePending()
   if (!r.ok || !r.receipt) return { ok: false, error: r.error ?? 'failed' }
   try {
     await handleWallet(await redeem(r.receipt))
     return { ok: true }
   } catch (e) {
     // Paid but not credited yet: the store keeps the transaction unfinished and it is retried.
-    const code = e instanceof ShopApiError ? e.code : 'failed'
-    if (code === 'offline' || (e instanceof ShopApiError && e.status >= 500) || code === 'rate_limited' || code === 'play_unavailable' || code === 'purchase_pending' || (code === 'invalid_receipt' && !!r.receipt.purchaseToken)) {
+    if (isTransient(e, r.receipt)) {
       queueRetry(r.receipt)
       return { ok: false, error: 'offline' }
     }
@@ -180,19 +204,25 @@ export async function restorePurchases(): Promise<string[]> {
       ok.push(r.productId)
     } catch (e) {
       // A new install: the receipt belongs to this player's earlier account; take it back.
-      if (e instanceof ShopApiError && e.code === 'not_your_receipt' && (await recoverFrom(r))) {
-        await refreshWallet(true)
-        ok.push(r.productId)
-      }
+      if (e instanceof ShopApiError && e.code === 'not_your_receipt') {
+        const rec = await recoverFrom(r)
+        if (rec === 'ok') {
+          await refreshWallet(true)
+          // Credit it there too if that account never got it (a no-op when it did).
+          await redeem(r).then(handleWallet).catch((e2: unknown) => { if (isTransient(e2, r)) queueRetry(r) })
+          ok.push(r.productId)
+        } else if (rec === 'retry') queueRetry(r)
+      } else if (isTransient(e, r)) queueRetry(r) // paid, not credited: never dropped by a failed restore
     }
   }
+  if (unredeemed.length) void retryUnredeemed()
   return ok
 }
 
-async function recoverFrom(r: StoreReceipt): Promise<boolean> {
+async function recoverFrom(r: StoreReceipt): Promise<RecoverResult> {
   if (r.jws) return shopApi.recoverApple(r.jws)
   if (r.purchaseToken) return shopApi.recoverGoogle(r.productId, r.purchaseToken)
-  return false
+  return 'refused'
 }
 
 /**
@@ -212,10 +242,20 @@ export async function refreshWallet(userAction = false): Promise<ServerWallet | 
   }
 }
 
+/**
+ * Launch / resume: queue what the store still holds that this install has not seen credited. Receipts
+ * made for another shop account (iOS Transaction.all lists every purchase on the device) are left to
+ * the Restore button, which can take that account back.
+ */
 export async function resumePending(): Promise<void> {
-  if (!storeAvailable() || getProvider().id !== 'capacitor' || !currentAccountId()) return
+  const me = currentAccountId()
+  if (!storeAvailable() || getProvider().id !== 'capacitor' || !me) return
   const done = redeemedIds()
-  for (const r of (await getProvider().pending?.()) ?? []) if (!r.txId || !done.includes(r.txId)) queueRetry(r)
+  for (const r of (await getProvider().pending?.()) ?? []) {
+    if (r.txId && done.includes(r.txId)) continue
+    if (r.accountToken && r.accountToken.toLowerCase() !== me.toLowerCase()) continue
+    queueRetry(r)
+  }
   await retryUnredeemed()
 }
 

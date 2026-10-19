@@ -8,7 +8,7 @@
  */
 import { signal } from '@preact/signals'
 import { FULL_CAREER, PRODUCT_BY_ID, packFor, type CosmeticKind } from './catalog'
-import { getFlavor, type Flavor } from './flavor'
+import { getFlavor } from './flavor'
 
 export interface EntitlementRecord {
   v: 1
@@ -52,14 +52,6 @@ export function purchaseHistory(rec: EntitlementRecord): PurchaseHistoryEntry[] 
   return Object.entries(rec.owned)
     .map(([id, e]) => ({ id, at: e.at, src: e.src }))
     .sort((a, b) => b.at - a.at || a.id.localeCompare(b.id))
-}
-
-/**
- * Career gate. Free to play since 2026-10 (docs/MONETIZASYON.md §0): the whole career is open on every
- * build, so this never locks; the old Full Career unlock stays only as a record.
- */
-export function isCareerLocked(_flavor: Flavor, _ownsFull: boolean, _season: number): boolean {
-  return false
 }
 
 function load(): EntitlementRecord {

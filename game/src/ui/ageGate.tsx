@@ -31,6 +31,9 @@ export function playerAge(now = new Date()): number | null {
 export const isAdultPlayer = (): boolean => (playerAge() ?? 0) >= CASINO_PLAYER_MIN_AGE
 
 function save(year: number): void {
+  // An under-18 answer sticks: a later, older birth year does not open the casino or cash.
+  const prev = birthYear.value
+  if (prev !== null && year < prev && new Date().getFullYear() - prev - 1 < CASINO_PLAYER_MIN_AGE) return
   birthYear.value = year
   try {
     globalThis.localStorage?.setItem(KEY, JSON.stringify({ year }))

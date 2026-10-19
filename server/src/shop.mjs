@@ -1003,8 +1003,9 @@ export class Shop {
    * bounds what a modified client can farm to a small, free-player amount. A claim refused by a cap
    * does not use up its reference (it can be claimed another day).
    *
-   * A capped answer says why: `reason` 'daily' or 'ip' with `retryAfter` (seconds to the next UTC
-   * day, when the caps reset; the app holds its queue until then), or 'lifetime' (a source with a
+   * A capped answer says why: `reason` 'source' (this source's daily cap: the app holds only that
+   * source's claims), 'daily' or 'ip' (the account's or the address's daily total: the app holds its
+   * whole queue), each with `retryAfter` (seconds to the next UTC day, when the caps reset), or 'lifetime' (a source with a
    * per-account lifetime ceiling, e.g. achievements: never again, the app drops such claims).
    */
   earn(acc, { source, ref } = {}, ip) {
@@ -1018,8 +1019,8 @@ export class Shop {
       if (def.lifetime && this.counter(acc.id, `earn:life:${source}`) + def.gems > def.lifetime) return capped({ reason: 'lifetime' })
       const retryAfter = secondsToUtcMidnight(this.now())
       // Per source and per day (halved for an account younger than a day)...
-      if (this.count(acc.id, `earn:${source}`) >= this.ramp(acc, def.perDay) ||
-        this.count(acc.id, 'earn:total') + def.gems > this.ramp(acc, this.cat.limits.earnPerDay)) return capped({ reason: 'daily', retryAfter })
+      if (this.count(acc.id, `earn:${source}`) >= this.ramp(acc, def.perDay)) return capped({ reason: 'source', retryAfter })
+      if (this.count(acc.id, 'earn:total') + def.gems > this.ramp(acc, this.cat.limits.earnPerDay)) return capped({ reason: 'daily', retryAfter })
       // ...and, for young accounts, per client address across accounts (fresh-account farming).
       const bucket = this.ipLimited(acc) ? this.ipBucket(ip) : null
       if (bucket && this.ipCount(bucket) + def.gems > this.ipCap) {

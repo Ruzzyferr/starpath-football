@@ -1,10 +1,9 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import { generateKeyPairSync } from 'node:crypto'
 import type { Server } from 'node:http'
-import { START_YEAR } from '../core/config'
 import { isCelebrationId } from '../game/presentation'
 import { COSMETIC_PRODUCTS, FULL_CAREER, PRODUCTS, packFor } from './catalog'
-import { _resetEntitlements, cosmeticUnlocked, emptyRecord, grantIn, hasEntitlement, isCareerLocked, parseRecord, purchaseHistory } from './entitlements'
+import { _resetEntitlements, cosmeticUnlocked, emptyRecord, grantIn, hasEntitlement, parseRecord, purchaseHistory } from './entitlements'
 import { isDemoFlag, resolveFlavor } from './flavor'
 import { DEMO_IDLE_MS, DEMO_SEED, DEMO_SESSION_MS, demoResetDue } from './demo'
 import { DevProvider, UnavailableProvider } from './provider'
@@ -43,15 +42,6 @@ describe('flavor', () => {
     expect(resolveFlavor('trial', 'electron')).toBe('trial')
     expect(resolveFlavor('premium', 'android')).toBe('premium')
     expect(resolveFlavor('premium', 'android', 'trial')).toBe('trial')
-  })
-})
-
-describe('career lock', () => {
-  it('free to play: no build ever locks the career (docs/MONETIZASYON.md §0)', () => {
-    expect(isCareerLocked('trial', false, START_YEAR)).toBe(false)
-    expect(isCareerLocked('trial', false, START_YEAR + 1)).toBe(false)
-    expect(isCareerLocked('trial', true, START_YEAR + 5)).toBe(false)
-    expect(isCareerLocked('premium', false, START_YEAR + 5)).toBe(false)
   })
 })
 
@@ -156,7 +146,6 @@ describe('demo flavor', () => {
   it('demo flag resolves to an unlocked (premium) build everywhere', () => {
     expect(resolveFlavor('demo', 'android')).toBe('premium')
     expect(resolveFlavor('demo', 'web')).toBe('premium')
-    expect(isCareerLockedFor('demo')).toBe(false)
   })
   it('isDemoFlag honours the build flag and a dev override', () => {
     expect(isDemoFlag('demo')).toBe(true)
@@ -173,6 +162,3 @@ describe('demo flavor', () => {
   })
 })
 
-function isCareerLockedFor(flag: 'demo'): boolean {
-  return isCareerLocked(resolveFlavor(flag, 'android'), false, START_YEAR + 1)
-}

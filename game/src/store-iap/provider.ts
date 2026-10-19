@@ -9,7 +9,7 @@ export interface StoreProduct {
   priceString: string
 }
 
-export type PurchaseError = 'cancelled' | 'unavailable' | 'failed' | 'offline' | 'rejected' | 'pending' | 'store_not_ready'
+export type PurchaseError = 'cancelled' | 'unavailable' | 'failed' | 'offline' | 'rejected' | 'pending' | 'store_not_ready' | 'already_owned'
 export interface PurchaseResult {
   ok: boolean
   error?: PurchaseError
@@ -26,6 +26,8 @@ export interface StoreReceipt {
   purchaseToken?: string
   /** Dev store (no money, accepted only by a dev server). */
   dev?: boolean
+  /** Shop account the purchase was made for (appAccountToken / obfuscated account id), when the store reports it. */
+  accountToken?: string
   /** Acknowledge / consume / finish once the server has credited it. */
   finish(): Promise<void>
 }

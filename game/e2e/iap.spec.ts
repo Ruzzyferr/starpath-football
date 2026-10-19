@@ -180,14 +180,14 @@ test('physio: diamonds halve a long injury', async ({ page }) => {
   await expect(page.getByTestId('st-physio')).toContainText('already')
 })
 
-test('Pro Contract: 50💎 once per day while active', async ({ page }) => {
+test('Pro Contract: 20💎 once per day while active', async ({ page }) => {
   await page.goto('/?autostart=1&seed=2027')
   await waitForApp(page)
   await openStore(page)
   await tab(page, 'Pro')
   await page.getByTestId('buy-pro_contract').click()
   await page.getByTestId('pass-claim').click()
-  await expectGems(page, 50)
+  await expectGems(page, 20)
   await expect(page.getByTestId('pass-claim')).toBeDisabled()
 })
 
@@ -199,12 +199,21 @@ test('restore: a wiped install gets its non-consumables back from the store acco
   const pack = page.getByTestId('pack-pack_celebrations')
   await page.getByTestId('buy-pack_celebrations').click()
   await expect(pack).toContainText('Owned')
-  await page.evaluate(() => localStorage.removeItem('starpath.entitlements.v1'))
+  const before = await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.account.v1') ?? '{}').accountId as string)
+  // A reinstall: every shop key on the device goes (account, wallet, entitlements, queues); the career
+  // save, settings and the (dev) store account stay, as the real store account would.
+  await page.evaluate(() => {
+    const keep = /^starpath\.(save\.|saveinfo\.|meta\.|settings|devstore|agegate|help|keybinds)/
+    for (const k of Object.keys(localStorage)) if (k.startsWith('starpath.') && !keep.test(k)) localStorage.removeItem(k)
+  })
   await page.reload()
   await waitForApp(page)
   await sp(page, `sp.navigate('settings')`)
   await page.getByTestId('restore-btn').click()
   await expect(page.getByTestId('entitlement-list')).toContainText('Celebration Pack')
+  const after = await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.account.v1') ?? '{}').accountId as string)
+  expect(after, 'restore made a shop account on the wiped install').toBeTruthy()
+  expect(after).not.toBe(before)
 })
 
 test('a grant typed into local storage is never applied (signature check)', async ({ page }) => {
@@ -258,26 +267,6 @@ test('age gate: the casino asks the player birth year once and stays closed unde
   await expect(page.getByTestId('age-year')).toHaveCount(0)
 })
 
-test('top bar: the diamond pill fits at 320 and 360 px and in landscape', async ({ page }) => {
-  await page.goto('/?autostart=1&seed=2027')
-  await waitForApp(page)
-  for (const [w, h] of [[320, 568], [360, 740], [667, 375]]) {
-    await page.setViewportSize({ width: w, height: h })
-    await page.waitForTimeout(300)
-    const r = await page.evaluate(() => {
-      const bar = document.querySelector('.topbar') as HTMLElement
-      const pill = document.querySelector('[data-testid="topbar-gems"]') as HTMLElement
-      const pb = pill.getBoundingClientRect()
-      const overlaps = Array.from(bar.querySelectorAll('.tstat, .topbar-date, .topbar-bell, .topbar-me')).filter((e) => e !== pill && getComputedStyle(e).display !== 'none').some((e) => {
-        const b = e.getBoundingClientRect()
-        return b.width > 0 && b.left < pb.right - 1 && b.right > pb.left + 1 && b.top < pb.bottom - 1 && b.bottom > pb.top + 1
-      })
-      return { overflow: bar.scrollWidth > bar.clientWidth + 1, inside: pb.right <= window.innerWidth && pb.left >= 0, overlaps }
-    })
-    expect(r, `${w}x${h}`).toEqual({ overflow: false, inside: true, overlaps: false })
-  }
-})
-
 test('match bonus ×2: watching the ad after a match pays that bonus once', async ({ page }) => {
   test.setTimeout(240_000)
   await page.goto('/?autostart=1&seed=2027')
@@ -315,4 +304,31 @@ test('season reward ×2: after the season-end diamonds, the ad adds the same aga
   await expect(page.getByTestId('ad-season_x2')).toBeVisible({ timeout: 30_000 })
   await page.getByTestId('ad-season_x2').click()
   await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.walletcache.v1') ?? '{}').gems)) - g0, { timeout: 30_000 }).toBeGreaterThanOrEqual(200)
+})
+
+test('top bar: the diamond pill never overlaps a stat, the date or the bell (320 / 360 / 390 px, 568×320)', async ({ page }) => {
+  const out = process.env.TOPBAR_SHOTS
+  for (const [w, h] of [[390, 844], [360, 740], [320, 568], [568, 320]] as const) {
+    await page.setViewportSize({ width: w, height: h })
+    for (const balance of [9_999, 12_345]) {
+      // A cached wallet is shown without contacting the server (no account on this install).
+      await page.addInitScript((g) => localStorage.setItem('starpath.walletcache.v1', JSON.stringify({ accountId: 'x', gems: g, starter: false, pass: { active: false, until: 0, claimable: false }, entitlements: [], inbox: [], ads: {}, physioDiscounts: 0, earnedToday: 0, prices: {} })), balance)
+      await page.goto('/?autostart=1&seed=2027')
+      await waitForApp(page)
+      await sp(page, `(() => { const s = sp.state(); s.life.money = 12_500; s.life.happiness = 65; sp.touch() })()`)
+      const pill = page.getByTestId('topbar-gems')
+      await expect(pill).toBeVisible()
+      await expect(page.locator('.tstat-money')).toContainText('12,500') // the money counter has finished rolling up
+      const boxes = await page.evaluate(() => [...document.querySelectorAll('.topbar .tstat, .topbar .topbar-date, .topbar .topbar-bell, .topbar .topbar-me')]
+        .filter((e) => (e as HTMLElement).offsetParent !== null)
+        .map((e) => { const r = e.getBoundingClientRect(); return { c: e.className, l: Math.round(r.left), r: Math.round(r.right) } }))
+      const p = boxes.find((b) => b.c.includes('tstat-gems'))!
+      expect(p.r, `${w}px: pill inside the screen`).toBeLessThanOrEqual(w)
+      for (const b of boxes) if (b !== p) expect(b.r <= p.l + 0.5 || b.l >= p.r - 0.5, `${w}px ${balance}: pill overlaps ${b.c} ${JSON.stringify(boxes)}`).toBe(true)
+      // Stats must not spill out of their own box either.
+      const spill = await page.evaluate(() => { const s = document.querySelector('.topbar-stats') as HTMLElement; return [s.scrollWidth, s.clientWidth] })
+      expect(spill[0]! - spill[1]!, `${w}px: stats overflow ${JSON.stringify(spill)} ${JSON.stringify(boxes)}`).toBeLessThanOrEqual(1)
+      if (out) await page.locator('.topbar').screenshot({ path: `${out}/topbar-${w}x${h}-${balance}.png` })
+    }
+  }
 })

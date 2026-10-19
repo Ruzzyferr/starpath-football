@@ -88,20 +88,30 @@ export function flushObjectiveToasts(): void {
 /** Commit hook: season baseline + toast for objectives that just finished. */
 const OBJ_CLAIM_FLAG = 'g:objClaim'
 
+/**
+ * Career-total objective numbers still to claim as free diamonds: (from, to]. `view.done` is a
+ * career-lifetime counter, so the claim mark is one too and is never reset by a new season (that
+ * re-claimed every earlier objective under the new season's keys). A save without a mark (or one
+ * written by an older build for an earlier season) starts at this season's baseline.
+ */
+export function objectiveClaimRange(claimed: { season: number; n: number } | null, base: Base, done: number): [number, number] {
+  const from = claimed ? (claimed.season === base.season ? claimed.n : Math.max(claimed.n, base.done)) : base.done
+  return [from, Math.max(from, done)]
+}
+
 export function onObjectivesCommit(s: GameState): void {
   const view = objectivesView(s)
-  const base = readJson<Base | null>(s.life, OBJ_BASE_FLAG, null)
+  let base = readJson<Base | null>(s.life, OBJ_BASE_FLAG, null)
   if (!base || base.season !== s.calendar.season) {
-    writeJson(s.life, OBJ_BASE_FLAG, { season: s.calendar.season, done: view.done, failed: view.failed } satisfies Base)
+    base = { season: s.calendar.season, done: view.done, failed: view.failed }
+    writeJson(s.life, OBJ_BASE_FLAG, base satisfies Base)
   }
-  // Free diamonds for each goal completed this season: tracked in the save, so completions right after a
-  // load are claimed too (the shop server dedupes by this key and caps per day).
-  const claimed = readJson<{ season: number; n: number }>(s.life, OBJ_CLAIM_FLAG, { season: s.calendar.season, n: 0 })
-  const from = claimed.season === s.calendar.season ? claimed.n : 0
-  if (view.done > from) {
-    for (let i = from + 1; i <= view.done; i++) claimFreeGems(s, 'objective', `obj:${s.calendar.season}:${i}`)
-    writeJson(s.life, OBJ_CLAIM_FLAG, { season: s.calendar.season, n: view.done })
-  }
+  // Free diamonds for each goal completed: tracked in the save, so completions right after a load are
+  // claimed too (the shop server dedupes by this key and caps per day).
+  const claimed = readJson<{ season: number; n: number } | null>(s.life, OBJ_CLAIM_FLAG, null)
+  const [from, to] = objectiveClaimRange(claimed, base, view.done)
+  for (let i = from + 1; i <= to; i++) claimFreeGems(s, 'objective', `obj:${s.calendar.season}:${i}`)
+  if (!claimed || claimed.season !== s.calendar.season || claimed.n !== to) writeJson(s.life, OBJ_CLAIM_FLAG, { season: s.calendar.season, n: to })
   const prev = seen
   seen = { id: s.meta.id, done: view.done, failed: view.failed }
   if (!prev || prev.id !== s.meta.id || view.done < prev.done || view.failed < prev.failed) return

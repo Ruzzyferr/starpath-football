@@ -227,8 +227,10 @@ export function flushEarnQueue(): Promise<void> {
     const q = readJson<EarnItem[]>(EARN_QUEUE_KEY) ?? []
     const keep: EarnItem[] = []
     let stop = false
+    // Sources at their own daily cap: their claims wait, the other sources go on.
+    const held = new Set<string>()
     for (const x of q) {
-      if (stop) {
+      if (stop || held.has(x.source)) {
         keep.push(x)
         continue
       }
@@ -239,7 +241,8 @@ export function flushEarnQueue(): Promise<void> {
         // Capped today: try again on another day (the server does not burn the reference).
         if (r.capped) {
           keep.push(x)
-          if (typeof r.retryAfter === 'number' && r.retryAfter > 0) {
+          if (r.reason === 'source') held.add(x.source)
+          else if (typeof r.retryAfter === 'number' && r.retryAfter > 0) {
             writeJson(EARN_PAUSE_KEY, Date.now() + r.retryAfter * 1000)
             stop = true
           }
@@ -270,6 +273,19 @@ export function flushEarnQueue(): Promise<void> {
   return flushing
 }
 
+/** Account recovery from a store receipt: taken back, refused for good, or worth trying again later. */
+export type RecoverResult = 'ok' | 'refused' | 'retry'
+async function recoverWith(path: string, body: unknown): Promise<RecoverResult> {
+  try {
+    const a = await raw<Account>('POST', path, body)
+    writeJson(ACCOUNT_KEY, a)
+    return 'ok'
+  } catch (e) {
+    const transient = !(e instanceof ShopApiError) || e.code === 'offline' || e.code === 'rate_limited' || e.code === 'play_unavailable' || e.status >= 500
+    return transient ? 'retry' : 'refused'
+  }
+}
+
 export const shopApi = {
   wallet: () => withWallet(call<ServerWallet>('GET', '/v1/wallet')),
   buyApple: (jws: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/apple', { jws })),
@@ -290,15 +306,7 @@ export const shopApi = {
   earn: (source: string, ref: string) => withWallet(call<ServerWallet & { earned: number }>('POST', '/v1/earn', { source, ref })),
   passClaim: () => withWallet(call<ServerWallet>('POST', '/v1/pass/claim')),
   /** New install: get the old account back from a restorable Google Play purchase. */
-  async recoverGoogle(productId: string, purchaseToken: string): Promise<boolean> {
-    try {
-      const a = await raw<Account>('POST', '/v1/recover/google', { productId, purchaseToken })
-      writeJson(ACCOUNT_KEY, a)
-      return true
-    } catch {
-      return false
-    }
-  },
+  recoverGoogle: (productId: string, purchaseToken: string): Promise<RecoverResult> => recoverWith('/v1/recover/google', { productId, purchaseToken }),
   /** Recovery code shown in Settings (written down by the player). */
   recoveryCode: () => call<{ code: string }>('POST', '/v1/account/recovery-code'),
   async recoverCode(code: string): Promise<boolean> {
@@ -322,15 +330,7 @@ export const shopApi = {
     serverWallet.value = null
   },
   /** New install: get the old account back from a restorable Apple receipt. */
-  async recoverApple(jws: string): Promise<boolean> {
-    try {
-      const a = await raw<Account>('POST', '/v1/recover/apple', { jws })
-      writeJson(ACCOUNT_KEY, a)
-      return true
-    } catch {
-      return false
-    }
-  },
+  recoverApple: (jws: string): Promise<RecoverResult> => recoverWith('/v1/recover/apple', { jws }),
 }
 
 /** Tests only. */

@@ -26,7 +26,7 @@ Bir futbolcunun tüm hayatını yönet. Akademide başla, ilk sözleşmeni imzal
 - Sahanın dışında hayat: para, ev, ilişkiler ve olaylar; her karar seni farklı bir hikâyeye götürür.
 - Zengin dünya: birçok ülke ve lig, milli takım, kupalar ve sezonluk özetler.
 - Ücretsiz oyna, tüm kariyer açık. Zorla reklam yok (ödüllü reklam isteğe bağlı), enerji sınırı yok, ganimet kutusu yok. Satın aldığın hiçbir şey maç sonucunu değiştirmez; fiyatlar maaşınla artmaz.
-- Çevrimdışı oyna: kariyerin ve kayıtların cihazında kalır; yalnızca mağazayı açarsan anonim bir mağaza hesabı oluşur.
+- Çevrimdışı oyna: kariyerin ve kayıtların cihazında kalır; mağazayı açana, ödüllü reklam izleyene veya satın alana kadar hiçbir şey gönderilmez; o zaman anonim bir mağaza hesabı oluşur.
 - Her ekranda rahat: telefon, tablet, bilgisayar, klavye ve gamepad desteği; erişilebilirlik ayarları.
 
 Kumarhane bölümü yalnızca oyun içi para kullanır (gerçek parayla satın alınabilir, ancak asla nakde çevrilemez); gerçek ödül yoktur. Abonelik (Pro Contract) aylık, otomatik yenilenir; mağaza hesabı ayarlarından iptal edilir. Uygulama içi satın alma ve isteğe bağlı ödüllü reklam içerir.
@@ -51,7 +51,7 @@ Live a footballer's whole life. Start in the academy, sign your first contract, 
 - Life off the pitch: money, homes, relationships and events; every choice leads to a different story.
 - A rich world: many countries and leagues, national team, cups and season recaps.
 - Free to play, the whole career is open. No forced ads (rewarded ads are optional), no energy limit, no loot boxes. Nothing you buy changes a match result; prices do not scale with your salary.
-- Play offline: your career and saves stay on your device; only opening the store creates an anonymous shop account.
+- Play offline: your career and saves stay on your device; nothing is sent until you open the store, watch a rewarded ad or buy something; that creates an anonymous shop account.
 - Comfortable everywhere: phone, tablet, desktop, keyboard and gamepad support; accessibility options.
 
 In-game cash bought with real money can also be used in the simulated casino (18+ age gate); casino winnings are in-game money only and can never be cashed out; there is no real prize. Pro Contract is a monthly auto-renewing subscription, cancelled in your store account settings. Contains in-app purchases and optional rewarded ads.

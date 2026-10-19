@@ -7,7 +7,7 @@ import { DEFAULT_CAREER } from './index'
 import { useStorage } from './persistence'
 import { realActions as A } from './realActions'
 import { realData as D } from './realData'
-import { forceCompleteObjective, installObjectivesFeed, mapObjectives } from './objectivesFeed'
+import { forceCompleteObjective, installObjectivesFeed, mapObjectives, objectiveClaimRange } from './objectivesFeed'
 
 const L = (s: string) => ({ tr: s, en: s })
 const ov = (id: string, source: ObjectiveView['source'], seasonal: boolean): ObjectiveView => ({
@@ -37,6 +37,23 @@ describe('mapObjectives', () => {
     const u = mapObjectives({ active: [], recent: [], done: 0, failed: 0 }, null)
     expect(u.short).toEqual([])
     expect(u.board).toBeNull()
+  })
+})
+
+describe('objectiveClaimRange (free diamonds per completed objective)', () => {
+  it('claims only what is new this season', () => {
+    expect(objectiveClaimRange({ season: 2, n: 7 }, { season: 2, done: 5, failed: 0 }, 9)).toEqual([7, 9])
+    expect(objectiveClaimRange({ season: 2, n: 9 }, { season: 2, done: 5, failed: 0 }, 9)).toEqual([9, 9])
+  })
+  it('a new season with unchanged career total queues no claims', () => {
+    // Season 1 ended with 12 objectives claimed; season 2 starts with the same career total.
+    expect(objectiveClaimRange({ season: 1, n: 12 }, { season: 2, done: 12, failed: 3 }, 12)).toEqual([12, 12])
+    // Then one more completes: exactly one claim.
+    expect(objectiveClaimRange({ season: 1, n: 12 }, { season: 2, done: 12, failed: 3 }, 13)).toEqual([12, 13])
+  })
+  it('a save without a claim mark starts at the season baseline, not at zero', () => {
+    expect(objectiveClaimRange(null, { season: 4, done: 20, failed: 2 }, 20)).toEqual([20, 20])
+    expect(objectiveClaimRange(null, { season: 4, done: 20, failed: 2 }, 21)).toEqual([20, 21])
   })
 })
 

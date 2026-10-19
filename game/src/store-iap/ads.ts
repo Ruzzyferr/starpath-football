@@ -59,7 +59,10 @@ class AdMobProvider implements AdProvider {
           npa = true
         }
         if (!canRequest) return { ok: false, npa: true }
-        if (detectPlatform() === 'ios') {
+        // Teen ceiling; under-18 or unknown age (ui/ageGate) → treated as under the age of consent: no personalisation.
+        const adult = playerIsAdult?.() ?? false
+        // ATT is asked only of adults: everyone else gets non-personalised ads whatever they answer.
+        if (adult && detectPlatform() === 'ios') {
           try {
             const st = await AdMob.trackingAuthorizationStatus()
             if (st.status === 'notDetermined') await AdMob.requestTrackingAuthorization()
@@ -69,8 +72,6 @@ class AdMobProvider implements AdProvider {
             npa = true
           }
         }
-        // Teen ceiling; under-18 or unknown age (ui/ageGate) → treated as under the age of consent: no personalisation.
-        const adult = playerIsAdult?.() ?? false
         if (!adult) npa = true
         await AdMob.initialize({ maxAdContentRating: MaxAdContentRating.Teen, tagForUnderAgeOfConsent: !adult })
         return { ok: true, npa }
@@ -96,6 +97,7 @@ class AdMobProvider implements AdProvider {
       await AdMob.prepareRewardVideoAd({ adId, isTesting: testing, npa: init.npa, ssv: { userId: accountId, customData: `${accountId}:${nonce}` } })
       // The reward and the close are separate events: listen to both, so closing early never hangs.
       let rewarded = false
+      let fail: () => void = () => {}
       const outcome = new Promise<AdOutcome>((resolve) => {
         const timer = setTimeout(() => resolve(rewarded ? 'rewarded' : 'failed'), AD_TIMEOUT_MS)
         const done = (o: AdOutcome) => {
@@ -106,12 +108,14 @@ class AdMobProvider implements AdProvider {
         // Some SDK versions deliver Rewarded just AFTER Dismissed: give it a moment before deciding.
         void AdMob.addListener(RewardAdPluginEvents.Dismissed, () => { setTimeout(() => done(rewarded ? 'rewarded' : 'dismissed'), 700) }).then((h) => handles.push(h))
         void AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => done('failed')).then((h) => handles.push(h))
+        fail = () => done(rewarded ? 'rewarded' : 'failed')
       })
       const shown = AdMob.showRewardVideoAd().then((r) => {
         if (r && typeof r.amount === 'number') rewarded = true
         return null
       })
-      shown.catch(() => {})
+      // A rejected show (no fill, activity gone) ends the wait now instead of after the 120 s timeout.
+      shown.catch(() => fail())
       return await outcome
     } catch {
       return 'failed'
@@ -235,7 +239,19 @@ function setPendingAds(list: PendingAd[]): void {
 /** Ad sessions older than this are expired on the server (no reward any more). */
 const AD_SESSION_MS = 30 * 60_000
 
+/** Nonces whose adComplete is running (watchAd or the retry), so the two never send the same one at once. */
+const inFlight = new Set<string>()
+
 async function completeAd(a: PendingAd): Promise<AdResult> {
+  inFlight.add(a.nonce)
+  try {
+    return await completeAdOnce(a)
+  } finally {
+    inFlight.delete(a.nonce)
+  }
+}
+
+async function completeAdOnce(a: PendingAd): Promise<AdResult> {
   // SSV can arrive a moment after the ad closes: retry briefly while the server waits for it.
   for (let i = 0; ; i++) {
     try {
@@ -259,11 +275,17 @@ async function completeAd(a: PendingAd): Promise<AdResult> {
   }
 }
 
+/** Is a watched ad for this offer still waiting for its reward? (The offer stays closed meanwhile.) */
+export function hasPendingAd(offer: AdOffer): boolean {
+  return pendingAds().some((a) => a.offer === offer)
+}
+
 let retrying: Promise<void> | null = null
 /** Retry watched-but-unconfirmed ads (launch, reconnect, app resume). */
 export function retryPendingAds(): Promise<void> {
   retrying ??= (async () => {
-    for (const a of pendingAds()) await completeAd(a)
+    // A nonce that watchAd is completing right now is left to it (no double adComplete).
+    for (const a of pendingAds()) if (!inFlight.has(a.nonce)) await completeAd(a)
   })().finally(() => {
     retrying = null
   })

@@ -39,6 +39,9 @@ export interface ProductDef {
   cosmetics?: Partial<Record<CosmeticKind, readonly (string | number)[]>>
 }
 
+/** Pro Contract: diamonds claimable once per real day while active (server limits.passDaily). */
+export const PRO_DAILY_GEMS = 20
+
 export const PRODUCTS: readonly ProductDef[] = [
   {
     id: FULL_CAREER,
@@ -116,7 +119,8 @@ export const PRODUCTS: readonly ProductDef[] = [
   ...([
     ['cash_s', 4, 5_000, 50_000, '€1.99'],
     ['cash_m', 12, 15_000, 150_000, '€4.99'],
-    ['cash_l', 30, 40_000, 400_000, '€9.99'],
+    // Never above the €200k purchased-cash season ceiling (gear.ts PURCHASED_CASH_PER_SEASON).
+    ['cash_l', 30, 40_000, 200_000, '€9.99'],
   ] as const).map(([id, weeks, floor, cap, price]): ProductDef => ({
     id,
     kind: 'cash',
@@ -138,11 +142,11 @@ export const PRODUCTS: readonly ProductDef[] = [
     kind: 'pass',
     storeType: 'subs',
     consumable: false,
-    gems: 50,
+    gems: PRO_DAILY_GEMS,
     name: { tr: 'Pro Sözleşme', en: 'Pro Contract' },
     desc: {
-      tr: 'Her gün mağazadan 50 elmas al (kaçırılan gün birikmez), reklam ödüllerini reklamsız al, Pro rozeti. Maç veya XP avantajı yok.',
-      en: 'Claim 50 diamonds in the store every day (missed days do not stack), get ad rewards without the ad, a Pro badge. No match or XP advantage.',
+      tr: `Her gün mağazadan ${PRO_DAILY_GEMS} elmas al (kaçırılan gün birikmez), reklam ödüllerini reklamsız al, Pro rozeti. Maçta doğrudan avantaj yok; elmaslarla isteğe bağlı antrenman ekipmanı (en çok +%25) alınabilir.`,
+      en: `Claim ${PRO_DAILY_GEMS} diamonds in the store every day (missed days do not stack), get ad rewards without the ad, a Pro badge. No direct match advantage; diamonds can buy optional training gear (capped at +25%).`,
     },
     icon: '⭐',
     fallbackPrice: '€4.99',
@@ -154,6 +158,10 @@ export const COSMETIC_PRODUCTS = PRODUCTS.filter((p) => p.kind === 'cosmetic')
 export const PRODUCT_IDS: readonly string[] = PRODUCTS.map((p) => p.id)
 /** Free diamonds per event (server/catalog.json earn.*; shown in the store and on the season review). */
 export const EARN_GEMS = { motm: 8, objective: 8, first: 10, season: 100, award: 25 } as const
+/** Free diamonds a day at most (server limits.earnPerDay; the rest waits for the next day). */
+export const EARN_PER_DAY = 300
+/** Diamonds → career cash (server spend.gems_to_cash). */
+export const GEMS_TO_CASH = { price: 100, weeks: 2, floor: 2500, cap: 25000, perDay: 3 } as const
 /** Rewarded ad "+N diamonds" (server ads.gems.reward.gems) and the physio price with the ad discount. */
 export const AD_GEMS = 10
 export const PHYSIO_DISCOUNT_PRICE = 50

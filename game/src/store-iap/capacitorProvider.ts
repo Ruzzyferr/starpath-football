@@ -6,7 +6,9 @@
  * to the shop server first, and only after the server has verified and credited it is the
  * transaction finished (iOS: finished here; Android: acknowledged or consumed by the server itself). A payment the
  * server has not credited yet is retried by store-iap/service (timer, reconnect, app resume, next
- * launch via `pending()`); transactions that finish outside a purchase call (Ask to Buy, renewals)
+ * launch via `pending()`: on Android every PURCHASED purchase the device still owns, acknowledged or not,
+ * since a Restore can acknowledge one the server never credited and the server's redeem is idempotent);
+ * transactions that finish outside a purchase call (Ask to Buy, renewals)
  * arrive through `listen()`. Note: on iOS the plugin itself finishes transactions that arrive through
  * StoreKit's update stream, so for those the server credit (idempotent per transaction) is the record.
  * Android purchases still PENDING (cash payment in progress) are not sent until they are PURCHASED.
@@ -20,7 +22,7 @@ async function plugin() {
   return { NativePurchases: m.NativePurchases, INAPP: m.PURCHASE_TYPE.INAPP, SUBS: m.PURCHASE_TYPE.SUBS }
 }
 
-type Tx = { purchaseState?: string | number; transactionId: string; productIdentifier: string; jwsRepresentation?: string; purchaseToken?: string; isAcknowledged?: boolean; isActive?: boolean; revocationDate?: string }
+type Tx = { purchaseState?: string | number; transactionId: string; productIdentifier: string; jwsRepresentation?: string; purchaseToken?: string; isAcknowledged?: boolean; isActive?: boolean; revocationDate?: string; appAccountToken?: string | null }
 
 function receiptOf(tx: Tx): StoreReceipt {
   const ios = detectPlatform() === 'ios'
@@ -29,6 +31,7 @@ function receiptOf(tx: Tx): StoreReceipt {
     txId: tx.transactionId,
     jws: ios ? tx.jwsRepresentation : undefined,
     purchaseToken: ios ? undefined : tx.purchaseToken,
+    accountToken: tx.appAccountToken || undefined,
     async finish() {
       // iOS: finish the StoreKit transaction once credited. Android: the SERVER acknowledges / consumes
       // the Play purchase after crediting it (a token consumed on the device first would be refused).
@@ -69,18 +72,25 @@ export class CapacitorProvider implements PurchaseProvider {
       })) as Tx
       return { ok: true, receipt: receiptOf(tx) }
     } catch (e) {
-      const msg = String((e as { message?: string })?.message ?? e).toLowerCase()
+      // Capacitor rejects with (message, code); Android puts the Play response name in `code`.
+      const err = e as { message?: string; code?: string }
+      const msg = `${String(err?.message ?? e)} ${String(err?.code ?? '')}`.toLowerCase()
+      if (/item_already_owned|already owned/.test(msg)) return { ok: false, error: 'already_owned' }
       return { ok: false, error: /cancel/.test(msg) ? 'cancelled' : /pending|deferred|approval/.test(msg) ? 'pending' : 'failed' }
     }
   }
-  /** Launch: only what is still unfinished, no AppStore.sync (that runs from the Restore button only). */
+  /**
+   * Launch / resume: no AppStore.sync (that runs from the Restore button only). Android: every PURCHASED
+   * purchase still owned (credited consumables are consumed by the server and drop out; credited ones are
+   * skipped by txId in service). iOS: Transaction.all, filtered by account in service.
+   */
   async pending(): Promise<StoreReceipt[]> {
     try {
       const { NativePurchases } = await plugin()
       const { purchases } = (await NativePurchases.getPurchases({})) as { purchases: Tx[] }
       const ios = detectPlatform() === 'ios'
       return purchases
-        .filter((t) => PRODUCT_BY_ID[t.productIdentifier] && !t.revocationDate && (ios || (!t.isAcknowledged && (t.purchaseState === undefined || String(t.purchaseState) === '1' || /purchased/i.test(String(t.purchaseState))))))
+        .filter((t) => PRODUCT_BY_ID[t.productIdentifier] && !t.revocationDate && (ios || t.purchaseState === undefined || String(t.purchaseState) === '1' || /purchased/i.test(String(t.purchaseState))))
         .map(receiptOf)
     } catch {
       return []

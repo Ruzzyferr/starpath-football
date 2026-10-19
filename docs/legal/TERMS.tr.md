@@ -27,7 +27,7 @@ Oyundaki kişiler, kulüpler ve olaylar kurgusaldır; gerçek kişi, kulüp veya
 
 ## 5. Pro Contract aboneliği
 
-Pro Contract aylık bir aboneliktir; mevcut dönemin bitmesinden en az 24 saat önce iptal etmezsen kendiliğinden yenilenir. Apple kimliği veya Google Play abonelik ayarlarından yönetir ve iptal edersin; uygulamayı silmek aboneliği iptal etmez. Günde 50 elmas verir (mağazadan alınır) ve oyunda üstünlük sağlamaz.
+Pro Contract aylık bir aboneliktir; mevcut dönemin bitmesinden en az 24 saat önce iptal etmezsen kendiliğinden yenilenir. Apple kimliği veya Google Play abonelik ayarlarından yönetir ve iptal edersin; uygulamayı silmek aboneliği iptal etmez. Günde 20 elmas verir (mağazadan alınır); maçta doğrudan üstünlük sağlamaz (elmaslarla isteğe bağlı, en çok +%25 antrenman ekipmanı alınabilir).
 
 ## 6. Ödüllü reklamlar
 

@@ -7,12 +7,13 @@ import { gameState } from '../../store'
 import type { Appearance, LText } from '../../../core/types'
 import { GEAR, GEAR_XP_CAP, PHYSIO_PRICE, gearXpBonus, readGear, type GearSlot } from '../../../sim/career/gear'
 import {
-  AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, PHYSIO_DISCOUNT_PRICE, adsAvailable, hasEntitlement, loadProducts, productsOfKind, purchase, refreshWallet, restorePurchases, retryUnredeemed, serverWallet, shopOffline, storeAvailable, storeReady, watchAd,
+  AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, EARN_PER_DAY, GEMS_TO_CASH, PHYSIO_DISCOUNT_PRICE, PRO_DAILY_GEMS, adsAvailable, hasEntitlement, loadProducts, productsOfKind, purchase, refreshWallet, restorePurchases, retryUnredeemed, serverWallet, shopOffline, storeAvailable, storeReady, watchAd,
   type AdOffer, type ProductDef,
 } from '../../../store-iap'
 import { CASH_PER_SEASON, boughtCashThisSeason, buyCosmeticWithGems, buyGear, buyPhysio, cashGrantAmount, claimPassDaily, equipGearAction, gemsToCash, physioUsedOnThisInjury, unequipGearAction } from '../../backend/shopBridge'
 import { LegalLinksInline } from './LegalModal'
-import { AgeQuestionInline, isAdultPlayer } from '../../ageGate'
+import { AgeQuestionInline, birthYear, isAdultPlayer } from '../../ageGate'
+import { adErrText as errText, shopErrText as errNeutral } from './errors'
 import { detectPlatform } from '../../../platform/detect'
 import { fmtMoney } from '../../../sim/career/common'
 
@@ -24,45 +25,6 @@ const num = (n: number): string => n.toLocaleString(locale())
 const EUR_PER_GEM = 4.99 / 600
 const eur = (gems: number): string => `≈ ${new Intl.NumberFormat(locale(), { style: 'currency', currency: 'EUR' }).format(gems * EUR_PER_GEM)}`
 const COSMETIC_GEMS = COSMETIC_GEM_PRICE
-
-const ERR: Record<string, LText> = {
-  offline: L('Mağaza sunucusuna ulaşılamadı. Ödeme alındıysa bağlantı gelince otomatik eklenir.', 'Could not reach the shop server. If you were charged, it is added automatically once you are back online.'),
-  insufficient_gems: L('Yeterli elmasın yok.', 'Not enough diamonds.'),
-  ad_cap: L('Bugünlük bu reklam hakkın doldu. Yarın yine gel.', 'You have used today’s ads for this. Come back tomorrow.'),
-  dismissed: L('Reklam yarıda kapandı. Hakkın yanmadı.', 'The ad was closed early. Nothing was used up.'),
-  failed: L('Şu an olmadı. Hakkın yanmadı, biraz sonra yine dene.', 'That did not work right now. Nothing was used up; try again in a moment.'),
-  no_career: L('Önce bir kariyer başlat veya yükle.', 'Start or load a career first.'),
-  not_injured: L('Fizyoterapi yalnızca 2 haftadan uzun sakatlıkta kullanılabilir.', 'Physio is only for an injury of more than 2 weeks.'),
-  physio_used: L('Bu sakatlık için fizyoterapi zaten yapıldı.', 'You already had physio for this injury.'),
-  already_claimed: L('Bugünkü elmasını zaten aldın.', 'You already claimed today’s diamonds.'),
-  no_pass: L('Pro Sözleşme aktif değil.', 'Pro Contract is not active.'),
-  rejected: L('Satın alma doğrulanamadı. Ödeme alındıysa mağaza iade eder veya bir sonraki açılışta yeniden denenir.', 'The purchase could not be verified. If you were charged, the store refunds it or it is retried on the next launch.'),
-  cancelled: L('Satın alma iptal edildi.', 'Purchase cancelled.'),
-  nothing: L('Geri yüklenecek satın alım bulunamadı.', 'No purchases found to restore.'),
-  pending: L('Satın alma onay bekliyor (ör. aile onayı). Onaylanınca otomatik eklenir.', 'The purchase is waiting for approval (e.g. Ask to Buy). It is added automatically once approved.'),
-  store_not_ready: L('Bu cihazda satın alma henüz açılmadı. Bedava elmaslar ve reklam ödülleri çalışıyor.', 'Purchases are not open on this device yet. Free diamonds and ad rewards work.'),
-  unavailable: L('Bu ürün şu an satın alınamıyor.', 'This item cannot be bought right now.'),
-  owned: L('Bu pakete zaten sahipsin.', 'You already own this pack.'),
-  no_season_reward: L('Önce sezon sonu ödülü alınmalı.', 'The end-of-season reward comes first.'),
-  spend_cap: L('Bugünlük bu işlemin hakkı doldu, yarın yenilenir.', 'That is used up for today; it resets tomorrow.'),
-  rate_limited: L('Çok hızlı denendi. Birkaç saniye sonra yine dene.', 'Too many tries. Try again in a few seconds.'),
-  no_discount: L('Önce indirim reklamını izlemelisin.', 'Watch the discount ad first.'),
-  sandbox_cap: L('Test satın alma sınırına ulaşıldı.', 'The test-purchase limit was reached.'),
-  play_not_configured: L('Bu cihazda satın alma henüz açılmadı.', 'Purchases are not open on this device yet.'),
-  ad_too_short: L('Reklam tamamlanmadı. Hakkın yanmadı.', 'The ad did not finish. Nothing was used up.'),
-  too_many_open_ads: L('Birkaç reklam yarım kaldı. Birkaç dakika sonra yine dene.', 'A few ads were left unfinished. Try again in a few minutes.'),
-  pending_reward: L('Reklamı izledin; ödül bağlantı gelince otomatik eklenecek.', 'You watched the ad; the reward is added automatically once you are back online.'),
-  refund_hold: L('İade edilen bir satın alma yüzünden harcama ve reklam ödülleri şimdilik durdu.', 'Spending and ad rewards are paused because of a refunded purchase.'),
-  cash_season_cap: L(`Bu sezonun nakit satın alma sınırına ulaştın (${fmtMoney(CASH_PER_SEASON).tr}). Yeni sezonda açılır.`, `You reached this season’s cash purchase limit (${fmtMoney(CASH_PER_SEASON).en}). It opens again next season.`),
-  adult_only: L('Nakit satın almak 18 yaş ve üstü içindir.', 'Buying cash is for players 18 and over.'),
-  family_shared: L('Aile Paylaşımı ile gelen satın alımlar elmas/nakit olarak eklenmez.', 'Purchases shared through Family Sharing are not added as diamonds or cash.'),
-  purchase_pending: L('Ödeme henüz tamamlanmadı; tamamlanınca otomatik eklenir.', 'The payment is not complete yet; it is added automatically once it is.'),
-  play_unavailable: L('Google Play şu an doğrulanamadı; ödeme otomatik yeniden denenir.', 'Google Play could not be reached; the payment is retried automatically.'),
-  keeper_only: L('Bu eldiven yalnızca kaleciler için.', 'These gloves are for goalkeepers only.'),
-}
-/** Outside ad flows the fallback must not promise "nothing was used up". */
-const errNeutral = (code: string | undefined): string => (code && ERR[code] ? lt(ERR[code]!) : lt(L('İşlem tamamlanamadı. Biraz sonra yine dene.', 'That did not go through. Try again in a moment.')))
-const errText = (code: string | undefined): string => lt(ERR[code ?? 'failed'] ?? ERR.failed!)
 
 type TabId = 'gems' | 'gear' | 'cash' | 'cosmetic' | 'pro'
 
@@ -131,8 +93,10 @@ export function StoreScreen() {
     } else toast(key.startsWith('ad:') ? errText(r.reason ?? r.error) : errNeutral(r.reason ?? r.error), 'info')
   }
   const balanceLine = (got: string) => (b: number) => L(`${got} · bakiye ${num(b)}💎`, `${got} · balance ${num(b)}💎`)
+  /** Cash (packs and diamonds → cash) is 18+: checked on the action too, not only by the tab. */
+  const adultOnly = <T,>(fn: () => Promise<T>) => (): Promise<T | { ok: false; reason: string }> => (isAdultPlayer() ? fn() : Promise.resolve({ ok: false as const, reason: 'adult_only' }))
   const buy = (p: ProductDef) =>
-    run(p.id, () => purchase(p.id), p.kind === 'gems' || p.kind === 'starter' ? balanceLine(`+${num(p.gems ?? 0)}💎`) : p.kind === 'cosmetic' || p.kind === 'pass' ? () => L(`${p.icon} ${p.name.tr}: aktif.`, `${p.icon} ${p.name.en}: active.`) : undefined)
+    run(p.id, p.kind === 'cash' ? adultOnly(() => purchase(p.id)) : () => purchase(p.id), p.kind === 'gems' || p.kind === 'starter' ? balanceLine(`+${num(p.gems ?? 0)}💎`) : p.kind === 'cosmetic' || p.kind === 'pass' ? () => L(`${p.icon} ${p.name.tr}: aktif.`, `${p.icon} ${p.name.en}: active.`) : undefined)
   const ad = (offer: AdOffer) => run(`ad:${offer}`, () => watchAd(offer, { career: s?.meta.id }), offer === 'gems' ? balanceLine(`+${AD_GEMS}💎`) : offer === 'physio_disc' ? () => L(`Fizyoterapi indirimi hazır: ${PHYSIO_DISCOUNT_PRICE}💎.`, `Physio discount ready: ${PHYSIO_DISCOUNT_PRICE}💎.`) : undefined)
   const price = (p: ProductDef) => (prices[p.id] ? t('iap.store.buy', { price: prices[p.id]! }) : t('iap.store.buyNoPrice'))
   /** Store-localised price when the store gave one; otherwise none (never the euro fallback as a price). */
@@ -183,7 +147,7 @@ export function StoreScreen() {
           ))}
           <Card class="st-card" data-testid="st-free">
             <h2 class="h4">{lt(L('Bedava elmas', 'Free diamonds'))}</h2>
-            <p class="t-sm t-mid">{lt(L(`Oynayarak kazan: Maçın Oyuncusu ${EARN_GEMS.motm}💎, haftalık hedef ${EARN_GEMS.objective}💎, başarım ${EARN_GEMS.first}💎, sezon sonu ${EARN_GEMS.season}💎, ödül ve kupa ${EARN_GEMS.award}💎 (günde en çok 300💎; fazlası ertesi gün gelir). İstersen reklam izle.`, `Earn by playing: Man of the Match ${EARN_GEMS.motm}💎, weekly goal ${EARN_GEMS.objective}💎, achievement ${EARN_GEMS.first}💎, end of season ${EARN_GEMS.season}💎, award or trophy ${EARN_GEMS.award}💎 (300💎 a day at most; the rest arrives the next day). Or watch an optional ad.`))}</p>
+            <p class="t-sm t-mid">{lt(L(`Oynayarak kazan: Maçın Oyuncusu ${EARN_GEMS.motm}💎, haftalık hedef ${EARN_GEMS.objective}💎, başarım ${EARN_GEMS.first}💎, sezon sonu ${EARN_GEMS.season}💎, ödül ve kupa ${EARN_GEMS.award}💎 (günde en çok ${EARN_PER_DAY}💎; fazlası ertesi gün gelir). İstersen reklam izle.`, `Earn by playing: Man of the Match ${EARN_GEMS.motm}💎, weekly goal ${EARN_GEMS.objective}💎, achievement ${EARN_GEMS.first}💎, end of season ${EARN_GEMS.season}💎, award or trophy ${EARN_GEMS.award}💎 (${EARN_PER_DAY}💎 a day at most; the rest arrives the next day). Or watch an optional ad.`))}</p>
             <AdButton offer="gems" label={L(`İzle: +${AD_GEMS}💎`, `Watch: +${AD_GEMS}💎`)} busy={busy !== null} run={ad} />
           </Card>
           {productsOfKind('gems').map((p) => (
@@ -196,6 +160,7 @@ export function StoreScreen() {
             </Card>
           ))}
           <p class="t-sm t-mid st-span">{lt(L('Elmasın nakit değeri yoktur, devredilemez ve yasal haklar dışında iade edilmez. Tüketilen paketler (elmas, nakit) geri yüklenmez; iade edilen satın almanın elmasları bakiyeden düşülür. "≈ €" değerleri 600 elmas paketinin fiyatına göredir.', 'Diamonds have no cash value, cannot be transferred and are not refundable except where the law requires. Consumable packs (diamonds, cash) are not restored; diamonds from a refunded purchase are taken back. "≈ €" values use the 600-diamond pack’s price.'))}</p>
+          {!isAdultPlayer() && <p class="t-sm t-mid st-span" data-testid="st-parent-note">{lt(L('18 yaşından küçüksen satın almadan önce anne, baba veya vasinden izin al.', 'If you are under 18, ask a parent or guardian before you buy anything.'))}</p>}
         </div>
       )}
 
@@ -254,8 +219,8 @@ export function StoreScreen() {
 
       {tab === 'cash' && !isAdultPlayer() && (
         <div class="st-grid" data-testid="st-tab-cash-age" role="tabpanel" id="st-cash-panel" aria-labelledby="st-cash">
-          <p class="t-sm t-mid st-span">{errText('adult_only')}</p>
-          <AgeQuestionInline />
+          {/* Neutral question first (no hint which answer passes); the 18+ rule only after an answer. */}
+          {birthYear.value === null ? <AgeQuestionInline /> : <p class="t-sm t-mid st-span">{errText('adult_only')}</p>}
         </div>
       )}
       {tab === 'cash' && isAdultPlayer() && (
@@ -267,6 +232,7 @@ export function StoreScreen() {
               <div class="st-big" aria-hidden="true">💶</div>
               <h2 class="h4">{lt(p.name)}</h2>
               {s && <p class="t-sm">{lt(L('Şu an: ', 'Right now: '))}<b>{lt(fmtMoney(Math.min(cashLeft, cashGrantAmount(s, p.cashWeeks ?? 0, p.cashFloor ?? 0, p.cashCap ?? Infinity))))}</b></p>}
+              {s && cashLeft > 0 && cashLeft < cashGrantAmount(s, p.cashWeeks ?? 0, p.cashFloor ?? 0, p.cashCap ?? Infinity) && <p class="t-xs t-gold" data-testid={`cash-clipped-${p.id}`}>{lt(L('Bu sezonun sınırı yüzünden paketin tamamı eklenmez; yalnızca yukarıdaki tutar gelir.', 'This season’s limit means only the amount above is added, not the full pack.'))}</p>}
               <p class="t-xs t-lo">{lt(p.desc)}</p>
               {cashLeft <= 0 ? <span class="t-sm">{errText('cash_season_cap')}</span> : buyBtn(p)}
             </Card>
@@ -274,8 +240,8 @@ export function StoreScreen() {
           <Card class="st-card">
             <div class="st-big" aria-hidden="true">💎→💶</div>
             <h2 class="h4">{lt(L('Elmas → Nakit', 'Diamonds → Cash'))}</h2>
-            <p class="t-sm t-mid">{lt(L('100💎 = 2 haftalık maaş (en az €2.500, en çok €25.000). Günde 3 kez.', '100💎 = 2 weeks’ wages (€2,500 to €25,000). 3 times a day.'))}</p>
-            <Button variant="primary" block disabled={busy !== null || !s || gems < 100 || w?.limits?.gemsToCashLeft === 0 || cashLeft <= 0} onClick={() => run('g2c', () => gemsToCash())} data-testid="gems-to-cash">100💎 <span class="t-xs">({eur(100)})</span></Button>
+            <p class="t-sm t-mid">{lt(L(`${GEMS_TO_CASH.price}💎 = ${GEMS_TO_CASH.weeks} haftalık maaş (en az ${fmtMoney(GEMS_TO_CASH.floor).tr}, en çok ${fmtMoney(GEMS_TO_CASH.cap).tr}). Günde ${GEMS_TO_CASH.perDay} kez.`, `${GEMS_TO_CASH.price}💎 = ${GEMS_TO_CASH.weeks} weeks’ wages (${fmtMoney(GEMS_TO_CASH.floor).en} to ${fmtMoney(GEMS_TO_CASH.cap).en}). ${GEMS_TO_CASH.perDay} times a day.`))}</p>
+            <Button variant="primary" block disabled={busy !== null || !s || gems < 100 || w?.limits?.gemsToCashLeft === 0 || cashLeft <= 0} onClick={() => run('g2c', adultOnly(() => gemsToCash()))} data-testid="gems-to-cash">100💎 <span class="t-xs">({eur(100)})</span></Button>
             {missing(100)}
           </Card>
         </div>
@@ -313,16 +279,19 @@ export function StoreScreen() {
               {w?.pass.active ? (
                 <>
                   <span class="st-owned">{lt(L('Aktif · şu tarihe kadar: ', 'Active until: '))}{new Date(w.pass.until).toLocaleDateString(locale())}</span>
-                  <Button variant="primary" block disabled={busy !== null || !w.pass.claimable} onClick={() => run('pass', () => claimPassDaily(), balanceLine('+50💎'))} data-testid="pass-claim">
-                    {w.pass.claimable ? lt(L('Bugünkü 50 elmasını al', 'Claim today’s 50 diamonds')) : lt(L('Bugünkü alındı, yarın yine', 'Claimed today, back tomorrow'))}
+                  <Button variant="primary" block disabled={busy !== null || !w.pass.claimable} onClick={() => run('pass', () => claimPassDaily(), balanceLine(`+${PRO_DAILY_GEMS}💎`))} data-testid="pass-claim">
+                    {w.pass.claimable ? lt(L(`Bugünkü ${PRO_DAILY_GEMS} elmasını al`, `Claim today’s ${PRO_DAILY_GEMS} diamonds`)) : lt(L('Bugünkü alındı, yarın yine', 'Claimed today, back tomorrow'))}
                   </Button>
                 </>
               ) : (
                 <>
                   <p class="t-sm" data-testid="pro-terms">
-                    {lt(L(
-                      `Aylık abonelik: ${priceText(p)} / ay. Dönem bitmeden en az 24 saat önce iptal edilmezse otomatik yenilenir; ödeme ${android ? 'Google Play' : 'App Store'} hesabından alınır. ${android ? 'Google Play › Ödemeler ve abonelikler' : 'Ayarlar › Apple Kimliği › Abonelikler'} bölümünden yönetebilir ve iptal edebilirsin.`,
-                      `Monthly subscription: ${priceText(p)} / month. It renews automatically unless cancelled at least 24 hours before the period ends; payment is charged to your ${android ? 'Google Play' : 'App Store'} account. Manage or cancel it in ${android ? 'Google Play › Payments & subscriptions' : 'Settings › Apple ID › Subscriptions'}.`,
+                    {lt(android ? L(
+                      `Aylık abonelik: ${priceText(p)} / ay. İptal edene kadar her ay Google Play hesabından yenilenir. Google Play › Ödemeler ve abonelikler bölümünden istediğin zaman iptal edebilirsin; ödenen dönemin sonuna kadar Pro sürer.`,
+                      `Monthly subscription: ${priceText(p)} / month. It renews monthly through your Google Play account until you cancel. Cancel any time in Google Play › Payments & subscriptions; Pro lasts to the end of the paid period.`,
+                    ) : L(
+                      `Aylık abonelik: ${priceText(p)} / ay. Dönem bitmeden en az 24 saat önce iptal edilmezse otomatik yenilenir; ödeme App Store hesabından alınır. Ayarlar › [adın] › Abonelikler bölümünden yönetebilir ve iptal edebilirsin.`,
+                      `Monthly subscription: ${priceText(p)} / month. It renews automatically unless cancelled at least 24 hours before the period ends; payment is charged to your App Store account. Manage or cancel it in Settings › [your name] › Subscriptions.`,
                     ))}
                   </p>
                   {buyBtn(p)}

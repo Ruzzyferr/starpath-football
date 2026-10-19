@@ -29,7 +29,7 @@ Plana göre gerçekte yapılanlar ve değişenler:
 | İkinci ürün | **Efsane Kariyerler €2.99** (tek seferlik): harika çocuk olarak büyük kulüpte başla, emeklilikten sonra teknik direktör olarak devam et. |
 | Elmasın kullanımı | Antrenmanı hızlandıran ekipman (krampon vb.), kozmetik (forma, krampon rengi, gol sevinci). |
 | Oyun içi para (€) | **Satılır** (nakit paketleri). Kumarhane aynı parayla çalışmaya devam eder (sahip kararı). Yaş derecesi buna göre güncellenmeli. |
-| Abonelik | **Pro Sözleşme €4.99/ay:** her gün 50💎 (sahip kararı). Panelde ilk ayda kimse almadı, gelir ana kalemi değil. |
+| Abonelik | **Pro Sözleşme €4.99/ay:** her gün 20💎 (round-4 incelemesi: 50💎 her elmas paketinden değerliydi). Panelde ilk ayda kimse almadı, gelir ana kalemi değil. |
 | Reklam | **Ödüllü reklam var** (isteğe bağlı: "izle, kazan"). **Zorla reklam yok** (geçiş reklamı yok). Banner: yalnızca menülerde, herhangi bir satın alma kaldırır; lansmanda kapalı, test sonrası karar (§6.7). |
 | Ücretsiz kalanlar | Zorla reklam yok, ganimet kutusu yok, enerji sınırı yok, çevrimdışı. **Editör** (gerçek isimler) ve **kayıt yedekleme** ücretsiz. |
 | Değişmez kural | **Satılan hiçbir şey maç sonucunu veya maç içi istatistiği doğrudan değiştirmez.** Ekipman yalnızca antrenman XP hızını etkiler. Fiyatlar maaşla birlikte asla artmaz. |
@@ -171,7 +171,7 @@ v5'in teklif metni:
 > Starter Pack, once only, EUR 0.99: 300 diamonds + Golden Boots (+15% training XP for 60 matches; your player wears them on the pitch).
 > Diamonds (earn some by playing, packs from EUR 1.99) buy pro boots and gear that speed up training, exclusive kits, boot colours and goal celebrations everyone sees in your matches. Nothing you buy changes match results.
 > Legend Careers, one-time EUR 2.99: start as a wonderkid at a top club, or carry on as a manager after you retire.
-> Optional Pro Contract EUR 4.99 a month: 50 diamonds a day, cancel anytime. Prices never go up as your salary grows.
+> Optional Pro Contract EUR 4.99 a month: 20 diamonds a day, cancel anytime. Prices never go up as your salary grows.
 
 - Tuned set: 9 alan, **3'ü ikinci ürün olarak Efsane Kariyerler'i** de aldı (12 satın alma).
 - Yeni alıcılar: 13 alan, 16 satın alma. Ayrıca 1 kişi **yalnızca** Efsane Kariyerler'i aldı (elmas istemeyen ama tek seferlik kilide ödeyen tip).
@@ -220,7 +220,7 @@ Bunları teklif metni değil, yalnızca **gerçek kanıt** döndürür: mağaza 
 | `cash_s` | Tüketilen | 1.99 | 4 haftalık maaş (taban: €5.000) | Aktif kariyere eklenir (§6.4). |
 | `cash_m` | Tüketilen | 4.99 | 12 haftalık maaş (taban: €15.000) | |
 | `cash_l` | Tüketilen | 9.99 | 30 haftalık maaş (taban: €40.000) | |
-| `pro_contract` | Abonelik (aylık) | 4.99 | Her gün 50💎 (talep edilince), Pro rozeti | Android: taban plan `monthly`. İstediğin zaman iptal. |
+| `pro_contract` | Abonelik (aylık) | 4.99 | Her gün 20💎 (talep edilince), Pro rozeti | Android: taban plan `monthly`. İstediğin zaman iptal. |
 | `pack_celebrations` | Tüketilmeyen | 1.99 | Mevcut kozmetik paketi | Kalır. Ayrıca elmasla da açılabilir. |
 | `pack_avatar` | Tüketilmeyen | 1.99 | Mevcut kozmetik paketi | Kalır. |
 | `full_career` | (emekli) | - | - | Satıştan kaldırılır. TestFlight'ta satın alanların kaydı silinmez, kilit zaten kalkıyor. |
@@ -274,7 +274,7 @@ Kurallar:
 - **Kumarhane:** sahip kararıyla aynı para birimi kullanılır. Bunun sonuçları için §8.2'ye bak.
 
 ### 6.5 Pro Sözleşme (abonelik)
-- Aktifken her **gerçek gün** ilk açılışta 50💎 talep edilir (biriktirmez; kaçırılan gün yanar). Panelde "Pro" rozeti görünür.
+- Aktifken her **gerçek gün** ilk açılışta 20💎 talep edilir (biriktirmez; kaçırılan gün yanar). Panelde "Pro" rozeti görünür.
 - Maç veya XP avantajı **yok** (ilk taslakta +%10 XP vardı, kaldırıldı. Yoksa abonelik "pay-to-win" algısı yaratıyor).
 - Durum, açılışta mağazadan doğrulanır (`getPurchases` SUBS). İptal veya süre bitiminde talep durur.
 
