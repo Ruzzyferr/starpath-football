@@ -81,6 +81,17 @@ jobs:
             CODE_SIGN_IDENTITY="" \
             CURRENT_PROJECT_VERSION="${{ github.run_number }}"
 
+      # Vendor frameworks (GoogleMobileAds, UserMessagingPlatform) arrive with the vendor's
+      # signature, which an unsigned archive leaves in place and export validation rejects.
+      # Strip it so the export step signs every embedded framework with the distribution identity.
+      - name: Strip vendor framework signatures
+        run: |
+          for f in "$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app/Frameworks/"*.framework; do
+            [ -d "$f" ] || continue
+            codesign --remove-signature "$f" || true
+            rm -rf "$f/_CodeSignature"
+          done
+
       - name: Export and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
