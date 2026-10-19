@@ -1,5 +1,5 @@
 # /etc/caddy/Caddyfile — TLS (automatic, Let's Encrypt) in front of the shop server on 127.0.0.1:8787.
-206-189-63-64.sslip.io {
+starpath.swiip.app, 206-189-63-64.sslip.io {
 	# No product banner.
 	header -Server
 
@@ -13,6 +13,22 @@
 			# Overwrite (never append to) a client-sent X-Forwarded-For: the server rate-limits by it.
 			header_up X-Forwarded-For {remote_host}
 		}
+	}
+
+	# Public pages the store listings link to: privacy policy, terms, support (static, read-only).
+	# Files: server/site/ plus game/public/legal/, copied to /srv/starpath-site on deploy.
+	handle /legal/* {
+		root * /srv/starpath-site
+		file_server
+	}
+	handle /support* {
+		root * /srv/starpath-site
+		try_files {path} {path}.html
+		file_server
+	}
+	handle /app-ads.txt {
+		root * /srv/starpath-site
+		file_server
 	}
 
 	handle {

@@ -18,6 +18,8 @@ useradd --system --home /opt/starpath --shell /usr/sbin/nologin starpath
 mkdir -p /opt/starpath/data && chown -R starpath:starpath /opt/starpath && chmod 700 /opt/starpath/data
 # copy server/ (src/, catalog.json, package.json, deploy/) to /opt/starpath, then:
 cp deploy/starpath.service /etc/systemd/system/ && cp deploy/Caddyfile /etc/caddy/Caddyfile
+# Public pages (privacy, terms, support, app-ads.txt) linked from the store listings:
+mkdir -p /srv/starpath-site/legal && cp site/* /srv/starpath-site/ && cp ../game/public/legal/*.html /srv/starpath-site/legal/ && cp ../game/public/app-ads.txt /srv/starpath-site/
 cp deploy/starpath.env.example /etc/starpath.env && chgrp starpath /etc/starpath.env && chmod 640 /etc/starpath.env
 systemctl daemon-reload && systemctl enable --now starpath && systemctl reload caddy
 curl -s https://206-189-63-64.sslip.io/v1/health   # {"ok":true,"apple":true,"google":false,"sandbox":"capped"} (503 if the DB or disk fails)
