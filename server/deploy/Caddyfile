@@ -1,4 +1,5 @@
-# /etc/caddy/Caddyfile — TLS (automatic, Let's Encrypt) in front of the shop server on 127.0.0.1:8787.
+# /etc/caddy/Caddyfile — TLS (automatic, Let's Encrypt) in front of the shop server on 127.0.0.1:8787,
+# and the static site (site/dist, see site/README.md) from /srv/starpath-site.
 starpath.swiip.app, 206-189-63-64.sslip.io {
 	# No product banner.
 	header -Server
@@ -31,13 +32,34 @@ starpath.swiip.app, 206-189-63-64.sslip.io {
 		file_server
 	}
 
-	handle {
+	# The shop API: every server route lives under /v1 (server/src/http.mjs).
+	handle /v1/* {
 		request_body {
 			max_size 32KB
 		}
 		reverse_proxy 127.0.0.1:8787 {
 			header_up X-Forwarded-For {remote_host}
 		}
+	}
+
+	# The marketing site (site/dist) and the browser build of the game under /play/, same root as
+	# the legal pages. Clean URLs: /en -> /en/index.html, /support -> support.html.
+	handle {
+		root * /srv/starpath-site
+		header X-Content-Type-Options nosniff
+		header Referrer-Policy strict-origin-when-cross-origin
+
+		# Content-hashed build files never change: cache for a year.
+		@hashed path /assets/* /play/assets/*
+		header @hashed Cache-Control "public, max-age=31536000, immutable"
+		# Pictures and clips: a week (replace by renaming the file).
+		@media path /media/* /play/icons/* /fonts/*
+		header @media Cache-Control "public, max-age=604800"
+		# Pages, the game's service worker and its manifest: always revalidate.
+		header ?Cache-Control "no-cache"
+
+		try_files {path} {path}/index.html {path}.html
+		file_server
 	}
 
 	# Access log: client addresses masked (IPv4 /16, IPv6 /32), query strings dropped (the Play
