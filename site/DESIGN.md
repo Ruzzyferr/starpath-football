@@ -93,6 +93,17 @@ components:
 
 ## Overview
 
+**Round 2: one world.** The whole page now sits over a single WebGL night world the camera travels
+through as you scroll (igloo.inc's principle): from the stars over the stadium, down over the crowd to
+the penalty spot (the game), along the touchline (key moments), through the players' tunnel into the
+dressing room (career), out to the city at night (life off the pitch), up over the city and the
+stadium (fair play, platforms), and back to the stars, where the StarPath mark is a constellation
+(footer). Sections are overlays anchored to stops on that path. Text always sits on a calm zone: over
+sky, or on a neutral scrim panel `rgb(7 11 20 / 0.8)` (the scrim is the one exception the house rules
+allow under text on a picture), never on busy geometry. Without WebGL the page falls back to the flat
+fields described below.
+
+
 StarPath Football's own app icon is the brief: a white ball, five green dots, a gold star on night
 navy. The site takes that one shape, the dot, and nothing else. The first two screens are a WebGL
 stadium at night where the five dots rise over the goal into the sky to the star; as the visitor

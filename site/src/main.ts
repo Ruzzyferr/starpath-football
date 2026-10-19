@@ -1,5 +1,5 @@
 import { KICKS_PER_ROUND, resolveShot, swipePower, GOAL_HALF_W, GOAL_H, type Outcome, type ShotResult } from './penalty'
-import type { World } from './scene'
+import type { World, Anchor } from './world'
 
 const $ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => root.querySelector(sel) as T | null
 const $$ = <T extends Element = HTMLElement>(sel: string, root: ParentNode = document) => Array.from(root.querySelectorAll(sel)) as T[]
@@ -64,24 +64,35 @@ function setupReveals(): void {
 }
 setupReveals()
 
-// ───────── Key moments: the giant control switches attack / goal ─────────
+// ───────── Key moments: one device. Tap a moment or the circle; it also advances by itself. ─────────
 function setupMoments(): void {
   const section = moments
   const big = $<HTMLButtonElement>('.big-control', section)!
   const img = $<HTMLImageElement>('.moment-img', section)!
+  const orbit = $<HTMLElement>('.orbit', section)!
+  const auto = $<HTMLButtonElement>('[data-auto-toggle]', section)!
   const buttons = $$<HTMLButtonElement>('[data-moment]', section)
   const factMobile = document.createElement('p')
   factMobile.className = 'moment-fact-mobile'
   factMobile.setAttribute('aria-live', 'polite')
   $('.moments-copy', section)!.appendChild(factMobile)
   let swapTimer = 0
+  let index = 0
+  let userPaused = reduced.matches
+  let hovering = false
+  let visible = false
 
-  const select = (btn: HTMLButtonElement, focus = false) => {
+  const select = (i: number, byUser = false) => {
+    index = (i + buttons.length) % buttons.length
+    // Announce a moment only when the visitor chose it, never on the timer.
+    factMobile.setAttribute('aria-live', byUser ? 'polite' : 'off')
+    const btn = buttons[index]!
     for (const b of buttons) {
       const on = b === btn
       b.setAttribute('aria-pressed', String(on))
       b.parentElement!.classList.toggle('is-on', on)
     }
+    section.dataset.mode = btn.closest('li')!.dataset.set === 'keep' ? 'keep' : 'attack'
     const id = btn.dataset.moment!
     const fact = btn.parentElement!.querySelector('.fact')?.textContent ?? ''
     factMobile.textContent = fact
@@ -100,17 +111,47 @@ function setupMoments(): void {
         swapTimer = window.setTimeout(() => (img.complete ? open() : img.addEventListener('load', open, { once: true })), 30)
       }
     }
-    if (focus) btn.focus()
+    // Restart the timer dot from the top of the ring.
+    orbit.style.animation = 'none'
+    void orbit.offsetWidth
+    orbit.style.animation = ''
   }
-  buttons.forEach((b) => b.addEventListener('click', () => select(b)))
-  big.addEventListener('click', () => {
-    const keep = section.dataset.mode !== 'keep'
-    section.dataset.mode = keep ? 'keep' : 'attack'
-    big.setAttribute('aria-pressed', String(keep))
-    const first = buttons.find((b) => b.closest('li')!.dataset.set === (keep ? 'keep' : 'attack'))
-    if (first) select(first)
+  const sync = () => section.classList.toggle('is-cycling', visible && !userPaused && !hovering)
+  orbit.addEventListener('animationiteration', () => select(index + 1))
+  buttons.forEach((b, i) => b.addEventListener('click', () => select(i, true)))
+  big.addEventListener('click', () => select(index + 1, true))
+  // Pause while the visitor points at or works in the section.
+  section.addEventListener('pointerenter', (e) => {
+    if (e.pointerType !== 'mouse') return
+    hovering = true
+    sync()
   })
-  select(buttons[0]!)
+  section.addEventListener('pointerleave', () => {
+    hovering = false
+    sync()
+  })
+  section.addEventListener('focusin', () => {
+    hovering = true
+    sync()
+  })
+  section.addEventListener('focusout', () => {
+    hovering = false
+    sync()
+  })
+  // With reduced motion nothing advances by itself, so there is nothing to pause.
+  auto.hidden = reduced.matches
+  auto.setAttribute('aria-pressed', String(userPaused))
+  auto.addEventListener('click', () => {
+    userPaused = !userPaused
+    auto.setAttribute('aria-pressed', String(userPaused))
+    sync()
+  })
+  select(0)
+  const seen = new IntersectionObserver((es) => {
+    visible = es.some((e) => e.isIntersecting)
+    sync()
+  }, { threshold: 0.3 })
+  seen.observe(section)
   // The signature move plays once as the section arrives: the moment opens from the right edge.
   if (!reduced.matches && 'IntersectionObserver' in window) {
     img.classList.add('is-shut')
@@ -226,6 +267,7 @@ function showResult(o: Outcome): void {
 function recordKick(o: Outcome): void {
   round.push(o)
   paintHud()
+  world?.setScore(round.filter((k) => k === 'goal').length, round.length)
   showResult(o)
   if (round.length >= KICKS_PER_ROUND) {
     const goals = round.filter((k) => k === 'goal').length
@@ -247,6 +289,7 @@ function newRound(): void {
   hud.summary.hidden = true
   play.classList.remove('has-shot')
   paintHud()
+  world?.setScore(0, 0)
 }
 $('[data-again]')?.addEventListener('click', () => {
   newRound()
@@ -280,21 +323,35 @@ const lowPower = (() => {
 })()
 
 let world: World | null = null
+let kickDelay = 0.4
 
-function scrollProgress(): number {
-  // 0 at the top, 1 when the play section fills the screen.
-  const top = play.offsetTop - (bar?.offsetHeight ?? 0)
-  return Math.max(0, Math.min(1, window.scrollY / Math.max(1, top)))
+/** The sections the camera stops at, in path order (see world/path.ts). */
+const STOP_IDS = ['top', 'penalti', 'anlar', 'kariyer', 'hayat', 'adil', 'platformlar', 'foot']
+let anchors: Anchor[] = []
+function measure(): void {
+  const barH = bar?.offsetHeight ?? 0
+  anchors = STOP_IDS.map((id) => {
+    const el = document.getElementById(id)!
+    // A stop is reached when its section sits under the bar.
+    return { top: Math.max(0, el.offsetTop - (id === 'top' ? 0 : barH)), height: el.offsetHeight }
+  })
 }
 
 function onScroll(): void {
   const y = window.scrollY
   bar?.classList.toggle('is-solid', y > hero.offsetHeight * 0.5)
-  if (!world) return
-  if (reduced.matches) world.setProgress(scrollProgress() > 0.5 ? 1 : 0, true)
-  else world.setProgress(scrollProgress())
+  world?.setScroll(y, innerHeight, anchors)
 }
+measure()
 addEventListener('scroll', onScroll, { passive: true })
+addEventListener('resize', () => {
+  measure()
+  onScroll()
+}, { passive: true })
+addEventListener('load', () => {
+  measure()
+  onScroll()
+})
 onScroll()
 
 async function bootWorld(): Promise<void> {
@@ -302,7 +359,8 @@ async function bootWorld(): Promise<void> {
     document.documentElement.classList.add('no-webgl')
     return
   }
-  const { World: W } = await import('./scene')
+  const { World: W, KICK_DELAY } = await import('./world')
+  kickDelay = KICK_DELAY
   const canvas = $<HTMLCanvasElement>('.world-canvas')!
   try {
     world = new W(canvas, { lowPower, reducedMotion: reduced.matches })
@@ -311,7 +369,9 @@ async function bootWorld(): Promise<void> {
     return
   }
   const w = world
-  w.setProgress(reduced.matches ? (scrollProgress() > 0.5 ? 1 : 0) : scrollProgress(), true)
+  document.documentElement.classList.add('world-live')
+  measure()
+  w.setScroll(window.scrollY, innerHeight, anchors, true)
   w.renderOnce()
   $('.world')!.classList.add('is-live')
   canvas.addEventListener('webglcontextlost', (e) => {
@@ -320,15 +380,8 @@ async function bootWorld(): Promise<void> {
     $('.world')!.classList.remove('is-live')
   })
   addEventListener('resize', () => w.resize(), { passive: true })
-  // Render only while the first two screens are on screen and the tab is visible.
-  let onScreen = true
-  const sync = () => (onScreen && document.visibilityState === 'visible' ? w.start() : w.stop())
-  const io = new IntersectionObserver((es) => {
-    onScreen = es.some((e) => e.isIntersecting) || hero.getBoundingClientRect().bottom > 0 || play.getBoundingClientRect().bottom > 0
-    sync()
-  }, { threshold: 0 })
-  io.observe(hero)
-  io.observe(play)
+  // The world is behind the whole page: render while the tab is visible.
+  const sync = () => (document.visibilityState === 'visible' ? w.start() : w.stop())
   document.addEventListener('visibilitychange', sync)
   sync()
   setupPenalty(w)
@@ -343,7 +396,7 @@ function setupPenalty(w: World): void {
   let charge: { t0: number; raf: number } | null = null
 
   const unit = () => Math.min(Math.min(innerWidth, innerHeight), 480)
-  const busy = () => w.busy || round.length >= KICKS_PER_ROUND
+  const busy = () => w.busy || round.length >= KICKS_PER_ROUND || !w.atPenalty
 
   w.onKickEnd = () => {
     w.resetKick()
@@ -355,7 +408,7 @@ function setupPenalty(w: World): void {
     const r: ShotResult = resolveShot({ x, y, power: p, curl })
     if (import.meta.env.DEV) console.info('shot', JSON.stringify({ x: +x.toFixed(2), y: +y.toFixed(2), p: +p.toFixed(2), o: r.outcome, side: r.keeperSide }))
     w.kick(r, curl)
-    window.setTimeout(() => recordKick(r.outcome), r.t * 1000 + 250)
+    window.setTimeout(() => recordKick(r.outcome), (kickDelay + r.t) * 1000 + 250)
   }
 
   /** Aim from a swipe: into the goal if the finger ended over it, otherwise along the swipe's line. */

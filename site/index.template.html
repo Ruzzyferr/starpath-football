@@ -59,7 +59,7 @@
 
       <section id="penalti" class="play" aria-labelledby="play-title">
         <div class="play-hud">
-          <div class="play-copy reveal">
+          <div class="play-copy panel reveal">
             <h2 id="play-title" class="play-title">{{playTitle}}</h2>
             <p class="play-lead">{{playLead}}</p>
             <p class="play-note">{{playKeeperNote}}</p>
@@ -107,10 +107,10 @@
       </section>
 
       <section id="anlar" class="moments" data-mode="attack" aria-labelledby="moments-title">
-        <div class="moments-copy">
+        <div class="moments-copy panel">
           <h2 id="moments-title" class="head reveal"><span class="t-attack">{{momentsTitleAttack}}</span><span class="t-keep">{{momentsTitleKeep}}</span></h2>
           <p class="moments-lead reveal">{{momentsLead}}</p>
-          <ul class="moment-list reveal" aria-label="{{momentsListLabel}}">
+          <ul class="moment-list reveal" aria-label="{{momentsListLabel}}" data-cycle>
             <li data-set="attack"><button type="button" data-moment="penalty" aria-pressed="true">{{m_penalty}}</button><span class="fact">{{m_penalty_fact}}</span></li>
             <li data-set="attack"><button type="button" data-moment="one_on_one" aria-pressed="false">{{m_one_on_one}}</button><span class="fact">{{m_one_on_one_fact}}</span></li>
             <li data-set="attack"><button type="button" data-moment="edge_of_box" aria-pressed="false">{{m_edge_of_box}}</button><span class="fact">{{m_edge_of_box_fact}}</span></li>
@@ -120,17 +120,19 @@
             <li data-set="keep"><button type="button" data-moment="gk_penalty" aria-pressed="false">{{m_gk_penalty}}</button><span class="fact">{{m_gk_penalty_fact}}</span></li>
             <li data-set="keep"><button type="button" data-moment="gk_1v1" aria-pressed="false">{{m_gk_1v1}}</button><span class="fact">{{m_gk_1v1_fact}}</span></li>
           </ul>
+          <button type="button" class="auto-toggle" aria-pressed="false" data-auto-toggle hidden><span class="t-pause">{{momentsAutoPause}}</span><span class="t-play">{{momentsAutoPlay}}</span></button>
         </div>
         <div class="moment-stage reveal">
-          <button type="button" class="big-control" aria-pressed="false" aria-label="{{momentsToggleLabel}}">
+          <button type="button" class="big-control" aria-label="{{momentsToggleLabel}}">
             <span class="ring"><img class="moment-img" src="/media/moments/penalty-{{lang}}.webp" alt="{{m_penalty}}: {{m_penalty_fact}}" width="1400" height="783" loading="lazy" decoding="async" /></span>
+            <span class="orbit" aria-hidden="true"><span class="orbit-dot"></span></span>
             <span class="big-label"><span class="t-attack">{{momentsToggleAttack}}</span><span class="t-keep">{{momentsToggleKeep}}</span></span>
           </button>
         </div>
       </section>
 
       <section id="kariyer" class="career" aria-labelledby="career-title">
-        <div class="career-text">
+        <div class="career-text panel">
           <h2 id="career-title" class="head reveal">{{careerTitle}}</h2>
           <p class="career-lead reveal">{{careerLead}}</p>
           <div class="stages reveal">
@@ -161,7 +163,7 @@
       </section>
 
       <section id="hayat" class="life" aria-labelledby="life-title">
-        <div class="tile t-head"><h2 id="life-title" class="head reveal">{{lifeTitle}}</h2></div>
+        <div class="life-head panel"><h2 id="life-title" class="head reveal">{{lifeTitle}}</h2><p class="life-lead reveal">{{lifeLead}}</p></div>
         <figure class="reveal tile t-event">
           <div class="shot"><img src="/media/screens/{{lang}}-5.webp" alt="{{lifeEventAlt}}" width="720" height="1414" loading="lazy" decoding="async" /></div>
           <figcaption><b>{{lifeEventName}}</b> {{lifeEventLine}}</figcaption>
@@ -238,7 +240,7 @@
       </section>
     </main>
 
-    <footer class="foot" aria-labelledby="foot-title">
+    <footer id="foot" class="foot" aria-labelledby="foot-title">
       <svg class="mark reveal" viewBox="0 0 1200 300" role="img" aria-label="{{footerMarkLabel}}">
         <circle class="m-ball" cx="110" cy="210" r="86" />
         <path class="m-seam" d="M110 168 L150 197 L135 244 L85 244 L70 197 Z" />

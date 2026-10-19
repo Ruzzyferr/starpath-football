@@ -12,8 +12,20 @@ are complete static pages that read without JavaScript.
 site/
   index.template.html   page template ({{key}} from content/copy.json)
   content/copy.json     every word on the page, TR and EN
-  src/main.ts           page script: entrances, moments, career slider, penalty HUD, world boot
-  src/scene.ts          three.js world (lazy chunk): stadium, the StarPath mark, camera, penalty
+  src/main.ts           page script: entrances, moments device, career slider, penalty HUD, world boot,
+                        section anchors for the camera path
+  src/world/            three.js world (lazy chunk), one scene the camera travels through:
+    index.ts            World: renderer, camera on the path, frame-rate guard, the penalty
+    path.ts             camera stops (one per section) and waypoints: sky, penalty spot, touchline,
+                        players' tunnel, dressing room, city, back over the stadium, the stars
+    stadium.ts          pitch, goals and net, stands with sprite crowd and camera flashes, roofs,
+                        floodlight towers with light cones and haze, LED boards, video board (live score)
+    figures.ts          low-poly players: jointed rig, shooter idle/run-up/strike, keeper stance/dives
+    rooms.ts            tunnel and dressing room (lockers, shirts, tactics board)
+    city.ts             night city: lit towers, streets, car lights, billboards with real game screens
+    sky.ts              stars, moon, the StarPath mark as a constellation
+    post.ts             post-processing tiers: high (bloom, depth of field, vignette, grain),
+                        mid (phones: lighter bloom, vignette, grain), low (reduced motion or low FPS)
   src/penalty.ts        penalty rules (from game/src/game/kick.ts + ai.ts), shared by 3D and fallback
   src/styles.css        all styles (tokens on :root)
   public/media/         real game pictures: in-game frames (TR/EN), store-screen crops, gameplay clip,
@@ -120,5 +132,5 @@ stills rendered from the site's own three.js scene. No external or stock images,
 credits to show.
 
 To re-render the posters after changing the scene: `npm run dev`, open
-`/dev/still.html?p=0` (hero) or `?p=1` (play) at 1920×1080 / 720×1560 / 1600×900, screenshot, and save
+`/dev/still.html?leg=0` (hero) or `?leg=1` (play) at 1920×1080 / 720×1560 / 1600×900, screenshot, and save
 as `public/media/poster-hero.webp`, `poster-hero-phone.webp`, `poster-play.webp`.

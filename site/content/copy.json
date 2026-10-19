@@ -55,7 +55,7 @@
     "momentsLead": "Maç kritik anda durur ve top sana gelir. Hücumda da kalede de 33 farklı an, gerçek zamanlı.",
     "momentsToggleAttack": "Şut",
     "momentsToggleKeep": "Kurtar",
-    "momentsToggleLabel": "Hücum ve kale arasında geç",
+    "momentsToggleLabel": "Sonraki an",
     "momentsListLabel": "Anlar",
     "m_penalty": "Penaltı",
     "m_penalty_fact": "Köşeni seç, kaydır, vur. Kaleci son anda karar verir.",
@@ -149,7 +149,10 @@
     "clipLabel": "Oyundan kayıt: kaleciyle bire bir",
     "noscript": "Penaltı oyunu için JavaScript gerekiyor. Tam oyun: /play/",
     "clipPause": "Durdur",
-    "clipPlay": "Oynat"
+    "clipPlay": "Oynat",
+    "momentsAutoPause": "Otomatik geçişi durdur",
+    "momentsAutoPlay": "Otomatik geçişi başlat",
+    "lifeLead": "Para, ev, aile ve ün: kariyerin sahayla bitmiyor. Her kararın bir sonucu var."
   },
   "en": {
     "lang": "en",
@@ -207,7 +210,7 @@
     "momentsLead": "The match stops at the moment that matters and the ball comes to you. 33 different moments, up front and in goal, in real time.",
     "momentsToggleAttack": "Shoot",
     "momentsToggleKeep": "Save",
-    "momentsToggleLabel": "Switch between attack and goal",
+    "momentsToggleLabel": "Next moment",
     "momentsListLabel": "Moments",
     "m_penalty": "Penalty",
     "m_penalty_fact": "Pick your spot, swipe, strike. The keeper decides at the last moment.",
@@ -301,6 +304,9 @@
     "clipLabel": "Recorded in the game: one on one with the keeper",
     "noscript": "The penalty game needs JavaScript. The full game: /play/",
     "clipPause": "Pause",
-    "clipPlay": "Play"
+    "clipPlay": "Play",
+    "momentsAutoPause": "Pause auto-advance",
+    "momentsAutoPlay": "Resume auto-advance",
+    "lifeLead": "Money, home, family and fame: your career does not end at the final whistle. Every choice has a consequence."
   }
 }
