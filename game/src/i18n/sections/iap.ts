@@ -30,10 +30,10 @@ export const tr = {
   },
   legal: {
     title: 'Yasal',
-    privacy: 'Gizlilik politikası (taslak)',
-    terms: 'Kullanım şartları (taslak)',
+    privacy: 'Gizlilik politikası',
+    terms: 'Kullanım şartları',
     licenses: 'Açık kaynak lisansları',
-    draftNote: 'Bu metinler taslaktır ve hukuki incelemeden geçmemiştir.',
+    draftNote: 'Sorular için: info@swiip.app',
   },
 }
 
@@ -66,9 +66,9 @@ export const en: Shape<typeof tr> = {
   },
   legal: {
     title: 'Legal',
-    privacy: 'Privacy policy (draft)',
-    terms: 'Terms of use (draft)',
+    privacy: 'Privacy policy',
+    terms: 'Terms of use',
     licenses: 'Open-source licences',
-    draftNote: 'These texts are drafts and have not had legal review.',
+    draftNote: 'Questions: info@swiip.app',
   },
 }

@@ -81,7 +81,9 @@
 
 /* Five tabs on a phone: a fade at the right edge says there is more to scroll. */
 .st-tabs { position: relative; }
-.st-tabs::after { content: ''; position: absolute; top: 0; right: 0; bottom: 2px; width: 28px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--bg-0)); }
-@media (max-width: 380px) { .st-tabs .tab { padding-inline: 10px; } }
+/* Five short tabs fit a 360px phone: tighter padding and a smaller label, no clipping. */
+.st-tabs .tab { padding-inline: 10px; gap: 5px; }
+@media (max-width: 400px) { .st-tabs .tab { padding-inline: 7px; font-size: 0.82rem; } .st-tabs .tab .icon { display: none; } }
 .legal-frame { width: 100%; height: min(70vh, 640px); border: 0; border-radius: 10px; background: #fff; }
-.link-btn { border: 0; background: none; padding: 0; color: var(--accent-blue, #3da5ff); text-decoration: underline; cursor: pointer; font: inherit; }
+.link-btn { border: 0; background: none; padding: 12px 4px; min-height: 44px; color: var(--accent-blue, #3da5ff); text-decoration: underline; cursor: pointer; font: inherit; }
+.st-badge-value { position: static; align-self: start; background: color-mix(in srgb, #ffc83d 22%, transparent); color: #ffc83d; }

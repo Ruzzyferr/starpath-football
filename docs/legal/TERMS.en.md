@@ -1,8 +1,8 @@
 # StarPath Football Terms of Use
 
-> **DRAFT: legal review required (TASLAK — hukuki inceleme gerekli).** Do not publish before lawyer review.
+<!-- A lawyer review of this text is recommended before wide release. -->
 
-Last updated: [DATE] · Version: draft 0.2
+Last updated: 19 October 2026 · Version 1.0
 
 ## 1. Acceptance
 
@@ -14,7 +14,7 @@ You receive a non-exclusive, non-transferable licence to use the game on your ow
 
 ## 3. Fiction and real people
 
-People, clubs and events in the game are fictional and imply no affiliation or endorsement. [Trademark clearance needed.]
+People, clubs and events in the game are fictional and imply no affiliation or endorsement.
 
 ## 4. Free to play and purchases
 
@@ -47,7 +47,7 @@ Saves live on your device and backing them up is your responsibility. Device fai
 
 ## 10. Limitation of liability
 
-The game is provided "as is". To the extent permitted by law we accept no liability for indirect damages. Mandatory consumer rights remain unaffected. [Lawyer to review.]
+The game is provided "as is". To the extent permitted by law we accept no liability for indirect damages. Mandatory consumer rights remain unaffected.
 
 ## 11. Changes and termination
 
@@ -55,8 +55,8 @@ Terms may be updated. Your licence may end if you breach them.
 
 ## 12. Governing law
 
-[Governing law and jurisdiction: to be set by counsel.]
+These terms are governed by the laws of Türkiye, without prejudice to mandatory consumer rights and the competent consumer bodies at your place of residence. The courts of Istanbul have jurisdiction.
 
 ## 13. Contact
 
-[COMPANY], [ADDRESS], [CONTACT_EMAIL]
+Rüzgar Emir Bulut (individual developer, trading as "StarPath Football"), Istanbul, Türkiye, e-mail: info@swiip.app

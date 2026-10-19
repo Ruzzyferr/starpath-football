@@ -16,7 +16,7 @@ import { addAdTrainBoost, addGear, equipGear, GEAR_BY_ID, unequipGear, type Gear
 import { fmtMoney } from '../../sim/career/common'
 import { readJson, writeJson } from '../../sim/game/internal'
 import {
-  ShopApiError, currentAccountId, flushEarnQueue, handleWallet, queueEarn, refreshWallet, serverWallet, setInboxHandler, shopApi, storeAvailable, verifyGrant,
+  GRANT_MAX_AGE_MS, ShopApiError, currentAccountId, flushEarnQueue, handleWallet, queueEarn, refreshWallet, serverWallet, setInboxHandler, shopApi, storeAvailable, verifyGrant,
   type GrantPayload, type ServerWallet,
 } from '../../store-iap'
 import { commit, current, notify } from './session'
@@ -126,6 +126,7 @@ async function flushAcks(): Promise<void> {
 }
 
 let applying = false
+let refreshedOld = false
 
 const NOT_APPLIED: Record<string, LText> = {
   match_bonus: { tr: 'Prim ×2 bu maça uygulanamadı (prim yok ya da zaten katlandı).', en: 'The ×2 bonus could not apply to this match (no bonus, or already doubled).' },
@@ -133,7 +134,7 @@ const NOT_APPLIED: Record<string, LText> = {
 }
 
 /** Inbox handler: verify, apply to the loaded career, save, then mark and acknowledge. */
-async function applyInbox(w: ServerWallet): Promise<void> {
+export async function applyInbox(w: ServerWallet): Promise<void> {
   const s = current()
   const account = currentAccountId()
   if (applying) return
@@ -148,6 +149,11 @@ async function applyInbox(w: ServerWallet): Promise<void> {
       const p = await verifyGrant(g.token, account)
       if (!p) {
         // Not signed by our server for this account (or too old): never applied, never acknowledged.
+        // A genuine grant that only aged past 90 days is re-signed by the server once per session.
+        if (!refreshedOld && Date.now() - (g as { t?: number }).t! > GRANT_MAX_AGE_MS) {
+          refreshedOld = true
+          void shopApi.refreshGrants().then((nw) => applyInbox(nw)).catch(() => {})
+        }
         console.warn('[StarPath] shop grant rejected (bad signature, account or age)')
         continue
       }
@@ -155,7 +161,8 @@ async function applyInbox(w: ServerWallet): Promise<void> {
         ack.push(p.n)
         continue
       }
-      if (!s) continue
+      // The career may have changed while we awaited the signature check (load / new game).
+      if (!s || current() !== s) continue
       const r = applyGrant(s, p)
       if (r.applied) {
         changed = true
@@ -171,7 +178,7 @@ async function applyInbox(w: ServerWallet): Promise<void> {
         else ack.push(p.n)
       }
     }
-    if (changed && s) {
+    if (changed && s && current() === s) {
       commit(s)
       scheduleAutosave()
       // Saved first, marked and acknowledged after: a crash in between re-offers the grant, and the

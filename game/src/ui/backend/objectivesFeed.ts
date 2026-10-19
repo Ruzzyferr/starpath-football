@@ -86,19 +86,27 @@ export function flushObjectiveToasts(): void {
 }
 
 /** Commit hook: season baseline + toast for objectives that just finished. */
+const OBJ_CLAIM_FLAG = 'g:objClaim'
+
 export function onObjectivesCommit(s: GameState): void {
   const view = objectivesView(s)
   const base = readJson<Base | null>(s.life, OBJ_BASE_FLAG, null)
   if (!base || base.season !== s.calendar.season) {
     writeJson(s.life, OBJ_BASE_FLAG, { season: s.calendar.season, done: view.done, failed: view.failed } satisfies Base)
   }
+  // Free diamonds for each goal completed this season: tracked in the save, so completions right after a
+  // load are claimed too (the shop server dedupes by this key and caps per day).
+  const claimed = readJson<{ season: number; n: number }>(s.life, OBJ_CLAIM_FLAG, { season: s.calendar.season, n: 0 })
+  const from = claimed.season === s.calendar.season ? claimed.n : 0
+  if (view.done > from) {
+    for (let i = from + 1; i <= view.done; i++) claimFreeGems(s, 'objective', `obj:${s.calendar.season}:${i}`)
+    writeJson(s.life, OBJ_CLAIM_FLAG, { season: s.calendar.season, n: view.done })
+  }
   const prev = seen
   seen = { id: s.meta.id, done: view.done, failed: view.failed }
   if (!prev || prev.id !== s.meta.id || view.done < prev.done || view.failed < prev.failed) return
   const dd = view.done - prev.done
   const df = view.failed - prev.failed
-  // Free diamonds for each goal completed (the shop server dedupes by this key and caps per day).
-  for (let i = prev.done + 1; i <= view.done; i++) claimFreeGems(s, 'objective', `obj:${s.calendar.season}:${i}`)
   if (dd + df <= 0) return
   // `recent` is newest first; the first dd+df rows are what just finished.
   const fresh: Pending[] = view.recent.slice(0, dd + df).reverse().map((r) => ({ kind: r.status, title: r.title }))

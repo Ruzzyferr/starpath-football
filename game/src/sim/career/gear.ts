@@ -42,6 +42,12 @@ export const GEAR_BY_ID: Readonly<Record<string, GearDef>> = Object.fromEntries(
 
 /** Ceiling on the total gear XP bonus (§6.2: separate from facilities, perks and the trainer). */
 export const GEAR_XP_CAP = 0.25
+/**
+ * Cash a player can BUY per career season (packs + diamonds→cash). Kept small so bought money cannot
+ * fast-track XP facilities, trainers and reputation (measured in sim/game/gearBalance.node.test.ts).
+ */
+export const PURCHASED_CASH_PER_SEASON = Number((globalThis as { process?: { env?: Record<string, string | undefined> } }).process?.env?.SP_CASH_CAP ?? 200_000)
+
 /** Physio session: diamonds, and the halved price with a watched ad. */
 export const PHYSIO_PRICE = 100
 /** One-off training boost from a rewarded ad: the next session's XP. */

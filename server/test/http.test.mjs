@@ -104,7 +104,7 @@ test('M6: RTDN push needs the shared token and claws back a voided purchase', as
   assert.equal((await call('POST', '/v1/google/rtdn?token=wrong', { body: data(msg) })).status, 403)
   assert.equal((await call('POST', '/v1/google/rtdn', { body: data(msg) })).status, 403)
   const before = shop.google
-  shop.google = fakeGoogle({})
+  shop.google = fakeGoogle({}, { voided: [{ purchaseToken: 'tok-1' }] })
   try {
     const r = await call('POST', '/v1/google/rtdn?token=rtdn-secret', { body: data(msg) })
     assert.deepEqual([r.status, r.body.tombstone], [200, true])

@@ -103,7 +103,8 @@ class AdMobProvider implements AdProvider {
           resolve(o)
         }
         void AdMob.addListener(RewardAdPluginEvents.Rewarded, () => { rewarded = true }).then((h) => handles.push(h))
-        void AdMob.addListener(RewardAdPluginEvents.Dismissed, () => done(rewarded ? 'rewarded' : 'dismissed')).then((h) => handles.push(h))
+        // Some SDK versions deliver Rewarded just AFTER Dismissed: give it a moment before deciding.
+        void AdMob.addListener(RewardAdPluginEvents.Dismissed, () => { setTimeout(() => done(rewarded ? 'rewarded' : 'dismissed'), 700) }).then((h) => handles.push(h))
         void AdMob.addListener(RewardAdPluginEvents.FailedToShow, () => done('failed')).then((h) => handles.push(h))
       })
       const shown = AdMob.showRewardVideoAd().then((r) => {
@@ -132,12 +133,14 @@ class DevAdProvider implements AdProvider {
       const el = document.createElement('div')
       el.className = 'dev-ad'
       el.setAttribute('role', 'dialog')
-      el.setAttribute('aria-label', 'Test ad')
+      el.setAttribute('aria-modal', 'true')
+      el.setAttribute('aria-label', 'Test reklam / Test ad')
       el.dataset.testid = 'dev-ad'
       el.dataset.offer = offer
       let left = DEV_AD_SECONDS
-      el.innerHTML = `<div class="dev-ad-box"><div class="dev-ad-tag">TEST AD</div><div class="dev-ad-count" data-testid="dev-ad-count">${left}</div><button type="button" class="dev-ad-close" data-testid="dev-ad-close" aria-label="Close">✕</button></div>`
+      el.innerHTML = `<div class="dev-ad-box"><div class="dev-ad-tag">TEST AD</div><div class="dev-ad-count" data-testid="dev-ad-count">${left}</div><button type="button" class="dev-ad-close" data-testid="dev-ad-close" aria-label="Kapat / Close">✕</button></div>`
       document.body.appendChild(el)
+      el.querySelector<HTMLButtonElement>('button')?.focus()
       const finish = (o: AdOutcome) => {
         clearInterval(iv)
         el.remove()
@@ -247,7 +250,8 @@ async function completeAd(a: PendingAd): Promise<AdResult> {
         continue
       }
       const st = e instanceof ShopApiError ? e.status : 0
-      const transient = code === 'offline' || code === 'ad_not_verified' || st === 429 || st >= 500
+      // ad_cap_reached / refund_hold / already_rewarded / ad_expired / ad_aborted are final answers.
+      const transient = code === 'offline' || code === 'ad_not_verified' || code === 'rate_limited' || st >= 500
       // Definitive answers (already rewarded, expired, aborted, unknown) end the wait.
       if (!transient || Date.now() - a.at > AD_SESSION_MS) setPendingAds(pendingAds().filter((x) => x.nonce !== a.nonce))
       return { ok: false, reason: transient ? 'pending_reward' : code }

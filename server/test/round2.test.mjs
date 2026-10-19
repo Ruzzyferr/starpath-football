@@ -322,7 +322,7 @@ test('m12: an aborted session confirmed by SSV can still be rewarded', () => {
   const { shop, acc, clock } = setup({ ads: { requireSsv: true } })
   const s = shop.adStart(acc, 'gems')
   shop.adAbort(acc, s.nonce)
-  shop.adSsv({ custom_data: `${acc.id}:${s.nonce}` })
+  shop.adSsv({ custom_data: `${acc.id}:${s.nonce}`, transaction_id: 'ssv-m12', timestamp: String(clock.now()) })
   clock.advance(1000)
   assert.equal(shop.adComplete(acc, s.nonce).gems, 10)
 })
@@ -407,6 +407,7 @@ test('m9: an unacked spend grant can be voided once for its diamonds; purchase/a
   buy(shop, acc, 'gems_m') // 600
   const g = shop.spend(acc, { item: 'gold_boots', idem: 'v1', career: 'car_gone' }).grant
   assert.equal(shop.wallet(acc).gems, 400)
+  clock.advance(15 * 60_000) // round 3 (m11): voids need a grant at least 15 minutes old
   const r = shop.voidGrant(acc, g.nonce)
   assert.deepEqual([r.voided, r.refunded, r.gems, r.inbox.length], [true, 200, 600, 0])
   const again = shop.voidGrant(acc, g.nonce)
@@ -419,10 +420,12 @@ test('m9: an unacked spend grant can be voided once for its diamonds; purchase/a
   clock.advance(6000)
   shop.adComplete(acc, nonce)
   const ph = shop.spend(acc, { item: 'physio', idem: 'v2', discount: true }).grant
+  clock.advance(15 * 60_000)
   assert.equal(shop.voidGrant(acc, ph.nonce).refunded, 50)
   // Cosmetic: the entitlement goes with the refund.
   const cos = shop.spend(acc, { item: 'cos_avatar', idem: 'v3' }).grant
   assert.ok(shop.wallet(acc).entitlements.includes('pack_avatar'))
+  clock.advance(15 * 60_000)
   assert.ok(!shop.voidGrant(acc, cos.nonce).entitlements.includes('pack_avatar'))
   // Not voidable / already applied / unknown.
   const applied = shop.spend(acc, { item: 'compression', idem: 'v4' }).grant
@@ -470,7 +473,7 @@ test('http: health ops details need the OPS_TOKEN header', async () => {
   }
 })
 
-test('http: the global registration bucket is configurable (default 120/min)', async () => {
+test('http: the global registration bucket is configurable (default 600/min)', async () => {
   const codes = []
   for (let i = 0; i < 6; i++) codes.push((await call('POST', '/v1/register', { body: {}, headers: { 'X-Forwarded-For': `10.0.${i}.1` } })).status)
   assert.deepEqual(codes, [200, 200, 200, 200, 429, 429])
@@ -481,6 +484,8 @@ test('http: void and abort routes; earn and ad diamonds are capped per address',
   const acc = H.shop.auth(`Bearer ${token}`)
   H.shop.applePurchase(acc, signJws(chain, txn(accountId, { productId: 'gems_m' })))
   const sp = await call('POST', '/v1/spend', { token, body: { item: 'compression', idem: 'h1', career: 'c' } })
+  assert.deepEqual((await call('POST', '/v1/inbox/void', { token, body: { nonce: sp.body.grant.nonce } })).body, { error: 'too_early' })
+  H.clock.advance(15 * 60_000)
   const v = await call('POST', '/v1/inbox/void', { token, body: { nonce: sp.body.grant.nonce } })
   assert.deepEqual([v.status, v.body.voided, v.body.gems], [200, true, 600])
   assert.equal((await call('POST', '/v1/inbox/void', { token, body: { nonce: 'x' } })).body.error, 'no_grant')
@@ -493,7 +498,7 @@ test('http: void and abort routes; earn and ad diamonds are capped per address',
 
 test('http (m17): RTDN secret accepted from the X-RTDN-Token header or the query', async () => {
   const data = { message: { data: Buffer.from(JSON.stringify({ packageName: 'app.starpath.football', voidedPurchaseNotification: { purchaseToken: 'tok-h', orderId: 'GPA.h' } })).toString('base64') } }
-  H.shop.google = fakeGoogle({})
+  H.shop.google = fakeGoogle({}, { voided: [{ purchaseToken: 'tok-h' }] })
   try {
     assert.equal((await call('POST', '/v1/google/rtdn', { body: data, headers: { 'X-RTDN-Token': 'nope' } })).status, 403)
     assert.equal((await call('POST', '/v1/google/rtdn', { body: data, headers: { 'X-RTDN-Token': 'rtdn-secret' } })).status, 200)

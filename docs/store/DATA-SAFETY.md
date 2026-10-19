@@ -1,4 +1,4 @@
-# Data Safety and Privacy Label Mapping (DRAFT, verify before submitting)
+# Data Safety and Privacy Label Mapping (verify before submitting)
 
 Derived from `docs/legal/PRIVACY.en.md` and `game/ios/App/App/PrivacyInfo.xcprivacy`. Keep all three consistent. Store forms change; re-check the live questionnaire.
 
@@ -10,7 +10,8 @@ Derived from `docs/legal/PRIVACY.en.md` and `game/ios/App/App/PrivacyInfo.xcpriv
 | Purchase history | Yes | No | App functionality | Ledger and store transaction ids on our server |
 | User IDs (anonymous shop account id) | Yes | Yes (sent to AdMob as the SSV user id) | App functionality, advertising (reward verification) | Random id, no name or e-mail |
 | App interactions (rewarded-ad sessions, claims) | Yes | No | App functionality, fraud prevention | |
-| Diagnostics (crash logs, performance) | No | No | n/a | Error log is local and opt-in, never sent automatically |
+| Approximate location | Yes (by AdMob SDK) | Yes (Google AdMob) | Advertising | Coarse location derived from IP by the AdMob SDK; our app reads no location |
+| Diagnostics (crash logs, performance) | Yes (by AdMob SDK only) | Yes (Google AdMob) | App functionality, advertising | Collected by the third-party AdMob SDK. Our own error log is local and opt-in, never sent automatically |
 | Location, contacts, photos, audio, health, financial info, name, e-mail | No | n/a | n/a | |
 
 Security section:
@@ -27,23 +28,26 @@ Security section:
 | Purchases > Purchase history | Yes | No | App functionality |
 | Usage data > Product interaction (ad interaction) | No | Yes | Third-party advertising |
 | Usage data > Advertising data | No | Yes | Third-party advertising |
-| Diagnostics | none declared | | |
+| Location > Coarse location (AdMob, from IP) | No | Yes | Third-party advertising |
+| Diagnostics > Other diagnostic data (AdMob SDK) | No | No | App functionality |
 
-`PrivacyInfo.xcprivacy` carries `NSPrivacyTracking = true` with the AdMob tracking domains. ATT prompt is shown before the advertising ID is read. The manifest still lists `OtherDiagnosticData` (not linked, not tracking, app functionality); decide at submission whether that matches the "diagnostics none" answer and remove it from one side.
+`PrivacyInfo.xcprivacy` carries `NSPrivacyTracking = true` with the AdMob tracking domains. ATT prompt is shown before the advertising ID is read. Decision: `OtherDiagnosticData` and `CoarseLocation` are declared because the third-party AdMob SDK may collect them (device/diagnostic info, IP-derived coarse location, advertising ID with consent/ATT). The Play Data safety form, the Apple label, the manifest and the privacy policy all state the same. The age flag (under/over 18, not the birth year) is passed to AdMob to restrict personalised ads.
 
 ## app-ads.txt
 
-Template line (replace the publisher id with the real AdMob one):
+The file is `game/public/app-ads.txt`:
 
 ```
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-2953141598487358, DIRECT, f08c47fec0942fa0
 ```
+
+It must be hosted at the developer website root (`swiip.app/app-ads.txt`), and `swiip.app` must be the developer website listed in the store listings.
 
 Host it at the root of the developer website domain that is listed in the App Store and Google Play store listings, i.e. `https://<developer-domain>/app-ads.txt` (not under a path, plain text, HTTP 200). The domain must be the one in the "Developer website" field of the store listing. Allow a few days for AdMob to crawl it.
 
 ## Launch checklist
 
-- [ ] Hosted privacy policy URL (lawyer-reviewed, placeholders [COMPANY]/[ADDRESS]/[CONTACT_EMAIL] filled)
+- [ ] Hosted privacy policy URL (identity and contact filled; a lawyer review is recommended)
 - [ ] Hosted support URL
 - [ ] AdMob account created; app ids and rewarded ad unit ids in the build; `app-ads.txt` hosted
 - [ ] AdMob SSV callback URL set on the ad unit: `https://206-189-63-64.sslip.io/v1/admob/ssv`

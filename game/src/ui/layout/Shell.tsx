@@ -110,7 +110,7 @@ export function TopBar() {
       {storeAvailable() && (
         <button type="button" class="tstat tstat-gems" data-testid="topbar-gems" aria-label={lt({ tr: `Mağaza: ${serverWallet.value?.gems ?? 0} elmas`, en: `Store: ${serverWallet.value?.gems ?? 0} diamonds` })} onClick={() => navigate('store')}>
           <span aria-hidden="true">💎</span>
-          <span class="num">{serverWallet.value ? serverWallet.value.gems : '—'}</span>
+          <span class="num">{serverWallet.value ? compactGems(serverWallet.value.gems) : '—'}</span>
         </button>
       )}
       <div class="topbar-date" title={t('ui.topbar.date')}>
@@ -131,6 +131,13 @@ export function TopBar() {
       </button>
     </header>
   )
+}
+
+/** 9,999 → "9999", 12,500 → "12.5K": the pill never grows past five characters. */
+function compactGems(n: number): string {
+  if (n < 10_000) return String(n)
+  const k = n / 1000
+  return `${k >= 100 ? Math.round(k) : Math.round(k * 10) / 10}K`
 }
 
 export function TabBar() {

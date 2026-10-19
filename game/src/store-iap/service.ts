@@ -67,7 +67,7 @@ function redeemedIds(): string[] {
 function markRedeemed(id: string | undefined): void {
   if (!id) return
   try {
-    globalThis.localStorage?.setItem(REDEEMED_KEY, JSON.stringify([...redeemedIds(), id].slice(-300)))
+    globalThis.localStorage?.setItem(REDEEMED_KEY, JSON.stringify([...redeemedIds(), id].slice(-2000)))
   } catch {
     /* private mode */
   }
@@ -94,6 +94,9 @@ function queueRetry(r: StoreReceipt): void {
   retryTimer ??= setInterval(() => void retryUnredeemed(), 60_000)
 }
 
+/** Server answers that will never change for this receipt: stop retrying it. Anything else is retried. */
+const DEFINITIVE = new Set(['family_shared', 'receipt_used', 'revoked', 'wrong_app', 'unknown_product', 'wrong_product', 'sandbox_receipt', 'sandbox_cap', 'consumed_elsewhere', 'expired'])
+
 let retryRun: Promise<void> | null = null
 /** Retries paid-but-not-credited receipts (timer, reconnect, app resume, store screen). One run at a time. */
 export function retryUnredeemed(): Promise<void> {
@@ -107,9 +110,16 @@ export function retryUnredeemed(): Promise<void> {
         await handleWallet(await redeem(r))
         drop()
       } catch (e) {
-        // A definitive refusal (forged, someone else's, revoked, sandbox) is not retried forever, and not
-        // re-sent on every launch either.
-        if (e instanceof ShopApiError && e.code !== 'offline' && e.status >= 400 && e.status < 500 && e.status !== 429) {
+        const code = e instanceof ShopApiError ? e.code : 'failed'
+        // Bought on this store account but credited to an earlier shop account: take that account back.
+        if (code === 'not_your_receipt' && (await recoverFrom(r))) {
+          drop()
+          await refreshWallet(true)
+          continue
+        }
+        // Only an explicit list of answers is final; transient ones (play_unavailable, 5xx, offline,
+        // invalid_receipt on Android right after purchase) keep being retried.
+        if (DEFINITIVE.has(code) || (code === 'invalid_receipt' && !r.purchaseToken)) {
           drop()
           markRedeemed(r.txId)
         }
@@ -151,7 +161,7 @@ export async function purchase(id: string): Promise<PurchaseResult> {
   } catch (e) {
     // Paid but not credited yet: the store keeps the transaction unfinished and it is retried.
     const code = e instanceof ShopApiError ? e.code : 'failed'
-    if (code === 'offline' || (e instanceof ShopApiError && e.status >= 500) || code === 'rate_limited') {
+    if (code === 'offline' || (e instanceof ShopApiError && e.status >= 500) || code === 'rate_limited' || code === 'play_unavailable' || code === 'purchase_pending' || (code === 'invalid_receipt' && !!r.receipt.purchaseToken)) {
       queueRetry(r.receipt)
       return { ok: false, error: 'offline' }
     }

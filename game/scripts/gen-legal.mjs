@@ -29,6 +29,7 @@ function render(md) {
     table = []
   }
   for (const line of lines) {
+    if (/^<!--.*-->\s*$/.test(line)) continue
     if (line.startsWith('|')) { flushList(); table.push(line.trim()); continue }
     flushTable()
     if (/^#{1,3} /.test(line)) { flushList(); const n = line.match(/^#+/)[0].length; html.push(`<h${n}>${inline(line.replace(/^#+ /, ''))}</h${n}>`) }

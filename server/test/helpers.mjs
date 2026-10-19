@@ -94,22 +94,35 @@ export const note = (chain, type, t, over = {}) =>
 /** A stand-in for GooglePlay: `purchases[token]` = verify result; records finish calls. */
 export function fakeGoogle(purchases = {}, { voided = [] } = {}) {
   const calls = []
+  // Flags on a purchase: fail (Play answers that HTTP status: transient), cancelled / revoked
+  // (definitively not purchased / not active), pending.
+  const state = (v, ok) => {
+    if (!v) return { ok: false, why: 'play 404', transient: false, notFound: true }
+    if (v.fail) return { ok: false, why: `play ${v.fail}`, transient: true }
+    if (v.pending) return { ok: false, pending: true, why: 'pending' }
+    if (v.cancelled || v.revoked) return { ok: false, why: 'not purchased', transient: false }
+    return ok
+  }
   return {
     configured: true,
     pkg: 'app.starpath.football',
     calls,
     purchases,
+    voided,
     async verifyProduct(productId, token) {
       const v = purchases[token]
-      return v && !v.sub ? { ok: true, productId, ...v } : { ok: false, why: 'play 404' }
+      return state(v && !v.sub ? v : null, { ok: true, productId, ...v })
     },
     async verifySubscription(token) {
       const v = purchases[token]
-      return v && v.sub ? { ok: true, ...v } : { ok: false, why: 'play 404' }
+      return state(v && v.sub ? v : null, { ok: true, ...v })
     },
-    async consumeProduct(p, t) { calls.push(['consume', p, t]); if (purchases[t]) purchases[t].consumed = true; return 204 },
-    async acknowledgeProduct(p, t) { calls.push(['ack', p, t]); return 204 },
-    async acknowledgeSubscription(p, t) { calls.push(['ackSub', p, t]); return 204 },
+    async isVoided(token, since) { calls.push(['isVoided', token, since]); return voided.some((vp) => vp.purchaseToken === token) },
+    // finishStatus: what consume / acknowledge answer (e.g. 503 to test the finalize retry).
+    finishStatus: 204,
+    async consumeProduct(p, t) { calls.push(['consume', p, t]); if (this.finishStatus < 300 && purchases[t]) purchases[t].consumed = true; return this.finishStatus },
+    async acknowledgeProduct(p, t) { calls.push(['ack', p, t]); if (this.finishStatus < 300 && purchases[t]) purchases[t].acknowledged = true; return this.finishStatus },
+    async acknowledgeSubscription(p, t) { calls.push(['ackSub', p, t]); if (this.finishStatus < 300 && purchases[t]) purchases[t].acknowledged = true; return this.finishStatus },
     async voidedPurchases(since) { calls.push(['voided', since]); return voided },
   }
 }

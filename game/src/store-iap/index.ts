@@ -5,4 +5,4 @@ export { getProvider, handleWallet, installPurchaseListeners, loadProducts, purc
 export { ShopApiError, accountLost, currentAccountId, ensureAccount, flushEarnQueue, queueEarn, serverWallet, shopApi, shopBase, shopOffline, type ServerGrant, type ServerWallet } from './shopApi'
 export { DEMO_IDLE_MS, DEMO_SEED, DEMO_SESSION_MS, demoResetDue, installDemoMode } from './demo'
 export { ADMOB_TEST_UNITS, adPrivacyOptionsRequired, adsAvailable, getAdProvider, installAdRetry, retryPendingAds, showAdPrivacyOptions, setAdProvider, setPlayerAgeCheck, watchAd, type AdOffer, type AdResult } from './ads'
-export { verifyGrant, type GrantPayload } from './grantVerify'
+export { GRANT_MAX_AGE_MS, verifyGrant, type GrantPayload } from './grantVerify'

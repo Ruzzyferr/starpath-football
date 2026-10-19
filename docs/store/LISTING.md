@@ -54,7 +54,7 @@ Live a footballer's whole life. Start in the academy, sign your first contract, 
 - Play offline: your career and saves stay on your device; only opening the store creates an anonymous shop account.
 - Comfortable everywhere: phone, tablet, desktop, keyboard and gamepad support; accessibility options.
 
-The casino section uses in-game money only (it can be bought with real money but can never be cashed out); there is no real prize. Pro Contract is a monthly auto-renewing subscription, cancelled in your store account settings. Contains in-app purchases and optional rewarded ads.
+In-game cash bought with real money can also be used in the simulated casino (18+ age gate); casino winnings are in-game money only and can never be cashed out; there is no real prize. Pro Contract is a monthly auto-renewing subscription, cancelled in your store account settings. Contains in-app purchases and optional rewarded ads.
 
 **Keywords (ASO, App Store ≤100 chars, comma separated):**
 football,career,soccer,simulator,manager,transfer,academy,sports,offline,life,rpg,match

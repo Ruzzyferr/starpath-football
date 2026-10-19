@@ -143,6 +143,38 @@ export function openDb(file) {
       key TEXT PRIMARY KEY,
       value TEXT NOT NULL
     );
+    -- Why an account owns an entitlement: 'txn:<store>:<txn id>' (a purchase), 'grant:<nonce>' (bought
+    -- with diamonds) or 'legacy' (owned before sources were tracked). A refund or void removes only its
+    -- own source; the entitlement goes when no source is left.
+    CREATE TABLE IF NOT EXISTS entitlement_sources (
+      account TEXT NOT NULL REFERENCES accounts(id),
+      product TEXT NOT NULL,
+      source TEXT NOT NULL,
+      at INTEGER NOT NULL,
+      PRIMARY KEY (account, product, source)
+    );
+    -- Play purchases credited here whose consume / acknowledge failed: retried by a timer until done
+    -- (Play refunds an unacknowledged purchase after 3 days). The raw token is needed for the API call
+    -- and is deleted with the row.
+    CREATE TABLE IF NOT EXISTS finalize_pending (
+      token_hash TEXT PRIMARY KEY,
+      token TEXT NOT NULL,
+      product TEXT NOT NULL,
+      account TEXT NOT NULL,
+      at INTEGER NOT NULL,
+      tries INTEGER NOT NULL DEFAULT 0,
+      last INTEGER
+    );
+    -- AdMob SSV transaction ids already seen (a replayed callback is ignored).
+    CREATE TABLE IF NOT EXISTS ssv_txns (
+      id TEXT PRIMARY KEY,
+      at INTEGER NOT NULL
+    );
+    -- Newest App Store notification signedDate applied per transaction (refund / reversal ordering).
+    CREATE TABLE IF NOT EXISTS note_order (
+      key TEXT PRIMARY KEY,
+      signed INTEGER NOT NULL
+    );
   `)
   // Columns added after the first deployment (live databases are migrated in place).
   addColumn(db, 'accounts', 'deleted', 'INTEGER NOT NULL DEFAULT 0')
@@ -162,6 +194,19 @@ export function openDb(file) {
   tx(db, () => {
     db.exec("INSERT OR IGNORE INTO account_tokens (hash, account, created) SELECT secret_hash, id, created FROM accounts WHERE secret_hash != '' AND deleted = 0")
     db.exec("UPDATE accounts SET secret_hash = '' WHERE secret_hash != ''")
+    // Entitlements from before sources were tracked: derive them from live purchases and open or
+    // applied cosmetic grants; whatever is left over is kept as 'legacy' (never removed by a refund).
+    db.exec(`INSERT OR IGNORE INTO entitlement_sources (account, product, source, at)
+      SELECT e.account, e.product, 'txn:' || t.store || ':' || t.txn_id, e.at FROM entitlements e
+      JOIN txns t ON t.account = e.account AND t.product = e.product AND t.revoked = 0
+      WHERE NOT EXISTS (SELECT 1 FROM entitlement_sources s WHERE s.account = e.account AND s.product = e.product)`)
+    db.exec(`INSERT OR IGNORE INTO entitlement_sources (account, product, source, at)
+      SELECT e.account, e.product, 'grant:' || g.nonce, e.at FROM entitlements e
+      JOIN grants g ON g.account = e.account AND g.acked IN (0, 1) AND json_extract(g.payload, '$.k') = 'cosmetic' AND json_extract(g.payload, '$.id') = e.product
+      WHERE NOT EXISTS (SELECT 1 FROM entitlement_sources s WHERE s.account = e.account AND s.product = e.product)`)
+    db.exec(`INSERT OR IGNORE INTO entitlement_sources (account, product, source, at)
+      SELECT account, product, 'legacy', at FROM entitlements e
+      WHERE NOT EXISTS (SELECT 1 FROM entitlement_sources s WHERE s.account = e.account AND s.product = e.product)`)
   })
   return db
 }

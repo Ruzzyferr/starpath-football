@@ -17,7 +17,7 @@ export interface TabItem<K extends string = string> {
  * segmented controls, `"line"` for page-level tabs.
  */
 export function Tabs<K extends string>({
-  items, value, onChange, variant = 'line', label, scroll = true, idPrefix = 'tab',
+  items, value, onChange, variant = 'line', label, scroll = true, idPrefix = 'tab', panels = false,
 }: {
   items: TabItem<K>[]
   value: K
@@ -26,6 +26,8 @@ export function Tabs<K extends string>({
   label?: string
   scroll?: boolean
   idPrefix?: string
+  /** The page renders `role=tabpanel` with id `${idPrefix}-${id}-panel` for each tab. */
+  panels?: boolean
 }) {
   const ref = useRef<HTMLDivElement>(null)
   // Keep the active tab visible in a scrolling strip (deep links open e.g.
@@ -63,6 +65,7 @@ export function Tabs<K extends string>({
             role="tab"
             id={`${idPrefix}-${it.id}`}
             aria-selected={sel}
+            aria-controls={panels ? `${idPrefix}-${it.id}-panel` : undefined}
             tabIndex={sel ? 0 : -1}
             class={`tab${sel ? ' is-active' : ''}`}
             onClick={() => {

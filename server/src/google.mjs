@@ -17,6 +17,17 @@ export function safeJson(text) {
   }
 }
 
+/**
+ * How a non-200 Play answer is to be read. Transient: no answer (0), server errors, rate limiting,
+ * and our own credentials failing (401/403 is a server configuration problem, not a bad receipt).
+ * 404 / 410 / 400 say the token is unknown, which right after a purchase can still be propagation:
+ * the caller decides with the purchase time it knows.
+ */
+export function failure(status) {
+  if (status === 0 || status >= 500 || status === 429 || status === 401 || status === 403) return { transient: true }
+  return { transient: false, notFound: status === 404 || status === 410 }
+}
+
 export class GooglePlay {
   constructor({ saFile, packageName, fetchImpl = fetch, now = () => Date.now() }) {
     this.pkg = packageName
@@ -48,7 +59,19 @@ export class GooglePlay {
     return this.token.value
   }
 
+  /**
+   * One API call. A transport failure (network, DNS, token endpoint down) comes back as status 0, so
+   * callers can tell "Google did not answer" from "Google said no".
+   */
   async api(path, init = {}) {
+    try {
+      return await this.apiRaw(path, init)
+    } catch (e) {
+      return { status: 0, body: {}, error: String(e?.message ?? e) }
+    }
+  }
+
+  async apiRaw(path, init = {}) {
     const r = await this.fetch(`https://androidpublisher.googleapis.com/androidpublisher/v3/applications/${enc(this.pkg)}${path}`, {
       ...init,
       headers: { Authorization: `Bearer ${await this.accessToken()}`, 'Content-Type': 'application/json', ...(init.headers ?? {}) },
@@ -60,9 +83,12 @@ export class GooglePlay {
   /** One-time product: purchased (0), not cancelled, for this account (obfuscatedExternalAccountId). */
   async verifyProduct(productId, token) {
     const { status, body } = await this.api(`/purchases/products/${enc(productId)}/tokens/${enc(token)}`)
-    if (status !== 200) return { ok: false, why: `play ${status}` }
+    if (status !== 200) return { ok: false, why: `play ${status}`, ...failure(status) }
     return {
       ok: body.purchaseState === 0,
+      // 2 = pending (paid later in cash, for example): not definitive, the app asks again later.
+      pending: body.purchaseState === 2,
+      purchaseTime: Number(body.purchaseTimeMillis) || null,
       productId: body.productId ?? productId, // the path already names the product
       orderId: body.orderId,
       account: body.obfuscatedExternalAccountId,
@@ -76,7 +102,7 @@ export class GooglePlay {
   /** Subscription v2: active state, product and expiry. */
   async verifySubscription(token) {
     const { status, body } = await this.api(`/purchases/subscriptionsv2/tokens/${enc(token)}`)
-    if (status !== 200) return { ok: false, why: `play ${status}` }
+    if (status !== 200) return { ok: false, why: `play ${status}`, ...failure(status) }
     const line = body.lineItems?.[0]
     const expires = line?.expiryTime ? Date.parse(line.expiryTime) || 0 : 0
     // CANCELED = auto-renew turned off: the paid period still runs until its expiry.
@@ -84,6 +110,8 @@ export class GooglePlay {
       (body.subscriptionState === 'SUBSCRIPTION_STATE_CANCELED' && expires > this.now())
     return {
       ok: active,
+      pending: body.subscriptionState === 'SUBSCRIPTION_STATE_PENDING',
+      purchaseTime: body.startTime ? Date.parse(body.startTime) || null : null,
       productId: line?.productId,
       expires,
       orderId: body.latestOrderId,
@@ -105,6 +133,11 @@ export class GooglePlay {
 
   async acknowledgeSubscription(subscriptionId, token) {
     return (await this.api(`/purchases/subscriptions/${enc(subscriptionId)}/tokens/${enc(token)}:acknowledge`, { method: 'POST', body: '{}' })).status
+  }
+
+  /** Is this purchase token in Play's voided purchases since `startTime` (ms)? Throws when Play does not answer. */
+  async isVoided(token, startTime) {
+    return (await this.voidedPurchases(startTime)).some((vp) => vp.purchaseToken === token)
   }
 
   /** Refunded / charged-back / revoked purchases since `startTime` (ms), products and subscriptions. */

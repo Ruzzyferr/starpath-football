@@ -1,8 +1,8 @@
 # StarPath Football Kullanım Şartları
 
-> **TASLAK — hukuki inceleme gerekli.** Avukat incelemesinden önce yayımlanmamalıdır.
+<!-- Yaygın yayından önce bir avukat incelemesi önerilir. -->
 
-Son güncelleme: [TARİH] · Sürüm: taslak 0.2
+Son güncelleme: 19 Ekim 2026 · Sürüm 1.0
 
 ## 1. Kabul
 
@@ -14,7 +14,7 @@ Size, oyunu kişisel ve ticari olmayan amaçla kendi cihazlarınızda kullanmak 
 
 ## 3. Kurgu ve gerçek kişiler
 
-Oyundaki kişiler, kulüpler ve olaylar kurgusaldır; gerçek kişi, kulüp veya markalarla bağlantı ya da onay ima etmez. [Marka taraması gerekli.]
+Oyundaki kişiler, kulüpler ve olaylar kurgusaldır; gerçek kişi, kulüp veya markalarla bağlantı ya da onay ima etmez.
 
 ## 4. Ücretsiz oyun ve satın almalar
 
@@ -47,7 +47,7 @@ Kayıtlar cihazınızda tutulur; yedeklemek sizin sorumluluğunuzdadır. Cihaz a
 
 ## 10. Sorumluluğun sınırlandırılması
 
-Oyun "olduğu gibi" sunulur. Yasaların izin verdiği ölçüde dolaylı zararlardan sorumluluk kabul edilmez. Tüketici mevzuatından doğan emredici haklarınız saklıdır. [Avukat gözden geçirecek.]
+Oyun "olduğu gibi" sunulur. Yasaların izin verdiği ölçüde dolaylı zararlardan sorumluluk kabul edilmez. Tüketici mevzuatından doğan emredici haklarınız saklıdır.
 
 ## 11. Değişiklikler ve fesih
 
@@ -55,8 +55,8 @@ Oyun "olduğu gibi" sunulur. Yasaların izin verdiği ölçüde dolaylı zararla
 
 ## 12. Uygulanacak hukuk
 
-[Uygulanacak hukuk ve yetkili mahkeme: avukat belirleyecek.]
+Bu şartlara Türkiye hukuku uygulanır; tüketici mevzuatından doğan emredici haklarınız ve yerleşim yerinizdeki yetkili tüketici mercileri saklıdır. Yetkili mahkemeler İstanbul mahkemeleridir.
 
 ## 13. İletişim
 
-[COMPANY], [ADDRESS], [CONTACT_EMAIL]
+Rüzgar Emir Bulut (bireysel geliştirici, "StarPath Football" markasıyla), İstanbul, Türkiye, e-posta: info@swiip.app

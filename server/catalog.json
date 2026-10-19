@@ -35,13 +35,19 @@
     "objective":  { "gems": 8,   "perDay": 10 },
     "season":     { "gems": 100, "perDay": 2 },
     "award":      { "gems": 25,  "perDay": 6 },
-    "first":      { "gems": 10,  "perDay": 10 }
+    "first":      { "gems": 10,  "perDay": 10, "lifetime": 600 }
   },
   "limits": {
     "earnPerDay": 300,
     "ipEarnPerDay": 600,
+    "ipCapAccountAgeDays": 7,
     "newAccountMs": 86400000,
     "refundHoldAfter": 3,
+    "refundHoldDays": 90,
+    "voidMinAgeMin": 15,
+    "grantRefreshDays": 60,
+    "playPropagationMin": 10,
+    "regDailyAlert": 5000,
     "cashPerSeason": 600000,
     "passDaily": 50,
     "maxDevices": 5,

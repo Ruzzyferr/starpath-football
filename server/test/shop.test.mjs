@@ -154,9 +154,9 @@ test('rewarded ads with SSV required: no reward until Google confirms the view',
   const { nonce } = shop.adStart(acc, 'gems')
   clock.advance(60_000)
   assert.equal(code(() => shop.adComplete(acc, nonce)), 'ad_not_verified')
-  assert.equal(shop.adSsv({ custom_data: `${acc.id}:${nonce}` }), true)
+  assert.equal(shop.adSsv({ custom_data: `${acc.id}:${nonce}`, transaction_id: 'ssv-1', timestamp: String(clock.now()) }), true)
   assert.equal(shop.adComplete(acc, nonce).gems, 10)
-  assert.equal(shop.adSsv({ custom_data: `someone:${nonce}` }), false)
+  assert.equal(shop.adSsv({ custom_data: `someone:${nonce}`, transaction_id: 'ssv-2', timestamp: String(clock.now()) }), false)
 })
 
 test('physio discount needs a watched ad; season x2 needs a season reward first', () => {

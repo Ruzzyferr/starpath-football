@@ -22,7 +22,7 @@ test('purchase history lists a purchase; legal pages are bundled and marked draf
   for (const f of ['privacy-en', 'privacy-tr', 'terms-en', 'terms-tr']) {
     const r = await request.get(`/legal/${f}.html`)
     expect(r.ok()).toBe(true)
-    expect(await r.text()).toContain('hukuki inceleme gerekli')
+    expect(await r.text()).toContain('Rüzgar Emir Bulut')
   }
   expect((await request.get('/legal/THIRD_PARTY_LICENSES.txt')).ok()).toBe(true)
 })

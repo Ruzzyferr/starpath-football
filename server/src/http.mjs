@@ -66,7 +66,9 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
   const ipLimit = new RateLimiter(limits.ipPerMin ?? 600, limits.ipBurst ?? 200)
   const regLimit = new RateLimiter(limits.regPerMin ?? 30, limits.regBurst ?? 30)
   // All registrations together (a botnet across many addresses); also the recovery-code total.
-  const regGlobal = new RateLimiter(limits.regGlobalPerMin ?? 120, limits.regGlobalPerMin ?? 120)
+  // Generous: it only smooths a flood (players are never locked out for long); the daily
+  // registration budget alert (audit 'register_budget') is what tells the operator.
+  const regGlobal = new RateLimiter(limits.regGlobalPerMin ?? 600, limits.regGlobalPerMin ?? 600)
   // Recovery-code guesses: per address, and per code-hash prefix (spread guesses from many addresses).
   const codeLimit = new RateLimiter(limits.codePerMin ?? 5, limits.codePerMin ?? 5)
   const codeBucketLimit = new RateLimiter(limits.codeBucketPerMin ?? 5, limits.codeBucketPerMin ?? 5)
@@ -84,7 +86,7 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
     },
     'GET /v1/wallet': async ({ acc }) => shop.wallet(acc),
     'POST /v1/purchase/apple': async ({ acc, body }) => shop.applePurchase(acc, body.jws),
-    'POST /v1/purchase/google': async ({ acc, body }) => shop.googlePurchase(acc, { productId: body.productId, purchaseToken: body.purchaseToken }),
+    'POST /v1/purchase/google': async ({ acc, body }) => shop.googlePurchase(acc, { productId: body.productId, purchaseToken: body.purchaseToken, purchaseTime: body.purchaseTime }),
     'POST /v1/purchase/dev': async ({ acc, body }) => shop.devPurchase(acc, str(body.productId)),
     'POST /v1/recover/apple': async ({ body, ip }) => {
       if (!regLimit.take(`rec:${ipKey(ip)}`)) throw new ShopError(429, 'rate_limited')
@@ -105,6 +107,9 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
     'POST /v1/spend': async ({ acc, body }) => shop.spend(acc, { item: str(body.item), idem: body.idem, discount: body.discount === true, career: body.career }),
     'POST /v1/inbox/ack': async ({ acc, body }) => shop.ack(acc, body.nonces),
     'POST /v1/inbox/void': async ({ acc, body }) => shop.voidGrant(acc, body.nonce),
+    'POST /v1/inbox/refresh': async ({ acc }) => shop.refreshInbox(acc),
+    // Grant verification keys (signing key first), for key rotation.
+    'GET /v1/keys': async () => ({ kid: shop.kid, keys: shop.publicKeys }),
     'POST /v1/ads/start': async ({ acc, body, ip }) => shop.adStart(acc, str(body.offer), body.ref, ip),
     'POST /v1/ads/complete': async ({ acc, body, ip }) => shop.adComplete(acc, body.nonce, body.career, ip),
     'POST /v1/ads/abort': async ({ acc, body }) => shop.adAbort(acc, body.nonce),
@@ -116,7 +121,7 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
     // Operator details (row counts, disk) only with the OPS_TOKEN in X-Ops-Token.
     'GET /v1/health': async ({ headers }) => shop.health({ ops: !!opsToken && sameSecret(String(headers['x-ops-token'] ?? ''), opsToken) }),
   }
-  const open = new Set(['POST /v1/register', 'POST /v1/recover/apple', 'POST /v1/recover/google', 'POST /v1/recover/code', 'GET /v1/health'])
+  const open = new Set(['POST /v1/register', 'POST /v1/recover/apple', 'POST /v1/recover/google', 'POST /v1/recover/code', 'GET /v1/health', 'GET /v1/keys'])
 
   return createServer(async (req, res) => {
     const ip = (trustProxy && String(req.headers['x-forwarded-for'] ?? '').split(',')[0].trim()) || req.socket.remoteAddress || '?'
@@ -154,8 +159,8 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
         const raw = (req.url ?? '').split('?')[1] ?? ''
         const fields = admob ? await admob.verify(raw) : null
         if (!fields) throw new ShopError(400, 'bad_signature')
-        shop.adSsv(fields)
-        send(200, { ok: true })
+        // 200 also for a refused callback (unknown unit, stale, replayed): a retry would not change it.
+        send(200, { ok: shop.adSsv(fields) })
         return
       }
       // App Store Server Notifications v2 (signed by Apple).

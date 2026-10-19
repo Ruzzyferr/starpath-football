@@ -57,7 +57,14 @@ const ACCOUNT_KEY = 'starpath.account.v1'
 const WALLET_KEY = 'starpath.walletcache.v1'
 
 declare const __SP_SHOP_API__: string | undefined
-const DEFAULT_API = 'https://206-189-63-64.sslip.io'
+/**
+ * Shop server hosts, in order. The first one that answers is remembered; a host that stops answering
+ * (network error) makes the client try the next, so moving the server to a new name never strands
+ * installed apps as long as one listed name still points at it.
+ */
+export const SHOP_HOSTS: readonly string[] = ['https://206-189-63-64.sslip.io']
+const DEFAULT_API = SHOP_HOSTS[0]!
+let hostIndex = 0
 
 export function shopBase(): string {
   const env = import.meta.env?.VITE_SHOP_API as string | undefined
@@ -70,7 +77,15 @@ export function shopBase(): string {
       /* no location */
     }
   }
-  return typeof __SP_SHOP_API__ === 'string' && __SP_SHOP_API__ ? __SP_SHOP_API__ : DEFAULT_API
+  if (typeof __SP_SHOP_API__ === 'string' && __SP_SHOP_API__) return __SP_SHOP_API__
+  return SHOP_HOSTS[hostIndex] ?? DEFAULT_API
+}
+
+/** Network failure on the current host: move to the next listed host (if any). */
+function nextHost(): boolean {
+  if (import.meta.env?.VITE_SHOP_API || hostIndex + 1 >= SHOP_HOSTS.length) return false
+  hostIndex++
+  return true
 }
 
 interface Account {
@@ -126,6 +141,7 @@ async function raw<T>(method: 'GET' | 'POST' | 'DELETE', path: string, bodyIn?: 
       signal: typeof AbortSignal !== 'undefined' && 'timeout' in AbortSignal ? AbortSignal.timeout(15_000) : undefined,
     })
   } catch {
+    if (nextHost()) return raw<T>(method, path, bodyIn, auth)
     shopOffline.value = true
     throw new ShopApiError('offline')
   }
@@ -199,11 +215,15 @@ export function queueEarn(source: string, ref: string): void {
   if (!q.some((x) => x.source === source && x.ref === ref)) writeJson(EARN_QUEUE_KEY, [...q, { source, ref }].slice(-500))
 }
 
+const EARN_PAUSE_KEY = 'starpath.earnq.pause.v1'
 let flushing: Promise<void> | null = null
 let again = false
 export function flushEarnQueue(): Promise<void> {
   flushing ??= (async () => {
     if (!currentAccountId()) return
+    // The server said "capped until tomorrow": do not send anything before then.
+    const pause = readJson<number>(EARN_PAUSE_KEY) ?? 0
+    if (Date.now() < pause) return
     const q = readJson<EarnItem[]>(EARN_QUEUE_KEY) ?? []
     const keep: EarnItem[] = []
     let stop = false
@@ -213,9 +233,17 @@ export function flushEarnQueue(): Promise<void> {
         continue
       }
       try {
-        const r = await shopApi.earn(x.source, x.ref)
+        const r = (await shopApi.earn(x.source, x.ref)) as { capped?: boolean; retryAfter?: number; reason?: string }
+        // A lifetime ceiling is final: the claim is dropped.
+        if (r.capped && r.reason === 'lifetime') continue
         // Capped today: try again on another day (the server does not burn the reference).
-        if ((r as { capped?: boolean }).capped) keep.push(x)
+        if (r.capped) {
+          keep.push(x)
+          if (typeof r.retryAfter === 'number' && r.retryAfter > 0) {
+            writeJson(EARN_PAUSE_KEY, Date.now() + r.retryAfter * 1000)
+            stop = true
+          }
+        }
       } catch (e) {
         const st = e instanceof ShopApiError ? e.status : 0
         // Offline, throttled or a server error: keep this and everything after it for later.
@@ -254,6 +282,8 @@ export const shopApi = {
   adAbort: (nonce: string) => call<{ aborted: boolean }>('POST', '/v1/ads/abort', { nonce }),
   /** A spend grant whose career no longer exists: refund its diamonds (once). */
   voidGrant: (nonce: string) => withWallet(call<ServerWallet & { voided: boolean; refunded: number }>('POST', '/v1/inbox/void', { nonce })),
+  /** Re-sign grants too old for the device to accept (the server keeps the same nonce). */
+  refreshGrants: () => withWallet(call<ServerWallet>('POST', '/v1/inbox/refresh')),
   /** GDPR/KVKK: everything the server holds for this account, as JSON. */
   exportAccount: () => call<unknown>('GET', '/v1/account/export'),
   adComplete: (nonce: string, career?: string) => withWallet(call<ServerWallet & { grant: ServerGrant | null }>('POST', '/v1/ads/complete', { nonce, ...(career ? { career } : {}) })),

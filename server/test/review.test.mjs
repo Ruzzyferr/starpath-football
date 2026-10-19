@@ -159,12 +159,17 @@ test('M6: RTDN voided / revoked / canceled claw back like Apple; a void before r
   await shop.googlePurchase(acc, { productId: 'gems_l', purchaseToken: 't1' })
   await shop.googlePurchase(acc, { productId: 'pro_contract', purchaseToken: 't2' })
   const msg = (o) => ({ version: '1.0', packageName: 'app.starpath.football', eventTimeMillis: '1', ...o })
+  // Round 3 (m8): Play's own state is re-read before acting on a void / cancel.
+  g.voided.push({ purchaseToken: 't1' })
+  g.purchases.t2.revoked = true
+  g.purchases.t3.cancelled = true
   assert.equal((await shop.googleRtdn(msg({ voidedPurchaseNotification: { purchaseToken: 't1', orderId: 'GPA.1', productType: 2 } }))).handled, true)
   assert.equal(shop.wallet(acc).gems, -1300 + 1300)
   assert.equal((await shop.googleRtdn(msg({ subscriptionNotification: { notificationType: 12, purchaseToken: 't2', subscriptionId: 'pro_contract' } }))).handled, true)
   assert.equal(shop.wallet(acc).pass.active, false)
   // Voided before the app redeemed it.
   await shop.googleRtdn(msg({ oneTimeProductNotification: { notificationType: 2, purchaseToken: 't3', sku: 'gems_l' } }))
+  g.purchases.t3.cancelled = false // a stale 'purchased' read: the tombstone still wins
   assert.equal(await acode(shop.googlePurchase(acc, { productId: 'gems_l', purchaseToken: 't3' })), 'revoked')
   // Wrong package: ignored.
   assert.equal((await shop.googleRtdn({ packageName: 'evil', voidedPurchaseNotification: { purchaseToken: 't1' } })).handled, false)
@@ -194,7 +199,7 @@ test('m3: Google API non-JSON errors are a refusal, not a crash', async () => {
   const gp = new GooglePlay({ packageName: 'p', fetchImpl: async () => new Response('<html>502</html>', { status: 502 }) })
   gp.sa = {}
   gp.token = { value: 'x', exp: Date.now() + 3600_000 }
-  assert.deepEqual(await gp.verifyProduct('gems_m', 't'), { ok: false, why: 'play 502' })
+  assert.deepEqual(await gp.verifyProduct('gems_m', 't'), { ok: false, why: 'play 502', transient: true })
 })
 
 // ───────── M7 + m14 ─────────
@@ -262,6 +267,7 @@ test('M17: prune drops stale rows and hashes old audit IPs; open ad sessions are
   const g = shop.spend(acc, { item: 'gold_boots', idem: 'i1' }).grant
   shop.ack(acc, [g.nonce])
   shop.earn(acc, { source: 'motm', ref: 'r1' })
+  shop.recoveryCode(acc, '5.5.5.5') // an audit row with an address ('register' rows go after 30 days)
   clock.advance(31 * DAY)
   assert.equal(code(() => shop.adStart(acc, 'gems')), 'ok', 'old unfinished sessions no longer count')
   const r = shop.prune()
@@ -486,6 +492,7 @@ test('contract: spend and ad grants carry the career id (c) and the ad session r
   const [b, sig] = g.token.split('.')
   assert.ok(verify(null, Buffer.from(b), publicKey, Buffer.from(sig, 'base64url')))
   assert.deepEqual(Object.keys(payloadOf(g.token)).slice(0, 5), ['v', 'n', 'a', 't', 'k'])
+  assert.equal(payloadOf(g.token).kid, shop.kid)
   assert.equal(payloadOf(g.token).c, 'car_01:x')
   assert.equal(shop.spend(acc, { item: 'compression', idem: 'q2' }).grant.c, undefined)
   const m = watch(shop, clock, acc, 'match_bonus', { ref: 'c1:s2026:fx14', career: 'car_01' }).grant

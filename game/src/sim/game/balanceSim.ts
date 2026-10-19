@@ -6,7 +6,7 @@
  *
  * Not used by production code. Deterministic per seed.
  */
-import { addAdTrainBoost, addGear, adTrainBoosts, readGear } from '../career/gear'
+import { PURCHASED_CASH_PER_SEASON, addAdTrainBoost, addGear, adTrainBoosts, readGear } from '../career/gear'
 import { Rng } from '../../core/rng'
 import type { Background, GameState, Gender, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
@@ -52,6 +52,11 @@ export interface CareerConfig {
   gear?: 'none' | 'starter' | 'always' | 'max'
   /** Real-money cash: the full €600k per-season purchase ceiling at every season start. */
   cashPerSeason?: boolean
+  /**
+   * The cash is spent the way that helps growth most (review round 3): every training-XP facility as soon
+   * as it can be bought, and the best personal trainer for the hero's main group.
+   */
+  spendOptimally?: boolean
 }
 
 /** One row per completed season (sampled at the season rollover). */
@@ -337,7 +342,18 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
     if (cfg.cashPerSeason && cashSeason !== s.calendar.season) {
       cashSeason = s.calendar.season
       // The most anyone can buy: the full per-season cash ceiling (ui/backend/shopBridge CASH_PER_SEASON).
-      s.life.money += 600_000
+      s.life.money += PURCHASED_CASH_PER_SEASON
+    }
+    if (cfg.spendOptimally && s.calendar.slot === 0) {
+      const owned = new Set(s.life.assets.map((a) => a.defId))
+      for (const id of ['fac_perf_lab', 'fac_training_ground', 'fac_mini_pitch']) {
+        const def = ASSETS.find((a) => a.id === id)
+        if (def && !owned.has(id) && s.life.money >= def.price && purchaseBlock(s.life, s.hero, id) === null) buyAsset(s, id)
+      }
+      if (!s.life.trainer) {
+        const main = s.hero.position === 'GK' ? 'goalkeeping' : s.hero.position === 'CB' || s.hero.position === 'DM' ? 'physical' : 'technical'
+        hireTrainer(s, main, 3)
+      }
     }
     const week = s.calendar.week
     const season = s.calendar.season
