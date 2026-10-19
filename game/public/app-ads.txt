@@ -1,2 +1,2 @@
-# app-ads.txt for StarPath Football (Google AdMob). Host at https://swiip.app/app-ads.txt
+# app-ads.txt for StarPath Football (Google AdMob), served at https://starpath.swiip.app/app-ads.txt
 google.com, pub-2953141598487358, DIRECT, f08c47fec0942fa0
