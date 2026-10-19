@@ -16,6 +16,7 @@ import { sponsorOffers, type SponsorOffer } from '../life/sponsors'
 import { clubStrength, leagueTableFor, playerDisplayName, squadPlayers } from '../world/queries'
 import { endOfSeason, pruneCompetitions, simulateRemainingFixtures } from '../world/season'
 import { GFLAG, clubContextOf, heroClub, log, readJson, recordTransfers, transferWindow, writeJson } from './internal'
+import { rewardGear, rewardLine } from '../career/gear'
 import { checkNationalTrophies, evaluateCallupMeter, nationalThreshold } from './national'
 import { grantSeasonAwards, heroAwardInput, preSeasonAwards } from './awards'
 
@@ -243,6 +244,8 @@ export function endSeasonForHero(state: GameState, rng: Rng, out: LText[]): Seas
       h.trophies.push({ season, name: c.name })
       h.reputation = meter(h.reputation + fameGain(h.reputation, c.type === 'continental' ? 6 : c.type === 'league' ? 3 : 2))
       log(state, out, fill(lt('🏆 {c} şampiyonu oldunuz!', '🏆 You won the {c}!'), { c: c.name }), 'award', '🏆')
+      // Reward gear (career/gear): a trophy comes with boots, continental ones with elite boots.
+      log(state, out, rewardLine(rewardGear(state.life, h.position, c.type === 'continental' ? 'elite' : 'pro'), c.name), 'award', '🎁')
     }
   }
   const mv = club ? summary.movements.find((m) => m.clubId === club.id) : undefined

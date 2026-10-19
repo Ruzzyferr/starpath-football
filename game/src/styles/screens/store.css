@@ -77,6 +77,10 @@
 .st-gear { display: grid; gap: 12px; }
 .st-gear > p { margin: 0; }
 .st-physio { max-width: 520px; }
+.st-tier { display: grid; gap: 8px; }
+.st-tier-head { margin: var(--sp-2) 0 0; }
+.st-tier .st-grid { margin-top: 0; }
+.st-gear-stats { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
 [role='tabpanel'] + .st-grid, .st-grid, .st-gear { margin-top: var(--sp-3); }
 
 /* Five tabs on a phone: a fade at the right edge says there is more to scroll. */

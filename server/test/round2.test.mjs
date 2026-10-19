@@ -50,7 +50,14 @@ test('economy: xl/xxl packs gone, new prices and earn amounts, cashPerSeason and
   assert.ok(!JSON.stringify(catalog).toLowerCase().includes('best'))
   const { shop, acc } = setup()
   const w = shop.wallet(acc)
-  assert.deepEqual(w.prices, { gold_boots: 200, speed_boots: 100, striker_boots: 100, mind_band: 100, keeper_gloves: 100, compression: 80, physio: 100, gems_to_cash: 100, cos_celebrations: 250, cos_avatar: 250 })
+  // Stat gear by tier (2026-10-19 redesign): Standard 60, Pro 100, Elite 200, Legend 300; compression 80.
+  assert.deepEqual(w.prices, {
+    classic_boots: 60, sprint_boots: 60, grip_boots: 60, training_gloves: 60, compression: 80,
+    striker_boots: 100, speed_boots: 100, playmaker_boots: 100, aerial_boots: 100, keeper_gloves: 100, mind_band: 100,
+    gold_boots: 200, dribbler_boots: 200, sweeper_boots: 200, freekick_boots: 200, elite_gloves: 200,
+    legend_striker: 300, legend_maestro: 300, legend_wall: 300, legend_gloves: 300,
+    physio: 100, gems_to_cash: 100, cos_celebrations: 250, cos_avatar: 250,
+  })
   assert.equal(catalog.spend.physio.discounted, 50)
   assert.deepEqual(Object.fromEntries(Object.entries(catalog.earn).map(([k, v]) => [k, [v.gems, v.perDay]])), { motm: [8, 10], objective: [8, 10], season: [100, 2], award: [25, 6], first: [10, 10] })
   assert.equal(catalog.limits.earnPerDay, 300)

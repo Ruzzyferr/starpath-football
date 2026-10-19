@@ -1,47 +1,93 @@
 /**
- * Gear bought with diamonds (docs/MONETIZASYON.md §6.2). Pure and deterministic (no RNG).
+ * Equipment (docs/MONETIZASYON.md §6.2, owner decision 2026-10-19): New Star Soccer style stat gear.
+ * Pure and deterministic (no RNG).
  *
- * Gear only speeds up TRAINING XP (and the compression set, fatigue recovery). It never enters the
- * match engine: what money buys is getting to a stat sooner, never a better result with the same stats.
- * Durations are counted in matches the hero actually plays and are shown before buying.
- * Everything lives in `life.flags[GEAR_FLAG]` (per career); with no gear every multiplier is 1, so the
+ * Every boot (and the accessories) adds points to one or more specific attributes WHILE WORN, and the
+ * bonus counts in matches: {@link effectiveAttrs} is the single seam the match setup reads
+ * (sim/game/match.ts buildTeamFrom → match engine, highlight generation, Phaser key moments). The stored
+ * base attributes are never touched, so training, decay and OVR progression all run on the base.
+ * Across all equipped gear a stat gains at most {@link GEAR_STAT_CAP}.
+ *
+ * Gear does one thing: stats. It no longer speeds up training (the rewarded-ad training boost stays).
+ * The compression set keeps its fatigue-recovery effect (it is the recovery slot, not a stat item).
+ *
+ * Gear comes from three places: in-game career cash (anyone, no age gate), diamonds (server-priced, see
+ * server/catalog.json "spend"), and rewards for real achievements ({@link rewardGear}: boots sponsor
+ * deals, major season awards, trophies). Durations count matches the hero actually plays.
+ * Everything lives in `life.flags[GEAR_FLAG]` (per career); with no gear nothing changes, so the
  * golden master is untouched.
  */
-import type { AttributeGroup, LText, Life } from '../../core/types'
+import type { AttributeKey, Attributes, LText, Life, Position } from '../../core/types'
 
 export type GearSlot = 'boots' | 'accessory' | 'recovery'
+export type GearTier = 'standard' | 'pro' | 'elite' | 'legend'
+/** What a piece of gear is for (reward picks by position, store grouping). */
+export type GearFamily = 'allround' | 'speed' | 'finishing' | 'playmaking' | 'dribbling' | 'aerial' | 'defending' | 'setpiece' | 'keeper' | 'mental' | 'recovery'
 
 export interface GearDef {
   id: string
   slot: GearSlot
-  /** Price in diamonds. */
+  tier: GearTier
+  family: GearFamily
+  /** Price in diamonds (the server's spend table is authoritative; parity-tested). */
   price: number
-  /** Matches it lasts once equipped. */
+  /** Price in in-game career cash (€). */
+  cash: number
+  /** Matches it lasts once bought (stacks when bought again). */
   matches: number
-  /** Training XP bonus on every attribute. */
-  xpAll?: number
-  /** Training XP bonus on one attribute group. */
-  xpGroup?: { group: AttributeGroup; pct: number }
+  /** Attribute points added while worn. */
+  stats?: Partial<Record<AttributeKey, number>>
   /** Fatigue recovery bonus (adds to recoveryMultiplier). */
   recovery?: number
   name: LText
-  desc: LText
   icon: string
 }
 
+/** Most points all equipped gear together can add to any single attribute. */
+export const GEAR_STAT_CAP = 5
+
+/** Price and duration by tier: cheap to elite, diamonds and career cash. */
+export const GEAR_TIERS: Readonly<Record<GearTier, { gems: number; cash: number; matches: number; name: LText }>> = {
+  standard: { gems: 60, cash: 5_000, matches: 20, name: { tr: 'Standart', en: 'Standard' } },
+  pro: { gems: 100, cash: 40_000, matches: 40, name: { tr: 'Pro', en: 'Pro' } },
+  elite: { gems: 200, cash: 200_000, matches: 60, name: { tr: 'Elit', en: 'Elite' } },
+  legend: { gems: 300, cash: 750_000, matches: 80, name: { tr: 'Efsane', en: 'Legend' } },
+}
+export const GEAR_TIER_ORDER: readonly GearTier[] = ['standard', 'pro', 'elite', 'legend']
+
+type Spec = Omit<GearDef, 'price' | 'cash' | 'matches'> & Partial<Pick<GearDef, 'price' | 'cash' | 'matches'>>
+const def = (g: Spec): GearDef => ({ price: GEAR_TIERS[g.tier].gems, cash: GEAR_TIERS[g.tier].cash, matches: GEAR_TIERS[g.tier].matches, ...g })
+
 export const GEAR: readonly GearDef[] = [
-  { id: 'gold_boots', slot: 'boots', price: 200, matches: 60, xpAll: 0.15, icon: '👟', name: { tr: 'Altın Krampon', en: 'Golden Boots' }, desc: { tr: 'Tüm antrenman XP’si +%15.', en: 'All training XP +15%.' } },
-  { id: 'speed_boots', slot: 'boots', price: 100, matches: 40, xpGroup: { group: 'physical', pct: 0.2 }, icon: '⚡', name: { tr: 'Hız Kramponu', en: 'Speed Boots' }, desc: { tr: 'Fiziksel antrenman XP’si +%20.', en: 'Physical training XP +20%.' } },
-  { id: 'striker_boots', slot: 'boots', price: 100, matches: 40, xpGroup: { group: 'technical', pct: 0.2 }, icon: '🎯', name: { tr: 'Nişancı Kramponu', en: 'Striker Boots' }, desc: { tr: 'Teknik antrenman XP’si (şut, pas, dribling) +%20.', en: 'Technical training XP (shooting, passing, dribbling) +20%.' } },
-  { id: 'mind_band', slot: 'accessory', price: 100, matches: 40, xpGroup: { group: 'mental', pct: 0.2 }, icon: '🧠', name: { tr: 'Zihin Bandı', en: 'Mind Band' }, desc: { tr: 'Mental antrenman XP’si +%20.', en: 'Mental training XP +20%.' } },
-  { id: 'keeper_gloves', slot: 'accessory', price: 100, matches: 40, xpGroup: { group: 'goalkeeping', pct: 0.2 }, icon: '🧤', name: { tr: 'Kaleci Eldiveni Pro', en: 'Pro Keeper Gloves' }, desc: { tr: 'Kalecilik antrenman XP’si +%20.', en: 'Goalkeeping training XP +20%.' } },
-  { id: 'compression', slot: 'recovery', price: 80, matches: 40, recovery: 0.2, icon: '🩳', name: { tr: 'Kompresyon Seti', en: 'Compression Set' }, desc: { tr: 'Yorgunluk toparlanması +%20.', en: 'Fatigue recovery +20%.' } },
+  // ── Standard ──
+  def({ id: 'classic_boots', slot: 'boots', tier: 'standard', family: 'allround', icon: '👟', name: { tr: 'Klasik Krampon', en: 'Classic Boots' }, stats: { shooting: 1, passing: 1, dribbling: 1, firstTouch: 1 } }),
+  def({ id: 'sprint_boots', slot: 'boots', tier: 'standard', family: 'speed', icon: '🏃', name: { tr: 'Koşu Kramponu', en: 'Sprint Boots' }, stats: { pace: 2, acceleration: 1 } }),
+  def({ id: 'grip_boots', slot: 'boots', tier: 'standard', family: 'defending', icon: '🦶', name: { tr: 'Tutunan Krampon', en: 'Grip Boots' }, stats: { tackling: 2, balance: 1 } }),
+  def({ id: 'training_gloves', slot: 'accessory', tier: 'standard', family: 'keeper', icon: '🧤', name: { tr: 'Antrenman Eldiveni', en: 'Training Gloves' }, stats: { reflexes: 1, handling: 1, diving: 1 } }),
+  def({ id: 'compression', slot: 'recovery', tier: 'standard', family: 'recovery', price: 80, cash: 10_000, matches: 40, recovery: 0.2, icon: '🩳', name: { tr: 'Kompresyon Seti', en: 'Compression Set' } }),
+  // ── Pro ──
+  def({ id: 'striker_boots', slot: 'boots', tier: 'pro', family: 'finishing', icon: '🎯', name: { tr: 'Nişancı Kramponu', en: 'Striker Boots' }, stats: { shooting: 3, finishing: 2, curve: 1 } }),
+  def({ id: 'speed_boots', slot: 'boots', tier: 'pro', family: 'speed', icon: '⚡', name: { tr: 'Hız Kramponu', en: 'Speed Boots' }, stats: { pace: 3, acceleration: 3 } }),
+  def({ id: 'playmaker_boots', slot: 'boots', tier: 'pro', family: 'playmaking', icon: '🧭', name: { tr: 'Oyun Kurucu Kramponu', en: 'Playmaker Boots' }, stats: { passing: 3, vision: 2, longPassing: 2 } }),
+  def({ id: 'aerial_boots', slot: 'boots', tier: 'pro', family: 'aerial', icon: '🦅', name: { tr: 'Hava Hakimi Kramponu', en: 'Aerial Boots' }, stats: { heading: 3, jumping: 2, strength: 1 } }),
+  def({ id: 'keeper_gloves', slot: 'accessory', tier: 'pro', family: 'keeper', icon: '🧤', name: { tr: 'Kaleci Eldiveni Pro', en: 'Pro Keeper Gloves' }, stats: { reflexes: 2, handling: 2, diving: 2 } }),
+  def({ id: 'mind_band', slot: 'accessory', tier: 'pro', family: 'mental', icon: '🧠', name: { tr: 'Zihin Bandı', en: 'Mind Band' }, stats: { composure: 2, anticipation: 2, vision: 2 } }),
+  // ── Elite ──
+  def({ id: 'gold_boots', slot: 'boots', tier: 'elite', family: 'allround', icon: '👟', name: { tr: 'Altın Krampon', en: 'Golden Boots' }, stats: { shooting: 2, finishing: 2, passing: 2, dribbling: 2, firstTouch: 2, pace: 2 } }),
+  def({ id: 'dribbler_boots', slot: 'boots', tier: 'elite', family: 'dribbling', icon: '🌀', name: { tr: 'Dripling Kramponu', en: 'Dribbler Boots' }, stats: { dribbling: 4, agility: 3, balance: 2, firstTouch: 2 } }),
+  def({ id: 'sweeper_boots', slot: 'boots', tier: 'elite', family: 'defending', icon: '🛡️', name: { tr: 'Libero Kramponu', en: 'Sweeper Boots' }, stats: { tackling: 4, positioning: 3, anticipation: 2, strength: 2 } }),
+  def({ id: 'freekick_boots', slot: 'boots', tier: 'elite', family: 'setpiece', icon: '🌙', name: { tr: 'Frikik Kramponu', en: 'Free-Kick Boots' }, stats: { setPieces: 4, curve: 4, crossing: 3, longPassing: 2 } }),
+  def({ id: 'elite_gloves', slot: 'accessory', tier: 'elite', family: 'keeper', icon: '🧤', name: { tr: 'Elit Kaleci Eldiveni', en: 'Elite Keeper Gloves' }, stats: { reflexes: 4, diving: 3, handling: 3, gkPositioning: 2 } }),
+  // ── Legend ──
+  def({ id: 'legend_striker', slot: 'boots', tier: 'legend', family: 'finishing', icon: '🔥', name: { tr: 'Efsane Golcü Kramponu', en: 'Legend Striker Boots' }, stats: { finishing: 4, shooting: 4, composure: 3, curve: 3, acceleration: 2 } }),
+  def({ id: 'legend_maestro', slot: 'boots', tier: 'legend', family: 'playmaking', icon: '🎼', name: { tr: 'Efsane Maestro Kramponu', en: 'Legend Maestro Boots' }, stats: { passing: 4, vision: 4, longPassing: 3, firstTouch: 3, dribbling: 3 } }),
+  def({ id: 'legend_wall', slot: 'boots', tier: 'legend', family: 'defending', icon: '🧱', name: { tr: 'Efsane Duvar Kramponu', en: 'Legend Wall Boots' }, stats: { tackling: 4, heading: 4, positioning: 3, jumping: 3, strength: 3 } }),
+  def({ id: 'legend_gloves', slot: 'accessory', tier: 'legend', family: 'keeper', icon: '🧤', name: { tr: 'Efsane Kaleci Eldiveni', en: 'Legend Keeper Gloves' }, stats: { reflexes: 4, diving: 4, handling: 4, gkPositioning: 3, gkDistribution: 3 } }),
 ]
 
 export const GEAR_BY_ID: Readonly<Record<string, GearDef>> = Object.fromEntries(GEAR.map((g) => [g.id, g]))
+export const isKeeperGear = (g: GearDef): boolean => g.family === 'keeper'
 
-/** Ceiling on the total gear XP bonus (§6.2: separate from facilities, perks and the trainer). */
-export const GEAR_XP_CAP = 0.25
 /**
  * Cash a player can BUY per career season (packs + diamonds→cash). Kept small so bought money cannot
  * fast-track XP facilities, trainers and reputation (measured in sim/game/gearBalance.node.test.ts).
@@ -62,6 +108,11 @@ export interface GearState {
   eq: Partial<Record<GearSlot, string>>
 }
 
+/**
+ * Reads the career's gear. Saves from before the stat redesign hold the same ids (gold_boots,
+ * speed_boots, striker_boots, mind_band, keeper_gloves, compression) in the same slots, so they load as
+ * they are and now give stats; an id that no longer exists is dropped.
+ */
 export function readGear(life: Pick<Life, 'flags'>): GearState {
   const raw = life.flags[GEAR_FLAG]
   if (typeof raw !== 'string') return { inv: {}, eq: {} }
@@ -89,7 +140,7 @@ export function equippedGear(life: Pick<Life, 'flags'>): GearDef[] {
   return Object.values(g.eq).map((id) => GEAR_BY_ID[id!]).filter((d): d is GearDef => !!d)
 }
 
-/** Adds a bought item (stacks its matches) and equips it when its slot is free. */
+/** Adds an item (bought or earned; stacks its matches) and equips it when its slot is free. */
 export function addGear(life: Pick<Life, 'flags'>, id: string): boolean {
   const def = GEAR_BY_ID[id]
   if (!def) return false
@@ -116,16 +167,79 @@ export function unequipGear(life: Pick<Life, 'flags'>, slot: GearSlot): void {
   writeGear(life, g)
 }
 
-/** Gear XP bonus for an attribute of `group` (capped at {@link GEAR_XP_CAP}). */
-export function gearXpBonus(life: Pick<Life, 'flags'>, group: AttributeGroup): number {
-  let b = 0
-  for (const d of equippedGear(life)) b += (d.xpAll ?? 0) + (d.xpGroup?.group === group ? d.xpGroup.pct : 0)
-  return Math.min(GEAR_XP_CAP, b)
+/** Points per attribute from the given items, each attribute capped at {@link GEAR_STAT_CAP}. */
+export function statBonusOf(items: readonly GearDef[]): Partial<Record<AttributeKey, number>> {
+  const out: Partial<Record<AttributeKey, number>> = {}
+  for (const d of items) for (const [k, v] of Object.entries(d.stats ?? {}) as [AttributeKey, number][]) out[k] = Math.min(GEAR_STAT_CAP, (out[k] ?? 0) + v)
+  return out
+}
+
+/** Points the equipped gear adds per attribute right now (capped). */
+export function gearStatBonus(life: Pick<Life, 'flags'>): Partial<Record<AttributeKey, number>> {
+  return statBonusOf(equippedGear(life))
+}
+
+/**
+ * THE match seam: the hero's attributes as a match sees them, base + equipped gear (capped, ≤ 99).
+ * Returns a new object; the base is never written. Every match path builds the hero from this
+ * (sim/game/match.ts buildTeamFrom).
+ */
+export function effectiveAttrs(base: Attributes, life: Pick<Life, 'flags'>): Attributes {
+  const bonus = gearStatBonus(life)
+  const keys = Object.keys(bonus) as AttributeKey[]
+  if (!keys.length) return base
+  const out = { ...base }
+  for (const k of keys) out[k] = Math.min(99, Math.max(1, Math.round(base[k] + (bonus[k] ?? 0))))
+  return out
 }
 
 /** Fatigue recovery bonus from equipped gear. */
 export function gearRecovery(life: Pick<Life, 'flags'>): number {
   return equippedGear(life).reduce((a, d) => a + (d.recovery ?? 0), 0)
+}
+
+/** Buys an item with in-game career cash (no real money: open to every age). */
+export function buyGearWithCash(life: Pick<Life, 'flags' | 'money'>, id: string): { ok: true; def: GearDef } | { ok: false; why: 'unknown' | 'money' } {
+  const def = GEAR_BY_ID[id]
+  if (!def) return { ok: false, why: 'unknown' }
+  if (life.money < def.cash) return { ok: false, why: 'money' }
+  life.money -= def.cash
+  addGear(life, id)
+  return { ok: true, def }
+}
+
+/** Gear families that suit a position, best first (reward picks). */
+const FAMILY_FOR: Readonly<Record<Position, readonly GearFamily[]>> = {
+  GK: ['keeper'],
+  CB: ['defending', 'aerial'], LB: ['defending', 'speed'], RB: ['defending', 'speed'], DM: ['defending', 'playmaking'],
+  CM: ['playmaking', 'allround'], AM: ['playmaking', 'dribbling', 'setpiece'],
+  LW: ['dribbling', 'speed', 'finishing'], RW: ['dribbling', 'speed', 'finishing'], ST: ['finishing', 'speed', 'aerial'],
+}
+
+/** The item a reward of `tier` gives a hero at `position`: the best-fitting family in that tier. */
+export function rewardGearFor(position: Position, tier: GearTier): GearDef {
+  const inTier = GEAR.filter((g) => g.tier === tier && g.family !== 'recovery' && g.family !== 'mental')
+  for (const f of FAMILY_FOR[position]) {
+    const hit = inTier.find((g) => g.family === f)
+    if (hit) return hit
+  }
+  // Outfielders fall back on the tier's all-round (or first) boots; keepers always have gloves per tier.
+  return inTier.find((g) => g.family === 'allround') ?? inTier.find((g) => g.slot === 'boots')!
+}
+
+/** Gives an earned item (sponsor deal, award, trophy) to the hero; returns it for the log line. */
+export function rewardGear(life: Pick<Life, 'flags'>, position: Position, tier: GearTier): GearDef {
+  const def = rewardGearFor(position, tier)
+  addGear(life, def.id)
+  return def
+}
+
+/** Log line for an earned item. */
+export function rewardLine(def: GearDef, why: LText): LText {
+  return {
+    tr: `🎁 ${why.tr}: ${def.icon} ${def.name.tr} (${GEAR_TIERS[def.tier].name.tr}, ${def.matches} maç) çantanda.`,
+    en: `🎁 ${why.en}: ${def.icon} ${def.name.en} (${GEAR_TIERS[def.tier].name.en}, ${def.matches} matches) is in your bag.`,
+  }
 }
 
 /** One match played: equipped items lose a match; worn-out ones leave. Returns the ones that wore out. */

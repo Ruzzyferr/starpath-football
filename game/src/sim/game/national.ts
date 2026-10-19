@@ -23,6 +23,7 @@ import {
 } from '../world/national'
 import type { NationalLevel, NationalStatus } from '../world/worldTypes'
 import { GFLAG, log, readJson, writeJson } from './internal'
+import { rewardGear, rewardLine } from '../career/gear'
 
 /** Relationship id of the hero's national coach (kind 'manager'). */
 export const NT_COACH_REL = 'nt_coach'
@@ -512,6 +513,8 @@ export function checkNationalTrophies(state: GameState, rng: Rng, out: LText[]):
     const big = comp.meta?.format === 'nt_finals'
     h.reputation = meter(h.reputation + fameGain(h.reputation, big ? 5 : 0.5))
     log(state, out, fill(lt('🏆 {c} şampiyonu: {t}!', '🏆 {c} champions: {t}!'), { c: comp.name, t: teamName(teamId) }), 'award', '🏆')
+    // Reward gear (career/gear): a senior international title gives legend boots, a youth title pro ones.
+    log(state, out, rewardLine(rewardGear(state.life, h.position, big ? 'legend' : 'pro'), comp.name), 'award', '🎁')
     pushNews(state.life, rng, state.calendar, fill(lt('{t} {c} şampiyonu! {n} kupayı kaldırdı', '{t} win the {c}! {n} lifts the trophy'), { t: teamName(teamId), c: comp.name, n: `${h.firstName} ${h.lastName}` }), 1, rng.pick(NEWS_SOURCES))
   }
   writeJson(state.life, ACHIEVED_FLAG, done.slice(-12))

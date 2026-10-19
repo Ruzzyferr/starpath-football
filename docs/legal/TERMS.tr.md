@@ -18,7 +18,7 @@ Oyundaki kişiler, kulüpler ve olaylar kurgusaldır; gerçek kişi, kulüp veya
 
 ## 4. Ücretsiz oyun ve satın almalar
 
-- Kariyerin tamamı ücretsizdir. Satın almalar isteğe bağlıdır ve satın aldığın hiçbir şey maç sonucunu değiştirmez.
+- Kariyerin tamamı ücretsizdir. Satın almalar isteğe bağlıdır. Ekipman küçük ve sınırlı stat artışı verir (stat başına en fazla +5); kariyer parasıyla ya da ödüllerle oyunda da kazanılır.
 - Elmas, **nakit değeri olmayan** sanal bir para birimidir. Hesaplar arasında devredilemez ve yasanın gerektirdiği haller dışında **iade edilmez**.
 - Elmas bakiyen kaydında değil, sunucumuzdaki anonim mağaza hesabında tutulur. Mağazada bir kurtarma kodu vardır; kodu ve cihazı birlikte kaybedersen bakiyeni geri getiremeyebiliriz.
 - Ödeme, fiyat, vergi ve iptal kuralları Apple veya Google tarafından belirlenir; iadeler onlar üzerinden yapılır. Bir satın alma iade edilirse o satın almadan gelen elmaslar bakiyenden düşülür (bakiye sıfıra inebilir).

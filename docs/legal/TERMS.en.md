@@ -18,7 +18,7 @@ People, clubs and events in the game are fictional and imply no affiliation or e
 
 ## 4. Free to play and purchases
 
-- The whole career is free. Purchases are optional and nothing you buy changes a match result.
+- The whole career is free. Purchases are optional. Equipment gives small, capped stat boosts (+5 max per stat) and can be earned in-game with career money or rewards.
 - Diamonds are a virtual currency with **no cash value**. They are not transferable between accounts and **not refundable**, except where the law requires.
 - Your diamond balance is held on our server in an anonymous shop account, not in your save. A recovery code is available in the store; if you lose both the code and the device, we may be unable to restore the balance.
 - Payment, pricing, tax and cancellation rules are set by Apple or Google, and refunds go through them. If a purchase is refunded, the diamonds from it are deducted from your balance (it may go to zero).

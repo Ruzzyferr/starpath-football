@@ -1,7 +1,7 @@
 /**
  * Free-to-play shop end to end: app → local shop server (repo server/, dev purchases) → career.
  * Covers the owner's checks: rewards really arrive (5.1), they change the career stats they promise
- * (5.2), purchases work (5.3), and nothing bought touches a match (5.4, see gearBalance.node.test).
+ * (5.2), purchases work (5.3), and gear gives only small, capped stat boosts (5.4, see gearBalance.node.test).
  */
 import { test, expect, preferEnglish, waitForApp, sp } from './fixtures'
 import type { Page } from '@playwright/test'
@@ -81,32 +81,54 @@ test('tampering with the cached balance buys nothing: the server decides', async
   expect(r.body.error).toBe('insufficient_gems')
 })
 
-test('gear: Golden Boots bought with diamonds land in the bag, raise training XP +15%, wear out by matches', async ({ page, shot }) => {
+test('gear: Golden Boots bought with diamonds land in the bag, add +2 to their stats in matches only, wear out by matches', async ({ page, shot }) => {
   test.setTimeout(240_000)
   await page.goto('/?autostart=1&seed=2027')
   await waitForApp(page)
   const xpBefore = await sp<number>(page, `sp.data.trainingSessions().find((x) => x.xp > 0)?.xp ?? 0`)
   const sessionId = await sp<string>(page, `sp.data.trainingSessions().find((x) => x.xp > 0)?.id`)
+  const shooting = await sp<number>(page, 'sp.state().hero.attrs.shooting')
   await openStore(page)
   await page.getByTestId('buy-gems_m').click()
   await expectGems(page, 600)
   await tab(page, 'Gear')
+  await expect(page.getByTestId('gear-tier-legend')).toBeVisible()
   await page.getByTestId('buy-gear-gold_boots').click()
   await expectGems(page, 400)
   await expect(page.getByTestId('gear-left-gold_boots')).toContainText('60')
+  await expect(page.getByTestId('gear-on-gold_boots')).toBeVisible()
+  await expect(page.getByTestId('gear-bonus-now')).toContainText(`Shot Power ${shooting} +2`)
   await shot('shop-gear')
   const gear = await sp<{ inv: Record<string, number>; eq: Record<string, string> }>(page, `JSON.parse(sp.state().life.flags['g:gear'])`)
   expect(gear.inv.gold_boots).toBe(60)
   expect(gear.eq.boots).toBe('gold_boots')
+  // Boots do one thing: stats. Training XP is unchanged and the stored base stat is untouched.
   const xpAfter = await sp<number>(page, `sp.data.trainingSessions().find((x) => x.id === ${JSON.stringify(sessionId)})?.xp ?? 0`)
-  expect(xpAfter / xpBefore).toBeGreaterThan(1.1)
-  expect(xpAfter / xpBefore).toBeLessThan(1.2)
+  expect(xpAfter).toBeCloseTo(xpBefore, 5)
+  expect(await sp<number>(page, 'sp.state().hero.attrs.shooting')).toBe(shooting)
   // A played match uses one up.
   await sp(page, `(() => { const s = sp.state(); s.hero.contract.role = 'captain'; s.hero.managerTrust = 100; s.hero.fatigue = 0; s.life.flags.promised_start = true })()`)
   await sp(page, 'sp.toMatchday()')
   await sp(page, `(() => { sp.clearEvents(); sp.actions.playMatch(); sp.navigate('liveMatch'); sp.actions.matchSimToEnd(); sp.actions.finishMatch() })()`)
   const left = await sp<number>(page, `JSON.parse(sp.state().life.flags['g:gear']).inv.gold_boots`)
   expect(left).toBe(59)
+})
+
+test('gear: career cash buys boots for anyone (no diamonds, no age question), shown as +N on the profile', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await sp(page, `(() => { sp.state().life.money = 50_000; sp.touch() })()`)
+  const pace = await sp<number>(page, 'sp.state().hero.attrs.pace')
+  await openStore(page)
+  await tab(page, 'Gear')
+  await expect(page.getByTestId('buy-cash-gold_boots')).toBeDisabled()
+  await page.getByTestId('buy-cash-speed_boots').click()
+  await expect.poll(() => sp<number>(page, 'sp.state().life.money')).toBe(10_000)
+  expect(await sp<number>(page, `JSON.parse(sp.state().life.flags['g:gear']).inv.speed_boots`)).toBe(40)
+  await expect(page.getByTestId('gear-bonus-now')).toContainText(`Pace ${pace} +3`)
+  await sp(page, `sp.navigate('profile')`)
+  await expect(page.getByTestId('attr-group-physical')).toContainText(`${pace} +3`)
+  expect(await sp<number>(page, 'sp.state().hero.attrs.pace')).toBe(pace)
 })
 
 test('starter pack: 300 diamonds + Golden Boots once; the card then shows Owned', async ({ page }) => {
@@ -306,19 +328,21 @@ test('season reward ×2: after the season-end diamonds, the ad adds the same aga
   await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.walletcache.v1') ?? '{}').gems)) - g0, { timeout: 30_000 }).toBeGreaterThanOrEqual(200)
 })
 
-test('top bar: the diamond pill never overlaps a stat, the date or the bell (320 / 360 / 390 px, 568×320)', async ({ page }) => {
+test('top bar: the diamond pill never overlaps a stat, the date or the bell; energy and mood carry their names (320 / 360 / 390 px, 568×320, 1024)', async ({ page }) => {
   const out = process.env.TOPBAR_SHOTS
-  for (const [w, h] of [[390, 844], [360, 740], [320, 568], [568, 320]] as const) {
+  for (const [w, h] of [[390, 844], [360, 740], [320, 568], [568, 320], [1024, 768]] as const) {
     await page.setViewportSize({ width: w, height: h })
-    for (const balance of [9_999, 12_345]) {
+    // 12,345 in Turkish: "Mutluluk" is the longest gauge name.
+    for (const [balance, lang] of [[9_999, 'en'], [12_345, 'tr']] as const) {
       // A cached wallet is shown without contacting the server (no account on this install).
       await page.addInitScript((g) => localStorage.setItem('starpath.walletcache.v1', JSON.stringify({ accountId: 'x', gems: g, starter: false, pass: { active: false, until: 0, claimable: false }, entitlements: [], inbox: [], ads: {}, physioDiscounts: 0, earnedToday: 0, prices: {} })), balance)
+      await page.addInitScript((l) => localStorage.setItem('starpath.settings.v1', JSON.stringify({ ...JSON.parse(localStorage.getItem('starpath.settings.v1') ?? '{}'), lang: l })), lang)
       await page.goto('/?autostart=1&seed=2027')
       await waitForApp(page)
       await sp(page, `(() => { const s = sp.state(); s.life.money = 12_500; s.life.happiness = 65; sp.touch() })()`)
       const pill = page.getByTestId('topbar-gems')
       await expect(pill).toBeVisible()
-      await expect(page.locator('.tstat-money')).toContainText('12,500') // the money counter has finished rolling up
+      await expect(page.locator('.tstat-money')).toContainText(lang === 'tr' ? '12.500' : '12,500') // the money counter has finished rolling up
       const boxes = await page.evaluate(() => [...document.querySelectorAll('.topbar .tstat, .topbar .topbar-date, .topbar .topbar-bell, .topbar .topbar-me')]
         .filter((e) => (e as HTMLElement).offsetParent !== null)
         .map((e) => { const r = e.getBoundingClientRect(); return { c: e.className, l: Math.round(r.left), r: Math.round(r.right) } }))
@@ -328,6 +352,8 @@ test('top bar: the diamond pill never overlaps a stat, the date or the bell (320
       // Stats must not spill out of their own box either.
       const spill = await page.evaluate(() => { const s = document.querySelector('.topbar-stats') as HTMLElement; return [s.scrollWidth, s.clientWidth] })
       expect(spill[0]! - spill[1]!, `${w}px: stats overflow ${JSON.stringify(spill)} ${JSON.stringify(boxes)}`).toBeLessThanOrEqual(1)
+      await expect(page.locator('.tstat-gauge .tstat-cap').first(), `${w}px: energy is named`).toBeVisible()
+      await expect(page.locator('.tstat-happy .tstat-cap'), `${w}px: mood is named`).toBeVisible()
       if (out) await page.locator('.topbar').screenshot({ path: `${out}/topbar-${w}x${h}-${balance}.png` })
     }
   }

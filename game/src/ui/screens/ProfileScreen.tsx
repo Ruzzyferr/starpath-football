@@ -10,6 +10,7 @@ import { Icon } from '../icons'
 import { ROLE_ICON } from '../roleView'
 import { heroHeight } from '../../core/roles'
 import { data, gameState, heroClub, navigate } from '../store'
+import { gearStatBonus } from '../../sim/career/gear'
 import { RADAR_AXES, attrCardsFor, keyStatsFor, keysAvg, radarValues, type GkGroup } from './career/attrs'
 import { Radar } from './career/Radar'
 import { AttrGrowth } from './profile/AttrGrowth'
@@ -107,6 +108,8 @@ export function ProfileScreen() {
   const ovrHist = data.ovrHistory()
   const groups = attrCardsFor(h.position)
   const radar = radarValues(h.attrs)
+  // Worn gear (career/gear): shown as "72 +3" next to the base, which it never changes.
+  const gearBonus = gearStatBonus(s.life)
   const c = h.contract
   const ss = h.seasonStats
   const seasonAvg = ss.apps ? ss.ratingSum / ss.apps : 0
@@ -199,7 +202,7 @@ export function ProfileScreen() {
                   <span class="score-font prof-group-avg">{keysAvg(h.attrs, g.keys)}</span>
                 </div>
                 <div class="stack prof-bars">
-                  {g.keys.map((k) => <StatBar key={k} label={t(`data.attr.${k}`)} value={h.attrs[k]} scale size="sm" />)}
+                  {g.keys.map((k) => <StatBar key={k} label={t(`data.attr.${k}`)} value={h.attrs[k]} scale size="sm" {...(gearBonus[k] ? { suffix: ` +${gearBonus[k]}` } : {})} />)}
                 </div>
               </Card>
             ))}

@@ -1,7 +1,8 @@
 /**
  * Data-driven product catalogue (docs/MONETIZASYON.md §5). Product id === store SKU.
- * Free to play: the whole career is open. Nothing sold changes a match result or an in-match stat:
- * diamonds buy training-speed gear and cosmetics, cash packs top up the career wallet.
+ * Free to play: the whole career is open. Diamonds buy stat gear (small, capped boosts: +5 max per stat,
+ * see sim/career/gear; the same gear is sold for career cash and earned through rewards) and cosmetics;
+ * cash packs top up the career wallet.
  * `storeType` / `consumable` must match how each id is created in Play Console / App Store Connect.
  */
 export const FULL_CAREER = 'full_career' as const
@@ -94,8 +95,8 @@ export const PRODUCTS: readonly ProductDef[] = [
     gear: 'gold_boots',
     name: { tr: 'Başlangıç Paketi', en: 'Starter Pack' },
     desc: {
-      tr: '300💎 + Altın Krampon (60 maç, antrenman XP’si +%15). Hesap başına bir kez.',
-      en: '300💎 + Golden Boots (60 matches, training XP +15%). Once per account.',
+      tr: '300💎 + Altın Krampon (Elit, 60 maç: şut, bitiricilik, pas, dripling, ilk dokunuş ve hız +2). Hesap başına bir kez.',
+      en: '300💎 + Golden Boots (Elite, 60 matches: shooting, finishing, passing, dribbling, first touch and pace +2). Once per account.',
     },
     icon: '🎁',
     fallbackPrice: '€0.99',
@@ -145,8 +146,8 @@ export const PRODUCTS: readonly ProductDef[] = [
     gems: PRO_DAILY_GEMS,
     name: { tr: 'Pro Sözleşme', en: 'Pro Contract' },
     desc: {
-      tr: `Her gün mağazadan ${PRO_DAILY_GEMS} elmas al (kaçırılan gün birikmez), reklam ödüllerini reklamsız al, Pro rozeti. Maçta doğrudan avantaj yok; elmaslarla isteğe bağlı antrenman ekipmanı (en çok +%25) alınabilir.`,
-      en: `Claim ${PRO_DAILY_GEMS} diamonds in the store every day (missed days do not stack), get ad rewards without the ad, a Pro badge. No direct match advantage; diamonds can buy optional training gear (capped at +25%).`,
+      tr: `Her gün mağazadan ${PRO_DAILY_GEMS} elmas al (kaçırılan gün birikmez), reklam ödüllerini reklamsız al, Pro rozeti. Maçta doğrudan avantaj yok; elmaslarla isteğe bağlı ekipman alınabilir (stat başına en fazla +5; kariyer parasıyla da alınır).`,
+      en: `Claim ${PRO_DAILY_GEMS} diamonds in the store every day (missed days do not stack), get ad rewards without the ad, a Pro badge. No direct match advantage; diamonds can buy optional gear (+5 max per stat; also sold for career money).`,
     },
     icon: '⭐',
     fallbackPrice: '€4.99',

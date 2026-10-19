@@ -23,6 +23,7 @@ import { PERK_BY_ID } from '../../../data/perks'
 import { PRODUCTS, entitlements } from '../../../store-iap'
 import { achievementsView, potential } from '../../backend/meta'
 import { GROUPS, keysOf } from '../career/attrs'
+import { gearStatBonus } from '../../../sim/career/gear'
 import { assetIcon } from '../life/util'
 import { effectLabel } from '../life/Assets'
 import { REL_ICONS } from '../../components/Chip'
@@ -182,6 +183,7 @@ function AttrsTab({ s }: { s: GameState }) {
   const deltas = recentAttrDeltas(s.attrHistory, h.attrs)
   const hasHistory = (s.attrHistory?.rows.length ?? 0) >= 2
   const gk = h.position === 'GK'
+  const gear = gearStatBonus(s.life)
   return (
     <div class="me-stack" data-testid="hub-attrs">
       <p class="t-sm t-mid">{t('hub.attrs.count', { n: ATTRIBUTE_KEYS.length })} · {hasHistory ? t('hub.attrs.recent') : t('hub.attrs.noHistory')}</p>
@@ -197,7 +199,7 @@ function AttrsTab({ s }: { s: GameState }) {
             </summary>
             <Affects k={GROUP_EFFECT[g]} />
             <ul class="me-attrs">
-              {keys.map((k) => <AttrRow key={k} k={k} value={h.attrs[k]} delta={deltas[k]} />)}
+              {keys.map((k) => <AttrRow key={k} k={k} value={h.attrs[k]} delta={deltas[k]} gear={gear[k] ?? 0} />)}
             </ul>
           </details>
         )
@@ -206,7 +208,7 @@ function AttrsTab({ s }: { s: GameState }) {
   )
 }
 
-function AttrRow({ k, value, delta }: { k: AttributeKey; value: number; delta: number }) {
+function AttrRow({ k, value, delta, gear = 0 }: { k: AttributeKey; value: number; delta: number; gear?: number }) {
   const v = Math.round(value)
   const band = Math.min(6, Math.max(1, Math.ceil(v / 16.7)))
   return (
@@ -220,6 +222,7 @@ function AttrRow({ k, value, delta }: { k: AttributeKey; value: number; delta: n
           </span>
         )}
         <span class="me-attr-val num" style={{ color: `var(--attr-${band})` }}>{v}</span>
+        {gear > 0 && <span class="t-xs t-gold num" data-testid="hub-attr-gear" title={t('hub.attrs.gear', { n: gear })}>+{gear}</span>}
       </div>
       <div class="me-attr-bar" aria-hidden="true"><span style={{ transform: `scaleX(${Math.max(0, Math.min(1, v / 100))})`, background: `var(--attr-${band})` }} /></div>
       <p class="t-xs t-lo me-desc">{tx(`data.attrDesc.${k}`, undefined, '')}</p>

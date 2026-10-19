@@ -6,7 +6,7 @@
  *
  * Not used by production code. Deterministic per seed.
  */
-import { PURCHASED_CASH_PER_SEASON, addAdTrainBoost, addGear, adTrainBoosts, readGear } from '../career/gear'
+import { GEAR, GEAR_FLAG, PURCHASED_CASH_PER_SEASON, addAdTrainBoost, addGear, adTrainBoosts, buyGearWithCash, readGear, rewardGearFor, type GearTier } from '../career/gear'
 import { Rng } from '../../core/rng'
 import type { Background, GameState, Gender, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
@@ -46,10 +46,14 @@ export interface CareerConfig {
   /** Start age (default 17). */
   startAge?: number
   /**
-   * Diamond gear (docs/MONETIZASYON.md §6.3 balance check): none (free player), starter (the Starter
-   * Pack's Golden Boots once), always (Golden Boots worn for the whole career, re-bought when worn out).
+   * Stat gear (career/gear; docs/MONETIZASYON.md §6.3 balance check):
+   * - off: no gear at all, even earned rewards are taken away (the pure baseline);
+   * - none: a free player who never buys gear but keeps what rewards give (sponsor, awards, trophies);
+   * - cash: a free player who buys the best boots (and accessory) career cash allows, NSS style;
+   * - starter: the Starter Pack's Golden Boots once; always: Golden Boots all career;
+   * - max: the diamond spender, always in the position's Legend boots + best accessory + compression.
    */
-  gear?: 'none' | 'starter' | 'always' | 'max'
+  gear?: 'off' | 'none' | 'cash' | 'starter' | 'always' | 'max'
   /** Real-money cash: the full €600k per-season purchase ceiling at every season start. */
   cashPerSeason?: boolean
   /**
@@ -331,14 +335,18 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   if (cfg.gear === 'starter' || cfg.gear === 'always') addGear(s.life, 'gold_boots')
   let cashSeason = -1
   while (s.calendar.season < startSeason + cfg.seasons && guard++ < 6000) {
-    if ((cfg.gear === 'always' || cfg.gear === 'max') && !readGear(s.life).eq.boots) addGear(s.life, 'gold_boots')
+    if (cfg.gear === 'off' && s.life.flags[GEAR_FLAG] !== undefined) delete s.life.flags[GEAR_FLAG]
+    if (cfg.gear === 'always' && !readGear(s.life).eq.boots) addGear(s.life, 'gold_boots')
     if (cfg.gear === 'max') {
-      // Every slot filled and a rewarded-ad boost banked for every session (the most a spender can stack).
+      // Every slot filled with the best there is and a rewarded-ad boost banked for every session.
       const g = readGear(s.life)
-      if (!g.eq.accessory) addGear(s.life, s.hero.position === 'GK' ? 'keeper_gloves' : 'mind_band')
+      const best = bestGear(s.hero.position, 'legend')
+      if (g.eq.boots !== best.boots) addGear(s.life, best.boots)
+      if (g.eq.accessory !== best.accessory) addGear(s.life, best.accessory)
       if (!g.eq.recovery) addGear(s.life, 'compression')
       if (adTrainBoosts(s.life) === 0) addAdTrainBoost(s.life)
     }
+    if (cfg.gear === 'cash' && s.calendar.slot === 0) buyGearWithCareerCash(s)
     if (cfg.cashPerSeason && cashSeason !== s.calendar.season) {
       cashSeason = s.calendar.season
       // The most anyone can buy: the full per-season cash ceiling (ui/backend/shopBridge CASH_PER_SEASON).
@@ -455,6 +463,32 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
   trace.casinoNet = Math.round(s.life.casino.lost - s.life.casino.won)
   return trace
 }
+
+/** The best boots and accessory of a tier for a position (keepers: gloves; others: the Mind Band). */
+function bestGear(pos: Position, tier: GearTier): { boots: string; accessory: string } {
+  const fit = rewardGearFor(pos, tier)
+  if (pos === 'GK') return { boots: rewardGearFor('CM', tier).id, accessory: fit.id }
+  return { boots: fit.id, accessory: 'mind_band' }
+}
+
+/**
+ * A free player shopping with career money (New Star Soccer style): when a slot is empty, the best tier
+ * that still leaves ten weeks' wages (and €5K) in the bank.
+ */
+function buyGearWithCareerCash(s: GameState): void {
+  const g = readGear(s.life)
+  const reserve = (s.hero.contract?.wage ?? 0) * 10 + 5_000
+  for (const slot of ['boots', 'accessory'] as const) {
+    if (g.eq[slot]) continue
+    for (const tier of ['legend', 'elite', 'pro', 'standard'] as const) {
+      const b = bestGear(s.hero.position, tier)
+      const id = slot === 'boots' ? b.boots : b.accessory
+      const def = readGearDef(id)
+      if (def && s.life.money - def.cash >= reserve && buyGearWithCash(s.life, id).ok) break
+    }
+  }
+}
+const readGearDef = (id: string) => GEAR.find((g) => g.id === id)
 
 function squadPlayersOfLeague(s: GameState, leagueId: string) {
   const l = s.world.leagues[leagueId]

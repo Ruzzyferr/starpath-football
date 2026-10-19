@@ -7,6 +7,7 @@
  * lives in `life.flags['g:match']` as JSON; `state.activeMatchId` holds the
  * fixture id while a match is prepared or in progress.
  */
+import { effectiveAttrs } from '../career/gear'
 import { achievementMatchBonus } from './achievementEffects'
 import { heroHeight, roleFits, withHeight } from '../../core/roles'
 import { heroGender } from '../../core/gender'
@@ -192,8 +193,12 @@ function buildTeamFrom(state: GameState, club: MatchTeamSource, heroSide: boolea
   // Height (save v5): taller heroes win more in the air (heading / jumping), see core/roles withHeight.
   // Career achievements: composure the hero has proven on big nights and in certain moments (achievementEffects).
   const ach = achievementMatchBonus(state.life, importance)
+  // Equipment (career/gear): worn gear adds capped stat points for the match. This is the one place a
+  // match reads the hero's sheet (engine, highlight generation and the Phaser key moments all copy
+  // these attrs); the stored base attributes stay untouched for training and progression.
+  const base = effectiveAttrs(hero.attrs, state.life)
   const heroAttrs = withHeight(
-    heroMatchAttributes(hero, applyRust({ ...hero.attrs, composure: clamp(Math.round(hero.attrs.composure * mental) + ach.composure, 1, 99) }, cond?.rustMult ?? 1), { importance }),
+    heroMatchAttributes(hero, applyRust({ ...base, composure: clamp(Math.round(base.composure * mental) + ach.composure, 1, 99) }, cond?.rustMult ?? 1), { importance }),
     heroHeight(hero), heroGender(hero),
   )
   // The role shapes the hero's moments (highlightGen ROLE_KIND_MULT) while he plays in a slot it belongs to.

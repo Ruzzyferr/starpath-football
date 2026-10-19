@@ -11,7 +11,7 @@ Durum etiketleri: **[v1]** bu sürümde yapılır · **[v2]** sonraki büyük g�
 ## 0. Tasarım Sütunları
 
 1. **"Bir maç daha / bir gün daha" döngüsü** — NSS'nin bağımlılık yapan çekirdeği korunur: kısa maç anları + yaşam yönetimi.
-2. **Gerçek beceri, gerçek sonuç** — Maçtaki performans oyuncunun elinin becerisine bağlıdır; para ile yetenek satın alınmaz (pay-to-win yok).
+2. **Gerçek beceri, gerçek sonuç** — Maçtaki performans oyuncunun elinin becerisine bağlıdır; para ile yetenek satın alınmaz: satılık ekipman yalnızca küçük, stat başına +5 ile sınırlı, süreli bir artış verir ve aynısı kariyer parasıyla ve ödüllerle de kazanılır (sahip kararı 2026-10-19, docs/MONETIZASYON.md §6.2).
 3. **Yaşayan dünya** — Ligler, transferler, rakipler, medya, aile; oyuncu olmadan da dönen bir dünya.
 4. **Anlamlı kararlar** — Her olayın kısa ve uzun vadeli sonucu vardır, ve sonuçlar görünür (kayıt defteri / "neden oldu" açıklamaları).
 5. **Adil para modeli** — Premium/tek seferlik kilit açma + sadece kozmetik. Enerji duvarı yok.

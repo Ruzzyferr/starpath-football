@@ -5,12 +5,13 @@ import { Avatar, Button, Card, Page, Tabs, toast } from '../../components'
 import { Icon } from '../../icons'
 import { gameState } from '../../store'
 import type { Appearance, LText } from '../../../core/types'
-import { GEAR, GEAR_XP_CAP, PHYSIO_PRICE, gearXpBonus, readGear, type GearSlot } from '../../../sim/career/gear'
+import { GEAR, GEAR_STAT_CAP, GEAR_TIERS, GEAR_TIER_ORDER, GEAR_BY_ID, PHYSIO_PRICE, equippedGear, gearStatBonus, isKeeperGear, readGear, statBonusOf, type GearDef, type GearSlot } from '../../../sim/career/gear'
+import type { AttributeKey, Attributes } from '../../../core/types'
 import {
   AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, EARN_PER_DAY, GEMS_TO_CASH, PHYSIO_DISCOUNT_PRICE, PRO_DAILY_GEMS, adsAvailable, hasEntitlement, loadProducts, productsOfKind, purchase, refreshWallet, restorePurchases, retryUnredeemed, serverWallet, shopOffline, storeAvailable, storeReady, watchAd,
   type AdOffer, type ProductDef,
 } from '../../../store-iap'
-import { CASH_PER_SEASON, boughtCashThisSeason, buyCosmeticWithGems, buyGear, buyPhysio, cashGrantAmount, claimPassDaily, equipGearAction, gemsToCash, physioUsedOnThisInjury, unequipGearAction } from '../../backend/shopBridge'
+import { CASH_PER_SEASON, boughtCashThisSeason, buyCosmeticWithGems, buyGear, buyGearWithCashAction, buyPhysio, cashGrantAmount, claimPassDaily, equipGearAction, gemsToCash, physioUsedOnThisInjury, unequipGearAction } from '../../backend/shopBridge'
 import { LegalLinksInline } from './LegalModal'
 import { AgeQuestionInline, birthYear, isAdultPlayer } from '../../ageGate'
 import { adErrText as errText, shopErrText as errNeutral } from './errors'
@@ -65,7 +66,7 @@ function AdButton({ offer, label, busy, run }: { offer: AdOffer; label: LText; b
   )
 }
 
-/** F2P shop: diamonds, gear, cash, cosmetics, Pro Contract. Nothing here changes a match result. */
+/** F2P shop: diamonds, gear, cash, cosmetics, Pro Contract. Gear gives small, capped stat boosts (career/gear). */
 export function StoreScreen() {
   const [prices, setPrices] = useState<Record<string, string>>({})
   const [busy, setBusy] = useState<string | null>(null)
@@ -120,10 +121,15 @@ export function StoreScreen() {
     { id: 'cosmetic' as const, label: lt(L('Stil', 'Style')), icon: 'party' as const },
     { id: 'pro' as const, label: 'Pro', icon: 'crown' as const },
   ]
-  const bonusNow = s ? Math.round(Math.max(...(['physical', 'technical', 'mental', 'goalkeeping'] as const).map((g) => gearXpBonus(s.life, g))) * 100) : 0
+  const gk = s?.hero.position === 'GK'
+  const money = s?.life.money ?? 0
+  const buyCash = (g: GearDef) => {
+    const r = buyGearWithCashAction(g.id)
+    toast(lt(r.line), r.ok ? 'success' : 'info')
+  }
 
   return (
-    <Page title={t('iap.store.title')} sub={lt(L('Satın aldığın hiçbir şey maç motoruna girmez.', 'Nothing you buy enters the match engine.'))} backTo="settings" showBack>
+    <Page title={t('iap.store.title')} sub={lt(L(`Ekipman küçük ve sınırlı stat artışı verir (stat başına en fazla +${GEAR_STAT_CAP}); kariyer parasıyla ya da ödüllerle oyunda da kazanılır.`, `Equipment gives small, capped stat boosts (+${GEAR_STAT_CAP} max per stat) and can be earned in-game with career money or rewards.`))} backTo="settings" showBack>
       <div class="st-wallet" data-testid="st-wallet">
         <span class="st-gems" data-testid="st-gems" role="status" aria-live="polite"><span aria-hidden="true">💎 </span>{w ? num(w.gems) : '—'}<span class="sr-only">{lt(L(' elmas', ' diamonds'))}</span></span>
         {w?.pass.active && <span class="st-pro">PRO</span>}
@@ -166,7 +172,7 @@ export function StoreScreen() {
 
       {tab === 'gear' && (
         <div class="st-gear" data-testid="st-tab-gear" role="tabpanel" id="st-gear-panel" aria-labelledby="st-gear">
-          <p class="t-sm t-mid">{lt(L(`Ekipman yalnızca antrenmanda gelişimini hızlandırır, maçta hiçbir şeyi değiştirmez. Toplam en fazla +%${Math.round(GEAR_XP_CAP * 100)} (şu an +%${bonusNow}). Oynadığın her maçta 1 kullanım azalır; bu kariyerine aittir. Etkisi: 5 sezonda yaklaşık 2 puan daha hızlı gelişim.`, `Gear only speeds up your training; it changes nothing in a match. +${Math.round(GEAR_XP_CAP * 100)}% at most in total (now +${bonusNow}%). Each match you play uses one; it belongs to this career. Effect: about 2 rating points faster growth over 5 seasons.`))}</p>
+          <p class="t-sm t-mid" data-testid="gear-intro">{lt(L(`Kramponlar ve eldivenler takılıyken belirli statlarına puan ekler; bu artış maçlarda da geçerlidir. Tüm ekipmandan bir stata en fazla +${GEAR_STAT_CAP} gelir. Oynadığın her maçta 1 kullanım azalır; süresi bitince ya da çıkarınca artış kalkar, temel statların değişmez. Kariyer parasıyla, elmasla ya da ödül olarak (krampon sponsoru, sezon ödülleri, kupalar) alınır.`, `Boots and gloves add points to specific stats while you wear them, and the boost counts in matches. All your gear together adds at most +${GEAR_STAT_CAP} to any stat. Each match you play uses one; when they wear out or you take them off the boost goes, and your base stats never change. Buy with career money or diamonds, or earn them (boots sponsor, season awards, trophies).`))}</p>
           {!s && <p class="t-mid">{errText('no_career')}</p>}
           {s?.hero.injury && s.hero.injury.weeksLeft > 1 && (
             <Card class="st-card st-physio" data-testid="st-physio">
@@ -185,35 +191,43 @@ export function StoreScreen() {
               )}
             </Card>
           )}
-          <div class="st-grid">
-            {GEAR.filter((g) => g.xpGroup?.group !== 'goalkeeping' || s?.hero.position === 'GK').map((g) => {
-              const left = gear.inv[g.id] ?? 0
-              const on = gear.eq[g.slot] === g.id
-              const gain = s ? effectiveGain(s.life, g.id) : null
-              return (
-                <Card key={g.id} class={`st-card${on ? ' st-on' : ''}`} data-testid={`gear-${g.id}`}>
-                  <div class="st-big" aria-hidden="true">{g.icon}</div>
-                  <h2 class="h4">{lt(g.name)}</h2>
-                  <p class="t-sm t-mid">{lt(g.desc)}</p>
-                  <span class="t-xs t-lo">{lt(L(`${g.matches} maç sürer · `, `lasts ${g.matches} matches · `))}{lt(SLOT[g.slot])}</span>
-                  {gain !== null && !on && <span class="t-xs" data-testid={`gear-gain-${g.id}`}>{lt(gain > 0 ? L(`Takarsan toplam bonus: +%${gain}`, `If worn, total bonus: +${gain}%`) : L('Tavanda: ek kazanç yok', 'At the cap: no extra gain'))}</span>}
-                  {left > 0 && left <= 5 && <span class="t-xs t-gold">{lt(L(`Son ${left} maç`, `${left} ${left === 1 ? 'match' : 'matches'} left`))}</span>}
-                  {left > 0 && (
-                    <div class="st-row">
-                      <span class="t-sm" data-testid={`gear-left-${g.id}`}>{lt(L(`Kalan: ${left} maç`, `Left: ${left} ${left === 1 ? 'match' : 'matches'}`))}</span>
-                      {on
-                        ? <Button size="sm" variant="ghost" onClick={() => unequipGearAction(g.slot)}>{lt(L('Çıkar', 'Take off'))}</Button>
-                        : <Button size="sm" variant="secondary" onClick={() => equipGearAction(g.id)} data-testid={`equip-${g.id}`}>{lt(L('Tak', 'Wear'))}</Button>}
-                    </div>
-                  )}
-                  <Button variant="primary" block disabled={busy !== null || !s || gems < g.price} aria-busy={busy === g.id} onClick={() => run(g.id, () => buyGear(g.id))} data-testid={`buy-gear-${g.id}`}>
-                    {num(g.price)}💎 <span class="t-xs">({eur(g.price)})</span>
-                  </Button>
-                  {missing(g.price)}
-                </Card>
-              )
-            })}
-          </div>
+          {s && <EquippedSummary attrs={s.hero.attrs} life={s.life} />}
+          {GEAR_TIER_ORDER.map((tier) => (
+            <section key={tier} class="st-tier" data-testid={`gear-tier-${tier}`}>
+              <h2 class="h4 st-tier-head">{lt(GEAR_TIERS[tier].name)} <span class="t-xs t-lo">· {lt(L(`${GEAR_TIERS[tier].matches} maç`, `${GEAR_TIERS[tier].matches} matches`))}</span></h2>
+              <div class="st-grid">
+                {GEAR.filter((g) => g.tier === tier && (gk || !isKeeperGear(g))).map((g) => {
+                  const left = gear.inv[g.id] ?? 0
+                  const on = gear.eq[g.slot] === g.id
+                  return (
+                    <Card key={g.id} class={`st-card${on ? ' st-on' : ''}`} data-testid={`gear-${g.id}`}>
+                      <div class="st-big" aria-hidden="true">{g.icon}</div>
+                      <h3 class="h4">{lt(g.name)}</h3>
+                      {on && <span class="st-badge" data-testid={`gear-on-${g.id}`}>{lt(L('Takılı', 'Wearing'))}</span>}
+                      <GearEffect g={g} attrs={s?.hero.attrs ?? null} life={s?.life ?? null} />
+                      <span class="t-xs t-lo">{lt(L(`${g.matches} maç sürer · `, `lasts ${g.matches} matches · `))}{lt(SLOT[g.slot])}</span>
+                      {left > 0 && left <= 5 && <span class="t-xs t-gold">{lt(L(`Son ${left} maç`, `${left} ${left === 1 ? 'match' : 'matches'} left`))}</span>}
+                      {left > 0 && (
+                        <div class="st-row">
+                          <span class="t-sm" data-testid={`gear-left-${g.id}`}>{lt(L(`Kalan: ${left} maç`, `Left: ${left} ${left === 1 ? 'match' : 'matches'}`))}</span>
+                          {on
+                            ? <Button size="sm" variant="ghost" onClick={() => unequipGearAction(g.slot)} data-testid={`unequip-${g.id}`}>{lt(L('Çıkar', 'Take off'))}</Button>
+                            : <Button size="sm" variant="secondary" onClick={() => equipGearAction(g.id)} data-testid={`equip-${g.id}`}>{lt(L('Tak', 'Wear'))}</Button>}
+                        </div>
+                      )}
+                      <Button variant="secondary" block disabled={busy !== null || !s || money < g.cash} onClick={() => buyCash(g)} data-testid={`buy-cash-${g.id}`}>
+                        💶 {lt(fmtMoney(g.cash))}
+                      </Button>
+                      <Button variant="primary" block disabled={busy !== null || !s || gems < g.price} aria-busy={busy === g.id} onClick={() => run(g.id, () => buyGear(g.id))} data-testid={`buy-gear-${g.id}`}>
+                        {num(g.price)}💎 <span class="t-xs">({eur(g.price)})</span>
+                      </Button>
+                      {missing(g.price)}
+                    </Card>
+                  )
+                })}
+              </div>
+            </section>
+          ))}
         </div>
       )}
 
@@ -315,16 +329,56 @@ function packBonus(p: ProductDef): number {
   return Math.round(((p.gems / eurOf(p)) / (base.gems / eurOf(base)) - 1) * 100)
 }
 
-/** Total gear bonus (%) the hero would have with this item worn in its slot, after the +25% cap. */
-function effectiveGain(life: Parameters<typeof readGear>[0], id: string): number | null {
-  const def = GEAR.find((g) => g.id === id)
-  if (!def) return null
-  const groups = ['physical', 'technical', 'mental', 'goalkeeping'] as const
-  const now = Math.max(...groups.map((g) => gearXpBonus(life, g)))
-  const cur = readGear(life)
-  const trial = { flags: { ...life.flags, 'g:gear': JSON.stringify({ inv: { ...cur.inv, [id]: def.matches }, eq: { ...cur.eq, [def.slot]: id } }) } }
-  const after = Math.max(...groups.map((g) => gearXpBonus(trial, g)))
-  return after > now ? Math.round(after * 100) : 0
+const attrName = (k: AttributeKey): string => t(`data.attr.${k}`)
+
+/** Bonus per stat if `g` were worn in its slot (with whatever else is equipped), after the cap. */
+function bonusIfWorn(life: Parameters<typeof readGear>[0], g: GearDef): Partial<Record<AttributeKey, number>> {
+  const others = equippedGear(life).filter((d) => d.slot !== g.slot)
+  return statBonusOf([...others, g])
+}
+
+/** What an item adds: "+3 Shooting", and with a career open, "68 → 71" against the current stat. */
+function GearEffect({ g, attrs, life }: { g: GearDef; attrs: Attributes | null; life: Parameters<typeof readGear>[0] | null }) {
+  if (g.recovery) return <p class="t-sm t-mid">{lt(L(`Yorgunluk toparlanması +%${Math.round(g.recovery * 100)} (stat vermez).`, `Fatigue recovery +${Math.round(g.recovery * 100)}% (no stat boost).`))}</p>
+  const worn = life ? bonusIfWorn(life, g) : {}
+  const others = life ? statBonusOf(equippedGear(life).filter((d) => d.slot !== g.slot)) : {}
+  return (
+    <ul class="st-gear-stats t-sm" data-testid={`gear-stats-${g.id}`}>
+      {(Object.entries(g.stats ?? {}) as [AttributeKey, number][]).map(([k, v]) => {
+        const base = attrs?.[k]
+        const after = base === undefined ? undefined : Math.min(99, base + (worn[k] ?? 0))
+        const capped = (others[k] ?? 0) + v > GEAR_STAT_CAP
+        return (
+          <li key={k}>
+            <b class="t-pos">+{v}</b> {attrName(k)}
+            {base !== undefined && <span class="t-xs t-mid num"> · {base} → {after}{capped ? lt(L(` (sınır +${GEAR_STAT_CAP})`, ` (cap +${GEAR_STAT_CAP})`)) : ''}</span>}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Equipped items, matches left and the total boost they give now ("Shooting 68 +3"). */
+function EquippedSummary({ attrs, life }: { attrs: Attributes; life: Parameters<typeof readGear>[0] }) {
+  const g = readGear(life)
+  const bonus = gearStatBonus(life)
+  const items = Object.values(g.eq).map((id) => GEAR_BY_ID[id!]).filter((d): d is GearDef => !!d)
+  return (
+    <Card class="st-card st-span" data-testid="gear-equipped">
+      <h2 class="h4">{lt(L('Üzerindekiler', 'You are wearing'))}</h2>
+      {items.length === 0 ? (
+        <p class="t-sm t-mid">{lt(L('Hiçbir ekipman takılı değil.', 'Nothing equipped.'))}</p>
+      ) : (
+        <>
+          <p class="t-sm">{items.map((d) => `${d.icon} ${lt(d.name)} · ${lt(L(`${g.inv[d.id] ?? 0} maç`, `${g.inv[d.id] ?? 0} matches`))}`).join('  |  ')}</p>
+          <p class="t-sm t-mid" data-testid="gear-bonus-now">
+            {(Object.entries(bonus) as [AttributeKey, number][]).map(([k, v]) => `${attrName(k)} ${attrs[k]} +${v}`).join(' · ')}
+          </p>
+        </>
+      )}
+    </Card>
+  )
 }
 
 const SLOT: Record<GearSlot, LText> = {

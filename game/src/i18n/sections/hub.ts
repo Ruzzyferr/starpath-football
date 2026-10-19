@@ -61,6 +61,7 @@ export const tr = {
     down: '{n} düştü',
     noHistory: 'Değişimleri görmek için birkaç hafta oyna.',
     count: '{n} özellik',
+    gear: 'Ekipmandan +{n} (maçta geçerli, temel stat değişmez)',
   },
   condition: {
     injuryLabel: 'Sakatlık',
@@ -176,6 +177,7 @@ export const en: Shape<typeof tr> = {
     down: 'down {n}',
     noHistory: 'Play a few weeks to see changes.',
     count: '{n} attributes',
+    gear: '+{n} from gear (counts in matches; the base stat is unchanged)',
   },
   condition: {
     injuryLabel: 'Injury',

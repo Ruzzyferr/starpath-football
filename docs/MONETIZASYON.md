@@ -32,7 +32,7 @@ Plana göre gerçekte yapılanlar ve değişenler:
 | Abonelik | **Pro Sözleşme €4.99/ay:** her gün 20💎 (round-4 incelemesi: 50💎 her elmas paketinden değerliydi). Panelde ilk ayda kimse almadı, gelir ana kalemi değil. |
 | Reklam | **Ödüllü reklam var** (isteğe bağlı: "izle, kazan"). **Zorla reklam yok** (geçiş reklamı yok). Banner: yalnızca menülerde, herhangi bir satın alma kaldırır; lansmanda kapalı, test sonrası karar (§6.7). |
 | Ücretsiz kalanlar | Zorla reklam yok, ganimet kutusu yok, enerji sınırı yok, çevrimdışı. **Editör** (gerçek isimler) ve **kayıt yedekleme** ücretsiz. |
-| Değişmez kural | **Satılan hiçbir şey maç sonucunu veya maç içi istatistiği doğrudan değiştirmez.** Ekipman yalnızca antrenman XP hızını etkiler. Fiyatlar maaşla birlikte asla artmaz. |
+| Değişmez kural | **Ekipman küçük ve sınırlı stat artışı verir (stat başına en fazla +5) ve oyunda da kazanılır** (kariyer parası, krampon sponsoru, sezon ödülleri, kupalar). Takılıyken maçta geçerlidir, süresi maçla dolar; temel statlar değişmez. Fiyatlar maaşla birlikte asla artmaz. (Sahip kararı 2026-10-19: eski "ekipman yalnızca antrenmanı hızlandırır" kuralının yerine; bkz. §6.2.) |
 | En iyi sonuç (simülasyon) | v5 teklifi: aynı 20 alıcıda **9/20 (%45)**, hiç görmediği 20 yeni alıcıda **13/20 (%65)**, 16 satın alma. Gerçek F2P dönüşümü bunun çok altında olur (genelde %2-5). |
 
 ---
@@ -169,7 +169,7 @@ v5'in teklif metni:
 > StarPath Football: live a footballer's whole life, from the academy to legend. Play the key moments of each match yourself and run your life off the pitch.
 > Free to play, the whole career. No ads, no loot boxes, offline. Free Editor for real club and player names. Back up your career to a file for a new phone.
 > Starter Pack, once only, EUR 0.99: 300 diamonds + Golden Boots (+15% training XP for 60 matches; your player wears them on the pitch).
-> Diamonds (earn some by playing, packs from EUR 1.99) buy pro boots and gear that speed up training, exclusive kits, boot colours and goal celebrations everyone sees in your matches. Nothing you buy changes match results.
+> Diamonds (earn some by playing, packs from EUR 1.99) buy boots and gear, exclusive kits, boot colours and goal celebrations everyone sees in your matches. Equipment gives small, capped stat boosts (+5 max per stat) and can be earned in-game with career money or rewards.
 > Legend Careers, one-time EUR 2.99: start as a wonderkid at a top club, or carry on as a manager after you retire.
 > Optional Pro Contract EUR 4.99 a month: 20 diamonds a day, cancel anytime. Prices never go up as your salary grows.
 
@@ -244,28 +244,74 @@ Fiyatlandırma notları:
 | Sezon sonu ödülleri (lig şampiyonluğu, gol krallığı, yılın oyuncusu) | 20-50💎 | 0-150 |
 | Başarımlar (ilk gol, ilk milli maç, 100. maç vb.) | 10-25💎 | değişken |
 
-### 6.2 Elmas harcamaları
-| Kalem | Fiyat (💎) | Etki | Süre |
+### 6.2 Ekipman ve elmas harcamaları (sahip kararı 2026-10-19: NSS tarzı stat kramponları)
+
+Ekipman artık **stat verir**: her krampon (ve aksesuar) takılıyken bir ya da birkaç belirli stata puan ekler, bu
+artış **maçta da geçerlidir**. Süre maçla dolar; süre bitince ya da çıkarınca artış kalkar. Temel statlar hiç
+değişmez (antrenman, gerileme ve OVR temel statla çalışır). Tüm ekipmandan bir stata gelen toplam en fazla **+5**.
+Ekipman artık antrenman XP'sini hızlandırmaz (ödüllü reklamın antrenman takviyesi aynen kalır).
+
+Üç yoldan alınır: **kariyer parası** (herkes, yaş sınırı yok: gerçek para değil), **elmas** (fiyatı sunucu belirler,
+`server/catalog.json` "spend") ve **ödül** (krampon sponsoru, büyük sezon ödülleri, kupalar).
+
+| Kademe | Elmas | Kariyer parası | Süre |
 |---|---|---|---|
-| **Altın Krampon** | 300 | Tüm antrenman XP'si +%15 | 60 maç |
-| Hız Kramponu | 150 | Fiziksel grup antrenman XP +%20 | 40 maç |
-| Nişancı Kramponu | 150 | Teknik grup (şut/pas/dribling) XP +%20 | 40 maç |
-| Zihin Bandı | 150 | Mental grup XP +%20 | 40 maç |
-| Kaleci Eldiveni Pro | 150 | Kalecilik grubu XP +%20 | 40 maç |
-| Kompresyon Seti | 120 | Yorgunluk toparlanması +%20 | 40 maç |
-| Fizyoterapi Seansı | 100 | Mevcut sakatlığın kalan haftası yarıya iner (yukarı yuvarlanır) | Tek kullanım |
-| Formalar / krampon renkleri / gol sevinçleri | 80-250 | Yalnızca görünüm, maçta herkes görür | Kalıcı |
-| Elmas → € | 100💎 = 2 haftalık maaş (taban €2.500) | Oyun içi paraya çevirme | Tek kullanım |
+| Standart | 60💎 | €5.000 | 20 maç |
+| Pro | 100💎 | €40.000 | 40 maç |
+| Elit | 200💎 | €200.000 | 60 maç |
+| Efsane | 300💎 | €750.000 | 80 maç |
+
+Kademe fiyatları maaş eğrisine göre (docs/BALANCE.md, medyan haftalık maaş 17 yaş ~730, 19 yaş ~7K, 21 yaş ~25K,
+23 yaş ~62K): Standart ilk sezon alınır, Pro 18-19 yaşında, Elit 20 yaş civarı, Efsane 21+ yaşında gerçek bir hedef.
+
+| Kimlik | Ad (TR / EN) | Kademe | Yuva | Statlar |
+|---|---|---|---|---|
+| classic_boots | Klasik Krampon / Classic Boots | Standart | krampon | şut, pas, dripling, ilk dokunuş +1 |
+| sprint_boots | Koşu Kramponu / Sprint Boots | Standart | krampon | hız +2, ivmelenme +1 |
+| grip_boots | Tutunan Krampon / Grip Boots | Standart | krampon | top kapma +2, denge +1 |
+| training_gloves | Antrenman Eldiveni / Training Gloves | Standart | aksesuar (kaleci) | refleks, top tutma, uzanma +1 |
+| compression | Kompresyon Seti / Compression Set | (80💎, €10.000, 40 maç) | toparlanma | yorgunluk toparlanması +%20 (stat yok) |
+| striker_boots | Nişancı Kramponu / Striker Boots | Pro | krampon | şut +3, bitiricilik +2, falso +1 |
+| speed_boots | Hız Kramponu / Speed Boots | Pro | krampon | hız +3, ivmelenme +3 |
+| playmaker_boots | Oyun Kurucu Kramponu / Playmaker Boots | Pro | krampon | pas +3, vizyon +2, uzun pas +2 |
+| aerial_boots | Hava Hakimi Kramponu / Aerial Boots | Pro | krampon | kafa +3, sıçrama +2, güç +1 |
+| keeper_gloves | Kaleci Eldiveni Pro / Pro Keeper Gloves | Pro | aksesuar (kaleci) | refleks, top tutma, uzanma +2 |
+| mind_band | Zihin Bandı / Mind Band | Pro | aksesuar | soğukkanlılık, sezgi, vizyon +2 |
+| gold_boots | Altın Krampon / Golden Boots | Elit | krampon | şut, bitiricilik, pas, dripling, ilk dokunuş, hız +2 |
+| dribbler_boots | Dripling Kramponu / Dribbler Boots | Elit | krampon | dripling +4, çeviklik +3, denge +2, ilk dokunuş +2 |
+| sweeper_boots | Libero Kramponu / Sweeper Boots | Elit | krampon | top kapma +4, pozisyon +3, sezgi +2, güç +2 |
+| freekick_boots | Frikik Kramponu / Free-Kick Boots | Elit | krampon | duran top +4, falso +4, orta +3, uzun pas +2 |
+| elite_gloves | Elit Kaleci Eldiveni / Elite Keeper Gloves | Elit | aksesuar (kaleci) | refleks +4, uzanma +3, top tutma +3, kaleci pozisyonu +2 |
+| legend_striker | Efsane Golcü Kramponu / Legend Striker Boots | Efsane | krampon | bitiricilik +4, şut +4, soğukkanlılık +3, falso +3, ivmelenme +2 |
+| legend_maestro | Efsane Maestro Kramponu / Legend Maestro Boots | Efsane | krampon | pas +4, vizyon +4, uzun pas +3, ilk dokunuş +3, dripling +3 |
+| legend_wall | Efsane Duvar Kramponu / Legend Wall Boots | Efsane | krampon | top kapma +4, kafa +4, pozisyon +3, sıçrama +3, güç +3 |
+| legend_gloves | Efsane Kaleci Eldiveni / Legend Keeper Gloves | Efsane | aksesuar (kaleci) | refleks, uzanma, top tutma +4, kaleci pozisyonu, oyun kurma +3 |
+
+Diğer elmas harcamaları: Fizyoterapi Seansı 100💎 (reklamla 50💎; kalan sakatlık haftası yarıya iner), kozmetik
+paketler 250💎, Elmas → € 100💎 = 2 haftalık maaş (taban €2.500, tavan €25.000).
 
 Kurallar:
 - **Ekipman yuvaları:** krampon (1), aksesuar (1), toparlanma (1). Aynı yuvaya yenisi takılınca eskisinin kalan maçı **kaybolmaz**, envanterde bekler.
-- **Süre maçla ölçülür ve satın almadan önce gösterilir** ("60 maç · kalan: 60"). Yalnızca **oynanan** maçlar düşer (yedek kulübesi düşmez).
-- **XP bonus tavanı:** ekipmandan gelen toplam XP bonusu en fazla **+%25**. Bu, mevcut tesis ve ev XP tavanından (`xp_bonus` +%30) ayrı bir tavandır. Antrenör bonusu da (×1,15-1,40, kendi grubunda) ayrıdır.
-- **Maç içi etki yok.** Ekipman maç simülasyonunda hiçbir sayıya girmez. Yalnızca `trainingXp` hesabına girer. "İstatistikler sonucu belirler" ilkesi korunur: para yalnızca istatistiğe **daha hızlı** ulaştırır.
+- **Süre maçla ölçülür ve satın almadan önce gösterilir.** Yalnızca **oynanan** maçlar düşer.
+- **Stat tavanı:** tüm takılı ekipmandan bir stata en fazla **+5** (`GEAR_STAT_CAP`). Sonuç 99'u geçmez.
+- **Tek maç kapısı:** ekipman yalnızca `effectiveAttrs` (sim/career/gear) üzerinden, maç kurulurken (`sim/game/match.ts buildTeamFrom`) girer; motor, öne çıkan an üretimi ve Phaser mini oyunları bu kopyayı okur. Temel `hero.attrs` hiç yazılmaz.
+- **Ödüller:** krampon sponsoru imzası (marka kademesi 1/2/3 → Standart/Pro/Elit), büyük sezon ödülleri (Altın Yıldız → Efsane; podyum, sezonun oyuncusu, gol kralı, Altın Eldiven → Elit; lig gol kralı, genç oyuncu, savunmacı → Pro), kupalar (lig/kupa → Pro, kıta → Elit; milli turnuva → Efsane, genç milli → Pro). Ödül, mevkiye uyan ekipmanı verir.
+- **Eski kayıtlar:** eski altı kimlik (gold_boots, speed_boots, striker_boots, mind_band, keeper_gloves, compression) aynı yuvalarla katalogda; kayıttaki kalan maçlar korunur, artık stat verir.
 
 ### 6.3 Ödeyen ve ödemeyen arasındaki fark (denge hedefi)
-- Altın Krampon sürekli takılsa bile toplam XP farkı ≈ **%15-25**. Bu, aynı sezonu ~2,5 ay yerine ~2 ayda bitirmek gibidir. Ödemeyen oyuncu her şeye ulaşır, yalnızca daha yavaş.
-- Doğrulama: `balanceSim` / `playtest.node.test.ts` ile "ücretsiz", "Başlangıç" ve "sürekli Altın Krampon" profilleri 5 sezon oynatılır. OVR eğrisi farkı **≤%25** ve ödemeyen oyuncu 3. sezonda ilk 11'e girebilmeli. Sahibin "zayıf istatistikle doğru oyun bile ≥3/10 kazanır" ilkesiyle uyumlu.
+Ekipman artık maçta etkili olduğu için test maç etkisini ölçer (`sim/game/gearBalance.node.test.ts`, eşli tohumlar,
+5 sezon, kohort başına 10 kariyer; 2026-10-19 ölçümü):
+
+| Kohort | OVR artışı | Ort. maç puanı | 5 yılda gol | 1. kademe | OVR 80 | Kupa |
+|---|---|---|---|---|---|---|
+| Hiç ekipman yok (ödüller de alınır) | 31,0 | 6,48 | 42,3 | %70 | %30 | 0,70 |
+| Ücretsiz, yalnızca ödül ekipmanı | 31,4 | 6,58 | 45,4 | %80 | %30 | 0,50 |
+| Ücretsiz, kariyer parasıyla alır | 31,2 | 6,54 | 38,8 | %80 | %30 | 0,90 |
+| Elmasla en iyi ekipman (nakit yok) | 32,9 | 6,71 | 48,7 | %100 | %40 | 0,60 |
+| En büyük harcayan (ekipman + sezonda €200K nakit, en iyi kullanım) | 34,4 | 6,81 | 54,9 | %90 | %50 | 1,00 |
+
+- Eşikler: harcayanın OVR artışı ≤ ×1,25 (hiç ekipmansıza göre); maç puanı farkı en iyi ekipmanla ≤ +0,3, tam harcayanla ≤ +0,4 (parayla alana göre) ve ≤ +0,5 (ekipmansıza göre); gol ≤ +%40 / +%50; 1. kademe ve OVR 80 oranı ≤ +30 puan. Kupa ve gol n=10'da gürültülü.
+- Ödemeyen oyuncu aynı ekipmana kariyer parası ve ödüllerle ulaşır; elmas yalnızca daha erken ulaştırır. Sahibin "zayıf istatistikle doğru oyun bile ≥3/10 kazanır" ilkesiyle uyumlu.
 
 ### 6.4 Nakit (€) paketleri
 - **Miktar maaşa bağlı:** `max(taban, hafta × güncel haftalık brüt maaş)`. Sabit miktar ileri sezonlarda değersizleşirdi. Bu, NSS'in "fiyat maaşla artar" hatasının **tersidir**: satın aldığın şey büyür, ödediğin fiyat sabit kalır.
@@ -282,7 +328,7 @@ Kurallar:
 - Ganimet kutusu ve rastgele ödüllü ücretli ürün **yok**.
 - Enerji yenileme satışı **yok**.
 - Zorla izletilen reklam (geçiş/interstitial) **yok**; maç ve mini oyun içinde hiçbir reklam **yok**.
-- Maç içi güç, istatistik veya maç sonucu satışı **yok**.
+- Maç sonucu satışı **yok**. Maçta etkili olan tek satılık şey ekipmandır: küçük, stat başına +5 ile sınırlı, süreli ve aynısı kariyer parasıyla ve ödülle de alınır (§6.2).
 
 ### 6.7 Reklam geliri (sahip talebi, 2026-10-13)
 
@@ -461,7 +507,7 @@ Gerçek gelir ülkeye ve ağa göre çok değişir. Rakamlar yumuşak lansmanla 
 
 Önerilen yeni çekirdek:
 
-> Ücretsiz oyna, tüm kariyer açık. Zorla reklam yok (ödüllü reklam isteğe bağlı), enerji sınırı yok, ganimet kutusu yok, çevrimdışı. Satın aldığın hiçbir şey maç sonucunu değiştirmez; fiyatlar maaşınla artmaz.
+> Ücretsiz oyna, tüm kariyer açık. Zorla reklam yok (ödüllü reklam isteğe bağlı), enerji sınırı yok, ganimet kutusu yok, çevrimdışı. Ekipman küçük ve sınırlı stat artışı verir (stat başına en fazla +5); kariyer parasıyla ya da ödüllerle oyunda da kazanılır. Fiyatlar maaşınla artmaz.
 
 ---
 
@@ -521,7 +567,7 @@ Toplam: G hariç **~7,5-10 iş günü.**
 | Yaş derecesi yükselir (kumarhane + satılan para) | Yüksek | Orta | §8.2 hafifletmeleri; gerekirse ayrı fiş. |
 | Tüketilenlerde sahtecilik | Orta | Düşük (tek oyunculu) | Sunucu doğrulama (H). |
 | Abonelik beklentisi karşılanmaz (değer düşük) | Orta | Düşük | İsteğe bağlı; içerik eklendikçe değer artırılır. |
-| Ödemeyen oyuncunun yavaşlığı "grind" gibi hissettirir | Orta | Yüksek | §6.3 denge testi; ücretsiz kaynaklar; ekipman tavanı +%25. |
+| Ödemeyen oyuncunun yavaşlığı "grind" gibi hissettirir | Orta | Yüksek | §6.3 denge testi; ücretsiz kaynaklar; ekipman kariyer parasıyla ve ödülle de alınır; stat tavanı +5. |
 | Panel gerçekle uyuşmaz | Yüksek | Orta | Yumuşak lansman verisiyle revize (§9.2). |
 
 ---

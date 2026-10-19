@@ -15,6 +15,7 @@ import type { GameState, LText } from '../../core/types'
 import { PURCHASED_CASH_PER_SEASON, addAdTrainBoost, addGear, equipGear, GEAR_BY_ID, unequipGear, type GearSlot } from '../../sim/career/gear'
 import { fmtMoney } from '../../sim/career/common'
 import { readJson, writeJson } from '../../sim/game/internal'
+import { buyGearCash } from '../../sim/game/actions'
 import {
   GRANT_MAX_AGE_MS, ShopApiError, currentAccountId, flushEarnQueue, handleWallet, queueEarn, refreshWallet, serverWallet, setInboxHandler, shopApi, storeAvailable, verifyGrant,
   type GrantPayload, type ServerWallet,
@@ -310,6 +311,17 @@ export async function claimPassDaily(): Promise<ShopActionResult> {
   } catch (e) {
     return { ok: false, reason: e instanceof ShopApiError ? e.code : 'failed' }
   }
+}
+
+/** Buys gear with in-game career cash (open to every age: no real money involved). */
+export function buyGearWithCashAction(id: string): { ok: true; line: LText } | { ok: false; line: LText } {
+  const s = current()
+  if (!s) return { ok: false, line: { tr: 'Açık kariyer yok.', en: 'No career open.' } }
+  const r = buyGearCash(s, id)
+  if (!r.ok) return { ok: false, line: r.lines[0] ?? { tr: 'Olmadı.', en: 'That did not work.' } }
+  commit(s)
+  scheduleAutosave()
+  return { ok: true, line: r.lines[0]! }
 }
 
 export function equipGearAction(id: string): void {

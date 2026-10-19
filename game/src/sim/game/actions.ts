@@ -16,6 +16,7 @@ import { benchComplaint, type ComplaintApproach } from '../career/squadRole'
 import type { TrainingIntensity, TrainingType } from '../career/training'
 import { acceptTransfer, requestTransfer as requestTransferFn, withdrawTransferRequest as withdrawFn } from '../career/transfers'
 import { hometownClubWelcome } from '../career/hometown'
+import { buyGearWithCash, rewardGear, rewardLine, type GearTier } from '../career/gear'
 import type { TransferOffer } from '../career/transfers'
 import { performActivity, type ActivityOptions, type TrainingReport } from '../life/activities'
 import {
@@ -28,7 +29,7 @@ import { luxuryReaction, negotiationLeverage } from '../life/butterfly'
 import { ASSET_BY_ID } from '../../data/assets'
 import { ensureRelation } from '../life/relationships'
 import type { PostType } from '../life/social'
-import { acceptSponsor as acceptSponsorFn } from '../life/sponsors'
+import { BRAND_BY_NAME, acceptSponsor as acceptSponsorFn } from '../life/sponsors'
 import { clubStrength } from '../world/queries'
 import { managerProfile } from '../world/profiles'
 import { advanceDay, type AdvanceReport } from './calendar'
@@ -289,6 +290,10 @@ export function playDice(state: GameState, bet: SevensBet | 'pass', stake: numbe
 
 // ───────────────────────── Sponsors & agent ─────────────────────────
 
+/** Boots sponsor brand tier (life/sponsors BRANDS) → tier of the boots it sends. */
+const BOOT_SPONSOR_GEAR: Readonly<Record<number, GearTier>> = { 1: 'standard', 2: 'pro', 3: 'elite' }
+const sponsorTier = (deal: { brand: string }): number => BRAND_BY_NAME[deal.brand]?.tier ?? 1
+
 export function acceptSponsor(state: GameState, offerId: string): ActionResult {
   const offers = getSponsorOffers(state)
   const o = offers.find((x) => x.deal.id === offerId)
@@ -296,8 +301,22 @@ export function acceptSponsor(state: GameState, offerId: string): ActionResult {
   const r = acceptSponsorFn(state.life, o)
   if (!r.ok) return fail(r.lines[0]!)
   setSponsorOffers(state, offers.filter((x) => x !== o && x.deal.category !== o.deal.category))
+  // A boots sponsor sends its boots (career/gear): the brand's tier sets the tier of the pair.
+  if (o.deal.category === 'boots') {
+    const tier = BOOT_SPONSOR_GEAR[sponsorTier(o.deal)] ?? 'standard'
+    r.lines.push(rewardLine(rewardGear(state.life, state.hero.position, tier), lt(`${o.deal.brand} sponsorluğu`, `${o.deal.brand} deal`)))
+  }
   logAll(state, [], r.lines, 'money', '🤝')
   return okr(r.lines)
+}
+
+/** Buys gear with in-game career cash (store Gear tab; no real money, so no age gate). */
+export function buyGearCash(state: GameState, id: string): ActionResult {
+  const r = buyGearWithCash(state.life, id)
+  if (!r.ok) return fail(r.why === 'money' ? lt('Bunun için kariyer paran yetmiyor.', 'You do not have enough career money for this.') : lt('Ekipman bulunamadı.', 'Item not found.'))
+  const line = fill(lt('{i} {n} alındı: {p} ({m} maç).', '{i} Bought {n}: {p} ({m} matches).'), { i: r.def.icon, n: r.def.name, p: fmtMoney(r.def.cash), m: r.def.matches })
+  logAll(state, [], [line], 'money', '🛍️')
+  return okr([line])
 }
 
 export function declineSponsor(state: GameState, offerId: string): ActionResult {

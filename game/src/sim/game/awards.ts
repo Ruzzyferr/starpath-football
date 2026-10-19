@@ -10,6 +10,7 @@ import type { Award, GameState, LText } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { NEWS_SOURCES, fameGain, fill, heroAge, lt, meter, pushNews } from '../career/common'
 import { heroOvr } from '../career/progression'
+import { rewardGear, rewardLine, type GearTier } from '../career/gear'
 import {
   LAST_MONTH, MIN_AWARD_APPS, computeMonthAwards, ensureAwards, playerSeasonScore, seasonAwards, storeMonthAwards,
   type HeroAwardInput,
@@ -32,6 +33,12 @@ export const AWARD_NAMES: Record<string, LText> = {
   goal_of_season: lt('Yılın Golü', 'Goal of the Season'),
   team_of_season: lt('Sezonun 11\'i', 'Team of the Season'),
   player_of_month: lt('Ayın Oyuncusu', 'Player of the Month'),
+}
+
+/** Equipment earned with an award (career/gear rewardGear); monthly and squad selections give none. */
+export const AWARD_GEAR: Readonly<Record<string, GearTier>> = {
+  golden_star: 'legend', golden_star_podium: 'elite', player_of_season: 'elite', top_scorer: 'elite', golden_glove: 'elite',
+  league_top_scorer: 'pro', young_player: 'pro', defender_of_season: 'pro',
 }
 
 /** Reputation (before diminishing returns) per award. */
@@ -62,6 +69,9 @@ function grant(state: GameState, rng: Rng, out: LText[], season: number, key: st
   h.awards.push(a)
   h.reputation = meter(h.reputation + fameGain(h.reputation, AWARD_FAME[key] ?? 1))
   log(state, out, fill(lt('🏆 Ödül: {a}!', '🏆 Award: {a}!'), { a: a.name }), 'award', '🏆')
+  // Reward gear (career/gear): the big individual awards come with a pair of boots (or gloves).
+  const tier = AWARD_GEAR[key]
+  if (tier) log(state, out, rewardLine(rewardGear(state.life, h.position, tier), a.name), 'award', '🎁')
   // "Sezonun 11'i ödülünü kazandı" / "Altın Yıldız 2.si ödülünü kazandı" read wrong (playtest Tur 3): selections and podiums get their own verb.
   const headline = key === 'team_of_season' ? lt("{n} Sezonun 11'ine seçildi", '{n} named in the Team of the Season')
     : key === 'golden_star_podium' ? lt('{n} Altın Yıldız podyumunda: {a}', '{n} on the Golden Star podium: {a}')
