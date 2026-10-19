@@ -49,7 +49,7 @@ platform.exit()
 npm run dev        # geliştirme (SW yok)
 npm run build      # tsc + vite build → dist/ (+ dist/sw.js)
 npm run preview    # build'i yerelde sun
-npm run icons      # build-resources/icon.svg → public/icons/*, favicon, Electron ikonları
+npm run icons      # build-resources/icon-art.png → iOS/Android ikonları + splash, public/icons/*, favicon, Electron, site işaretleri (Python + Pillow)
 ```
 
 - `public/manifest.webmanifest`: ad, `display: standalone` (+ `fullscreen` override), `orientation: any`, 48–512 ikonlar, maskable 192/512, apple-touch-icon (180).

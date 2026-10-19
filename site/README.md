@@ -144,14 +144,13 @@ as `public/media/poster-hero.webp`, `poster-hero-phone.webp`, `poster-play.webp`
 
 Server-side names (`/srv/starpath-site`, `~/.ssh/starpath_api`) predate the Kickborn rename and are kept as they are.
 
-## Brand icon slot
+## Brand icon
 
-Until the Kickborn key art is chosen, every icon slot carries the wordmark (KICK white over BORN
-green on night navy). To swap in the key art, replace these files, keeping names and sizes:
+The icon is the Kickborn key art (`game/build-resources/icon-art.png`: a player running at the ball on the
+penalty spot under night floodlights). `game/scripts/gen-icons.py` (`cd game && npm run icons`) writes
+the site's marks together with the app icons, keeping names and sizes:
 
-- `public/media/brand/mark-96.png` (favicon), `mark-180.png` (apple-touch-icon), `mark-192.png`,
-  `mark-512.png` (square, opaque);
-- `public/media/og.jpg` (1200×630, the social card).
-
-The nav and the footer use the text wordmark; add the art next to it in `index.template.html`
-(`.wordmark`) if the chosen piece works small.
+- `public/media/brand/mark-96.png` (favicon and the nav mark beside the wordmark; a tighter crop),
+  `mark-180.png` (apple-touch-icon), `mark-192.png`, `mark-512.png` (square, opaque, the full art);
+- `public/media/og.jpg` (1200×630, the social card: the art on the right, KICKBORN wordmark and tagline
+  on the left) is composed separately from the same art; keep the wordmark literal uppercase, `lang="en"`.
