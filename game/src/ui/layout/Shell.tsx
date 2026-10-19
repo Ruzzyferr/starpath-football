@@ -4,6 +4,7 @@
  *  - ≥ 900px: left sidebar (icon rail until 1200px) + content + right context panel.
  * Safe-area insets are applied on the outer edges.
  */
+import { serverWallet, storeAvailable } from '../../store-iap'
 import type { ComponentChildren } from 'preact'
 import { t, tx } from '../../i18n'
 import { Avatar, Crest, MeterRing, Money, Button, Badge, FormDots } from '../components'
@@ -106,6 +107,12 @@ export function TopBar() {
           <span class="num">{Math.round(life.happiness)}</span>
         </div>
       </div>
+      {storeAvailable() && (
+        <button type="button" class="tstat tstat-gems" data-testid="topbar-gems" aria-label={`${serverWallet.value?.gems ?? 0} 💎`} onClick={() => navigate('store')}>
+          <span aria-hidden="true">💎</span>
+          <span class="num">{serverWallet.value ? serverWallet.value.gems : '—'}</span>
+        </button>
+      )}
       <div class="topbar-date" title={t('ui.topbar.date')}>
         <span class="topbar-season micro">{seasonLabel(c.season)}</span>
         <span class="topbar-day">{dateText}</span>

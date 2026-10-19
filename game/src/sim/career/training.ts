@@ -13,6 +13,7 @@
  * moves a 17-year-old's OVR by ≈ +0.6 and a 27-year-old's by ≈ +0.1.
  * See progression.test.ts for the full career curve.
  */
+import { adTrainBoosts, gearXpBonus, takeAdTrainBoost } from './gear'
 import type { AttributeKey, Hero, LText, Life } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { clamp, fill, lt, meter, type Lines } from './common'
@@ -229,6 +230,8 @@ export function trainingXp(hero: Hero, life: Life, type: TrainingType, performan
     const key = k as AttributeKey
     let v = (total * (def.attrs[key] ?? 0)) / wsum
     if (life.trainer && life.trainer.group === ATTRIBUTE_GROUP[key]) v *= 1 + tb
+    // Gear bought with diamonds (sim/career/gear): training speed only, capped.
+    v *= 1 + gearXpBonus(life, ATTRIBUTE_GROUP[key])
     xp[key] = v
   }
   return xp
@@ -258,6 +261,11 @@ export function runTraining(rng: Rng, hero: Hero, life: Life, input: TrainingInp
 
   // XP total — computed with the fatigue *before* the session.
   const xp = trainingXp(hero, life, input.type, performance, intensity)
+  // A rewarded-ad boost banked for the next session (sim/career/gear).
+  if (input.type !== 'recovery' && adTrainBoosts(life) > 0) {
+    const m = takeAdTrainBoost(life)
+    for (const k in xp) xp[k as AttributeKey] = (xp[k as AttributeKey] ?? 0) * m
+  }
 
   // Body & mind.
   if (def.fatigue >= 0) addFatigue(hero, def.fatigue * im.fatigue)

@@ -1,4 +1,7 @@
 import '../../../styles/screens/match.css'
+import { fmtMoney } from '../../../sim/career/common'
+import { AdOffer } from '../store/AdOffer'
+import { doublableBonus } from '../../backend/shopBridge'
 import { useEffect, useRef, useState } from 'preact/hooks'
 import { t, lt, tx, currentLang } from '../../../i18n'
 import { ShareMatchButton } from '../../share/ShareButtons'
@@ -339,6 +342,8 @@ function TrustStep({ pm }: { pm: PostMatchView }) {
 function EarningsStep({ pm }: { pm: PostMatchView }) {
   const e = pm.earnings
   if (!e) return null
+  const gs = gameState.value
+  const bonus = gs ? doublableBonus(gs, pm.fixture.fixtureId) : 0
   const now = e.lines.filter((l) => l.when === 'now')
   const week = e.lines.filter((l) => l.when === 'week')
   const row = (l: (typeof e.lines)[number], i: number) => (
@@ -359,6 +364,9 @@ function EarningsStep({ pm }: { pm: PostMatchView }) {
           <h3 class="micro t-mid">{t('postmatch.earnings.now')}</h3>
           <ul class="ptrust-list pearn-list">{now.map(row)}</ul>
         </>
+      )}
+      {bonus > 0 && (
+        <AdOffer offer="match_bonus" label={{ tr: `İzle: maç primi ×2 (+${fmtMoney(bonus).tr})`, en: `Watch: match bonus ×2 (+${fmtMoney(bonus).en})` }} testId="ad-match-bonus" />
       )}
       {week.length > 0 && (
         <>

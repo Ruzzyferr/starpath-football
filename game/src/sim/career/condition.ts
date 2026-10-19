@@ -3,6 +3,7 @@
  * training, match outcome and daily activities so the rules stay identical
  * everywhere.
  */
+import { gearRecovery } from './gear'
 import type { Hero, Injury, LText, Life } from '../../core/types'
 import type { Rng } from '../../core/rng'
 import { clamp, fill, fmtMoney, lt, meter, type Lines } from './common'
@@ -34,7 +35,7 @@ export const staminaRecoveryBonus = (hero: Pick<Hero, 'attrs'>): number => clamp
  * (±0.08) and a week of proper nutrition (+0.1).
  */
 export function recoveryMultiplier(hero: Hero, life: Life): number {
-  return 1 + Math.min(0.6, perkValue(hero, 'recovery') + assetEffectTotal(life, 'recovery')) + staminaRecoveryBonus(hero) + (dietActive(life) ? 0.1 : 0)
+  return 1 + Math.min(0.6, perkValue(hero, 'recovery') + assetEffectTotal(life, 'recovery')) + staminaRecoveryBonus(hero) + (dietActive(life) ? 0.1 : 0) + gearRecovery(life)
 }
 
 /**

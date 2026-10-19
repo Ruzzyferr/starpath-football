@@ -62,3 +62,19 @@
 /* Buy buttons line up across cards of different copy length. */
 .st-card { display: flex; flex-direction: column; gap: 8px; }
 .st-card > :last-child { margin-top: auto; }
+
+/* F2P shop (docs/MONETIZASYON.md) */
+.st-wallet { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; margin: 0 0 var(--sp-3); }
+.st-gems { font-family: var(--font-score); font-size: 28px; font-weight: 700; color: var(--text-hi); }
+.st-pro { padding: 2px 8px; border-radius: 999px; background: #ffc83d; color: #231500; font-weight: 800; font-size: 12px; letter-spacing: .08em; }
+.st-big { font-size: 40px; line-height: 1; }
+.st-card { position: relative; }
+.st-badge { position: absolute; top: 10px; right: 10px; padding: 2px 8px; border-radius: 999px; background: color-mix(in srgb, var(--pos) 20%, transparent); color: var(--pos); font-size: 12px; font-weight: 700; }
+.st-starter { border-color: color-mix(in srgb, #ffc83d 55%, var(--border)); }
+.st-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+.st-on { outline: 2px solid var(--pos); outline-offset: -2px; }
+.st-span { grid-column: 1 / -1; margin: 0; }
+.st-gear { display: grid; gap: 12px; }
+.st-gear > p { margin: 0; }
+.st-physio { max-width: 520px; }
+[role='tabpanel'] + .st-grid, .st-grid, .st-gear { margin-top: var(--sp-3); }

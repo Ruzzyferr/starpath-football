@@ -1,4 +1,6 @@
 import { useState } from 'preact/hooks'
+import { AdOffer } from './store/AdOffer'
+import { adTrainBoosts } from '../../sim/career/gear'
 import type { AttributeGroup } from '../../core/types'
 import { lt, t, tx } from '../../i18n'
 import {
@@ -425,8 +427,15 @@ export function TrainingScreen() {
   const [tab, setTab] = useState<TabId>(pickTab(screen.value.params?.tab, TAB_IDS, 'sessions'))
   if (!s) return <Page title={t('training.title')}><EmptyState /></Page>
   const decay = decayWarning()
+  const gs = gameState.value
+  const boosts = gs ? adTrainBoosts(gs.life) : 0
   return (
     <Page title={t('training.title')} sub={t('training.sub')} wide>
+      <div class="tr-adboost">
+        {boosts > 0
+          ? <span class="t-sm t-gold" data-testid="train-boost-banked">⚡ {lt({ tr: `Sonraki ${boosts} antrenman +%20 XP`, en: `Next ${boosts} session${boosts > 1 ? 's' : ''} +20% XP` })}</span>
+          : <AdOffer offer="train_boost" label={{ tr: 'İzle: sonraki antrenman +%20 XP', en: 'Watch: next session +20% XP' }} />}
+      </div>
       {decay !== null && !s.hero.retired && (
         <p class="lg-warn t-sm" role="status" data-testid="decay-warning">{decay > 0 ? t('meta.decay.warn', { n: decay }) : t('meta.decay.now')}</p>
       )}

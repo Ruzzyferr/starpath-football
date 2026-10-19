@@ -3,6 +3,7 @@
  * into form, morale, sharpness, fatigue, reputation, followers, relationships,
  * contract bonuses, stats, XP, log lines and newspaper headlines.
  */
+import { wearGear } from './gear'
 import type { AttributeKey, GameState, Hero, LText, NewsItem } from '../../core/types'
 import { Rng } from '../../core/rng'
 import {
@@ -198,6 +199,8 @@ export function applyMatchToHero(state: GameState, m: HeroMatchInput, rngIn?: Rn
     hero.morale = meter(hero.morale + (m.won ? 1 : m.drew ? 0 : -2))
     return { lines: [lt('Maçta forma şansı bulamadın.', 'You did not get on the pitch.')], headlines, bonusPaid: 0, bonuses: NO_BONUSES, reputationDelta: 0, followersDelta: 0 }
   }
+  // Gear lasts a number of matches played (sim/career/gear).
+  for (const d of wearGear(life)) lines.push(lt(`${d.icon} ${d.name.tr} eskidi: maç süresi doldu.`, `${d.icon} ${d.name.en} wore out: its matches are used up.`))
   const resultWord = m.won ? lt('Galibiyet', 'Win') : m.drew ? lt('Beraberlik', 'Draw') : lt('Mağlubiyet', 'Defeat')
   lines.push(fill(lt('{r} · Puanın {x} · {g} gol, {a} asist', '{r} · Rating {x} · {g} goals, {a} assists'), {
     r: resultWord, x: rating.toFixed(1), g: goals, a: assists,

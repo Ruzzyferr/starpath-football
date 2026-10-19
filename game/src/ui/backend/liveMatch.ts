@@ -5,6 +5,7 @@
  * match through finishHeroMatch and builds the post-match record (stats,
  * deltas, interview) that `data.postMatch()` shows.
  */
+import { onMatchFinished } from './shopBridge'
 import { Rng, clamp, hashString } from '../../core/rng'
 import type { Competition, Fixture, GameState, LText, NpcPlayer } from '../../core/types'
 import { worldGender } from '../../core/gender'
@@ -682,6 +683,7 @@ function finalize(): void {
   }
   const res = report.result
   const motmId = res.motmId
+  onMatchFinished(s, l.fixtureId, report.bonuses?.total ?? 0, motmId === HERO_ID && report.minutes > 0)
   const motmRt = motmId ? engine.players[motmId] : undefined
   const motmRating = motmId === HERO_ID
     ? report.rating

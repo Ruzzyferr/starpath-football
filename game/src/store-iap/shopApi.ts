@@ -1,0 +1,227 @@
+/**
+ * Client for the shop server (repo `server/`). The server, not this app, holds the diamond balance:
+ * every credit needs a store receipt it verified itself, and every spend is priced there. The app
+ * keeps only a cached copy of the wallet for display (and offline).
+ *
+ * Account: an anonymous id + secret created on first use (no personal data). Purchases carry the id
+ * as the store's appAccountToken, so a receipt can only ever be credited to the account it was bought for.
+ */
+import { signal } from '@preact/signals'
+
+export interface ServerGrant {
+  nonce: string
+  token: string
+  /** gear | cash | physio | match_bonus | train_boost | season_x2 */
+  k: string
+  id?: string
+  weeks?: number
+  floor?: number
+  src?: string
+}
+
+export interface ServerWallet {
+  accountId: string
+  gems: number
+  starter: boolean
+  pass: { active: boolean; until: number; claimable: boolean }
+  entitlements: string[]
+  inbox: ServerGrant[]
+  ads: Record<string, { used: number; max: number }>
+  physioDiscounts: number
+  earnedToday: number
+  prices: Record<string, number>
+}
+
+export type ShopErrorCode =
+  | 'offline' | 'unauthorized' | 'insufficient_gems' | 'ad_cap' | 'ad_too_short' | 'ad_not_verified' | 'already_rewarded'
+  | 'receipt_used' | 'not_your_receipt' | 'invalid_receipt' | 'revoked' | 'already_claimed' | 'no_pass' | 'rate_limited'
+  | 'play_not_configured' | 'no_season_reward' | 'no_discount' | string
+
+export class ShopApiError extends Error {
+  readonly code: ShopErrorCode
+  readonly status: number
+  constructor(code: ShopErrorCode, status = 0) {
+    super(code)
+    this.code = code
+    this.status = status
+  }
+}
+
+const ACCOUNT_KEY = 'starpath.account.v1'
+const WALLET_KEY = 'starpath.walletcache.v1'
+
+declare const __SP_SHOP_API__: string | undefined
+const DEFAULT_API = 'https://206-189-63-64.sslip.io'
+
+export function shopBase(): string {
+  const env = import.meta.env?.VITE_SHOP_API as string | undefined
+  if (env) return env.replace(/\/$/, '')
+  if (import.meta.env?.DEV) {
+    try {
+      const q = new URLSearchParams(globalThis.location?.search ?? '').get('shopApi')
+      if (q) return q.replace(/\/$/, '')
+    } catch {
+      /* no location */
+    }
+  }
+  return typeof __SP_SHOP_API__ === 'string' && __SP_SHOP_API__ ? __SP_SHOP_API__ : DEFAULT_API
+}
+
+interface Account {
+  accountId: string
+  token: string
+}
+
+/** In-memory copy for when localStorage is missing or blocked (private mode, tests). */
+const mem = new Map<string, string>()
+function readJson<T>(key: string): T | null {
+  try {
+    const raw = globalThis.localStorage ? globalThis.localStorage.getItem(key) : mem.get(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  } catch {
+    const raw = mem.get(key)
+    return raw ? (JSON.parse(raw) as T) : null
+  }
+}
+function writeJson(key: string, v: unknown): void {
+  if (v == null) mem.delete(key)
+  else mem.set(key, JSON.stringify(v))
+  try {
+    if (v == null) globalThis.localStorage?.removeItem(key)
+    else globalThis.localStorage?.setItem(key, JSON.stringify(v))
+  } catch {
+    /* private mode: the memory copy lasts this session */
+  }
+}
+
+/** Last wallet the server sent (shown offline; never trusted for spending). */
+export const serverWallet = signal<ServerWallet | null>(readJson<ServerWallet>(WALLET_KEY))
+/** Last request failed for lack of network. */
+export const shopOffline = signal(false)
+
+function setWallet(w: ServerWallet): ServerWallet {
+  serverWallet.value = w
+  writeJson(WALLET_KEY, w)
+  return w
+}
+
+let accountPromise: Promise<Account> | null = null
+
+async function raw<T>(method: 'GET' | 'POST', path: string, bodyIn?: unknown, auth?: Account): Promise<T> {
+  // The server takes JSON only: a POST always carries a body.
+  const body = method === 'POST' ? bodyIn ?? {} : undefined
+  let r: Response
+  try {
+    r = await fetch(`${shopBase()}${path}`, {
+      method,
+      headers: { ...(body !== undefined ? { 'Content-Type': 'application/json' } : {}), ...(auth ? { Authorization: `Bearer ${auth.token}` } : {}) },
+      body: body !== undefined ? JSON.stringify(body) : undefined,
+    })
+  } catch {
+    shopOffline.value = true
+    throw new ShopApiError('offline')
+  }
+  shopOffline.value = false
+  const j = (await r.json().catch(() => ({}))) as { error?: string }
+  if (!r.ok) throw new ShopApiError(j.error ?? `http_${r.status}`, r.status)
+  return j as T
+}
+
+export function currentAccountId(): string | null {
+  return readJson<Account>(ACCOUNT_KEY)?.accountId ?? null
+}
+
+/** The install's shop account (created on first use). */
+export function ensureAccount(platform?: string): Promise<Account> {
+  const saved = readJson<Account>(ACCOUNT_KEY)
+  if (saved?.accountId && saved.token) return Promise.resolve(saved)
+  accountPromise ??= raw<Account>('POST', '/v1/register', { platform: platform ?? 'web' })
+    .then((a) => {
+      writeJson(ACCOUNT_KEY, a)
+      return a
+    })
+    .finally(() => {
+      accountPromise = null
+    })
+  return accountPromise
+}
+
+/** Authenticated call; a revoked/unknown account is replaced once (fresh install semantics). */
+async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
+  const acc = await ensureAccount()
+  try {
+    return await raw<T>(method, path, body, acc)
+  } catch (e) {
+    if (e instanceof ShopApiError && e.code === 'unauthorized') {
+      writeJson(ACCOUNT_KEY, null)
+      return raw<T>(method, path, body, await ensureAccount())
+    }
+    throw e
+  }
+}
+
+const withWallet = async <T extends ServerWallet>(p: Promise<T>): Promise<T> => {
+  const w = await p
+  setWallet(w)
+  return w
+}
+
+const EARN_QUEUE_KEY = 'starpath.earnq.v1'
+
+/**
+ * Free-diamond claims made before this install ever used the shop wait here, so a player who never
+ * opens the store never contacts the server; they are sent once an account exists.
+ */
+export function queueEarn(source: string, ref: string): void {
+  const q = readJson<{ source: string; ref: string }[]>(EARN_QUEUE_KEY) ?? []
+  if (!q.some((x) => x.source === source && x.ref === ref)) writeJson(EARN_QUEUE_KEY, [...q, { source, ref }].slice(-60))
+}
+
+export async function flushEarnQueue(): Promise<void> {
+  if (!currentAccountId()) return
+  const q = readJson<{ source: string; ref: string }[]>(EARN_QUEUE_KEY) ?? []
+  if (!q.length) return
+  writeJson(EARN_QUEUE_KEY, null)
+  for (const x of q) {
+    try {
+      await shopApi.earn(x.source, x.ref)
+    } catch (e) {
+      if (e instanceof ShopApiError && e.code === 'offline') {
+        queueEarn(x.source, x.ref)
+        return
+      }
+    }
+  }
+}
+
+export const shopApi = {
+  wallet: () => withWallet(call<ServerWallet>('GET', '/v1/wallet')),
+  buyApple: (jws: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/apple', { jws })),
+  buyGoogle: (productId: string, purchaseToken: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/google', { productId, purchaseToken })),
+  buyDev: (productId: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/dev', { productId })),
+  spend: (item: string, idem: string, discount = false) => withWallet(call<ServerWallet & { grant: ServerGrant }>('POST', '/v1/spend', { item, idem, discount })),
+  ack: (nonces: string[]) => withWallet(call<ServerWallet>('POST', '/v1/inbox/ack', { nonces })),
+  adStart: (offer: string) => call<{ nonce: string; skipAd: boolean }>('POST', '/v1/ads/start', { offer }),
+  adComplete: (nonce: string) => withWallet(call<ServerWallet & { grant: ServerGrant | null }>('POST', '/v1/ads/complete', { nonce })),
+  earn: (source: string, ref: string) => withWallet(call<ServerWallet & { earned: number }>('POST', '/v1/earn', { source, ref })),
+  passClaim: () => withWallet(call<ServerWallet>('POST', '/v1/pass/claim')),
+  /** New install: get the old account back from a restorable Apple receipt. */
+  async recoverApple(jws: string): Promise<boolean> {
+    try {
+      const a = await raw<Account>('POST', '/v1/recover/apple', { jws })
+      writeJson(ACCOUNT_KEY, a)
+      return true
+    } catch {
+      return false
+    }
+  },
+}
+
+/** Tests only. */
+export function _resetShopApi(): void {
+  writeJson(ACCOUNT_KEY, null)
+  writeJson(WALLET_KEY, null)
+  writeJson(EARN_QUEUE_KEY, null)
+  serverWallet.value = null
+  accountPromise = null
+}

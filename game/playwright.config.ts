@@ -21,6 +21,7 @@ import { defineConfig, devices } from '@playwright/test'
 const WEBKIT_SPECS = /(?:^|[\\/])(?:demo|match|matchup|press|tier|kitcontrast|training|onboarding|smoke|ios|saves|autosave|eventOdds|eventWheel|eventOneShot|tutorials|hub)\.spec\.ts$/
 
 const PORT = Number(process.env.PW_PORT ?? 5287)
+const SHOP_PORT = Number(process.env.PW_SHOP_PORT ?? PORT + 1)
 
 function chromeInstalled(): boolean {
   const paths = [
@@ -70,11 +71,22 @@ export default defineConfig({
       use: { ...devices['iPhone 15'] },
     },
   ],
-  webServer: {
-    command: `npx vite --port ${PORT} --strictPort --host 127.0.0.1`,
-    url: `http://127.0.0.1:${PORT}/`,
-    reuseExistingServer: false,
-    env: { E2E_NO_HMR: '1' },
-    timeout: 120_000,
-  },
+  webServer: [
+    {
+      command: `npx vite --port ${PORT} --strictPort --host 127.0.0.1`,
+      url: `http://127.0.0.1:${PORT}/`,
+      reuseExistingServer: false,
+      // The app talks to the local shop server below (never the live one) during e2e.
+      env: { E2E_NO_HMR: '1', VITE_SHOP_API: `http://127.0.0.1:${SHOP_PORT}` },
+      timeout: 120_000,
+    },
+    {
+      // The real shop server (repo server/) with test-only dev purchases, fresh data per run.
+      command: `node --disable-warning=ExperimentalWarning ../server/src/main.mjs`,
+      url: `http://127.0.0.1:${SHOP_PORT}/v1/health`,
+      reuseExistingServer: false,
+      env: { PORT: String(SHOP_PORT), HOST: '127.0.0.1', DATA_DIR: `test-results/shop-e2e-${Date.now()}`, DEV_PURCHASES: '1', NODE_ENV: 'test', TRUST_PROXY: '0', REG_PER_MIN: '10000', IP_PER_MIN: '100000', ORIGINS: `http://127.0.0.1:${PORT},http://localhost:${PORT}` },
+      timeout: 30_000,
+    },
+  ],
 })

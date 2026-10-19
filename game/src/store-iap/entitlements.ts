@@ -9,7 +9,6 @@
  * local record. Cosmetic-only + a single unlock keeps the fraud surface small.
  */
 import { signal } from '@preact/signals'
-import { START_YEAR } from '../core/config'
 import { FULL_CAREER, PRODUCT_BY_ID, packFor, type CosmeticKind } from './catalog'
 import { getFlavor, type Flavor } from './flavor'
 
@@ -57,9 +56,12 @@ export function purchaseHistory(rec: EntitlementRecord): PurchaseHistoryEntry[] 
     .sort((a, b) => b.at - a.at || a.id.localeCompare(b.id))
 }
 
-/** Trial gate: season 1 (START_YEAR) is free; later seasons need the unlock on trial builds. */
-export function isCareerLocked(flavor: Flavor, ownsFull: boolean, season: number): boolean {
-  return flavor === 'trial' && !ownsFull && season > START_YEAR
+/**
+ * Career gate. Free to play since 2026-10 (docs/MONETIZASYON.md §0): the whole career is open on every
+ * build, so this never locks; the old Full Career unlock stays only as a record.
+ */
+export function isCareerLocked(_flavor: Flavor, _ownsFull: boolean, _season: number): boolean {
+  return false
 }
 
 function load(): EntitlementRecord {

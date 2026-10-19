@@ -1,4 +1,6 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
+import { generateKeyPairSync } from 'node:crypto'
+import type { Server } from 'node:http'
 import { START_YEAR } from '../core/config'
 import { isCelebrationId } from '../game/presentation'
 import { COSMETIC_PRODUCTS, FULL_CAREER, PRODUCTS, packFor } from './catalog'
@@ -7,6 +9,28 @@ import { isDemoFlag, resolveFlavor } from './flavor'
 import { DEMO_IDLE_MS, DEMO_SEED, DEMO_SESSION_MS, demoResetDue } from './demo'
 import { DevProvider, UnavailableProvider } from './provider'
 import { purchase, restorePurchases, setProvider } from './service'
+import { _resetShopApi, serverWallet, shopApi } from './shopApi'
+// The real shop server (repo server/), in process, with dev purchases on: client + server end to end.
+// @ts-expect-error plain ESM module outside the app
+import { openDb } from '../../../server/src/db.mjs'
+// @ts-expect-error plain ESM module outside the app
+import { Shop } from '../../../server/src/shop.mjs'
+// @ts-expect-error plain ESM module outside the app
+import { createApp } from '../../../server/src/http.mjs'
+import serverCatalog from '../../../server/catalog.json'
+
+let server: Server
+beforeAll(async () => {
+  const shop = new Shop({ db: openDb(':memory:'), catalog: serverCatalog, signKey: generateKeyPairSync('ed25519').privateKey, apple: { bundleId: 'app.starpath.football', allowSandbox: true }, devPurchases: true })
+  server = createApp({ shop, admob: null, origins: [], trustProxy: false })
+  await new Promise<void>((r) => server.listen(0, '127.0.0.1', r))
+  const addr = server.address() as { port: number }
+  vi.stubEnv('VITE_SHOP_API', `http://127.0.0.1:${addr.port}`)
+})
+afterAll(() => {
+  server?.close()
+  vi.unstubAllEnvs()
+})
 
 describe('flavor', () => {
   it('auto = trial on mobile native only', () => {
@@ -23,9 +47,9 @@ describe('flavor', () => {
 })
 
 describe('career lock', () => {
-  it('season 1 is free, later seasons need the unlock, premium never locks', () => {
+  it('free to play: no build ever locks the career (docs/MONETIZASYON.md §0)', () => {
     expect(isCareerLocked('trial', false, START_YEAR)).toBe(false)
-    expect(isCareerLocked('trial', false, START_YEAR + 1)).toBe(true)
+    expect(isCareerLocked('trial', false, START_YEAR + 1)).toBe(false)
     expect(isCareerLocked('trial', true, START_YEAR + 5)).toBe(false)
     expect(isCareerLocked('premium', false, START_YEAR + 5)).toBe(false)
   })
@@ -57,28 +81,42 @@ describe('catalog', () => {
   })
 })
 
-describe('purchase flow (DevProvider)', () => {
+describe('purchase flow (DevProvider → shop server)', () => {
   beforeEach(() => {
     _resetEntitlements()
+    _resetShopApi()
     setProvider(new DevProvider())
   })
-  it('buy grants, cosmetics unlock, restore re-grants after the local record is lost', async () => {
+  it('buy is credited by the server; cosmetics unlock from the server entitlement; restore re-grants', async () => {
     expect(cosmeticUnlocked('celebration', 'backflip')).toBe(false)
     expect(cosmeticUnlocked('celebration', 'knee_slide')).toBe(true)
     expect((await purchase('pack_celebrations')).ok).toBe(true)
     expect(hasEntitlement('pack_celebrations')).toBe(true)
     expect(cosmeticUnlocked('celebration', 'backflip')).toBe(true)
-    _resetEntitlements() // simulates a wiped install
+    _resetEntitlements() // simulates a wiped local record
     expect(hasEntitlement('pack_celebrations')).toBe(false)
-    // no localStorage in node: DevProvider has nothing to restore, a store-backed fake does
-    setProvider({ id: 'fake', real: false, products: async () => [], buy: async () => ({ ok: true }), restore: async () => [FULL_CAREER, 'bogus'] })
-    expect(await restorePurchases()).toEqual([FULL_CAREER])
-    expect(hasEntitlement(FULL_CAREER)).toBe(true)
+    setProvider({ id: 'fake', real: false, products: async () => [], buy: async () => ({ ok: true }), restore: async () => [{ productId: 'pack_celebrations', dev: true, finish: async () => {} }] })
+    expect(await restorePurchases()).toEqual(['pack_celebrations'])
+    expect(hasEntitlement('pack_celebrations')).toBe(true)
+  })
+  it('diamonds come only from the server: a pack adds exactly its amount, spending is priced there', async () => {
+    expect((await purchase('gems_m')).ok).toBe(true)
+    expect(serverWallet.value?.gems).toBe(600)
+    expect((await purchase('starter_pack')).ok).toBe(true)
+    expect(serverWallet.value?.gems).toBe(900)
+    expect(serverWallet.value?.inbox.map((g) => g.id)).toEqual(['gold_boots'])
+    const w = await shopApi.spend('gold_boots', 'idem-1')
+    expect(w.gems).toBe(600)
+    expect(w.grant.k).toBe('gear')
+    await expect(shopApi.spend('gold_boots', 'idem-1')).resolves.toMatchObject({ gems: 600 })
   })
   it('unavailable provider never grants', async () => {
     setProvider(new UnavailableProvider())
-    expect((await purchase(FULL_CAREER)).ok).toBe(false)
+    expect((await purchase('pack_avatar')).ok).toBe(false)
     expect(hasEntitlement('pack_avatar')).toBe(false)
+  })
+  it('retired Full Career is not for sale any more', async () => {
+    expect((await purchase(FULL_CAREER)).ok).toBe(false)
   })
 })
 
@@ -105,10 +143,11 @@ describe('purchase history', () => {
   })
   it('a real purchase appears in the history', async () => {
     _resetEntitlements()
+    _resetShopApi()
     setProvider(new DevProvider())
-    await purchase(FULL_CAREER)
+    await purchase('pack_avatar')
     const { entitlements } = await import('./entitlements')
-    expect(purchaseHistory(entitlements.value).map((x) => x.id)).toContain(FULL_CAREER)
+    expect(purchaseHistory(entitlements.value).map((x) => x.id)).toContain('pack_avatar')
     setProvider(null)
   })
 })

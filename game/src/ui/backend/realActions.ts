@@ -50,6 +50,7 @@ import { POSTS_FLAG, REVIEW_FLAG, handleOf, raceCardFor, type ReviewExtras, type
 import { metaData } from './meta'
 import { commit, current, get, notify, replaceState } from './session'
 import { careerLocked } from '../../store-iap'
+import { claimFreeGems, onCareerReady } from './shopBridge'
 
 const L = (tr: string, en: string): LText => ({ tr, en })
 
@@ -58,7 +59,6 @@ const L = (tr: string, en: string): LText => ({ tr, en })
 /** Bookkeeping after time moved: history, season review, publish, autosave. */
 function afterTime(s: GameState, reports: (AdvanceReport | undefined)[]): void {
   for (const r of reports) {
-    if (r?.newSeason && careerLocked(s.calendar.season)) pendingNav.value = 'paywall'
     if (!r?.seasonEnded) continue
     const h = readHistory(s)
     const st = h.start
@@ -70,6 +70,7 @@ function afterTime(s: GameState, reports: (AdvanceReport | undefined)[]): void {
       followersGained: Math.max(0, s.life.followers - (st?.followers ?? s.life.followers)),
     }
     writeJson(s.life, REVIEW_FLAG, extras)
+    claimFreeGems(s, 'season', `season:${s.calendar.season}`)
     pendingNav.value = 'seasonEnd'
   }
   recordWeek(s)
@@ -407,6 +408,7 @@ export const realActions: GameActions = {
     recordWeek(s)
     replaceState(s)
     void saveState(s, slot, 'auto').catch((e: unknown) => console.warn('[StarPath] initial save failed', e))
+    onCareerReady()
   },
   async save(slot) {
     const s = get()
@@ -424,6 +426,7 @@ export const realActions: GameActions = {
     resetTransient()
     replaceState(r.state)
     live.resumeAfterLoad(r.state)
+    onCareerReady()
     if (r.recoveredFromBackup !== null) {
       notify(L('Kayıt dosyası bozuktu; yedekten kurtarıldı.', 'The save was damaged and has been restored from a backup.'), 'warning')
     }

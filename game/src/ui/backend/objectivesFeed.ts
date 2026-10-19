@@ -3,6 +3,7 @@
  * completion + miss feedback (toasts, queued off the match flow) and a
  * dev-only helper that force-completes an objective for the e2e suite.
  */
+import { claimFreeGems } from './shopBridge'
 import { signal } from '@preact/signals'
 import type { GameState, LText } from '../../core/types'
 import { lt as render } from '../../i18n'
@@ -96,6 +97,8 @@ export function onObjectivesCommit(s: GameState): void {
   if (!prev || prev.id !== s.meta.id || view.done < prev.done || view.failed < prev.failed) return
   const dd = view.done - prev.done
   const df = view.failed - prev.failed
+  // Free diamonds for each goal completed (the shop server dedupes by this key and caps per day).
+  for (let i = prev.done + 1; i <= view.done; i++) claimFreeGems(s, 'objective', `obj:${s.calendar.season}:${i}`)
   if (dd + df <= 0) return
   // `recent` is newest first; the first dd+df rows are what just finished.
   const fresh: Pending[] = view.recent.slice(0, dd + df).reverse().map((r) => ({ kind: r.status, title: r.title }))

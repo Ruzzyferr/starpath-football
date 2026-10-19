@@ -9,10 +9,27 @@ export interface StoreProduct {
   priceString: string
 }
 
-export type PurchaseError = 'cancelled' | 'unavailable' | 'failed'
+export type PurchaseError = 'cancelled' | 'unavailable' | 'failed' | 'offline' | 'rejected'
 export interface PurchaseResult {
   ok: boolean
   error?: PurchaseError
+}
+
+/** What the store hands back after a payment, for the shop server to verify. */
+export interface StoreReceipt {
+  productId: string
+  /** iOS StoreKit 2 signed transaction. */
+  jws?: string
+  /** Android Play Billing token. */
+  purchaseToken?: string
+  /** Dev store (no money, accepted only by a dev server). */
+  dev?: boolean
+  /** Acknowledge / consume / finish once the server has credited it. */
+  finish(): Promise<void>
+}
+
+export interface BuyResult extends PurchaseResult {
+  receipt?: StoreReceipt
 }
 
 export interface PurchaseProvider {
@@ -20,9 +37,10 @@ export interface PurchaseProvider {
   /** Real money moves through this provider. */
   readonly real: boolean
   products(): Promise<StoreProduct[]>
-  buy(id: string): Promise<PurchaseResult>
-  /** Product ids the store account already owns (non-consumables). */
-  restore(): Promise<string[]>
+  /** `accountId` (UUID) is attached to the purchase (appAccountToken) so only this account can redeem it. */
+  buy(id: string, accountId: string): Promise<BuyResult>
+  /** Receipts for what the store account owns (non-consumables, active subscriptions), to re-verify. */
+  restore(): Promise<StoreReceipt[]>
 }
 
 const DEV_STORE_KEY = 'starpath.devstore.v1'
@@ -42,17 +60,20 @@ export class DevProvider implements PurchaseProvider {
       return []
     }
   }
-  async buy(id: string): Promise<PurchaseResult> {
-    if (!PRODUCT_BY_ID[id]) return { ok: false, error: 'unavailable' }
-    try {
-      globalThis.localStorage?.setItem(DEV_STORE_KEY, JSON.stringify([...new Set([...this.read(), id])]))
-    } catch {
-      /* ignore */
+  async buy(id: string): Promise<BuyResult> {
+    const def = PRODUCT_BY_ID[id]
+    if (!def) return { ok: false, error: 'unavailable' }
+    if (!def.consumable) {
+      try {
+        globalThis.localStorage?.setItem(DEV_STORE_KEY, JSON.stringify([...new Set([...this.read(), id])]))
+      } catch {
+        /* ignore */
+      }
     }
-    return { ok: true }
+    return { ok: true, receipt: { productId: id, dev: true, finish: async () => {} } }
   }
-  async restore(): Promise<string[]> {
-    return this.read()
+  async restore(): Promise<StoreReceipt[]> {
+    return this.read().map((id) => ({ productId: id, dev: true, finish: async () => {} }))
   }
 }
 
@@ -63,10 +84,10 @@ export class UnavailableProvider implements PurchaseProvider {
   async products(): Promise<StoreProduct[]> {
     return []
   }
-  async buy(): Promise<PurchaseResult> {
+  async buy(): Promise<BuyResult> {
     return { ok: false, error: 'unavailable' }
   }
-  async restore(): Promise<string[]> {
+  async restore(): Promise<StoreReceipt[]> {
     return []
   }
 }

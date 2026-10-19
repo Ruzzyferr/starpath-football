@@ -10,6 +10,7 @@
  *   &seed=<n>               deterministic career seed
  *   &storage=memory         in-memory saves (headless testing)
  */
+import { installShopBridge } from './shopBridge'
 import { quickResolveAll } from './benchPath'
 import { commit, onCommit } from './session'
 import { installPrefsSync } from './prefsSync'
@@ -129,6 +130,7 @@ export function installRealBackend(): void {
   meta.installMeta()
   installObjectivesFeed()
   installPrefsSync()
+  installShopBridge()
   effect(() => {
     void screen.value
     flushObjectiveToasts()

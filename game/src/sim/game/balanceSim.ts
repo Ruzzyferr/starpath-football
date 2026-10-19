@@ -6,6 +6,7 @@
  *
  * Not used by production code. Deterministic per seed.
  */
+import { addGear, readGear } from '../career/gear'
 import { Rng } from '../../core/rng'
 import type { Background, GameState, Gender, Position, Role } from '../../core/types'
 import { ASSETS } from '../../data/assets'
@@ -44,6 +45,11 @@ export interface CareerConfig {
   seasons: number
   /** Start age (default 17). */
   startAge?: number
+  /**
+   * Diamond gear (docs/MONETIZASYON.md §6.3 balance check): none (free player), starter (the Starter
+   * Pack's Golden Boots once), always (Golden Boots worn for the whole career, re-bought when worn out).
+   */
+  gear?: 'none' | 'starter' | 'always'
 }
 
 /** One row per completed season (sampled at the season rollover). */
@@ -315,7 +321,9 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
     if (club && trace.clubs[trace.clubs.length - 1] !== club.name) trace.clubs.push(club.name)
   }
   note()
+  if (cfg.gear === 'starter' || cfg.gear === 'always') addGear(s.life, 'gold_boots')
   while (s.calendar.season < startSeason + cfg.seasons && guard++ < 6000) {
+    if (cfg.gear === 'always' && !readGear(s.life).eq.boots) addGear(s.life, 'gold_boots')
     const week = s.calendar.week
     const season = s.calendar.season
     // Morning bookkeeping.
