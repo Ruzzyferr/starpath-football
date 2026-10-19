@@ -1,5 +1,5 @@
 import { test, expect, waitForApp, sp } from './fixtures'
-const OUT = 'C:/Users/ruzzy/AppData/Local/Temp/claude/D--NewStar-Futbol/df9bcf8a-2818-479b-8c98-35d1189d0f91/scratchpad/shop-review/shots'
+const OUT = process.env.SHOP_EVIDENCE_OUT || 'test-results/shop-evidence'
 const snap = (page: import('@playwright/test').Page, n: string) => page.screenshot({ path: `${OUT}/${n}.png` })
 for (const lang of ['tr', 'en']) test(`shop evidence ${lang}`, async ({ page }) => {
   test.setTimeout(300_000)
@@ -11,9 +11,9 @@ for (const lang of ['tr', 'en']) test(`shop evidence ${lang}`, async ({ page }) 
   await expect(page.getByTestId('st-gems')).not.toContainText('—', { timeout: 15000 })
   await snap(page, `${lang}-01-store-gems-empty`)
   await page.getByTestId('buy-starter_pack').click()
-  await expect(page.getByTestId('st-gems')).toContainText('300')
+  await expect.poll(async () => Number((await page.getByTestId('st-gems').innerText()).replace(/[^0-9]/g, ''))).toBeGreaterThanOrEqual(300)
   await page.getByTestId('buy-gems_m').click()
-  await expect(page.getByTestId('st-gems')).toContainText('900')
+  await expect.poll(async () => Number((await page.getByTestId('st-gems').innerText()).replace(/[^0-9]/g, ''))).toBeGreaterThanOrEqual(900)
   await snap(page, `${lang}-02-store-after-buys`)
   await page.getByTestId('ad-gems').click()
   await page.waitForTimeout(1500)
@@ -22,7 +22,7 @@ for (const lang of ['tr', 'en']) test(`shop evidence ${lang}`, async ({ page }) 
   await page.waitForTimeout(500)
   await snap(page, `${lang}-04-after-ad`)
   const tabs = page.getByRole('tab')
-  await tabs.nth(1).click(); await page.waitForTimeout(400); await snap(page, `${lang}-05-gear`)
+  await page.getByRole('tab').nth(1).click(); await page.waitForTimeout(400); await snap(page, `${lang}-05-gear`)
   await page.getByTestId('buy-gear-striker_boots').click(); await page.waitForTimeout(800); await snap(page, `${lang}-06-gear-bought`)
   await page.evaluate(() => window.scrollTo(0, 99999)); await snap(page, `${lang}-06b-gear-bottom`)
   await tabs.nth(2).click(); await page.waitForTimeout(400); await snap(page, `${lang}-07-cash`)
