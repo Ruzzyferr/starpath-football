@@ -1,13 +1,14 @@
 ---
 version: 1.0
-name: StarPath-Football-site
+name: Kickborn-site
 description: |
-  A night-match marketing site for StarPath Football, built around one shape taken from the app icon:
-  the dot. Five green dots carry a ball to a gold star on the icon; on the site the dot is the motif at
+  A night-match marketing site for Kickborn, built around one idea taken from the name: born to kick.
+  The identity is the strike: the ball leaving the boot and its flight into the net, drawn as a streak
+  of green light. The streak is the motif at
   every scale, from a 3D path in the night sky over the stadium to the bullet of a list. A full-screen
   WebGL stadium carries the first two screens (the hero and a playable penalty); the sections after it
   are flat fields of the game's own night palette with real in-game pictures. Pure night navy ground,
-  one green action colour, one gold for the star and for awards, white type. No gradients, no shadows
+  one green action colour (the streak, the action), one gold for awards and the free-play field, white type. No gradients, no shadows
   at rest, no glass, no monospace, no eyebrows, no hairlines.
   References pulled with the getdesign CLI and read for structure and discipline: nike (photography
   speaks, chrome stays quiet, one action colour, pill CTAs, huge tight display type) and playstation
@@ -21,9 +22,9 @@ colors:
   surface-2: "#1b2740"     # game --surface-2
   ink: "#f2f5fa"           # game --text-hi: all running text
   ink-soft: "#b4c0d6"      # game --text-mid: secondary notes only (≥ 4.5:1 on ground and surface)
-  action: "#1fd47a"        # game --brand-pitch: the dots, the primary button, the selected state
+  action: "#1fd47a"        # game --brand-pitch: the streak, BORN in the wordmark, the primary button, the selected state
   action-ink: "#04140b"    # game --text-on-pitch
-  star: "#ffc83d"          # game --accent-gold: the star, awards, the second field
+  star: "#ffc83d"          # game --accent-gold: awards, the moment ring, the free-play field (name kept for the token only)
   star-ink: "#2a1a00"      # game --text-on-gold
   pitch: "#14532b"         # night grass, the moments field
   pitch-ink: "#f2f5fa"
@@ -84,7 +85,7 @@ components:
   dot:
     backgroundColor: "{colors.action}"
     rounded: "{rounded.full}"
-    sizes: [0.42em list bullet, 14px HUD, 64px footer mark, 3D path in the sky]
+    sizes: [0.42em list bullet, 18px score HUD, the timer dot on the moment ring]
   moment-frame:
     shape: circle
     image: real in-game frame, object-fit cover
@@ -97,25 +98,24 @@ components:
 through as you scroll (igloo.inc's principle): from the stars over the stadium, down over the crowd to
 the penalty spot (the game), along the touchline (key moments), through the players' tunnel into the
 dressing room (career), out to the city at night (life off the pitch), up over the city and the
-stadium (fair play, platforms), and back to the stars, where the StarPath mark is a constellation
-(footer). Sections are overlays anchored to stops on that path. Text always sits on a calm zone: over
+stadium (fair play, platforms), and up over the lit stadium for the close (footer). Sections are overlays anchored to stops on that path. Text always sits on a calm zone: over
 sky, or on a neutral scrim panel `rgb(7 11 20 / 0.8)` (the scrim is the one exception the house rules
 allow under text on a picture), never on busy geometry. Without WebGL the page falls back to the flat
 fields described below.
 
 
-StarPath Football's own app icon is the brief: a white ball, five green dots, a gold star on night
-navy. The site takes that one shape, the dot, and nothing else. The first two screens are a WebGL
-stadium at night where the five dots rise over the goal into the sky to the star; as the visitor
-scrolls, the camera comes down from the stand to the penalty spot and the dots shrink into the aim
+The name is the brief: Kickborn, born to kick. The hero is the footballer and the strike. The first
+screen is a low camera beside the penalty taker: he runs up and strikes, and the ball flies into the
+top corner on a streak of green light while the keeper goes the wrong way, again and again. As the
+visitor scrolls, the camera moves behind the ball and the same kick becomes theirs: the aim
 line of a penalty the visitor takes with a thumb, a mouse or the keyboard. After that the page is a run
 of flat, full-bleed fields in the game's palette, each carrying real pictures from the game.
 
 **Key characteristics**
 - Full-bleed at every width (320px to ultrawide): fields run edge to edge, the grid stretches, only text
   measures are capped (in `ch`). No centred max-width container.
-- One action colour (`{colors.action}`) for the primary button, the dots and the selected state. Gold
-  (`{colors.star}`) is the star and the awards, and one field.
+- One action colour (`{colors.action}`) for the streak, the primary button and the selected state. Gold
+  (`{colors.star}`) is for awards, the moment ring and one field.
 - Display type is Barlow Condensed 700 in sentence case, very large, tight; text is Inter. Two faces.
 - Pictures are the game's own: live match frames captured from the game, crops of real screens, one
   raw gameplay clip. No stock, no renders presented as the app.
@@ -123,8 +123,8 @@ of flat, full-bleed fields in the game's palette, each carrying real pictures fr
 ## Colors
 
 ### Brand
-- **Action** `{colors.action}` `#1fd47a`: the dots, the primary button, the active list item marker.
-- **Star** `{colors.star}` `#ffc83d`: the star, the moment ring, the free-play field. Never a button
+- **Action** `{colors.action}` `#1fd47a`: the strike streak, BORN, the primary button, the active list marker.
+- **Gold** `{colors.star}` `#ffc83d`: the moment ring, the free-play field. Never a button
   label colour on the ground.
 
 ### Surface
@@ -136,6 +136,13 @@ of flat, full-bleed fields in the game's palette, each carrying real pictures fr
 ### Text
 - Running text is `{colors.ink}` at full strength. `{colors.ink-soft}` is only for secondary notes.
 - On green and gold fields text is the field's own dark ink (`action-ink`, `star-ink`).
+
+## Wordmark
+
+KICKBORN in Barlow Condensed 700 caps: KICK in `{colors.ink}`, BORN in `{colors.action}`, as in the game's
+logo. It is a brand asset (the bar and the footer), not a styled headline word; headlines stay one colour.
+There is no symbol: the wordmark is the mark. The icon slots (favicon, touch icon, OG image) carry the
+wordmark stacked KICK / BORN until the chosen Kickborn key art replaces them (`public/media/brand/`).
 
 ## Typography
 
@@ -152,7 +159,7 @@ of flat, full-bleed fields in the game's palette, each carrying real pictures fr
 - Sections are `{spacing.section}` apart, or butt edge to edge when they are fields of colour.
 - Neighbouring sections never share a composition: sky title over a 3D scene → a 3D game with a HUD →
   a field with a giant control → a 50/50 split with a slider → a tile board → two unequal fields →
-  a row of three tiles → the mark built large.
+  a row of three tiles → the wordmark built large over the lit stadium.
 
 ## Elevation & Depth
 
@@ -163,8 +170,9 @@ the result panel of the penalty game, which floats over the 3D scene.
 
 - `{rounded.full}` for buttons, dots, the moment frame and the switch; `{rounded.none}` for every
   field, tile and screenshot frame. Two radii, nothing in between.
-- The motif: the dot. It appears as the 3D path over the stadium, the aim line in the penalty game,
-  the selected marker of every list, the circular frame of the moment pictures and the footer mark.
+- The motif: the strike streak, a ribbon of green light from the boot to the net. It runs in the
+  hero's looping kick, behind every penalty the visitor takes, and on the tactics board in the
+  dressing room. Round dots stay only as plain UI (list marker, score dots, the moment timer).
 
 ## Components
 
@@ -186,7 +194,7 @@ button. Its label sits under it in the game's own words.
 ### Do
 - Use real pictures from the game at large size; caption them with what they are.
 - Keep every headline to two lines at every width; test 320px.
-- Use the dot for every marker, bullet and frame.
+- Let the strike carry the identity: the streak, the boot, the ball into the net.
 - Let fields run to the screen edges at 2560px and wider.
 
 ### Don't
@@ -213,7 +221,8 @@ screen, so the page can still be scrolled from the top band on a phone.
 
 ### Motion
 Camera and entrances follow `prefers-reduced-motion`: with it on, the camera cuts between its two
-positions, entrances are opacity only, the dots stop pulsing, the clip shows its poster.
+positions, the hero is a still of the strike (streak drawn, ball in the net), entrances are opacity
+only, the moments do not auto-advance, the clip shows its poster.
 
 ## Iteration Guide
 

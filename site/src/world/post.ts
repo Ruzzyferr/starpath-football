@@ -59,7 +59,7 @@ export class Post {
     composer.renderTarget2.texture.type = HalfFloatType
     composer.addPass(new RenderPass(this.scene, this.camera))
     if (this.tier === 'high') {
-      this.bokeh = new BokehPass(this.scene, this.camera, { focus: 40, aperture: 0.00011, maxblur: 0.006 })
+      this.bokeh = new BokehPass(this.scene, this.camera, { focus: 40, aperture: 0.00011, maxblur: 0.011 })
       composer.addPass(this.bokeh)
     }
     const scale = this.tier === 'high' ? 0.5 : 0.35
@@ -82,8 +82,11 @@ export class Post {
     this.composer?.setSize(w, h)
   }
 
-  setFocus(distance: number): void {
-    if (this.bokeh) (this.bokeh.uniforms as Record<string, { value: number }>).focus!.value = distance
+  setFocus(distance: number, aperture = 0.00011): void {
+    if (!this.bokeh) return
+    const u = this.bokeh.uniforms as Record<string, { value: number }>
+    u.focus!.value = distance
+    u.aperture!.value = aperture
   }
 
   render(time: number): void {

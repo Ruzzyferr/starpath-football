@@ -75,7 +75,8 @@ function setupMoments(): void {
   const factMobile = document.createElement('p')
   factMobile.className = 'moment-fact-mobile'
   factMobile.setAttribute('aria-live', 'polite')
-  $('.moments-copy', section)!.appendChild(factMobile)
+  // The active moment's line sits under the list, before the pause control.
+  auto.before(factMobile)
   let swapTimer = 0
   let index = 0
   let userPaused = reduced.matches

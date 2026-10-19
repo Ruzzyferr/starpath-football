@@ -7,7 +7,7 @@ import {
   CircleGeometry,
   Color,
   DirectionalLight,
-  ExtrudeGeometry,
+  TorusGeometry,
   FogExp2,
   Group,
   HemisphereLight,
@@ -30,7 +30,8 @@ import { buildPlayer, HERO_KIT, KEEPER_KIT, KICK_CONTACT_U, poseKeeperDive, pose
 import { sample, STOPS } from './path'
 import { Post, type Tier } from './post'
 import { buildRooms } from './rooms'
-import { buildSky, starShape, type Sky } from './sky'
+import { buildSky, type Sky } from './sky'
+import { Streak } from './streak'
 import { buildStadium, type Stadium } from './stadium'
 import { canvasTexture } from './textures'
 
@@ -84,7 +85,11 @@ export class World {
   private readonly keeperPivot = new Group()
   private readonly striker: Rig
   private readonly aimDots: Mesh[] = []
-  private readonly aimStar: Mesh
+  private readonly aimRing: Mesh
+  private readonly streak: Streak
+  /** The hero's looping strike (the identity: born to kick). */
+  private demo = { on: false, timer: 1.2, n: 0 }
+  private staticStrike = false
   private readonly ray = new Raycaster()
   private leg = 0
   private legT = 0
@@ -153,13 +158,11 @@ export class World {
       this.scene.add(d)
       this.aimDots.push(d)
     }
-    const starGeo = new ExtrudeGeometry(starShape(1, 0.46), { depth: 0.2, bevelEnabled: false })
-    starGeo.center()
-    this.aimStar = new Mesh(starGeo, new MeshBasicMaterial({ color: 0xffc83d, depthTest: false }))
-    this.aimStar.scale.setScalar(0.24)
-    this.aimStar.visible = false
-    this.aimStar.renderOrder = 11
-    this.scene.add(this.aimStar)
+    this.aimRing = new Mesh(new TorusGeometry(0.26, 0.035, 8, 40), new MeshBasicMaterial({ color: 0x1fd47a, depthTest: false }))
+    this.aimRing.visible = false
+    this.aimRing.renderOrder = 11
+    this.scene.add(this.aimRing)
+    this.streak = new Streak(this.scene)
 
     const tier: Tier = opts.reducedMotion ? 'low' : opts.lowPower ? 'mid' : 'high'
     this.post = new Post(this.renderer, this.scene, this.camera, tier)
@@ -236,7 +239,7 @@ export class World {
     this.camera.fov = s.fov
     this.camera.updateProjectionMatrix()
     this.camera.lookAt(s.look)
-    this.post.setFocus(s.focus)
+    this.post.setFocus(s.focus, s.aperture)
   }
 
   start(): void {
@@ -255,7 +258,7 @@ export class World {
         // One bad frame must not stop the world; report it once.
         if (!this.reported) {
           this.reported = true
-          console.warn('[StarPath] frame skipped', e)
+          console.warn('[Kickborn] frame skipped', e)
         }
       }
       this.watchFrameRate(dt)
@@ -306,8 +309,10 @@ export class World {
     this.sky.update(this.clock, reduced)
     this.stadium.update(reduced ? 0 : this.clock, dt, this.camera.position.y)
     this.city.update(this.clock, reduced ? 0 : dt)
+    this.updateDemo(dt)
     this.updatePlayers(dt)
     this.updateFlight(dt)
+    this.streak.update(dt, this.camera)
   }
 
   // ───────────── Players ─────────────
@@ -329,9 +334,10 @@ export class World {
         const p = this.pendingShot
         this.pendingShot = null
         this.flight = { r: p.r, t: 0, curl: p.curl, after: null, done: false }
+        this.streak.start(this.ball.position)
         this.keeperDive = { side: p.r.keeperSide, x: p.r.diveX, y: p.r.diveY, t: 0, start: p.r.keeperStart }
       }
-    } else poseShooterIdle(this.striker, still ? 0 : this.clock)
+    } else if (!this.staticStrike) poseShooterIdle(this.striker, still ? 0 : this.clock)
 
     if (this.keeperDive) {
       const kd = this.keeperDive
@@ -379,7 +385,7 @@ export class World {
   showAim(target: { x: number; y: number } | null, power = 0.8, curl = 0): void {
     const on = !!target && !this.busy
     for (const d of this.aimDots) d.visible = on
-    this.aimStar.visible = on
+    this.aimRing.visible = on
     if (!target || !on) return
     const n = this.aimDots.length
     for (let i = 0; i < n; i++) {
@@ -387,7 +393,7 @@ export class World {
       this.aimDots[i]!.position.copy(this.pathPoint(s, target.x, target.y, curl, power))
       this.aimDots[i]!.scale.setScalar(0.06 + s * 0.05)
     }
-    this.aimStar.position.set(target.x, target.y, 0.05)
+    this.aimRing.position.set(target.x, target.y, 0.05)
   }
 
   private pathPoint(s: number, x: number, y: number, curl: number, power: number): Vector3 {
@@ -418,8 +424,11 @@ export class World {
     if (f.t <= r.t) {
       ball.position.copy(this.pathPoint(f.t / r.t, r.x, r.y, f.curl, r.speed / 28))
       ball.rotation.x -= dt * 30
+      this.streak.push(ball.position)
     } else {
       if (!f.after) {
+        this.streak.push(ball.position)
+        this.streak.end()
         const o = r.outcome
         f.after = o === 'goal' ? new Vector3(r.x * 0.08, -0.6, -9) : o === 'saved' || o === 'weak' ? new Vector3(-r.x * 0.9 + (Math.random() - 0.5) * 3, 2.5, 7) : o === 'post' ? new Vector3(-Math.sign(r.x) * 3, 1.2, 6) : new Vector3(r.x * 0.15, o === 'over' ? 0.5 : -0.2, -14)
         if (o === 'goal') this.stadium.dentNet(r.x, r.y)
@@ -456,6 +465,55 @@ export class World {
     this.placeStriker(0)
     this.keeperPivot.position.set(0, 0, 0.4)
     this.keeperPivot.rotation.set(0, 0, 0)
+    this.demo.on = false
+  }
+
+  /** The hero shows the strike: a scripted penalty into a top or bottom corner, the keeper beaten. */
+  private demoShot(): ShotResult {
+    const n = this.demo.n++
+    const side = n % 2 ? -1 : 1
+    const high = n % 3 !== 2
+    return { outcome: 'goal', x: side * 2.75, y: high ? 1.95 : 0.45, t: 0.46, speed: 26, keeperSide: (-side) as -1 | 1, diveX: -side * 2.3, diveY: high ? 1.2 : 0.6, keeperStart: 0.1 }
+  }
+
+  private updateDemo(dt: number): void {
+    const inHero = this.leg === 0 && this.legT < 0.3
+    if (this.opts.reducedMotion) {
+      // A still of the strike: the striker through the ball, the streak drawn into the top corner.
+      if (inHero && !this.staticStrike) {
+        this.staticStrike = true
+        const pts: Vector3[] = []
+        for (let i = 0; i <= 60; i++) pts.push(this.pathPoint(i / 60, 2.75, 1.95, 0.25, 0.95))
+        this.streak.setPath(pts)
+        this.ball.position.copy(pts[pts.length - 1]!)
+        poseShooterKick(this.striker, 0.8)
+        this.placeStriker(2.3)
+      } else if (!inHero && this.staticStrike) {
+        this.staticStrike = false
+        this.streak.clear()
+        this.resetKick()
+      }
+      return
+    }
+    if (!inHero) {
+      if (this.demo.on) {
+        this.resetKick()
+        this.streak.clear()
+      }
+      this.demo.timer = 0.8
+      return
+    }
+    if (this.busy) return
+    this.demo.timer -= dt
+    if (this.demo.timer > 0) return
+    this.demo.timer = 2.4
+    this.demo.on = true
+    this.kick(this.demoShot(), 0.25)
+  }
+
+  /** Run the world forward (for stills). */
+  advance(seconds: number, step = 1 / 60): void {
+    for (let t = 0; t < seconds; t += step) this.update(step)
   }
 
   dispose(): void {

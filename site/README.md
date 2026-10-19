@@ -1,6 +1,6 @@
-# StarPath Football site
+# Kickborn site
 
-The marketing site for https://starpath.swiip.app: a full-screen WebGL night stadium (three.js) with a
+The marketing site for https://kickborn.swiip.app (starpath.swiip.app is an alias): a full-screen WebGL night stadium (three.js) with a
 playable penalty, then the key moments, the career, life off the pitch, fair play, platforms. Turkish at
 `/`, English at `/en/`. The real game, built for the browser, at `/play/`.
 
@@ -23,7 +23,8 @@ site/
     figures.ts          low-poly players: jointed rig, shooter idle/run-up/strike, keeper stance/dives
     rooms.ts            tunnel and dressing room (lockers, shirts, tactics board)
     city.ts             night city: lit towers, streets, car lights, billboards with real game screens
-    sky.ts              stars, moon, the StarPath mark as a constellation
+    sky.ts              stars and moon
+    streak.ts           the strike streak (the identity): a ribbon of light from the boot
     post.ts             post-processing tiers: high (bloom, depth of field, vignette, grain),
                         mid (phones: lighter bloom, vignette, grain), low (reduced motion or low FPS)
   src/penalty.ts        penalty rules (from game/src/game/kick.ts + ai.ts), shared by 3D and fallback
@@ -32,6 +33,11 @@ site/
                         posters rendered from the 3D scene (no-WebGL fallback), icons, og.jpg
   scripts/build-play.mjs  builds ../game for the web into dist/play
   test/penalty.test.ts  node --test test/penalty.test.ts
+# Viewport matrix (phones portrait/landscape, tablets, desktops to 3440, tall monitors): no overflow,
+# no text off-screen, no scrim over 60% of the screen, every heading fully visible. Needs a running
+# preview; writes screenshots for a subset. Exit 1 on any problem. --lang=en, --nowebgl, --only=WxH,...
+npm run build && npm run preview &
+node test/viewports.mjs http://localhost:5794/ viewport-shots
 ```
 
 ## Develop
@@ -73,32 +79,33 @@ From the repo root on your machine (Git Bash):
 # 1. Build
 cd site && npm run build:all && cd ..
 
-# 2. Pack and upload the site
-tar -C site/dist -czf starpath-site.tgz .
-scp -i ~/.ssh/starpath_api starpath-site.tgz root@206.189.63.64:/tmp/
-scp -i ~/.ssh/starpath_api server/deploy/Caddyfile root@206.189.63.64:/tmp/Caddyfile.new
+# 2. Pack and upload the site and the Caddyfile over ssh stdin (/tmp on the server is not writable)
+SSH="ssh -i ~/.ssh/starpath_api root@206.189.63.64"
+tar -C site/dist -czf kickborn-site.tgz .
+$SSH 'mkdir -p /root/deploy && cat > /root/deploy/kickborn-site.tgz' < kickborn-site.tgz
+$SSH 'cat > /root/deploy/Caddyfile.new' < server/deploy/Caddyfile
+$SSH 'caddy validate --config /root/deploy/Caddyfile.new --adapter caddyfile'
 
-# 3. On the server: back up, swap the old site build (only the folders this build owns), extract
-ssh -i ~/.ssh/starpath_api root@206.189.63.64 '
+# 3. On the server: back up, swap the old site build (only the files this build owns), extract, reload
+$SSH '
   set -e
+  stamp=$(date +%Y%m%d-%H%M)
   mkdir -p /root/site-backups
-  tar -czf /root/site-backups/starpath-site-$(date +%Y%m%d-%H%M).tgz -C /srv/starpath-site .
+  tar -czf /root/site-backups/starpath-site-$stamp.tgz -C /srv/starpath-site .
   cd /srv/starpath-site
-  rm -rf assets en media play          # previous site build only; legal/, support.html, app-ads.txt stay
-  tar -xzf /tmp/starpath-site.tgz -C /srv/starpath-site
+  rm -rf assets en media play favicon.svg   # previous site build only; legal/, support.html, app-ads.txt stay
+  tar -xzf /root/deploy/kickborn-site.tgz -C /srv/starpath-site
   chmod -R a+rX /srv/starpath-site
-  ls /srv/starpath-site                # expect: assets en favicon.svg index.html legal media play support.html app-ads.txt
-  caddy validate --config /tmp/Caddyfile.new --adapter caddyfile
-  cp /etc/caddy/Caddyfile /root/site-backups/Caddyfile.$(date +%Y%m%d-%H%M)
-  cp /tmp/Caddyfile.new /etc/caddy/Caddyfile
+  cp /etc/caddy/Caddyfile /root/site-backups/Caddyfile.$stamp
+  cp /root/deploy/Caddyfile.new /etc/caddy/Caddyfile
   systemctl reload caddy
 '
 
 # 4. Smoke test
 for u in / /en/ /play/ /legal/privacy-tr.html /legal/terms-en.html /support /app-ads.txt /v1/health; do
-  printf "%-24s" "$u"; curl -s -o /dev/null -w "%{http_code}\n" "https://starpath.swiip.app$u"
+  printf "%-24s" "$u"; curl -s -o /dev/null -w "%{http_code}\n" "https://kickborn.swiip.app$u"
 done
-curl -sI https://starpath.swiip.app/assets/ | head -1   # 404 is fine; hashed files are cached for a year
+curl -sI https://kickborn.swiip.app/assets/ | head -1   # 404 is fine; hashed files are cached for a year
 ```
 
 All of the above must return 200 (`/v1/health` 200 when the shop server is up). With rsync (WSL, macOS,
@@ -125,12 +132,26 @@ saved `Caddyfile.<stamp>` back, then `systemctl reload caddy`.
 
 ## Pictures
 
-All pictures are StarPath Football's own: live frames captured from the game's highlight player
+All pictures are Kickborn's own: live frames captured from the game's highlight player
 (`game/match-demo.html`, seed 3), crops of the owner's store screenshots
-(Desktop/StarPath-Store, iPhone 6.9" TR/EN), one raw gameplay clip recorded from the same player, and
+(the current game build, captured from its dev server at 430×932), one raw gameplay clip recorded from the same player, and
 stills rendered from the site's own three.js scene. No external or stock images, so there are no
 credits to show.
 
 To re-render the posters after changing the scene: `npm run dev`, open
 `/dev/still.html?leg=0` (hero) or `?leg=1` (play) at 1920×1080 / 720×1560 / 1600×900, screenshot, and save
 as `public/media/poster-hero.webp`, `poster-hero-phone.webp`, `poster-play.webp`.
+
+Server-side names (`/srv/starpath-site`, `~/.ssh/starpath_api`) predate the Kickborn rename and are kept as they are.
+
+## Brand icon slot
+
+Until the Kickborn key art is chosen, every icon slot carries the wordmark (KICK white over BORN
+green on night navy). To swap in the key art, replace these files, keeping names and sizes:
+
+- `public/media/brand/mark-96.png` (favicon), `mark-180.png` (apple-touch-icon), `mark-192.png`,
+  `mark-512.png` (square, opaque);
+- `public/media/og.jpg` (1200×630, the social card).
+
+The nav and the footer use the text wordmark; add the art next to it in `index.template.html`
+(`.wordmark`) if the chosen piece works small.

@@ -7,20 +7,21 @@
     <meta name="description" content="{{description}}" />
     <meta name="theme-color" content="#070b14" />
     <meta name="color-scheme" content="dark" />
-    <link rel="canonical" href="https://starpath.swiip.app{{path}}" />
-    <link rel="alternate" hreflang="tr" href="https://starpath.swiip.app/" />
-    <link rel="alternate" hreflang="en" href="https://starpath.swiip.app/en/" />
-    <link rel="alternate" hreflang="x-default" href="https://starpath.swiip.app/" />
+    <link rel="canonical" href="https://kickborn.swiip.app{{path}}" />
+    <link rel="alternate" hreflang="tr" href="https://kickborn.swiip.app/" />
+    <link rel="alternate" hreflang="en" href="https://kickborn.swiip.app/en/" />
+    <link rel="alternate" hreflang="x-default" href="https://kickborn.swiip.app/" />
     <meta property="og:type" content="website" />
-    <meta property="og:site_name" content="StarPath Football" />
+    <meta property="og:site_name" content="Kickborn" />
     <meta property="og:title" content="{{title}}" />
     <meta property="og:description" content="{{description}}" />
-    <meta property="og:url" content="https://starpath.swiip.app{{path}}" />
+    <meta property="og:url" content="https://kickborn.swiip.app{{path}}" />
     <meta property="og:locale" content="{{locale}}" />
-    <meta property="og:image" content="https://starpath.swiip.app/media/og.jpg" />
+    <meta property="og:image" content="https://kickborn.swiip.app/media/og.jpg" />
     <meta name="twitter:card" content="summary_large_image" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="apple-touch-icon" href="/media/icon-180.png" />
+    <!-- Brand icon slot: replace the files in /media/brand/ when the Kickborn key art is chosen (see README). -->
+    <link rel="icon" type="image/png" sizes="96x96" href="/media/brand/mark-96.png" />
+    <link rel="apple-touch-icon" href="/media/brand/mark-180.png" />
     <link rel="preload" as="image" href="/media/poster-hero.webp" imagesrcset="/media/poster-hero-phone.webp 720w, /media/poster-hero.webp 1920w" imagesizes="100vw" fetchpriority="high" />
     <script>document.documentElement.classList.add('js')</script>
     <link rel="stylesheet" href="/src/styles.css" />
@@ -36,8 +37,7 @@
 
     <header class="bar">
       <a class="wordmark" href="{{path}}#top">
-        <img src="/media/icon-96.png" width="40" height="40" alt="" />
-        <span translate="no">StarPath Football</span>
+        <span class="brand" translate="no">{{brandKick}}<span class="brand-born">{{brandBorn}}</span></span>
       </a>
       <nav class="bar-nav" aria-label="{{navMoments}}, {{navCareer}}, {{navLife}}">
         <a href="#anlar">{{navMoments}}</a>
@@ -107,9 +107,12 @@
       </section>
 
       <section id="anlar" class="moments" data-mode="attack" aria-labelledby="moments-title">
-        <div class="moments-copy panel">
+        <div class="moments-copy plates">
+          <div class="panel plate-head">
           <h2 id="moments-title" class="head reveal"><span class="t-attack">{{momentsTitleAttack}}</span><span class="t-keep">{{momentsTitleKeep}}</span></h2>
           <p class="moments-lead reveal">{{momentsLead}}</p>
+          </div>
+          <div class="panel plate-body">
           <ul class="moment-list reveal" aria-label="{{momentsListLabel}}" data-cycle>
             <li data-set="attack"><button type="button" data-moment="penalty" aria-pressed="true">{{m_penalty}}</button><span class="fact">{{m_penalty_fact}}</span></li>
             <li data-set="attack"><button type="button" data-moment="one_on_one" aria-pressed="false">{{m_one_on_one}}</button><span class="fact">{{m_one_on_one_fact}}</span></li>
@@ -121,6 +124,7 @@
             <li data-set="keep"><button type="button" data-moment="gk_1v1" aria-pressed="false">{{m_gk_1v1}}</button><span class="fact">{{m_gk_1v1_fact}}</span></li>
           </ul>
           <button type="button" class="auto-toggle" aria-pressed="false" data-auto-toggle hidden><span class="t-pause">{{momentsAutoPause}}</span><span class="t-play">{{momentsAutoPlay}}</span></button>
+          </div>
         </div>
         <div class="moment-stage reveal">
           <button type="button" class="big-control" aria-label="{{momentsToggleLabel}}">
@@ -132,48 +136,52 @@
       </section>
 
       <section id="kariyer" class="career" aria-labelledby="career-title">
-        <div class="career-text panel">
+        <div class="career-text plates">
+          <div class="panel plate-head">
           <h2 id="career-title" class="head reveal">{{careerTitle}}</h2>
           <p class="career-lead reveal">{{careerLead}}</p>
+          </div>
+          <div class="panel plate-body">
           <div class="stages reveal">
             <article class="stage is-on" data-stage="1"><h3 class="clause">{{stage1Clause}}</h3><p>{{stage1Body}}</p></article>
             <article class="stage" data-stage="2"><h3 class="clause">{{stage2Clause}}</h3><p>{{stage2Body}}</p></article>
             <article class="stage" data-stage="3"><h3 class="clause">{{stage3Clause}}</h3><p>{{stage3Body}}</p></article>
             <article class="stage" data-stage="4"><h3 class="clause">{{stage4Clause}}</h3><p>{{stage4Body}}</p></article>
           </div>
+          <div class="career-range">
+            <div class="range-wrap">
+              <span class="range-track"></span><span class="range-fill"></span>
+              <input type="range" min="1" max="4" step="1" value="1" aria-label="{{careerRangeLabel}}" aria-valuetext="{{stage1}}" data-stage-names="{{stage1}}|{{stage2}}|{{stage3}}|{{stage4}}" />
+            </div>
+            <ol class="stage-names">
+              <li><button type="button" data-go="1" aria-current="step">{{stage1}}</button></li>
+              <li><button type="button" data-go="2">{{stage2}}</button></li>
+              <li><button type="button" data-go="3">{{stage3}}</button></li>
+              <li><button type="button" data-go="4">{{stage4}}</button></li>
+            </ol>
+          </div>
+          </div>
         </div>
         <div class="career-screen reveal">
-          <img class="screen is-on" data-stage="1" src="/media/screens/{{lang}}-2.webp" alt="{{stage1Alt}}" width="720" height="1414" loading="lazy" decoding="async" />
-          <img class="screen" data-stage="2" src="/media/screens/{{lang}}-3.webp" alt="{{stage2Alt}}" width="720" height="1414" loading="lazy" decoding="async" />
-          <img class="screen" data-stage="3" src="/media/screens/{{lang}}-4.webp" alt="{{stage3Alt}}" width="720" height="1414" loading="lazy" decoding="async" />
-          <img class="screen" data-stage="4" src="/media/screens/{{lang}}-6.webp" alt="{{stage4Alt}}" width="720" height="1414" loading="lazy" decoding="async" />
-        </div>
-        <div class="career-range">
-          <div class="range-wrap">
-            <span class="range-track"></span><span class="range-fill"></span>
-            <input type="range" min="1" max="4" step="1" value="1" aria-label="{{careerRangeLabel}}" aria-valuetext="{{stage1}}" data-stage-names="{{stage1}}|{{stage2}}|{{stage3}}|{{stage4}}" />
-          </div>
-          <ol class="stage-names">
-            <li><button type="button" data-go="1" aria-current="step">{{stage1}}</button></li>
-            <li><button type="button" data-go="2">{{stage2}}</button></li>
-            <li><button type="button" data-go="3">{{stage3}}</button></li>
-            <li><button type="button" data-go="4">{{stage4}}</button></li>
-          </ol>
+          <img class="screen is-on" data-stage="1" src="/media/screens/{{lang}}-2.webp" alt="{{stage1Alt}}" width="720" height="1561" loading="lazy" decoding="async" />
+          <img class="screen" data-stage="2" src="/media/screens/{{lang}}-3.webp" alt="{{stage2Alt}}" width="720" height="1561" loading="lazy" decoding="async" />
+          <img class="screen" data-stage="3" src="/media/screens/{{lang}}-4.webp" alt="{{stage3Alt}}" width="720" height="1561" loading="lazy" decoding="async" />
+          <img class="screen" data-stage="4" src="/media/screens/{{lang}}-6.webp" alt="{{stage4Alt}}" width="720" height="1561" loading="lazy" decoding="async" />
         </div>
       </section>
 
       <section id="hayat" class="life" aria-labelledby="life-title">
         <div class="life-head panel"><h2 id="life-title" class="head reveal">{{lifeTitle}}</h2><p class="life-lead reveal">{{lifeLead}}</p></div>
         <figure class="reveal tile t-event">
-          <div class="shot"><img src="/media/screens/{{lang}}-5.webp" alt="{{lifeEventAlt}}" width="720" height="1414" loading="lazy" decoding="async" /></div>
+          <div class="shot"><img src="/media/screens/{{lang}}-5.webp" alt="{{lifeEventAlt}}" width="720" height="1561" loading="lazy" decoding="async" /></div>
           <figcaption><b>{{lifeEventName}}</b> {{lifeEventLine}}</figcaption>
         </figure>
         <figure class="reveal tile t-money">
-          <div class="shot"><img src="/media/screens/{{lang}}-6.webp" alt="{{lifeMoneyAlt}}" width="720" height="1414" loading="lazy" decoding="async" /></div>
+          <div class="shot"><img src="/media/screens/{{lang}}-6.webp" alt="{{lifeMoneyAlt}}" width="720" height="1561" loading="lazy" decoding="async" /></div>
           <figcaption><b>{{lifeMoneyName}}</b> {{lifeMoneyLine}}</figcaption>
         </figure>
         <figure class="reveal tile t-fame">
-          <div class="shot"><img src="/media/screens/{{lang}}-2.webp" alt="" width="720" height="1414" loading="lazy" decoding="async" /></div>
+          <div class="shot"><img src="/media/screens/{{lang}}-2.webp" alt="" width="720" height="1561" loading="lazy" decoding="async" /></div>
           <figcaption><b>{{lifeFameName}}</b> {{lifeFameLine}}</figcaption>
         </figure>
         <div class="reveal tile t-offline">
@@ -241,17 +249,7 @@
     </main>
 
     <footer id="foot" class="foot" aria-labelledby="foot-title">
-      <svg class="mark reveal" viewBox="0 0 1200 300" role="img" aria-label="{{footerMarkLabel}}">
-        <circle class="m-ball" cx="110" cy="210" r="86" />
-        <path class="m-seam" d="M110 168 L150 197 L135 244 L85 244 L70 197 Z" />
-        <circle class="m-dot" cx="268" cy="168" r="30" />
-        <circle class="m-dot" cx="410" cy="134" r="30" />
-        <circle class="m-dot" cx="552" cy="110" r="30" />
-        <circle class="m-dot" cx="694" cy="96" r="30" />
-        <circle class="m-dot" cx="836" cy="92" r="30" />
-        <path class="m-star" d="M1046 4 L1080 78 L1160 86 L1100 140 L1118 220 L1046 178 L974 220 L992 140 L932 86 L1012 78 Z" />
-      </svg>
-      <h2 id="foot-title" class="foot-name reveal" translate="no">{{footerTitle}}</h2>
+      <h2 id="foot-title" class="foot-name reveal" translate="no">{{brandKick}}<span class="brand-born">{{brandBorn}}</span></h2>
       <div class="foot-cols reveal">
         <div>
           <h3>{{footerGame}}</h3>

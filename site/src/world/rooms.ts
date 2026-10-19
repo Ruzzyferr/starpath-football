@@ -1,7 +1,7 @@
 /**
  * The players' tunnel under the west stand and the home dressing room behind it: lockers with the
  * squad's shirts (the 10 is Arda, the game's default hero), a bench, a tactics board drawn with the
- * StarPath dots, warm ceiling light. Tunnel: x -34 .. -56 at z 52.5. Room: x -56 .. -70, z 45 .. 60.
+ * Kickborn dots, warm ceiling light. Tunnel: x -34 .. -56 at z 52.5. Room: x -56 .. -70, z 45 .. 60.
  */
 import { AdditiveBlending, BoxGeometry, DoubleSide, Group, Mesh, MeshBasicMaterial, MeshLambertMaterial, PlaneGeometry, Sprite, SpriteMaterial, type Scene } from 'three'
 import { canvasTexture, FONT, glowTexture } from './textures'
@@ -50,20 +50,17 @@ function tacticsTexture() {
       g.arc(x!, y!, 13, 0, Math.PI * 2)
       g.fill()
     }
-    // The run of the 10 drawn as the StarPath dots, ending in a star.
-    g.fillStyle = '#1fd47a'
-    for (let i = 0; i < 5; i++) {
-      g.beginPath()
-      g.arc(372 + i * 20, 150 - i * 14 + i * i * 1.2, 6, 0, Math.PI * 2)
-      g.fill()
-    }
-    g.fillStyle = '#ffc83d'
+    // The 10's shot drawn as a green streak into the far corner of the goal.
+    g.strokeStyle = '#1fd47a'
+    g.lineWidth = 7
+    g.lineCap = 'round'
     g.beginPath()
-    for (let i = 0; i < 10; i++) {
-      const r = i % 2 ? 7 : 16
-      const a = -Math.PI / 2 + (i * Math.PI) / 5
-      g.lineTo(482 + Math.cos(a) * r, 92 + Math.sin(a) * r)
-    }
+    g.moveTo(370, 160)
+    g.quadraticCurveTo(440, 120, 486, 108)
+    g.stroke()
+    g.fillStyle = '#ffffff'
+    g.beginPath()
+    g.arc(486, 108, 9, 0, Math.PI * 2)
     g.fill()
   })
 }

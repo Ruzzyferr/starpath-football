@@ -1,5 +1,5 @@
 {
-  "name": "starpath-site",
+  "name": "kickborn-site",
   "private": true,
   "version": "1.0.0",
   "type": "module",
@@ -9,10 +9,13 @@
     "build": "node scripts/render.mjs && tsc --noEmit && vite build && node scripts/postbuild.mjs",
     "build:play": "node scripts/build-play.mjs",
     "build:all": "npm run build && npm run build:play",
-    "preview": "vite preview --port 5794"
+    "preview": "vite preview --port 5794",
+    "test": "node --test test/penalty.test.ts",
+    "test:viewports": "node test/viewports.mjs http://localhost:5794/ viewport-shots"
   },
   "devDependencies": {
     "@types/three": "^0.186.0",
+    "playwright": "^1.63.0",
     "typescript": "~6.0.2",
     "vite": "^8.3.4"
   },

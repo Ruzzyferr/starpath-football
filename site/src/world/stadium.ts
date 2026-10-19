@@ -113,7 +113,7 @@ function boardTexture(names: string[]): Texture {
     names.forEach((n, i) => {
       g.fillStyle = cols[i % cols.length]!
       g.fillRect(i * w, 0, w, 64)
-      g.fillStyle = n === 'STARPATH' ? '#1fd47a' : 'rgba(242,245,250,0.92)'
+      g.fillStyle = n === 'KICKBORN' ? '#1fd47a' : 'rgba(242,245,250,0.92)'
       g.font = `700 40px ${FONT}`
       g.textAlign = 'center'
       g.textBaseline = 'middle'
@@ -270,7 +270,7 @@ export function buildStadium(scene: Scene, opts: StadiumOptions, maxAniso: numbe
   }
   const edgeMat = new MeshLambertMaterial({ color: C.standEdge })
   const roofMat = new MeshLambertMaterial({ color: C.roof })
-  const fasciaMat = new MeshBasicMaterial({ color: 0x9fb3d9 })
+  const fasciaMat = new MeshBasicMaterial({ color: 0x45587a })
   const fanMats: Matrix4[] = []
   const fanCols: Color[] = []
   const navy = new Color(0x1b2740)
@@ -452,7 +452,7 @@ export function buildStadium(scene: Scene, opts: StadiumOptions, maxAniso: numbe
   })
 
   // ── LED boards around the pitch, the video board on the east stand.
-  const ad = boardTexture(['LUMEN TV', 'GOAL+', 'PIXEL COLA', 'STARPATH', 'ORBIT AIR', 'KICKR'])
+  const ad = boardTexture(['LUMEN TV', 'GOAL+', 'PIXEL COLA', 'KICKBORN', 'ORBIT AIR', 'ARCADIA'])
   const adMat = new MeshBasicMaterial({ map: ad, color: 0xa8b0bd })
   const board = (x: number, z: number, len: number, rot: number) => {
     const b = new Mesh(new PlaneGeometry(len, 0.9), adMat)
@@ -478,10 +478,11 @@ export function buildStadium(scene: Scene, opts: StadiumOptions, maxAniso: numbe
     g.font = `700 92px ${FONT}`
     g.textBaseline = 'middle'
     g.fillStyle = '#f2f5fa'
-    g.textAlign = 'left'
-    g.fillText('STARPATH', 48, 120)
+    g.textAlign = 'right'
+    g.fillText('KICK', 512, 120)
     g.fillStyle = '#1fd47a'
-    g.fillText('FOOTBALL', 430, 120)
+    g.textAlign = 'left'
+    g.fillText('BORN', 512, 120)
     g.font = `700 200px ${FONT}`
     g.fillStyle = '#ffc83d'
     g.textAlign = 'center'

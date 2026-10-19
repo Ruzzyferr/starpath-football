@@ -13,28 +13,34 @@ export interface Stop {
   look: Vector3
   /** Vertical field of view at 16:9. */
   fov: number
-  /** Depth-of-field focus distance (m). */
+  /** Depth-of-field focus distance (m) and aperture (blur strength). */
   focus: number
-  /** Where to look on a portrait screen, when the landscape framing would lose the subject. */
+  aperture?: number
+  /** Where to stand and look on a portrait screen, when the landscape framing would lose the subject. */
   lookPortrait?: Vector3
+  posPortrait?: Vector3
   /** Where to look on a very wide, short screen (a phone on its side). */
   lookWide?: Vector3
   /** Waypoints on the leg from this stop to the next. */
   via?: Vector3[]
   follow?: boolean
+  /** Keep the vertical field of view on portrait screens (an enclosed room: show less width, not more ceiling). */
+  fitHeight?: boolean
 }
 
 const v = (x: number, y: number, z: number) => new Vector3(x, y, z)
 
 export const STOPS: Stop[] = [
-  { id: 'top', pos: v(0, 44, 205), look: v(-8, 40, -100), lookPortrait: v(146, 66, -100), lookWide: v(-52, 34, -100), fov: 52, focus: 160, via: [v(0, 34, 160), v(0, 23, 122), v(0, 10, 72), v(0, 4.2, 34)] },
+  // The hero: low, beside the striker, the goal beyond; the crowd falls out of focus behind the title.
+  { id: 'top', pos: v(1.3, 0.8, SPOT_Z + 4.6), posPortrait: v(-0.2, 1.5, SPOT_Z + 9.5), look: v(-0.4, 2.2, 0), lookPortrait: v(-0.6, 3.4, 0), fov: 46, focus: 5, aperture: 0.0005, via: [v(2.4, 1.6, SPOT_Z + 7)] },
   { id: 'penalti', pos: v(1.5, 2.3, SPOT_Z + 5.6), look: v(0, 0.75, 0), fov: 40, focus: 15, via: [v(5, 3.2, 26), v(-4, 4.4, 44)] },
   { id: 'anlar', pos: v(-16, 3.6, 60), look: v(52, 19, 47), fov: 50, focus: 70, via: [v(-24, 2.4, 55), v(-31, 1.75, 52.5), v(-44, 1.75, 52.5), v(-53, 1.7, 52.5)], follow: true },
-  { id: 'kariyer', pos: v(-62.6, 1.7, 52.5), look: v(-70, 1.45, 52.5), fov: 56, focus: 7, via: [v(-61.3, 1.7, 48.5), v(-61.3, 1.9, 43), v(-64, 4, 37), v(-80, 14, 34)], follow: true },
+  { id: 'kariyer', pos: v(-65.2, 1.6, 52.5), look: v(-70, 1.5, 52.5), fov: 50, focus: 4.8, fitHeight: true, via: [v(-61.3, 1.7, 48.5), v(-61.3, 1.9, 43), v(-64, 4, 37), v(-80, 14, 34)], follow: true },
   { id: 'hayat', pos: v(-92, 40, 30), look: v(-360, 34, 70), fov: 50, focus: 260, via: [v(-150, 44, 72), v(-212, 72, 112)] },
   { id: 'adil', pos: v(-205, 118, 150), look: v(0, 6, 52), fov: 42, focus: 230, via: [v(-170, 118, 182)] },
-  { id: 'platformlar', pos: v(-70, 128, 205), look: v(0, 0, 52), fov: 46, focus: 200, via: [v(-10, 120, 150), v(40, 100, 90)] },
-  { id: 'foot', pos: v(116, 84, 46), look: v(174, 92, -150), lookPortrait: v(180, 96, -150), fov: 50, focus: 210 },
+  { id: 'platformlar', pos: v(-70, 128, 205), look: v(0, 0, 52), fov: 46, focus: 200, via: [v(-30, 110, 222)] },
+  // The close: high over the south end, the lit stadium below and the night sky above the wordmark.
+  { id: 'foot', pos: v(0, 64, 230), look: v(0, 50, 40), fov: 50, focus: 190 },
 ]
 
 export interface CameraState {
@@ -42,6 +48,7 @@ export interface CameraState {
   look: Vector3
   fov: number
   focus: number
+  aperture: number
 }
 
 const curves = new Map<number, CatmullRomCurve3>()
@@ -65,9 +72,14 @@ export function fovFor(stop: Stop, aspect: number): number {
     const vfov = MathUtils.radToDeg(2 * Math.atan(Math.tan(hfov / 2) / aspect))
     return MathUtils.clamp(vfov, stop.fov, 74)
   }
-  if (aspect >= 16 / 9) return stop.fov
+  if (aspect >= 16 / 9 || stop.fitHeight) return stop.fov
   const k = Math.sqrt(16 / 9 / aspect)
   return MathUtils.clamp(MathUtils.radToDeg(2 * Math.atan(Math.tan(MathUtils.degToRad(stop.fov) / 2) * k)), stop.fov, 82)
+}
+
+function posFor(s: Stop, aspect: number): Vector3 {
+  if (!s.posPortrait || aspect >= 1.2) return s.pos.clone()
+  return s.pos.clone().lerp(s.posPortrait, MathUtils.clamp((1.2 - aspect) / 0.7, 0, 1))
 }
 
 function lookFor(s: Stop, aspect: number): Vector3 {
@@ -91,13 +103,15 @@ export function sample(i: number, t: number, aspect: number): CameraState {
   if (!Number.isFinite(t)) t = 0
   i = Math.max(0, Math.min(STOPS.length - 1, Math.floor(i)))
   const a = STOPS[i]!
-  if (i >= STOPS.length - 1 || t <= 0) return { pos: a.pos.clone(), look: lookFor(a, aspect), fov: fovFor(a, aspect), focus: a.focus }
+  if (i >= STOPS.length - 1 || t <= 0) return { pos: posFor(a, aspect), look: lookFor(a, aspect), fov: fovFor(a, aspect), focus: a.focus, aperture: a.aperture ?? 0.00011 }
   const b = STOPS[i + 1]!
   const e = smooth(MathUtils.clamp(t, 0, 1))
   const c = curve(i)
   const pos = c.getPointAt(e)
-  dirQuat(a.pos, lookFor(a, aspect), q0)
-  dirQuat(b.pos, lookFor(b, aspect), q1)
+  // Portrait framing offsets fade along the leg so the camera never jumps.
+  pos.add(posFor(a, aspect).sub(a.pos).multiplyScalar(1 - e)).add(posFor(b, aspect).sub(b.pos).multiplyScalar(e))
+  dirQuat(posFor(a, aspect), lookFor(a, aspect), q0)
+  dirQuat(posFor(b, aspect), lookFor(b, aspect), q1)
   const q = q0.clone().slerp(q1, e)
   if (a.follow) {
     // In the middle of the leg look where we are going.
@@ -107,5 +121,5 @@ export function sample(i: number, t: number, aspect: number): CameraState {
     q.slerp(qt, w)
   }
   const look = pos.clone().add(fwd.clone().applyQuaternion(q).multiplyScalar(20))
-  return { pos, look, fov: MathUtils.lerp(fovFor(a, aspect), fovFor(b, aspect), e), focus: MathUtils.lerp(a.focus, b.focus, e) }
+  return { pos, look, fov: MathUtils.lerp(fovFor(a, aspect), fovFor(b, aspect), e), focus: MathUtils.lerp(a.focus, b.focus, e), aperture: MathUtils.lerp(a.aperture ?? 0.00011, b.aperture ?? 0.00011, e) }
 }
