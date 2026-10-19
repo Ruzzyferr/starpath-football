@@ -95,22 +95,27 @@ export function TopBar() {
           <span class="sr-only">{t('ui.topbar.money')}</span>
           <Money value={life.money} compact />
         </div>
-        <div class="tstat" title={t('ui.topbar.energy')}>
-          <Icon name="energy" size={16} class="t-gold" />
-          <span class="sr-only">{t('ui.topbar.energy')}</span>
-          <span class="tstat-bar" aria-hidden="true"><span style={{ transform: `scaleX(${life.energy / 100})` }} /></span>
-          <span class="num">{Math.round(life.energy)}</span>
+        {/* Each gauge says what it is: icon and value, its name underneath (a bare "94" read as nothing). */}
+        <div class="tstat tstat-gauge" title={t('ui.topbar.energy')}>
+          <span class="tstat-row">
+            <Icon name="energy" size={15} class="t-gold" />
+            <span class="num">{Math.round(life.energy)}</span>
+          </span>
+          <span class="tstat-cap">{lt({ tr: 'Enerji', en: 'Energy' })}</span>
         </div>
-        <div class="tstat tstat-happy" title={t('ui.topbar.happiness')}>
-          <Icon name={life.happiness >= 45 ? 'smile' : 'frown'} size={16} />
-          <span class="sr-only">{t('ui.topbar.happiness')}</span>
-          <span class="num">{Math.round(life.happiness)}</span>
+        <div class="tstat tstat-gauge tstat-happy" title={t('ui.topbar.happiness')}>
+          <span class="tstat-row">
+            <Icon name={life.happiness >= 45 ? 'smile' : 'frown'} size={15} />
+            <span class="num">{Math.round(life.happiness)}</span>
+          </span>
+          <span class="tstat-cap">{lt({ tr: 'Mutluluk', en: 'Mood' })}</span>
         </div>
       </div>
       {storeAvailable() && (
         <button type="button" class="tstat tstat-gems" data-testid="topbar-gems" aria-label={lt({ tr: `Mağaza: ${serverWallet.value?.gems ?? 0} elmas`, en: `Store: ${serverWallet.value?.gems ?? 0} diamonds` })} onClick={() => navigate('store')}>
           <span aria-hidden="true">💎</span>
-          <span class="num">{serverWallet.value ? compactGems(serverWallet.value.gems) : '—'}</span>
+          {/* No shop account yet: name the destination instead of a bare dash. */}
+          {serverWallet.value ? <span class="num">{compactGems(serverWallet.value.gems)}</span> : <span class="tstat-gems-label">{lt({ tr: 'Mağaza', en: 'Store' })}</span>}
         </button>
       )}
       <div class="topbar-date" title={t('ui.topbar.date')}>

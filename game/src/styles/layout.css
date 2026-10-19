@@ -134,12 +134,16 @@
 .tstat-money { color: var(--accent-gold); font-family: var(--font-score); font-size: 1.3125rem; font-weight: 600; letter-spacing: 0.01em; line-height: 1; }
 .tstat-money .icon { margin-top: -2px; }
 .tstat-happy { color: var(--brand-pitch); }
+/* Energy and mood: value row on top, the gauge's name below it in small type. */
+.tstat-gauge { flex-direction: column; align-items: flex-start; gap: 1px; line-height: 1; }
+.tstat-row { display: inline-flex; align-items: center; gap: 4px; }
+.tstat-gauge .num { font-family: var(--font-score); font-size: 1.05rem; }
+.tstat-cap { font-size: 0.6875rem; font-weight: 600; color: var(--text-lo); letter-spacing: 0; }
+.tstat-gems-label { font-size: 0.8125rem; font-weight: 700; }
 /* Diamond balance: a pill with a 44px hit area (the ::before extends it without growing the bar). */
 .tstat-gems { position: relative; flex: none; margin-left: 6px; min-height: 32px; border: 0; background: color-mix(in srgb, #4fc3ff 14%, transparent); color: var(--text-hi); padding: 4px 10px; border-radius: 999px; cursor: pointer; font-size: var(--fs-sm); }
 .tstat-gems::before { content: ''; position: absolute; inset: -6px -4px; }
 .tstat-gems .num { font-family: var(--font-score); font-size: 1.05rem; line-height: 1; }
-.tstat-bar { width: 34px; height: 6px; border-radius: 6px; background: var(--surface-3); overflow: hidden; }
-.tstat-bar > span { display: block; height: 100%; background: var(--accent-gold); transform-origin: left; transition: transform var(--dur-slow) var(--ease-out); }
 .topbar-date { display: flex; flex-direction: column; align-items: flex-end; line-height: 1.1; text-align: right; min-width: 0; }
 .topbar-season { color: var(--text-lo); font-size: 0.75rem; }
 .topbar-day { font-family: var(--font-display); font-weight: 700; font-size: var(--fs-sm); color: var(--text-hi); white-space: nowrap; }
@@ -166,25 +170,29 @@
 }
 @media (max-width: 420px) {
   /*
-   * Phones: the diamond pill keeps its own slot. Mood goes (Me and Life show it), the gold € figure
-   * reads as money without its coin, and the date drops the season and wraps onto two short lines.
+   * Phones: the diamond pill keeps its own slot; energy and mood stay with their names. The gold €
+   * figure reads as money without its coin, and the date drops the season and wraps onto two short lines.
    */
-  .tstat-bar { display: none; }
-  .tstat-happy { display: none; }
   .tstat-money .icon { display: none; }
+  /* The gauges' names say what they are, so their icons give way to the room the pill needs. */
+  .tstat-gauge .icon { display: none; }
+  .topbar { gap: var(--sp-1); }
   .topbar-stats { gap: var(--sp-2); }
   .tstat-money { font-size: 1.125rem; }
-  .tstat-gems { margin-left: 0; padding: 4px 7px; }
+  .tstat-gems { margin-left: 0; padding: 4px 6px; gap: 3px; }
   .topbar-season { display: none; }
-  .topbar-date { max-width: 64px; }
+  .topbar-date { max-width: 56px; }
   .topbar-day { white-space: normal; font-size: 0.75rem; }
 }
 @media (max-width: 380px) {
-  .topbar { gap: var(--sp-1); }
+  /* Narrow phones: the date goes (the home screen's "Today" card shows it); stats and the pill stay. */
+  .topbar-date { display: none; }
 }
 @media (max-width: 340px) {
-  /* 320px phones: the date goes (the home screen's "Today" card shows it); stats and the pill stay. */
-  .topbar-date { display: none; }
+  /* 320px: tighter still, so "Mutluluk" keeps clear of the pill. */
+  .topbar-stats { gap: var(--sp-1); }
+  .tstat-cap { font-size: 0.625rem; }
+  .tstat-gems { padding: 4px 4px; }
 }
 
 /* ───────────── Bottom tab bar (mobile) ───────────── */
@@ -261,7 +269,6 @@
   }
   .topbar { padding-left: var(--gutter); padding-right: var(--sp-4); }
   .topbar-stats { gap: var(--sp-5); }
-  .tstat-bar { width: 60px; }
 }
 @media (min-width: 1200px) {
   .shell { grid-template-columns: var(--sidebar-w) minmax(0, 1fr) var(--context-w); }
