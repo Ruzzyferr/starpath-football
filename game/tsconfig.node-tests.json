@@ -14,7 +14,9 @@
     "strict": true,
     "noUnusedLocals": true,
     "noUnusedParameters": true,
-    "erasableSyntaxOnly": true
+    "erasableSyntaxOnly": true,
+    "jsx": "react-jsx",
+    "jsxImportSource": "preact"
   },
   "include": ["src/**/*.node.test.ts"]
 }
