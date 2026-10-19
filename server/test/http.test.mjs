@@ -29,7 +29,7 @@ test('full flow over HTTP: register → buy (verified receipt) → spend → ad'
   const buy = await call('POST', '/v1/purchase/apple', { token: tok, body: { jws: signJws(chain, txn(reg.body.accountId)) } })
   assert.equal(buy.body.gems, 600)
   const sp = await call('POST', '/v1/spend', { token: tok, body: { item: 'gold_boots', idem: 'x1' } })
-  assert.equal(sp.body.gems, 300)
+  assert.equal(sp.body.gems, 400)
   assert.equal(sp.body.grant.id, 'gold_boots')
 })
 

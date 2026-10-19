@@ -78,3 +78,10 @@
 .st-gear > p { margin: 0; }
 .st-physio { max-width: 520px; }
 [role='tabpanel'] + .st-grid, .st-grid, .st-gear { margin-top: var(--sp-3); }
+
+/* Five tabs on a phone: a fade at the right edge says there is more to scroll. */
+.st-tabs { position: relative; }
+.st-tabs::after { content: ''; position: absolute; top: 0; right: 0; bottom: 2px; width: 28px; pointer-events: none; background: linear-gradient(90deg, transparent, var(--bg-0)); }
+@media (max-width: 380px) { .st-tabs .tab { padding-inline: 10px; } }
+.legal-frame { width: 100%; height: min(70vh, 640px); border: 0; border-radius: 10px; background: #fff; }
+.link-btn { border: 0; background: none; padding: 0; color: var(--accent-blue, #3da5ff); text-decoration: underline; cursor: pointer; font: inherit; }

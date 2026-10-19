@@ -101,8 +101,6 @@ export const PRODUCTS: readonly ProductDef[] = [
     ['gems_s', 220, '€1.99', undefined],
     ['gems_m', 600, '€4.99', 'popular'],
     ['gems_l', 1300, '€9.99', undefined],
-    ['gems_xl', 2800, '€19.99', undefined],
-    ['gems_xxl', 7500, '€49.99', 'best'],
   ] as const).map(([id, gems, price, badge]): ProductDef => ({
     id,
     kind: 'gems',
@@ -154,6 +152,12 @@ export const PRODUCTS: readonly ProductDef[] = [
 export const PRODUCT_BY_ID: Readonly<Record<string, ProductDef>> = Object.fromEntries(PRODUCTS.map((p) => [p.id, p]))
 export const COSMETIC_PRODUCTS = PRODUCTS.filter((p) => p.kind === 'cosmetic')
 export const PRODUCT_IDS: readonly string[] = PRODUCTS.map((p) => p.id)
+/** Free diamonds per event (server/catalog.json earn.*; shown in the store and on the season review). */
+export const EARN_GEMS = { motm: 8, objective: 8, first: 10, season: 100, award: 25 } as const
+/** Rewarded ad "+N diamonds" (server ads.gems.reward.gems) and the physio price with the ad discount. */
+export const AD_GEMS = 10
+export const PHYSIO_DISCOUNT_PRICE = 50
+
 /** Diamonds a cosmetic pack also costs (server/catalog.json spend.cos_*). */
 export const COSMETIC_GEM_PRICE = 250
 

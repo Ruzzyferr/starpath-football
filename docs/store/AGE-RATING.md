@@ -18,6 +18,13 @@ Oyunda bir kumarhane bölümü var (slot, blackjack vb.; `src/sim/life/casino.ts
 - "Gerçek para ile kumar" sorusu **hayır** kalır (kazanç çevrilemez, ödül yok).
 - Anketler **nakit paketi satışa çıkmadan önce** yeniden doldurulur.
 
+### Uygulanan durum: yaş kapısı kapsamı
+
+- Yaş kapısı **kumarhane VE nakit satın alma** (nakit paketleri ve elmastan nakde çevirme) için geçerlidir.
+- 18 yaş altı veya yaşı bilinmeyen oyuncuya reklamlar **kişiselleştirilmemiş** istenir.
+- Elmas paketleri ve kozmetikler yaşa göre kapatılmaz; mağazanın ebeveyn denetimleri (satın alma onayı, harcama limiti) geçerlidir.
+- Doğum yılı yalnızca cihazda tutulur.
+
 ### Uygulamaya eklenecek uygulama içi yaş kapısı (in-app age gate)
 
 - İlk açılışta yaş sorusu (doğum yılı/ay veya "18 yaşında veya daha büyüğüm" onayı); cevap cihazda tutulur.

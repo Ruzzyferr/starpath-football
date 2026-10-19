@@ -47,18 +47,20 @@ const watch = (shop, clock, acc, offer, { ref, career } = {}) => {
 
 test('M2: a refund that arrives before the purchase is redeemed tombstones it (credit and recover get 410)', () => {
   const { shop, acc } = setup()
-  const t = txn(acc.id, { productId: 'gems_xl' })
+  const t = txn(acc.id, { productId: 'gems_l' })
   assert.equal(shop.appleNotification(note(chain, 'REFUND', t)).tombstone, true)
   assert.equal(code(() => shop.applePurchase(acc, signJws(chain, t))), 'revoked')
   assert.equal(shop.wallet(acc).gems, 0)
-  // Matched by originalTransactionId too: another transaction of a revoked subscription.
+  // One-time products: matched by originalTransactionId too.
+  assert.equal(code(() => shop.applePurchase(acc, signJws(chain, { ...t, transactionId: 'other-txn' }))), 'revoked')
+  // m3: a subscription period tombstones only its own transaction; later renewals still count.
   const sub = txn(acc.id, { productId: 'pro_contract', expiresDate: Date.now() + 9 * DAY })
   shop.appleNotification(note(chain, 'REVOKE', sub))
-  const renewal = { ...sub, transactionId: 'renewal-2' }
-  assert.equal(code(() => shop.applePurchase(acc, signJws(chain, renewal))), 'revoked')
-  assert.equal(code(() => shop.recover(signJws(chain, renewal), 'x')), 'revoked')
+  assert.equal(code(() => shop.applePurchase(acc, signJws(chain, sub))), 'revoked')
   assert.equal(code(() => shop.recover(signJws(chain, sub), 'x')), 'revoked')
   assert.equal(shop.wallet(acc).pass.active, false)
+  const renewal = { ...sub, transactionId: 'renewal-2', expiresDate: Date.now() + 40 * DAY }
+  assert.equal(shop.applePurchase(acc, signJws(chain, renewal)).pass.active, true)
 })
 
 // ───────── M3 ─────────
@@ -244,6 +246,7 @@ test('m14: up to 5 device tokens per account; the oldest drops out after a 6th',
 test('M8: health and wallet report store readiness', () => {
   const { shop, acc } = setup()
   assert.deepEqual(shop.health(), { ok: true, apple: true, google: false, sandbox: 'on' })
+  assert.equal(shop.health().ops, undefined, 'operator details only on request')
   assert.deepEqual(shop.wallet(acc).stores, { apple: true, google: false })
   shop.google = fakeGoogle()
   assert.equal(shop.wallet(acc).stores.google, true)
@@ -253,8 +256,8 @@ test('M8: health and wallet report store readiness', () => {
 
 test('M17: prune drops stale rows and hashes old audit IPs; open ad sessions are capped', () => {
   const { shop, acc, clock, db } = setup()
-  for (let i = 0; i < 3; i++) shop.adStart(acc, 'gems')
-  assert.equal(code(() => shop.adStart(acc, 'gems')), 'too_many_open_ads')
+  for (const offer of ['gems', 'match_bonus', 'train_boost']) shop.adStart(acc, offer)
+  assert.equal(code(() => shop.adStart(acc, 'physio_disc')), 'too_many_open_ads')
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'gems_l' })))
   const g = shop.spend(acc, { item: 'gold_boots', idem: 'i1' }).grant
   shop.ack(acc, [g.nonce])
@@ -299,7 +302,7 @@ test('M19: a claim refused by the cap does not burn its reference', () => {
   for (let i = 0; i < 10; i++) shop.earn(acc, { source: 'motm', ref: `m${i}` })
   assert.deepEqual([shop.earn(acc, { source: 'motm', ref: 'late' }).earned, shop.earn(acc, { source: 'motm', ref: 'late' }).capped], [0, true])
   clock.advance(DAY)
-  assert.equal(shop.earn(acc, { source: 'motm', ref: 'late' }).earned, 5, 'claimable the next day')
+  assert.equal(shop.earn(acc, { source: 'motm', ref: 'late' }).earned, 8, 'claimable the next day')
   assert.equal(shop.earn(acc, { source: 'motm', ref: 'late' }).earned, 0, 'and then only once')
 })
 
@@ -318,16 +321,18 @@ test('M21: cash grants carry a cap; gems_to_cash is capped at 25000 and 3 a day'
   assert.equal(shop.spend(acc, { item: 'gems_to_cash', idem: 'g5' }).limits.gemsToCashLeft, 2)
 })
 
-test('M22: earn amounts and the 250 daily cap', () => {
-  const { shop, acc } = setup()
-  assert.equal(shop.earn(acc, { source: 'season', ref: 's1' }).earned, 80)
+test('M22: earn amounts and the 300 daily cap', () => {
+  const { shop, acc, clock } = setup()
+  clock.advance(DAY) // past the new-account half caps
+  assert.equal(shop.earn(acc, { source: 'season', ref: 's1' }).earned, 100)
   assert.equal(shop.earn(acc, { source: 'award', ref: 'a1' }).earned, 25)
-  assert.equal(shop.earn(acc, { source: 'objective', ref: 'o1' }).earned, 5)
+  assert.equal(shop.earn(acc, { source: 'objective', ref: 'o1' }).earned, 8)
+  assert.equal(shop.earn(acc, { source: 'motm', ref: 'm1' }).earned, 8)
   assert.equal(shop.earn(acc, { source: 'first', ref: 'f1' }).earned, 10)
   let total = 0
   for (let i = 0; i < 60; i++) total += shop.earn(acc, { source: ['season', 'award', 'objective', 'first', 'motm'][i % 5], ref: `x${i}` }).earned
   assert.equal(shop.wallet(acc).earnedToday, shop.wallet(acc).gems)
-  assert.ok(shop.wallet(acc).gems <= 250 && shop.wallet(acc).gems >= 240, String(shop.wallet(acc).gems))
+  assert.ok(shop.wallet(acc).gems <= 300 && shop.wallet(acc).gems >= 285, String(shop.wallet(acc).gems))
 })
 
 test('M23: cosmetics bought with diamonds are owned server-side, once', () => {
@@ -421,9 +426,9 @@ test('m6: the physio discount and season x2 eligibility survive midnight', () =>
   assert.equal(shop.wallet(acc).seasonX2Ready, true)
   clock.advance(DAY)
   assert.equal(shop.wallet(acc).physioDiscounts, 1)
-  assert.equal(shop.spend(acc, { item: 'physio', idem: 'p', discount: true }).gems, 220 + 80 - 50)
+  assert.equal(shop.spend(acc, { item: 'physio', idem: 'p', discount: true }).gems, 220 + 100 - 50)
   assert.equal(shop.wallet(acc).seasonX2Ready, true)
-  assert.equal(watch(shop, clock, acc, 'season_x2').gems, 250 + 80)
+  assert.equal(watch(shop, clock, acc, 'season_x2').gems, 270 + 100, 'season x2 pays the season reward again')
   assert.equal(shop.wallet(acc).seasonX2Ready, false)
   clock.advance(DAY)
   assert.equal(code(() => shop.adStart(acc, 'season_x2')), 'no_season_reward', 'one x2 per season reward')
@@ -439,7 +444,7 @@ test('m8: an idempotency key reused for another item is 409; a replay returns a 
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'gems_s' })))
   const b = shop.spend(acc, { item: 'speed_boots', idem: 'k' })
   assert.equal(b.grant.nonce, a.grant.nonce)
-  assert.equal(b.gems, 450 + 220, 'current balance, not the stored one')
+  assert.equal(b.gems, 500 + 220, 'current balance, not the stored one')
   assert.equal(b.replay, true)
 })
 

@@ -18,9 +18,10 @@ export function safeJson(text) {
 }
 
 export class GooglePlay {
-  constructor({ saFile, packageName, fetchImpl = fetch }) {
+  constructor({ saFile, packageName, fetchImpl = fetch, now = () => Date.now() }) {
     this.pkg = packageName
     this.fetch = fetchImpl
+    this.now = now
     this.sa = saFile ? JSON.parse(readFileSync(saFile, 'utf8')) : null
     this.token = null
   }
@@ -77,11 +78,14 @@ export class GooglePlay {
     const { status, body } = await this.api(`/purchases/subscriptionsv2/tokens/${enc(token)}`)
     if (status !== 200) return { ok: false, why: `play ${status}` }
     const line = body.lineItems?.[0]
-    const active = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD'].includes(body.subscriptionState)
+    const expires = line?.expiryTime ? Date.parse(line.expiryTime) || 0 : 0
+    // CANCELED = auto-renew turned off: the paid period still runs until its expiry.
+    const active = ['SUBSCRIPTION_STATE_ACTIVE', 'SUBSCRIPTION_STATE_IN_GRACE_PERIOD'].includes(body.subscriptionState) ||
+      (body.subscriptionState === 'SUBSCRIPTION_STATE_CANCELED' && expires > this.now())
     return {
       ok: active,
       productId: line?.productId,
-      expires: line?.expiryTime ? Date.parse(line.expiryTime) : 0,
+      expires,
       orderId: body.latestOrderId,
       account: body.externalAccountIdentifiers?.obfuscatedExternalAccountId,
       acknowledged: body.acknowledgementState === 'ACKNOWLEDGEMENT_STATE_ACKNOWLEDGED',

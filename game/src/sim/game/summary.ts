@@ -24,6 +24,7 @@ export function saveSummary(state: GameState): SaveSummary {
   const h = state.hero
   const crest = heroClub(state)?.crest
   return {
+    careerId: state.meta.id,
     heroName: `${h.firstName} ${h.lastName}`,
     clubName: heroClub(state)?.name ?? (h.retired ? 'Retired' : 'Free agent'),
     season: state.calendar.season,

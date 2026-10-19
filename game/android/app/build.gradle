@@ -1,5 +1,11 @@
 apply plugin: 'com.android.application'
 
+// Play upload key: kept OUTSIDE the repo (~/.starpath/keystore.properties, or STARPATH_KEYSTORE_PROPS).
+// Without it, release builds are simply unsigned (CI / other machines), debug builds are unaffected.
+def keystorePropsFile = file(System.getenv('STARPATH_KEYSTORE_PROPS') ?: "${System.getProperty('user.home')}/.starpath/keystore.properties")
+def keystoreProps = new Properties()
+if (keystorePropsFile.exists()) keystorePropsFile.withInputStream { keystoreProps.load(it) }
+
 android {
     namespace = "app.starpath.football"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,7 +13,8 @@ android {
         applicationId "app.starpath.football"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 1
+        // Play needs a higher versionCode for every upload: STARPATH_VERSION_CODE (CI run number) or 1.
+        versionCode((System.getenv('STARPATH_VERSION_CODE') ?: '1') as int)
         versionName "1.0"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
@@ -16,8 +23,19 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    signingConfigs {
+        if (keystoreProps['storeFile']) {
+            upload {
+                storeFile file(keystoreProps['storeFile'])
+                storePassword keystoreProps['storePassword']
+                keyAlias keystoreProps['keyAlias']
+                keyPassword keystoreProps['keyPassword']
+            }
+        }
+    }
     buildTypes {
         release {
+            if (keystoreProps['storeFile']) signingConfig signingConfigs.upload
             minifyEnabled false
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
         }

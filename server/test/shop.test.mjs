@@ -95,21 +95,24 @@ test('starter pack: 300 diamonds + golden boots once per account, even if bought
   const r2 = shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'starter_pack', type: 'Non-Consumable' })))
   assert.equal(r2.gems, 300)
   assert.equal(r2.inbox.length, 1)
+  // m5: the repeat is reported as not credited, with a reason, and audited.
+  assert.deepEqual([r2.credited, r2.reason], [false, 'already_owned'])
 })
 
 test('spending: server prices, no overdraft, idempotent retries charge once', () => {
   const { shop, acc } = setup()
   shop.applePurchase(acc, signJws(chain, txn(acc.id, { productId: 'gems_s' }))) // 220
-  assert.equal(code(() => shop.spend(acc, { item: 'gold_boots', idem: 'k1' })), 'insufficient_gems')
+  assert.equal(code(() => shop.spend(acc, { item: 'cos_avatar', idem: 'k1' })), 'insufficient_gems')
   const a = shop.spend(acc, { item: 'speed_boots', idem: 'k2', price: 1 })
-  assert.equal(a.gems, 70, 'the client cannot choose the price')
+  assert.equal(a.gems, 120, 'the client cannot choose the price')
   const b = shop.spend(acc, { item: 'speed_boots', idem: 'k2' })
-  assert.equal(b.gems, 70, 'same idempotency key does not charge twice')
+  assert.equal(b.gems, 120, 'same idempotency key does not charge twice')
   assert.equal(b.grant.nonce, a.grant.nonce)
-  assert.equal(code(() => shop.spend(acc, { item: 'speed_boots', idem: 'k3' })), 'insufficient_gems')
+  assert.equal(shop.spend(acc, { item: 'speed_boots', idem: 'k3' }).gems, 20)
+  assert.equal(code(() => shop.spend(acc, { item: 'speed_boots', idem: 'k3b' })), 'insufficient_gems')
   assert.equal(code(() => shop.spend(acc, { item: 'free_money', idem: 'k4' })), 'unknown_item')
   assert.equal(code(() => shop.spend(acc, { item: 'speed_boots', idem: "'; DROP TABLE accounts; --" })), 'bad_request')
-  assert.equal(shop.wallet(acc).gems, 70)
+  assert.equal(shop.wallet(acc).gems, 20)
 })
 
 test('grants are signed by the server key; a tampered grant fails verification', () => {
@@ -128,6 +131,7 @@ test('grants are signed by the server key; a tampered grant fails verification',
 
 test('rewarded ads: daily cap, minimum watch time, one reward per ad, nonce bound to the account', () => {
   const { shop, acc, clock } = setup()
+  clock.advance(86400_000) // past the new-account half caps
   for (let i = 0; i < 5; i++) {
     const { nonce } = shop.adStart(acc, 'gems')
     assert.equal(code(() => shop.adComplete(acc, nonce)), 'ad_too_short')
@@ -167,14 +171,15 @@ test('physio discount needs a watched ad; season x2 needs a season reward first'
 })
 
 test('free diamonds: deduplicated by reference and capped per day', () => {
-  const { shop, acc } = setup()
-  assert.equal(shop.earn(acc, { source: 'motm', ref: 'c1:s2026:w5' }).earned, 5)
+  const { shop, acc, clock } = setup()
+  clock.advance(86400_000) // past the new-account half caps
+  assert.equal(shop.earn(acc, { source: 'motm', ref: 'c1:s2026:w5' }).earned, 8)
   assert.equal(shop.earn(acc, { source: 'motm', ref: 'c1:s2026:w5' }).earned, 0)
   for (let i = 0; i < 20; i++) shop.earn(acc, { source: 'motm', ref: `c1:w${i}` })
-  assert.equal(shop.wallet(acc).gems, 50, '10 MOTM claims a day at most')
+  assert.equal(shop.wallet(acc).gems, 80, '10 MOTM claims a day at most')
   let total = 0
   for (let i = 0; i < 100; i++) total += shop.earn(acc, { source: ['objective', 'award', 'first', 'season'][i % 4], ref: `r${i}` }).earned
-  assert.ok(shop.wallet(acc).gems <= 250, `daily free cap holds (${shop.wallet(acc).gems})`)
+  assert.ok(shop.wallet(acc).gems <= 300, `daily free cap holds (${shop.wallet(acc).gems})`)
   assert.equal(code(() => shop.earn(acc, { source: 'admin', ref: 'x' })), 'unknown_source')
 })
 
@@ -196,11 +201,12 @@ test('refund notification takes the diamonds back; a negative balance blocks spe
   shop.applePurchase(acc, signJws(chain, t))
   shop.spend(acc, { item: 'gold_boots', idem: 'a' })
   shop.spend(acc, { item: 'gold_boots', idem: 'b' })
-  shop.spend(acc, { item: 'gold_boots', idem: 'c' }) // 1300 - 900 = 400
+  shop.spend(acc, { item: 'gold_boots', idem: 'c' }) // 1300 - 600 = 700
   const note = signJws(chain, { notificationType: 'REFUND', data: { bundleId: 'app.starpath.football', signedTransactionInfo: signJws(chain, t) }, signedDate: t.signedDate })
   assert.equal(shop.appleNotification(note).handled, true)
-  assert.equal(shop.wallet(acc).gems, -900)
-  assert.equal(code(() => shop.spend(acc, { item: 'compression', idem: 'd' })), 'insufficient_gems')
+  assert.equal(shop.wallet(acc).gems, -600)
+  assert.equal(shop.wallet(acc).refundHold, true)
+  assert.equal(code(() => shop.spend(acc, { item: 'compression', idem: 'd' })), 'refund_hold')
   assert.equal(shop.appleNotification(note).handled, false, 'a refund is applied once')
   assert.equal(code(() => shop.applePurchase(acc, signJws(chain, t))), 'revoked')
   // A forged notification (attacker CA) is rejected.
@@ -220,7 +226,8 @@ test('recover: a verified non-consumable receipt restores the account on a new i
 
 test('dev purchases exist only when the server enables them', () => {
   const { shop, acc } = setup()
-  assert.equal(code(() => shop.devPurchase(acc, 'gems_xxl')), 'not_found')
+  assert.equal(code(() => shop.devPurchase(acc, 'gems_l')), 'not_found')
   const d = setup({ devPurchases: true })
-  assert.equal(d.shop.devPurchase(d.acc, 'gems_xxl').gems, 7500)
+  assert.equal(d.shop.devPurchase(d.acc, 'gems_l').gems, 1300)
+  assert.equal(code(() => d.shop.devPurchase(d.acc, 'gems_xxl')), 'unknown_product', 'xl/xxl packs are gone')
 })

@@ -1,9 +1,10 @@
-import { useState } from 'preact/hooks'
+import { useEffect, useState } from 'preact/hooks'
+import { downloadText } from '../../share/cards'
 import '../../../styles/screens/store.css'
 import { t, lt, locale } from '../../../i18n'
 import { Button, toast } from '../../components'
 import { navigate } from '../../store'
-import { PRODUCTS, PRODUCT_BY_ID, currentAccountId, entitlements, getFlavor, isDemo, purchaseHistory, restorePurchases, shopApi, storeAvailable } from '../../../store-iap'
+import { PRODUCTS, PRODUCT_BY_ID, accountLost, adPrivacyOptionsRequired, currentAccountId, showAdPrivacyOptions, entitlements, getFlavor, isDemo, purchaseHistory, restorePurchases, shopApi, storeAvailable } from '../../../store-iap'
 
 /** Settings > Purchases: restore (store policy requires it) + what this install owns. */
 export function PurchasesPanel() {
@@ -83,6 +84,19 @@ function ShopAccount() {
     setBusy(false)
     toast(ok ? L('Hesabın geri geldi.', 'Your account is back.') : L('Kod geçersiz veya kullanılmış.', 'The code is invalid or already used.'), ok ? 'success' : 'info')
   }
+  const [adPrivacy, setAdPrivacy] = useState(false)
+  useEffect(() => {
+    void adPrivacyOptionsRequired().then(setAdPrivacy)
+  }, [])
+  const exportData = async () => {
+    setBusy(true)
+    try {
+      downloadText(JSON.stringify(await shopApi.exportAccount(), null, 2), 'starpath-shop-data.json', 'application/json')
+    } catch {
+      toast(L('Dışa aktarılamadı. Bağlantını kontrol et.', 'Could not export. Check your connection.'), 'info')
+    }
+    setBusy(false)
+  }
   const del = async () => {
     setBusy(true)
     try {
@@ -97,6 +111,7 @@ function ShopAccount() {
   return (
     <div class="pp-panel" data-testid="shop-account">
       <h3 class="h4">{L('Mağaza hesabı', 'Shop account')}</h3>
+      {accountLost.value && <p class="t-sm" data-testid="account-lost">{L('Mağaza hesabın bu cihazda açılamadı. Elmasların kaybolmadı: kurtarma kodunla ya da "Satın alımları geri yükle" ile geri al.', 'Your shop account could not be opened on this device. Your diamonds are not lost: bring them back with your recovery code or "Restore purchases".')}</p>}
       <p class="t-sm t-mid">{L('Elmasların sunucumuzdaki isimsiz bir hesapta durur. Telefon değiştirirsen bu kodla geri alırsın; kodu bir yere yaz, kimseyle paylaşma.', 'Your diamonds live in an anonymous account on our server. On a new phone this code brings them back; write it down and never share it.')}</p>
       {has && (code
         ? <p class="score-font" data-testid="recovery-code" style={{ fontSize: '1.4rem', letterSpacing: '0.08em' }}>{code}</p>
@@ -106,6 +121,8 @@ function ShopAccount() {
         <input class="input" value={entry} onInput={(e) => setEntry((e.target as HTMLInputElement).value)} placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" data-testid="recovery-input" />
       </label>
       <div><Button variant="ghost" disabled={busy || entry.trim().length < 8} onClick={useCode} data-testid="recovery-use">{L('Hesabı geri al', 'Restore account')}</Button></div>
+      {has && <div><Button variant="ghost" disabled={busy} onClick={exportData} data-testid="shop-export">{L('Mağaza verilerimi dışa aktar', 'Export my shop data')}</Button></div>}
+      {adPrivacy && <div><Button variant="ghost" onClick={() => void showAdPrivacyOptions()} data-testid="ad-privacy">{L('Reklam gizlilik seçenekleri', 'Ad privacy choices')}</Button></div>}
       {has && (confirmDelete
         ? (
           <div>

@@ -20,7 +20,7 @@ import { setSoftwareMode, softwareModeState, syncSoftwareModeFromNative } from '
 import { detectPlatform } from './platform/detect'
 import { actions, navigate, screen } from './ui/store'
 import { DEFAULT_CAREER } from './ui/backend'
-import { DEMO_SEED, installDemoMode, installPurchaseListeners, isDemo, refreshWallet, resumePending, setPlayerAgeCheck } from './store-iap'
+import { DEMO_SEED, installAdRetry, installDemoMode, installPurchaseListeners, isDemo, refreshWallet, resumePending, setPlayerAgeCheck } from './store-iap'
 import { isAdultPlayer } from './ui/ageGate'
 
 /** Demo flavor: wipe everything and start the fixed-seed showcase career. */
@@ -86,6 +86,7 @@ async function boot(): Promise<void> {
   window.__spBootDone?.()
   // Shop: server wallet, unfinished store transactions, grants waiting for the career.
   installPurchaseListeners()
+  installAdRetry()
   setPlayerAgeCheck(isAdultPlayer)
   void refreshWallet().then(() => resumePending())
   // The previous run stopped mid-start (a hang leaves no error): one-time notice, and

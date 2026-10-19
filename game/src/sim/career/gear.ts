@@ -30,12 +30,12 @@ export interface GearDef {
 }
 
 export const GEAR: readonly GearDef[] = [
-  { id: 'gold_boots', slot: 'boots', price: 300, matches: 60, xpAll: 0.15, icon: '👟', name: { tr: 'Altın Krampon', en: 'Golden Boots' }, desc: { tr: 'Tüm antrenman XP’si +%15.', en: 'All training XP +15%.' } },
-  { id: 'speed_boots', slot: 'boots', price: 150, matches: 40, xpGroup: { group: 'physical', pct: 0.2 }, icon: '⚡', name: { tr: 'Hız Kramponu', en: 'Speed Boots' }, desc: { tr: 'Fiziksel antrenman XP’si +%20.', en: 'Physical training XP +20%.' } },
-  { id: 'striker_boots', slot: 'boots', price: 150, matches: 40, xpGroup: { group: 'technical', pct: 0.2 }, icon: '🎯', name: { tr: 'Nişancı Kramponu', en: 'Striker Boots' }, desc: { tr: 'Teknik antrenman XP’si (şut, pas, dribling) +%20.', en: 'Technical training XP (shooting, passing, dribbling) +20%.' } },
-  { id: 'mind_band', slot: 'accessory', price: 150, matches: 40, xpGroup: { group: 'mental', pct: 0.2 }, icon: '🧠', name: { tr: 'Zihin Bandı', en: 'Mind Band' }, desc: { tr: 'Mental antrenman XP’si +%20.', en: 'Mental training XP +20%.' } },
-  { id: 'keeper_gloves', slot: 'accessory', price: 150, matches: 40, xpGroup: { group: 'goalkeeping', pct: 0.2 }, icon: '🧤', name: { tr: 'Kaleci Eldiveni Pro', en: 'Pro Keeper Gloves' }, desc: { tr: 'Kalecilik antrenman XP’si +%20.', en: 'Goalkeeping training XP +20%.' } },
-  { id: 'compression', slot: 'recovery', price: 120, matches: 40, recovery: 0.2, icon: '🩳', name: { tr: 'Kompresyon Seti', en: 'Compression Set' }, desc: { tr: 'Yorgunluk toparlanması +%20.', en: 'Fatigue recovery +20%.' } },
+  { id: 'gold_boots', slot: 'boots', price: 200, matches: 60, xpAll: 0.15, icon: '👟', name: { tr: 'Altın Krampon', en: 'Golden Boots' }, desc: { tr: 'Tüm antrenman XP’si +%15.', en: 'All training XP +15%.' } },
+  { id: 'speed_boots', slot: 'boots', price: 100, matches: 40, xpGroup: { group: 'physical', pct: 0.2 }, icon: '⚡', name: { tr: 'Hız Kramponu', en: 'Speed Boots' }, desc: { tr: 'Fiziksel antrenman XP’si +%20.', en: 'Physical training XP +20%.' } },
+  { id: 'striker_boots', slot: 'boots', price: 100, matches: 40, xpGroup: { group: 'technical', pct: 0.2 }, icon: '🎯', name: { tr: 'Nişancı Kramponu', en: 'Striker Boots' }, desc: { tr: 'Teknik antrenman XP’si (şut, pas, dribling) +%20.', en: 'Technical training XP (shooting, passing, dribbling) +20%.' } },
+  { id: 'mind_band', slot: 'accessory', price: 100, matches: 40, xpGroup: { group: 'mental', pct: 0.2 }, icon: '🧠', name: { tr: 'Zihin Bandı', en: 'Mind Band' }, desc: { tr: 'Mental antrenman XP’si +%20.', en: 'Mental training XP +20%.' } },
+  { id: 'keeper_gloves', slot: 'accessory', price: 100, matches: 40, xpGroup: { group: 'goalkeeping', pct: 0.2 }, icon: '🧤', name: { tr: 'Kaleci Eldiveni Pro', en: 'Pro Keeper Gloves' }, desc: { tr: 'Kalecilik antrenman XP’si +%20.', en: 'Goalkeeping training XP +20%.' } },
+  { id: 'compression', slot: 'recovery', price: 80, matches: 40, recovery: 0.2, icon: '🩳', name: { tr: 'Kompresyon Seti', en: 'Compression Set' }, desc: { tr: 'Yorgunluk toparlanması +%20.', en: 'Fatigue recovery +20%.' } },
 ]
 
 export const GEAR_BY_ID: Readonly<Record<string, GearDef>> = Object.fromEntries(GEAR.map((g) => [g.id, g]))

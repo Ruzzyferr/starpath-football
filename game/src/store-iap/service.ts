@@ -5,7 +5,7 @@
 import { detectPlatform, isMobileNative } from '../platform/detect'
 import { CapacitorProvider } from './capacitorProvider'
 import { PRODUCT_BY_ID } from './catalog'
-import { grant } from './entitlements'
+import { grant, revokeMissing } from './entitlements'
 import { DevProvider, UnavailableProvider, type PurchaseProvider, type PurchaseResult, type StoreProduct, type StoreReceipt } from './provider'
 import { ShopApiError, currentAccountId, ensureAccount, flushEarnQueue, serverWallet, shopApi, type ServerWallet } from './shopApi'
 
@@ -45,6 +45,8 @@ export function setInboxHandler(fn: ((w: ServerWallet) => void | Promise<void>) 
 function syncEntitlements(w: ServerWallet): void {
   const ids = w.entitlements.filter((id) => PRODUCT_BY_ID[id])
   if (ids.length) grant(ids, 'server')
+  // A refunded / revoked pack disappears from the server list: drop the local copy too.
+  revokeMissing(new Set(ids))
 }
 
 /** Apply a fresh server wallet: mirror entitlements, hand grants to the career. */
@@ -92,21 +94,35 @@ function queueRetry(r: StoreReceipt): void {
   retryTimer ??= setInterval(() => void retryUnredeemed(), 60_000)
 }
 
-/** Retries paid-but-not-credited receipts (timer, reconnect, app resume, store screen). */
-export async function retryUnredeemed(): Promise<void> {
-  for (const r of [...unredeemed]) {
-    try {
-      await handleWallet(await redeem(r))
-      unredeemed.splice(unredeemed.indexOf(r), 1)
-    } catch (e) {
-      // A definitive refusal (forged, someone else's, revoked) is not retried forever.
-      if (e instanceof ShopApiError && e.code !== 'offline' && e.status >= 400 && e.status < 500 && e.status !== 429) unredeemed.splice(unredeemed.indexOf(r), 1)
+let retryRun: Promise<void> | null = null
+/** Retries paid-but-not-credited receipts (timer, reconnect, app resume, store screen). One run at a time. */
+export function retryUnredeemed(): Promise<void> {
+  retryRun ??= (async () => {
+    for (const r of [...unredeemed]) {
+      const drop = () => {
+        const i = unredeemed.indexOf(r)
+        if (i >= 0) unredeemed.splice(i, 1)
+      }
+      try {
+        await handleWallet(await redeem(r))
+        drop()
+      } catch (e) {
+        // A definitive refusal (forged, someone else's, revoked, sandbox) is not retried forever, and not
+        // re-sent on every launch either.
+        if (e instanceof ShopApiError && e.code !== 'offline' && e.status >= 400 && e.status < 500 && e.status !== 429) {
+          drop()
+          markRedeemed(r.txId)
+        }
+      }
     }
-  }
-  if (!unredeemed.length && retryTimer) {
-    clearInterval(retryTimer)
-    retryTimer = null
-  }
+    if (!unredeemed.length && retryTimer) {
+      clearInterval(retryTimer)
+      retryTimer = null
+    }
+  })().finally(() => {
+    retryRun = null
+  })
+  return retryRun
 }
 
 /** Android needs the server's Play verification set up; until then nothing is charged there. */
@@ -203,8 +219,18 @@ export function installPurchaseListeners(): void {
     queueRetry(r)
     void retryUnredeemed()
   })
-  globalThis.addEventListener?.('online', () => void retryUnredeemed())
+  // Back online / back in the foreground: retry what is queued, and look for purchases that finished
+  // meanwhile (Android PENDING → PURCHASED, Ask to Buy) — at most once a minute.
+  let lastPending = 0
+  const resume = () => {
+    void retryUnredeemed()
+    if (Date.now() - lastPending > 60_000) {
+      lastPending = Date.now()
+      void resumePending()
+    }
+  }
+  globalThis.addEventListener?.('online', resume)
   globalThis.document?.addEventListener?.('visibilitychange', () => {
-    if (document.visibilityState === 'visible') void retryUnredeemed()
+    if (document.visibilityState === 'visible') resume()
   })
 }

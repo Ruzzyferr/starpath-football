@@ -7,7 +7,9 @@
  * transaction finished (iOS: finished here; Android: acknowledged or consumed by the server itself). A payment the
  * server has not credited yet is retried by store-iap/service (timer, reconnect, app resume, next
  * launch via `pending()`); transactions that finish outside a purchase call (Ask to Buy, renewals)
- * arrive through `listen()`.
+ * arrive through `listen()`. Note: on iOS the plugin itself finishes transactions that arrive through
+ * StoreKit's update stream, so for those the server credit (idempotent per transaction) is the record.
+ * Android purchases still PENDING (cash payment in progress) are not sent until they are PURCHASED.
  */
 import { detectPlatform } from '../platform/detect'
 import { PRODUCTS, PRODUCT_BY_ID } from './catalog'
@@ -18,7 +20,7 @@ async function plugin() {
   return { NativePurchases: m.NativePurchases, INAPP: m.PURCHASE_TYPE.INAPP, SUBS: m.PURCHASE_TYPE.SUBS }
 }
 
-type Tx = { transactionId: string; productIdentifier: string; jwsRepresentation?: string; purchaseToken?: string; isAcknowledged?: boolean; isActive?: boolean; revocationDate?: string }
+type Tx = { purchaseState?: string | number; transactionId: string; productIdentifier: string; jwsRepresentation?: string; purchaseToken?: string; isAcknowledged?: boolean; isActive?: boolean; revocationDate?: string }
 
 function receiptOf(tx: Tx): StoreReceipt {
   const ios = detectPlatform() === 'ios'
@@ -78,7 +80,7 @@ export class CapacitorProvider implements PurchaseProvider {
       const { purchases } = (await NativePurchases.getPurchases({})) as { purchases: Tx[] }
       const ios = detectPlatform() === 'ios'
       return purchases
-        .filter((t) => PRODUCT_BY_ID[t.productIdentifier] && !t.revocationDate && (ios || !t.isAcknowledged))
+        .filter((t) => PRODUCT_BY_ID[t.productIdentifier] && !t.revocationDate && (ios || (!t.isAcknowledged && (t.purchaseState === undefined || String(t.purchaseState) === '1' || /purchased/i.test(String(t.purchaseState))))))
         .map(receiptOf)
     } catch {
       return []

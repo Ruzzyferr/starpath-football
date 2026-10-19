@@ -3,10 +3,8 @@
  *
  * Persistence is a GLOBAL key (outside save slots, so deleting/importing a save
  * never loses or shares a purchase). Trust model: on web/dev the record is
- * local and unsigned; the native stores are the source of truth and
- * "Restore purchases" re-grants from them. FUTURE: validate receipts server-side
- * (Play Developer API / App Store Server API) before granting, and sign the
- * local record. Cosmetic-only + a single unlock keeps the fraud surface small.
+ * an offline mirror of the shop server's entitlement list (store-iap/service syncEntitlements), which
+ * re-derives it on every wallet fetch; receipts are verified by the server, never here.
  */
 import { signal } from '@preact/signals'
 import { FULL_CAREER, PRODUCT_BY_ID, packFor, type CosmeticKind } from './catalog'
@@ -85,6 +83,20 @@ function save(rec: EntitlementRecord): void {
 
 export function grant(ids: readonly string[], src: string): void {
   save(grantIn(entitlements.peek(), ids, src))
+}
+
+/** Drops server-sourced entitlements the server no longer lists (refund / revoke). Local-only records stay. */
+export function revokeMissing(serverIds: Set<string>): void {
+  const rec = entitlements.peek()
+  const owned = { ...rec.owned }
+  let changed = false
+  for (const [id, e] of Object.entries(owned)) {
+    if ((e.src === 'server' || e.src.startsWith('restore:')) && !serverIds.has(id)) {
+      delete owned[id]
+      changed = true
+    }
+  }
+  if (changed) save({ v: 1, owned })
 }
 
 /** Reads the signal, so components re-render on change. Premium builds own the full career. */

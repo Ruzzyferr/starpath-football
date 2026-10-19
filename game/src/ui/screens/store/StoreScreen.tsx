@@ -7,10 +7,13 @@ import { gameState } from '../../store'
 import type { Appearance, LText } from '../../../core/types'
 import { GEAR, GEAR_XP_CAP, PHYSIO_PRICE, gearXpBonus, readGear, type GearSlot } from '../../../sim/career/gear'
 import {
-  COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, adsAvailable, hasEntitlement, loadProducts, productsOfKind, purchase, refreshWallet, retryUnredeemed, serverWallet, shopOffline, storeAvailable, storeReady, watchAd,
+  AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, PHYSIO_DISCOUNT_PRICE, adsAvailable, hasEntitlement, loadProducts, productsOfKind, purchase, refreshWallet, restorePurchases, retryUnredeemed, serverWallet, shopOffline, storeAvailable, storeReady, watchAd,
   type AdOffer, type ProductDef,
 } from '../../../store-iap'
-import { buyCosmeticWithGems, buyGear, buyPhysio, cashGrantAmount, claimPassDaily, equipGearAction, gemsToCash, physioUsedOnThisInjury, unequipGearAction } from '../../backend/shopBridge'
+import { CASH_PER_SEASON, boughtCashThisSeason, buyCosmeticWithGems, buyGear, buyPhysio, cashGrantAmount, claimPassDaily, equipGearAction, gemsToCash, physioUsedOnThisInjury, unequipGearAction } from '../../backend/shopBridge'
+import { LegalLinksInline } from './LegalModal'
+import { AgeQuestionInline, isAdultPlayer } from '../../ageGate'
+import { detectPlatform } from '../../../platform/detect'
 import { fmtMoney } from '../../../sim/career/common'
 
 const FALLBACK_LOOK: Appearance = { skin: 2, hairStyle: 3, hairColor: 1, beard: 0, eyeColor: 1, face: 1, accessory: 0 }
@@ -35,12 +38,27 @@ const ERR: Record<string, LText> = {
   no_pass: L('Pro Sözleşme aktif değil.', 'Pro Contract is not active.'),
   rejected: L('Satın alma doğrulanamadı. Ödeme alındıysa mağaza iade eder veya bir sonraki açılışta yeniden denenir.', 'The purchase could not be verified. If you were charged, the store refunds it or it is retried on the next launch.'),
   cancelled: L('Satın alma iptal edildi.', 'Purchase cancelled.'),
+  nothing: L('Geri yüklenecek satın alım bulunamadı.', 'No purchases found to restore.'),
   pending: L('Satın alma onay bekliyor (ör. aile onayı). Onaylanınca otomatik eklenir.', 'The purchase is waiting for approval (e.g. Ask to Buy). It is added automatically once approved.'),
   store_not_ready: L('Bu cihazda satın alma henüz açılmadı. Bedava elmaslar ve reklam ödülleri çalışıyor.', 'Purchases are not open on this device yet. Free diamonds and ad rewards work.'),
   unavailable: L('Bu ürün şu an satın alınamıyor.', 'This item cannot be bought right now.'),
   owned: L('Bu pakete zaten sahipsin.', 'You already own this pack.'),
   no_season_reward: L('Önce sezon sonu ödülü alınmalı.', 'The end-of-season reward comes first.'),
+  spend_cap: L('Bugünlük bu işlemin hakkı doldu, yarın yenilenir.', 'That is used up for today; it resets tomorrow.'),
+  rate_limited: L('Çok hızlı denendi. Birkaç saniye sonra yine dene.', 'Too many tries. Try again in a few seconds.'),
+  no_discount: L('Önce indirim reklamını izlemelisin.', 'Watch the discount ad first.'),
+  sandbox_cap: L('Test satın alma sınırına ulaşıldı.', 'The test-purchase limit was reached.'),
+  play_not_configured: L('Bu cihazda satın alma henüz açılmadı.', 'Purchases are not open on this device yet.'),
+  ad_too_short: L('Reklam tamamlanmadı. Hakkın yanmadı.', 'The ad did not finish. Nothing was used up.'),
+  too_many_open_ads: L('Birkaç reklam yarım kaldı. Birkaç dakika sonra yine dene.', 'A few ads were left unfinished. Try again in a few minutes.'),
+  pending_reward: L('Reklamı izledin; ödül bağlantı gelince otomatik eklenecek.', 'You watched the ad; the reward is added automatically once you are back online.'),
+  refund_hold: L('İade edilen bir satın alma yüzünden harcama ve reklam ödülleri şimdilik durdu.', 'Spending and ad rewards are paused because of a refunded purchase.'),
+  cash_season_cap: L('Bu sezonun nakit satın alma sınırına ulaştın (€600.000). Yeni sezonda açılır.', 'You reached this season’s cash purchase limit (€600,000). It opens again next season.'),
+  adult_only: L('Nakit satın almak 18 yaş ve üstü içindir.', 'Buying cash is for players 18 and over.'),
+  keeper_only: L('Bu eldiven yalnızca kaleciler için.', 'These gloves are for goalkeepers only.'),
 }
+/** Outside ad flows the fallback must not promise "nothing was used up". */
+const errNeutral = (code: string | undefined): string => (code && ERR[code] ? lt(ERR[code]!) : lt(L('İşlem tamamlanamadı. Biraz sonra yine dene.', 'That did not go through. Try again in a moment.')))
 const errText = (code: string | undefined): string => lt(ERR[code ?? 'failed'] ?? ERR.failed!)
 
 type TabId = 'gems' | 'gear' | 'cash' | 'cosmetic' | 'pro'
@@ -77,7 +95,7 @@ function AdButton({ offer, label, busy, run }: { offer: AdOffer; label: LText; b
   return (
     <Button variant="secondary" icon="play" disabled={busy} aria-busy={busy} onClick={() => run(offer)} data-testid={`ad-${offer}`}>
       {lt(label)}
-      {pro ? ` · ${lt(L('Pro: reklamsız', 'Pro: no ad'))}` : left !== undefined ? ` · ${lt(L(`bugün ${left}/${cap!.max}`, `today ${left}/${cap!.max}`))}` : ''}
+      {pro ? ` · ${lt(L('Pro: reklamsız', 'Pro: no ad'))}` : left !== undefined ? ` · ${lt(L(`bugün ${left} hak`, `${left} left today`))}` : ''}
     </Button>
   )
 }
@@ -92,6 +110,7 @@ export function StoreScreen() {
   const s = gameState.value
   const gear = s ? readGear(s.life) : { inv: {}, eq: {} }
   const gems = w?.gems ?? 0
+  const cashLeft = s ? Math.max(0, CASH_PER_SEASON - boughtCashThisSeason(s)) : 0
 
   useEffect(() => {
     void loadProducts().then((p) => setPrices(Object.fromEntries(Object.entries(p).map(([k, v]) => [k, v.priceString]))))
@@ -106,14 +125,15 @@ export function StoreScreen() {
     setBusy(null)
     if (r.ok) {
       if (done) toast(lt(done(serverWallet.peek()?.gems ?? 0)), 'success')
-    } else toast(errText(r.reason ?? r.error), 'info')
+    } else toast(key.startsWith('ad:') ? errText(r.reason ?? r.error) : errNeutral(r.reason ?? r.error), 'info')
   }
   const balanceLine = (got: string) => (b: number) => L(`${got} · bakiye ${num(b)}💎`, `${got} · balance ${num(b)}💎`)
   const buy = (p: ProductDef) =>
     run(p.id, () => purchase(p.id), p.kind === 'gems' || p.kind === 'starter' ? balanceLine(`+${num(p.gems ?? 0)}💎`) : p.kind === 'cosmetic' || p.kind === 'pass' ? () => L(`${p.icon} ${p.name.tr}: aktif.`, `${p.icon} ${p.name.en}: active.`) : undefined)
-  const ad = (offer: AdOffer) => run(`ad:${offer}`, () => watchAd(offer, { career: s?.meta.id }), offer === 'gems' ? balanceLine('+10💎') : offer === 'physio_disc' ? () => L('Fizyoterapi indirimi hazır: 50💎.', 'Physio discount ready: 50💎.') : undefined)
+  const ad = (offer: AdOffer) => run(`ad:${offer}`, () => watchAd(offer, { career: s?.meta.id }), offer === 'gems' ? balanceLine(`+${AD_GEMS}💎`) : offer === 'physio_disc' ? () => L(`Fizyoterapi indirimi hazır: ${PHYSIO_DISCOUNT_PRICE}💎.`, `Physio discount ready: ${PHYSIO_DISCOUNT_PRICE}💎.`) : undefined)
   const price = (p: ProductDef) => (prices[p.id] ? t('iap.store.buy', { price: prices[p.id]! }) : t('iap.store.buyNoPrice'))
   const can = storeAvailable()
+  const android = detectPlatform() === 'android'
   const ready = storeReady()
 
   const buyBtn = (p: ProductDef, owned = false) =>
@@ -134,7 +154,7 @@ export function StoreScreen() {
   const bonusNow = s ? Math.round(Math.max(...(['physical', 'technical', 'mental', 'goalkeeping'] as const).map((g) => gearXpBonus(s.life, g))) * 100) : 0
 
   return (
-    <Page title={t('iap.store.title')} sub={lt(L('Satın aldığın hiçbir şey maç sonucunu değiştirmez.', 'Nothing you buy changes a match result.'))} backTo="settings" showBack>
+    <Page title={t('iap.store.title')} sub={lt(L('Satın aldığın hiçbir şey maç motoruna girmez.', 'Nothing you buy enters the match engine.'))} backTo="settings" showBack>
       <div class="st-wallet" data-testid="st-wallet" aria-live="polite">
         <span class="st-gems" data-testid="st-gems" aria-label={lt(L(`${num(gems)} elmas`, `${num(gems)} diamonds`))}>💎 {w ? num(w.gems) : '—'}</span>
         {w?.pass.active && <span class="st-pro">PRO</span>}
@@ -142,7 +162,8 @@ export function StoreScreen() {
       </div>
       {!can && <p class="t-mid">{t('iap.store.noStore')}</p>}
       {can && !ready && <p class="t-sm t-mid" data-testid="st-not-ready">{errText('store_not_ready')}</p>}
-      <Tabs items={tabs} value={tab} onChange={setTab} label={t('iap.store.title')} idPrefix="st" />
+      {w?.refundHold && <p class="t-sm" data-testid="st-refund-hold">{errText('refund_hold')}</p>}
+      <div class="st-tabs"><Tabs items={tabs} value={tab} onChange={setTab} label={t('iap.store.title')} idPrefix="st" /></div>
 
       {tab === 'gems' && (
         <div class="st-grid" data-testid="st-tab-gems">
@@ -151,13 +172,14 @@ export function StoreScreen() {
               <div class="st-big" aria-hidden="true">{p.icon}</div>
               <h2 class="h3">{lt(p.name)}</h2>
               <p class="t-sm t-mid">{lt(p.desc)}</p>
+              <span class="t-xs t-lo">{lt(L('Altın Krampon o an açık olan kariyerine gider; elmaslar hesabında kalır.', 'The Golden Boots go to the career you have open; the diamonds stay in your account.'))}</span>
               {buyBtn(p, !!w?.starter)}
             </Card>
           ))}
           <Card class="st-card" data-testid="st-free">
             <h2 class="h4">{lt(L('Bedava elmas', 'Free diamonds'))}</h2>
-            <p class="t-sm t-mid">{lt(L('Oynayarak kazan: Maçın Oyuncusu 5💎, haftalık hedef 5💎, başarım 10💎, sezon sonu 80💎, ödül ve kupa 25💎. İstersen reklam izle.', 'Earn by playing: Man of the Match 5💎, weekly goal 5💎, achievement 10💎, end of season 80💎, award or trophy 25💎. Or watch an optional ad.'))}</p>
-            <AdButton offer="gems" label={L('İzle: +10💎', 'Watch: +10💎')} busy={busy !== null} run={ad} />
+            <p class="t-sm t-mid">{lt(L(`Oynayarak kazan: Maçın Oyuncusu ${EARN_GEMS.motm}💎, haftalık hedef ${EARN_GEMS.objective}💎, başarım ${EARN_GEMS.first}💎, sezon sonu ${EARN_GEMS.season}💎, ödül ve kupa ${EARN_GEMS.award}💎. İstersen reklam izle.`, `Earn by playing: Man of the Match ${EARN_GEMS.motm}💎, weekly goal ${EARN_GEMS.objective}💎, achievement ${EARN_GEMS.first}💎, end of season ${EARN_GEMS.season}💎, award or trophy ${EARN_GEMS.award}💎. Or watch an optional ad.`))}</p>
+            <AdButton offer="gems" label={L(`İzle: +${AD_GEMS}💎`, `Watch: +${AD_GEMS}💎`)} busy={busy !== null} run={ad} />
           </Card>
           {productsOfKind('gems').map((p) => (
             <Card key={p.id} class="st-card" data-testid={`pack-${p.id}`}>
@@ -167,7 +189,7 @@ export function StoreScreen() {
               {buyBtn(p)}
             </Card>
           ))}
-          <p class="t-xs t-lo st-span">{lt(L('Elmasın nakit değeri yoktur, devredilemez ve yasal haklar dışında iade edilmez. Tüketilen paketler (elmas, nakit) geri yüklenmez; iade edilen satın almanın elmasları bakiyeden düşülür. "≈ €" değerleri 600 elmas paketinin fiyatına göredir.', 'Diamonds have no cash value, cannot be transferred and are not refundable except where the law requires. Consumable packs (diamonds, cash) are not restored; diamonds from a refunded purchase are taken back. "≈ €" values use the 600-diamond pack’s price.'))}</p>
+          <p class="t-sm t-mid st-span">{lt(L('Elmasın nakit değeri yoktur, devredilemez ve yasal haklar dışında iade edilmez. Tüketilen paketler (elmas, nakit) geri yüklenmez; iade edilen satın almanın elmasları bakiyeden düşülür. "≈ €" değerleri 600 elmas paketinin fiyatına göredir.', 'Diamonds have no cash value, cannot be transferred and are not refundable except where the law requires. Consumable packs (diamonds, cash) are not restored; diamonds from a refunded purchase are taken back. "≈ €" values use the 600-diamond pack’s price.'))}</p>
         </div>
       )}
 
@@ -182,7 +204,7 @@ export function StoreScreen() {
               {physioUsedOnThisInjury(s) ? (
                 <span class="st-owned">{errText('physio_used')}</span>
               ) : (w?.physioDiscounts ?? 0) > 0 ? (
-                <Button variant="primary" disabled={busy !== null || gems < 50} onClick={() => run('physio', () => buyPhysio(true))} data-testid="buy-physio-disc">50💎 ({eur(50)})</Button>
+                <Button variant="primary" disabled={busy !== null || gems < PHYSIO_DISCOUNT_PRICE} onClick={() => run('physio', () => buyPhysio(true))} data-testid="buy-physio-disc">{PHYSIO_DISCOUNT_PRICE}💎 ({eur(PHYSIO_DISCOUNT_PRICE)})</Button>
               ) : (
                 <>
                   <Button variant="primary" disabled={busy !== null || gems < PHYSIO_PRICE} onClick={() => run('physio', () => buyPhysio(false))} data-testid="buy-physio">{PHYSIO_PRICE}💎 ({eur(PHYSIO_PRICE)})</Button>
@@ -193,15 +215,18 @@ export function StoreScreen() {
             </Card>
           )}
           <div class="st-grid">
-            {GEAR.map((g) => {
+            {GEAR.filter((g) => g.xpGroup?.group !== 'goalkeeping' || s?.hero.position === 'GK').map((g) => {
               const left = gear.inv[g.id] ?? 0
               const on = gear.eq[g.slot] === g.id
+              const gain = s ? effectiveGain(s.life, g.id) : null
               return (
                 <Card key={g.id} class={`st-card${on ? ' st-on' : ''}`} data-testid={`gear-${g.id}`}>
                   <div class="st-big" aria-hidden="true">{g.icon}</div>
                   <h2 class="h4">{lt(g.name)}</h2>
                   <p class="t-sm t-mid">{lt(g.desc)}</p>
                   <span class="t-xs t-lo">{lt(L(`${g.matches} maç · tür: `, `${g.matches} matches · type: `))}{lt(SLOT[g.slot])}</span>
+                  {gain !== null && !on && <span class="t-xs" data-testid={`gear-gain-${g.id}`}>{lt(gain > 0 ? L(`Takarsan toplam bonus: +%${gain}`, `If worn, total bonus: +${gain}%`) : L('Tavanda: ek kazanç yok', 'At the cap: no extra gain'))}</span>}
+                  {left > 0 && left <= 5 && <span class="t-xs t-gold">{lt(L(`Son ${left} maç`, `${left} ${left === 1 ? 'match' : 'matches'} left`))}</span>}
                   {left > 0 && (
                     <div class="st-row">
                       <span class="t-sm" data-testid={`gear-left-${g.id}`}>{lt(L(`Kalan: ${left} maç`, `Left: ${left} ${left === 1 ? 'match' : 'matches'}`))}</span>
@@ -221,23 +246,30 @@ export function StoreScreen() {
         </div>
       )}
 
-      {tab === 'cash' && (
+      {tab === 'cash' && !isAdultPlayer() && (
+        <div class="st-grid" data-testid="st-tab-cash-age">
+          <p class="t-sm t-mid st-span">{errText('adult_only')}</p>
+          <AgeQuestionInline />
+        </div>
+      )}
+      {tab === 'cash' && isAdultPlayer() && (
         <div class="st-grid" data-testid="st-tab-cash">
+          {s && <p class="t-sm st-span" data-testid="cash-season-left">{lt(L(`Bu sezon kalan nakit satın alma hakkı: `, `Cash you can still buy this season: `))}<b>{lt(fmtMoney(cashLeft))}</b></p>}
           <p class="t-sm t-mid st-span">{lt(L('Nakit kariyer cüzdanına eklenir. Miktar güncel maaşınla büyür (paket başına bir üst sınırla), fiyatı sabittir. Oyun içi para gerçek paraya çevrilemez. Kumarhane de bu parayı kullanır.', 'Cash goes into your career wallet. The amount grows with your wage (up to a ceiling per pack); the price stays the same. In-game money can never be turned into real money. The casino uses this money too.'))}</p>
           {productsOfKind('cash').map((p) => (
             <Card key={p.id} class="st-card" data-testid={`pack-${p.id}`}>
               <div class="st-big" aria-hidden="true">💶</div>
               <h2 class="h4">{lt(p.name)}</h2>
-              {s && <p class="t-sm">{lt(L('Şu an: ', 'Right now: '))}<b>{lt(fmtMoney(cashGrantAmount(s, p.cashWeeks ?? 0, p.cashFloor ?? 0, p.cashCap ?? Infinity)))}</b></p>}
+              {s && <p class="t-sm">{lt(L('Şu an: ', 'Right now: '))}<b>{lt(fmtMoney(Math.min(cashLeft, cashGrantAmount(s, p.cashWeeks ?? 0, p.cashFloor ?? 0, p.cashCap ?? Infinity))))}</b></p>}
               <p class="t-xs t-lo">{lt(p.desc)}</p>
-              {buyBtn(p)}
+              {cashLeft <= 0 ? <span class="t-sm">{errText('cash_season_cap')}</span> : buyBtn(p)}
             </Card>
           ))}
           <Card class="st-card">
             <div class="st-big" aria-hidden="true">💎→💶</div>
             <h2 class="h4">{lt(L('Elmas → Nakit', 'Diamonds → Cash'))}</h2>
             <p class="t-sm t-mid">{lt(L('100💎 = 2 haftalık maaş (en az €2.500, en çok €25.000). Günde 3 kez.', '100💎 = 2 weeks’ wages (€2,500 to €25,000). 3 times a day.'))}</p>
-            <Button variant="primary" block disabled={busy !== null || !s || gems < 100 || w?.limits?.gemsToCashLeft === 0} onClick={() => run('g2c', () => gemsToCash())} data-testid="gems-to-cash">100💎</Button>
+            <Button variant="primary" block disabled={busy !== null || !s || gems < 100 || w?.limits?.gemsToCashLeft === 0 || cashLeft <= 0} onClick={() => run('g2c', () => gemsToCash())} data-testid="gems-to-cash">100💎 <span class="t-xs">({eur(100)})</span></Button>
             {missing(100)}
           </Card>
         </div>
@@ -256,7 +288,7 @@ export function StoreScreen() {
                 {buyBtn(p, owned)}
                 {!owned && (
                   <Button variant="secondary" block disabled={busy !== null || gems < COSMETIC_GEMS} onClick={() => run(`cos:${p.id}`, () => buyCosmeticWithGems(p.id as 'pack_celebrations' | 'pack_avatar'), () => L(`${p.icon} ${p.name.tr}: açıldı.`, `${p.icon} ${p.name.en}: unlocked.`))} data-testid={`buy-gems-${p.id}`}>
-                    {lt(L(`veya ${COSMETIC_GEMS}💎`, `or ${COSMETIC_GEMS}💎`))}
+                    {lt(L(`veya ${COSMETIC_GEMS}💎`, `or ${COSMETIC_GEMS}💎`))} <span class="t-xs">({eur(COSMETIC_GEMS)})</span>
                   </Button>
                 )}
               </Card>
@@ -283,24 +315,33 @@ export function StoreScreen() {
                 <>
                   <p class="t-sm" data-testid="pro-terms">
                     {lt(L(
-                      `Aylık abonelik: ${prices[p.id] ?? p.fallbackPrice} / ay. Dönem bitmeden en az 24 saat önce iptal edilmezse otomatik yenilenir; ödeme App Store / Google Play hesabından alınır. Aboneliği cihazının mağaza ayarlarından yönetir ve iptal edersin.`,
-                      `Monthly subscription: ${prices[p.id] ?? p.fallbackPrice} / month. It renews automatically unless cancelled at least 24 hours before the period ends; payment is charged to your App Store / Google Play account. Manage or cancel it in your device's store settings.`,
+                      `Aylık abonelik: ${prices[p.id] ?? p.fallbackPrice} / ay. Dönem bitmeden en az 24 saat önce iptal edilmezse otomatik yenilenir; ödeme ${android ? 'Google Play' : 'App Store'} hesabından alınır. ${android ? 'Google Play › Ödemeler ve abonelikler' : 'Ayarlar › Apple Kimliği › Abonelikler'} bölümünden yönetir ve iptal edersin.`,
+                      `Monthly subscription: ${prices[p.id] ?? p.fallbackPrice} / month. It renews automatically unless cancelled at least 24 hours before the period ends; payment is charged to your ${android ? 'Google Play' : 'App Store'} account. Manage or cancel it in ${android ? 'Google Play › Payments & subscriptions' : 'Settings › Apple ID › Subscriptions'}.`,
                     ))}
                   </p>
                   {buyBtn(p)}
                 </>
               )}
-              <p class="t-xs">
-                <a href={`./legal/terms-${currentLang.value === 'tr' ? 'tr' : 'en'}.html`} target="_blank" rel="noopener">{t('iap.legal.terms')}</a>
-                {' · '}
-                <a href={`./legal/privacy-${currentLang.value === 'tr' ? 'tr' : 'en'}.html`} target="_blank" rel="noopener">{t('iap.legal.privacy')}</a>
-              </p>
+              <Button variant="ghost" size="sm" disabled={busy !== null} onClick={() => run('restore', async () => ({ ok: (await restorePurchases()).length > 0, reason: 'nothing' }), () => L('Satın alımların geri yüklendi.', 'Your purchases were restored.'))} data-testid="pro-restore">{lt(L('Satın alımları geri yükle', 'Restore purchases'))}</Button>
+              <LegalLinksInline testId="pro-legal" />
             </Card>
           ))}
         </div>
       )}
     </Page>
   )
+}
+
+/** Total gear bonus (%) the hero would have with this item worn in its slot, after the +25% cap. */
+function effectiveGain(life: Parameters<typeof readGear>[0], id: string): number | null {
+  const def = GEAR.find((g) => g.id === id)
+  if (!def) return null
+  const groups = ['physical', 'technical', 'mental', 'goalkeeping'] as const
+  const now = Math.max(...groups.map((g) => gearXpBonus(life, g)))
+  const cur = readGear(life)
+  const trial = { flags: { ...life.flags, 'g:gear': JSON.stringify({ inv: { ...cur.inv, [id]: def.matches }, eq: { ...cur.eq, [def.slot]: id } }) } }
+  const after = Math.max(...groups.map((g) => gearXpBonus(trial, g)))
+  return after > now ? Math.round(after * 100) : 0
 }
 
 const SLOT: Record<GearSlot, LText> = {

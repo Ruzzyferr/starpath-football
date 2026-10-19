@@ -4,6 +4,19 @@
 > Bu belge kararın gerekçesini, simüle müşteri panelinin tüm turlarını, önerilen ürün kataloğunu, ekonomi ve denge kurallarını, teknik mimariyi, mağaza ve yasal yükümlülükleri ve uygulama yol haritasını içerir.
 > Hukuki tavsiye değildir. Fiyatlar ve oranlar, gerçek oyuncu verisiyle doğrulanana kadar tahmindir.
 
+## Uygulanan durum (2026-10-19)
+
+Plana göre gerçekte yapılanlar ve değişenler:
+
+- Elmas paketleri en fazla **1.300** (220 / 600 / 1.300); 2.800 ve 7.500'lük paketler kalktı.
+- Ekipman fiyatları **200 / 100 / 80** elmas.
+- Ücretsiz elmas: MOTM **8**, hedef **8**, başarım **10**, sezon **100**, ödül **25**; günde en çok **300**.
+- Nakit sınırı sezon başına **600k**; nakit paketi tavanları **50k / 150k / 400k**.
+- Pro Sözleşme günde **50** elmas (sahip kararı korundu).
+- **Efsane Kariyerler henüz yok.**
+- Elmaslar sunucuda tutulur: DigitalOcean droplet üzerinde anonim mağaza hesabı.
+- Yaş kapısı: kumarhane ve nakit satın alma 18+; reklamlar 18 yaş altı/bilinmeyende kişiselleştirilmemiş.
+
 ---
 
 ## 0. Tek sayfada karar

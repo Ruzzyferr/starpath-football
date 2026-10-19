@@ -30,10 +30,12 @@ export interface ServerWallet {
   physioDiscounts: number
   earnedToday: number
   prices: Record<string, number>
+  /** Refunds pending or negative balance: spends and ad rewards are paused. */
+  refundHold?: boolean
   /** Which stores the server can verify right now (Android needs the Play service account). */
   stores?: { apple: boolean; google: boolean }
   seasonX2Ready?: boolean
-  limits?: { gemsToCashLeft: number }
+  limits?: { gemsToCashLeft: number; cashPerSeason?: number }
 }
 
 export type ShopErrorCode =
@@ -152,13 +154,26 @@ export function ensureAccount(platform?: string): Promise<Account> {
   return accountPromise
 }
 
-/** Authenticated call; a revoked/unknown account is replaced once (fresh install semantics). */
+const LOST_KEY = 'starpath.account.lost.v1'
+/** The account was refused (server restore, removed device): set so the UI can offer the recovery code. */
+export const accountLost = signal<boolean>(!!readJson<Account>(LOST_KEY))
+
+/**
+ * Authenticated call. A refused account is NOT silently replaced while it may hold paid diamonds: its
+ * credentials are kept aside (recovery code / Restore purchases can bring it back) and the player is told.
+ * An account that never held anything is simply replaced.
+ */
 async function call<T>(method: 'GET' | 'POST', path: string, body?: unknown): Promise<T> {
   const acc = await ensureAccount()
   try {
     return await raw<T>(method, path, body, acc)
   } catch (e) {
     if (e instanceof ShopApiError && e.code === 'unauthorized') {
+      const hadValue = (serverWallet.peek()?.gems ?? 0) > 0 || (serverWallet.peek()?.entitlements.length ?? 0) > 0
+      if (hadValue) {
+        writeJson(LOST_KEY, acc)
+        accountLost.value = true
+      }
       writeJson(ACCOUNT_KEY, null)
       return raw<T>(method, path, body, await ensureAccount())
     }
@@ -173,31 +188,58 @@ const withWallet = async <T extends ServerWallet>(p: Promise<T>): Promise<T> => 
 }
 
 const EARN_QUEUE_KEY = 'starpath.earnq.v1'
+type EarnItem = { source: string; ref: string }
 
 /**
- * Free-diamond claims made before this install ever used the shop wait here, so a player who never
- * opens the store never contacts the server; they are sent once an account exists.
+ * Free-diamond claims wait here: a player who never opens the store never contacts the server, and a
+ * claim the server could not take today (daily cap, offline, busy) is kept for later instead of lost.
  */
 export function queueEarn(source: string, ref: string): void {
-  const q = readJson<{ source: string; ref: string }[]>(EARN_QUEUE_KEY) ?? []
-  if (!q.some((x) => x.source === source && x.ref === ref)) writeJson(EARN_QUEUE_KEY, [...q, { source, ref }].slice(-60))
+  const q = readJson<EarnItem[]>(EARN_QUEUE_KEY) ?? []
+  if (!q.some((x) => x.source === source && x.ref === ref)) writeJson(EARN_QUEUE_KEY, [...q, { source, ref }].slice(-500))
 }
 
-export async function flushEarnQueue(): Promise<void> {
-  if (!currentAccountId()) return
-  const q = readJson<{ source: string; ref: string }[]>(EARN_QUEUE_KEY) ?? []
-  if (!q.length) return
-  writeJson(EARN_QUEUE_KEY, null)
-  for (const x of q) {
-    try {
-      await shopApi.earn(x.source, x.ref)
-    } catch (e) {
-      if (e instanceof ShopApiError && e.code === 'offline') {
-        queueEarn(x.source, x.ref)
-        return
+let flushing: Promise<void> | null = null
+let again = false
+export function flushEarnQueue(): Promise<void> {
+  flushing ??= (async () => {
+    if (!currentAccountId()) return
+    const q = readJson<EarnItem[]>(EARN_QUEUE_KEY) ?? []
+    const keep: EarnItem[] = []
+    let stop = false
+    for (const x of q) {
+      if (stop) {
+        keep.push(x)
+        continue
+      }
+      try {
+        const r = await shopApi.earn(x.source, x.ref)
+        // Capped today: try again on another day (the server does not burn the reference).
+        if ((r as { capped?: boolean }).capped) keep.push(x)
+      } catch (e) {
+        const st = e instanceof ShopApiError ? e.status : 0
+        // Offline, throttled or a server error: keep this and everything after it for later.
+        if (!(e instanceof ShopApiError) || e.code === 'offline' || st === 429 || st >= 500) {
+          keep.push(x)
+          stop = true
+        }
+        // Any other 4xx is a permanent refusal (unknown source, malformed): dropped.
       }
     }
-  }
+    // Claims queued while this ran are kept too.
+    const now = readJson<EarnItem[]>(EARN_QUEUE_KEY) ?? []
+    const added = now.filter((n) => !q.some((o) => o.source === n.source && o.ref === n.ref))
+    writeJson(EARN_QUEUE_KEY, [...keep, ...added].slice(-500))
+    again = added.length > 0
+  })().finally(() => {
+    flushing = null
+    // Claims that arrived during this run are sent right after it.
+    if (again) {
+      again = false
+      void flushEarnQueue()
+    }
+  })
+  return flushing
 }
 
 export const shopApi = {
@@ -207,7 +249,13 @@ export const shopApi = {
   buyDev: (productId: string) => withWallet(call<ServerWallet & { credited: boolean }>('POST', '/v1/purchase/dev', { productId })),
   spend: (item: string, idem: string, discount = false, career?: string) => withWallet(call<ServerWallet & { grant: ServerGrant }>('POST', '/v1/spend', { item, idem, discount, ...(career ? { career } : {}) })),
   ack: (nonces: string[]) => withWallet(call<ServerWallet>('POST', '/v1/inbox/ack', { nonces })),
-  adStart: (offer: string, ref?: string) => call<{ nonce: string; skipAd: boolean }>('POST', '/v1/ads/start', { offer, ...(ref ? { ref } : {}) }),
+  adStart: (offer: string, ref?: string) => call<{ nonce: string; skipAd: boolean; reused?: boolean }>('POST', '/v1/ads/start', { offer, ...(ref ? { ref } : {}) }),
+  /** The ad was closed early or failed: close the session so it does not hold a slot. */
+  adAbort: (nonce: string) => call<{ aborted: boolean }>('POST', '/v1/ads/abort', { nonce }),
+  /** A spend grant whose career no longer exists: refund its diamonds (once). */
+  voidGrant: (nonce: string) => withWallet(call<ServerWallet & { voided: boolean; refunded: number }>('POST', '/v1/inbox/void', { nonce })),
+  /** GDPR/KVKK: everything the server holds for this account, as JSON. */
+  exportAccount: () => call<unknown>('GET', '/v1/account/export'),
   adComplete: (nonce: string, career?: string) => withWallet(call<ServerWallet & { grant: ServerGrant | null }>('POST', '/v1/ads/complete', { nonce, ...(career ? { career } : {}) })),
   earn: (source: string, ref: string) => withWallet(call<ServerWallet & { earned: number }>('POST', '/v1/earn', { source, ref })),
   passClaim: () => withWallet(call<ServerWallet>('POST', '/v1/pass/claim')),
@@ -227,6 +275,8 @@ export const shopApi = {
     try {
       const a = await raw<Account>('POST', '/v1/recover/code', { code })
       writeJson(ACCOUNT_KEY, a)
+      writeJson(LOST_KEY, null)
+      accountLost.value = false
       await shopApi.wallet().catch(() => null)
       return true
     } catch {

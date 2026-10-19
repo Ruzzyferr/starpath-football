@@ -39,18 +39,27 @@ function save(year: number): void {
   }
 }
 
-function AgeQuestion() {
+/** The birth-year question on its own (also used inline, e.g. the store's cash tab). */
+export function AgeQuestionInline() {
   const now = new Date().getFullYear()
   const [year, setYear] = useState('')
   const y = Number(year)
   const valid = Number.isInteger(y) && y > now - 110 && y <= now
   return (
-    <Page title={lt({ tr: 'Doğum yılın', en: 'Your birth year' })}>
-      <p class="t-mid">{lt({ tr: 'Bu bölüme girmeden önce doğum yılını yaz. Yalnızca bu cihazda saklanır.', en: 'Enter your birth year before going in. It is stored on this device only.' })}</p>
+    <div class="age-q">
+      <p class="t-mid">{lt({ tr: 'Devam etmeden önce doğum yılını yaz. Yalnızca bu cihazda saklanır.', en: 'Enter your birth year to go on. It is stored on this device only.' })}</p>
       <input class="input" inputMode="numeric" maxLength={4} value={year} onInput={(e) => setYear((e.target as HTMLInputElement).value.replace(/\D/g, ''))} aria-label={lt({ tr: 'Doğum yılı', en: 'Birth year' })} data-testid="age-year" />
       <div style={{ marginTop: '12px' }}>
         <Button variant="primary" disabled={!valid} onClick={() => save(y)} data-testid="age-ok">{lt({ tr: 'Devam', en: 'Continue' })}</Button>
       </div>
+    </div>
+  )
+}
+
+function AgeQuestion() {
+  return (
+    <Page title={lt({ tr: 'Doğum yılın', en: 'Your birth year' })}>
+      <AgeQuestionInline />
     </Page>
   )
 }

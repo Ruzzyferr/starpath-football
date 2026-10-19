@@ -28,6 +28,9 @@ Son güncelleme: [TARİH] · Sürüm: taslak 0.2
 | Ödüllü reklam oturumları, günlük sayaçlar, ücretsiz elmas talepleri | Sunucumuz | Ödülü bir kez vermek ve adil kullanım sınırları (meşru menfaat) | Evet |
 | İmzalı onaylar (kariyere uygulanan elmas harcamaları) | Sunucumuz ve kaydın | Harcamanın bir kez ve ödenerek yapıldığını kanıtlamak (sözleşme) | Evet |
 | IP adreslerini içeren denetim günlüğü | Sunucumuz | Güvenlik ve dolandırıcılığı önleme (meşru menfaat) | Evet |
+| Web sunucusu ve sistem günlükleri (maskelenmiş IP adresleri) | Sunucumuz | Hizmeti işletmek ve korumak (meşru menfaat) | Evet |
+| Sunucu verisinin şifreli yedekleri | Sunucu dışı depolama | Arızadan kurtarma (meşru menfaat) | Evet |
+| Kumarhane ve mağazanın sorduğu doğum yılı | Yalnızca cihazdaki depolama | Kumarhane ve nakit satın alma için yaş kapısı | Hayır |
 | Reklam kimliği / IDFA, reklam istekleri | Google AdMob | Ödüllü reklam göstermek. iOS'ta reklam kimliği yalnızca ATT iznin ile; AB/BK'de yalnızca Google'ın onay formunda (UMP) rıza verirsen. Kişiselleştirilmiş reklam rızaya dayanır | Evet, Google'a |
 | Ödeme verisi | Apple App Store / Google Play | Ödeme ve makbuz | Mağaza ile senin aranda; biz yalnızca işlem kimliği ve makbuz alırız |
 
@@ -40,9 +43,13 @@ Sunucu, DigitalOcean'ın Frankfurt (AB) veri merkezinde çalışır. Google ve A
 ## 5. Saklama ve silme
 
 - Denetim günlüğündeki IP adresleri 30 gün sonra özetlenir, 180 gün sonra silinir.
-- Defter ve mağaza işlemleri iade, itiraz ve dolandırıcılık süreçleri ile yasal yükümlülükler için gerektiği süre tutulur; sonra silinir veya anonimleştirilir.
+- Web sunucusu ve sistem günlükleri maskelenmiş IP adreslerini en çok 30 gün tutar.
+- Yedekler şifrelidir, sunucu dışında saklanır ve 14 gün tutulur.
+- Satın alması olmayan hesapların defter ve kazanç kayıtları 400 gün sonra anonimleştirilir. Mağaza işlem kayıtları vergi ve iade mevzuatı gereği 7 yıl tutulur. Bakiyesi boş ve etkin olmayan hesaplar 30 gün sonra silinir.
+- Kumarhane ve mağazanın sorduğu doğum yılı yalnızca cihazında saklanır, bize gönderilmez.
 - Cihazdaki veriler sen silene (Ayarlar > Veri) ya da uygulamayı kaldırana kadar kalır.
-- Ayarlar'dan **mağaza hesabını silebilir** (`DELETE /v1/account`) ve **verini dışa aktarabilirsin**. Hesap silinince bakiye kalkar; kullanılmamış elmaslar, yasanın gerektirdiği haller dışında iade edilmez.
+- **Dışa aktarma ve silme:** Ayarlar > Satın alımlar > Mağaza hesabı bölümünde "Mağaza verilerimi dışa aktar" mağaza verinin JSON kopyasını indirir; mağaza hesabını da aynı yerden silebilirsin (`DELETE /v1/account`). Hesap silinince bakiye kalkar; kullanılmamış elmaslar, yasanın gerektirdiği haller dışında iade edilmez.
+- **Reklam rızası:** ödüllü reklam rızanı Ayarlar > Reklam gizlilik tercihleri (AB/BK) bölümünden değiştirebilirsin.
 
 ## 6. Çocuklar ve kumarhane
 

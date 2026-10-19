@@ -2,28 +2,15 @@
 // CORS limited to the app's own origins, no stack traces to clients.
 import { createServer } from 'node:http'
 import { createHash, timingSafeEqual } from 'node:crypto'
-import { ShopError } from './shop.mjs'
+import { ShopError, codeBucket } from './shop.mjs'
 import { safeJson } from './google.mjs'
+import { ipKey } from './net.mjs'
+
+export { ipKey }
 
 const MAX_BODY = 16 * 1024
 /** App Store Server Notifications nest signed JWS inside a signed JWS (three x5c chains). */
 const MAX_NOTIFICATION = 128 * 1024
-
-/** Rate-limit key for an address: IPv4 as is, IPv6 by its /64 (one subscriber's whole prefix). */
-export function ipKey(ip) {
-  ip = String(ip ?? '?').split('%')[0]
-  if (!ip.includes(':')) return ip
-  const v4 = /^::ffff:(\d+\.\d+\.\d+\.\d+)$/i.exec(ip)
-  if (v4) return v4[1]
-  let groups
-  if (ip.includes('::')) {
-    const [head, tail] = ip.split('::')
-    const h = head ? head.split(':') : []
-    const t = tail ? tail.split(':') : []
-    groups = [...h, ...Array(Math.max(0, 8 - h.length - t.length)).fill('0'), ...t]
-  } else groups = ip.split(':')
-  return `${groups.slice(0, 4).map((g) => (parseInt(g, 16) || 0).toString(16)).join(':')}::/64`
-}
 
 /** Token bucket per key. At `maxKeys` the least recently used keys are evicted (never a full clear). */
 export class RateLimiter {
@@ -74,13 +61,17 @@ function readBody(req, max = MAX_BODY) {
 
 const sameSecret = (a, b) => timingSafeEqual(createHash('sha256').update(String(a)).digest(), createHash('sha256').update(String(b)).digest())
 
-export function createApp({ shop, admob, origins, trustProxy = true, log = () => {}, limits = {}, rtdnToken = '' }) {
+export function createApp({ shop, admob, origins, trustProxy = true, log = () => {}, limits = {}, rtdnToken = '', opsToken = '' }) {
   // Per-IP limits stay generous: mobile carriers put many players behind one address (CGNAT).
   const ipLimit = new RateLimiter(limits.ipPerMin ?? 600, limits.ipBurst ?? 200)
   const regLimit = new RateLimiter(limits.regPerMin ?? 30, limits.regBurst ?? 30)
-  // All registrations together (a botnet across many addresses).
-  const regGlobal = new RateLimiter(limits.regGlobalPerMin ?? 600, limits.regGlobalPerMin ?? 600)
+  // All registrations together (a botnet across many addresses); also the recovery-code total.
+  const regGlobal = new RateLimiter(limits.regGlobalPerMin ?? 120, limits.regGlobalPerMin ?? 120)
+  // Recovery-code guesses: per address, and per code-hash prefix (spread guesses from many addresses).
   const codeLimit = new RateLimiter(limits.codePerMin ?? 5, limits.codePerMin ?? 5)
+  const codeBucketLimit = new RateLimiter(limits.codeBucketPerMin ?? 5, limits.codeBucketPerMin ?? 5)
+  // Failed sign-ins per account id prefix (many addresses hammering one account): 60 per 10 minutes.
+  const authFailAcc = new RateLimiter(limits.authFailPerMin ?? 6, limits.authFailBurst ?? 60)
   const accLimit = new RateLimiter(90, 40)
   // Store callbacks (signature- or token-checked) get their own bucket, apart from app traffic.
   const cbLimit = new RateLimiter(1200, 300)
@@ -104,7 +95,8 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
       return shop.recoverGoogle({ productId: body.productId, purchaseToken: body.purchaseToken }, ip)
     },
     'POST /v1/recover/code': async ({ body, ip }) => {
-      if (!codeLimit.take(ipKey(ip)) || !regGlobal.take('code')) throw new ShopError(429, 'rate_limited')
+      const bucket = codeBucket(body.code)
+      if (!codeLimit.take(ipKey(ip)) || (bucket && !codeBucketLimit.take(bucket)) || !regGlobal.take('code')) throw new ShopError(429, 'rate_limited')
       return shop.recoverCode(body.code, ip)
     },
     'POST /v1/account/recovery-code': async ({ acc, ip }) => shop.recoveryCode(acc, ip),
@@ -112,14 +104,17 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
     'DELETE /v1/account': async ({ acc, ip }) => shop.deleteAccount(acc, ip),
     'POST /v1/spend': async ({ acc, body }) => shop.spend(acc, { item: str(body.item), idem: body.idem, discount: body.discount === true, career: body.career }),
     'POST /v1/inbox/ack': async ({ acc, body }) => shop.ack(acc, body.nonces),
-    'POST /v1/ads/start': async ({ acc, body }) => shop.adStart(acc, str(body.offer), body.ref),
-    'POST /v1/ads/complete': async ({ acc, body }) => shop.adComplete(acc, body.nonce, body.career),
-    'POST /v1/earn': async ({ acc, body }) => {
+    'POST /v1/inbox/void': async ({ acc, body }) => shop.voidGrant(acc, body.nonce),
+    'POST /v1/ads/start': async ({ acc, body, ip }) => shop.adStart(acc, str(body.offer), body.ref, ip),
+    'POST /v1/ads/complete': async ({ acc, body, ip }) => shop.adComplete(acc, body.nonce, body.career, ip),
+    'POST /v1/ads/abort': async ({ acc, body }) => shop.adAbort(acc, body.nonce),
+    'POST /v1/earn': async ({ acc, body, ip }) => {
       if (typeof body.source !== 'string' || typeof body.ref !== 'string') throw new ShopError(400, 'bad_request')
-      return shop.earn(acc, { source: body.source, ref: body.ref })
+      return shop.earn(acc, { source: body.source, ref: body.ref }, ip)
     },
     'POST /v1/pass/claim': async ({ acc }) => shop.passClaim(acc),
-    'GET /v1/health': async () => shop.health(),
+    // Operator details (row counts, disk) only with the OPS_TOKEN in X-Ops-Token.
+    'GET /v1/health': async ({ headers }) => shop.health({ ops: !!opsToken && sameSecret(String(headers['x-ops-token'] ?? ''), opsToken) }),
   }
   const open = new Set(['POST /v1/register', 'POST /v1/recover/apple', 'POST /v1/recover/google', 'POST /v1/recover/code', 'GET /v1/health'])
 
@@ -170,11 +165,14 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
         send(200, shop.appleNotification(body.signedPayload))
         return
       }
-      // Google Play RTDN (Pub/Sub push): ?token=<RTDN_TOKEN>, body {message: {data: base64 JSON}}.
+      // Google Play RTDN (Pub/Sub push): secret in the X-RTDN-Token header (preferred) or ?token=
+      // (Pub/Sub push cannot set headers; Caddy drops query strings from its access log).
+      // Body {message: {data: base64 JSON}}.
       if (req.method === 'POST' && url.pathname === '/v1/google/rtdn') {
         if (!cbLimit.take(ipKey(ip))) throw new ShopError(429, 'rate_limited')
         if (!rtdnToken) throw new ShopError(404, 'not_found')
-        if (!sameSecret(url.searchParams.get('token') ?? '', rtdnToken)) throw new ShopError(403, 'forbidden')
+        const given = String(req.headers['x-rtdn-token'] ?? '') || url.searchParams.get('token') || ''
+        if (!sameSecret(given, rtdnToken)) throw new ShopError(403, 'forbidden')
         const body = safeJson((await readBody(req)) || '{}')
         const data = typeof body.message?.data === 'string' ? body.message.data : ''
         if (!data) throw new ShopError(400, 'bad_request')
@@ -198,11 +196,21 @@ export function createApp({ shop, admob, origins, trustProxy = true, log = () =>
         acc = shop.auth(req.headers.authorization)
         if (!accLimit.take(acc.id)) throw new ShopError(429, 'rate_limited')
       }
-      send(200, await handler({ body, acc, ip }))
+      const out = await handler({ body, acc, ip, headers: req.headers })
+      send(key === 'GET /v1/health' && !out.ok ? 503 : 200, out)
     } catch (e) {
       if (e instanceof ShopError) {
-        // One line per failed sign-in, for fail2ban (filter: "auth_fail ip=<HOST>").
-        if (e.status === 401) log('auth_fail', `ip=${ip}`, key)
+        if (e.status === 401) {
+          // One line per failed sign-in, for fail2ban (filter: "auth_fail ip=<HOST>"), with the
+          // claimed account id prefix; too many failures for one prefix answer 429 for a while.
+          const acct = (/^Bearer ([0-9a-f]{8})/.exec(String(req.headers.authorization ?? '')) ?? [])[1] ?? '-'
+          log('auth_fail', `ip=${ip}`, `acct=${acct}`, key)
+          if (acct !== '-' && !authFailAcc.take(acct)) {
+            log('auth_flood', `acct=${acct}`)
+            send(429, { error: 'rate_limited' })
+            return
+          }
+        }
         send(e.status, { error: e.code })
       } else {
         log('error', e)

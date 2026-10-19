@@ -20,7 +20,7 @@ import {
   type GrantPayload, type ServerWallet,
 } from '../../store-iap'
 import { commit, current, notify } from './session'
-import { flushAutosave, scheduleAutosave } from './persistence'
+import { flushAutosave, savedCareerIds, scheduleAutosave } from './persistence'
 
 const APPLIED_FLAG = 'g:grants'
 const LAST_BONUS_FLAG = 'g:lastBonus'
@@ -68,7 +68,8 @@ export function applyGrant(s: GameState, g: GrantPayload): GrantOutcome {
       break
     }
     case 'cash': {
-      const amount = cashGrantAmount(s, g.weeks ?? 0, g.floor ?? 0, g.cap ?? Infinity)
+      const left = Math.max(0, CASH_PER_SEASON - boughtCashThisSeason(s))
+      const amount = Math.min(left, cashGrantAmount(s, g.weeks ?? 0, g.floor ?? 0, g.cap ?? Infinity))
       s.life.money += amount
       const b = readJson<{ season: number; total: number }>(s.life, BOUGHT_FLAG, { season: s.calendar.season, total: 0 })
       writeJson(s.life, BOUGHT_FLAG, { season: s.calendar.season, total: (b.season === s.calendar.season ? b.total : 0) + amount })
@@ -98,9 +99,19 @@ export function applyGrant(s: GameState, g: GrantPayload): GrantOutcome {
       // cosmetic / season_x2: nothing in the career (entitlements and diamonds live on the server).
       break
   }
+  // The nonce goes into the save now (written with the career); the install-wide list and the ack only
+  // after the save is on disk (applyInbox), so a crash in between can never lose the grant.
   writeJson(s.life, APPLIED_FLAG, [...applied, g.n].slice(-200))
-  lsSet(APPLIED_KEY, [...lsList(APPLIED_KEY), g.n])
   return { applied: true, line }
+}
+
+/** Per career season, purchased cash (packs + diamonds→cash) stops here (docs/MONETIZASYON.md §6.4). */
+export const CASH_PER_SEASON = 600_000
+
+/** Cash bought this career season so far. */
+export function boughtCashThisSeason(s: GameState): number {
+  const b = readJson<{ season: number; total: number }>(s.life, BOUGHT_FLAG, { season: s.calendar.season, total: 0 })
+  return b.season === s.calendar.season ? b.total : 0
 }
 
 async function flushAcks(): Promise<void> {
@@ -116,7 +127,12 @@ async function flushAcks(): Promise<void> {
 
 let applying = false
 
-/** Inbox handler: verify, apply to the loaded career, save, then acknowledge. */
+const NOT_APPLIED: Record<string, LText> = {
+  match_bonus: { tr: 'Prim ×2 bu maça uygulanamadı (prim yok ya da zaten katlandı).', en: 'The ×2 bonus could not apply to this match (no bonus, or already doubled).' },
+  physio: { tr: 'Fizyoterapi uygulanamadı: sakatlık bitmiş. Elmasların iade edilecek.', en: 'Physio could not apply: the injury is over. Your diamonds will be refunded.' },
+}
+
+/** Inbox handler: verify, apply to the loaded career, save, then mark and acknowledge. */
 async function applyInbox(w: ServerWallet): Promise<void> {
   const s = current()
   const account = currentAccountId()
@@ -124,12 +140,15 @@ async function applyInbox(w: ServerWallet): Promise<void> {
   applying = true
   try {
     const ack: string[] = []
+    const appliedNow: string[] = []
+    const voids: string[] = []
+    let otherCareer: string[] = []
     let changed = false
     for (const g of w.inbox) {
       const p = await verifyGrant(g.token, account)
       if (!p) {
-        // Not signed by our server for this account: never applied (and never acknowledged).
-        console.warn('[StarPath] shop grant rejected (bad signature or account)')
+        // Not signed by our server for this account (or too old): never applied, never acknowledged.
+        console.warn('[StarPath] shop grant rejected (bad signature, account or age)')
         continue
       }
       if (p.k === 'cosmetic' || p.k === 'season_x2') {
@@ -141,15 +160,49 @@ async function applyInbox(w: ServerWallet): Promise<void> {
       if (r.applied) {
         changed = true
         if (r.line) notify(r.line, 'success')
-        ack.push(p.n)
+        appliedNow.push(p.n)
       } else if (r.why === 'done') ack.push(p.n)
+      else if (r.why === 'other_career') otherCareer.push(p.n)
+      else if (r.why === 'not_applicable') {
+        const msg = NOT_APPLIED[p.k]
+        if (msg) notify(msg, 'info')
+        // A diamond spend that can no longer apply (injury healed) is refunded by the server.
+        if (p.k === 'physio') voids.push(p.n)
+        else ack.push(p.n)
+      }
     }
     if (changed && s) {
       commit(s)
       scheduleAutosave()
-      // Saved first, acknowledged after: a crash in between re-offers the grant, and the nonce lists
-      // keep it from being applied twice.
-      await flushAutosave().catch(() => {})
+      // Saved first, marked and acknowledged after: a crash in between re-offers the grant, and the
+      // nonce saved with the career keeps it from being applied twice.
+      try {
+        await flushAutosave()
+        lsSet(APPLIED_KEY, [...lsList(APPLIED_KEY), ...appliedNow])
+        ack.push(...appliedNow)
+      } catch {
+        /* not on disk yet: acknowledged on the next pass */
+      }
+    }
+    // Grants bound to a career that no longer exists in any save: give the diamonds back.
+    if (otherCareer.length) {
+      const ids = await savedCareerIds()
+      if (ids) {
+        otherCareer = otherCareer.filter((n) => {
+          const g = w.inbox.find((x) => x.nonce === n)
+          const c = g ? (JSON.parse(atob(g.token.split('.')[0]!.replace(/-/g, '+').replace(/_/g, '/'))) as { c?: string }).c : undefined
+          return c && !ids.has(c) && (s?.meta.id !== c)
+        })
+        voids.push(...otherCareer)
+      }
+    }
+    for (const n of voids) {
+      try {
+        const r = await shopApi.voidGrant(n)
+        if (r.refunded > 0) notify({ tr: `💎 ${r.refunded} elmas iade edildi (kariyer bulunamadı).`, en: `💎 ${r.refunded} diamonds refunded (the career is gone).` }, 'info')
+      } catch {
+        ack.push(n)
+      }
     }
     if (ack.length) lsSet(ACKQ_KEY, [...new Set([...lsList(ACKQ_KEY), ...ack])])
     await flushAcks()

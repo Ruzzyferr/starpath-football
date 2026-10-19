@@ -24,11 +24,31 @@
 		}
 	}
 
+	# Access log: client addresses masked (IPv4 /16, IPv6 /32), query strings dropped (the Play
+	# RTDN push carries ?token=), secret headers removed; files rolled and kept 30 days at most.
 	log {
 		output file /var/log/caddy/starpath.log {
 			roll_size 10MiB
-			roll_keep 5
+			roll_keep 10
+			roll_keep_for 720h
 		}
-		format json
+		format filter {
+			wrap json
+			fields {
+				request>remote_ip ip_mask {
+					ipv4 16
+					ipv6 32
+				}
+				request>client_ip ip_mask {
+					ipv4 16
+					ipv6 32
+				}
+				request>uri regexp "[?].*$" ""
+				request>headers>Authorization delete
+				request>headers>X-Rtdn-Token delete
+				request>headers>X-Ops-Token delete
+				request>headers>X-Forwarded-For delete
+			}
+		}
 	}
 }

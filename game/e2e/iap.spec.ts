@@ -92,7 +92,7 @@ test('gear: Golden Boots bought with diamonds land in the bag, raise training XP
   await expectGems(page, 600)
   await tab(page, 'Gear')
   await page.getByTestId('buy-gear-gold_boots').click()
-  await expectGems(page, 300)
+  await expectGems(page, 400)
   await expect(page.getByTestId('gear-left-gold_boots')).toContainText('60')
   await shot('shop-gear')
   const gear = await sp<{ inv: Record<string, number>; eq: Record<string, string> }>(page, `JSON.parse(sp.state().life.flags['g:gear'])`)
@@ -126,18 +126,18 @@ test('rewarded ad: a full view pays +10💎 and counts against the cap; closing 
   await waitForApp(page)
   await openStore(page)
   const ad = page.getByTestId('ad-gems')
-  await expect(ad).toContainText('5/5')
+  await expect(ad).toContainText('3 left today')
   await ad.click()
   await expect(page.getByTestId('dev-ad')).toBeVisible()
   await shot('shop-ad')
   await page.getByTestId('dev-ad-close').click()
   await expect(page.getByTestId('dev-ad')).toHaveCount(0)
   expect(await gems(page)).toBe(0)
-  await expect(ad).toContainText('5/5')
+  await expect(ad).toContainText('3 left today')
   await ad.click()
   await expect(page.getByTestId('dev-ad')).toHaveCount(0, { timeout: 20_000 })
   await expectGems(page, 10)
-  await expect(ad).toContainText('4/5')
+  await expect(ad).toContainText('2 left today')
 })
 
 test('training boost ad: the next session really gets +20% XP', async ({ page }) => {
@@ -256,4 +256,63 @@ test('age gate: the casino asks the player birth year once and stays closed unde
   await page.getByTestId('age-ok').click()
   await expect(page.locator('body')).toContainText('18')
   await expect(page.getByTestId('age-year')).toHaveCount(0)
+})
+
+test('top bar: the diamond pill fits at 320 and 360 px and in landscape', async ({ page }) => {
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  for (const [w, h] of [[320, 568], [360, 740], [667, 375]]) {
+    await page.setViewportSize({ width: w, height: h })
+    await page.waitForTimeout(300)
+    const r = await page.evaluate(() => {
+      const bar = document.querySelector('.topbar') as HTMLElement
+      const pill = document.querySelector('[data-testid="topbar-gems"]') as HTMLElement
+      const pb = pill.getBoundingClientRect()
+      const overlaps = Array.from(bar.querySelectorAll('.tstat, .topbar-date, .topbar-bell, .topbar-me')).filter((e) => e !== pill && getComputedStyle(e).display !== 'none').some((e) => {
+        const b = e.getBoundingClientRect()
+        return b.width > 0 && b.left < pb.right - 1 && b.right > pb.left + 1 && b.top < pb.bottom - 1 && b.bottom > pb.top + 1
+      })
+      return { overflow: bar.scrollWidth > bar.clientWidth + 1, inside: pb.right <= window.innerWidth && pb.left >= 0, overlaps }
+    })
+    expect(r, `${w}x${h}`).toEqual({ overflow: false, inside: true, overlaps: false })
+  }
+})
+
+test('match bonus ×2: watching the ad after a match pays that bonus once', async ({ page }) => {
+  test.setTimeout(240_000)
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await openStore(page)
+  await sp(page, `(() => { const s = sp.state(); s.hero.contract.role = 'captain'; s.hero.managerTrust = 100; s.hero.fatigue = 0; s.life.flags.promised_start = true; s.hero.contract.goalBonus = 500 })()`)
+  await sp(page, 'sp.toMatchday()')
+  await sp(page, `(() => { sp.clearEvents(); sp.actions.playMatch(); sp.navigate('liveMatch'); sp.actions.matchSimToEnd() })()`)
+  // A simulated match may end without a bonus: give it one so the offer always shows.
+  const lb = await sp<{ key: string; amount: number }>(page, `(() => { const s = sp.state(); const b = JSON.parse(s.life.flags['g:lastBonus']); if (b.amount <= 0) { b.amount = 1500; s.life.flags['g:lastBonus'] = JSON.stringify(b) } return b })()`)
+  await sp(page, `sp.navigate('postMatch')`)
+  for (let i = 0; i < 8 && !(await page.getByTestId('ad-match-bonus').isVisible().catch(() => false)); i++) {
+    const next = page.locator('.post-next, button:has-text("Next")').first()
+    if (!(await next.isVisible().catch(() => false))) break
+    await next.click()
+    await page.waitForTimeout(400)
+  }
+  const m0 = await sp<number>(page, 'sp.state().life.money')
+  await page.getByTestId('ad-match-bonus').click()
+  await expect.poll(() => sp<number>(page, 'sp.state().life.money'), { timeout: 25_000 }).toBe(m0 + lb.amount)
+  await expect(page.getByTestId('ad-match-bonus')).toHaveCount(0)
+  expect(await sp<boolean>(page, `JSON.parse(sp.state().life.flags['g:lastBonus']).doubled`)).toBe(true)
+})
+
+test('season reward ×2: after the season-end diamonds, the ad adds the same again', async ({ page }) => {
+  test.setTimeout(300_000)
+  await page.goto('/?autostart=1&seed=2027')
+  await waitForApp(page)
+  await openStore(page)
+  const g0 = await gems(page)
+  await sp(page, 'sp.toSeasonEnd()')
+  await expect(page.locator('.se-root')).toBeVisible()
+  const skip = page.locator('.se-skip')
+  if (await skip.isVisible().catch(() => false)) await skip.click()
+  await expect(page.getByTestId('ad-season_x2')).toBeVisible({ timeout: 30_000 })
+  await page.getByTestId('ad-season_x2').click()
+  await expect.poll(async () => (await page.evaluate(() => JSON.parse(localStorage.getItem('starpath.walletcache.v1') ?? '{}').gems)) - g0, { timeout: 30_000 }).toBeGreaterThanOrEqual(200)
 })

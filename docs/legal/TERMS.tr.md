@@ -22,7 +22,8 @@ Oyundaki kişiler, kulüpler ve olaylar kurgusaldır; gerçek kişi, kulüp veya
 - Elmas, **nakit değeri olmayan** sanal bir para birimidir. Hesaplar arasında devredilemez ve yasanın gerektirdiği haller dışında **iade edilmez**.
 - Elmas bakiyen kaydında değil, sunucumuzdaki anonim mağaza hesabında tutulur. Mağazada bir kurtarma kodu vardır; kodu ve cihazı birlikte kaybedersen bakiyeni geri getiremeyebiliriz.
 - Ödeme, fiyat, vergi ve iptal kuralları Apple veya Google tarafından belirlenir; iadeler onlar üzerinden yapılır. Bir satın alma iade edilirse o satın almadan gelen elmaslar bakiyenden düşülür (bakiye sıfıra inebilir).
-- Nakit paketleri ve elmastan nakde çevirme yalnızca oyun içi para verir.
+- Nakit paketleri ve elmastan nakde çevirme yalnızca oyun içi para verir. Nakit satın alma kariyer sezonu başına sınırlıdır ve nakit almak için oyuncunun 18 yaşında veya daha büyük olması gerekir.
+- Elmas paketleri 220, 600 ve 1.300 elmastır. 2.800 ve 7.500'lük paketler artık yoktur.
 
 ## 5. Pro Contract aboneliği
 

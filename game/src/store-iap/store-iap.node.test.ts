@@ -106,9 +106,9 @@ describe('purchase flow (DevProvider → shop server)', () => {
     expect(serverWallet.value?.gems).toBe(900)
     expect(serverWallet.value?.inbox.map((g) => g.id)).toEqual(['gold_boots'])
     const w = await shopApi.spend('gold_boots', 'idem-1')
-    expect(w.gems).toBe(600)
+    expect(w.gems).toBe(700)
     expect(w.grant.k).toBe('gear')
-    await expect(shopApi.spend('gold_boots', 'idem-1')).resolves.toMatchObject({ gems: 600 })
+    await expect(shopApi.spend('gold_boots', 'idem-1')).resolves.toMatchObject({ gems: 700 })
   })
   it('unavailable provider never grants', async () => {
     setProvider(new UnavailableProvider())

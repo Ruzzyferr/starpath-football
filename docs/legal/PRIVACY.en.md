@@ -28,6 +28,9 @@ Last updated: [DATE] · Version: draft 0.2
 | Rewarded-ad sessions, daily counters, free-diamond claims | Our server | Pay ad rewards once and apply fair-use limits (legitimate interest) | Yes |
 | Signed grants (diamond spends applied to your career) | Our server and your save | Prove a spend was paid for once (contract) | Yes |
 | Audit log with IP addresses | Our server | Security and fraud prevention (legitimate interest) | Yes |
+| Web server and system logs (masked IP addresses) | Our server | Operate and secure the service (legitimate interest) | Yes |
+| Encrypted backups of the server data | Off-site storage | Recover from failure (legitimate interest) | Yes |
+| Birth year asked by the casino and the shop | On-device storage only | Age gate for the casino and cash purchases | No |
 | Advertising ID / IDFA, ad requests | Google AdMob | Show rewarded ads. Advertising ID only with your ATT permission on iOS; in the EU/UK only after your consent in Google's consent form (UMP). Personalised ads rely on consent | Yes, to Google |
 | Payment data | Apple App Store / Google Play | Payment and receipts | Between you and the store; we receive only transaction ids and receipts |
 
@@ -40,9 +43,13 @@ The server runs at DigitalOcean in Frankfurt (EU). Google and Apple process data
 ## 5. Retention and deletion
 
 - IP addresses in the audit log are hashed after 30 days and deleted after 180 days.
-- The ledger and store transactions are kept as long as needed for refund, chargeback and fraud handling and legal duties; then deleted or anonymised.
+- The web server and system logs keep masked IP addresses for at most 30 days.
+- Backups are encrypted, kept off-site and retained for 14 days.
+- Ledger and earn records of accounts without purchases are anonymised after 400 days. Store transaction records are kept for 7 years because of tax and refund law. Inactive accounts with an empty balance are deleted after 30 days.
+- The birth year asked by the casino and the shop is stored only on your device and never sent to us.
 - On-device data stays until you delete it (Settings > Data) or uninstall the app.
-- You can **delete your shop account** in Settings (this calls `DELETE /v1/account`) and **export your data** there too. Deleting the account removes your balance; unused diamonds cannot be refunded after deletion except where law requires.
+- **Export and deletion:** in Settings > Purchases > Shop account, "Export my shop data" downloads a JSON copy of your shop data, and you can delete your shop account in the same place (this calls `DELETE /v1/account`). Deleting the account removes your balance; unused diamonds cannot be refunded after deletion except where law requires.
+- **Ad consent:** you can change your rewarded-ad consent in Settings > Ad privacy choices (EU/UK).
 
 ## 6. Children and the casino
 

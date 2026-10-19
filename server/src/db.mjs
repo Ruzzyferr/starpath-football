@@ -69,6 +69,7 @@ export function openDb(file) {
     );
     CREATE INDEX IF NOT EXISTS ledger_acc ON ledger(account, id);
     -- Signed grants waiting for the client to apply to its career (gear, cash, physio, boosts).
+    -- acked: 0 open, 1 applied (acked by the app), 2 withdrawn by a refund, 3 voided (diamonds returned).
     CREATE TABLE IF NOT EXISTS grants (
       nonce TEXT PRIMARY KEY,
       account TEXT NOT NULL REFERENCES accounts(id),
@@ -125,6 +126,13 @@ export function openDb(file) {
       detail TEXT
     );
     CREATE INDEX IF NOT EXISTS audit_at ON audit(at);
+    -- Free diamonds and ad diamonds per (hashed) client address /64 and UTC day, across accounts.
+    CREATE TABLE IF NOT EXISTS ip_daily (
+      key TEXT NOT NULL,
+      day TEXT NOT NULL,
+      n INTEGER NOT NULL DEFAULT 0,
+      PRIMARY KEY (key, day)
+    );
     -- Store notifications already processed (Apple notificationUUID), for dedupe.
     CREATE TABLE IF NOT EXISTS notes (
       id TEXT PRIMARY KEY,
@@ -141,6 +149,14 @@ export function openDb(file) {
   addColumn(db, 'grants', 'ref', 'TEXT')
   addColumn(db, 'ads', 'ref', 'TEXT')
   addColumn(db, 'idem', 'item', 'TEXT')
+  // Last time a device token was used (refreshed at most every few hours): stale empty accounts are pruned.
+  addColumn(db, 'accounts', 'seen', 'INTEGER NOT NULL DEFAULT 0')
+  // A subscription period's expiry, per transaction (a refund of one period recomputes the pass).
+  addColumn(db, 'txns', 'expires', 'INTEGER')
+  // Diamonds paid for a spend grant (only those can be voided for a refund); NULL for purchases and ads.
+  addColumn(db, 'grants', 'price', 'INTEGER')
+  // When a free-diamond reference was claimed (old references are pruned). Existing rows count from now.
+  if (addColumn(db, 'earn_refs', 'at', 'INTEGER NOT NULL DEFAULT 0')) db.prepare('UPDATE earn_refs SET at = ? WHERE at = 0').run(Date.now())
   // Accounts created before account_tokens existed keep their one secret as a device token.
   // The column is then cleared so a token dropped later (6th device) is not re-added on restart.
   tx(db, () => {
@@ -152,7 +168,9 @@ export function openDb(file) {
 
 function addColumn(db, table, col, def) {
   const cols = db.prepare(`PRAGMA table_info(${table})`).all().map((c) => c.name)
-  if (!cols.includes(col)) db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`)
+  if (cols.includes(col)) return false
+  db.exec(`ALTER TABLE ${table} ADD COLUMN ${col} ${def}`)
+  return true
 }
 
 /** Runs fn inside BEGIN IMMEDIATE … COMMIT (ROLLBACK on throw). */

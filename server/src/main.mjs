@@ -41,6 +41,13 @@ if (production && policy === 'on') fail('SANDBOX_POLICY=on is not allowed in pro
 if (production && env.ALLOW_SANDBOX === '1' && !env.SANDBOX_POLICY) log('warn', 'ALLOW_SANDBOX is ignored in production; set SANDBOX_POLICY')
 
 const catalog = JSON.parse(readFileSync(new URL('../catalog.json', import.meta.url), 'utf8'))
+// Test servers only: scale the daily caps (an e2e run plays a whole season in seconds). Never in production.
+const scale = Number(env.LIMITS_SCALE) || 1
+if (scale !== 1) {
+  if (env.NODE_ENV === 'production') throw new Error('LIMITS_SCALE is not allowed in production')
+  for (const k of ['earnPerDay', 'ipEarnPerDay']) if (catalog.limits[k]) catalog.limits[k] *= scale
+  for (const d of Object.values(catalog.earn)) d.perDay *= scale
+}
 const db = openDb(dbFile)
 const google = new GooglePlay({ saFile: env.GOOGLE_SA_FILE, packageName: env.ANDROID_PACKAGE })
 const shop = new Shop({
@@ -48,7 +55,8 @@ const shop = new Shop({
   catalog,
   signKey,
   apple: { bundleId: env.APPLE_BUNDLE_ID ?? 'app.starpath.football' },
-  sandbox: { policy, testers: (env.SANDBOX_TESTERS ?? '').split(','), cap: Number(env.SANDBOX_CAP) || undefined },
+  sandbox: { policy, testers: (env.SANDBOX_TESTERS ?? '').split(','), cap: Number(env.SANDBOX_CAP) || undefined, globalDaily: Number(env.SANDBOX_GLOBAL_DAILY) || undefined },
+  dataDir,
   google,
   ads: { requireSsv: env.REQUIRE_SSV === '1' },
   devPurchases: env.DEV_PURCHASES === '1',
@@ -64,7 +72,8 @@ const server = createApp({
   origins,
   trustProxy: env.TRUST_PROXY !== '0',
   rtdnToken: env.RTDN_TOKEN ?? '',
-  limits: { regPerMin: Number(env.REG_PER_MIN) || undefined, regBurst: Number(env.REG_PER_MIN) || undefined, ipPerMin: Number(env.IP_PER_MIN) || undefined },
+  opsToken: env.OPS_TOKEN ?? '',
+  limits: { regPerMin: Number(env.REG_PER_MIN) || undefined, regBurst: Number(env.REG_PER_MIN) || undefined, regGlobalPerMin: Number(env.REG_GLOBAL_PER_MIN) || undefined, ipPerMin: Number(env.IP_PER_MIN) || undefined },
   log,
 })
 server.listen(port, env.HOST ?? '127.0.0.1', () => console.log(`starpath shop on ${env.HOST ?? '127.0.0.1'}:${port} (sandbox ${policy}, google ${google.configured ? 'on' : 'off'})`))

@@ -4,8 +4,6 @@
     "gems_s":            { "kind": "gems", "consumable": true, "gems": 220 },
     "gems_m":            { "kind": "gems", "consumable": true, "gems": 600 },
     "gems_l":            { "kind": "gems", "consumable": true, "gems": 1300 },
-    "gems_xl":           { "kind": "gems", "consumable": true, "gems": 2800 },
-    "gems_xxl":          { "kind": "gems", "consumable": true, "gems": 7500 },
     "cash_s":            { "kind": "cash", "consumable": true, "cashWeeks": 4, "cashFloor": 5000, "cashCap": 50000 },
     "cash_m":            { "kind": "cash", "consumable": true, "cashWeeks": 12, "cashFloor": 15000, "cashCap": 150000 },
     "cash_l":            { "kind": "cash", "consumable": true, "cashWeeks": 30, "cashFloor": 40000, "cashCap": 400000 },
@@ -14,12 +12,12 @@
     "pack_avatar":       { "kind": "cosmetic", "consumable": false }
   },
   "spend": {
-    "gold_boots":       { "price": 300, "grant": { "k": "gear", "id": "gold_boots" } },
-    "speed_boots":      { "price": 150, "grant": { "k": "gear", "id": "speed_boots" } },
-    "striker_boots":    { "price": 150, "grant": { "k": "gear", "id": "striker_boots" } },
-    "mind_band":        { "price": 150, "grant": { "k": "gear", "id": "mind_band" } },
-    "keeper_gloves":    { "price": 150, "grant": { "k": "gear", "id": "keeper_gloves" } },
-    "compression":      { "price": 120, "grant": { "k": "gear", "id": "compression" } },
+    "gold_boots":       { "price": 200, "grant": { "k": "gear", "id": "gold_boots" } },
+    "speed_boots":      { "price": 100, "grant": { "k": "gear", "id": "speed_boots" } },
+    "striker_boots":    { "price": 100, "grant": { "k": "gear", "id": "striker_boots" } },
+    "mind_band":        { "price": 100, "grant": { "k": "gear", "id": "mind_band" } },
+    "keeper_gloves":    { "price": 100, "grant": { "k": "gear", "id": "keeper_gloves" } },
+    "compression":      { "price": 80,  "grant": { "k": "gear", "id": "compression" } },
     "physio":           { "price": 100, "discounted": 50, "grant": { "k": "physio" } },
     "gems_to_cash":     { "price": 100, "perDay": 3, "grant": { "k": "cash", "weeks": 2, "floor": 2500, "cap": 25000 } },
     "cos_celebrations": { "price": 250, "grant": { "k": "cosmetic", "id": "pack_celebrations" } },
@@ -33,11 +31,23 @@
     "season_x2":   { "perDay": 1, "reward": { "grant": { "k": "season_x2" } } }
   },
   "earn": {
-    "motm":       { "gems": 5,  "perDay": 10 },
-    "objective":  { "gems": 5,  "perDay": 10 },
-    "season":     { "gems": 80, "perDay": 2 },
-    "award":      { "gems": 25, "perDay": 6 },
-    "first":      { "gems": 10, "perDay": 10 }
+    "motm":       { "gems": 8,   "perDay": 10 },
+    "objective":  { "gems": 8,   "perDay": 10 },
+    "season":     { "gems": 100, "perDay": 2 },
+    "award":      { "gems": 25,  "perDay": 6 },
+    "first":      { "gems": 10,  "perDay": 10 }
   },
-  "limits": { "earnPerDay": 250, "passDaily": 50, "maxDevices": 5, "maxOpenAds": 3, "sandboxGemsCap": 3000, "sandboxTxnCap": 30 }
+  "limits": {
+    "earnPerDay": 300,
+    "ipEarnPerDay": 600,
+    "newAccountMs": 86400000,
+    "refundHoldAfter": 3,
+    "cashPerSeason": 600000,
+    "passDaily": 50,
+    "maxDevices": 5,
+    "maxOpenAds": 3,
+    "sandboxGemsCap": 3000,
+    "sandboxTxnCap": 30,
+    "sandboxGlobalDaily": 200
+  }
 }

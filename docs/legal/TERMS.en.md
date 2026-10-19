@@ -22,7 +22,8 @@ People, clubs and events in the game are fictional and imply no affiliation or e
 - Diamonds are a virtual currency with **no cash value**. They are not transferable between accounts and **not refundable**, except where the law requires.
 - Your diamond balance is held on our server in an anonymous shop account, not in your save. A recovery code is available in the store; if you lose both the code and the device, we may be unable to restore the balance.
 - Payment, pricing, tax and cancellation rules are set by Apple or Google, and refunds go through them. If a purchase is refunded, the diamonds from it are deducted from your balance (it may go to zero).
-- Cash packs and diamond-to-cash exchanges give in-game money only.
+- Cash packs and diamond-to-cash exchanges give in-game money only. Cash purchases are limited per career season, and buying cash requires the player to be 18 or older.
+- The diamond packs are 220, 600 and 1,300 diamonds. The 2,800 and 7,500 packs no longer exist.
 
 ## 5. Pro Contract subscription
 

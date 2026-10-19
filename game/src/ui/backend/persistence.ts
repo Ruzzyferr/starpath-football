@@ -66,6 +66,22 @@ export const slotInfos = signal<SaveSlotInfo[]>(UI_SLOTS.map((slot) => ({ slot, 
 
 let slotsGen = 0
 
+/** Career ids of all saved careers, or null when unknown (an older save without the id, storage error). */
+export async function savedCareerIds(): Promise<Set<string> | null> {
+  try {
+    const sums = await manager().summaries()
+    const ids = new Set<string>()
+    for (const s of Object.values(sums)) {
+      if (!s) continue
+      if (!s.careerId) return null
+      ids.add(s.careerId)
+    }
+    return ids
+  } catch {
+    return null
+  }
+}
+
 export async function refreshSlots(): Promise<SaveSlotInfo[]> {
   let m: SaveManager
   try {

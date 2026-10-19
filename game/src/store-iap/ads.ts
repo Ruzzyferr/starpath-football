@@ -50,7 +50,7 @@ class AdMobProvider implements AdProvider {
         let canRequest = true
         let npa = false
         try {
-          let info = await AdMob.requestConsentInfo()
+          let info = await AdMob.requestConsentInfo({ tagForUnderAgeOfConsent: !(playerIsAdult?.() ?? false) })
           if (info.isConsentFormAvailable && info.status === 'REQUIRED') info = await AdMob.showConsentForm()
           canRequest = info.canRequestAds
           npa = info.status !== 'OBTAINED' && info.status !== 'NOT_REQUIRED'
@@ -89,7 +89,8 @@ class AdMobProvider implements AdProvider {
     const { AdMob, RewardAdPluginEvents } = await import('@capacitor-community/admob')
     const ios = detectPlatform() === 'ios'
     const adId = unitFor(ios)
-    const testing = adId === ADMOB_TEST_UNITS.ios || adId === ADMOB_TEST_UNITS.android
+    // Test ads until the store release sets VITE_ADS_LIVE=1 (real taps in TestFlight / dev break AdMob policy).
+    const testing = adId === ADMOB_TEST_UNITS.ios || adId === ADMOB_TEST_UNITS.android || import.meta.env?.VITE_ADS_LIVE !== '1'
     const handles: { remove(): Promise<void> }[] = []
     try {
       await AdMob.prepareRewardVideoAd({ adId, isTesting: testing, npa: init.npa, ssv: { userId: accountId, customData: `${accountId}:${nonce}` } })
@@ -171,6 +172,27 @@ export function setAdProvider(p: AdProvider | null): void {
   adProvider = p
 }
 
+/** EU/UK: the player can reopen Google's consent form (Settings › Ad privacy choices). */
+export async function adPrivacyOptionsRequired(): Promise<boolean> {
+  if (!isMobileNative(detectPlatform())) return false
+  try {
+    const { AdMob } = await import('@capacitor-community/admob')
+    const info = await AdMob.requestConsentInfo()
+    return String(info.privacyOptionsRequirementStatus) === 'REQUIRED'
+  } catch {
+    return false
+  }
+}
+export async function showAdPrivacyOptions(): Promise<boolean> {
+  try {
+    const { AdMob } = await import('@capacitor-community/admob')
+    await AdMob.showPrivacyOptionsForm()
+    return true
+  } catch {
+    return false
+  }
+}
+
 export function adsAvailable(): boolean {
   return storeAvailable() && !!getAdProvider()?.available()
 }
@@ -185,6 +207,65 @@ export interface AdResult {
 
 const wait = (ms: number) => new Promise((r) => setTimeout(r, ms))
 
+/**
+ * Ads that were watched to the end but whose reward the server has not confirmed yet (offline, slow
+ * SSV, server down). Kept on the device and retried until the server answers or the 30-minute ad
+ * session expires: a watched ad is never silently lost.
+ */
+const PENDING_KEY = 'starpath.adpending.v1'
+type PendingAd = { nonce: string; offer: AdOffer; career?: string; at: number }
+function pendingAds(): PendingAd[] {
+  try {
+    const v = JSON.parse(globalThis.localStorage?.getItem(PENDING_KEY) ?? '[]') as unknown
+    return Array.isArray(v) ? (v as PendingAd[]).filter((x) => x && typeof x.nonce === 'string') : []
+  } catch {
+    return []
+  }
+}
+function setPendingAds(list: PendingAd[]): void {
+  try {
+    globalThis.localStorage?.setItem(PENDING_KEY, JSON.stringify(list.slice(-20)))
+  } catch {
+    /* private mode */
+  }
+}
+/** Ad sessions older than this are expired on the server (no reward any more). */
+const AD_SESSION_MS = 30 * 60_000
+
+async function completeAd(a: PendingAd): Promise<AdResult> {
+  // SSV can arrive a moment after the ad closes: retry briefly while the server waits for it.
+  for (let i = 0; ; i++) {
+    try {
+      const w = await shopApi.adComplete(a.nonce, a.career)
+      await handleWallet(w)
+      setPendingAds(pendingAds().filter((x) => x.nonce !== a.nonce))
+      return { ok: true, grant: w.grant, gems: w.gems }
+    } catch (e) {
+      const code = e instanceof ShopApiError ? e.code : 'failed'
+      if ((code === 'ad_not_verified' || code === 'ad_too_short') && i < 8) {
+        await wait(1500)
+        continue
+      }
+      const st = e instanceof ShopApiError ? e.status : 0
+      const transient = code === 'offline' || code === 'ad_not_verified' || st === 429 || st >= 500
+      // Definitive answers (already rewarded, expired, aborted, unknown) end the wait.
+      if (!transient || Date.now() - a.at > AD_SESSION_MS) setPendingAds(pendingAds().filter((x) => x.nonce !== a.nonce))
+      return { ok: false, reason: transient ? 'pending_reward' : code }
+    }
+  }
+}
+
+let retrying: Promise<void> | null = null
+/** Retry watched-but-unconfirmed ads (launch, reconnect, app resume). */
+export function retryPendingAds(): Promise<void> {
+  retrying ??= (async () => {
+    for (const a of pendingAds()) await completeAd(a)
+  })().finally(() => {
+    retrying = null
+  })
+  return retrying
+}
+
 export async function watchAd(offer: AdOffer, ctx: { ref?: string; career?: string } = {}): Promise<AdResult> {
   const p = getAdProvider()
   if (!p || !storeAvailable()) return { ok: false, reason: 'failed' }
@@ -193,24 +274,29 @@ export async function watchAd(offer: AdOffer, ctx: { ref?: string; career?: stri
     const start = await shopApi.adStart(offer, ctx.ref)
     if (!start.skipAd) {
       const outcome = await p.show({ offer, accountId: acc.accountId, nonce: start.nonce })
-      if (outcome !== 'rewarded') return { ok: false, reason: outcome }
-    }
-    // SSV can arrive a moment after the ad closes: retry briefly while the server waits for it.
-    for (let i = 0; ; i++) {
-      try {
-        const w = await shopApi.adComplete(start.nonce, ctx.career)
-        await handleWallet(w)
-        return { ok: true, grant: w.grant, gems: w.gems }
-      } catch (e) {
-        const code = e instanceof ShopApiError ? e.code : 'failed'
-        if ((code === 'ad_not_verified' || code === 'ad_too_short') && i < 8) {
-          await wait(1500)
-          continue
-        }
-        throw e
+      if (outcome !== 'rewarded') {
+        // Closed early or failed to show: release the session (nothing is used up).
+        void shopApi.adAbort(start.nonce).catch(() => {})
+        return { ok: false, reason: outcome }
       }
     }
+    // Watched: remember it before asking for the reward, so a network drop cannot lose it.
+    const pending: PendingAd = { nonce: start.nonce, offer, career: ctx.career, at: Date.now() }
+    setPendingAds([...pendingAds().filter((x) => x.nonce !== pending.nonce), pending])
+    return await completeAd(pending)
   } catch (e) {
     return { ok: false, reason: e instanceof ShopApiError ? e.code : 'failed' }
   }
+}
+
+let listening = false
+/** Boot: retry pending ad rewards now and whenever the app comes back online / to the foreground. */
+export function installAdRetry(): void {
+  if (listening) return
+  listening = true
+  void retryPendingAds()
+  globalThis.addEventListener?.('online', () => void retryPendingAds())
+  globalThis.document?.addEventListener?.('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void retryPendingAds()
+  })
 }

@@ -85,7 +85,7 @@ export default defineConfig({
       command: `node --disable-warning=ExperimentalWarning e2e/shop/server.mjs`,
       url: `http://127.0.0.1:${SHOP_PORT}/v1/health`,
       reuseExistingServer: false,
-      env: { PORT: String(SHOP_PORT), HOST: '127.0.0.1', DATA_DIR: `test-results/shop-e2e-${Date.now()}`, DEV_PURCHASES: '1', NODE_ENV: 'test', SANDBOX_POLICY: 'on', TRUST_PROXY: '0', REG_PER_MIN: '10000', IP_PER_MIN: '100000', ORIGINS: `http://127.0.0.1:${PORT},http://localhost:${PORT}` },
+      env: { PORT: String(SHOP_PORT), HOST: '127.0.0.1', DATA_DIR: `test-results/shop-e2e-${Date.now()}`, DEV_PURCHASES: '1', NODE_ENV: 'test', SANDBOX_POLICY: 'on', TRUST_PROXY: '0', REG_PER_MIN: '10000', IP_PER_MIN: '100000', LIMITS_SCALE: '50', ORIGINS: `http://127.0.0.1:${PORT},http://localhost:${PORT}` },
       timeout: 30_000,
     },
   ],

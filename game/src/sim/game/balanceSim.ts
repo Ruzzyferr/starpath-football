@@ -50,7 +50,7 @@ export interface CareerConfig {
    * Pack's Golden Boots once), always (Golden Boots worn for the whole career, re-bought when worn out).
    */
   gear?: 'none' | 'starter' | 'always' | 'max'
-  /** Real-money cash: the largest pack (30 weeks of wages, capped at €400k) at every season start. */
+  /** Real-money cash: the full €600k per-season purchase ceiling at every season start. */
   cashPerSeason?: boolean
 }
 
@@ -336,7 +336,8 @@ export function runCareer(cfg: CareerConfig): CareerTrace {
     }
     if (cfg.cashPerSeason && cashSeason !== s.calendar.season) {
       cashSeason = s.calendar.season
-      s.life.money += Math.min(400_000, Math.max(40_000, 30 * (s.hero.contract?.wage ?? 0)))
+      // The most anyone can buy: the full per-season cash ceiling (ui/backend/shopBridge CASH_PER_SEASON).
+      s.life.money += 600_000
     }
     const week = s.calendar.week
     const season = s.calendar.season

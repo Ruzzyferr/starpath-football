@@ -2,8 +2,10 @@
 // the app shows a cached balance, but every credit needs a verified store receipt, a capped ad
 // reward or a capped free-diamond claim, and every spend is checked here against server prices.
 import { createHash, createHmac, randomBytes, randomInt, randomUUID, sign, timingSafeEqual } from 'node:crypto'
+import { statfsSync } from 'node:fs'
 import { tx } from './db.mjs'
 import { JwsError, verifyAppleJws } from './apple.mjs'
+import { ipKey } from './net.mjs'
 
 export class ShopError extends Error {
   constructor(status, code, msg) {
@@ -33,6 +35,16 @@ function optLabel(v, re) {
   return v
 }
 const notProduction = (env) => env !== 'Production'
+/** Normalised recovery code, or '' when it cannot be one. */
+const normCode = (code) => (typeof code === 'string' && code.length < 64 ? code.toUpperCase().replace(/[\s-]/g, '') : '')
+/** Rate-limit bucket for a recovery-code attempt: a short prefix of the code's hash (or null). */
+export function codeBucket(code) {
+  const n = normCode(code)
+  return CODE_RE.test(n) ? sha256(n).slice(0, 2) : null
+}
+const YEAR = 365 * DAY
+/** Tables whose sizes /v1/health reports to the operator (OPS_TOKEN). */
+const OPS_TABLES = ['accounts', 'account_tokens', 'txns', 'tombstones', 'ledger', 'grants', 'daily', 'counters', 'ads', 'earn_refs', 'idem', 'audit', 'ip_daily']
 
 export class Shop {
   /**
@@ -48,11 +60,13 @@ export class Shop {
    * @param {{ requireSsv: boolean }} [o.ads]
    * @param {boolean} [o.devPurchases] test-only purchases without a store (never in production)
    * @param {string|Buffer} [o.ipSalt] secret for hashing old audit IPs
+   * @param {string} [o.dataDir] directory of the database (health: free disk space)
    * @param {(...a: any[]) => void} [o.log]
    * @param {() => number} [o.now]
    */
   constructor(o) {
     this.db = o.db
+    this.dataDir = o.dataDir ?? null
     this.cat = o.catalog
     this.signKey = o.signKey
     this.apple = o.apple
@@ -69,7 +83,10 @@ export class Shop {
       testers: new Set((o.sandbox?.testers ?? []).map((s) => s.trim().toLowerCase()).filter(Boolean)),
       cap: o.sandbox?.cap ?? this.cat.limits.sandboxGemsCap ?? 3000,
       txnCap: this.cat.limits.sandboxTxnCap ?? 30,
+      // All accounts together, per UTC day (TestFlight receipts are free to make).
+      globalDaily: o.sandbox?.globalDaily ?? this.cat.limits.sandboxGlobalDaily ?? 200,
     }
+    this.passProducts = Object.entries(this.cat.products).filter(([, p]) => p.kind === 'pass').map(([k]) => k)
   }
 
   day(t = this.now()) {
@@ -85,8 +102,43 @@ export class Shop {
     return { apple: true, google: !!this.google?.configured }
   }
 
-  health() {
-    return { ok: true, ...this.stores(), sandbox: this.sandbox.policy }
+  /** Free space on the data directory's file system, or null when unknown. */
+  disk() {
+    if (!this.dataDir) return null
+    try {
+      const s = statfsSync(this.dataDir)
+      const total = s.blocks * s.bsize
+      const free = s.bavail * s.bsize
+      return { freeBytes: free, totalBytes: total, freePct: total ? Math.round((free / total) * 1000) / 10 : 0 }
+    } catch {
+      return null
+    }
+  }
+
+  /**
+   * Liveness: the database answers and the disk is not (nearly) full. `ops` (row counts, disk,
+   * database size) only for the operator (a valid OPS_TOKEN, checked by the HTTP layer).
+   */
+  health({ ops = false } = {}) {
+    let dbOk = false
+    try {
+      dbOk = this.db.prepare('SELECT 1 AS one').get()?.one === 1
+    } catch {
+      dbOk = false
+    }
+    const disk = this.disk()
+    const diskOk = !disk || (disk.freePct >= 5 && disk.freeBytes >= 100 * 1024 * 1024)
+    const out = { ok: dbOk && diskOk, ...this.stores(), sandbox: this.sandbox.policy }
+    if (ops) {
+      const rows = {}
+      if (dbOk) for (const t of OPS_TABLES) rows[t] = this.db.prepare(`SELECT COUNT(*) AS n FROM ${t}`).get().n
+      let dbBytes = null
+      try {
+        dbBytes = this.db.prepare('SELECT page_count * page_size AS n FROM pragma_page_count(), pragma_page_size()').get().n
+      } catch {}
+      out.ops = { db: dbOk, disk, dbBytes, rows, sandboxToday: dbOk ? this.sandboxToday() : null }
+    }
+    return out
   }
 
   // ───────── Accounts and device tokens ─────────
@@ -120,7 +172,54 @@ export class Shop {
     const acc = ok && hashes.length ? this.account(m[1]) : null
     if (!acc || acc.deleted) throw new ShopError(401, 'unauthorized')
     if (acc.banned) throw new ShopError(403, 'banned')
+    // Activity mark for the retention job, written at most every 6 hours.
+    const now = this.now()
+    if (!(acc.seen > now - 6 * 3600_000)) this.db.prepare('UPDATE accounts SET seen = ? WHERE id = ?').run(now, acc.id)
     return acc
+  }
+
+  /** Accounts younger than `limits.newAccountMs` get half the free-diamond caps (fresh-account farming). */
+  isNew(acc) {
+    return this.now() - (acc.created ?? 0) < (this.cat.limits.newAccountMs ?? DAY)
+  }
+
+  /** A daily cap, halved (rounded up) for a new account. */
+  ramp(acc, n) {
+    return this.isNew(acc) ? Math.ceil(n / 2) : n
+  }
+
+  /** Daily cap of an ad offer for this account (diamond-paying offers ramp with account age). */
+  adCap(acc, offer) {
+    const def = this.cat.ads[offer]
+    return def.reward.gems ? this.ramp(acc, def.perDay) : def.perDay
+  }
+
+  /** Refunds pile up or the balance is negative: no spending and no ad rewards (purchases stay open). */
+  refundHold(accountId) {
+    const a = this.account(accountId)
+    return a.gems < 0 || this.counter(accountId, 'refunds') >= (this.cat.limits.refundHoldAfter ?? 3)
+  }
+
+  checkHold(accountId) {
+    if (this.refundHold(accountId)) throw new ShopError(403, 'refund_hold')
+  }
+
+  // ───────── Per-address free-diamond ceiling (across accounts) ─────────
+
+  ipBucket(ip) {
+    return ip ? this.hashIp(ipKey(ip)) : null
+  }
+
+  ipCount(bucket) {
+    return bucket ? this.db.prepare('SELECT n FROM ip_daily WHERE key = ? AND day = ?').get(bucket, this.day())?.n ?? 0 : 0
+  }
+
+  ipBump(bucket, by) {
+    if (bucket && by > 0) this.db.prepare('INSERT INTO ip_daily (key, day, n) VALUES (?, ?, ?) ON CONFLICT(key, day) DO UPDATE SET n = n + excluded.n').run(bucket, this.day(), by)
+  }
+
+  get ipCap() {
+    return this.cat.limits.ipEarnPerDay ?? 600
   }
 
   account(id) {
@@ -171,20 +270,44 @@ export class Shop {
   // ───────── Grants (signed coupons the app applies to the career) ─────────
 
   /** Payload fields {v, n, a, t, k, ...}; token = base64url(payload) '.' Ed25519(base64url string). */
-  grant(accountId, payload, ref) {
+  /** `price`: diamonds paid for it (spend grants only), which makes the grant voidable. */
+  grant(accountId, payload, ref, price = null) {
     const nonce = randomBytes(16).toString('base64url')
     const body = { v: 1, n: nonce, a: accountId, t: this.now(), ...payload }
     const b = Buffer.from(JSON.stringify(body)).toString('base64url')
     const token = `${b}.${sign(null, Buffer.from(b), this.signKey).toString('base64url')}`
-    this.db.prepare('INSERT INTO grants (nonce, account, payload, token, at, ref) VALUES (?, ?, ?, ?, ?, ?)').run(nonce, accountId, JSON.stringify(body), token, this.now(), ref ?? null)
+    this.db.prepare('INSERT INTO grants (nonce, account, payload, token, at, ref, price) VALUES (?, ?, ?, ?, ?, ?, ?)').run(nonce, accountId, JSON.stringify(body), token, this.now(), ref ?? null, price)
     return { nonce, token, ...payload }
   }
 
   ack(acc, nonces) {
     if (!Array.isArray(nonces) || nonces.length > 50) throw new ShopError(400, 'bad_request')
-    const st = this.db.prepare('UPDATE grants SET acked = 1 WHERE nonce = ? AND account = ?')
+    const st = this.db.prepare('UPDATE grants SET acked = 1 WHERE nonce = ? AND account = ? AND acked = 0')
     tx(this.db, () => { for (const n of nonces) if (typeof n === 'string' && n.length < 40) st.run(n, acc.id) })
     return this.wallet(this.account(acc.id))
+  }
+
+  /**
+   * The app cannot apply an unacked spend grant (the career it was bought for no longer exists):
+   * the diamonds paid come back once and the grant leaves the inbox. Purchase and ad grants are not
+   * voidable. A retry of the same void answers again with voided:true.
+   */
+  voidGrant(acc, nonce) {
+    if (typeof nonce !== 'string' || !nonce || nonce.length >= 40) throw new ShopError(400, 'bad_request')
+    return tx(this.db, () => {
+      const g = this.db.prepare('SELECT * FROM grants WHERE nonce = ? AND account = ?').get(nonce, acc.id)
+      if (!g) throw new ShopError(404, 'no_grant')
+      if (g.acked === 3) return { ...this.wallet(this.account(acc.id)), voided: true, refunded: 0, replay: true }
+      if (g.price == null) throw new ShopError(400, 'not_voidable')
+      if (g.acked !== 0) throw new ShopError(409, 'already_acked')
+      this.db.prepare('UPDATE grants SET acked = 3 WHERE nonce = ?').run(nonce)
+      const body = JSON.parse(g.payload)
+      if (g.price > 0) this.moveGems(acc.id, g.price, `void:${body.src ?? body.k}`, `void:${nonce}`)
+      // A cosmetic is an account entitlement: it goes with the refund.
+      if (body.k === 'cosmetic' && body.id) this.db.prepare('DELETE FROM entitlements WHERE account = ? AND product = ?').run(acc.id, body.id)
+      this.audit(acc.id, null, 'grant_void', { nonce, src: body.src, price: g.price })
+      return { ...this.wallet(this.account(acc.id)), voided: true, refunded: g.price }
+    })
   }
 
   // ───────── Wallet view ─────────
@@ -197,7 +320,7 @@ export class Shop {
     const ents = this.db.prepare('SELECT product FROM entitlements WHERE account = ?').all(acc.id).map((r) => r.product).filter((p) => p !== 'pro_contract' || passActive)
     const inbox = this.db.prepare('SELECT nonce, token, payload FROM grants WHERE account = ? AND acked = 0 ORDER BY at').all(acc.id)
       .map((g) => ({ nonce: g.nonce, token: g.token, ...JSON.parse(g.payload) }))
-    const ads = Object.fromEntries(Object.keys(this.cat.ads).map((k) => [k, { used: this.count(acc.id, `ad:${k}`), max: this.cat.ads[k].perDay }]))
+    const ads = Object.fromEntries(Object.keys(this.cat.ads).map((k) => [k, { used: this.count(acc.id, `ad:${k}`), max: this.adCap(acc, k) }]))
     const g2c = this.cat.spend.gems_to_cash
     return {
       accountId: acc.id,
@@ -210,7 +333,12 @@ export class Shop {
       physioDiscounts: this.counter(acc.id, 'disc:physio'),
       seasonX2Ready: this.counter(acc.id, 'season:ready') > 0 && ads.season_x2.used < ads.season_x2.max,
       earnedToday: this.count(acc.id, 'earn:total'),
-      limits: { gemsToCashLeft: g2c?.perDay ? Math.max(0, g2c.perDay - this.count(acc.id, 'spend:gems_to_cash')) : 0 },
+      limits: {
+        gemsToCashLeft: g2c?.perDay ? Math.max(0, g2c.perDay - this.count(acc.id, 'spend:gems_to_cash')) : 0,
+        // Bought cash per career season; the app enforces it (the career runs on the device).
+        cashPerSeason: this.cat.limits.cashPerSeason ?? 0,
+      },
+      refundHold: this.refundHold(acc.id),
       stores: this.stores(),
       prices: Object.fromEntries(Object.entries(this.cat.spend).map(([k, v]) => [k, v.price])),
     }
@@ -224,19 +352,43 @@ export class Shop {
     return p === 'on' || p === 'capped' || (p === 'testers' && this.sandbox.testers.has(accountId))
   }
 
-  /** Inside credit(): refuse, or count against the per-account lifetime cap ('capped'). */
+  /** Account recovery from a sandbox receipt: only where sandbox is fully open, or for listed testers. */
+  sandboxRecoverAllowed(accountId) {
+    const p = this.sandbox.policy
+    return p === 'on' || (p === 'testers' && this.sandbox.testers.has(accountId))
+  }
+
+  /** Sandbox (non-production) store transactions recorded since the start of today (UTC). */
+  sandboxToday() {
+    const start = Date.parse(`${this.day()}T00:00:00Z`)
+    return this.db.prepare("SELECT COUNT(*) AS n FROM txns WHERE store != 'dev' AND env IS NOT NULL AND env != 'Production' AND at >= ?").get(start).n
+  }
+
+  /**
+   * Inside credit(): refuse, or ('capped') count against the per-account lifetime caps — every
+   * product kind (diamonds, cash, pass, cosmetics) counts as a transaction, diamonds also by
+   * amount — and against a global daily budget across all accounts.
+   */
   sandboxGate(accountId, p) {
     if (!this.sandboxAllowed(accountId)) throw new ShopError(400, 'sandbox_receipt')
     if (this.sandbox.policy !== 'capped') return
     const gems = p.kind === 'gems' || p.kind === 'starter' ? p.gems : 0
     if (this.counter(accountId, 'sandbox:gems') + gems > this.sandbox.cap || this.counter(accountId, 'sandbox:txns') >= this.sandbox.txnCap) throw new ShopError(403, 'sandbox_cap')
+    if (this.sandboxToday() >= this.sandbox.globalDaily) {
+      this.log('sandbox_global_cap', this.sandbox.globalDaily) // (an audit row would roll back with the refusal)
+      throw new ShopError(403, 'sandbox_cap')
+    }
     this.addCounter(accountId, 'sandbox:gems', gems)
     this.addCounter(accountId, 'sandbox:txns')
   }
 
   // ───────── Purchases ─────────
 
-  /** Refunded / revoked before or after we saw it: tombstone (txn or original id) or a revoked row. */
+  /**
+   * Refunded / revoked before or after we saw it: tombstone (txn or original id) or a revoked row.
+   * Callers pass `originalId` only for one-time products: a subscription's periods share their
+   * original id, and a refund of one period must not block the others.
+   */
   isRevoked(store, txnId, originalId) {
     const keys = [`t:${txnId}`, originalId ? `o:${originalId}` : `t:${txnId}`]
     if (this.db.prepare('SELECT 1 FROM tombstones WHERE store = ? AND key IN (?, ?)').get(store, ...keys)) return true
@@ -255,15 +407,21 @@ export class Shop {
           throw new ShopError(409, 'receipt_used')
         }
         if (seen.revoked) throw new ShopError(410, 'revoked')
-        // Same transaction again (retry / restore): refresh a subscription's expiry, never credit twice.
-        if (p.kind === 'pass' && expires) this.db.prepare('UPDATE accounts SET pass_until = MAX(pass_until, ?) WHERE id = ?').run(expires, acc.id)
+        // Same transaction again (retry / restore; a Play subscription keeps one token across
+        // renewals): refresh a subscription's expiry, never credit twice.
+        if (p.kind === 'pass' && expires) {
+          this.db.prepare('UPDATE txns SET expires = MAX(COALESCE(expires, 0), ?) WHERE store = ? AND txn_id = ?').run(expires, store, txnId)
+          this.db.prepare('UPDATE accounts SET pass_until = MAX(pass_until, ?) WHERE id = ?').run(expires, acc.id)
+        }
         return { credited: false }
       }
       // A refund notice that arrived before the purchase was redeemed.
-      if (this.isRevoked(store, txnId, originalId)) throw new ShopError(410, 'revoked')
+      if (this.isRevoked(store, txnId, p.kind === 'pass' ? null : originalId)) throw new ShopError(410, 'revoked')
       if (store !== 'dev' && notProduction(env)) this.sandboxGate(acc.id, p)
-      this.db.prepare('INSERT INTO txns (store, txn_id, original_id, account, product, env, at) VALUES (?, ?, ?, ?, ?, ?, ?)').run(store, txnId, originalId ?? null, acc.id, productId, env ?? null, this.now())
+      const until = p.kind === 'pass' ? (expires ?? this.now() + 31 * DAY) : null
+      this.db.prepare('INSERT INTO txns (store, txn_id, original_id, account, product, env, at, expires) VALUES (?, ?, ?, ?, ?, ?, ?, ?)').run(store, txnId, originalId ?? null, acc.id, productId, env ?? null, this.now(), until)
       const ref = `${store}:${txnId}`
+      let out = { credited: true }
       if (p.kind === 'gems') this.moveGems(acc.id, p.gems, `buy:${productId}`, ref)
       else if (p.kind === 'cash') this.grant(acc.id, { k: 'cash', weeks: p.cashWeeks, floor: p.cashFloor, cap: p.cashCap, src: productId }, ref)
       else if (p.kind === 'starter') {
@@ -271,14 +429,32 @@ export class Shop {
         if (fresh) {
           this.moveGems(acc.id, p.gems, 'buy:starter_pack', ref)
           this.grant(acc.id, { k: 'gear', id: p.gear, src: productId }, ref)
+        } else {
+          // Once per account: a second Starter Pack credits nothing (the store refund is the remedy).
+          this.audit(acc.id, null, 'starter_repeat', { store, txnId })
+          out = { credited: false, reason: 'already_owned' }
         }
       } else if (p.kind === 'pass') {
-        this.db.prepare('UPDATE accounts SET pass_until = MAX(pass_until, ?) WHERE id = ?').run(expires ?? this.now() + 31 * DAY, acc.id)
+        this.db.prepare('UPDATE accounts SET pass_until = MAX(pass_until, ?) WHERE id = ?').run(until, acc.id)
       }
       if (!p.consumable) this.db.prepare('INSERT OR IGNORE INTO entitlements (account, product, at) VALUES (?, ?, ?)').run(acc.id, productId, this.now())
       this.audit(acc.id, null, 'purchase', { store, txnId, productId, env })
-      return { credited: true }
+      return out
     })
+  }
+
+  /** pass_until = the latest expiry over the account's live (not refunded) subscription periods. */
+  syncPass(accountId) {
+    const ph = this.passProducts.map(() => '?').join(',') || "''"
+    const q = (sql) => this.db.prepare(sql).get(accountId, ...this.passProducts)
+    const until = q(`SELECT MAX(expires) AS m FROM txns WHERE account = ? AND revoked = 0 AND product IN (${ph})`).m ?? 0
+    this.db.prepare('UPDATE accounts SET pass_until = ? WHERE id = ?').run(until, accountId)
+    const live = q(`SELECT COUNT(*) AS n FROM txns WHERE account = ? AND revoked = 0 AND product IN (${ph})`).n
+    for (const product of this.passProducts) {
+      if (live) this.db.prepare('INSERT OR IGNORE INTO entitlements (account, product, at) VALUES (?, ?, ?)').run(accountId, product, this.now())
+      else this.db.prepare('DELETE FROM entitlements WHERE account = ? AND product = ?').run(accountId, product)
+    }
+    return until
   }
 
   verifyApple(jws) {
@@ -389,9 +565,18 @@ export class Shop {
     if (!acc) throw new ShopError(404, 'no_account')
     const p = own(this.cat.products, t.productId)
     if (!p || p.consumable) throw new ShopError(400, 'not_restorable')
-    if (t.revocationDate || this.isRevoked('apple', String(t.transactionId), t.originalTransactionId ? String(t.originalTransactionId) : null)) throw new ShopError(410, 'revoked')
+    const txnId = String(t.transactionId)
+    const originalId = t.originalTransactionId ? String(t.originalTransactionId) : null
+    if (t.revocationDate || this.isRevoked('apple', txnId, p.kind === 'pass' ? null : originalId)) throw new ShopError(410, 'revoked')
     if (t.expiresDate && t.expiresDate < this.now()) throw new ShopError(410, 'expired')
-    if (notProduction(t.environment) && !this.sandboxAllowed(acc.id)) throw new ShopError(400, 'sandbox_receipt')
+    if (notProduction(t.environment) && !this.sandboxRecoverAllowed(acc.id)) throw new ShopError(400, 'sandbox_receipt')
+    // The account id alone is not the secret: the receipt must be (a period of) a purchase this
+    // account already redeemed.
+    const known = this.db.prepare("SELECT 1 FROM txns WHERE store = 'apple' AND account = ? AND revoked = 0 AND (txn_id = ? OR (? IS NOT NULL AND (original_id = ? OR txn_id = ?)))").get(acc.id, txnId, originalId, originalId, originalId)
+    if (!known) {
+      this.audit(acc.id, ip, 'recover_unknown_receipt', { store: 'apple' })
+      throw new ShopError(403, 'unknown_receipt')
+    }
     this.audit(acc.id, ip, 'recover', { store: 'apple', txn: t.transactionId })
     return { accountId: acc.id, token: this.issueToken(acc.id) }
   }
@@ -402,9 +587,16 @@ export class Shop {
     const acc = this.liveAccount(v.account)
     if (!acc) throw new ShopError(404, 'no_account')
     if (p.consumable) throw new ShopError(400, 'not_restorable')
-    if (this.isRevoked('google', sha256(purchaseToken), v.orderId)) throw new ShopError(410, 'revoked')
+    const txnId = sha256(purchaseToken)
+    if (this.isRevoked('google', txnId, p.kind === 'pass' ? null : v.orderId)) throw new ShopError(410, 'revoked')
     if (v.expires && v.expires < this.now()) throw new ShopError(410, 'expired')
-    if (v.test && !this.sandboxAllowed(acc.id)) throw new ShopError(400, 'sandbox_receipt')
+    if (v.test && !this.sandboxRecoverAllowed(acc.id)) throw new ShopError(400, 'sandbox_receipt')
+    // Only a purchase (token or order id) this account already redeemed.
+    const known = this.db.prepare("SELECT 1 FROM txns WHERE store = 'google' AND account = ? AND revoked = 0 AND (txn_id = ? OR (? IS NOT NULL AND original_id = ?))").get(acc.id, txnId, v.orderId ?? null, v.orderId ?? null)
+    if (!known) {
+      this.audit(acc.id, ip, 'recover_unknown_receipt', { store: 'google' })
+      throw new ShopError(403, 'unknown_receipt')
+    }
     this.audit(acc.id, ip, 'recover', { store: 'google', productId })
     return { accountId: acc.id, token: this.issueToken(acc.id) }
   }
@@ -419,7 +611,7 @@ export class Shop {
 
   /** Redeems a recovery code (case, spaces and dashes ignored): adds a device token, burns the code. */
   recoverCode(code, ip) {
-    const norm = typeof code === 'string' && code.length < 64 ? code.toUpperCase().replace(/[\s-]/g, '') : ''
+    const norm = normCode(code)
     if (!CODE_RE.test(norm)) throw new ShopError(400, 'bad_code')
     const h = sha256(norm)
     const row = this.db.prepare('SELECT * FROM recovery WHERE hash = ?').get(h)
@@ -449,8 +641,11 @@ export class Shop {
       if (prev) {
         // A retry: the first grant with today's wallet. The same key for another item is a client bug.
         if (prev.item && prev.item !== item) throw new ShopError(409, 'idem_mismatch')
-        return { ...this.wallet(this.account(acc.id)), grant: JSON.parse(prev.response).grant ?? null, replay: true }
+        const grant = JSON.parse(prev.response).grant ?? null
+        if (grant && this.db.prepare('SELECT 1 FROM grants WHERE nonce = ? AND acked = 3').get(grant.nonce)) throw new ShopError(409, 'grant_voided')
+        return { ...this.wallet(this.account(acc.id)), grant, replay: true }
       }
+      this.checkHold(acc.id)
       const cosmetic = def.grant.k === 'cosmetic' ? def.grant.id : null
       if (cosmetic && this.db.prepare('SELECT 1 FROM entitlements WHERE account = ? AND product = ?').get(acc.id, cosmetic)) throw new ShopError(409, 'owned')
       if (def.perDay && this.count(acc.id, `spend:${item}`) >= def.perDay) throw new ShopError(429, 'spend_cap')
@@ -463,7 +658,7 @@ export class Shop {
       this.moveGems(acc.id, -price, `spend:${item}`, idem)
       if (def.perDay) this.bump(acc.id, `spend:${item}`)
       if (cosmetic) this.db.prepare('INSERT INTO entitlements (account, product, at) VALUES (?, ?, ?)').run(acc.id, cosmetic, this.now())
-      const g = this.grant(acc.id, { ...def.grant, src: item, ...(c ? { c } : {}) }, `spend:${idem}`)
+      const g = this.grant(acc.id, { ...def.grant, src: item, ...(c ? { c } : {}) }, `spend:${idem}`, price)
       this.db.prepare('INSERT INTO idem (account, key, response, at, item) VALUES (?, ?, ?, ?, ?)').run(acc.id, idem, JSON.stringify({ grant: g }), this.now(), item)
       return { ...this.wallet(this.account(acc.id)), grant: g }
     })
@@ -472,18 +667,45 @@ export class Shop {
   // ───────── Rewarded ads ─────────
 
   /** `ref` (optional, e.g. a fixture id) is kept on the session and copied into the grant. */
-  adStart(acc, offer, ref) {
+  /** Does this offer pay diamonds (counts toward the per-address ceiling)? */
+  adPaysGems(offer) {
+    return !!this.cat.ads[offer]?.reward.gems || offer === 'season_x2'
+  }
+
+  /**
+   * Ad session states (ads.done): 0 open, 1 rewarded, 2 aborted (dismissed / failed to show).
+   * Starting the same offer again reuses the newest open session (its watch timer restarts).
+   */
+  adStart(acc, offer, ref, ip) {
     const def = own(this.cat.ads, offer)
     if (!def) throw new ShopError(400, 'unknown_offer')
     const r = optLabel(ref, REF)
-    if (this.count(acc.id, `ad:${offer}`) >= def.perDay) throw new ShopError(429, 'ad_cap')
+    this.checkHold(acc.id)
+    if (this.count(acc.id, `ad:${offer}`) >= this.adCap(acc, offer)) throw new ShopError(429, 'ad_cap')
     if (offer === 'season_x2' && this.counter(acc.id, 'season:ready') < 1) throw new ShopError(400, 'no_season_reward')
-    const open = this.db.prepare('SELECT COUNT(*) AS n FROM ads WHERE account = ? AND done = 0 AND started > ?').get(acc.id, this.now() - 30 * 60_000).n
+    if (this.adPaysGems(offer) && this.ipCount(this.ipBucket(ip)) >= this.ipCap) throw new ShopError(429, 'ad_cap')
+    const now = this.now()
+    const skipAd = acc.pass_until > now // Pro Contract: the reward without the ad.
+    const prev = this.db.prepare('SELECT nonce FROM ads WHERE account = ? AND offer = ? AND done = 0 AND started > ? ORDER BY started DESC LIMIT 1').get(acc.id, offer, now - 30 * 60_000)
+    if (prev) {
+      this.db.prepare('UPDATE ads SET started = ?, ref = ? WHERE nonce = ?').run(now, r ?? null, prev.nonce)
+      return { nonce: prev.nonce, skipAd, reused: true }
+    }
+    const open = this.db.prepare('SELECT COUNT(*) AS n FROM ads WHERE account = ? AND done = 0 AND started > ?').get(acc.id, now - 30 * 60_000).n
     if (open >= (this.cat.limits.maxOpenAds ?? 3)) throw new ShopError(429, 'too_many_open_ads')
     const nonce = randomBytes(16).toString('hex')
-    this.db.prepare('INSERT INTO ads (nonce, account, offer, started, ref) VALUES (?, ?, ?, ?, ?)').run(nonce, acc.id, offer, this.now(), r ?? null)
-    // Pro Contract: the reward without the ad.
-    return { nonce, skipAd: acc.pass_until > this.now() }
+    this.db.prepare('INSERT INTO ads (nonce, account, offer, started, ref) VALUES (?, ?, ?, ?, ?)').run(nonce, acc.id, offer, now, r ?? null)
+    return { nonce, skipAd }
+  }
+
+  /** The ad was dismissed or failed to show: close the session (it stops counting as open). */
+  adAbort(acc, nonce) {
+    if (typeof nonce !== 'string' || !/^[0-9a-f]{32}$/.test(nonce)) throw new ShopError(400, 'bad_request')
+    const s = this.db.prepare('SELECT done FROM ads WHERE nonce = ? AND account = ?').get(nonce, acc.id)
+    if (!s) throw new ShopError(404, 'no_ad_session')
+    if (s.done === 1) throw new ShopError(409, 'already_rewarded')
+    this.db.prepare('UPDATE ads SET done = 2 WHERE nonce = ? AND done = 0').run(nonce)
+    return { aborted: true }
   }
 
   /** Google's SSV callback (already signature-checked): marks the ad session as really watched. */
@@ -494,19 +716,22 @@ export class Shop {
     return r.changes === 1
   }
 
-  adComplete(acc, nonce, career) {
+  adComplete(acc, nonce, career, ip) {
     if (typeof nonce !== 'string' || !/^[0-9a-f]{32}$/.test(nonce)) throw new ShopError(400, 'bad_request')
     const c = optLabel(career, CAREER)
     return tx(this.db, () => {
       const s = this.db.prepare('SELECT * FROM ads WHERE nonce = ? AND account = ?').get(nonce, acc.id)
       if (!s) throw new ShopError(404, 'no_ad_session')
-      if (s.done) throw new ShopError(409, 'already_rewarded')
+      if (s.done === 1) throw new ShopError(409, 'already_rewarded')
+      // Aborted by the app, unless Google's SSV says the ad was in fact watched.
+      if (s.done === 2 && !s.ssv) throw new ShopError(409, 'ad_aborted')
+      this.checkHold(acc.id)
       const pass = acc.pass_until > this.now()
       if (!pass && this.requireSsv && !s.ssv) throw new ShopError(425, 'ad_not_verified')
       if (!pass && !this.requireSsv && this.now() - s.started < 5000) throw new ShopError(425, 'ad_too_short')
       if (this.now() - s.started > 30 * 60_000) throw new ShopError(410, 'ad_expired')
       const def = this.cat.ads[s.offer]
-      if (this.count(acc.id, `ad:${s.offer}`) >= def.perDay) throw new ShopError(429, 'ad_cap')
+      if (this.count(acc.id, `ad:${s.offer}`) >= this.adCap(acc, s.offer)) throw new ShopError(429, 'ad_cap')
       if (s.offer === 'season_x2') {
         if (this.counter(acc.id, 'season:ready') < 1) throw new ShopError(409, 'no_season_reward')
         this.setCounter(acc.id, 'season:ready', 0)
@@ -514,8 +739,15 @@ export class Shop {
       this.db.prepare('UPDATE ads SET done = 1 WHERE nonce = ?').run(nonce)
       this.bump(acc.id, `ad:${s.offer}`)
       let grant = null
-      if (def.reward.gems) this.moveGems(acc.id, def.reward.gems, `ad:${s.offer}`, nonce)
-      if (s.offer === 'season_x2') this.moveGems(acc.id, this.cat.earn.season.gems, 'ad:season_x2', nonce)
+      const bucket = this.ipBucket(ip)
+      if (def.reward.gems) {
+        this.moveGems(acc.id, def.reward.gems, `ad:${s.offer}`, nonce)
+        this.ipBump(bucket, def.reward.gems)
+      }
+      if (s.offer === 'season_x2') {
+        this.moveGems(acc.id, this.cat.earn.season.gems, 'ad:season_x2', nonce)
+        this.ipBump(bucket, this.cat.earn.season.gems)
+      }
       if (def.reward.grant) grant = this.grant(acc.id, { ...def.reward.grant, src: `ad:${s.offer}`, ...(c ? { c } : {}), ...(s.ref ? { ref: s.ref } : {}) }, `ad:${nonce}`)
       if (def.reward.discount === 'physio') this.addCounter(acc.id, 'disc:physio')
       return { ...this.wallet(this.account(acc.id)), grant }
@@ -530,18 +762,24 @@ export class Shop {
    * bounds what a modified client can farm to a small, free-player amount. A claim refused by a cap
    * does not use up its reference (it can be claimed another day).
    */
-  earn(acc, { source, ref } = {}) {
+  earn(acc, { source, ref } = {}, ip) {
     const def = own(this.cat.earn, source)
     if (!def) throw new ShopError(400, 'unknown_source')
     if (typeof ref !== 'string' || !REF.test(ref)) throw new ShopError(400, 'bad_request')
     const key = `${source}:${ref}`
     return tx(this.db, () => {
       if (this.db.prepare('SELECT 1 FROM earn_refs WHERE account = ? AND ref = ?').get(acc.id, key)) return { ...this.wallet(this.account(acc.id)), earned: 0 }
-      const capped = this.count(acc.id, `earn:${source}`) >= def.perDay || this.count(acc.id, 'earn:total') + def.gems > this.cat.limits.earnPerDay
+      // Per source and per day (halved for an account younger than a day), and per client address
+      // across accounts (fresh-account farming).
+      const bucket = this.ipBucket(ip)
+      const capped = this.count(acc.id, `earn:${source}`) >= this.ramp(acc, def.perDay) ||
+        this.count(acc.id, 'earn:total') + def.gems > this.ramp(acc, this.cat.limits.earnPerDay) ||
+        (bucket && this.ipCount(bucket) + def.gems > this.ipCap)
       if (capped) return { ...this.wallet(this.account(acc.id)), earned: 0, capped: true }
-      this.db.prepare('INSERT INTO earn_refs (account, ref) VALUES (?, ?)').run(acc.id, key)
+      this.db.prepare('INSERT INTO earn_refs (account, ref, at) VALUES (?, ?, ?)').run(acc.id, key, this.now())
       this.bump(acc.id, `earn:${source}`)
       this.bump(acc.id, 'earn:total', def.gems)
+      this.ipBump(bucket, def.gems)
       this.moveGems(acc.id, def.gems, `earn:${source}`, ref)
       // A season reward makes the season x2 ad available until it is used (not just today).
       if (source === 'season') this.setCounter(acc.id, 'season:ready', 1)
@@ -570,31 +808,76 @@ export class Shop {
    * that the app has not applied yet; a Starter Pack whose boots were already applied keeps
    * starter=1 (it cannot be bought again for a second pair).
    */
-  revokeTxn(store, txnId, originalId) {
+  revokeTxn(store, txnId, originalId, { sub = false } = {}) {
     return tx(this.db, () => {
       const row = this.db.prepare('SELECT * FROM txns WHERE store = ? AND txn_id = ?').get(store, txnId)
       if (!row) {
         const st = this.db.prepare('INSERT OR IGNORE INTO tombstones (store, key, at) VALUES (?, ?, ?)')
         let fresh = st.run(store, `t:${txnId}`, this.now()).changes
-        if (originalId) fresh += st.run(store, `o:${originalId}`, this.now()).changes
+        // A subscription period: only that transaction (its renewals share the original id).
+        if (originalId && !sub) fresh += st.run(store, `o:${originalId}`, this.now()).changes
         if (!fresh) return { handled: false }
-        this.audit(null, null, 'tombstone', { store, txnId, originalId })
+        this.audit(null, null, 'tombstone', { store, txnId, originalId: sub ? null : originalId })
         return { handled: true, tombstone: true }
       }
       if (row.revoked) return { handled: false }
       this.db.prepare('UPDATE txns SET revoked = 1 WHERE store = ? AND txn_id = ?').run(store, txnId)
       const p = own(this.cat.products, row.product)
       const ref = `${store}:${row.txn_id}`
-      const withdrawn = this.db.prepare('DELETE FROM grants WHERE account = ? AND ref = ? AND acked = 0').run(row.account, ref).changes
+      // Unapplied grants from this purchase are withdrawn (kept as state 2 so a reversal can restore them).
+      const withdrawn = this.db.prepare('UPDATE grants SET acked = 2 WHERE account = ? AND ref = ? AND acked = 0').run(row.account, ref).changes
       const applied = !!this.db.prepare('SELECT 1 FROM grants WHERE account = ? AND ref = ? AND acked = 1').get(row.account, ref)
       // Take back exactly the diamonds this transaction credited (a repeat Starter Pack credited none).
       const credited = this.db.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM ledger WHERE account = ? AND ref = ? AND why LIKE 'buy:%'").get(row.account, ref).n
       if (credited > 0) this.moveGems(row.account, -credited, 'refund', ref)
       if (p?.kind === 'starter' && credited > 0 && !applied) this.db.prepare('UPDATE accounts SET starter = 0 WHERE id = ?').run(row.account)
-      if (p?.kind === 'pass') this.db.prepare('UPDATE accounts SET pass_until = 0 WHERE id = ?').run(row.account)
-      if (p && !p.consumable) this.db.prepare('DELETE FROM entitlements WHERE account = ? AND product = ?').run(row.account, row.product)
+      // A refunded subscription period: the pass runs to the latest remaining paid period.
+      if (p?.kind === 'pass') this.syncPass(row.account)
+      else if (p && !p.consumable) this.db.prepare('DELETE FROM entitlements WHERE account = ? AND product = ?').run(row.account, row.product)
+      this.addCounter(row.account, 'refunds')
       this.audit(row.account, null, 'refund', { store, txn: row.txn_id, product: row.product, withdrawn })
       if (this.account(row.account).gems < 0) this.audit(row.account, null, 'negative_balance', { gems: this.account(row.account).gems })
+      return { handled: true }
+    })
+  }
+
+  /**
+   * A refund reversed by the store (Apple REFUND_REVERSED): clears the tombstone, or un-revokes the
+   * transaction and gives back exactly what the refund took (diamonds once, withdrawn grants, the
+   * Starter flag, the pass expiry and entitlement).
+   */
+  restoreTxn(store, txnId, originalId, { sub = false } = {}) {
+    return tx(this.db, () => {
+      const row = this.db.prepare('SELECT * FROM txns WHERE store = ? AND txn_id = ?').get(store, txnId)
+      if (!row) {
+        const del = this.db.prepare('DELETE FROM tombstones WHERE store = ? AND key = ?')
+        let n = del.run(store, `t:${txnId}`).changes
+        if (originalId && !sub) n += del.run(store, `o:${originalId}`).changes
+        if (n) this.audit(null, null, 'tombstone_cleared', { store, txnId })
+        return { handled: n > 0 }
+      }
+      if (!row.revoked) return { handled: false }
+      this.db.prepare('UPDATE txns SET revoked = 0 WHERE store = ? AND txn_id = ?').run(store, txnId)
+      const p = own(this.cat.products, row.product)
+      const ref = `${store}:${row.txn_id}`
+      // What the refunds of this transaction took, net of earlier reversals.
+      const taken = -this.db.prepare("SELECT COALESCE(SUM(delta), 0) AS n FROM ledger WHERE account = ? AND ref = ? AND why IN ('refund', 'refund_reversed')").get(row.account, ref).n
+      let regems = taken > 0 ? taken : 0
+      let regrant = true
+      if (p?.kind === 'starter' && this.db.prepare('SELECT 1 FROM grants WHERE account = ? AND ref = ? AND acked = 2').get(row.account, ref)) {
+        // The refund had reset the pack. If another Starter Pack was bought since, that one stands.
+        if (this.account(row.account).starter) {
+          regems = 0
+          regrant = false
+          this.audit(row.account, null, 'refund_reversed_starter_owned', { store, txn: row.txn_id })
+        } else this.db.prepare('UPDATE accounts SET starter = 1 WHERE id = ?').run(row.account)
+      }
+      if (regems > 0) this.moveGems(row.account, regems, 'refund_reversed', ref)
+      if (regrant) this.db.prepare('UPDATE grants SET acked = 0 WHERE account = ? AND ref = ? AND acked = 2').run(row.account, ref)
+      if (p?.kind === 'pass') this.syncPass(row.account)
+      else if (p && !p.consumable) this.db.prepare('INSERT OR IGNORE INTO entitlements (account, product, at) VALUES (?, ?, ?)').run(row.account, row.product, this.now())
+      if (this.counter(row.account, 'refunds') > 0) this.addCounter(row.account, 'refunds', -1)
+      this.audit(row.account, null, 'refund_reversed', { store, txn: row.txn_id, product: row.product, gems: regems })
       return { handled: true }
     })
   }
@@ -626,7 +909,9 @@ export class Shop {
   appleNote(type, info) {
     const txnId = String(info.transactionId)
     const originalId = info.originalTransactionId ? String(info.originalTransactionId) : null
-    if (type === 'REFUND' || type === 'REVOKE') return this.revokeTxn('apple', txnId, originalId)
+    const sub = own(this.cat.products, info.productId)?.kind === 'pass' || info.type === 'Auto-Renewable Subscription'
+    if (type === 'REFUND' || type === 'REVOKE') return this.revokeTxn('apple', txnId, originalId, { sub })
+    if (type === 'REFUND_REVERSED') return this.restoreTxn('apple', txnId, originalId, { sub })
     if (type === 'DID_RENEW' || type === 'SUBSCRIBED') {
       // A renewal is a new transaction: credit() applies tombstones, revocations and the sandbox policy.
       const acc = this.liveAccount(info.appAccountToken)
@@ -655,7 +940,8 @@ export class Shop {
     const tokenOf = (o) => (typeof o?.purchaseToken === 'string' && o.purchaseToken.length <= 4096 ? o.purchaseToken : null)
     if (msg.voidedPurchaseNotification) {
       const t = tokenOf(msg.voidedPurchaseNotification)
-      return t ? this.revokeTxn('google', sha256(t), msg.voidedPurchaseNotification.orderId ?? null) : { handled: false }
+      // productType 1 = subscription, 2 = one-time product.
+      return t ? this.revokeTxn('google', sha256(t), msg.voidedPurchaseNotification.orderId ?? null, { sub: msg.voidedPurchaseNotification.productType === 1 }) : { handled: false }
     }
     if (msg.oneTimeProductNotification) {
       const o = msg.oneTimeProductNotification
@@ -670,7 +956,7 @@ export class Shop {
       const t = tokenOf(s)
       if (!t) return { handled: false }
       const type = s.notificationType
-      if (type === 12 || type === 20) return this.revokeTxn('google', sha256(t), null) // REVOKED, PENDING_PURCHASE_CANCELED
+      if (type === 12 || type === 20) return this.revokeTxn('google', sha256(t), null, { sub: true }) // REVOKED, PENDING_PURCHASE_CANCELED
       if ([1, 2, 4, 7].includes(type)) return this.googleServerRedeem(s.subscriptionId, t) // RECOVERED, RENEWED, PURCHASED, RESTARTED
       if ([5, 10, 13].includes(type)) { // ON_HOLD, PAUSED, EXPIRED
         const row = this.db.prepare("SELECT account FROM txns WHERE store = 'google' AND txn_id = ?").get(sha256(t))
@@ -691,7 +977,10 @@ export class Shop {
     let n = 0
     for (const vp of list) {
       if (typeof vp.purchaseToken !== 'string') continue
-      if (this.revokeTxn('google', sha256(vp.purchaseToken), vp.orderId ?? null).handled) n++
+      // A renewal's order id is '<base>..N'; one-time and first periods have none. Subscription
+      // voids tombstone only the token (never a shared order id).
+      const sub = typeof vp.orderId === 'string' && /\.\.\d+$/.test(vp.orderId)
+      if (this.revokeTxn('google', sha256(vp.purchaseToken), vp.orderId ?? null, { sub }).handled) n++
     }
     // Overlap one hour: revokeTxn is idempotent.
     this.db.prepare("INSERT INTO meta (key, value) VALUES ('google:voided', ?) ON CONFLICT(key) DO UPDATE SET value = excluded.value").run(String(startedAt - 3600_000))
@@ -713,9 +1002,19 @@ export class Shop {
         ads: run('DELETE FROM ads WHERE (done = 0 AND started < ?) OR started < ?', now - DAY, now - 30 * DAY),
         idem: run('DELETE FROM idem WHERE at < ?', now - 30 * DAY),
         daily: run('DELETE FROM daily WHERE day < ?', this.day(now - 14 * DAY)),
-        grants: run('DELETE FROM grants WHERE acked = 1 AND at < ?', now - 30 * DAY),
+        ipDaily: run('DELETE FROM ip_daily WHERE day < ?', this.day(now - 2 * DAY)),
+        // Applied, withdrawn and voided grants (open ones stay until the app applies or voids them).
+        grants: run('DELETE FROM grants WHERE acked != 0 AND at < ?', now - 30 * DAY),
         notes: run('DELETE FROM notes WHERE at < ?', now - 30 * DAY),
         audit: run('DELETE FROM audit WHERE at < ?', now - 180 * DAY),
+        // Free-diamond references: past the dedupe window that matters (a season is under a year).
+        earnRefs: run('DELETE FROM earn_refs WHERE at < ?', now - 400 * DAY),
+        // Accounts that never bought anything: old ledger rows keep amounts only.
+        ledgerAnon: run('UPDATE ledger SET ref = NULL WHERE at < ? AND ref IS NOT NULL AND account NOT IN (SELECT account FROM txns)', now - 400 * DAY),
+        // Store transactions are business records: kept 7 years, then deleted (with their tombstones).
+        txns: run('DELETE FROM txns WHERE at < ?', now - 7 * YEAR),
+        tombstones: run('DELETE FROM tombstones WHERE at < ?', now - 7 * YEAR),
+        accounts: this.pruneAccounts(now - 30 * DAY),
         auditIps: 0,
       }
       const old = this.db.prepare("SELECT id, ip FROM audit WHERE at < ? AND ip IS NOT NULL AND ip NOT LIKE 'h:%'").all(now - 30 * DAY)
@@ -723,6 +1022,30 @@ export class Shop {
       for (const a of old) r.auditIps += st.run(this.hashIp(a.ip), a.id).changes
       return r
     })
+  }
+
+  /**
+   * Empty accounts nobody has used for 30 days: no diamonds, no store transactions, no
+   * entitlements, no open grants, no ledger movement since `before`. Removed with every row that
+   * points at them (tokens, recovery code, counters, claims). Inside prune()'s transaction.
+   */
+  pruneAccounts(before) {
+    const ids = this.db.prepare(`SELECT a.id FROM accounts a
+      WHERE a.gems = 0 AND a.created < ? AND a.seen < ? AND a.banned = 0 AND a.pass_until < ?
+        AND NOT EXISTS (SELECT 1 FROM txns t WHERE t.account = a.id)
+        AND NOT EXISTS (SELECT 1 FROM entitlements e WHERE e.account = a.id)
+        AND NOT EXISTS (SELECT 1 FROM grants g WHERE g.account = a.id AND g.acked = 0)
+        AND NOT EXISTS (SELECT 1 FROM ledger l WHERE l.account = a.id AND l.at >= ?)
+      LIMIT 20000`).all(before, before, this.now(), before).map((r) => r.id)
+    if (!ids.length) return 0
+    const tables = ['account_tokens', 'recovery', 'entitlements', 'grants', 'ads', 'earn_refs', 'daily', 'counters', 'idem', 'ledger']
+    const st = tables.map((t) => this.db.prepare(`DELETE FROM ${t} WHERE account = ?`))
+    const delAcc = this.db.prepare('DELETE FROM accounts WHERE id = ?')
+    for (const id of ids) {
+      for (const s of st) s.run(id)
+      delAcc.run(id)
+    }
+    return ids.length
   }
 
   /** Everything the server holds about the account (GDPR access / portability). */
@@ -736,7 +1059,7 @@ export class Shop {
       entitlements: q('SELECT product, at FROM entitlements WHERE account = ?'),
       purchases: q('SELECT store, product, env, at, revoked FROM txns WHERE account = ? ORDER BY at'),
       ledger: q('SELECT delta, balance, why, ref, at FROM ledger WHERE account = ? ORDER BY id DESC LIMIT 10000'),
-      grants: q('SELECT payload, at, acked FROM grants WHERE account = ? ORDER BY at').map((g) => ({ ...JSON.parse(g.payload), at: g.at, acked: !!g.acked })),
+      grants: q('SELECT payload, at, acked FROM grants WHERE account = ? ORDER BY at').map((g) => ({ ...JSON.parse(g.payload), at: g.at, acked: g.acked === 1, state: ['open', 'applied', 'withdrawn', 'voided'][g.acked] ?? 'unknown' })),
       ads: q('SELECT offer, started, ssv, done, ref FROM ads WHERE account = ? ORDER BY started'),
       counters: q('SELECT key, n FROM counters WHERE account = ?'),
       audit: q('SELECT at, event, ip FROM audit WHERE account = ? ORDER BY id DESC LIMIT 1000'),

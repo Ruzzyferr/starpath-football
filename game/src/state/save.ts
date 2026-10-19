@@ -53,6 +53,8 @@ export interface SlotThumb {
 
 /** Lightweight info shown on the save-slot screen without parsing the whole state. */
 export interface SaveSummary {
+  /** GameState.meta.id (newer saves): lets the shop tell whether a career still exists. */
+  careerId?: string
   heroName: string
   clubName: string
   season: number

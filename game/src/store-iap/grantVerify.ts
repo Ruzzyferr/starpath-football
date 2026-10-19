@@ -25,6 +25,9 @@ export interface GrantPayload {
   src?: string
 }
 
+/** Grants older than this are refused on the device. */
+export const GRANT_MAX_AGE_MS = 90 * 86_400_000
+
 /** Production grant key (server/data/grant-pub.pem, raw 32 bytes, base64). */
 const PROD_PUBKEY = 'ScDKFvJVj40rUud+oECIuLfHM/ZWdbAvBGMLsCh5hYQ='
 
@@ -56,6 +59,8 @@ export async function verifyGrant(token: string, accountId: string | null): Prom
     return null
   }
   if (sig.length !== 64 || payload?.v !== 1 || payload.a !== accountId || typeof payload.n !== 'string' || typeof payload.k !== 'string') return null
+  // Old coupons are not applied (e.g. replayed into a restored old save); the server can void them.
+  if (typeof payload.t !== 'number' || Date.now() - payload.t > GRANT_MAX_AGE_MS) return null
   try {
     // @noble/ed25519 (audited, pure JS): works on old Android WebViews without WebCrypto Ed25519.
     const ed = await import('@noble/ed25519')
