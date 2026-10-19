@@ -754,7 +754,7 @@ export function drawGoal(g: Phaser.GameObjects.Graphics, end: 'east' | 'west', p
   }
 }
 
-const BRANDS = ['STARPATH', 'NOVA BANK', 'PIXEL COLA', 'ORBIT AIR', 'YILDIZ YOLU', 'KICKR', 'LUMEN TV', 'NORTH GEAR', 'VOLTA', 'GOAL+']
+const BRANDS = ['KICKBORN', 'NOVA BANK', 'PIXEL COLA', 'ORBIT AIR', 'YILDIZ YOLU', 'KICKR', 'LUMEN TV', 'NORTH GEAR', 'VOLTA', 'GOAL+']
 const LOCAL_BRANDS = ['OTO TAMİR', 'FIRIN', 'KASAP', 'NALBUR', 'ECZANE', 'KUAFÖR']
 
 /** Like {@link canvasTexture} but reuses an existing texture under the same key (keys must encode every parameter). */

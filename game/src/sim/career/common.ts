@@ -132,7 +132,7 @@ export function pushNews(
   cal: Calendar,
   headline: LText,
   sentiment: NewsItem['sentiment'],
-  source = 'StarPath Sport',
+  source = 'Kickborn Sport',
   body?: LText,
 ): NewsItem {
   const item: NewsItem = { id: rng.id('n'), season: cal.season, week: cal.week, headline, sentiment, source, body }

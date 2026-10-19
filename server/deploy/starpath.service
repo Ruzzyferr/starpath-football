@@ -1,6 +1,6 @@
 # /etc/systemd/system/starpath.service
 [Unit]
-Description=StarPath Football shop server
+Description=Kickborn shop server
 After=network-online.target
 Wants=network-online.target
 

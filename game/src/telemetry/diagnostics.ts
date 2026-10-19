@@ -70,7 +70,7 @@ export function formatDiagnostics(d: DiagInput): string {
   const L = (a: string, b: string) => (tr ? a : b)
   const model = deviceModel(d.ua)
   const lines: string[] = [
-    `StarPath ${L('Tanılama', 'Diagnostics')} · ${clock(d.now)}`,
+    `Kickborn ${L('Tanılama', 'Diagnostics')} · ${clock(d.now)}`,
     `${L('Sürüm', 'Version')}: ${d.appVersion}`,
     `WebView: ${browserVersion(d.ua)}`,
     `${L('Sistem', 'OS')}: ${d.native ? `Android ${d.native.android} (API ${d.native.sdk}) · ${d.native.model}` : `${osVersion(d.ua)}${model ? ` · ${model}` : ''}`}`,

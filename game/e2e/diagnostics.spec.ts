@@ -43,7 +43,7 @@ test('Settings › Diagnostics: device facts, graphics choice, breadcrumbs, erro
   expect(text).toContain('app-boot')
   expect(text).toContain('Last errors')
   await page.getByTestId('diagnostics-copy').click()
-  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()).catch(() => ''), { timeout: 5000 }).toContain('StarPath Diagnostics')
+  await expect.poll(() => page.evaluate(() => navigator.clipboard.readText()).catch(() => ''), { timeout: 5000 }).toContain('Kickborn Diagnostics')
 })
 
 test('a run that ended mid-start shows a one-time notice with the last stage; Settings keeps it', async ({ page }) => {

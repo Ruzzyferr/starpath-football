@@ -62,7 +62,7 @@ declare const __SP_SHOP_API__: string | undefined
  * (network error) makes the client try the next, so moving the server to a new name never strands
  * installed apps as long as one listed name still points at it.
  */
-export const SHOP_HOSTS: readonly string[] = ['https://starpath.swiip.app', 'https://206-189-63-64.sslip.io']
+export const SHOP_HOSTS: readonly string[] = ['https://kickborn.swiip.app', 'https://starpath.swiip.app', 'https://206-189-63-64.sslip.io']
 const DEFAULT_API = SHOP_HOSTS[0]!
 let hostIndex = 0
 

@@ -1,7 +1,7 @@
 import type { Shape } from '../shape'
 
 export const tr = {
-  appName: 'StarPath Football',
+  appName: 'Kickborn',
   appNameLocal: 'Yıldız Yolu Futbol',
   back: 'Geri',
   close: 'Kapat',
@@ -82,8 +82,8 @@ export const tr = {
 }
 
 export const en: Shape<typeof tr> = {
-  appName: 'StarPath Football',
-  appNameLocal: 'StarPath Football',
+  appName: 'Kickborn',
+  appNameLocal: 'Kickborn',
   back: 'Back',
   close: 'Close',
   cancel: 'Cancel',

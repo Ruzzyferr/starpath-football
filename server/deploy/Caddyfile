@@ -1,6 +1,6 @@
 # /etc/caddy/Caddyfile — TLS (automatic, Let's Encrypt) in front of the shop server on 127.0.0.1:8787,
 # and the static site (site/dist, see site/README.md) from /srv/starpath-site.
-starpath.swiip.app, 206-189-63-64.sslip.io {
+kickborn.swiip.app, starpath.swiip.app, 206-189-63-64.sslip.io {
 	# No product banner.
 	header -Server
 

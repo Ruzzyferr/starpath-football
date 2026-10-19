@@ -49,7 +49,7 @@ function ReelPlayer({ g, onClose }: { g: GoalReplay; onClose: () => void }) {
     <Modal open onClose={onClose} title={t('profile.reel.playerTitle', { min: g.minute })} size="lg" class="mo-modal">
       <div class="mo-stage" ref={host} data-testid="reel-stage" />
       <div class="mo-controls">
-        <ClipButton live={!ended} getCanvas={() => host.current?.querySelector('canvas') ?? null} name={`starpath-goal-${g.season}-${g.minute}`} />
+        <ClipButton live={!ended} getCanvas={() => host.current?.querySelector('canvas') ?? null} name={`kickborn-goal-${g.season}-${g.minute}`} />
         {ended && <Button size="sm" icon="play" onClick={() => setRun((r) => r + 1)} data-testid="reel-again">{t('profile.reel.again')}</Button>}
         {ended && <span class="t-sm t-mid" data-testid="reel-done">{t('profile.reel.done')}</span>}
       </div>

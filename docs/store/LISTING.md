@@ -13,7 +13,7 @@
 
 ## Türkçe
 
-**Başlık:** StarPath Football
+**Başlık:** Kickborn: Futbol Kariyeri
 **Alt başlık (≤30):** Futbol kariyeri ve hayat
 **Kısa (≤80):** Akademiden efsaneliğe: sahada ve sahanın dışında kendi hikâyeni yaz.
 
@@ -38,7 +38,7 @@ futbol,kariyer,futbolcu,simülasyon,menajer,transfer,akademi,spor,çevrimdışı
 
 ## English
 
-**Title:** StarPath Football
+**Title:** Kickborn: Football Career
 **Subtitle (≤30):** Football career and life sim
 **Short (≤80):** From academy to legend: write your own story on and off the pitch.
 

@@ -67,7 +67,7 @@ export function SettingsScreen() {
       const url = URL.createObjectURL(new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' }))
       const a = document.createElement('a')
       a.href = url
-      a.download = 'starpath-my-data.json'
+      a.download = 'kickborn-my-data.json'
       document.body.appendChild(a)
       a.click()
       a.remove()

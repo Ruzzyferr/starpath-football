@@ -34,7 +34,7 @@
                 android:name="android.support.FILE_PROVIDER_PATHS"
                 android:resource="@xml/file_paths"></meta-data>
         </provider>
-        <!-- AdMob app id (StarPath Football, Android). -->
+        <!-- AdMob app id (Kickborn, Android). -->
         <meta-data
             android:name="com.google.android.gms.ads.APPLICATION_ID"
             android:value="ca-app-pub-2953141598487358~9614373315" />

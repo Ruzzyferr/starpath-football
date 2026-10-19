@@ -13,6 +13,10 @@ const path = require('node:path')
 
 const isDev = !app.isPackaged && !!process.env.SP_DEV_URL
 
+// The game was renamed StarPath Football -> Kickborn. Electron derives userData from productName,
+// so a packaged build would otherwise look for saves in a new, empty folder. Keep the old folder.
+if (app.isPackaged) app.setPath('userData', path.join(app.getPath('appData'), 'StarPath Football'))
+
 // ───────────────────────── Save storage ─────────────────────────
 // One file per key in <userData>/saves. Writes are atomic: write <key>.json.tmp,
 // fsync, rename over <key>.json (rename replaces atomically on NTFS/APFS/ext4),
@@ -183,7 +187,7 @@ function createWindow() {
     backgroundColor: '#0B1220',
     show: false,
     autoHideMenuBar: true,
-    title: 'StarPath Football',
+    title: 'Kickborn',
     icon: path.join(__dirname, '..', 'build-resources', 'icon.png'),
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),

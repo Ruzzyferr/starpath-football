@@ -1,4 +1,4 @@
-# StarPath Football Terms of Use
+# Kickborn Terms of Use
 
 <!-- A lawyer review of this text is recommended before wide release. -->
 
@@ -59,4 +59,4 @@ These terms are governed by the laws of Türkiye, without prejudice to mandatory
 
 ## 13. Contact
 
-Rüzgar Emir Bulut (individual developer, trading as "StarPath Football"), Istanbul, Türkiye, e-mail: info@swiip.app
+Rüzgar Emir Bulut (individual developer, trading as "Kickborn"), Istanbul, Türkiye, e-mail: info@swiip.app

@@ -1,7 +1,7 @@
 # electron-builder config — `npm run desktop:build` builds for the current OS.
 appId: app.starpath.football
-productName: StarPath Football
-copyright: Copyright © 2026 StarPath Football
+productName: Kickborn
+copyright: Copyright © 2026 Kickborn
 directories:
   output: release
   buildResources: build-resources
@@ -16,7 +16,7 @@ files:
 # steamworks.js (optional, Steam builds) ships native .node binaries that must live outside the asar.
 asarUnpack:
   - "**/*.node"
-artifactName: StarPath-Football-${version}-${os}-${arch}.${ext}
+artifactName: Kickborn-${version}-${os}-${arch}.${ext}
 # Electron Fuses (2.9#86): flipped at package time. The shell never needs Node-as-runtime, NODE_OPTIONS or --inspect.
 electronFuses:
   runAsNode: false
@@ -36,10 +36,10 @@ nsis:
   perMachine: false
   allowToChangeInstallationDirectory: true
   createDesktopShortcut: true
-  shortcutName: StarPath Football
-  artifactName: StarPath-Football-Setup-${version}-${arch}.${ext}
+  shortcutName: Kickborn
+  artifactName: Kickborn-Setup-${version}-${arch}.${ext}
 portable:
-  artifactName: StarPath-Football-Portable-${version}-${arch}.${ext}
+  artifactName: Kickborn-Portable-${version}-${arch}.${ext}
 mac:
   icon: build-resources/icon.png
   category: public.app-category.sports-games
@@ -48,7 +48,7 @@ mac:
       arch: [universal]
   hardenedRuntime: true
 dmg:
-  artifactName: StarPath-Football-${version}-mac.${ext}
+  artifactName: Kickborn-${version}-mac.${ext}
 linux:
   icon: build-resources/icon.png
   category: Game

@@ -30,6 +30,6 @@ describe('errorLog', () => {
     recordError('str')
     setErrorLogEnabled(false)
     expect(readErrorLog()).toEqual([])
-    expect(buildErrorReport()).toMatch(/StarPath Football /)
+    expect(buildErrorReport()).toMatch(/Kickborn /)
   })
 })

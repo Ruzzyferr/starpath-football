@@ -88,7 +88,7 @@ export function TopBar() {
         <Avatar appearance={s.hero.appearance} size={34} background={club?.colors.primary ?? AVATAR_BG} shirt={club?.colors.primary} shirtTrim={club?.colors.secondary} />
         <span class={`topbar-me-lvl me-lvl-${fame.level}`} aria-hidden="true"><Icon name="star-fill" size={9} />{fame.level}</span>
       </button>
-      <div class="topbar-brand"><Logo size="sm" sub={false} /></div>
+      <div class="topbar-brand"><Logo size="sm" /></div>
       <div class="topbar-stats" data-tour="status">
         <div class="tstat tstat-money" title={t('ui.topbar.money')}>
           <Icon name="coins" size={16} />

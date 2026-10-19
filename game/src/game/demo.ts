@@ -114,7 +114,7 @@ function play(): void {
       difficulty: $<HTMLSelectElement>('diff').value as Difficulty,
       weather: $<HTMLSelectElement>('weather').value as Weather,
       heroName: 'ARDA',
-      teamNames: { hero: 'STARPATH FC', opp: 'NORTH CITY' },
+      teamNames: { hero: 'KICKBORN FC', opp: 'NORTH CITY' },
       importance: 0.6,
       autopilot: auto,
     },

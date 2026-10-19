@@ -1,4 +1,4 @@
-# StarPath Football Gizlilik Politikası
+# Kickborn Gizlilik Politikası
 
 <!-- Yaygın yayından önce bir avukat incelemesi önerilir. -->
 
@@ -15,7 +15,7 @@ Son güncelleme: 19 Ekim 2026 · Sürüm 1.0
 
 ## 2. Veri sorumlusu
 
-Rüzgar Emir Bulut (bireysel geliştirici, "StarPath Football" markasıyla), İstanbul, Türkiye, iletişim: info@swiip.app. (KVKK madde 10 / GDPR madde 13 aydınlatma metni.)
+Rüzgar Emir Bulut (bireysel geliştirici, "Kickborn" markasıyla), İstanbul, Türkiye, iletişim: info@swiip.app. (KVKK madde 10 / GDPR madde 13 aydınlatma metni.)
 
 ## 3. Hangi veriler, nerede, ne için
 

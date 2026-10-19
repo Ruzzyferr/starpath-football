@@ -1,4 +1,4 @@
-# StarPath Football Privacy Policy
+# Kickborn Privacy Policy
 
 <!-- A lawyer review of this text is recommended before wide release. -->
 
@@ -15,7 +15,7 @@ Last updated: 19 October 2026 · Version 1.0
 
 ## 2. Controller
 
-Rüzgar Emir Bulut (individual developer, trading as "StarPath Football"), Istanbul, Türkiye, contact: info@swiip.app. (GDPR Art. 13 / KVKK Art. 10 notice.)
+Rüzgar Emir Bulut (individual developer, trading as "Kickborn"), Istanbul, Türkiye, contact: info@swiip.app. (GDPR Art. 13 / KVKK Art. 10 notice.)
 
 ## 3. What data, where, why
 

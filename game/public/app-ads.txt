@@ -1,2 +1,2 @@
-# app-ads.txt for StarPath Football (Google AdMob), served at https://starpath.swiip.app/app-ads.txt
+# app-ads.txt for Kickborn (Google AdMob), served at https://kickborn.swiip.app/app-ads.txt (also on the starpath.swiip.app fallback host)
 google.com, pub-2953141598487358, DIRECT, f08c47fec0942fa0

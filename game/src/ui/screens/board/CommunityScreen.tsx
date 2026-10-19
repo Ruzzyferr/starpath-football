@@ -178,7 +178,7 @@ function Feedback() {
               ))}
             </ul>
             <div class="row" style={{ gap: '8px', marginTop: '8px' }}>
-              <Button variant="ghost" icon="download" onClick={() => downloadText(feedbackExport(list), 'starpath-feedback.json', 'application/json;charset=utf-8')} data-testid="feedback-export">{t('community.feedback.export')}</Button>
+              <Button variant="ghost" icon="download" onClick={() => downloadText(feedbackExport(list), 'kickborn-feedback.json', 'application/json;charset=utf-8')} data-testid="feedback-export">{t('community.feedback.export')}</Button>
               <Button variant="ghost" onClick={clearFeedback}>{t('community.feedback.clear')}</Button>
             </div>
           </>

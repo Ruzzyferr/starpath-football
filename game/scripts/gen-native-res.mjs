@@ -1,4 +1,4 @@
-// Writes StarPath launcher icons + splash screens into the generated native
+// Writes Kickborn launcher icons + splash screens into the generated native
 // projects (android/app/src/main/res and ios/App/App/Assets.xcassets).
 // Run after `npx cap add android|ios`:  npm run icons:native
 import sharp from 'sharp'

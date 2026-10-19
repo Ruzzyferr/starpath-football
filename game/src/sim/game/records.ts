@@ -228,7 +228,7 @@ export function updateRecordsAfterMatch(state: GameState, feats: MatchFeats): Br
       log(state, [], fill(lt('Kulüp rekoru! {r}: {v} ({c})', 'Club record! {r}: {v} ({c})'), { r: name, v: b.value, c: club.name }), 'award', '📈')
       // Own RNG (seeded from the record) so records never shift the career's main RNG stream.
       const rng = new Rng(hashString(`${state.meta.id}|${season}|${state.calendar.week}|${b.key}|${b.value}`))
-      pushNews(state.life, rng, state.calendar, fill(lt('{n} {c} tarihine geçti: {r}', '{n} makes {c} history: {r}'), { n: heroName, c: club.name, r: name }), 1, 'StarPath Sports')
+      pushNews(state.life, rng, state.calendar, fill(lt('{n} {c} tarihine geçti: {r}', '{n} makes {c} history: {r}'), { n: heroName, c: club.name, r: name }), 1, 'Kickborn Sports')
     }
   }
   return broken

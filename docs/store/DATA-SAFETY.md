@@ -41,7 +41,7 @@ The file is `game/public/app-ads.txt`:
 google.com, pub-2953141598487358, DIRECT, f08c47fec0942fa0
 ```
 
-It is hosted at https://starpath.swiip.app/app-ads.txt, and https://starpath.swiip.app is the developer website in both store listings.
+It is hosted at https://kickborn.swiip.app/app-ads.txt, and https://kickborn.swiip.app is the developer website in both store listings.
 
 Host it at the root of the developer website domain that is listed in the App Store and Google Play store listings, i.e. `https://<developer-domain>/app-ads.txt` (not under a path, plain text, HTTP 200). The domain must be the one in the "Developer website" field of the store listing. Allow a few days for AdMob to crawl it.
 
@@ -50,10 +50,10 @@ Host it at the root of the developer website domain that is listed in the App St
 - [ ] Hosted privacy policy URL (identity and contact filled; a lawyer review is recommended)
 - [ ] Hosted support URL
 - [ ] AdMob account created; app ids and rewarded ad unit ids in the build; `app-ads.txt` hosted
-- [ ] AdMob SSV callback URL set on the ad unit: `https://starpath.swiip.app/v1/admob/ssv`
+- [ ] AdMob SSV callback URL set on the ad unit: `https://kickborn.swiip.app/v1/admob/ssv`
 - [ ] Server env `REQUIRE_SSV=1`
 - [ ] Google Play service account created, granted to the Play Console, key on the server
-- [ ] Play RTDN topic push subscription to `https://starpath.swiip.app/v1/google/rtdn` with header `X-RTDN-Token`
+- [ ] Play RTDN topic push subscription to `https://kickborn.swiip.app/v1/google/rtdn` with header `X-RTDN-Token`
 - [ ] `SANDBOX_POLICY=off`, or only real testers allowed, at public launch
 - [ ] Data safety form and App Privacy label filled from the tables above
 - [ ] Age rating questionnaires filled (see `AGE-RATING.md`)

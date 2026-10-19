@@ -89,7 +89,7 @@ function MomentPlayer({ m, onClose }: { m: MomentRecording; onClose: () => void 
       <div class="mo-stage" ref={host} data-testid="moment-stage" />
       <div class="mo-controls">
         <Segmented<ReplayAngleChoice> label={lt(L.angle)} value={angle} onChange={setAngle} options={opts} />
-        <ClipButton live={!ended} getCanvas={() => host.current?.querySelector('canvas') ?? null} name={`starpath-moment-${m.minute}`} />
+        <ClipButton live={!ended} getCanvas={() => host.current?.querySelector('canvas') ?? null} name={`kickborn-moment-${m.minute}`} />
         {ended && <Button size="sm" icon="play" onClick={() => setRun((r) => r + 1)}>{lt(L.again)}</Button>}
       </div>
     </Modal>

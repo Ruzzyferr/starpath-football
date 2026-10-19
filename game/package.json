@@ -77,8 +77,8 @@
     "vite": "^8.3.0",
     "vitest": "^5.0.3"
   },
-  "description": "StarPath Football — futbol kariyeri ve yaşam simülasyonu",
-  "author": "StarPath Football",
+  "description": "Kickborn — futbol kariyeri ve yaşam simülasyonu",
+  "author": "Kickborn",
   "main": "electron/main.cjs",
   "optionalDependencies": {
     "steamworks.js": "^0.4.0"

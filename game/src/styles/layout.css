@@ -459,12 +459,10 @@
 .logo-word { font-family: var(--font-display); font-weight: 900; font-style: italic; font-size: 1.5rem; letter-spacing: -0.01em; }
 .logo-star { color: var(--text-hi); }
 .logo-path { color: var(--brand-pitch); }
-.logo-sub { font-family: var(--font-display); font-weight: 700; font-size: 0.75rem; letter-spacing: 0.42em; color: var(--text-mid); margin-top: 3px; }
 .logo-xl { flex-direction: column; gap: 6px; }
 .logo-xl .logo-mark { width: 84px; height: 84px; }
 .logo-xl .logo-type { align-items: center; }
 .logo-xl .logo-word { font-size: clamp(54px, 14vw, 104px); text-shadow: 0 6px 30px rgba(31, 212, 122, 0.25); }
-.logo-xl .logo-sub { font-size: clamp(13px, 2.6vw, 18px); letter-spacing: 0.62em; margin-top: 8px; padding-left: 0.62em; }
 
 /* Immersive screens own their full viewport (they may position absolutely). */
 .immersive > .screen-view { position: relative; height: 100%; }

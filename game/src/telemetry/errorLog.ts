@@ -95,7 +95,7 @@ export function setReportAttachment(key: string, fn: (() => string | null) | nul
 /** Plain-text report to paste into a bug report. */
 export function buildErrorReport(): string {
   const lines = [
-    `StarPath Football ${APP_VERSION} (${BUILD_COMMIT}${BUILD_TIME ? ', built ' + BUILD_TIME : ''})`,
+    `Kickborn ${APP_VERSION} (${BUILD_COMMIT}${BUILD_TIME ? ', built ' + BUILD_TIME : ''})`,
     `platform: ${detectPlatform()}`,
     `screen: ${screenOf()}`,
     `ua: ${typeof navigator !== 'undefined' ? navigator.userAgent : 'n/a'}`,

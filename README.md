@@ -1,4 +1,4 @@
-# StarPath Football
+# Kickborn
 
 Futbol kariyeri ve yaşam simülasyonu. 16 yaşında bir oyuncu olarak başlarsın; maçlarda kritik anları kendin oynarsın, saha dışında antrenman, ilişkiler, para, transferler ve kararlarla kariyerini yönetirsin. Oyun PC (Windows/macOS/Linux, Steam), mobil (Android/iOS) ve web için tek kod tabanından derlenir.
 

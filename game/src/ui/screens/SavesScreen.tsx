@@ -77,7 +77,7 @@ export function SavesScreen() {
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `starpath-slot-${slot}.json`
+      a.download = `kickborn-slot-${slot}.json`
       document.body.appendChild(a)
       a.click()
       a.remove()

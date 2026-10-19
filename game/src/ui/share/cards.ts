@@ -149,7 +149,7 @@ export function drawCard(canvas: HTMLCanvasElement, spec: CardSpec): void {
   ctx.textAlign = 'right'
   ctx.fillStyle = gold
   ctx.font = `800 34px ${display}`
-  ctx.fillText('STARPATH FOOTBALL', CARD_W - M, CARD_H - 76)
+  ctx.fillText('KICKBORN', CARD_W - M, CARD_H - 76)
   ctx.textAlign = 'left'
 }
 

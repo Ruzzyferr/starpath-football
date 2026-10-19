@@ -91,7 +91,7 @@ function ShopAccount() {
   const exportData = async () => {
     setBusy(true)
     try {
-      downloadText(JSON.stringify(await shopApi.exportAccount(), null, 2), 'starpath-shop-data.json', 'application/json')
+      downloadText(JSON.stringify(await shopApi.exportAccount(), null, 2), 'kickborn-shop-data.json', 'application/json')
     } catch {
       toast(L('Dışa aktarılamadı. Bağlantını kontrol et.', 'Could not export. Check your connection.'), 'info')
     }

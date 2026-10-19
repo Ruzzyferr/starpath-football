@@ -12,7 +12,7 @@
 		<string>tr</string>
 	</array>
 	<key>CFBundleDisplayName</key>
-        <string>StarPath Football</string>
+        <string>Kickborn</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>ITSAppUsesNonExemptEncryption</key>

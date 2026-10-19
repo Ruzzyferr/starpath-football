@@ -69,7 +69,7 @@ test('feedback is saved locally and exported as a file', async ({ page, shot }) 
   await page.waitForTimeout(1200)
   await shot('c4-feedback')
   const [dl] = await Promise.all([page.waitForEvent('download'), page.getByTestId('feedback-export').click()])
-  expect(dl.suggestedFilename()).toMatch(/starpath-feedback\.json$/)
+  expect(dl.suggestedFilename()).toMatch(/kickborn-feedback\.json$/)
 })
 
 test('online switch is off by default and persists; notification prompt waits for a cleared challenge', async ({ page, shot }) => {

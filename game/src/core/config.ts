@@ -1,4 +1,4 @@
-export const GAME_NAME = 'StarPath Football'
+export const GAME_NAME = 'Kickborn'
 export const GAME_NAME_TR = 'Yıldız Yolu Futbol'
 /** Bump with a MIGRATIONS entry in state/save.ts. v2: hero.gender. v3: attrHistory, replays, dataPack, SHA-256 envelope.
  *  v4: goalkeeping attributes gkPositioning + gkDistribution. v5: hero.role (position roles) + hero.heightCm.

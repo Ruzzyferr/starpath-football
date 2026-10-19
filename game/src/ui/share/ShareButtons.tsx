@@ -8,7 +8,7 @@ import { formatNumber, formatRating, seasonLabel } from '../format'
 import { gameState, type PostMatchView } from '../store'
 import { downloadText, shareCard, type CardSpec } from './cards'
 
-const slug = (s: string): string => s.normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'starpath'
+const slug = (s: string): string => s.normalize('NFKD').replace(/[^\w]+/g, '-').replace(/^-|-$/g, '').toLowerCase() || 'kickborn'
 
 export function careerSpec(sum: CareerSummary): CardSpec {
   const d = careerCardData(sum)
@@ -56,11 +56,11 @@ async function run(spec: CardSpec, file: string, text: string, setBusy: (b: bool
 export function ShareCareerButton({ sum, size = 'sm', compact }: { sum: CareerSummary; size?: 'sm' | 'md'; compact?: boolean }) {
   void currentLang.value
   const [busy, setBusy] = useState(false)
-  const go = () => void run(careerSpec(sum), `starpath-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)
+  const go = () => void run(careerSpec(sum), `kickborn-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)
   if (compact) return <IconButton icon="upload" label={t('board.share.card')} onClick={go} data-testid="share-career" />
   return (
     <Button size={size} variant="secondary" icon="upload" disabled={busy} data-testid="share-career"
-      onClick={() => void run(careerSpec(sum), `starpath-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)}>
+      onClick={() => void run(careerSpec(sum), `kickborn-${slug(sum.name)}.png`, t('board.share.careerText', { n: sum.name, s: formatNumber(sum.legacyScore) }), setBusy)}>
       {t('board.share.card')}
     </Button>
   )
@@ -73,7 +73,7 @@ export function ShareMatchButton({ pm }: { pm: PostMatchView }) {
   if (!spec) return null
   return (
     <Button size="sm" variant="secondary" icon="upload" disabled={busy} data-testid="share-match"
-      onClick={() => void run(spec, `starpath-match-${pm.score[0]}-${pm.score[1]}.png`, t('board.share.matchText', { m: spec.subtitle, r: formatRating(pm.rating) }), setBusy)}>
+      onClick={() => void run(spec, `kickborn-match-${pm.score[0]}-${pm.score[1]}.png`, t('board.share.matchText', { m: spec.subtitle, r: formatRating(pm.rating) }), setBusy)}>
       {t('board.share.card')}
     </Button>
   )
@@ -82,14 +82,14 @@ export function ShareMatchButton({ pm }: { pm: PostMatchView }) {
 export function ExportCsvButton({ sum, size = 'sm', compact }: { sum: CareerSummary; size?: 'sm' | 'md'; compact?: boolean }) {
   void currentLang.value
   const go = () => {
-    downloadText(careerCsv(sum, currentLang.value === 'en' ? 'en' : 'tr'), `starpath-${slug(sum.name)}.csv`)
+    downloadText(careerCsv(sum, currentLang.value === 'en' ? 'en' : 'tr'), `kickborn-${slug(sum.name)}.csv`)
     toast(t('board.share.saved'), 'success', 'download')
   }
   if (compact) return <IconButton icon="download" label={t('board.share.csv')} onClick={go} data-testid="export-csv" />
   return (
     <Button size={size} variant="ghost" icon="download" data-testid="export-csv"
       onClick={() => {
-        downloadText(careerCsv(sum, currentLang.value === 'en' ? 'en' : 'tr'), `starpath-${slug(sum.name)}.csv`)
+        downloadText(careerCsv(sum, currentLang.value === 'en' ? 'en' : 'tr'), `kickborn-${slug(sum.name)}.csv`)
         toast(t('board.share.saved'), 'success', 'download')
       }}>
       {t('board.share.csv')}

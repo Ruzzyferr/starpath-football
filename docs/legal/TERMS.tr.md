@@ -1,4 +1,4 @@
-# StarPath Football Kullanım Şartları
+# Kickborn Kullanım Şartları
 
 <!-- Yaygın yayından önce bir avukat incelemesi önerilir. -->
 
@@ -59,4 +59,4 @@ Bu şartlara Türkiye hukuku uygulanır; tüketici mevzuatından doğan emredici
 
 ## 13. İletişim
 
-Rüzgar Emir Bulut (bireysel geliştirici, "StarPath Football" markasıyla), İstanbul, Türkiye, e-posta: info@swiip.app
+Rüzgar Emir Bulut (bireysel geliştirici, "Kickborn" markasıyla), İstanbul, Türkiye, e-posta: info@swiip.app

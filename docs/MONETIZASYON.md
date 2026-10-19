@@ -166,7 +166,7 @@ Satın alma davranışları:
 ### v5: Kazanan teklif → %45, yeni alıcılarda %65
 v5'in teklif metni:
 
-> StarPath Football: live a footballer's whole life, from the academy to legend. Play the key moments of each match yourself and run your life off the pitch.
+> Kickborn: live a footballer's whole life, from the academy to legend. Play the key moments of each match yourself and run your life off the pitch.
 > Free to play, the whole career. No ads, no loot boxes, offline. Free Editor for real club and player names. Back up your career to a file for a new phone.
 > Starter Pack, once only, EUR 0.99: 300 diamonds + Golden Boots (+15% training XP for 60 matches; your player wears them on the pitch).
 > Diamonds (earn some by playing, packs from EUR 1.99) buy boots and gear, exclusive kits, boot colours and goal celebrations everyone sees in your matches. Equipment gives small, capped stat boosts (+5 max per stat) and can be earned in-game with career money or rewards.

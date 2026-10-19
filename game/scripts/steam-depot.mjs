@@ -12,7 +12,7 @@ export const OS_MAP = { 'desktop-windows-latest': 'windows', 'desktop-macos-late
 
 export function appBuildVdf({ appId, branch, depots }) {
   const lines = depots.map((d) => `    "${d.id}" "depot_${d.id}.vdf"`).join('\n')
-  return `"AppBuild"\n{\n  "AppID" "${appId}"\n  "Desc" "StarPath Football CI build"\n  "SetLive" "${branch}"\n  "ContentRoot" "./content/"\n  "BuildOutput" "./output/"\n  "Depots"\n  {\n${lines}\n  }\n}\n`
+  return `"AppBuild"\n{\n  "AppID" "${appId}"\n  "Desc" "Kickborn CI build"\n  "SetLive" "${branch}"\n  "ContentRoot" "./content/"\n  "BuildOutput" "./output/"\n  "Depots"\n  {\n${lines}\n  }\n}\n`
 }
 
 export function depotVdf({ id, os }) {

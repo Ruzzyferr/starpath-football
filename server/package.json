@@ -2,7 +2,7 @@
   "name": "starpath-shop-server",
   "private": true,
   "type": "module",
-  "description": "StarPath Football shop backend: accounts, server-held diamonds, store receipt validation, rewarded-ad caps, signed grants.",
+  "description": "Kickborn shop backend: accounts, server-held diamonds, store receipt validation, rewarded-ad caps, signed grants.",
   "engines": { "node": ">=24" },
   "scripts": {
     "start": "node src/main.mjs",

@@ -1,5 +1,5 @@
 /*
- * StarPath boot guard. A classic ES5 script loaded before the app bundle (index.html), kept outside
+ * Kickborn boot guard. A classic ES5 script loaded before the app bundle (index.html), kept outside
  * the bundle so it still runs where the bundle cannot: an Android System WebView too old to parse
  * it, a failed module import, or an error thrown before the first render. Instead of a black screen
  * it shows a readable TR/EN message, the WebView version and a retry button.
@@ -40,8 +40,8 @@
       : (tr ? 'Oyun başlatılamadı' : 'The game could not start')
     var body = tooOld
       ? (tr
-          ? 'StarPath, Android System WebView ' + MIN_CHROME + ' veya üstünü gerektirir. Play Store\'dan "Android System WebView" ve "Chrome" uygulamalarını güncelleyip tekrar dene.'
-          : 'StarPath needs Android System WebView ' + MIN_CHROME + ' or newer. Update "Android System WebView" and "Chrome" in the Play Store, then try again.')
+          ? 'Kickborn, Android System WebView ' + MIN_CHROME + ' veya üstünü gerektirir. Play Store\'dan "Android System WebView" ve "Chrome" uygulamalarını güncelleyip tekrar dene.'
+          : 'Kickborn needs Android System WebView ' + MIN_CHROME + ' or newer. Update "Android System WebView" and "Chrome" in the Play Store, then try again.')
       : (tr
           ? 'Başlatırken bir hata oluştu. Tekrar dene; sorun sürerse Play Store\'dan "Android System WebView" uygulamasını güncelle.'
           : 'Something went wrong while starting. Try again; if it keeps happening, update "Android System WebView" in the Play Store.')

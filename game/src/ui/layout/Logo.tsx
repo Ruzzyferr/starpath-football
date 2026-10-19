@@ -1,7 +1,7 @@
-/** "StarPath Football" wordmark: condensed italic type riding a pitch-line arc with a star. */
-export function Logo({ size = 'md', sub = true }: { size?: 'sm' | 'md' | 'xl'; sub?: boolean }) {
+/** "Kickborn" wordmark: condensed italic two-tone type (KICK white, BORN pitch green) beside the ball, dotted path and star mark. */
+export function Logo({ size = 'md' }: { size?: 'sm' | 'md' | 'xl' }) {
   return (
-    <div class={`logo logo-${size}`} role="img" aria-label="StarPath Football"> {/* i18n-ok brand */}
+    <div class={`logo logo-${size}`} role="img" aria-label="Kickborn"> {/* i18n-ok brand */}
       <svg class="logo-mark" viewBox="0 0 48 48" aria-hidden="true">
         <defs>
           <linearGradient id="logo-g" x1="0" y1="0" x2="1" y2="1">
@@ -16,10 +16,9 @@ export function Logo({ size = 'md', sub = true }: { size?: 'sm' | 'md' | 'xl'; s
       </svg>
       <div class="logo-type">
         <span class="logo-word">
-          <span class="logo-star">STAR</span> {/* i18n-ok brand */}
-          <span class="logo-path">PATH</span> {/* i18n-ok brand */}
+          {/* i18n-ok brand: one word, two tones, no space */}
+          <span class="logo-star">KICK</span>{/* i18n-ok brand */}<span class="logo-path">BORN</span>{/* i18n-ok brand */}
         </span>
-        {sub && <span class="logo-sub">FOOTBALL</span>} {/* i18n-ok brand */}
       </div>
     </div>
   )

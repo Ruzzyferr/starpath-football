@@ -9,7 +9,7 @@ import { toast } from '../ui/components'
 const ROOTS = new Set(['title', 'home'])
 
 function exitPrompt(): string {
-  return (document.documentElement.lang || 'tr').startsWith('tr') ? 'StarPath Football kapatılsın mı?' : 'Quit StarPath Football?'
+  return (document.documentElement.lang || 'tr').startsWith('tr') ? 'Kickborn kapatılsın mı?' : 'Quit Kickborn?'
 }
 
 /**

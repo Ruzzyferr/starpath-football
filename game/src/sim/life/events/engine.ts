@@ -721,7 +721,7 @@ export function applyEffectResult(
       week: cal.week,
       headline: newsOut.headline,
       ...(newsOut.body ? { body: newsOut.body } : {}),
-      source: result.news.source ?? 'StarPath Daily',
+      source: result.news.source ?? 'Kickborn Daily',
       sentiment: result.news.sentiment,
     })
   }

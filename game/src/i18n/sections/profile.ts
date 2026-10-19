@@ -36,7 +36,7 @@ export const tr = {
     playerTitle: '{min}. dakika golü',
   },
   clip: {
-    title: 'StarPath klibi',
+    title: 'Kickborn klibi',
     record: 'Klip kaydet',
     stop: 'Durdur ({s}/{max} sn)',
     saved: 'Klip kaydedildi.',
@@ -138,7 +138,7 @@ export const en: Shape<typeof tr> = {
     playerTitle: 'Goal in minute {min}',
   },
   clip: {
-    title: 'StarPath clip',
+    title: 'Kickborn clip',
     record: 'Record clip',
     stop: 'Stop ({s}/{max} s)',
     saved: 'Clip saved.',

@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <!-- StarPath Football app icon: a dotted pitch-green path curving up to a gold star, ball at the start. -->
+  <!-- Kickborn app icon: a dotted pitch-green path curving up to a gold star, ball at the start. -->
   <defs>
     <radialGradient id="bg" cx="30%" cy="80%" r="95%">
       <stop offset="0" stop-color="#15233b"/>
