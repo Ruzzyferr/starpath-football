@@ -12,7 +12,7 @@
  * are claimed here; the server dedupes and caps them.
  */
 import type { GameState, LText } from '../../core/types'
-import { addAdTrainBoost, addGear, equipGear, GEAR_BY_ID, unequipGear, type GearSlot } from '../../sim/career/gear'
+import { PURCHASED_CASH_PER_SEASON, addAdTrainBoost, addGear, equipGear, GEAR_BY_ID, unequipGear, type GearSlot } from '../../sim/career/gear'
 import { fmtMoney } from '../../sim/career/common'
 import { readJson, writeJson } from '../../sim/game/internal'
 import {
@@ -106,7 +106,7 @@ export function applyGrant(s: GameState, g: GrantPayload): GrantOutcome {
 }
 
 /** Per career season, purchased cash (packs + diamonds→cash) stops here (docs/MONETIZASYON.md §6.4). */
-export const CASH_PER_SEASON = 600_000
+export const CASH_PER_SEASON = PURCHASED_CASH_PER_SEASON
 
 /** Cash bought this career season so far. */
 export function boughtCashThisSeason(s: GameState): number {

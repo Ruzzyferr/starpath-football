@@ -48,7 +48,7 @@
     "grantRefreshDays": 60,
     "playPropagationMin": 10,
     "regDailyAlert": 5000,
-    "cashPerSeason": 600000,
+    "cashPerSeason": 200000,
     "passDaily": 50,
     "maxDevices": 5,
     "maxOpenAds": 3,

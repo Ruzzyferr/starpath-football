@@ -6,7 +6,7 @@ import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { describe, expect, it } from 'vitest'
 import { AD_GEMS, COSMETIC_GEM_PRICE, COSMETIC_PRODUCTS, EARN_GEMS, PHYSIO_DISCOUNT_PRICE, SALE_PRODUCTS } from './catalog'
-import { AD_TRAIN_BOOST } from '../sim/career/gear'
+import { AD_TRAIN_BOOST, PURCHASED_CASH_PER_SEASON } from '../sim/career/gear'
 import { GEAR, PHYSIO_PRICE } from '../sim/career/gear'
 
 interface ServerProduct { kind: string; consumable: boolean; gems?: number; gear?: string; cashWeeks?: number; cashFloor?: number; cashCap?: number }
@@ -14,6 +14,7 @@ const server = JSON.parse(readFileSync(join(process.cwd(), '..', 'server', 'cata
   products: Record<string, ServerProduct>
   spend: Record<string, { price: number; discounted?: number; grant: { k: string; id?: string } }>
   ads: Record<string, { perDay: number; reward: { gems?: number } }>
+  limits: { cashPerSeason: number }
   earn: Record<string, { gems: number; perDay: number }>
 }
 
@@ -48,5 +49,6 @@ describe('client ↔ server catalogue parity', () => {
     expect(server.ads.gems?.reward.gems).toBe(AD_GEMS)
     expect(server.spend.physio?.discounted).toBe(PHYSIO_DISCOUNT_PRICE)
     expect(AD_TRAIN_BOOST).toBe(0.2)
+    expect(server.limits.cashPerSeason).toBe(PURCHASED_CASH_PER_SEASON)
   })
 })

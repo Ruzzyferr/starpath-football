@@ -54,7 +54,7 @@ test('economy: xl/xxl packs gone, new prices and earn amounts, cashPerSeason and
   assert.equal(catalog.spend.physio.discounted, 50)
   assert.deepEqual(Object.fromEntries(Object.entries(catalog.earn).map(([k, v]) => [k, [v.gems, v.perDay]])), { motm: [8, 10], objective: [8, 10], season: [100, 2], award: [25, 6], first: [10, 10] })
   assert.equal(catalog.limits.earnPerDay, 300)
-  assert.equal(w.limits.cashPerSeason, 600000)
+  assert.equal(w.limits.cashPerSeason, 200000)
   assert.equal(w.refundHold, false)
   assert.equal(code(() => buy(shop, acc, 'gems_xl')), 'unknown_product')
 })

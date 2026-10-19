@@ -53,7 +53,7 @@ const ERR: Record<string, LText> = {
   too_many_open_ads: L('Birkaç reklam yarım kaldı. Birkaç dakika sonra yine dene.', 'A few ads were left unfinished. Try again in a few minutes.'),
   pending_reward: L('Reklamı izledin; ödül bağlantı gelince otomatik eklenecek.', 'You watched the ad; the reward is added automatically once you are back online.'),
   refund_hold: L('İade edilen bir satın alma yüzünden harcama ve reklam ödülleri şimdilik durdu.', 'Spending and ad rewards are paused because of a refunded purchase.'),
-  cash_season_cap: L('Bu sezonun nakit satın alma sınırına ulaştın (€600.000). Yeni sezonda açılır.', 'You reached this season’s cash purchase limit (€600,000). It opens again next season.'),
+  cash_season_cap: L(`Bu sezonun nakit satın alma sınırına ulaştın (${fmtMoney(CASH_PER_SEASON).tr}). Yeni sezonda açılır.`, `You reached this season’s cash purchase limit (${fmtMoney(CASH_PER_SEASON).en}). It opens again next season.`),
   adult_only: L('Nakit satın almak 18 yaş ve üstü içindir.', 'Buying cash is for players 18 and over.'),
   family_shared: L('Aile Paylaşımı ile gelen satın alımlar elmas/nakit olarak eklenmez.', 'Purchases shared through Family Sharing are not added as diamonds or cash.'),
   purchase_pending: L('Ödeme henüz tamamlanmadı; tamamlanınca otomatik eklenir.', 'The payment is not complete yet; it is added automatically once it is.'),
