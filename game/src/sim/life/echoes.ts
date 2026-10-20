@@ -24,6 +24,7 @@ import { absWeek, clamp, fill, lt, meter, pushNews, type Lines } from '../career
 import { changeRelation } from './relationships'
 import { addHappiness, addHealth, addStress } from './wellbeing'
 import type { Cause } from './butterfly'
+import { contentFlags } from '../../core/contentFlags'
 
 /** The 32 flags that were narrative-only before this pass (tests walk this list). */
 export const ECHO_FLAGS = [
@@ -148,7 +149,8 @@ export function weeklyEchoes(rng: Rng, hero: Hero, life: Life, cal: Calendar, cl
       lines.push(lt('🧭 O peçeteyi buruşturup çıktığın geceyi artık gururla hatırlıyorsun (disiplin +2).', '🧭 You now remember the night you crumpled that napkin with pride (discipline +2).'))
     }
   }
-  if (pending(life, 'knew_mate_bets')) {
+  // Betting-inquiry echo of a casino event: silent while the casino is hidden (old saves in a no-casino build).
+  if (pending(life, 'knew_mate_bets') && !contentFlags.hideCasino) {
     const n = since(life, 'knew_mate_bets', w)
     // Knowing weighs more than not knowing.
     if (n >= 1 && n < 12) addStress(life, hero, 0.25)
@@ -229,7 +231,7 @@ export function weeklyEchoes(rng: Rng, hero: Hero, life: Life, cal: Calendar, cl
   if (pending(life, 'wants_home') && abroad && since(life, 'wants_home', w) % 4 === 0) addHappiness(life, -0.5)
 
   // ── A gambling relapse: the cravings come back for a while ──
-  if (pending(life, 'relapse')) {
+  if (pending(life, 'relapse') && !contentFlags.hideCasino) {
     const n = since(life, 'relapse', w)
     if (n >= 1 && n <= 8) {
       life.casino.addiction = meter(life.casino.addiction + 1.5, 0)
@@ -383,7 +385,7 @@ export function echoSponsor(life: Pick<Life, 'flags'>): { value: number; causes:
   if (f.ultras_friend === true) add(-0.02, 'ultras', lt('Ultras grubuyla yakınlığın markaları tedirgin ediyor.', 'Your closeness to the ultras makes brands nervous.'))
   if (f.fixing_cleared === true) add(-0.02, 'inquiry', lt('Kapanan şike soruşturması hâlâ konuşuluyor.', 'The closed match-fixing inquiry is still talked about.'))
   if (f.fixing_buried === 'leaked') add(-0.04, 'hush', lt('Sus payı skandalı markaları uzak tutuyor.', 'The hush-money scandal keeps brands away.'))
-  if (f.knew_mate_bets === 'exposed') add(-0.02, 'bets', lt('Bahis soruşturmasında adın geçti.', 'Your name came up in the betting inquiry.'))
+  if (f.knew_mate_bets === 'exposed' && !contentFlags.hideCasino) add(-0.02, 'bets', lt('Bahis soruşturmasında adın geçti.', 'Your name came up in the betting inquiry.'))
   const spot = f[SPOTLIGHT_FLAG]
   if (typeof spot === 'number' && spot > 0) add(0.03, 'spotlight', lt('Son başarın markaların dikkatini çekti.', 'Your latest feat caught the brands\' eye.'))
   return { value: Math.round(value * 1000) / 1000, causes }

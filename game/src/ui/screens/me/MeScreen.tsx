@@ -14,7 +14,7 @@ import { Avatar, Button, Card, CardHeader, Chip, EmptyState, Money, Page, StatBa
 import { formatMoney, formatNumber, formatRating, formatSigned, seasonLabel } from '../../format'
 import { Icon, type IconName } from '../../icons'
 import { haptic } from '../../haptics'
-import { data, gameState, heroClub, navigate, screen } from '../../store'
+import { data, gameState, heroClub, isCasinoHidden, navigate, screen } from '../../store'
 import { ROLE_ICON } from '../../roleView'
 import { heroHeight } from '../../../core/roles'
 import { heroMarketValue } from '../../../sim/career/contract'
@@ -265,7 +265,7 @@ function ConditionTab({ s }: { s: GameState }) {
         <CardHeader title={t('hub.condition.conduct')} icon="shield" />
         <CondBar k="discipline" label={t('data.stat.discipline')} value={l.discipline} />
         <Fact label={t('hub.condition.suspensionLabel')} value={h.suspendedMatches > 0 ? t('hub.condition.suspension', { n: h.suspendedMatches }) : t('hub.condition.suspensionNone')} k="suspension" />
-        {l.casino.addiction > 0 && <CondBar k="addiction" label={t('data.stat.addiction')} value={l.casino.addiction} bad />}
+        {l.casino.addiction > 0 && !isCasinoHidden() && <CondBar k="addiction" label={t('data.stat.addiction')} value={l.casino.addiction} bad />}
       </Card>
     </div>
   )

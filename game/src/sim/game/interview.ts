@@ -7,6 +7,7 @@
 import type { GameState, LText } from '../../core/types'
 import { Rng, clamp, hashString } from '../../core/rng'
 import { absWeek, fill, lt, meter, pushNews } from '../career/common'
+import { contentFlags } from '../../core/contentFlags'
 import { changeRelation } from '../life/relationships'
 import { log, readJson, withRng, writeJson } from './internal'
 import { getOffers } from './season'
@@ -794,7 +795,7 @@ function candidateTopics(c: Ctx): { topic: QuestionTopic; w: number }[] {
   const buzz = state.life.flags[IV_BUZZ_FLAG]
   const rumours = (typeof buzz === 'number' && buzz > 0) || state.life.flags['rumour_active'] === true || getOffers(state).length > 0
   const seen = state.life.flags['casino_seen_week']
-  const casinoRecent = typeof seen === 'number' && absWeek(state.calendar) - seen <= 3
+  const casinoRecent = typeof seen === 'number' && absWeek(state.calendar) - seen <= 3 && !contentFlags.hideCasino
   const contractEnding = !!h.contract && h.contract.untilSeason <= state.calendar.season
   if (kind === 'post' && r) {
     if (!r.started && r.minutes < 30) add('bench', 10)

@@ -17,7 +17,7 @@ import {
 import { ageOf, formatRating, ratingColor, seasonLabel } from '../format'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
-import { actions, activeEvent, data, gameState, heroClub, navigate, type ScreenId } from '../store'
+import { actions, activeEvent, data, gameState, heroClub, isCasinoHidden, navigate, type ScreenId } from '../store'
 import { InfoTip } from '../tutorial/InfoTip'
 import { requestAdvance, requestSkipToMatch } from '../tutorial/MatchdayConfirm'
 import { LockChip, NewTag } from '../tutorial/UnlockGate'
@@ -205,7 +205,7 @@ export function HomeScreen() {
           <section aria-labelledby="home-quick">
             <SectionTitle id="home-quick">{t('home.quick')}</SectionTitle>
             <div class="home-tiles">
-              {TILES.map((tile) => {
+              {TILES.filter((tile) => !(tile.id === 'casino' && isCasinoHidden())).map((tile) => {
                 const locked = tile.id === 'casino' && !features.value.casino.unlocked
                 return (
                   <button key={tile.id} type="button" class={`home-tile home-tile-${tile.id}${locked ? ' is-feature-locked' : ''}`} onClick={() => navigate(tile.screen)} data-tour={`tile-${tile.id}`}>

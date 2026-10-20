@@ -116,6 +116,7 @@ export const moneyEvents: EventDef[] = [
   {
     id: 'money.coin_hype',
     category: 'money',
+    gambling: true, // a coin punt, gambling with followers money
     weight: 1,
     cooldownWeeks: 24,
     triggers: ['weekly', 'social_post'],

@@ -408,13 +408,39 @@ export const ADULT_EVENT_CATEGORIES: readonly EventCategory[] = ['casino', 'nigh
 export const eventMinAge = (def: EventDef): number =>
   def.minAge ?? (def.category === 'casino' ? CASINO_MIN_AGE : ADULT_EVENT_CATEGORIES.includes(def.category) ? ADULT_AGE : 0)
 
+/**
+ * Gambling content: the whole `casino` category (casino.ts and casinoCareer.ts), casino-triggered
+ * events and any event flagged `gambling` (betting or gambling outside the casino). None of them
+ * fires, spontaneously or as a follow-up, while the casino is hidden (contentFlags.hideCasino).
+ */
+export const isGamblingEvent = (def: Pick<EventDef, 'category' | 'triggers' | 'gambling'>): boolean =>
+  def.category === 'casino' || def.gambling === true || (def.triggers?.includes('casino') ?? false)
+
+/**
+ * With the casino hidden, drops gambling cards already on the table and queued gambling follow-ups
+ * (a save from a casino build loaded into a no-casino one). Returns how many cards were dropped.
+ */
+export function purgeHiddenGambling(state: GameState, events: readonly EventDef[] = ALL_EVENTS): number {
+  if (!contentFlags.hideCasino) return 0
+  const index = indexOf(events)
+  const gambling = (id: string): boolean => {
+    const def = index.get(id)
+    return !!def && isGamblingEvent(def)
+  }
+  const before = state.pendingEvents.length
+  if (state.pendingEvents.some((p) => gambling(p.defId))) state.pendingEvents = state.pendingEvents.filter((p) => !gambling(p.defId))
+  const queue = scheduledFollowUps(state)
+  if (queue.some((q) => gambling(q.id))) writeFollowUps(state, queue.filter((q) => !gambling(q.id)))
+  return before - state.pendingEvents.length
+}
+
 const oldEnough = (state: GameState, def: EventDef): boolean =>
   heroAge(state.hero, state.calendar.season) >= eventMinAge(def)
 
 /** True if `def` may spontaneously fire now (ignores weekly caps and chance). */
 export function isEligible(state: GameState, def: EventDef, tags: readonly string[], abs = absoluteWeek(state.calendar)): boolean {
   if (def.followUpOnly) return false
-  if (contentFlags.hideCasino && (def.category === 'casino' || def.triggers?.includes('casino'))) return false
+  if (contentFlags.hideCasino && isGamblingEvent(def)) return false
   if (!triggerMatches(def, tags)) return false
   const last = state.life.eventHistory[def.id]
   if (last !== undefined) {
@@ -520,6 +546,7 @@ export function rollEvents(state: GameState, rng: Rng, tags: string[], maxCount 
   for (const q of queue) {
     const def = index.get(q.id)
     if (!def) continue // unknown id: drop
+    if (contentFlags.hideCasino && isGamblingEvent(def)) continue // casino hidden: the chain ends here
     if (q.due > abs) {
       keep.push(q)
       continue

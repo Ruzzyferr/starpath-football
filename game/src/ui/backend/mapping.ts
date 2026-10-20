@@ -2,6 +2,7 @@
  * Mapping between sim data and UI view types: stat snapshots → Delta chips,
  * event deltas → Delta chips, clubs/fixtures → TeamView/FixtureView.
  */
+import { casinoHidden } from '../../core/contentFlags'
 import { ATTRIBUTE_KEYS, type AttributeKey, type Competition, type Fixture, type GameState, type LText, type RelationKind } from '../../core/types'
 import { DAYS_PER_WEEK } from '../../core/config'
 import type { AppliedDelta } from '../../sim/life/events/types'
@@ -36,7 +37,7 @@ export function snapshot(s: GameState): StatSnapshot {
     stats: {
       money: l.money, energy: l.energy, happiness: l.happiness, health: l.health, stress: l.stress, discipline: l.discipline,
       reputation: h.reputation, followers: l.followers, form: h.form, morale: h.morale, fatigue: h.fatigue, sharpness: h.sharpness,
-      managerTrust: h.managerTrust, addiction: l.casino.addiction, perkPoints: h.perkPoints,
+      managerTrust: h.managerTrust, addiction: casinoHidden() ? 0 : l.casino.addiction, perkPoints: h.perkPoints,
     },
     attrs: { ...h.attrs },
     rel,

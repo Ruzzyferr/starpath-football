@@ -35,6 +35,7 @@ import { clubStrength } from '../world/queries'
 import { managerProfile } from '../world/profiles'
 import { aiTransferWindow, playFixturesFor, weeklyTick } from '../world/season'
 import { rollEvents } from './eventsAdapter'
+import { purgeHiddenGambling } from '../life/events/engine'
 import {
   GFLAG, activityContext, emptyWeek, recordTransfers, heroAvailableFor, heroClub, isInSeason, isOffSeason, log, logAll,
   readJson, transferWindow, unplayedHeroFixtureToday, weekCounters, withRng, writeJson,
@@ -84,6 +85,8 @@ export function advanceSlot(state: GameState): AdvanceReport {
 /** Finish today and start tomorrow (see module comment for the order). */
 export function advanceDay(state: GameState): AdvanceReport {
   const r = emptyReport()
+  // Casino hidden: gambling cards / follow-ups carried in from an older save never surface.
+  purgeHiddenGambling(state)
   const events0 = state.pendingEvents.length
   const offers0 = getOffers(state).length
   // Daily agenda: whatever mandatory task is still open is quick-resolved (sim/game/agenda; the UI blocks Advance first).

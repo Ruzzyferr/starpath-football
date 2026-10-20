@@ -39,6 +39,8 @@ const channel = envChannel ? (envChannel === 'chromium' ? undefined : envChannel
 
 export default defineConfig({
   testDir: './e2e',
+  // The no-casino (iOS) build has its own config, dev server and port: playwright.nocasino.config.ts.
+  testIgnore: /nocasino\.spec\.ts$/,
   timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

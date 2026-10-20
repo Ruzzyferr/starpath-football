@@ -24,6 +24,7 @@ import { perkValue } from '../career/perks'
 import { changeRelation, closeCircleMood, teammateAverage } from './relationships'
 import { addStress, isBurnedOut, mentalMatchModifier } from './wellbeing'
 import { echoChemistry, echoLeverage } from './echoes'
+import { contentFlags } from '../../core/contentFlags'
 
 /** A cause shown to the player: what happened, and whether it helped or hurt. */
 export interface Cause {
@@ -43,7 +44,7 @@ export const CASINO_SEEN_DAY_FLAG = 'casino_seen_day'
 
 /** Name of a night out for cause lines, by activity id. */
 export function nightName(act: unknown): LText {
-  if (act === 'casino') return lt('kumarhane ziyareti', 'casino visit')
+  if (act === 'casino' && !contentFlags.hideCasino) return lt('kumarhane ziyareti', 'casino visit')
   if (act === 'party') return lt('parti', 'nightclub outing')
   return lt('eğlence', 'night out')
 }

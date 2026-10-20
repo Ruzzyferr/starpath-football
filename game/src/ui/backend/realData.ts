@@ -12,7 +12,7 @@ import { SLOTS_PER_DAY } from '../../core/config'
 import { lt as render } from '../../i18n'
 import { ACTIVITIES, ACTIVITY_BY_ID, type ActivityDef } from '../../data/activities'
 import { ASSETS } from '../../data/assets'
-import { PERKS, PERK_BRANCH, perkTier, type PerkGroup } from '../../data/perks'
+import { CASINO_PERKS, PERKS, PERK_BRANCH, perkTier, type PerkGroup } from '../../data/perks'
 import { COUNTRY_DEFS } from '../../data/world/countries'
 import { absWeek, heroAge } from '../../sim/career/common'
 import { TIER_ROOTS_NEEDED, branchDepth, perkBlock, perkValue } from '../../sim/career/perks'
@@ -384,7 +384,7 @@ function perksView(s: GameState): PerkView[] {
     })
     const out: PerkView[] = []
     groups.forEach((g, col) => {
-      const list = PERKS.filter((p) => p.group === g && (g !== 'innate' || h.perks.includes(p.id)))
+      const list = PERKS.filter((p) => p.group === g && (g !== 'innate' || h.perks.includes(p.id)) && !(contentFlags.hideCasino && CASINO_PERKS.has(p.id)))
       const depth = (id: string, seen = new Set<string>()): number => {
         const p = list.find((x) => x.id === id)
         if (!p || seen.has(id)) return 0

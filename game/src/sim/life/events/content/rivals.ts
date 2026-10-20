@@ -259,6 +259,7 @@ export const rivalsEvents: EventDef[] = [
   {
     id: 'rivals.academy_old_friend',
     category: 'rivals',
+    gambling: true, // a dinner bet
     weight: 0.7,
     cooldownWeeks: 40,
     conditions: ({ state }) => hasClub(state),

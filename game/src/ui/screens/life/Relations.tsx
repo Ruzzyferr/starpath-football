@@ -10,7 +10,7 @@ import { START_YEAR } from '../../../core/config'
 import { lt, t } from '../../../i18n'
 import { Avatar, Button, Chip, EmptyState, Hearts, Modal, SectionTitle, toast } from '../../components'
 import { Icon, type IconName } from '../../icons'
-import { actions, gameState, type InteractionKind } from '../../store'
+import { actions, gameState, isCasinoHidden, type InteractionKind } from '../../store'
 import { deltasText, relAge, relAppearance } from './util'
 
 type Group = 'family' | 'love' | 'team' | 'pro'
@@ -61,8 +61,10 @@ const fmtD = (d: number): string => {
 
 /** "Why did it change?" panel: last 10 ledger entries + totals by cause. */
 function WhyPanel({ rel, onClose }: { rel: Relationship; onClose: () => void }) {
-  const hist = relationHistory(rel, 10)
-  const totals = (Object.entries(relationCauseTotals(rel)) as [RelationCause, number][]).filter(([, v]) => v !== 0)
+  // Casino hidden (no-casino build): ledger lines a casino build wrote into an old save stay out of view.
+  const noCasino = isCasinoHidden()
+  const hist = relationHistory(rel, 10).filter((e) => !(noCasino && e.cause === 'casino'))
+  const totals = (Object.entries(relationCauseTotals(rel)) as [RelationCause, number][]).filter(([c, v]) => v !== 0 && !(noCasino && c === 'casino'))
   totals.sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
   return (
     <Modal open onClose={onClose} title={t('life.why.title', { name: rel.name })} size="md" class="life-why">

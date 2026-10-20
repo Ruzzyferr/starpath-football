@@ -254,6 +254,9 @@ export const PERKS: readonly PerkDef[] = [
     requirement: {}, effect: { key: 'late_growth', value: 0.15 } },
 ]
 
+/** Perks about gambling: not offered (nor listed) while the casino is hidden. */
+export const CASINO_PERKS: ReadonlySet<string> = new Set(['poker_face'])
+
 export const PERK_BY_ID: Readonly<Record<string, PerkDef>> = Object.fromEntries(PERKS.map((p) => [p.id, p]))
 
 // ───────────────────────── Branches and tiers (2.3#39) ─────────────────────────

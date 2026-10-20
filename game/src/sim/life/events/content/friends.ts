@@ -9,6 +9,7 @@ export const friendsEvents: EventDef[] = [
   {
     id: 'friends.debt_trouble',
     category: 'friends',
+    gambling: true, // a gambling debt
     weight: 1,
     cooldownWeeks: 40,
     minAge: 18, // a gambling debt to loan sharks is not a 16-year-old's story
@@ -68,6 +69,7 @@ export const friendsEvents: EventDef[] = [
   {
     id: 'friends.debt_aftermath',
     category: 'friends',
+    gambling: true, // the friend quits gambling
     weight: 1,
     cooldownWeeks: 0,
     followUpOnly: true,

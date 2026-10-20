@@ -11,6 +11,7 @@ import type { GameState, LText } from '../../core/types'
 import { lt as render } from '../../i18n'
 import { toast } from '../components/Toast'
 import { eventResult, gameState, stateVersion } from '../store'
+import { purgeHiddenGambling } from '../../sim/life/events/engine'
 
 export function current(): GameState | null {
   return gameState.value
@@ -47,6 +48,8 @@ export function commit(s: GameState, opts: { silent?: boolean } = {}): void {
 /** Replace the whole state (new game / load / reset). */
 export function replaceState(s: GameState | null): void {
   eventResult.value = null // a result card belongs to the career it was answered in
+  // A save from a casino build loaded with the casino hidden: drop its gambling cards and follow-ups.
+  if (s) purgeHiddenGambling(s)
   lastCommit = Date.now()
   stateVersion.value++
   gameState.value = s

@@ -30,6 +30,7 @@ import { perkValue } from '../career/perks'
 import { CASINO_SEEN_DAY_FLAG } from './butterfly'
 import { addHappiness, addStress } from './wellbeing'
 import { changeRelation } from './relationships'
+import { contentFlags } from '../../core/contentFlags'
 
 // ═════════════════════════════ Blackjack ═════════════════════════════
 
@@ -1109,6 +1110,12 @@ export function weeklyCasinoTick(
   hero?: Pick<Hero, 'form' | 'perks'>,
   leak?: { rng: Rng; calendar: Calendar; hero: Pick<Hero, 'firstName' | 'lastName' | 'nickname'> },
 ): Lines {
+  // Casino hidden (no-casino build, or the setting): an old habit just fades, silently (no lines, leaks or costs).
+  if (contentFlags.hideCasino) {
+    life.casino.addiction = meter(life.casino.addiction - 5, 0)
+    life.casino.visitsThisWeek = 0
+    return []
+  }
   const visits = life.casino.visitsThisWeek
   const cost = hero ? casinoCareerCost(life, hero, visits > 0) : []
   life.casino.addiction = meter(life.casino.addiction - (visits === 0 ? 5 : 1), 0)

@@ -250,6 +250,12 @@
   grid-template-columns: repeat(2, minmax(0, 1fr));
   margin-top: var(--sp-3);
 }
+/* An odd tile count (no-casino build: seven tiles) closes the two-column grid with a full-width tile. */
+@media (max-width: 559px) {
+  .home-tiles > .home-tile:last-child:nth-child(odd) {
+    grid-column: 1 / -1;
+  }
+}
 @media (min-width: 560px) {
   .home-tiles {
     grid-template-columns: repeat(4, minmax(0, 1fr));

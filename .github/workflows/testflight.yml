@@ -49,6 +49,8 @@ jobs:
       - name: Build web app
         env:
           SP_FLAVOR: ${{ inputs.flavor }}
+          # App Store build: no simulated gambling (Guideline 5.3 / age rating). Android and web keep the casino.
+          VITE_FEATURE_CASINO: '0'
         run: npm run build
 
       - name: Sync Capacitor iOS project

@@ -8,7 +8,7 @@ import '../../styles/screens/phone.css'
 import { EmptyState, MeterRing, Page } from '../components'
 import { formatCompact, formatMoney } from '../format'
 import { Icon, type IconName } from '../icons'
-import { gameState, navigate, screen, settings } from '../store'
+import { gameState, isCasinoHidden, navigate, screen, settings } from '../store'
 import { Assets } from './life/Assets'
 import { Bank } from './life/Bank'
 import { Business } from './life/Business'
@@ -128,7 +128,7 @@ export function LifeScreen() {
   if (!s) return <Page title={t('life.title')}><EmptyState /></Page>
   const l = s.life
   const f = features.value
-  const casinoHidden = settings.value.hideCasino || f.casino.reason?.kind === 'age'
+  const casinoHidden = isCasinoHidden() || f.casino.reason?.kind === 'age'
   const apps = APPS.filter((a) => !(a.id === 'casino' && casinoHidden))
   const badge = (id: AppId): number | 'new' | 0 => {
     if (id === 'inbox') return s.pendingEvents.length

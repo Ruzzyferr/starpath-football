@@ -7,7 +7,7 @@ import { ageGated } from './ageGate'
 import { startGamepadNav } from '../input/gamepadNav'
 import type { FunctionComponent } from 'preact'
 import { useEffect, useRef } from 'preact/hooks'
-import { activeEvent, back, gameState, heroClub, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
+import { activeEvent, back, gameState, heroClub, isCasinoHidden, navDirection, navigate, pendingNav, screen, type ScreenId } from './store'
 import { Shell, TABS } from './layout/Shell'
 import { ToastHost } from './components'
 import { pauseLiveMatchOnBack } from '../platform/back'
@@ -63,6 +63,20 @@ import { UnlockNotifier, gated } from './tutorial/UnlockGate'
 import { tour } from './tutorial/tour'
 import { ShortcutsModal, shortcutsOpen } from './layout/ShortcutsModal'
 
+/**
+ * Casino routes: with the casino hidden (no-casino build such as iOS, or the player's setting) a
+ * direct visit (history, deep link, stale button) renders nothing and lands on Life instead.
+ */
+function casinoRoute(C: FunctionComponent): FunctionComponent {
+  return function CasinoRoute(props) {
+    const hidden = isCasinoHidden()
+    useEffect(() => {
+      if (hidden) navigate('life', undefined, { replace: true })
+    }, [hidden])
+    return hidden ? null : <C {...props} />
+  }
+}
+
 export const SCREENS: Record<ScreenId, FunctionComponent> = {
   title: TitleScreen,
   newCareer: NewCareerScreen,
@@ -81,11 +95,11 @@ export const SCREENS: Record<ScreenId, FunctionComponent> = {
   world: WorldScreen,
   contract: ContractScreen,
   life: LifeScreen,
-  casino: gated('casino', ageGated(CasinoScreen)),
-  blackjack: gated('casino', ageGated(BlackjackScreen)),
-  roulette: gated('casino', ageGated(RouletteScreen)),
-  slots: gated('casino', ageGated(SlotsScreen)),
-  horses: gated('casino', ageGated(HorsesScreen)),
+  casino: casinoRoute(gated('casino', ageGated(CasinoScreen))),
+  blackjack: casinoRoute(gated('casino', ageGated(BlackjackScreen))),
+  roulette: casinoRoute(gated('casino', ageGated(RouletteScreen))),
+  slots: casinoRoute(gated('casino', ageGated(SlotsScreen))),
+  horses: casinoRoute(gated('casino', ageGated(HorsesScreen))),
   preMatch: PreMatchScreen,
   liveMatch: LiveMatchScreen,
   postMatch: PostMatchScreen,

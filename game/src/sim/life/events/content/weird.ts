@@ -96,6 +96,7 @@ export const weirdEvents: EventDef[] = [
   {
     id: 'weird.hairstyle_bet',
     category: 'weird',
+    gambling: true, // a bet between teammates
     weight: 1,
     cooldownWeeks: 52,
     triggers: ['weekly', 'post_match'],
@@ -126,6 +127,7 @@ export const weirdEvents: EventDef[] = [
   {
     id: 'weird.hairstyle_reveal',
     category: 'weird',
+    gambling: true, // the bet is settled
     weight: 1,
     cooldownWeeks: 0,
     followUpOnly: true,

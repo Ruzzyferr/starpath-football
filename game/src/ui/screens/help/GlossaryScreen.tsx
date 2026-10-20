@@ -4,8 +4,8 @@ import { useEffect, useRef, useState } from 'preact/hooks'
 import { currentLang, t } from '../../../i18n'
 import { Page, Tabs } from '../../components'
 import { Icon } from '../../icons'
-import { gameState, screen } from '../../store'
-import { GLOSSARY, GLOSSARY_CATS, matchesQuery, type GlossaryCat, type GlossaryTerm } from '../../tutorial/glossary'
+import { gameState, isCasinoHidden, screen } from '../../store'
+import { CASINO_TERMS, GLOSSARY, GLOSSARY_CATS, matchesQuery, type GlossaryCat, type GlossaryTerm } from '../../tutorial/glossary'
 import { compareText } from '../../a11y/collate'
 import { ATTR_DISPLAY_ORDER } from '../career/attrs'
 
@@ -23,7 +23,7 @@ export function GlossaryScreen() {
   // Every attribute is a term too (owner feedback: each stat the game shows is explained), filed under Player.
   const attrs = ATTR_DISPLAY_ORDER.map((k) => ({ id: `attr-${k}`, cat: 'player' as GlossaryCat, name: t(`data.attr.${k}`), def: t(`data.attrDesc.${k}`) }))
   const items = [
-    ...GLOSSARY.map((g) => ({ ...g, id: g.id as string, name: t(`help.glossary.terms.${g.id}.name`), def: t(`help.glossary.terms.${g.id}.def`) })),
+    ...GLOSSARY.filter((g) => !(CASINO_TERMS.has(g.id) && isCasinoHidden())).map((g) => ({ ...g, id: g.id as string, name: t(`help.glossary.terms.${g.id}.name`), def: t(`help.glossary.terms.${g.id}.def`) })),
     ...attrs,
   ]
     .filter((g) => cat === 'all' || g.cat === cat)

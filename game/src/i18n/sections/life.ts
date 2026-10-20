@@ -409,7 +409,7 @@ export const en: Shape<typeof tr> = {
       home: 'Your life off the pitch in one pocket: relationships, money, businesses and followers.',
       relations: 'Family, love, friends and your professional circle. Warmth fades over time; reach out.',
       assets: 'Homes, cars and collectibles. What you buy brings upkeep and depreciation too.',
-      bank: 'Your account, loans and investments. Risky bets do not always pay back.',
+      bank: 'Your account, loans and investments. Risky investments do not always pay back.',
       business: 'Businesses earn weekly profit but need decisions.',
       projects: 'Long-term plays: academy, stakes and legacy.',
       social: 'Your followers, press conferences and fan comments.',

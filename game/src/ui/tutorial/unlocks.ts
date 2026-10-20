@@ -9,7 +9,7 @@
  */
 import { computed } from '@preact/signals'
 import type { Calendar } from '../../core/types'
-import { data, gameState } from '../store'
+import { data, gameState, isCasinoHidden } from '../store'
 
 export type FeatureId = 'casino' | 'investments' | 'sponsors' | 'business'
 export const FEATURES: readonly FeatureId[] = ['casino', 'investments', 'sponsors', 'business']
@@ -89,6 +89,8 @@ export const features = computed<Record<FeatureId, FeatureState>>(() => {
   }
   const out = {} as Record<FeatureId, FeatureState>
   for (const id of FEATURES) out[id] = featureState(id, ctx)
+  // Casino hidden (no-casino build or the player's setting): never "New!", never an unlock notice.
+  if (isCasinoHidden()) out.casino = { ...out.casino, isNew: false }
   return out
 })
 

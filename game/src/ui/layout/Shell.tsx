@@ -10,7 +10,7 @@ import { lt, t, tx } from '../../i18n'
 import { Avatar, Crest, MeterRing, Money, Button, Badge, FormDots } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
-import { activeEvent, actions, data, gameState, heroClub, navigate, screen, settings, type ScreenId } from '../store'
+import { activeEvent, actions, data, gameState, heroClub, isCasinoHidden, navigate, screen, type ScreenId } from '../store'
 import { Logo } from './Logo'
 import { seasonLabel } from '../format'
 import { requestAdvance } from '../tutorial/MatchdayConfirm'
@@ -203,7 +203,7 @@ export function Sidebar() {
               </button>
               {active && SUB[tb.id].length > 0 && (
                 <ul class="sidebar-sub">
-                  {SUB[tb.id].filter((s) => !(s.screen === 'casino' && settings.value.hideCasino)).map((s) => (
+                  {SUB[tb.id].filter((s) => !(s.screen === 'casino' && isCasinoHidden())).map((s) => (
                     <li key={s.screen}>
                       <button
                         type="button"

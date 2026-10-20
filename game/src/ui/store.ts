@@ -23,7 +23,7 @@ import type {
 import { currentLang } from '../i18n'
 import { setMoneyStyle, type MoneyStyle } from './format'
 import { setControlPrefs } from '../input/prefs'
-import { CASINO_BUILD, contentFlags } from '../core/contentFlags'
+import { CASINO_SCREENS, casinoHidden, contentFlags } from '../core/contentFlags'
 import type { ObjectivesUi } from './backend/objectivesFeed'
 import type { MatchEarnings } from '../sim/career/matchPay'
 import { isCameraDistanceChoice, type CameraDistanceChoice } from '../game/view'
@@ -897,6 +897,8 @@ export const navDirection = signal<1 | -1 | 0>(0)
 export function navigate(id: ScreenId, params?: Route['params'], opts?: { replace?: boolean; tab?: boolean }): void {
   // The old three-slot day planner was removed (TestFlight build 4); legacy links land on Activities.
   if ((id as string) === 'planner') id = 'activities'
+  // No casino build / casino hidden: casino links (deep links, old buttons, dev jumps) land on Life.
+  if (CASINO_SCREENS.has(id) && isCasinoHidden()) id = 'life'
   const next: Route = { id, params }
   if (opts?.tab) {
     history.length = 0
@@ -1059,6 +1061,14 @@ function withDerivedFx(s: UiSettings): UiSettings {
   return { ...s, lowFx: effectiveQuality(s) === 'low' }
 }
 export const settings = signal<UiSettings>(loadSettings())
+contentFlags.hideCasino = casinoHidden(settings.value.hideCasino)
+/**
+ * Reactive UI form of {@link casinoHidden}: true in a build without the casino, or while the player's
+ * "Hide casino" setting is on. Every casino surface in the UI asks this.
+ */
+export function isCasinoHidden(): boolean {
+  return casinoHidden(settings.value.hideCasino)
+}
 currentLang.value = settings.value.lang
 setMoneyStyle(settings.value.moneyStyle)
 export function updateSettings(patch: Partial<UiSettings>): void {
@@ -1134,7 +1144,7 @@ export function bindSettingsToDocument(): () => void {
       noFlash: s.reduceFlashes || globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true,
       timingAssist: s.timingAssist,
     })
-    contentFlags.hideCasino = s.hideCasino || !CASINO_BUILD
+    contentFlags.hideCasino = casinoHidden(s.hideCasino)
     const light = s.theme === 'light' || (s.theme === 'system' && globalThis.matchMedia?.('(prefers-color-scheme: light)')?.matches === true)
     root.dataset.theme = light && !DARK_SCREENS.has(screen.value.id) ? 'light' : 'dark'
     root.dataset.contrast = s.highContrast ? 'high' : 'normal'

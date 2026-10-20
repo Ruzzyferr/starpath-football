@@ -6,7 +6,7 @@ import { formatNumber } from '../../format'
 import { onColor } from '../../art/svg'
 import { ROLE_EXPECTED_MINUTES, ROLE_NAMES } from '../../../sim/career/squadRole'
 import { startChance } from '../../../sim/game/whyPlaying'
-import { back, data, gameState, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
+import { back, data, gameState, isCasinoHidden, navigate, type LineupPlayer, type PreMatchView, type TeamView } from '../../store'
 import { MOMENT_ICON, PitchLinesVertical, WEATHER_ICON } from './shared'
 import { FocusPicker } from './FocusPicker'
 import { SelectionMeter } from '../bench/SelectionMeter'
@@ -180,14 +180,15 @@ export function PreMatchScreen() {
           </span>
           <span class="t-sm">{t(`match.pre.importanceLevels.${imp}`)}</span>
         </div>
-        <div class="pm-odds" aria-label={t('match.pre.odds')}>
+        {/* Bookmaker-style 1X2 odds read as betting: not shown while the casino is hidden (no-casino build). */}
+        {!isCasinoHidden() && <div class="pm-odds" aria-label={t('match.pre.odds')}>
           <span class="micro t-mid">{t('match.pre.odds')}</span>
           <div class="pm-odds-row">
             <span class="pm-odd"><span class="t-xs t-lo">1</span><b class="num">{odds(pm.odds.home)}</b></span>
             <span class="pm-odd"><span class="t-xs t-lo">X</span><b class="num">{odds(pm.odds.draw)}</b></span>
             <span class="pm-odd"><span class="t-xs t-lo">2</span><b class="num">{odds(pm.odds.away)}</b></span>
           </div>
-        </div>
+        </div>}
       </div>
 
       <div class="pm-grid">

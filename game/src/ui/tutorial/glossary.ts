@@ -46,6 +46,9 @@ export const GLOSSARY: { id: GlossaryTerm; cat: GlossaryCat }[] = [
   { id: 'seasonForm', cat: 'career' },
 ]
 
+/** Terms that only exist with the casino: left out while it is hidden (no-casino build or the setting). */
+export const CASINO_TERMS: ReadonlySet<GlossaryTerm> = new Set<GlossaryTerm>(['addiction'])
+
 export const GLOSSARY_CATS: GlossaryCat[] = ['player', 'condition', 'match', 'career', 'life']
 
 /** Case- and diacritic-insensitive match on name + definition. */

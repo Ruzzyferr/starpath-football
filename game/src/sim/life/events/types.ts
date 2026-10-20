@@ -244,6 +244,12 @@ export interface EventDef {
    * (alcohol) — see `eventMinAge`.
    */
   minAge?: number
+  /**
+   * Gambling or betting content outside the `casino` category (a dinner bet, a friend's gambling
+   * debt, a crypto punt). Treated like a casino event: it never fires, nor runs as a follow-up, while
+   * the casino is hidden (no-casino build such as iOS, or the player's setting); see `isGamblingEvent`.
+   */
+  gambling?: boolean
   conditions: (ctx: EventCtx) => boolean
   triggers?: EventTag[]
   vars?: (ctx: EventCtx, rng: Rng) => EventVars

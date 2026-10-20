@@ -30,6 +30,7 @@ import type { AttributeKey, GameState, LText, RelationKind } from '../../../core
 import { Rng, clamp, hashString } from '../../../core/rng'
 import { absWeek } from '../../career/common'
 import { teammateId } from '../relationships'
+import { contentFlags } from '../../../core/contentFlags'
 import type { ChoiceDef, ChoiceKind, Delta, EffectResult, EventCategory, EventCtx, EventDef, StatKey } from './types'
 
 export type OutcomeTier = 'success' | 'mixed' | 'fail'
@@ -360,7 +361,7 @@ export function situationFactors(s: GameState, cat: EventCategory, vars: Record<
     add('money', { tr: 'Para durumu', en: 'Finances' }, clamp(0.025 * Math.log2(Math.max(0.25, weeks) / 8), -0.05, 0.05))
   }
   if (prof.discipline) add('discipline', { tr: 'Disiplin sicili', en: 'Discipline record' }, clamp(((L.discipline - 65) / 35) * 0.06, -0.08, 0.04))
-  if (prof.addiction) add('addiction', { tr: 'Kumar bağımlılığı', en: 'Gambling habit' }, -clamp(L.casino.addiction / 100, 0, 1) * 0.12)
+  if (prof.addiction && !contentFlags.hideCasino) add('addiction', { tr: 'Kumar bağımlılığı', en: 'Gambling habit' }, -clamp(L.casino.addiction / 100, 0, 1) * 0.12)
   // The person the card is about.
   const npc = npcOf(s, cat, vars)
   if (npc) add('relation', npc.label, clamp((npc.value / 100) * 0.12, -0.12, 0.12))

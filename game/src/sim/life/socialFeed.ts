@@ -10,6 +10,7 @@
 import type { GameState, LText } from '../../core/types'
 import { Rng, hashString } from '../../core/rng'
 import { absWeek, clamp, fill, lt } from '../career/common'
+import { contentFlags } from '../../core/contentFlags'
 
 export type FeedMood = 'love' | 'praise' | 'neutral' | 'critic' | 'hater' | 'joke'
 
@@ -115,7 +116,7 @@ export function feedTopics(state: GameState): FeedTopic[] {
   else if (rating !== undefined) topics.push(rating >= 7.5 || f.last_match_shone === true ? 'great' : rating < 6 ? 'poor' : 'normal')
   if ((num(f.transfer_buzz) ?? 0) > 0 || f.rumour_active === true) topics.push('rumour')
   const seen = num(f.casino_seen_week)
-  if (seen !== undefined && absWeek(state.calendar) - seen <= 3) topics.push('casino')
+  if (seen !== undefined && absWeek(state.calendar) - seen <= 3 && !contentFlags.hideCasino) topics.push('casino')
   if (f.foundation === true) topics.push('charity')
   if ((state.life.businesses ?? []).length > 0) topics.push('business')
   if (topics.length === 0) topics.push('quiet')

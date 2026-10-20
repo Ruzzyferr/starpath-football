@@ -19,6 +19,7 @@ import { heroOvr } from '../career/progression'
 import { netWorth } from '../life/economy'
 import type { CareerSummary } from './hallOfFame'
 import type { MatchFeats } from './records'
+import { contentFlags } from '../../core/contentFlags'
 
 export type AchCategory = 'career' | 'match' | 'goalkeeping' | 'life' | 'responsible' | 'training' | 'legacy'
 
@@ -232,6 +233,14 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   A('completionist', 'legacy', '🏆', lt('Tamamlayıcı', 'Completionist'), lt('60 başarım aç.', 'Unlock 60 achievements.'), 60, (x) => x.unlockedCount, true),
 ]
 
+/** Achievements about the casino or gambling: neither listed nor unlocked while the casino is hidden. */
+export const CASINO_ACHIEVEMENTS: ReadonlySet<string> = new Set(['walk_away', 'in_control', 'never_gambled'])
+
+/** The achievements in play: all of them, minus {@link CASINO_ACHIEVEMENTS} while the casino is hidden. */
+export function activeAchievements(): readonly AchievementDef[] {
+  return contentFlags.hideCasino ? ACHIEVEMENTS.filter((a) => !CASINO_ACHIEVEMENTS.has(a.id)) : ACHIEVEMENTS
+}
+
 export const ACHIEVEMENT_BY_ID: Readonly<Record<string, AchievementDef>> = Object.fromEntries(ACHIEVEMENTS.map((a) => [a.id, a]))
 
 // ───────────────────────── Checker ─────────────────────────
@@ -311,7 +320,7 @@ export function processAchievementEvent(store: AchStore, ev: AchEvent, state: Ga
   // Two passes so collector achievements see unlocks made in this same event.
   for (let pass = 0; pass < 2; pass++) {
     const ctx: AchContext = { state, c: store.counters, unlockedCount: Object.keys(store.unlocked).length }
-    for (const def of ACHIEVEMENTS) {
+    for (const def of activeAchievements()) {
       let p = 0
       try {
         p = def.progress(ctx)
@@ -340,7 +349,7 @@ export interface AchievementProgress {
 }
 
 export function achievementProgress(store: AchStore): AchievementProgress[] {
-  return ACHIEVEMENTS.map((def) => {
+  return activeAchievements().map((def) => {
     const at = store.unlocked[def.id]
     const progress = at !== undefined ? def.target : Math.min(def.target, store.best[def.id] ?? 0)
     return { def, unlocked: at !== undefined, unlockedAt: at ?? null, progress, ratio: def.target > 0 ? progress / def.target : 0 }

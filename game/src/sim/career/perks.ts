@@ -3,7 +3,8 @@
  * Data lives in `data/perks.ts`.
  */
 import type { Hero } from '../../core/types'
-import { PERKS, PERK_BRANCH, PERK_BY_ID, perkTier, type PerkDef } from '../../data/perks'
+import { CASINO_PERKS, PERKS, PERK_BRANCH, PERK_BY_ID, perkTier, type PerkDef } from '../../data/perks'
+import { contentFlags } from '../../core/contentFlags'
 import { fill, lt, type Lines } from './common'
 import { heroOvr } from './progression'
 
@@ -61,6 +62,7 @@ export function perkBlock(hero: Hero, id: string): PerkBlock | null {
 /** Perks the hero could buy right now (ignores perk-point balance if `ignorePoints`). */
 export function availablePerks(hero: Hero, ignorePoints = false): PerkDef[] {
   return PERKS.filter((p) => {
+    if (contentFlags.hideCasino && CASINO_PERKS.has(p.id)) return false
     const b = perkBlock(hero, p.id)
     return b === null || (ignorePoints && b === 'points')
   })

@@ -3,7 +3,7 @@ import '../../../styles/screens/store.css'
 import { t, lt, currentLang, locale } from '../../../i18n'
 import { Avatar, Button, Card, Page, Tabs, toast } from '../../components'
 import { Icon } from '../../icons'
-import { gameState } from '../../store'
+import { gameState, isCasinoHidden } from '../../store'
 import type { Appearance, LText } from '../../../core/types'
 import { GEAR, GEAR_STAT_CAP, GEAR_TIERS, GEAR_TIER_ORDER, GEAR_BY_ID, PHYSIO_PRICE, equippedGear, gearStatBonus, isKeeperGear, readGear, statBonusOf, type GearDef, type GearSlot } from '../../../sim/career/gear'
 import type { AttributeKey, Attributes } from '../../../core/types'
@@ -240,7 +240,9 @@ export function StoreScreen() {
       {tab === 'cash' && isAdultPlayer() && (
         <div class="st-grid" data-testid="st-tab-cash" role="tabpanel" id="st-cash-panel" aria-labelledby="st-cash">
           {s && <p class="t-sm st-span" data-testid="cash-season-left">{lt(L(`Bu sezon kalan nakit satın alma hakkı: `, `Cash you can still buy this season: `))}<b>{lt(fmtMoney(cashLeft))}</b></p>}
-          <p class="t-sm t-mid st-span">{lt(L('Nakit kariyer cüzdanına eklenir. Miktar güncel maaşınla büyür (paket başına bir üst sınırla), fiyatı sabittir. Oyun içi para gerçek paraya çevrilemez. Not: Yaşam › Kumarhane (18+) de bu parayı kullanır.', 'Cash goes into your career wallet. The amount grows with your wage (up to a ceiling per pack); the price stays the same. In-game money can never be turned into real money. Note: Life › Casino (18+) uses this money too.'))}</p>
+          <p class="t-sm t-mid st-span">{isCasinoHidden()
+            ? lt(L('Nakit kariyer cüzdanına eklenir. Miktar güncel maaşınla büyür (paket başına bir üst sınırla), fiyatı sabittir. Oyun içi para gerçek paraya çevrilemez.', 'Cash goes into your career wallet. The amount grows with your wage (up to a ceiling per pack); the price stays the same. In-game money can never be turned into real money.'))
+            : lt(L('Nakit kariyer cüzdanına eklenir. Miktar güncel maaşınla büyür (paket başına bir üst sınırla), fiyatı sabittir. Oyun içi para gerçek paraya çevrilemez. Not: Yaşam › Kumarhane (18+) de bu parayı kullanır.', 'Cash goes into your career wallet. The amount grows with your wage (up to a ceiling per pack); the price stays the same. In-game money can never be turned into real money. Note: Life › Casino (18+) uses this money too.'))}</p>
           {productsOfKind('cash').map((p) => (
             <Card key={p.id} class="st-card" data-testid={`pack-${p.id}`}>
               <div class="st-big" aria-hidden="true">💶</div>
