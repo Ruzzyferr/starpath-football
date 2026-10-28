@@ -26,6 +26,7 @@
     <script>document.documentElement.classList.add('js')</script>
     <link rel="stylesheet" href="/src/styles.css" />
     <script type="module" src="/src/main.ts"></script>
+    <script type="application/ld+json">{{__jsonld}}</script>
   </head>
   <body>
     <a class="skip" href="#main">{{skip}}</a>
@@ -251,6 +252,14 @@
 
     <footer id="foot" class="foot" aria-labelledby="foot-title">
       <h2 id="foot-title" class="foot-name reveal" lang="en" translate="no" data-brand>{{brandKick}}<span class="brand-born">{{brandBorn}}</span></h2>
+      <div class="faq reveal" id="sss">
+        <h3 class="faq-title">{{faqTitle}}</h3>
+        <details><summary>{{faqQ1}}</summary><p>{{faqA1}}</p></details>
+        <details><summary>{{faqQ2}}</summary><p>{{faqA2}}</p></details>
+        <details><summary>{{faqQ3}}</summary><p>{{faqA3}}</p></details>
+        <details><summary>{{faqQ4}}</summary><p>{{faqA4}}</p></details>
+        <details><summary>{{faqQ5}}</summary><p>{{faqA5}}</p></details>
+      </div>
       <div class="foot-cols reveal">
         <div>
           <h3>{{footerGame}}</h3>

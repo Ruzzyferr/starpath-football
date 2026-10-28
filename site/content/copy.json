@@ -153,7 +153,18 @@
     "momentsAutoPlay": "Otomatik geçişi başlat",
     "lifeLead": "Para, ev, aile ve ün: kariyerin sahayla bitmiyor. Her kararın bir sonucu var.",
     "brandKick": "KICK",
-    "brandBorn": "BORN"
+    "brandBorn": "BORN",
+    "faqTitle": "Sık sorulan sorular",
+    "faqQ1": "Kickborn nedir?",
+    "faqA1": "Kickborn bir futbol kariyeri ve hayat oyunu. Akademiden emekliliğe tek bir futbolcunun hayatını yaşarsın: maçların kritik anlarını (penaltı, bire bir, serbest vuruş, kafa) sen oynarsın, maç dışındaki hayatı ise kararların yazar.",
+    "faqQ2": "Oyun ücretsiz mi?",
+    "faqA2": "Evet. Kariyerin tamamı ilk günden açık ve ücretsiz. Enerji sınırı, zorla reklam ve ganimet kutusu yok. Mağaza isteğe bağlıdır; oyunu bitirmek için bir şey satın alman gerekmez.",
+    "faqQ3": "Hangi cihazlarda oynayabilirim?",
+    "faqA3": "Bugün tarayıcıda, telefonda ya da bilgisayarda oynayabilirsin. App Store ve Google Play sürümleri yolda.",
+    "faqQ4": "Kayıtlarım nerede saklanıyor?",
+    "faqA4": "Kariyerin bu cihazda saklanır. Oynamak için hesap açman ya da e-posta vermen gerekmez.",
+    "faqQ5": "Oyunda reklam var mı?",
+    "faqA5": "Zorla gösterilen reklam yok. Bir ödül için kısa bir reklam izlemeyi istersen sen seçersin; izlemesen de oyunun hiçbir bölümü kapanmaz."
   },
   "en": {
     "lang": "en",
@@ -309,6 +320,17 @@
     "momentsAutoPlay": "Resume auto-advance",
     "lifeLead": "Money, home, family and fame: your career does not end at the final whistle. Every choice has a consequence.",
     "brandKick": "KICK",
-    "brandBorn": "BORN"
+    "brandBorn": "BORN",
+    "faqTitle": "Frequently asked questions",
+    "faqQ1": "What is Kickborn?",
+    "faqA1": "Kickborn is a football career and life game. You live one footballer's whole life, from the academy to retirement: you play the key moments of each match yourself (penalties, one-on-ones, free kicks, headers) and your decisions write the life off the pitch.",
+    "faqQ2": "Is the game free?",
+    "faqA2": "Yes. The whole career is open and free from day one. No energy limit, no forced ads, no loot boxes. The shop is optional; you never need to buy anything to finish the game.",
+    "faqQ3": "Which devices can I play on?",
+    "faqA3": "Today in the browser, on a phone or a computer. The App Store and Google Play versions are on the way.",
+    "faqQ4": "Where are my saves kept?",
+    "faqA4": "Your career is saved on this device. You don't need an account or an email address to play.",
+    "faqQ5": "Are there ads in the game?",
+    "faqA5": "No forced ads. If you want a reward, you can choose to watch a short ad; if you don't, no part of the game is locked."
   }
 }

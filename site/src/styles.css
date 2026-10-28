@@ -477,6 +477,15 @@ html:not(.js) .career-range { display: none; }
 /* ───────── Footer: the mark, built large ───────── */
 .foot { position: relative; z-index: 1; background: var(--ground); padding: var(--section) var(--gutter) 32px; }
 .foot-name { margin-top: 0; font-family: var(--font-display); font-size: var(--step-head); line-height: 0.95; }
+.faq { margin-top: 56px; max-width: 72ch; }
+.faq-title { font-family: var(--font-text); font-size: var(--step-small); font-weight: 600; color: var(--ink-soft); }
+.faq details { border-bottom: 1px solid var(--surface); }
+.faq summary { min-height: 44px; padding: 12px 0; display: flex; align-items: center; gap: 12px; cursor: pointer; font-size: var(--step-body); font-weight: 600; list-style: none; }
+.faq summary::-webkit-details-marker { display: none; }
+.faq summary::after { content: '+'; margin-left: auto; color: var(--action); font-size: 1.25em; line-height: 1; transition: transform var(--t-fast) var(--ease-out); }
+.faq details[open] summary::after { transform: rotate(45deg); }
+.faq summary:focus-visible { outline: 2px solid var(--action); outline-offset: 2px; }
+.faq details p { padding-bottom: 14px; color: var(--ink-soft); }
 .foot-cols { margin-top: 56px; display: grid; grid-template-columns: repeat(4, 1fr); gap: var(--gap); }
 .foot-cols h3 { font-family: var(--font-text); font-size: var(--step-small); font-weight: 600; color: var(--ink-soft); }
 .foot-cols ul { margin-top: 10px; display: grid; gap: 2px; }
@@ -508,7 +517,8 @@ html.world-live .life { padding-top: clamp(96px, 10vw, 160px); }
 html.world-live .fair { min-height: 100svh; align-content: center; align-items: stretch; padding: calc(var(--bar-h) + 16px) 0 16px; }
 html.world-live .plan { min-height: 0; }
 html.world-live .plan-foot { margin-top: 0; }
-html.world-live .foot-cols > *, html.world-live .foot-last { background: rgb(7 11 20 / 0.8); padding: 16px 20px; }
+html.world-live .foot-cols > *, html.world-live .foot-last, html.world-live .faq { background: rgb(7 11 20 / 0.8); padding: 16px 20px; }
+html.world-live .faq { margin-bottom: 8px; }
 html.world-live .foot-cols { gap: 8px; }
 html.world-live .foot-last { margin-top: 8px; }
 html.world-live .foot-last { margin-top: 0; }
@@ -566,5 +576,8 @@ html.world-live .bar { transition: background-color var(--t-mid) ease; }
   .foot-contact { grid-column: auto; }
   .foot-cols a { min-height: 36px; font-size: var(--step-small); }
   html.world-live .foot-cols > * { padding: 10px 14px; }
+  html.world-live .faq { padding: 10px 14px; }
+  .faq { margin-top: 24px; }
+  .faq summary { padding: 6px 0; font-size: var(--step-small); }
   .foot-cols ul { margin-top: 4px; }
 }

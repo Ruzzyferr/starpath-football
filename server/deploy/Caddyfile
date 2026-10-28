@@ -62,6 +62,16 @@ kickborn.swiip.app, starpath.swiip.app, 206-189-63-64.sslip.io {
 		file_server
 	}
 
+	# Unknown addresses get the site's own 404 page (site/public/404.html), still with status 404.
+	handle_errors {
+		@notfound expression {err.status_code} == 404
+		handle @notfound {
+			root * /srv/starpath-site
+			rewrite * /404.html
+			file_server
+		}
+	}
+
 	# Access log: client addresses masked (IPv4 /16, IPv6 /32), query strings dropped (the Play
 	# RTDN push carries ?token=), secret headers removed; files rolled and kept 30 days at most.
 	log {

@@ -23,9 +23,37 @@ for (const lang of ['tr', 'en']) {
     termsAltHref: `/legal/terms-${other}.html`,
   }
   const runtime = JSON.stringify(Object.fromEntries(RUNTIME.map((k) => [k, t[k]]))).replace(/</g, '\u003c')
+  // Google rich results: the game, plus the FAQ block in the footer (same words as the page).
+  const url = `https://kickborn.swiip.app${t.path}`
+  const jsonld = JSON.stringify({
+    '@context': 'https://schema.org',
+    '@graph': [
+      {
+        '@type': 'VideoGame',
+        name: 'Kickborn',
+        url,
+        description: t.description,
+        image: 'https://kickborn.swiip.app/media/og.jpg',
+        inLanguage: lang,
+        genre: ['Sports', 'Simulation'],
+        gamePlatform: ['Web browser'],
+        applicationCategory: 'Game',
+        operatingSystem: 'Any',
+        author: { '@type': 'Person', name: 'Rüzgar Emir Bulut' },
+        offers: { '@type': 'Offer', price: '0', priceCurrency: 'TRY', availability: 'https://schema.org/InStock', url: 'https://kickborn.swiip.app/play/' },
+      },
+      {
+        '@type': 'FAQPage',
+        url,
+        inLanguage: lang,
+        mainEntity: [1, 2, 3, 4, 5].map((i) => ({ '@type': 'Question', name: t[`faqQ${i}`], acceptedAnswer: { '@type': 'Answer', text: t[`faqA${i}`] } })),
+      },
+    ],
+  }).replace(/</g, '\\u003c')
   const missing = new Set()
   let html = tpl.replace(/\{\{(\w+)\}\}/g, (_, k) => {
     if (k === '__runtime') return runtime
+    if (k === '__jsonld') return jsonld
     if (!(k in vars)) { missing.add(k); return '' }
     return esc(vars[k])
   })

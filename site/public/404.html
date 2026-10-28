@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex" />
+    <title>Sayfa bulunamadı · Kickborn</title>
+    <link rel="icon" type="image/png" sizes="96x96" href="/media/brand/mark-96.png" />
+    <!-- Standalone: served by Caddy for every 404 (server/deploy/Caddyfile), so no build assets. Colours from src/styles.css. -->
+    <style>
+      :root { --ground: #070b14; --surface: #131c2e; --ink: #f2f5fa; --ink-soft: #b4c0d6; --action: #1fd47a; --action-ink: #04140b; }
+      * { box-sizing: border-box; margin: 0; }
+      body { min-height: 100svh; display: grid; place-items: center; padding: 32px 16px; background: var(--ground); color: var(--ink); font: 1.0625rem/1.55 Inter, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif; }
+      main { width: 100%; max-width: 34rem; display: grid; gap: 32px; }
+      img { width: 72px; height: 72px; border-radius: 16px; }
+      .code { font: 800 clamp(4rem, 20vw, 7rem)/0.9 'Barlow Condensed', 'Arial Narrow', system-ui, sans-serif; color: var(--action); }
+      h1 { margin-top: 8px; font-size: 1.5rem; line-height: 1.2; }
+      p { margin-top: 8px; color: var(--ink-soft); }
+      .lang + .lang { padding-top: 32px; border-top: 1px solid var(--surface); }
+      .actions { margin-top: 20px; display: flex; flex-wrap: wrap; gap: 12px; }
+      a { color: var(--ink); }
+      .btn { min-height: 44px; display: inline-flex; align-items: center; padding: 0 20px; border-radius: 999px; font-weight: 600; text-decoration: none; border: 1px solid var(--surface); }
+      .btn-main { background: var(--action); color: var(--action-ink); border-color: var(--action); }
+      a:focus-visible { outline: 2px solid var(--action); outline-offset: 3px; }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div>
+        <img src="/media/brand/mark-192.png" alt="Kickborn" />
+        <p class="code" aria-hidden="true">404</p>
+      </div>
+      <section class="lang">
+        <h1>Bu sayfa bulunamadı</h1>
+        <p>Aradığın adres taşınmış ya da hiç var olmamış olabilir.</p>
+        <div class="actions">
+          <a class="btn btn-main" href="/">Ana sayfaya dön</a>
+          <a class="btn" href="/play/">Tarayıcıda oyna</a>
+        </div>
+      </section>
+      <section class="lang" lang="en">
+        <h1>This page could not be found</h1>
+        <p>The address may have moved, or it never existed.</p>
+        <div class="actions">
+          <a class="btn btn-main" href="/en/">Back to the home page</a>
+          <a class="btn" href="/play/">Play in the browser</a>
+        </div>
+      </section>
+    </main>
+  </body>
+</html>
