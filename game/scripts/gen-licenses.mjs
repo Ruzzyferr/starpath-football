@@ -61,7 +61,9 @@ const licenseOf = (p) => {
 }
 const LICENSE_FILE = /^(licen[sc]e|copying|notice)(\.(md|txt))?$/i
 function licenseText(dir) {
-  const f = readdirSync(dir).find((n) => LICENSE_FILE.test(n))
+  // Sorted: readdir order is alphabetical on Windows but arbitrary on Linux (CI), and packages
+  // such as xcode ship both LICENSE and NOTICE.
+  const f = readdirSync(dir).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'en')).find((n) => LICENSE_FILE.test(n))
   return f ? readFileSync(join(dir, f), 'utf8').trim() : null
 }
 
@@ -103,6 +105,14 @@ if (process.argv.includes('--check')) {
   const stale = [mdPath, txtPath].some((f) => !existsSync(f) || readFileSync(f, 'utf8') !== md)
   if (stale) {
     console.error('THIRD_PARTY_LICENSES is stale: run npm run licenses')
+    // Show where it differs (CI runs on Linux, the file is usually written on Windows).
+    const have = existsSync(mdPath) ? readFileSync(mdPath, 'utf8').split('\n') : []
+    const want = md.split('\n')
+    const i = want.findIndex((l, n) => l !== have[n])
+    const at = i < 0 ? Math.min(want.length, have.length) : i
+    console.error(`first difference at line ${at + 1} (committed ${have.length} lines, generated ${want.length}):`)
+    console.error(`  committed: ${JSON.stringify(have[at] ?? null)}`)
+    console.error(`  generated: ${JSON.stringify(want[at] ?? null)}`)
     process.exit(1)
   }
 } else {
