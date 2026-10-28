@@ -118,7 +118,7 @@ function ShopAccount() {
         : <div><Button variant="secondary" disabled={busy} onClick={getCode} data-testid="recovery-get">{L('Kurtarma kodu oluştur', 'Create a recovery code')}</Button></div>)}
       <label class="t-sm">
         {L('Kodun var mı?', 'Have a code?')}{' '}
-        <input class="input" value={entry} onInput={(e) => setEntry((e.target as HTMLInputElement).value)} placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" data-testid="recovery-input" />
+        <input class="input" value={entry} onInput={(e) => setEntry((e.target as HTMLInputElement).value)} placeholder="XXXX-XXXX-XXXX-XXXX" autocomplete="off" data-testid="recovery-input" />{/* i18n-ok code format mask */}
       </label>
       <div><Button variant="ghost" disabled={busy || entry.trim().length < 8} onClick={useCode} data-testid="recovery-use">{L('Hesabı geri al', 'Restore account')}</Button></div>
       {has && <div><Button variant="ghost" disabled={busy} onClick={exportData} data-testid="shop-export">{L('Mağaza verilerimi dışa aktar', 'Export my shop data')}</Button></div>}
