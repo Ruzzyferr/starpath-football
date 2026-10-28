@@ -64,7 +64,8 @@ function licenseText(dir) {
   // Sorted: readdir order is alphabetical on Windows but arbitrary on Linux (CI), and packages
   // such as xcode ship both LICENSE and NOTICE.
   const f = readdirSync(dir).sort((a, b) => a.toLowerCase().localeCompare(b.toLowerCase(), 'en')).find((n) => LICENSE_FILE.test(n))
-  return f ? readFileSync(join(dir, f), 'utf8').trim() : null
+  // LF only: some packages ship CRLF licence files, and git (eol=lf) strips the CR on checkout.
+  return f ? readFileSync(join(dir, f), 'utf8').replace(/\r\n?/g, '\n').trim() : null
 }
 
 const entries = [...seen.values()]
@@ -102,11 +103,11 @@ const md = `${HEADER.trimEnd()}\n\n${summaryMd}\n\n${body}`
 const mdPath = join(root, '..', 'THIRD_PARTY_LICENSES.md')
 const txtPath = join(root, 'public', 'legal', 'THIRD_PARTY_LICENSES.txt')
 if (process.argv.includes('--check')) {
-  const stale = [mdPath, txtPath].some((f) => !existsSync(f) || readFileSync(f, 'utf8') !== md)
+  const stale = [mdPath, txtPath].some((f) => !existsSync(f) || readFileSync(f, 'utf8').replace(/\r\n/g, '\n') !== md)
   if (stale) {
     console.error('THIRD_PARTY_LICENSES is stale: run npm run licenses')
     // Show where it differs (CI runs on Linux, the file is usually written on Windows).
-    const have = existsSync(mdPath) ? readFileSync(mdPath, 'utf8').split('\n') : []
+    const have = existsSync(mdPath) ? readFileSync(mdPath, 'utf8').replace(/\r\n/g, '\n').split('\n') : []
     const want = md.split('\n')
     const i = want.findIndex((l, n) => l !== have[n])
     const at = i < 0 ? Math.min(want.length, have.length) : i
