@@ -29,7 +29,7 @@ Oyunda bir kumarhane bölümü var (slot, blackjack vb.; `src/sim/life/casino.ts
 
 - İlk açılışta yaş sorusu (doğum yılı/ay veya "18 yaşında veya daha büyüğüm" onayı); cevap cihazda tutulur.
 - 18 yaş altı veya cevap vermeyen kullanıcıda: kumarhane kapalı, nakit paketleri ve elmastan nakde çevirme gizli/kilitli, ödüllü reklam isteğe bağlı kalır ve kişiselleştirilmemiş istek gönderilir.
-- Reklam rızası: AB/BK'de Google UMP formu, iOS'ta ATT istemi (TR/EN metin).
+- Reklam rızası: AB/BK'de Google UMP formu, iOS'ta takip yok, ATT istemi yok (yalnızca kişiselleştirilmemiş reklam).
 - Satın alma ekranında açık metin: "Oyun içi para gerçek paraya çevrilemez."
 - Kumarhaneye günlük kayıp limiti (oyun içi) ve karakter yaşı kapısı korunur.
 - Bu kapı mağaza derecesinin yerine geçmez; yalnızca onu destekleyen ek önlemdir.
@@ -48,7 +48,7 @@ Oyunda bir kumarhane bölümü var (slot, blackjack vb.; `src/sim/life/casino.ts
 | Kullanıcı etkileşimi / sohbet | Yok | Kullanıcılar arası etkileşim yok |
 | Konum paylaşımı | Yok | |
 | Kişisel veri toplama | Evet (anonim mağaza hesabı, cihaz kimliği, satın alma geçmişi) | `docs/legal/PRIVACY.*.md` ve `PrivacyInfo.xcprivacy` ile tutarlı |
-| Reklam | Evet (isteğe bağlı ödüllü reklam, Google AdMob) | Zorla reklam yok; ATT/UMP; Play'de AD_ID beyanı |
+| Reklam | Evet (isteğe bağlı ödüllü reklam, Google AdMob) | Zorla reklam yok; UMP (iOS'ta takip yok); Play'de AD_ID beyanı |
 | Uygulama içi satın alma | Evet | Elmas ve nakit paketleri (tüketilen), Pro Contract aboneliği; rastgele ödül yok |
 | Dijital satın alma sıklığı/ebeveyn onayı | Mağaza mekanizması | Aile paylaşımı/ebeveyn onayı mağazada |
 | Çocuklara yönelik | Hayır (genel kitle) | "Designed for Families" / Kids kategorisine başvurulmaz |

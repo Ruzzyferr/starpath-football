@@ -31,7 +31,7 @@ Rüzgar Emir Bulut (bireysel geliştirici, "Kickborn" markasıyla), İstanbul, T
 | Web sunucusu ve sistem günlükleri (maskelenmiş IP adresleri) | Sunucumuz | Hizmeti işletmek ve korumak (meşru menfaat) | Evet |
 | Sunucu verisinin şifreli yedekleri | Sunucu dışı depolama | Arızadan kurtarma (meşru menfaat) | Evet |
 | Kumarhane ve mağazanın sorduğu doğum yılı | Yalnızca cihazdaki depolama | Kumarhane ve nakit satın alma için yaş kapısı | Hayır |
-| Reklam kimliği / IDFA, reklam istekleri | Google AdMob | Ödüllü reklam göstermek. iOS'ta reklam kimliği yalnızca ATT iznin ile; AB/BK'de yalnızca Google'ın onay formunda (UMP) rıza verirsen. Kişiselleştirilmiş reklam rızaya dayanır | Evet, Google'a |
+| Reklam kimliği / IDFA, reklam istekleri | Google AdMob | Ödüllü reklam göstermek. iOS'ta uygulama seni takip etmez ve reklamlar hiçbir zaman kişiselleştirilmez; AB/BK'de kişiselleştirilmiş reklam yalnızca Google'ın onay formunda (UMP) rıza verirsen. Kişiselleştirilmiş reklam rızaya dayanır | Evet, Google'a |
 | Ödeme verisi | Apple App Store / Google Play | Ödeme ve makbuz | Mağaza ile senin aranda; biz yalnızca işlem kimliği ve makbuz alırız |
 
 Hesap kimliğimiz, ödülün reklamla eşleştirilebilmesi için Google'a reklam doğrulama kullanıcı kimliği olarak gönderilir. Kendi uygulamamız özel nitelikli veri, hassas konum, rehber, kamera veya mikrofon toplamaz. Google AdMob SDK'sı ise cihaz ve tanılama bilgisi, IP adresinden türetilen yaklaşık (kaba) konum ve reklam kimliğini (rızan / ATT iznin ile) kendisi toplayabilir. Kişiselleştirilmiş reklamları kısıtlamak için yaş bayrağı (18 altı / üstü; doğum yılın değil) Google AdMob'a gönderilir.

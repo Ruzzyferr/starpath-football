@@ -31,7 +31,7 @@ Security section:
 | Location > Coarse location (AdMob, from IP) | No | Yes | Third-party advertising |
 | Diagnostics > Other diagnostic data (AdMob SDK) | No | No | App functionality |
 
-`PrivacyInfo.xcprivacy` carries `NSPrivacyTracking = true` with the AdMob tracking domains. ATT prompt is shown before the advertising ID is read. Decision: `OtherDiagnosticData` and `CoarseLocation` are declared because the third-party AdMob SDK may collect them (device/diagnostic info, IP-derived coarse location, advertising ID with consent/ATT). The Play Data safety form, the Apple label, the manifest and the privacy policy all state the same. The age flag (under/over 18, not the birth year) is passed to AdMob to restrict personalised ads.
+iOS does not track (App Review 2026-10-27, Guideline 2.1): `PrivacyInfo.xcprivacy` has `NSPrivacyTracking = false`, no tracking domains, every collected type `Tracking = false`; there is no ATT prompt and iOS ads are always non-personalised (`npa`). App Store Connect App Privacy declares no tracking. Decision: `OtherDiagnosticData` and `CoarseLocation` are declared because the third-party AdMob SDK may collect them (device/diagnostic info, IP-derived coarse location, advertising ID with consent, Android only). The Play Data safety form, the Apple label, the manifest and the privacy policy all state the same. The age flag (under/over 18, not the birth year) is passed to AdMob to restrict personalised ads.
 
 ## app-ads.txt
 

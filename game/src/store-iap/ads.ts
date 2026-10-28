@@ -46,7 +46,7 @@ class AdMobProvider implements AdProvider {
     this.ready ??= (async () => {
       try {
         const { AdMob, MaxAdContentRating } = await import('@capacitor-community/admob')
-        // Consent first (EU/UK/TR: Google's UMP form when required), then iOS tracking permission.
+        // Consent first (EU/UK/TR: Google's UMP form when required).
         let canRequest = true
         let npa = false
         try {
@@ -61,18 +61,8 @@ class AdMobProvider implements AdProvider {
         if (!canRequest) return { ok: false, npa: true }
         // Teen ceiling; under-18 or unknown age (ui/ageGate) → treated as under the age of consent: no personalisation.
         const adult = playerIsAdult?.() ?? false
-        // ATT is asked only of adults: everyone else gets non-personalised ads whatever they answer.
-        if (adult && detectPlatform() === 'ios') {
-          try {
-            const st = await AdMob.trackingAuthorizationStatus()
-            if (st.status === 'notDetermined') await AdMob.requestTrackingAuthorization()
-            const after = await AdMob.trackingAuthorizationStatus()
-            if (after.status !== 'authorized') npa = true
-          } catch {
-            npa = true
-          }
-        }
-        if (!adult) npa = true
+        // iOS does not track (no ATT prompt, App Privacy says no tracking): non-personalised ads only.
+        if (!adult || detectPlatform() === 'ios') npa = true
         await AdMob.initialize({ maxAdContentRating: MaxAdContentRating.Teen, tagForUnderAgeOfConsent: !adult })
         return { ok: true, npa }
       } catch {

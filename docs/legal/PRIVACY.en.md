@@ -31,7 +31,7 @@ Rüzgar Emir Bulut (individual developer, trading as "Kickborn"), Istanbul, Tür
 | Web server and system logs (masked IP addresses) | Our server | Operate and secure the service (legitimate interest) | Yes |
 | Encrypted backups of the server data | Off-site storage | Recover from failure (legitimate interest) | Yes |
 | Birth year asked by the casino and the shop | On-device storage only | Age gate for the casino and cash purchases | No |
-| Advertising ID / IDFA, ad requests | Google AdMob | Show rewarded ads. Advertising ID only with your ATT permission on iOS; in the EU/UK only after your consent in Google's consent form (UMP). Personalised ads rely on consent | Yes, to Google |
+| Advertising ID / IDFA, ad requests | Google AdMob | Show rewarded ads. On iOS the app does not track you and ads are never personalised; in the EU/UK personalised ads only after your consent in Google's consent form (UMP). Personalised ads rely on consent | Yes, to Google |
 | Payment data | Apple App Store / Google Play | Payment and receipts | Between you and the store; we receive only transaction ids and receipts |
 
 Our account id is sent to Google as the ad verification user id so a reward can be matched to its ad. Our own app collects no special-category data, precise location, contacts, camera or microphone. The Google AdMob SDK may itself collect device and diagnostic information, an approximate (coarse) location derived from your IP address, and the advertising ID (with your consent / ATT permission). The age flag (under or over 18, not your birth year) is sent to Google AdMob to restrict personalised ads.

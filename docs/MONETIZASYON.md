@@ -374,7 +374,7 @@ Ekran geçişinde zorla izletilen reklam, NSS'in son yıllardaki 1 numaralı 1-2
   - Google Play "Veri güvenliği" formu;
   - App Store "Privacy Nutrition Label".
 - **AB, BK, Türkiye:** reklam öncesi rıza ekranı (Google UMP / IAB TCF). Rıza yoksa kişiselleştirilmemiş reklam gösterilir.
-- **iOS:** App Tracking Transparency (ATT) izni. Reddedilirse kişiselleştirilmemiş reklam gösterilir.
+- **iOS:** Takip yok, ATT istemi yok; her zaman kişiselleştirilmemiş reklam (App Review 2026-10-27, Guideline 2.1).
 - **Yaş:** kitlenin bir kısmı genç. 13 yaş altı kullanıcılar için reklam isteği çocuğa yönelik işaretlenir (COPPA, `tagForChildDirectedTreatment` / `tagForUnderAgeOfConsent`). Oyunda yaş beyanı gerekir.
 - **Çevrimdışı:** oyun çevrimdışı çalışır. Ödüllü reklam yalnızca çevrimiçiyken görünür, çevrimdışıyken teklif gizlenir.
 - **Kumarhane ekranında reklam yok.** Reklam ağları kumar içerikli sayfalarda ek kısıtlama uygular.

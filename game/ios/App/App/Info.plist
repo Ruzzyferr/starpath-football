@@ -75,8 +75,6 @@
 	<true/>
 	<key>GADApplicationIdentifier</key>
 	<string>ca-app-pub-2953141598487358~8517833939</string>
-	<key>NSUserTrackingUsageDescription</key>
-	<string>Used only to show you more relevant optional reward ads. You can decline and still get every reward.</string>
 	<key>SKAdNetworkItems</key>
 	<array>
 		<dict>
