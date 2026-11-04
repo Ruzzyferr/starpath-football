@@ -51,7 +51,7 @@ async function api(method, path, data) {
 let ver = (await api('GET', `/v1/apps/${APP_ID}/appStoreVersions?filter[platform]=IOS&filter[versionString]=${version}`)).data[0]
 if (!ver) {
   ver = (await api('POST', '/v1/appStoreVersions', {
-    data: { type: 'appStoreVersions', attributes: { platform: 'IOS', versionString: version }, relationships: { app: { data: { type: 'apps', id: APP_ID } } } },
+    data: { type: 'appStoreVersions', attributes: { platform: 'IOS', versionString: version, releaseType: 'AFTER_APPROVAL' }, relationships: { app: { data: { type: 'apps', id: APP_ID } } } },
   })).data
   console.log(`created version ${version}`)
 }
