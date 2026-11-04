@@ -15,6 +15,9 @@ if (!/^\d+\.\d+(\.\d+)?$/.test(version ?? '')) throw new Error('usage: asc-metad
 const read = (p) => JSON.parse(readFileSync(new URL(`../docs/store/${p}`, import.meta.url), 'utf8'))
 const aso = read('aso-locales.json')
 const desc = read('description-ios.json')
+// What's New is required on every update (not on a first release); missing file = not sent.
+let whatsNew = {}
+try { whatsNew = read('whats-new-ios.json') } catch {}
 const locales = Object.keys(aso).filter((l) => !l.startsWith('_'))
 for (const l of locales) if (!desc[l]) throw new Error(`description-ios.json: missing ${l}`)
 
@@ -57,7 +60,7 @@ console.log(`version ${version}: ${ver.id} ${ver.attributes?.appStoreState ?? ''
 // 2. Version localizations: description, keywords, support URL.
 const verLocs = dry && ver.id === 'dry-run' ? [] : (await api('GET', `/v1/appStoreVersions/${ver.id}/appStoreVersionLocalizations?limit=200`)).data
 for (const l of locales) {
-  const attributes = { description: desc[l], keywords: aso[l].keywords, supportUrl: `${SITE}/support`, marketingUrl: SITE }
+  const attributes = { description: desc[l], keywords: aso[l].keywords, supportUrl: `${SITE}/support`, marketingUrl: SITE, ...(whatsNew[l] ? { whatsNew: whatsNew[l] } : {}) }
   const have = verLocs.find((x) => x.attributes.locale === l)
   if (have) await api('PATCH', `/v1/appStoreVersionLocalizations/${have.id}`, { data: { type: 'appStoreVersionLocalizations', id: have.id, attributes } })
   else await api('POST', '/v1/appStoreVersionLocalizations', {
