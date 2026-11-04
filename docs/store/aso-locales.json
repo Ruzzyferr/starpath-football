@@ -1,0 +1,198 @@
+{
+  "_note": "App Store metadata per localization: name and subtitle <= 30 characters, keywords <= 100 bytes, comma separated, no spaces after commas, no word repeated from name or subtitle, no third-party brand names (Guideline 2.3.7). Check with: node scripts/check-aso.mjs",
+  "en-US": {
+    "name": "Kickborn: Soccer Career",
+    "subtitle": "Pro footballer life simulator",
+    "keywords": "football,manager,player,league,transfer,striker,goal,penalty,academy,legend,sports,offline,rpg,club"
+  },
+  "en-GB": {
+    "name": "Kickborn: Football Career",
+    "subtitle": "Pro soccer player life sim",
+    "keywords": "footballer,manager,league,transfer,striker,goal,penalty,academy,legend,sports,simulator,offline,rpg"
+  },
+  "en-AU": {
+    "name": "Kickborn: Football Career",
+    "subtitle": "Become a pro soccer star",
+    "keywords": "footballer,winger,keeper,midfielder,captain,derby,stadium,season,scout,contract,fame,league,sim"
+  },
+  "en-CA": {
+    "name": "Kickborn: Soccer Career",
+    "subtitle": "Football star life simulator",
+    "keywords": "footballer,winger,keeper,midfielder,captain,derby,stadium,season,scout,contract,fame,league,offline"
+  },
+  "tr": {
+    "name": "Kickborn: Futbol Kariyeri",
+    "subtitle": "Futbolcu hayatı simülasyonu",
+    "keywords": "menajer,lig,transfer,gol,penaltı,akademi,efsane,spor,oyun,maç,kulüp,yıldız,forvet,kaleci,soccer"
+  },
+  "de-DE": {
+    "name": "Kickborn: Fußball-Karriere",
+    "subtitle": "Fußballprofi Lebens-Simulator",
+    "keywords": "fussball,manager,spieler,liga,transfer,tor,elfmeter,akademie,legende,sport,offline,verein,stürmer"
+  },
+  "fr-FR": {
+    "name": "Kickborn: Carrière Football",
+    "subtitle": "Vie de footballeur pro",
+    "keywords": "foot,manager,joueur,ligue,transfert,but,penalty,académie,légende,sport,simulation,club,match"
+  },
+  "fr-CA": {
+    "name": "Kickborn: Carrière Soccer",
+    "subtitle": "Simulation de vie de joueur",
+    "keywords": "football,foot,footballeur,ligue,transfert,but,penalty,académie,légende,sport,club,match,gardien"
+  },
+  "es-ES": {
+    "name": "Kickborn: Carrera de Fútbol",
+    "subtitle": "Simulador de vida futbolista",
+    "keywords": "futbol,manager,jugador,liga,fichaje,gol,penalti,academia,leyenda,deporte,club,partido,delantero"
+  },
+  "es-MX": {
+    "name": "Kickborn: Futbolista Pro",
+    "subtitle": "Tu carrera en el futbol soccer",
+    "keywords": "manager,jugador,liga,fichaje,gol,penal,academia,leyenda,deporte,club,partido,delantero,portero"
+  },
+  "pt-BR": {
+    "name": "Kickborn: Carreira no Futebol",
+    "subtitle": "Simulador de vida de jogador",
+    "keywords": "manager,técnico,liga,transferência,gol,pênalti,base,lenda,esporte,offline,clube,partida,atacante"
+  },
+  "pt-PT": {
+    "name": "Kickborn: Carreira de Futebol",
+    "subtitle": "Vida de futebolista pro",
+    "keywords": "treinador,jogador,liga,transferência,golo,penálti,academia,lenda,desporto,offline,clube,jogo"
+  },
+  "it": {
+    "name": "Kickborn: Carriera nel Calcio",
+    "subtitle": "Simulatore di vita calciatore",
+    "keywords": "manager,giocatore,lega,trasferimento,gol,rigore,accademia,leggenda,sport,offline,squadra,partita"
+  },
+  "nl-NL": {
+    "name": "Kickborn: Voetbalcarrière",
+    "subtitle": "Profvoetballer levenssimulatie",
+    "keywords": "voetbal,manager,speler,competitie,transfer,doelpunt,penalty,academie,legende,sport,offline,club"
+  },
+  "ru": {
+    "name": "Kickborn: Карьера футболиста",
+    "subtitle": "Симулятор жизни в футболе",
+    "keywords": "менеджер,лига,трансфер,гол,пенальти,спорт,клуб,матч"
+  },
+  "uk": {
+    "name": "Kickborn: Кар'єра футболіста",
+    "subtitle": "Симулятор життя у футболі",
+    "keywords": "менеджер,ліга,трансфер,гол,пенальті,спорт,клуб,матч"
+  },
+  "pl": {
+    "name": "Kickborn: Kariera Piłkarza",
+    "subtitle": "Symulator życia w futbolu",
+    "keywords": "piłka,nożna,menedżer,liga,transfer,gol,karny,akademia,legenda,sport,offline,klub,mecz,napastnik"
+  },
+  "cs": {
+    "name": "Kickborn: Fotbalová kariéra",
+    "subtitle": "Simulátor života fotbalisty",
+    "keywords": "fotbal,manažer,liga,přestup,gól,penalta,akademie,legenda,sport,offline,klub,zápas,útočník"
+  },
+  "sk": {
+    "name": "Kickborn: Futbalová kariéra",
+    "subtitle": "Simulátor života futbalistu",
+    "keywords": "futbal,manažér,liga,prestup,gól,penalta,akadémia,legenda,šport,offline,klub,zápas,útočník"
+  },
+  "hr": {
+    "name": "Kickborn: Nogometna karijera",
+    "subtitle": "Simulator života nogometaša",
+    "keywords": "nogomet,menadžer,liga,transfer,gol,penal,akademija,legenda,sport,offline,klub,utakmica,napadač"
+  },
+  "ro": {
+    "name": "Kickborn: Cariera de Fotbal",
+    "subtitle": "Simulator de viață fotbalist",
+    "keywords": "manager,jucător,liga,transfer,gol,penalty,academie,legendă,sport,offline,club,meci,atacant,portar"
+  },
+  "hu": {
+    "name": "Kickborn: Focikarrier",
+    "subtitle": "Profi focista életszimulátor",
+    "keywords": "foci,labdarúgás,menedzser,liga,átigazolás,gól,tizenegyes,akadémia,legenda,sport,offline,klub"
+  },
+  "el": {
+    "name": "Kickborn: Καριέρα Ποδοσφαίρου",
+    "subtitle": "Ζωή ποδοσφαιριστή",
+    "keywords": "ποδόσφαιρο,μάνατζερ,πρωτάθλημα,γκολ,πέναλτι,ομάδα,soccer"
+  },
+  "sv": {
+    "name": "Kickborn: Fotbollskarriär",
+    "subtitle": "Fotbollsproffsets liv",
+    "keywords": "fotboll,manager,spelare,liga,övergång,mål,straff,akademi,legend,sport,offline,klubb,match"
+  },
+  "da": {
+    "name": "Kickborn: Fodboldkarriere",
+    "subtitle": "Fodboldspillerens liv",
+    "keywords": "fodbold,manager,spiller,liga,transfer,mål,straffespark,akademi,legende,sport,offline,klub,kamp"
+  },
+  "no": {
+    "name": "Kickborn: Fotballkarriere",
+    "subtitle": "Livet som fotballproff",
+    "keywords": "fotball,manager,spiller,liga,overgang,mål,straffe,akademi,legende,sport,offline,klubb,kamp,spiss"
+  },
+  "fi": {
+    "name": "Kickborn: Jalkapallo-ura",
+    "subtitle": "Jalkapalloilijan elämä",
+    "keywords": "manageri,pelaaja,liiga,siirto,maali,rangaistuspotku,akatemia,legenda,urheilu,offline,seura,ottelu"
+  },
+  "ca": {
+    "name": "Kickborn: Carrera de Futbol",
+    "subtitle": "Vida de futbolista pro",
+    "keywords": "manager,jugador,lliga,fitxatge,gol,penal,acadèmia,llegenda,esport,offline,club,partit,davanter"
+  },
+  "ja": {
+    "name": "Kickborn: サッカー選手キャリア",
+    "subtitle": "プロサッカー選手の人生シミュレーション",
+    "keywords": "監督,リーグ,移籍,ゴール,PK,育成,スポーツ,クラブ,soccer,football"
+  },
+  "ko": {
+    "name": "Kickborn: 축구 선수 커리어",
+    "subtitle": "프로 축구선수 인생 시뮬레이션",
+    "keywords": "감독,리그,이적,골,페널티,유스,스포츠,클럽,경기,soccer,football"
+  },
+  "zh-Hans": {
+    "name": "Kickborn：足球生涯",
+    "subtitle": "职业足球运动员人生模拟",
+    "keywords": "经理,联赛,转会,进球,点球,青训,体育,俱乐部,球星,比赛,soccer"
+  },
+  "zh-Hant": {
+    "name": "Kickborn：足球生涯",
+    "subtitle": "職業足球員人生模擬",
+    "keywords": "經理,聯賽,轉會,進球,點球,青訓,體育,俱樂部,球星,比賽,soccer"
+  },
+  "ar-SA": {
+    "name": "Kickborn: مسيرة كرة القدم",
+    "subtitle": "محاكي حياة لاعب محترف",
+    "keywords": "مدرب,دوري,انتقال,هدف,ركلة,رياضة,نادي,مباراة,نجم,soccer"
+  },
+  "he": {
+    "name": "Kickborn: קריירת כדורגל",
+    "subtitle": "סימולטור חיי שחקן מקצועי",
+    "keywords": "מנג'ר,ליגה,העברה,שער,פנדל,ספורט,מועדון,משחק,soccer"
+  },
+  "hi": {
+    "name": "Kickborn: फ़ुटबॉल करियर",
+    "subtitle": "फ़ुटबॉलर जीवन सिमुलेटर",
+    "keywords": "football,soccer,मैनेजर,लीग,गोल,खेल,क्लब"
+  },
+  "id": {
+    "name": "Kickborn: Karier Sepak Bola",
+    "subtitle": "Simulasi hidup pesepak bola",
+    "keywords": "manajer,pemain,liga,transfer,gol,penalti,akademi,legenda,olahraga,offline,klub,striker,kiper,soccer"
+  },
+  "ms": {
+    "name": "Kickborn: Kerjaya Bola Sepak",
+    "subtitle": "Simulasi hidup pemain bola",
+    "keywords": "pengurus,liga,pemindahan,gol,penalti,akademi,legenda,sukan,offline,kelab,penyerang,penjaga,soccer"
+  },
+  "th": {
+    "name": "Kickborn: อาชีพนักฟุตบอล",
+    "subtitle": "จำลองชีวิตนักเตะอาชีพ",
+    "keywords": "ฟุตบอล,ลีก,ย้ายทีม,ประตู,จุดโทษ,กีฬา"
+  },
+  "vi": {
+    "name": "Kickborn: Sự nghiệp Bóng đá",
+    "subtitle": "Mô phỏng đời cầu thủ",
+    "keywords": "quản lý,giải đấu,chuyển nhượng,phạt đền,học viện,thể thao,câu lạc bộ"
+  }
+}
