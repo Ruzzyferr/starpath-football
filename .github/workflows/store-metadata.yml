@@ -1,0 +1,31 @@
+# Pushes App Store metadata for every localization (docs/store/aso-locales.json and
+# docs/store/description-ios.json) to App Store Connect through the API (scripts/asc-metadata.mjs).
+# Uses the same API key secrets as testflight.yml.
+name: Store metadata
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: iOS version string, e.g. 1.0.1 (created in App Store Connect if missing)
+        required: true
+      dry_run:
+        description: Only print what would change
+        type: boolean
+        default: true
+
+jobs:
+  metadata:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node scripts/check-aso.mjs
+      - name: Push metadata
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node scripts/asc-metadata.mjs "${{ inputs.version }}" ${{ inputs.dry_run && '--dry-run' || '' }}
