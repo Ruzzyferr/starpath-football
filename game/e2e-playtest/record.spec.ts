@@ -44,6 +44,19 @@ for (const kind of KINDS) {
         await page.goto(`/match-demo.html?kind=${kind}&seed=${seed * 7 + 1}&lang=${process.env.PT_LANG ?? 'tr'}&gen=1`)
         await page.waitForFunction(() => !!(globalThis as unknown as { __spScene?: unknown }).__spScene, undefined, { timeout: 60_000 })
         const cdp = await page.context().newCDPSession(page)
+        // PT_CAST=1: full-resolution frames (device pixels, unlike Playwright's video) with
+        // timestamps in <dir>/cast/, for store preview videos (assembled with ffmpeg).
+        const cast: { file: string; t: number }[] = []
+        if (process.env.PT_CAST) {
+          mkdirSync(`${dir}/cast`, { recursive: true })
+          cdp.on('Page.screencastFrame', (f: { data: string; sessionId: number }) => {
+            const file = `c${String(cast.length).padStart(5, '0')}.jpg`
+            writeFileSync(`${dir}/cast/${file}`, Buffer.from(f.data, 'base64'))
+            cast.push({ file, t: Date.now() / 1000 })
+            void cdp.send('Page.screencastFrameAck', { sessionId: f.sessionId }).catch(() => {})
+          })
+          await cdp.send('Page.startScreencast', { format: 'jpeg', quality: 92, everyNthFrame: 1, maxWidth: 2000, maxHeight: 4000 })
+        }
         const r = rng(seed * 1000 + kind.length * 17 + pname.length)
         const th = new Thumbs(cdp, r, persona)
         const frames: { t: number; file: string; phase: string; heroOnBall: boolean; carrier: string | null; result: string | null }[] = []
@@ -166,6 +179,10 @@ for (const kind of KINDS) {
           video: ti.outputPath(''),
         }
         writeFileSync(`${dir}/run.json`, JSON.stringify(run, null, 1))
+        if (process.env.PT_CAST) {
+          await cdp.send('Page.stopScreencast').catch(() => {})
+          writeFileSync(`${dir}/cast/frames.json`, JSON.stringify(cast))
+        }
       })
     }
   }
