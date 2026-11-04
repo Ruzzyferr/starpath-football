@@ -4,6 +4,10 @@
 name: Store metadata
 
 on:
+  # A push that touches the metadata only runs the limits check; the API push is manual.
+  push:
+    branches: [main]
+    paths: [docs/store/aso-locales.json, docs/store/description-ios.json, scripts/asc-metadata.mjs, scripts/check-aso.mjs, .github/workflows/store-metadata.yml]
   workflow_dispatch:
     inputs:
       version:
@@ -24,6 +28,7 @@ jobs:
           node-version: 24
       - run: node scripts/check-aso.mjs
       - name: Push metadata
+        if: github.event_name == 'workflow_dispatch'
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
