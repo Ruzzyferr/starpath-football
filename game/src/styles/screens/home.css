@@ -416,14 +416,15 @@
 /* ── CTA (thumb zone) ── */
 .home-cta {
   display: flex;
+  flex-wrap: wrap; /* longer languages (es, de, fr…): the main button takes its own row instead of overflowing */
   gap: var(--sp-2);
   align-items: center;
 }
 .home-cta-main {
-  flex: 1 1 auto;
+  flex: 1 1 auto; /* its label's width decides when the row wraps */
 }
 .home-cta-auto {
-  flex: none;
+  flex: 1 1 auto;
 }
 @media (max-width: 380px) {
   .home-cta-auto .btn-label {

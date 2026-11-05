@@ -13,6 +13,11 @@
 }
 .life-stats::-webkit-scrollbar { display: none; }
 .life-stats > * { flex: 0 0 auto; }
+/* Phones: the strip scrolls sideways (more so in long languages); the right edge fades so the
+   rings and the followers card past it read as "more this way". */
+@media (max-width: 639px) {
+  .life-stats { mask-image: linear-gradient(to right, #000 calc(100% - 36px), transparent); padding-right: var(--sp-6, 32px); }
+}
 @media (min-width: 640px) {
   .life-stats { justify-content: flex-start; gap: var(--sp-4); }
 }
