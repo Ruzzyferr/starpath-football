@@ -94,6 +94,15 @@ jobs:
             rm -rf "$f/_CodeSignature"
           done
 
+      # An unsigned archive carries no entitlements, and the export signs with only what the
+      # archived app declares: ad-hoc sign it with App.entitlements (Game Center) so they survive.
+      - name: Embed entitlements
+        run: |
+          APP="$RUNNER_TEMP/App.xcarchive/Products/Applications/App.app"
+          for f in "$APP/Frameworks/"*.framework; do [ -d "$f" ] && codesign --force --sign - "$f"; done
+          codesign --force --sign - --entitlements ios/App/App/App.entitlements --generate-entitlement-der "$APP"
+          codesign -d --entitlements - "$APP" | grep -q game-center
+
       - name: Export and upload to TestFlight
         env:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
@@ -122,6 +131,13 @@ jobs:
             -authenticationKeyPath "$RUNNER_TEMP/asc/AuthKey_${ASC_KEY_ID}.p8" \
             -authenticationKeyID "$ASC_KEY_ID" \
             -authenticationKeyIssuerID "$ASC_ISSUER_ID"
+
+      - name: Check the exported app keeps Game Center
+        run: |
+          cd "$RUNNER_TEMP" && rm -rf ipa-check && mkdir ipa-check && cd ipa-check
+          IPA=$(ls "$RUNNER_TEMP/export/"*.ipa 2>/dev/null | head -1)
+          if [ -z "$IPA" ]; then echo "no local ipa (uploaded directly); skipping"; exit 0; fi
+          unzip -q "$IPA" && codesign -d --entitlements - Payload/*.app | tee /dev/stderr | grep -q game-center
 
       - name: Remove API key
         if: always()
