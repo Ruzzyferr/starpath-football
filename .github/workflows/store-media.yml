@@ -1,0 +1,42 @@
+# Uploads store screenshots and app previews (scripts/asc-media.mjs). The media zip is too large
+# for the repository: it is a release asset (gh release upload <tag> store-media.zip), downloaded here.
+name: Store media
+
+on:
+  push:
+    branches: [main]
+    paths: [scripts/asc-media.mjs, .github/workflows/store-media.yml]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: iOS version string, e.g. 1.0.2
+        required: true
+      tag:
+        description: Release tag holding store-media.zip
+        required: true
+      dry_run:
+        description: Only print what would change
+        type: boolean
+        default: true
+
+jobs:
+  media:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - run: node --check scripts/asc-media.mjs
+      - name: Download media
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release download "${{ inputs.tag }}" -p store-media.zip -D /tmp && unzip -q /tmp/store-media.zip -d /tmp/media
+      - name: Upload media
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node scripts/asc-media.mjs "${{ inputs.version }}" /tmp/media ${{ inputs.dry_run && '--dry-run' || '' }}

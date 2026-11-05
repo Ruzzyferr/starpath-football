@@ -43,7 +43,7 @@ for (const file of walkFiles(src)) {
       const a = lit(n.arguments[0])
       const b = lit(n.arguments[1])
       const callee = n.expression.getText(sf)
-      if (a !== null && b !== null && /(^|\.)(L|t|tt|lt2|pair)$/.test(callee) && a !== b) strings.add(b)
+      if (a !== null && b !== null && /(^|\.)(L|t|lt|tt|lt2|pair)$/.test(callee) && a !== b) strings.add(b)
     }
     if (ts.isObjectLiteralExpression(n)) {
       const props = new Map()
