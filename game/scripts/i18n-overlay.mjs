@@ -21,7 +21,8 @@ const work = (lang) => join(dir, '.work', lang)
 /** The parts a translation must keep: {var}, {n|a|b} heads, ICU plural heads, %s, line breaks, emoji. */
 function tokens(s) {
   const out = []
-  for (const m of s.matchAll(/\{(\w+)(?:\s*,\s*plural|\|)?/g)) out.push(`{${m[1]}`)
+  // {his} is an English pronoun filled in by the code: translations may (should) drop it.
+  for (const m of s.matchAll(/\{(\w+)(?:\s*,\s*plural|\|)?/g)) if (m[1] !== 'his') out.push(`{${m[1]}`)
   for (const m of s.matchAll(/\p{Extended_Pictographic}/gu)) out.push(m[0])
   out.push(`nl:${(s.match(/\n/g) ?? []).length}`)
   return out.sort().join(' ')
