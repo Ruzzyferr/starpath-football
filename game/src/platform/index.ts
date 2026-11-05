@@ -47,8 +47,12 @@ export const platform = {
     return id !== 'web'
   },
   achievements: {
-    /** Unlock a Steam achievement (API name). No-op (false) outside a Steam-enabled desktop build. */
+    /**
+     * Unlock an achievement: Game Center on iOS (id "kb.<id>", set up in App Store Connect), Steam
+     * on a Steam desktop build (API name = id). No-op (false) anywhere else.
+     */
     async unlock(achievementId: string): Promise<boolean> {
+      if (id === 'ios' && cap) return cap.GameCenter.unlock({ id: `kb.${achievementId}` }).then((r) => r.ok).catch(() => false)
       if (id !== 'electron' || !window.starpathNative) return false
       try {
         return await window.starpathNative.steam.unlock(achievementId)
@@ -57,8 +61,20 @@ export const platform = {
       }
     },
     async available(): Promise<boolean> {
+      if (id === 'ios' && cap) return true
       if (id !== 'electron' || !window.starpathNative) return false
       return window.starpathNative.steam.available().catch(() => false)
+    },
+  },
+  gameCenter: {
+    /** Best career goal total on the Game Center leaderboard (iOS; no-op elsewhere). */
+    submitCareerGoals(goals: number): void {
+      if (id === 'ios' && cap && goals > 0) void cap.GameCenter.submitScore({ leaderboard: 'kb.career_goals', score: Math.floor(goals) }).catch(() => undefined)
+    },
+    /** Opens the Game Center dashboard (achievements, leaderboards). False when unavailable. */
+    async showDashboard(): Promise<boolean> {
+      if (id !== 'ios' || !cap) return false
+      return cap.GameCenter.showDashboard().then((r) => r.ok).catch(() => false)
     },
   },
   /** Keep the screen on (matches). Native plugin on mobile, Wake Lock API on web/desktop. */
@@ -128,6 +144,16 @@ export async function initPlatform(): Promise<PlatformId> {
       cap = await import('./capacitor')
       cap.installHaptics()
       cap.installReview()
+      // Game Center sign-in (iOS): Apple shows its own banner or sheet; declining is fine.
+      if (id === 'ios') {
+        const gc = cap.GameCenter
+        void gc.signIn().then(async ({ signedIn }) => {
+          if (!signedIn) return
+          // Unlocks earned while signed out are sent now (Game Center ignores repeats).
+          const { metaData } = await import('../ui/backend/meta')
+          for (const a of Object.keys(metaData.peek().achievements.unlocked)) void gc.unlock({ id: `kb.${a}` }).catch(() => undefined)
+        }).catch(() => undefined)
+      }
       cap.setupLifecycle(() => handleBack(() => platform.exit()))
       void cap.setupChrome()
       if (await cap.setupKeyboard((open) => setKeyboard(open))) markNativeKeyboard()

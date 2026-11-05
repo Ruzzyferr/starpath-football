@@ -1,0 +1,1142 @@
+[
+ {
+  "id": "first_contract",
+  "category": "career",
+  "icon": "✍️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "İlk İmza",
+   "en": "First Signature"
+  },
+  "desc": {
+   "tr": "İlk profesyonel sözleşmeni imzala.",
+   "en": "Sign your first professional contract."
+  }
+ },
+ {
+  "id": "debut",
+  "category": "career",
+  "icon": "👟",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Profesyonel Çıkış",
+   "en": "Professional Debut"
+  },
+  "desc": {
+   "tr": "İlk resmî maçına çık.",
+   "en": "Play your first competitive match."
+  }
+ },
+ {
+  "id": "first_goal",
+  "category": "career",
+  "icon": "⚽",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "İlk Gol",
+   "en": "Off the Mark"
+  },
+  "desc": {
+   "tr": "Kariyerinin ilk golünü at.",
+   "en": "Score your first career goal."
+  }
+ },
+ {
+  "id": "goals_50",
+  "category": "career",
+  "icon": "🎯",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Elli",
+   "en": "Half a Century"
+  },
+  "desc": {
+   "tr": "Kariyerinde 50 gol at.",
+   "en": "Score 50 career goals."
+  }
+ },
+ {
+  "id": "goals_100",
+  "category": "career",
+  "icon": "💯",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Yüzler Kulübü",
+   "en": "Centurion"
+  },
+  "desc": {
+   "tr": "Kariyerinde 100 gol at.",
+   "en": "Score 100 career goals."
+  }
+ },
+ {
+  "id": "goals_250",
+  "category": "career",
+  "icon": "🔥",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Gol Makinesi",
+   "en": "Goal Machine"
+  },
+  "desc": {
+   "tr": "Kariyerinde 250 gol at.",
+   "en": "Score 250 career goals."
+  }
+ },
+ {
+  "id": "goals_500",
+  "category": "career",
+  "icon": "👑",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Beş Yüz",
+   "en": "Five Hundred"
+  },
+  "desc": {
+   "tr": "Kariyerinde 500 gol at.",
+   "en": "Score 500 career goals."
+  }
+ },
+ {
+  "id": "assists_50",
+  "category": "career",
+  "icon": "🤝",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Servis Ustası",
+   "en": "Provider"
+  },
+  "desc": {
+   "tr": "Kariyerinde 50 asist yap.",
+   "en": "Make 50 career assists."
+  }
+ },
+ {
+  "id": "assists_150",
+  "category": "career",
+  "icon": "🪄",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Asist Kralı",
+   "en": "King of Assists"
+  },
+  "desc": {
+   "tr": "Kariyerinde 150 asist yap.",
+   "en": "Make 150 career assists."
+  }
+ },
+ {
+  "id": "apps_100",
+  "category": "career",
+  "icon": "📅",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Yüzüncü Maç",
+   "en": "Hundred Club"
+  },
+  "desc": {
+   "tr": "100 maça çık.",
+   "en": "Play 100 matches."
+  }
+ },
+ {
+  "id": "apps_300",
+  "category": "career",
+  "icon": "🏟️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Demirbaş",
+   "en": "Mainstay"
+  },
+  "desc": {
+   "tr": "300 maça çık.",
+   "en": "Play 300 matches."
+  }
+ },
+ {
+  "id": "apps_500",
+  "category": "career",
+  "icon": "🗿",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Abide",
+   "en": "Monument"
+  },
+  "desc": {
+   "tr": "500 maça çık.",
+   "en": "Play 500 matches."
+  }
+ },
+ {
+  "id": "motm_10",
+  "category": "career",
+  "icon": "🌟",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Maçın Adamı",
+   "en": "Man of the Match"
+  },
+  "desc": {
+   "tr": "10 kez maçın oyuncusu seçil.",
+   "en": "Win 10 player-of-the-match awards."
+  }
+ },
+ {
+  "id": "ovr_70",
+  "category": "career",
+  "icon": "📈",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kaliteli Oyuncu",
+   "en": "Quality Player"
+  },
+  "desc": {
+   "tr": "70 genel reytinge ulaş.",
+   "en": "Reach 70 OVR."
+  }
+ },
+ {
+  "id": "ovr_80",
+  "category": "career",
+  "icon": "🚀",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Dünya Klası",
+   "en": "World Class"
+  },
+  "desc": {
+   "tr": "80 genel reytinge ulaş.",
+   "en": "Reach 80 OVR."
+  }
+ },
+ {
+  "id": "ovr_90",
+  "category": "career",
+  "icon": "💎",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Fenomen",
+   "en": "Phenomenon"
+  },
+  "desc": {
+   "tr": "90 genel reytinge ulaş.",
+   "en": "Reach 90 OVR."
+  }
+ },
+ {
+  "id": "young_star",
+  "category": "career",
+  "icon": "🌱",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Harika Çocuk",
+   "en": "Wonderkid"
+  },
+  "desc": {
+   "tr": "19 yaşında ya da daha genç 65 reytinge ulaş.",
+   "en": "Reach 65 OVR aged 19 or younger."
+  }
+ },
+ {
+  "id": "first_trophy",
+  "category": "career",
+  "icon": "🏆",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "İlk Kupa",
+   "en": "Silverware"
+  },
+  "desc": {
+   "tr": "İlk kupanı kazan.",
+   "en": "Win your first trophy."
+  }
+ },
+ {
+  "id": "trophies_10",
+  "category": "career",
+  "icon": "🏛️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kupa Dolabı",
+   "en": "Trophy Cabinet"
+  },
+  "desc": {
+   "tr": "10 kupa kazan.",
+   "en": "Win 10 trophies."
+  }
+ },
+ {
+  "id": "first_award",
+  "category": "career",
+  "icon": "🏅",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Ödüllü",
+   "en": "Decorated"
+  },
+  "desc": {
+   "tr": "Bireysel bir ödül kazan.",
+   "en": "Win an individual award."
+  }
+ },
+ {
+  "id": "golden_star",
+  "category": "career",
+  "icon": "⭐",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Altın Yıldız",
+   "en": "Golden Star"
+  },
+  "desc": {
+   "tr": "Dünyanın en iyi oyuncusu seçil.",
+   "en": "Be named the best player in the world."
+  }
+ },
+ {
+  "id": "golden_boot",
+  "category": "career",
+  "icon": "👢",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Gol Kralı",
+   "en": "Top Scorer"
+  },
+  "desc": {
+   "tr": "Bir sezonu ligin ya da tüm liglerin gol kralı olarak bitir.",
+   "en": "Finish a season as your league's or all leagues' top scorer."
+  }
+ },
+ {
+  "id": "national_call",
+  "category": "career",
+  "icon": "🎽",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Milli Forma",
+   "en": "International"
+  },
+  "desc": {
+   "tr": "Milli takıma çağrıl.",
+   "en": "Get called up by your national team."
+  }
+ },
+ {
+  "id": "caps_50",
+  "category": "career",
+  "icon": "🎖️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Milli Emektar",
+   "en": "National Servant"
+  },
+  "desc": {
+   "tr": "50 milli maça çık.",
+   "en": "Earn 50 caps."
+  }
+ },
+ {
+  "id": "int_goals_20",
+  "category": "career",
+  "icon": "🥇",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Milli Golcü",
+   "en": "National Hero"
+  },
+  "desc": {
+   "tr": "Milli takımda 20 gol at.",
+   "en": "Score 20 international goals."
+  }
+ },
+ {
+  "id": "star_role",
+  "category": "career",
+  "icon": "✨",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Takımın Yıldızı",
+   "en": "Main Man"
+  },
+  "desc": {
+   "tr": "Takımında yıldız rolüne yüksel.",
+   "en": "Earn the star role at your club."
+  }
+ },
+ {
+  "id": "captain",
+  "category": "career",
+  "icon": "©️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kaptan",
+   "en": "Captain"
+  },
+  "desc": {
+   "tr": "Kaptanlık bandını tak.",
+   "en": "Wear the captain armband."
+  }
+ },
+ {
+  "id": "big_club",
+  "category": "career",
+  "icon": "🏰",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Dev Kulüp",
+   "en": "Big Club"
+  },
+  "desc": {
+   "tr": "İtibarı 80+ bir kulübe imza at.",
+   "en": "Sign for a club with 80+ reputation."
+  }
+ },
+ {
+  "id": "abroad",
+  "category": "career",
+  "icon": "✈️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Gurbetçi",
+   "en": "Abroad"
+  },
+  "desc": {
+   "tr": "Yurt dışında bir kulüpte oyna.",
+   "en": "Play for a club abroad."
+  }
+ },
+ {
+  "id": "journeyman",
+  "category": "career",
+  "icon": "🧳",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Gezgin",
+   "en": "Journeyman"
+  },
+  "desc": {
+   "tr": "3 farklı kulüpte oyna.",
+   "en": "Play for 3 different clubs."
+  }
+ },
+ {
+  "id": "seasons_10",
+  "category": "career",
+  "icon": "🗓️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "On Yıl",
+   "en": "Decade"
+  },
+  "desc": {
+   "tr": "10 sezon oyna.",
+   "en": "Complete 10 seasons."
+  }
+ },
+ {
+  "id": "perks_5",
+  "category": "career",
+  "icon": "🧠",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Yetenekli",
+   "en": "Skilled"
+  },
+  "desc": {
+   "tr": "5 yetenek aç.",
+   "en": "Unlock 5 perks."
+  }
+ },
+ {
+  "id": "perk_capstone",
+  "category": "career",
+  "icon": "🌠",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Uzmanlık",
+   "en": "Mastery"
+  },
+  "desc": {
+   "tr": "Bir ustalık (2 puanlık) yeteneği aç.",
+   "en": "Unlock a capstone (2-point) perk."
+  }
+ },
+ {
+  "id": "hat_trick",
+  "category": "match",
+  "icon": "🎩",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Hat-trick",
+   "en": "Hat-trick"
+  },
+  "desc": {
+   "tr": "Bir maçta 3 gol at.",
+   "en": "Score 3 goals in a match."
+  }
+ },
+ {
+  "id": "hat_tricks_5",
+  "category": "match",
+  "icon": "🎩",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Hat-trick Ustası",
+   "en": "Hat-trick Hero"
+  },
+  "desc": {
+   "tr": "5 hat-trick yap.",
+   "en": "Score 5 hat-tricks."
+  }
+ },
+ {
+  "id": "four_goals",
+  "category": "match",
+  "icon": "4️⃣",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Dörtlük",
+   "en": "Haul"
+  },
+  "desc": {
+   "tr": "Bir maçta 4 gol at.",
+   "en": "Score 4 goals in a match."
+  }
+ },
+ {
+  "id": "free_kick_goal",
+  "category": "match",
+  "icon": "🌀",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Frikik Golü",
+   "en": "Free-Kick Goal"
+  },
+  "desc": {
+   "tr": "Serbest vuruştan gol at.",
+   "en": "Score from a free kick."
+  }
+ },
+ {
+  "id": "free_kicks_10",
+  "category": "match",
+  "icon": "🪄",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Frikik Uzmanı",
+   "en": "Dead-Ball Specialist"
+  },
+  "desc": {
+   "tr": "10 serbest vuruş golü at.",
+   "en": "Score 10 free-kick goals."
+  }
+ },
+ {
+  "id": "penalty_goal",
+  "category": "match",
+  "icon": "🧊",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Penaltı",
+   "en": "From the Spot"
+  },
+  "desc": {
+   "tr": "Penaltıdan gol at.",
+   "en": "Score a penalty."
+  }
+ },
+ {
+  "id": "header_goal",
+  "category": "match",
+  "icon": "🤕",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kafa Golü",
+   "en": "Header"
+  },
+  "desc": {
+   "tr": "Kafayla gol at.",
+   "en": "Score with a header."
+  }
+ },
+ {
+  "id": "perfect_game",
+  "category": "match",
+  "icon": "💯",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kusursuz",
+   "en": "Perfect Game"
+  },
+  "desc": {
+   "tr": "Bir maçta 9,5+ reyting al.",
+   "en": "Get a 9.5+ rating in a match."
+  }
+ },
+ {
+  "id": "three_assists",
+  "category": "match",
+  "icon": "🎁",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Cömert",
+   "en": "Generous"
+  },
+  "desc": {
+   "tr": "Bir maçta 3 asist yap.",
+   "en": "Make 3 assists in a match."
+  }
+ },
+ {
+  "id": "final_goal",
+  "category": "match",
+  "icon": "🏟️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Final Golü",
+   "en": "Cup Final Goal"
+  },
+  "desc": {
+   "tr": "Bir finalde gol at.",
+   "en": "Score in a final."
+  }
+ },
+ {
+  "id": "giant_killer",
+  "category": "match",
+  "icon": "🗡️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Dev Avcısı",
+   "en": "Giant Killer"
+  },
+  "desc": {
+   "tr": "İtibarı 80+ bir rakibi yen.",
+   "en": "Beat a club with 80+ reputation."
+  }
+ },
+ {
+  "id": "win_streak_5",
+  "category": "match",
+  "icon": "📶",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Seri",
+   "en": "On a Roll"
+  },
+  "desc": {
+   "tr": "Oynadığın 5 maçı üst üste kazan.",
+   "en": "Win 5 matches you play in a row."
+  }
+ },
+ {
+  "id": "veteran",
+  "category": "match",
+  "icon": "🧓",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Yaşlı Kurt",
+   "en": "Old Warhorse"
+  },
+  "desc": {
+   "tr": "36 yaşında ya da daha büyükken maç oyna.",
+   "en": "Play a match aged 36 or older."
+  }
+ },
+ {
+  "id": "gk_clean_sheet",
+  "category": "goalkeeping",
+  "icon": "🧤",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Gol Yok",
+   "en": "Clean Sheet"
+  },
+  "desc": {
+   "tr": "Kaleci olarak gol yemeden maç bitir.",
+   "en": "Keep a clean sheet as a goalkeeper."
+  }
+ },
+ {
+  "id": "gk_clean_sheets_25",
+  "category": "goalkeeping",
+  "icon": "🛡️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Kilit",
+   "en": "Lockdown"
+  },
+  "desc": {
+   "tr": "Kaleci olarak 25 maçta gol yeme.",
+   "en": "Keep 25 clean sheets as a goalkeeper."
+  }
+ },
+ {
+  "id": "gk_wall",
+  "category": "goalkeeping",
+  "icon": "🧱",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Aşılmaz Duvar",
+   "en": "The Wall"
+  },
+  "desc": {
+   "tr": "Bir maçta 8 kurtarış yap.",
+   "en": "Make 8 saves in a match."
+  }
+ },
+ {
+  "id": "gk_goal",
+  "category": "goalkeeping",
+  "icon": "😲",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Golcü Kaleci",
+   "en": "Goalscoring Keeper"
+  },
+  "desc": {
+   "tr": "Kaleci olarak gol at.",
+   "en": "Score as a goalkeeper."
+  }
+ },
+ {
+  "id": "millionaire",
+  "category": "life",
+  "icon": "💰",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Milyoner",
+   "en": "Millionaire"
+  },
+  "desc": {
+   "tr": "Net servetin 1 milyona ulaşsın.",
+   "en": "Reach a net worth of 1 million."
+  }
+ },
+ {
+  "id": "multi_millionaire",
+  "category": "life",
+  "icon": "🤑",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Servet",
+   "en": "Fortune"
+  },
+  "desc": {
+   "tr": "Net servetin 10 milyona ulaşsın.",
+   "en": "Reach a net worth of 10 million."
+  }
+ },
+ {
+  "id": "followers_100k",
+  "category": "life",
+  "icon": "📱",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Fenomen",
+   "en": "Influencer"
+  },
+  "desc": {
+   "tr": "100 bin takipçiye ulaş.",
+   "en": "Reach 100K followers."
+  }
+ },
+ {
+  "id": "followers_1m",
+  "category": "life",
+  "icon": "📣",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Milyonların Sevgilisi",
+   "en": "Global Icon"
+  },
+  "desc": {
+   "tr": "1 milyon takipçiye ulaş.",
+   "en": "Reach 1M followers."
+  }
+ },
+ {
+  "id": "first_home",
+  "category": "life",
+  "icon": "🏠",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Ev Sahibi",
+   "en": "Homeowner"
+  },
+  "desc": {
+   "tr": "Bir ev satın al.",
+   "en": "Buy a house."
+  }
+ },
+ {
+  "id": "car_collector",
+  "category": "life",
+  "icon": "🏎️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Garaj",
+   "en": "Car Collector"
+  },
+  "desc": {
+   "tr": "Aynı anda 3 araba sahibi ol.",
+   "en": "Own 3 cars at once."
+  }
+ },
+ {
+  "id": "sponsor",
+  "category": "life",
+  "icon": "👟",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Sponsorlu",
+   "en": "Endorsed"
+  },
+  "desc": {
+   "tr": "Bir sponsorluk anlaşması imzala.",
+   "en": "Sign a sponsorship deal."
+  }
+ },
+ {
+  "id": "super_agent",
+  "category": "life",
+  "icon": "🕴️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Süper Menajer",
+   "en": "Super Agent"
+  },
+  "desc": {
+   "tr": "5 yıldızlı bir menajerle çalış.",
+   "en": "Hire a 5-star agent."
+  }
+ },
+ {
+  "id": "happy_life",
+  "category": "life",
+  "icon": "😊",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Mutlu Hayat",
+   "en": "Living the Dream"
+  },
+  "desc": {
+   "tr": "Mutluluğun 90'a ulaşsın.",
+   "en": "Reach 90 happiness."
+  }
+ },
+ {
+  "id": "saver",
+  "category": "life",
+  "icon": "🏦",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Tutumlu",
+   "en": "Saver"
+  },
+  "desc": {
+   "tr": "Bankada 500 bin biriktir.",
+   "en": "Save 500K in the bank."
+  }
+ },
+ {
+  "id": "professional",
+  "category": "responsible",
+  "icon": "🎓",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Örnek Profesyonel",
+   "en": "Model Professional"
+  },
+  "desc": {
+   "tr": "Disiplinin 95'e ulaşsın.",
+   "en": "Reach 95 discipline."
+  }
+ },
+ {
+  "id": "drill_s",
+  "category": "training",
+  "icon": "🅢",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "S Notu",
+   "en": "Top Marks"
+  },
+  "desc": {
+   "tr": "Bir antrenman oyununda S notu al.",
+   "en": "Get an S grade in a training drill."
+  }
+ },
+ {
+  "id": "drill_s_10",
+  "category": "training",
+  "icon": "🏋️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Antrenman Canavarı",
+   "en": "Training Monster"
+  },
+  "desc": {
+   "tr": "10 kez S notu al.",
+   "en": "Get 10 S grades."
+  }
+ },
+ {
+  "id": "drill_all_s",
+  "category": "training",
+  "icon": "🗂️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Çok Yönlü",
+   "en": "All-Rounder"
+  },
+  "desc": {
+   "tr": "Her temel drilde en az bir S notu al.",
+   "en": "Get an S grade in every core drill."
+  }
+ },
+ {
+  "id": "drills_100",
+  "category": "training",
+  "icon": "⏱️",
+  "secret": false,
+  "points": 10,
+  "name": {
+   "tr": "Ter Döken",
+   "en": "Hard Worker"
+  },
+  "desc": {
+   "tr": "100 antrenman oyunu oyna.",
+   "en": "Play 100 training drills."
+  }
+ },
+ {
+  "id": "trial_star",
+  "category": "legacy",
+  "icon": "🎟️",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Seçmeden Yıldız",
+   "en": "Trial Triumph"
+  },
+  "desc": {
+   "tr": "Açık seçmeleri geçerek sözleşme kap.",
+   "en": "Earn a contract through an open tryout."
+  }
+ },
+ {
+  "id": "record_breaker",
+  "category": "legacy",
+  "icon": "📈",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Rekortmen",
+   "en": "Record Breaker"
+  },
+  "desc": {
+   "tr": "Bir kulüp rekoru kır.",
+   "en": "Break a club record."
+  }
+ },
+ {
+  "id": "retired",
+  "category": "legacy",
+  "icon": "👋",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Veda",
+   "en": "Farewell"
+  },
+  "desc": {
+   "tr": "Kariyerini noktala.",
+   "en": "Retire from football."
+  }
+ },
+ {
+  "id": "testimonial",
+  "category": "legacy",
+  "icon": "🎉",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Jübile",
+   "en": "Testimonial"
+  },
+  "desc": {
+   "tr": "Bir jübile maçıyla veda et.",
+   "en": "Say goodbye with a testimonial match."
+  }
+ },
+ {
+  "id": "one_club",
+  "category": "legacy",
+  "icon": "❤️",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Tek Kulüp Efsanesi",
+   "en": "One-Club Legend"
+  },
+  "desc": {
+   "tr": "10+ sezonu tek kulüpte geçirip emekli ol.",
+   "en": "Retire after 10+ seasons at a single club."
+  }
+ },
+ {
+  "id": "hall_of_fame",
+  "category": "legacy",
+  "icon": "🏛️",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Onur Listesi",
+   "en": "Hall of Famer"
+  },
+  "desc": {
+   "tr": "1.500+ miras puanıyla emekli ol.",
+   "en": "Retire with a 1,500+ legacy score."
+  }
+ },
+ {
+  "id": "legacy_start",
+  "category": "legacy",
+  "icon": "🧬",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Soyadın Gücü",
+   "en": "In the Blood"
+  },
+  "desc": {
+   "tr": "Bir efsanenin çocuğu olarak kariyere başla.",
+   "en": "Start a career as a legend's child."
+  }
+ },
+ {
+  "id": "dynasty",
+  "category": "legacy",
+  "icon": "🌳",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Hanedan",
+   "en": "Dynasty"
+  },
+  "desc": {
+   "tr": "Bir efsanenin çocuğuyla kariyeri tamamla.",
+   "en": "Retire with a legend's child."
+  }
+ },
+ {
+  "id": "three_careers",
+  "category": "legacy",
+  "icon": "🔁",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Üç Ömür",
+   "en": "Three Lifetimes"
+  },
+  "desc": {
+   "tr": "3 kariyeri tamamla.",
+   "en": "Complete 3 careers."
+  }
+ },
+ {
+  "id": "collector_30",
+  "category": "legacy",
+  "icon": "🏵️",
+  "secret": false,
+  "points": 20,
+  "name": {
+   "tr": "Koleksiyoncu",
+   "en": "Collector"
+  },
+  "desc": {
+   "tr": "30 başarım aç.",
+   "en": "Unlock 30 achievements."
+  }
+ },
+ {
+  "id": "completionist",
+  "category": "legacy",
+  "icon": "🏆",
+  "secret": true,
+  "points": 20,
+  "name": {
+   "tr": "Tamamlayıcı",
+   "en": "Completionist"
+  },
+  "desc": {
+   "tr": "60 başarım aç.",
+   "en": "Unlock 60 achievements."
+  }
+ }
+]

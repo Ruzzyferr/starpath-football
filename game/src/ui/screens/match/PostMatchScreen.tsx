@@ -515,6 +515,7 @@ export function PostMatchScreen() {
     if (!pm) return
     const [h, a] = pm.heroSide === 'home' ? pm.score : [pm.score[1], pm.score[0]]
     noteMatchForReview(h > a, pm.rating)
+    void import('../../../platform').then(({ platform }) => platform.gameCenter.submitCareerGoals(gameState.value?.hero.careerStats.goals ?? 0)).catch(() => undefined)
   }, [])
 
   useEffect(() => {

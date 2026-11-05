@@ -1,0 +1,32 @@
+# Sets up Game Center in App Store Connect (scripts/asc-gamecenter.mjs): capability, leaderboard,
+# achievements with localizations and images. Same API key secrets as testflight.yml.
+name: Store Game Center
+
+on:
+  push:
+    branches: [main]
+    paths: [scripts/asc-gamecenter.mjs, .github/workflows/store-gamecenter.yml]
+  workflow_dispatch:
+    inputs:
+      dry_run:
+        description: Only print what would change
+        type: boolean
+        default: true
+
+jobs:
+  gamecenter:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - name: Check syntax
+        run: node --check scripts/asc-gamecenter.mjs
+      - name: Push Game Center setup
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node scripts/asc-gamecenter.mjs ${{ inputs.dry_run && '--dry-run' || '' }}

@@ -8,6 +8,7 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { KeepAwake } from '@capacitor-community/keep-awake'
+import { registerPlugin } from '@capacitor/core'
 import { InAppReview } from '@capacitor-community/in-app-review'
 import { setHapticDriver, type HapticKind } from '../ui/haptics'
 import { setReviewDriver } from '../ui/reviewPrompt'
@@ -15,6 +16,15 @@ import { CapacitorFileStorage } from './capacitorStorage'
 import { setBackgrounded } from './lifecycle'
 
 export { CapacitorFileStorage }
+
+/** Game Center (iOS only): the app target's own plugin, ios/App/App/GameCenterPlugin.swift. */
+export interface GameCenterApi {
+  signIn(): Promise<{ signedIn: boolean }>
+  unlock(o: { id: string }): Promise<{ ok: boolean }>
+  submitScore(o: { leaderboard: string; score: number }): Promise<{ ok: boolean }>
+  showDashboard(): Promise<{ ok: boolean }>
+}
+export const GameCenter = registerPlugin<GameCenterApi>('GameCenter')
 
 /** The store's native rating sheet (SKStoreReviewController / Play In-App Review). */
 export function installReview(): void {
