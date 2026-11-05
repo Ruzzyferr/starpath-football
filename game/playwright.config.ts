@@ -37,10 +37,14 @@ function chromeInstalled(): boolean {
 const envChannel = process.env.PW_CHANNEL
 const channel = envChannel ? (envChannel === 'chromium' ? undefined : envChannel) : !process.env.CI && chromeInstalled() ? 'chrome' : undefined
 
+const NO_GPU = !!process.env.E2E_NO_GPU
+
 export default defineConfig({
   testDir: './e2e',
   // The no-casino (iOS) build has its own config, dev server and port: playwright.nocasino.config.ts.
-  testIgnore: /nocasino\.spec\.ts$/,
+  // E2E_NO_GPU (GitHub runners): no GPU, so Phaser renders in software far too slowly for the match specs;
+  // those run on a dev machine (npm run e2e) instead.
+  testIgnore: NO_GPU ? [/nocasino\.spec\.ts$/, /[\\/](demo|match|controls|goalreel)\.spec\.ts$/] : /nocasino\.spec\.ts$/,
   timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,

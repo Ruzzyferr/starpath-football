@@ -70,7 +70,7 @@ export function DiagnosticsPanel() {
   return (
     <div class="col diag-panel" data-testid="diagnostics">
       <p class="t-sm t-mid">{L('Bir oyun ekranı açılmıyor ya da kararıyorsa bu metni kopyalayıp bize gönder. Hiçbir şey otomatik gönderilmez.', 'If a game screen will not open or goes black, copy this text and send it to us. Nothing is sent automatically.')}</p>
-      <textarea ref={area} class="diag-text" readOnly rows={12} value={text} data-testid="diagnostics-text" onFocus={selectAll} />
+      <textarea ref={area} class="diag-text" aria-label={L('Tanılama metni', 'Diagnostics text')} readOnly rows={12} value={text} data-testid="diagnostics-text" onFocus={selectAll} />
       <div class="row wrap">
         <Button
           variant="primary"

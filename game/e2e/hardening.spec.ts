@@ -91,6 +91,7 @@ async function heapMB(page: Page): Promise<number> {
 
 test('memory: repeated match mounts do not leak JS heap (budget 2.9#22)', async ({ page }) => {
   test.skip(test.info().project.name === 'mobile', 'desktop only')
+  test.skip(!!process.env.E2E_NO_GPU, 'needs a GPU: repeated Phaser match mounts')
   test.setTimeout(240_000)
   await page.goto('/match-demo.html?kind=counter&seed=1&auto=1&q=low')
   const live = () =>
