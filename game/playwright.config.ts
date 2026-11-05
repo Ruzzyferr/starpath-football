@@ -44,7 +44,9 @@ export default defineConfig({
   // The no-casino (iOS) build has its own config, dev server and port: playwright.nocasino.config.ts.
   // E2E_NO_GPU (GitHub runners): no GPU, so Phaser renders in software far too slowly for the match specs;
   // those run on a dev machine (npm run e2e) instead.
-  testIgnore: NO_GPU ? [/nocasino\.spec\.ts$/, /[\\/](demo|match|controls|goalreel)\.spec\.ts$/] : /nocasino\.spec\.ts$/,
+  testIgnore: NO_GPU ? [/nocasino\.spec\.ts$/, /[\\/](demo|match|controls|goalreel|perf|setpieces|tier|training|press|touch-shoot)\.spec\.ts$/] : /nocasino\.spec\.ts$/,
+  // Single Phaser-driven tests inside otherwise DOM-only specs.
+  grepInvert: NO_GPU ? /first match moment shows a platform-aware control hint|event wheel: spins to the rolled band/ : undefined,
   timeout: 180_000,
   expect: { timeout: 15_000 },
   fullyParallel: false,
