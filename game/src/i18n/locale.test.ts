@@ -36,3 +36,14 @@ describe('setLocale', () => {
     expect(isLocale('xx')).toBe(false)
   })
 })
+
+describe('template patterns', () => {
+  it('translates an interpolated English string through its {0} pattern', async () => {
+    const { __setOverlayForTest } = await import('./index')
+    __setOverlayForTest({ 'I hear they can stretch to €{0} a week.': 'He oído que pueden llegar a {0} € por semana.', 'From {0} to {1}': 'De {1} a {0}' })
+    expect(loc('I hear they can stretch to €14,500 a week.')).toBe('He oído que pueden llegar a 14,500 € por semana.')
+    expect(loc('From A to B')).toBe('De B a A')
+    expect(loc('Unrelated text')).toBe('Unrelated text')
+    __setOverlayForTest(null)
+  })
+})

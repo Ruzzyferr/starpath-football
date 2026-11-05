@@ -1,6 +1,7 @@
 /** Mock live-match engine: minute ticker, events, hero moments. Replaced by sim/match later. */
 import { Rng, clamp, hashString } from '../../core/rng'
-import type { Club, Formation, GameState, Lang, Position } from '../../core/types'
+import type { Club, Formation, GameState, Lang, LText, Position } from '../../core/types'
+import { lt } from '../../i18n'
 import { generatedHighlight } from '../../game/demoHighlights'
 import type { HighlightKind } from '../../sim/match/types'
 import { matchupViewOf } from '../backend/matchupView'
@@ -69,43 +70,41 @@ export function buildLineup(s: GameState, club: Club, _side: 'home' | 'away', wi
   })
 }
 
-const TXT: Record<string, [string, string]> = {
-  kickoff: ['Hakem düdüğü çaldı, maç başladı!', 'The referee blows, we’re under way!'],
-  goal: ['GOOOL! {name} ağları sarsıyor!', 'GOAL! {name} finds the net!'],
-  heroGoal: ['GOOOL! {name} imzasını atıyor!', 'GOAL! {name} puts his name on it!'],
-  save: ['{name} vuruyor… kaleci uzanıp çeliyor!', '{name} strikes… the keeper stretches and saves!'],
-  miss: ['{name} şutunu çekiyor, top az farkla dışarıda.', '{name} lets fly, just wide.'],
-  woodwork: ['Direkt! {name} şanssız.', 'Off the woodwork! Unlucky {name}.'],
-  chance: ['{team} tehlikeli geliyor, savunma son anda uzaklaştırıyor.', '{team} threaten, cleared at the last moment.'],
-  yellow: ['{name} sert girdi, sarı kart.', '{name} goes in hard, yellow card.'],
-  corner: ['{team} korner kazandı.', 'Corner to {team}.'],
-  freekick: ['{team} tehlikeli bölgede serbest vuruş kazandı.', 'Free kick to {team} in a dangerous area.'],
-  offside: ['{name} ofsayta yakalandı.', '{name} is caught offside.'],
-  halftime: ['İlk yarı sona erdi.', 'Half-time.'],
-  fulltime: ['Son düdük! Maç sona erdi.', 'Full time! It’s all over.'],
-  commentary: ['Tribünler tek ses: oyun orta sahada sıkıştı.', 'The stands are rocking; the game is stuck in midfield.'],
-  heroAssist: ['{hero} harika bir pas bıraktı, {name} affetmiyor!', '{hero} with a sublime ball, {name} doesn’t miss!'],
-  heroMiss: ['{hero} pozisyonu değerlendiremedi.', '{hero} can’t convert the chance.'],
-  heroSaved: ['{hero} vurdu, kaleci kurtardı!', '{hero} shoots, the keeper saves!'],
-  heroPass: ['{hero} oyunu güzel yönlendirdi.', '{hero} keeps the move flowing nicely.'],
-  heroLost: ['{hero} topu kaptırdı.', '{hero} gives the ball away.'],
+const TXT: Record<string, LText> = {
+  kickoff: { tr: 'Hakem düdüğü çaldı, maç başladı!', en: 'The referee blows, we’re under way!' },
+  goal: { tr: 'GOOOL! {name} ağları sarsıyor!', en: 'GOAL! {name} finds the net!' },
+  heroGoal: { tr: 'GOOOL! {name} imzasını atıyor!', en: 'GOAL! {name} puts his name on it!' },
+  save: { tr: '{name} vuruyor… kaleci uzanıp çeliyor!', en: '{name} strikes… the keeper stretches and saves!' },
+  miss: { tr: '{name} şutunu çekiyor, top az farkla dışarıda.', en: '{name} lets fly, just wide.' },
+  woodwork: { tr: 'Direkt! {name} şanssız.', en: 'Off the woodwork! Unlucky {name}.' },
+  chance: { tr: '{team} tehlikeli geliyor, savunma son anda uzaklaştırıyor.', en: '{team} threaten, cleared at the last moment.' },
+  yellow: { tr: '{name} sert girdi, sarı kart.', en: '{name} goes in hard, yellow card.' },
+  corner: { tr: '{team} korner kazandı.', en: 'Corner to {team}.' },
+  freekick: { tr: '{team} tehlikeli bölgede serbest vuruş kazandı.', en: 'Free kick to {team} in a dangerous area.' },
+  offside: { tr: '{name} ofsayta yakalandı.', en: '{name} is caught offside.' },
+  halftime: { tr: 'İlk yarı sona erdi.', en: 'Half-time.' },
+  fulltime: { tr: 'Son düdük! Maç sona erdi.', en: 'Full time! It’s all over.' },
+  commentary: { tr: 'Tribünler tek ses: oyun orta sahada sıkıştı.', en: 'The stands are rocking; the game is stuck in midfield.' },
+  heroAssist: { tr: '{hero} harika bir pas bıraktı, {name} affetmiyor!', en: '{hero} with a sublime ball, {name} doesn’t miss!' },
+  heroMiss: { tr: '{hero} pozisyonu değerlendiremedi.', en: '{hero} can’t convert the chance.' },
+  heroSaved: { tr: '{hero} vurdu, kaleci kurtardı!', en: '{hero} shoots, the keeper saves!' },
+  heroPass: { tr: '{hero} oyunu güzel yönlendirdi.', en: '{hero} keeps the move flowing nicely.' },
+  heroLost: { tr: '{hero} topu kaptırdı.', en: '{hero} gives the ball away.' },
 }
-const MOMENT_PROMPTS: Record<string, [string, string]> = {
-  one_on_one: ['Kaleciyle karşı karşıyasın!', 'One on one with the keeper!'],
-  edge_of_box: ['Ceza sahası dışında boş alan!', 'Space at the edge of the box!'],
-  cross: ['Kanatta topla buluştun, ortala ya da kes!', 'Ball out wide: cross or cut inside!'],
-  counter: ['Hızlı hücum! Önün açık.', 'Counter-attack! Space ahead.'],
-  penalty: ['Penaltı! Topun başındasın.', 'Penalty! You step up.'],
-  build_up: ['Orta sahada topu aldın.', 'You receive in midfield.'],
-  freekick: ['Kaleye yakın serbest vuruş.', 'Free kick within range.'],
+const MOMENT_PROMPTS: Record<string, LText> = {
+  one_on_one: { tr: 'Kaleciyle karşı karşıyasın!', en: 'One on one with the keeper!' },
+  edge_of_box: { tr: 'Ceza sahası dışında boş alan!', en: 'Space at the edge of the box!' },
+  cross: { tr: 'Kanatta topla buluştun, ortala ya da kes!', en: 'Ball out wide: cross or cut inside!' },
+  counter: { tr: 'Hızlı hücum! Önün açık.', en: 'Counter-attack! Space ahead.' },
+  penalty: { tr: 'Penaltı! Topun başındasın.', en: 'Penalty! You step up.' },
+  build_up: { tr: 'Orta sahada topu aldın.', en: 'You receive in midfield.' },
+  freekick: { tr: 'Kaleye yakın serbest vuruş.', en: 'Free kick within range.' },
 }
 
 const L = (): Lang => settings.value.lang
 function txt(key: string, vars: Record<string, string> = {}): string {
-  const pair = TXT[key] ?? ['', '']
-  let s = L() === 'tr' ? pair[0] : pair[1]
-  for (const k of Object.keys(vars)) s = s.replace(`{${k}}`, vars[k]!)
-  return s
+  const pair = TXT[key]
+  return pair ? lt(pair, vars) : ''
 }
 
 export interface FinishedMatch {
@@ -279,7 +278,7 @@ export function createMatchEngine(hooks: { onFinished(m: FinishedMatch): void })
       const pr = MOMENT_PROMPTS[kind]!
       let matchup
       try { matchup = matchupViewOf(generatedHighlight(kind as HighlightKind, v.minute, { lang: L() }), {}, heroName()) } catch { matchup = undefined }
-      v.pendingMoment = { id: `m${v.minute}`, minute: v.minute, kind, prompt: L() === 'tr' ? pr[0] : pr[1], matchup }
+      v.pendingMoment = { id: `m${v.minute}`, minute: v.minute, kind, prompt: lt(pr), matchup }
       push('highlight', v.heroSide, v.pendingMoment.prompt, true)
       r.nextMoment = v.minute + rng.int(15, 25)
     }

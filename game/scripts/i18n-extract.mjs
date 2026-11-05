@@ -21,6 +21,13 @@ const outDir = join(src, 'i18n', 'overlay')
 const strings = new Set()
 
 const lit = (n) => (n && (ts.isStringLiteral(n) || ts.isNoSubstitutionTemplateLiteral(n)) ? n.text : null)
+/** A template literal as a pattern: each ${…} becomes {0}, {1}… (matched at runtime by i18n loc()). */
+const pattern = (n) => {
+  if (!n || !ts.isTemplateExpression(n)) return null
+  let s = n.head.text
+  n.templateSpans.forEach((sp, i) => { s += `{${i}}` + sp.literal.text })
+  return s
+}
 
 function walkFiles(dir, out = []) {
   for (const f of readdirSync(dir)) {
@@ -44,6 +51,9 @@ for (const file of walkFiles(src)) {
       const b = lit(n.arguments[1])
       const callee = n.expression.getText(sf)
       if (a !== null && b !== null && /(^|\.)(L|t|lt|tt|lt2|pair)$/.test(callee) && a !== b) strings.add(b)
+      // TR/EN pairs written as template literals: their English pattern (`…${x}…` -> `…{0}…`).
+      const pb = pattern(n.arguments[1])
+      if (pb !== null && (a !== null || pattern(n.arguments[0]) !== null) && /(^|\.)(L|t|lt)$/.test(callee)) strings.add(pb)
     }
     if (ts.isObjectLiteralExpression(n)) {
       const props = new Map()

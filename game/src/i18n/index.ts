@@ -77,10 +77,39 @@ export function locTable<T>(table: T): T {
   return walk(table) as T
 }
 
+/** Overlay keys with {0}, {1}… (English template literals) as regexes, built once per overlay. */
+let patterns: { of: Record<string, string>; list: { re: RegExp; to: string; order: number[] }[]; hits: Map<string, string> } | null = null
+const escRe = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+function patternLoc(o: Record<string, string>, en: string): string {
+  if (patterns?.of !== o) {
+    const list = Object.keys(o)
+      .filter((k) => /\{\d+\}/.test(k))
+      .map((k) => ({
+        re: new RegExp(`^${k.split(/\{\d+\}/).map(escRe).join('(.+?)')}$`, 's'),
+        to: o[k]!,
+        order: [...k.matchAll(/\{(\d+)\}/g)].map((m) => Number(m[1])),
+      }))
+    patterns = { of: o, list, hits: new Map() }
+  }
+  const hit = patterns.hits.get(en)
+  if (hit !== undefined) return hit
+  let out = en
+  for (const p of patterns.list) {
+    const m = p.re.exec(en)
+    if (m) {
+      // Capture groups follow the English order of {n}; the translation may reorder them.
+      out = p.to.replace(/\{(\d+)\}/g, (s, i: string) => m[p.order.indexOf(Number(i)) + 1] ?? s)
+      break
+    }
+  }
+  if (patterns.hits.size < 5000) patterns.hits.set(en, out)
+  return out
+}
+
 /** The display-language form of an English string (identity for tr/en or a missing entry). */
 export function loc(en: string): string {
   const o = overlay.value
-  return o ? (o[en] ?? en) : en
+  return o ? (o[en] ?? patternLoc(o, en)) : en
 }
 
 /** QA pseudo-locale: accented, ~35% longer strings. Enable with ?pseudo=1 or Settings. */
@@ -181,4 +210,9 @@ export function upper(s: string, lang: Lang = currentLang.value): string {
 export function locale(lang: Lang = currentLang.value): string {
   if (lang === 'tr') return 'tr-TR'
   return lang === currentLang.value ? INTL[currentLocale.value] : 'en-GB'
+}
+
+/** Tests only: install an overlay table directly. */
+export function __setOverlayForTest(o: Record<string, string> | null): void {
+  overlay.value = o
 }
