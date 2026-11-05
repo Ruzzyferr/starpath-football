@@ -2,6 +2,7 @@ import { useState } from 'preact/hooks'
 import type { ComponentChildren } from 'preact'
 import '../../styles/screens/settings.css'
 import { t } from '../../i18n'
+import { LanguageSelect } from '../components/LanguageSelect'
 import { formatNumber } from '../format'
 import { Button, Card, Modal, Page, Segmented, Slider, Switch, toast } from '../components'
 import { Icon, type IconName } from '../icons'
@@ -101,15 +102,7 @@ export function SettingsScreen() {
       <div class="set-grid">
         <Group title={t('settings.sections.general')} icon="language">
           <Field label={t('settings.language')}>
-            <Segmented
-              label={t('settings.language')}
-              value={s.lang}
-              onChange={(lang) => updateSettings({ lang })}
-              options={[
-                { id: 'tr', label: t('settings.langTr') },
-                { id: 'en', label: t('settings.langEn') },
-              ]}
-            />
+            <LanguageSelect id="settings-lang" />
           </Field>
         </Group>
 

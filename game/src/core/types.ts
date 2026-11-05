@@ -637,7 +637,10 @@ export interface CustomDifficulty {
 }
 
 export interface Settings {
+  /** Code language under the display language: 'tr' for Turkish, 'en' for every other. */
   lang: Lang
+  /** Display language (i18n LOCALES: tr, en, es, pt, de, fr, it, id); absent in older settings = `lang`. */
+  locale?: string
   sound: number // 0..1
   music: number
   vibration: boolean

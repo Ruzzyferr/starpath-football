@@ -20,7 +20,7 @@ import type {
   KitColors, Lang, LText, MatchResultSummary, NewsItem, NpcPlayer, Position, Settings, SponsorDeal,
   SquadRole, Appearance, Role, Background, Investment, Country, TableRow, Gender, RelationKind,
 } from '../core/types'
-import { currentLang } from '../i18n'
+import { baseLang, detectLocale, isLocale, setLocale, type Locale } from '../i18n'
 import { setMoneyStyle, type MoneyStyle } from './format'
 import { setControlPrefs } from '../input/prefs'
 import { CASINO_SCREENS, casinoHidden, contentFlags } from '../core/contentFlags'
@@ -1039,9 +1039,10 @@ function loadSettings(): UiSettings {
   } catch {
     /* storage unavailable */
   }
-  // First run: honour the OS "reduce motion" preference.
+  // First run: honour the OS "reduce motion" preference and the device language.
   const osReduce = globalThis.matchMedia?.('(prefers-reduced-motion: reduce)')?.matches === true
-  return { ...DEFAULT_SETTINGS, reducedMotion: osReduce }
+  const l = detectLocale()
+  return { ...DEFAULT_SETTINGS, reducedMotion: osReduce, lang: baseLang(l), locale: l }
 }
 /** The graphics profile in effect (explicit choice, else the benchmark result). */
 export function effectiveQuality(s: Pick<UiSettings, 'quality' | 'qualityAuto'> = settings.value): QualityProfile {
@@ -1069,11 +1070,18 @@ contentFlags.hideCasino = casinoHidden(settings.value.hideCasino)
 export function isCasinoHidden(): boolean {
   return casinoHidden(settings.value.hideCasino)
 }
-currentLang.value = settings.value.lang
+setLocale(settingsLocale(settings.value))
 setMoneyStyle(settings.value.moneyStyle)
+/** The display language a settings object asks for (older settings only have tr/en `lang`). */
+export function settingsLocale(s: Pick<UiSettings, 'lang' | 'locale'> = settings.value): Locale {
+  return isLocale(s.locale) ? s.locale : s.lang
+}
 export function updateSettings(patch: Partial<UiSettings>): void {
+  // One language choice drives both fields: a tr/en `lang` patch is also the display language.
+  if (patch.locale !== undefined && isLocale(patch.locale)) patch = { ...patch, lang: baseLang(patch.locale) }
+  else if (patch.lang !== undefined) patch = { ...patch, locale: patch.lang }
   settings.value = withDerivedFx({ ...settings.value, ...patch })
-  currentLang.value = settings.value.lang
+  setLocale(settingsLocale())
   setMoneyStyle(settings.value.moneyStyle)
   try {
     globalThis.localStorage?.setItem(SETTINGS_KEY, JSON.stringify(settings.value))
@@ -1124,10 +1132,10 @@ export function bindSettingsToDocument(): () => void {
   }
   return effect(() => {
     const s = settings.value
-    currentLang.value = s.lang
+    setLocale(settingsLocale(s))
     const root = globalThis.document?.documentElement
     if (!root) return
-    root.lang = s.lang
+    root.lang = settingsLocale(s)
     const cb: ColorblindMode = s.cbMode !== 'off' ? s.cbMode : s.colorblind ? 'deuteranopia' : 'off'
     root.dataset.colorblind = String(cb !== 'off')
     root.dataset.cb = cb

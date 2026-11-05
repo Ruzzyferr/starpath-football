@@ -11,6 +11,7 @@
 import Phaser from 'phaser'
 import type { KitColors, Lang } from '../../core/types'
 import { PITCH_LENGTH, PITCH_WIDTH } from '../../sim/match/types'
+import { locTable } from '../../i18n'
 import { ballTexture, drawGoal, drawPitch, grassGrainTexture, keeperKit, utilTextures, type NetRipple } from '../art'
 import { FIG_RES, FIG_SCALE, FigureRig, figureHeadTexture, figureKitSheet, figureNumberTexture, figureSelfCheck, figureSkinSheet, groundDir, skinTone, type FigPose } from '../figures'
 import { Sfx } from '../audio'
@@ -288,7 +289,7 @@ export class TrainingScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.CREATE, () => crumb('scene-ready', 'drill'))
     const { opts } = this.data0
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
-    this.s = T[opts.lang] ?? T.en
+    this.s = locTable(T[opts.lang] ?? T.en)
     this.sfx = new Sfx(opts.settings.sound)
     // Dev/e2e: expose the drill scene (touch shooting probes). Stripped from production builds.
     if (import.meta.env.DEV) (globalThis as { __spTraining?: TrainingScene }).__spTraining = this

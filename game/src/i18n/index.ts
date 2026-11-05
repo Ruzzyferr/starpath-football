@@ -14,6 +14,75 @@ import { pseudoize } from './pseudo'
 
 export const currentLang = signal<Lang>('tr')
 
+/**
+ * Display languages. Turkish and English are written in the code (LText, tr.ts/en.ts); every
+ * other language is an overlay keyed by the English text (src/i18n/overlay/<code>.json, from
+ * scripts/i18n-extract.mjs), applied wherever English would be shown. Missing entries stay English.
+ */
+export const LOCALES = ['tr', 'en', 'es', 'pt', 'de', 'fr', 'it', 'id'] as const
+export type Locale = (typeof LOCALES)[number]
+export const LOCALE_NAMES: Record<Locale, string> = {
+  tr: 'Türkçe', en: 'English', es: 'Español', pt: 'Português (Brasil)', de: 'Deutsch', fr: 'Français', it: 'Italiano', id: 'Bahasa Indonesia',
+}
+const INTL: Record<Locale, string> = { tr: 'tr-TR', en: 'en-GB', es: 'es-ES', pt: 'pt-BR', de: 'de-DE', fr: 'fr-FR', it: 'it-IT', id: 'id-ID' }
+export const currentLocale = signal<Locale>('tr')
+const overlay = signal<Record<string, string> | null>(null)
+const overlays = import.meta.glob<Record<string, string>>('./overlay/[a-z][a-z].json', { import: 'default' })
+
+export const isLocale = (v: unknown): v is Locale => (LOCALES as readonly unknown[]).includes(v)
+/** The code language under a display language: Turkish for tr, English for every other. */
+export const baseLang = (l: Locale): Lang => (l === 'tr' ? 'tr' : 'en')
+
+/** The device's language when the game has it, else English (Turkish only for Turkish devices). */
+export function detectLocale(langs: readonly string[] = globalThis.navigator?.languages ?? [globalThis.navigator?.language ?? 'en']): Locale {
+  for (const l of langs) {
+    const code = String(l).toLowerCase().slice(0, 2)
+    if (code === 'in') return 'id' // old Android code for Indonesian
+    if (isLocale(code)) return code
+  }
+  return 'en'
+}
+
+/** Switch the display language; an overlay language loads its table lazily (re-renders on arrival). */
+let overlayFor: Locale | null = null
+export function setLocale(l: Locale): void {
+  currentLocale.value = l
+  currentLang.value = baseLang(l)
+  if (overlayFor === l) return // already loaded or loading: no flash back to English
+  overlayFor = l
+  if (l === 'tr' || l === 'en') {
+    overlay.value = null
+    return
+  }
+  const load = overlays[`./overlay/${l}.json`]
+  if (!load) {
+    overlay.value = null
+    return
+  }
+  overlay.value = null
+  void load().then((o) => {
+    if (currentLocale.peek() === l) overlay.value = o
+  }).catch(() => {
+    overlayFor = null
+  })
+}
+
+/** An English string table in the display language (leaves through {@link loc}); other values kept. */
+export function locTable<T>(table: T): T {
+  if (!overlay.value) return table
+  const walk = (v: unknown): unknown =>
+    typeof v === 'string' ? loc(v) : v && typeof v === 'object' && !Array.isArray(v)
+      ? Object.fromEntries(Object.entries(v).map(([k, x]) => [k, walk(x)]))
+      : Array.isArray(v) ? v.map(walk) : v
+  return walk(table) as T
+}
+
+/** The display-language form of an English string (identity for tr/en or a missing entry). */
+export function loc(en: string): string {
+  const o = overlay.value
+  return o ? (o[en] ?? en) : en
+}
+
 /** QA pseudo-locale: accented, ~35% longer strings. Enable with ?pseudo=1 or Settings. */
 export const pseudoLocale = signal<boolean>(
   (() => {
@@ -86,20 +155,20 @@ export function t(key: TKey, vars?: TVars, lang: Lang = currentLang.value): stri
     if (import.meta.env?.DEV) console.warn('[i18n] missing key', key)
     return key
   }
-  return format(ps(s), vars, lang)
+  return format(ps(lang === 'en' ? loc(s) : s), vars, lang)
 }
 
 /** Translate a dynamic key (built at runtime). Falls back to `fallback`. */
 export function tx(key: string, vars?: TVars, fallback?: string): string {
   const lang = currentLang.value
   const s = lookup(lang, key) ?? lookup('tr', key)
-  return s === undefined ? (fallback ?? key) : format(ps(s), vars)
+  return s === undefined ? (fallback ?? key) : format(ps(lang === 'en' ? loc(s) : s), vars)
 }
 
 /** Pick the active language from an LText (or pass a plain string through). */
 export function lt(text: LText | string | null | undefined, vars?: TVars): string {
   if (text == null) return ''
-  const s = typeof text === 'string' ? text : (text[currentLang.value] ?? text.tr)
+  const s = typeof text === 'string' ? text : currentLang.value === 'en' ? loc(text.en) : (text[currentLang.value] ?? text.tr)
   return format(ps(s), vars)
 }
 
@@ -108,6 +177,8 @@ export function upper(s: string, lang: Lang = currentLang.value): string {
   return s.toLocaleUpperCase(lang === 'tr' ? 'tr-TR' : 'en-US')
 }
 
+/** Intl locale for numbers and dates: the display language's own, when asked for the current one. */
 export function locale(lang: Lang = currentLang.value): string {
-  return lang === 'tr' ? 'tr-TR' : 'en-GB'
+  if (lang === 'tr') return 'tr-TR'
+  return lang === currentLang.value ? INTL[currentLocale.value] : 'en-GB'
 }

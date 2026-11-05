@@ -1,11 +1,12 @@
 import { useState } from 'preact/hooks'
 import '../../styles/screens/settings.css'
 import { t, type TKey } from '../../i18n'
-import { Avatar, Page, Segmented, toast } from '../components'
+import { LanguageSelect } from '../components/LanguageSelect'
+import { Avatar, Page, toast } from '../components'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { formatDuration, seasonLabel } from '../format'
-import { actions, gameState, heroClub, navigate, settings, updateSettings, type ScreenId } from '../store'
+import { actions, gameState, heroClub, navigate, type ScreenId } from '../store'
 
 interface Tile {
   id: string
@@ -59,12 +60,7 @@ export function MenuScreen() {
             <div class="t-xs t-lo">{t('settings.menu.playTime')}: <span class="num">{formatDuration(s.meta.playTimeSec)}</span></div>
           </div>
           <div class="menu-lang">
-            <Segmented
-              label={t('settings.language')}
-              value={settings.value.lang}
-              onChange={(lang) => updateSettings({ lang })}
-              options={[{ id: 'tr', label: 'TR' }, { id: 'en', label: 'EN' }]}
-            />
+            <LanguageSelect id="menu-lang" compact />
           </div>
         </div>
       )}

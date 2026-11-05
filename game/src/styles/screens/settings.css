@@ -289,3 +289,20 @@
 
 .saves-thumb { display: inline-flex; flex: none; width: 48px; height: 48px; box-shadow: 0 0 0 1px var(--border); border-radius: 8px; overflow: hidden; }
 .saves-thumb svg { display: block; width: 48px; height: 48px; }
+
+/* Display-language picker (components/LanguageSelect): the wizard's select look, also on screens
+   that do not load wizard.css. */
+.lang-select select {
+  min-height: 48px;
+  padding: 0 14px;
+  border-radius: var(--r-btn);
+  background: var(--bg-1);
+  color: var(--text-hi);
+  border: 1px solid var(--border-strong);
+  font: inherit;
+  font-size: var(--fs-input-lg);
+  min-width: 14rem;
+}
+.lang-select select:focus { border-color: var(--brand-pitch); }
+.lang-select select:focus-visible { box-shadow: var(--focus-ring); }
+.lang-select-compact select { min-width: 0; min-height: 44px; padding: 0 10px; }

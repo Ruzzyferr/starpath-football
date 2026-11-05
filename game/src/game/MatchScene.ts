@@ -53,7 +53,7 @@ import type { AimAssist } from './kick'
 import { shotSpeed } from './kick'
 import { clampN, dist, type Agent, type Vec2 } from './model'
 import { momentMatchup, type Matchup } from './matchup'
-import { t as tr } from '../i18n'
+import { t as tr, locTable } from '../i18n'
 import { GOAL_CENTER_Y, predictTrajectory } from './physics'
 import { HighlightRuntime, STATE_CODES, type ReplayFrame, type RuntimeEvent } from './runtime'
 import { applyInput, InputRecorder, type InputRecording } from './inputReplay'
@@ -495,7 +495,7 @@ export class MatchScene extends Phaser.Scene {
     const { highlight, opts } = this.data0
     this.ui = (this.registry.get('dpr') as number | undefined) ?? 1
     this.hudU = this.ui * (this.scale.width / this.ui >= 1100 ? 1.25 : 1)
-    this.s = T[opts.lang] ?? T.en
+    this.s = locTable(T[opts.lang] ?? T.en)
     const names = { ...(opts.names ?? {}) }
     const heroP = highlight.scenario.players.find((p) => p.isHero)
     if (heroP) names[heroP.id] = opts.heroName ?? this.s.you
