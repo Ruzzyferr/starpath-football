@@ -36,7 +36,7 @@ describe('bundle budgets (2.9#72/#73)', () => {
   it('budgets.json only uses keys the script measures', async () => {
     const { check } = await load()
     const b = JSON.parse(readFileSync(join(process.cwd(), 'scripts/budgets.json'), 'utf8')) as Budgets
-    const zero = { jsTotalGzKB: 0, jsLargestGzKB: 0, jsInitialGzKB: 0, cssTotalGzKB: 0, distTotalKB: 0, audioFileBytes: 0, jsChunks: 0 }
+    const zero = { jsTotalGzKB: 0, jsLargestGzKB: 0, jsInitialGzKB: 0, cssTotalGzKB: 0, distTotalKB: 0, audioFileBytes: 0, jsChunks: 0, localeOverlayGzKB: 0 }
     expect(check(zero, b as unknown as Record<string, number>)).toEqual([])
   })
 })

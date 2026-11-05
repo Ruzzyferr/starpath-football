@@ -74,7 +74,8 @@ describe('MatchSim statistics (1000 matches)', () => {
     expect(onTarget / shots).toBeGreaterThan(0.28)
     expect(onTarget / shots).toBeLessThan(0.45)
     expect(possHigh - possLow).toBeGreaterThan(25) // possession variety
-    expect(ms / N).toBeLessThan(2)
+    // CI runners with coverage instrumentation are several times slower than a dev machine.
+    expect(ms / N).toBeLessThan((globalThis as { process?: { env: Record<string, string | undefined> } }).process?.env.CI ? 8 : 2)
   })
 })
 
