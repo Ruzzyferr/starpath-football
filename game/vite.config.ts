@@ -38,6 +38,9 @@ export default defineConfig({
     globals: true,
     environment: 'node',
     include: ['src/**/*.test.ts'],
+    // CI runners are several times slower than a dev machine (and coverage adds more): give the default 5 s timeout headroom there.
+    testTimeout: process.env.CI ? 60_000 : 5_000,
+    hookTimeout: process.env.CI ? 120_000 : 10_000,
     coverage: {
       provider: 'v8',
       reporter: ['text-summary', 'lcov', 'json-summary'],

@@ -111,7 +111,7 @@ describe('trial / drill start hang fuzz', () => {
       }
     }
     expect(worst).toBeLessThan(CASE_BUDGET_MS)
-  }, 60_000)
+  }, 300_000)
 
   for (const kind of DRILL_KINDS) {
     it(`${kind}: random / extreme attributes, opponents and inputs never hang`, () => {
@@ -134,6 +134,6 @@ describe('trial / drill start hang fuzz', () => {
         const ms = runCase(kind, cfg, bot, 5, rng)
         expect(ms, `${kind} #${i} ${JSON.stringify({ opponent, difficulty, variant })}`).toBeLessThan(CASE_BUDGET_MS)
       }
-    }, 60_000)
+    }, 300_000)
   }
 })

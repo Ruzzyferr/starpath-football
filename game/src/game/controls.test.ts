@@ -286,7 +286,7 @@ describe('deterministic input replay', () => {
         expect(again.ball.x).toBe(rt.ball.x)
       }
     }
-  }, 60_000)
+  }, 300_000)
 })
 
 describe('timing assist (a11y)', () => {

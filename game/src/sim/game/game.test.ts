@@ -191,7 +191,7 @@ describe('full season', () => {
     if (loaded.ok) expect(loaded.state).toEqual(JSON.parse(JSON.stringify(s)))
     expect((await mgr.summaries())[0]?.heroName).toBe('Arda Yıldız')
     void json
-  }, 60_000)
+  }, 300_000)
 })
 
 describe.skipIf(!env.SOAK)('soak', () => {

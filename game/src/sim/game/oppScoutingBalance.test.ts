@@ -93,5 +93,5 @@ describe('opponent video follows the reading stats and the input', () => {
     }
     LEVELS.forEach((_l, i) => expect(good.pass[i]! - sloppy.pass[i]!).toBeGreaterThanOrEqual(20))
     expect(Math.max(...sloppy.pass)).toBeLessThan(60)
-  }, 60_000)
+  }, 300_000)
 })

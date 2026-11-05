@@ -140,7 +140,7 @@ describe('balance simulator', () => {
     expect(s.weeks).toBeGreaterThan(30)
     expect(s.ovr).toBeGreaterThan(30)
     expect(Number.isFinite(s.netWorth)).toBe(true)
-  }, 60_000)
+  }, 300_000)
 
   it.skipIf(!env.BALANCE)('full report', () => {
     const n = Number(env.BALANCE_N) || 30

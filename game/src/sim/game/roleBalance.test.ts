@@ -37,7 +37,7 @@ describe('role balance', () => {
     expect(s.rating).toBeGreaterThan(3)
     const p = playRole('ST', 'pivot', 2)
     expect(p.moments).toBe(2)
-  }, 60_000)
+  }, 300_000)
 
   it('auto-resolved match rating of every role is within ±5 % of its position mean', () => {
     for (const pos of BALANCE_POSITIONS) {

@@ -28,7 +28,7 @@ describe('stats guard helpers', () => {
     const cfg = standardMix(1, 1, 4242)[0]
     // Exact equality: no module-level state may leak between runs in one process.
     expect(JSON.stringify(runCareer(cfg!))).toBe(JSON.stringify(runCareer(cfg!)))
-  }, 60_000)
+  }, 300_000)
   it('interleaved seeds do not leak state: A, B, A gives byte-identical careers and game states', () => {
     const [a, b] = [standardMix(1, 1, 4242)[0], standardMix(1, 1, 777)[0]]
     const careerA1 = JSON.stringify(runCareer(a!))

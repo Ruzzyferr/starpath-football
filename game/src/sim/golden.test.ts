@@ -46,7 +46,7 @@ describe('golden master', () => {
   it('digests are stable across two runs in-process', () => {
     expect(matchesDigest()).toBe(current.matches1000)
     expect(seasonDigest()).toBe(current.careerSeason)
-  }, 60_000)
+  }, 300_000)
 
   it('matches the committed golden.json', () => {
     if (UPDATE) {

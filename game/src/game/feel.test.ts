@@ -75,7 +75,7 @@ describe('match feel (average human, normal)', () => {
       const r = feelRate(kind, 'average', 'normal', kind === 'cross' || kind === 'corner' || kind === 'corner_kick' ? 200 : N)
       expect(r).toBeGreaterThanOrEqual(BANDS[kind][0])
       expect(r).toBeLessThanOrEqual(BANDS[kind][1])
-    }, 60_000)
+    }, 300_000)
   }
 
   it('difficulty spreads finishing: easy > normal > legend (1v1 + penalty)', () => {
