@@ -127,6 +127,7 @@ export async function initPlatform(): Promise<PlatformId> {
     try {
       cap = await import('./capacitor')
       cap.installHaptics()
+      cap.installReview()
       cap.setupLifecycle(() => handleBack(() => platform.exit()))
       void cap.setupChrome()
       if (await cap.setupKeyboard((open) => setKeyboard(open))) markNativeKeyboard()

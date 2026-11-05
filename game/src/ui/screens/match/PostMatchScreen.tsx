@@ -14,6 +14,7 @@ import { CompareBar, MOMENT_ICON } from './shared'
 import { MomentsPanel } from './Moments'
 import { chanceReport } from '../../backend/postMatch'
 import { postSteps, ratingExtremes, ratingGroups, signedDelta as rawSignedDelta, type PostStep } from './postFlow'
+import { noteMatchForReview } from '../../reviewPrompt'
 
 /** "+1.09" with the UI language's decimal separator (TR: "+1,09"). */
 const signedDelta = (v: number, digits?: number): string => {
@@ -508,6 +509,13 @@ export function PostMatchScreen() {
   const step = steps[Math.min(idx, last)] ?? 'result'
 
   const go = (i: number) => setIdx(Math.max(0, Math.min(last, i)))
+
+  // Once per visit: a good win may be the moment to ask for a store rating (ui/reviewPrompt).
+  useEffect(() => {
+    if (!pm) return
+    const [h, a] = pm.heroSide === 'home' ? pm.score : [pm.score[1], pm.score[0]]
+    noteMatchForReview(h > a, pm.rating)
+  }, [])
 
   useEffect(() => {
     if (first.current) {

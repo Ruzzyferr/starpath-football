@@ -8,11 +8,18 @@ import { Haptics, ImpactStyle, NotificationType } from '@capacitor/haptics'
 import { SplashScreen } from '@capacitor/splash-screen'
 import { StatusBar, Style } from '@capacitor/status-bar'
 import { KeepAwake } from '@capacitor-community/keep-awake'
+import { InAppReview } from '@capacitor-community/in-app-review'
 import { setHapticDriver, type HapticKind } from '../ui/haptics'
+import { setReviewDriver } from '../ui/reviewPrompt'
 import { CapacitorFileStorage } from './capacitorStorage'
 import { setBackgrounded } from './lifecycle'
 
 export { CapacitorFileStorage }
+
+/** The store's native rating sheet (SKStoreReviewController / Play In-App Review). */
+export function installReview(): void {
+  setReviewDriver(() => InAppReview.requestReview())
+}
 
 /** Map the UI's haptic vocabulary onto the native Taptic Engine / vibrator. */
 export function installHaptics(): void {
