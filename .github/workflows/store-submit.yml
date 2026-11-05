@@ -1,0 +1,37 @@
+# App Store review flow through the API (scripts/asc-submit.mjs): status, cancel, retarget, submit.
+name: Store submit
+
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/store-submit.yml]
+  workflow_dispatch:
+    inputs:
+      command:
+        description: status | cancel | retarget | submit
+        required: true
+        default: status
+      arg1:
+        description: version (status/submit) or from-version (retarget)
+        default: ''
+      arg2:
+        description: build number (submit) or to-version (retarget)
+        default: ''
+      dry_run:
+        type: boolean
+        default: true
+
+jobs:
+  submit:
+    if: github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+      - env:
+          ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
+          ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
+          ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
+        run: node scripts/asc-submit.mjs "${{ inputs.command }}" "${{ inputs.arg1 }}" "${{ inputs.arg2 }}" ${{ inputs.dry_run && '--dry-run' || '' }}
