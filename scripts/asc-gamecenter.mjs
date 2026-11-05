@@ -24,10 +24,18 @@ const text = (lt, src) => (src === 'tr' ? lt.tr : OV[src]?.[lt.en] ?? lt.en)
 const usable = LOCALES.filter(([, s]) => s === 'tr' || s === 'en' || OV[s])
 
 const b64 = (o) => Buffer.from(typeof o === 'string' ? o : JSON.stringify(o)).toString('base64url')
-const now = Math.floor(Date.now() / 1000)
-const head = b64({ alg: 'ES256', kid: process.env.ASC_KEY_ID, typ: 'JWT' })
-const body = b64({ iss: process.env.ASC_ISSUER_ID, iat: now, exp: now + 1100, aud: 'appstoreconnect-v1' })
-const jwt = `${head}.${body}.${sign('sha256', Buffer.from(`${head}.${body}`), { key: createPrivateKey(process.env.ASC_KEY_P8), dsaEncoding: 'ieee-p1363' }).toString('base64url')}`
+// Tokens live at most 20 minutes and a full run takes longer: a fresh one every 10 minutes.
+let jwt = ''
+let jwtAt = 0
+function token() {
+  const now = Math.floor(Date.now() / 1000)
+  if (jwt && now - jwtAt < 600) return jwt
+  const head = b64({ alg: 'ES256', kid: process.env.ASC_KEY_ID, typ: 'JWT' })
+  const body = b64({ iss: process.env.ASC_ISSUER_ID, iat: now, exp: now + 1100, aud: 'appstoreconnect-v1' })
+  jwt = `${head}.${body}.${sign('sha256', Buffer.from(`${head}.${body}`), { key: createPrivateKey(process.env.ASC_KEY_P8), dsaEncoding: 'ieee-p1363' }).toString('base64url')}`
+  jwtAt = now
+  return jwt
+}
 
 async function api(method, path, data) {
   if (dry && method !== 'GET') {
@@ -36,7 +44,7 @@ async function api(method, path, data) {
   }
   const res = await fetch(path.startsWith('http') ? path : `https://api.appstoreconnect.apple.com${path}`, {
     method,
-    headers: { Authorization: `Bearer ${jwt}`, 'Content-Type': 'application/json' },
+    headers: { Authorization: `Bearer ${token()}`, 'Content-Type': 'application/json' },
     body: data ? JSON.stringify(data) : undefined,
   })
   const t = await res.text()

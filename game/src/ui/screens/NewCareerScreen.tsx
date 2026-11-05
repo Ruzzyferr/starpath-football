@@ -6,7 +6,7 @@ import '../../styles/screens/wizard.css'
 import type { Background, Country, CustomDifficulty, Difficulty, Foot, Gender } from '../../core/types'
 import { AI_REACTION_MAX, AI_REACTION_MIN, DEFAULT_CUSTOM } from '../../core/customDifficulty'
 import { START_YEAR } from '../../core/config'
-import { lt, t } from '../../i18n'
+import { currentLocale, lt, t, type Locale } from '../../i18n'
 import { foldSearch } from '../a11y/collate'
 import { formatNumber } from '../format'
 import { Button, Chip, Flag, PlayerCard, Segmented, Slider, Switch, TextField, toast, type PlayerCardStat } from '../components'
@@ -21,6 +21,9 @@ import { StoryArt } from './newcareer/StoryArt'
 import { RolePicker } from './newcareer/RolePicker'
 import { AppearanceEditor, randomAppearance, withGender } from './newcareer/AppearanceEditor'
 import { beginNewCareer } from '../tutorial/tour'
+
+/** The nationality a new career starts with: the display language's football country. */
+const HOME_COUNTRY: Record<Locale, string> = { tr: 'TR', en: 'EN', es: 'ES', pt: 'BR', de: 'DE', fr: 'FR', it: 'IT', id: 'EN' }
 
 type Step = 'identity' | 'nation' | 'position' | 'role' | 'background' | 'look' | 'summary'
 const STEPS: Step[] = ['identity', 'nation', 'position', 'role', 'background', 'look', 'summary']
@@ -94,7 +97,7 @@ export function NewCareerScreen() {
     firstName: '',
     lastName: parent?.lastName ?? '',
     nickname: '',
-    nationality: countries.find((c) => c.id === 'TR')?.id ?? countries[0]!.id,
+    nationality: countries.find((c) => c.id === HOME_COUNTRY[currentLocale.value])?.id ?? countries.find((c) => c.id === 'EN')?.id ?? countries[0]!.id,
     birthYear: START_YEAR - 17,
     position: 'ST',
     foot: 'R',

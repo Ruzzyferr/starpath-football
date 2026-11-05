@@ -2,10 +2,11 @@ import { useState } from 'preact/hooks'
 import '../../styles/screens/title.css'
 import { t } from '../../i18n'
 import { Logo } from '../layout/Logo'
+import { LanguageSelect } from '../components/LanguageSelect'
 import { Icon, type IconName } from '../icons'
 import { haptic } from '../haptics'
 import { toast } from '../components'
-import { actions, data, gameState, navigate, settings, updateSettings, type SaveSlotInfo, type ScreenId } from '../store'
+import { actions, data, gameState, navigate, type SaveSlotInfo, type ScreenId } from '../store'
 
 const VERSION = '0.1.0'
 
@@ -82,7 +83,6 @@ export function TitleScreen() {
   const s = gameState.value
   const recent = s ? null : mostRecentSlot()
   const canContinue = !!s || !!recent
-  const lang = settings.value.lang
 
   const onContinue = async () => {
     if (s) {
@@ -161,23 +161,9 @@ export function TitleScreen() {
           ))}
         </nav>
         <footer class="title-foot title-enter" style={{ animationDelay: '600ms' }}>
-          <div class="title-lang" role="radiogroup" aria-label={t('title.language')}>
+          <div class="title-lang">
             <Icon name="language" size={18} />
-            {(['tr', 'en'] as const).map((l) => (
-              <button
-                key={l}
-                type="button"
-                role="radio"
-                aria-checked={lang === l}
-                class={`title-lang-opt${lang === l ? ' is-active' : ''}`}
-                onClick={() => {
-                  haptic('select')
-                  updateSettings({ lang: l })
-                }}
-              >
-                {l.toUpperCase()}
-              </button>
-            ))}
+            <LanguageSelect id="title-lang" compact />
           </div>
           <span class="title-version">{t('title.version', { v: VERSION })}</span>
         </footer>

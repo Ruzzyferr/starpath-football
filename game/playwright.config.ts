@@ -48,6 +48,8 @@ export default defineConfig({
   retries: 0,
   reporter: [['list']],
   use: {
+    // The game follows the device language on first run; the specs were written against Turkish.
+    locale: 'tr-TR',
     baseURL: `http://127.0.0.1:${PORT}`,
     headless: true,
     trace: 'retain-on-failure',

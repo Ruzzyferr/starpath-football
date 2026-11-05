@@ -335,3 +335,15 @@
   .title-cone { animation: none; transform: rotate(var(--rot, 0deg)); }
   .title-mote { display: none; }
 }
+
+/* The language dropdown inside the title pill (components/LanguageSelect). */
+.title-lang .lang-select select {
+  min-width: 0;
+  min-height: 44px;
+  border: 0;
+  background: transparent;
+  color: var(--text-hi);
+  font-family: var(--font-display);
+  font-weight: 800;
+  letter-spacing: 0.06em;
+}
