@@ -3,7 +3,7 @@
 // Reads scripts/budgets.json, measures the built web bundle (gzip, as served) and exits 1 on any breach.
 import { readFileSync, readdirSync, statSync } from 'node:fs'
 import { gzipSync } from 'node:zlib'
-import { join, extname, resolve, dirname } from 'node:path'
+import { basename, join, extname, resolve, dirname } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const here = dirname(fileURLToPath(import.meta.url))
@@ -26,17 +26,22 @@ export function measure(dist) {
   const js = files.filter((f) => extname(f) === '.js' && !f.endsWith('sw.js'))
   const css = files.filter((f) => extname(f) === '.css')
   const audio = files.filter((f) => ['.mp3', '.ogg', '.wav', '.m4a', '.flac'].includes(extname(f)))
-  const jsGz = js.map((f) => ({ f, gz: gz(f) }))
-  const total = files.reduce((n, f) => n + statSync(f).size, 0)
+  // Translation overlays (src/i18n/overlay/<lang>.json): one lazy chunk per language, a device loads at most one.
+  const isOverlay = (f) => /^(es|pt|de|fr|it|id)-[\w-]+\.js$/.test(basename(f))
+  const overlays = js.filter(isOverlay).map((f) => ({ f, gz: gz(f), size: statSync(f).size }))
+  const jsGz = js.filter((f) => !isOverlay(f)).map((f) => ({ f, gz: gz(f) }))
+  const total = files.filter((f) => !isOverlay(f)).reduce((n, f) => n + statSync(f).size, 0) + Math.max(0, ...overlays.map((x) => x.size))
   return {
     jsTotalGzKB: jsGz.reduce((n, x) => n + x.gz, 0) / 1024,
     jsLargestGzKB: Math.max(0, ...jsGz.map((x) => x.gz)) / 1024,
     // Everything a cold start needs before the match: all JS except the lazily loaded Phaser match chunk.
     jsInitialGzKB: jsGz.filter((x) => !/MatchScene|phaser/i.test(x.f)).reduce((n, x) => n + x.gz, 0) / 1024,
     cssTotalGzKB: css.reduce((n, f) => n + gz(f), 0) / 1024,
+    // Counts the largest overlay once: what one device downloads.
     distTotalKB: total / 1024,
     audioFileBytes: audio.reduce((n, f) => n + statSync(f).size, 0),
-    jsChunks: js.length,
+    jsChunks: jsGz.length,
+    localeOverlayGzKB: Math.max(0, ...overlays.map((x) => x.gz)) / 1024,
   }
 }
 
