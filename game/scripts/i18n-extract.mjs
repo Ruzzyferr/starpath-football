@@ -26,7 +26,7 @@ function walkFiles(dir, out = []) {
   for (const f of readdirSync(dir)) {
     const p = join(dir, f)
     if (statSync(p).isDirectory()) {
-      if (f === 'dev' || f === 'overlay' || f === '__tests__') continue
+      if (f === 'overlay' || f === '__tests__') continue // ui/dev: the sample career seen in store screenshots
       walkFiles(p, out)
     } else if (/\.(ts|tsx)$/.test(f) && !/\.test\.tsx?$/.test(f) && !f.endsWith('.d.ts')) out.push(p)
   }
