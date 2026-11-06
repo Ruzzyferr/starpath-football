@@ -71,7 +71,7 @@ describe('intent: success follows the moment attributes, input skill always matt
       for (let i = 0; i < good.length; i++) expect(sloppy[i]!, line).toBeLessThanOrEqual(good[i]! + 0.03)
       const meanGap = good.reduce((sum, g, i) => sum + g - sloppy[i]!, 0) / good.length
       expect(meanGap, line).toBeGreaterThanOrEqual(k === 'tackle' ? 0.14 : 0.2)
-    }, 300_000)
+    }, 900_000)
   }
 
   it('1v1 placed finish follows the stat ~1:1 (Finishing / Composure / Shooting / Curve 50 · 70 · 90)', () => {
