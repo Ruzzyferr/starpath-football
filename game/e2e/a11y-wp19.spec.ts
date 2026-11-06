@@ -75,6 +75,8 @@ test('200% text scale at 390px: no horizontal overflow on core screens', async (
   await page.evaluate(() => document.documentElement.style.setProperty('--text-scale', '2'))
   for (const name of ['home', 'activities', 'profile', 'settings']) {
     await sp(page, `sp.navigate('${name}')`)
+    // Re-apply: a late settings update (e.g. the quality benchmark on a slow runner) rewrites --text-scale.
+    await page.evaluate(() => document.documentElement.style.setProperty('--text-scale', '2'))
     await page.waitForTimeout(400)
     const over = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth)
     expect(over, `${name} overflow at 200%`).toBeLessThanOrEqual(1)

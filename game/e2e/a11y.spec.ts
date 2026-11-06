@@ -59,6 +59,8 @@ test('settings: palettes apply and key rebinding reports conflicts', async ({ pa
   await expect(page.locator('html')).toHaveAttribute('data-cb', 'off')
   // Rebind "Pass" onto the key used by "Through ball": conflict message, no change.
   await page.getByRole('button', { name: /^Pass: Q$/ }).click()
+  // Wait for the row to listen before pressing (slow CI runners).
+  await expect(page.locator('.kb-key.is-listening')).toBeVisible()
   await page.keyboard.press('KeyR')
   await expect(page.getByRole('status').filter({ hasText: 'already used' })).toBeVisible()
   await page.getByRole('button', { name: 'Swap' }).click()
