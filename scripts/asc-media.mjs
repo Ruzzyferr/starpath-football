@@ -13,6 +13,7 @@ import { join } from 'node:path'
 const APP_ID = '6820656851'
 const [version, dir] = process.argv.slice(2)
 const dry = process.argv.includes('--dry-run')
+const repair = process.argv.includes('--repair')
 const LOCALES = {
   tr: ['tr'], en: ['en-US', 'en-GB', 'en-AU', 'en-CA'], es: ['es-ES', 'es-MX'], pt: ['pt-BR', 'pt-PT'],
   de: ['de-DE'], fr: ['fr-FR', 'fr-CA'], it: ['it'], id: ['id'],
@@ -50,13 +51,34 @@ async function upload(kind, setRel, setId, file, extra = {}) {
   const r = await api('POST', `/v1/${kind}`, {
     data: { type: kind, attributes: { fileName: file.split(/[\\/]/).pop(), fileSize: bytes.length, ...extra }, relationships: { [setRel]: { data: { type: `${setRel}s`, id: setId } } } },
   })
-  if (dry) return
+  if (dry) return r.data.id
   for (const op of r.data.attributes.uploadOperations ?? []) {
     const headers = Object.fromEntries((op.requestHeaders ?? []).map((h) => [h.name, h.value]))
     const res = await fetch(op.url, { method: op.method, headers, body: bytes.subarray(op.offset, op.offset + op.length) })
     if (!res.ok) throw new Error(`upload ${file} -> ${res.status}`)
   }
   await api('PATCH', `/v1/${kind}/${r.data.id}`, { data: { type: kind, id: r.data.id, attributes: { uploaded: true, sourceFileChecksum: createHash('md5').update(bytes).digest('hex') } } })
+  return r.data.id
+}
+
+/** --repair: keep finished screenshots, re-upload only missing or stuck ones, then restore the file order. */
+async function repairSet(locId, type, d, files) {
+  const sets = (await api('GET', `/v1/appStoreVersionLocalizations/${locId}/appScreenshotSets?limit=50`)).data
+  const set = sets.find((s) => s.attributes.screenshotDisplayType === type)
+  if (!set) return { set: await freshSet(locId, 'appScreenshotSets', 'screenshotDisplayType', type), redo: files }
+  const items = (await api('GET', `/v1/appScreenshotSets/${set.id}/appScreenshots?limit=50`)).data
+  const ids = []
+  let fixed = 0
+  for (const f of files) {
+    const it = items.find((x) => x.attributes.fileName === f)
+    if (it && it.attributes.assetDeliveryState?.state === 'COMPLETE') { ids.push(it.id); continue }
+    if (it) await api('DELETE', `/v1/appScreenshots/${it.id}`)
+    ids.push(await upload('appScreenshots', 'appScreenshotSet', set.id, join(d, f)))
+    fixed++
+  }
+  for (const x of items) if (!files.includes(x.attributes.fileName)) await api('DELETE', `/v1/appScreenshots/${x.id}`)
+  if (fixed && !dry) await api('PATCH', `/v1/appScreenshotSets/${set.id}/relationships/appScreenshots`, { data: ids.map((id) => ({ type: 'appScreenshots', id })) })
+  return { fixed }
 }
 
 /** The set of `type` for a localization, emptied (created when missing). */
@@ -86,13 +108,21 @@ for (const [lang, codes] of Object.entries(LOCALES)) {
       const d = join(dir, 'screens', folder, lang)
       if (!existsSync(d)) continue
       const files = readdirSync(d).filter((f) => /\.(png|jpe?g)$/i.test(f)).sort().slice(0, 10)
+      if (repair) {
+        const r = await repairSet(id, type, d, files)
+        if (r.redo) for (const f of r.redo) await upload('appScreenshots', 'appScreenshotSet', r.set, join(d, f))
+        const k = r.redo ? r.redo.length : r.fixed
+        n += k
+        if (k) console.log(`${code} ${type}: ${k} re-uploaded`)
+        continue
+      }
       const set = await freshSet(id, 'appScreenshotSets', 'screenshotDisplayType', type)
       for (const f of files) await upload('appScreenshots', 'appScreenshotSet', set, join(d, f))
       n += files.length
       console.log(`${code} ${type}: ${files.length} screenshots`)
     }
     const pv = join(dir, 'previews', `${lang}.mp4`)
-    if (existsSync(pv)) {
+    if (existsSync(pv) && !repair) {
       const set = await freshSet(id, 'appPreviewSets', 'previewType', 'IPHONE_67')
       await upload('appPreviews', 'appPreviewSet', set, pv, { mimeType: 'video/mp4', previewFrameTimeCode: '00:00:05:00' })
       console.log(`${code} IPHONE_67: preview`)

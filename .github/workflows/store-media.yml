@@ -18,6 +18,10 @@ on:
         description: Only print what would change
         type: boolean
         default: true
+      repair:
+        description: Re-upload only screenshots that are missing or stuck in processing
+        type: boolean
+        default: false
 
 jobs:
   media:
@@ -39,4 +43,4 @@ jobs:
           ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
           ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
           ASC_KEY_P8: ${{ secrets.ASC_KEY_P8 }}
-        run: node scripts/asc-media.mjs "${{ inputs.version }}" /tmp/media ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: node scripts/asc-media.mjs "${{ inputs.version }}" /tmp/media ${{ inputs.dry_run && '--dry-run' || '' }} ${{ inputs.repair && '--repair' || '' }}
