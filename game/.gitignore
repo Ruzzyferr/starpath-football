@@ -31,3 +31,4 @@ e2e/.debug
 # Desktop builds
 release
 .vitest/
+*.tmp.mjs
