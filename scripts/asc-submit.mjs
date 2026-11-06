@@ -58,6 +58,34 @@ if (cmd === 'status') {
   const v = await version(a1)
   console.log(`version ${a1}: ${v ? `${v.id} ${v.attributes.appStoreState}` : 'none'}`)
   for (const s of await openSubmissions()) console.log(`submission ${s.id} ${s.attributes.state}`)
+} else if (cmd === 'assets') {
+  // Screenshots / previews that are not COMPLETE; with --fix, stuck ones are deleted (re-run store-media to refill).
+  const fix = process.argv.includes('--fix')
+  const v = await version(a1)
+  const locs = (await api('GET', `/v1/appStoreVersions/${v.id}/appStoreVersionLocalizations?limit=200`)).data
+  let bad = 0
+  let total = 0
+  for (const l of locs) {
+    for (const [rel, kind] of [['appScreenshotSets', 'appScreenshots'], ['appPreviewSets', 'appPreviews']]) {
+      const sets = (await api('GET', `/v1/appStoreVersionLocalizations/${l.id}/${rel}?limit=50`)).data
+      for (const s of sets) {
+        const items = (await api('GET', `/v1/${rel}/${s.id}/${kind}?limit=50`)).data
+        for (const it of items) {
+          total++
+          const st = it.attributes.assetDeliveryState?.state
+          if (st === 'COMPLETE') continue
+          bad++
+          const why = JSON.stringify(it.attributes.assetDeliveryState?.errors ?? []).slice(0, 200)
+          console.log(`${l.attributes.locale} ${s.attributes.screenshotDisplayType ?? s.attributes.previewType} ${it.attributes.fileName} ${st} ${why}`)
+          if (fix && st !== 'UPLOAD_COMPLETE') {
+            await api('DELETE', `/v1/${kind}/${it.id}`, undefined, { soft: true })
+            console.log('  deleted')
+          }
+        }
+      }
+    }
+  }
+  console.log(`assets: ${total - bad}/${total} complete`)
 } else if (cmd === 'cancel') {
   const subs = (await openSubmissions()).filter((s) => s.attributes.state !== 'READY_FOR_REVIEW')
   if (!subs.length) console.log('no submission in review')
